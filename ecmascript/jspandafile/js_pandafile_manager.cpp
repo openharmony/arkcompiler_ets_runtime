@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
@@ -66,12 +65,17 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    bool mode = thread->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
-    if (!vm->IsBundlePack() && mode) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
             LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
+#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+            if (vm->EnableReportModuleResolvingFailure()) {
+                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+            }
+#endif
             return nullptr;
         }
         uint8_t *data = nullptr;
@@ -85,7 +89,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_ECMA(ERROR) << "Hsp secure memory check failed, please execute in secure memory.";
             return nullptr;
         }
+#if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
+        pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
+#else
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
+#endif
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
@@ -436,15 +444,15 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     return extractor;
 }
 
-std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread,
-    const panda_file::File *pf, const CString &desc, std::string_view entryPoint)
+std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
+                                                                     const CString &desc, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
 
     CString methodName = entryPoint.data();
-    if (!newJsPandaFile->IsMergedPF()) {
+    if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         auto pos = entryPoint.find_last_of("::");
         if (pos != std::string_view::npos) {

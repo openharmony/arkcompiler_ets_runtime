@@ -41,7 +41,7 @@ GateRef CircuitBuilder::Hole()
     return HoleConstant();
 }
 
-GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
+GateRef CircuitBuilder::Equal(GateRef x, GateRef y, const char* comment)
 {
     auto xType = acc_.GetMachineType(x);
     switch (xType) {
@@ -52,17 +52,17 @@ GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::EQ)), x, y);
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::EQ)), x, y, comment);
         case F32:
         case F64:
-            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y);
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y, comment);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
 
-GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
+GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y, const char* comment)
 {
     auto xType = acc_.GetMachineType(x);
     switch (xType) {
@@ -73,10 +73,10 @@ GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::NE)), x, y);
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::NE)), x, y, comment);
         case F32:
         case F64:
-            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y);
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y, comment);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -180,7 +180,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
     Bind(&overflow);
     {
         result = CallNGCRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(DoubleToInt),
-                                Circuit::NullGate(), { x }, Circuit::NullGate());
+                                Circuit::NullGate(), { x, IntPtr(base::INT32_BITS) }, Circuit::NullGate());
         Jump(exit);
     }
     Bind(exit);
@@ -379,7 +379,8 @@ inline GateRef CircuitBuilder::IsJSHClass(GateRef obj)
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
-    return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
+    auto t = Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK), GateType::Empty(), "checkHeapObject");
+    return Equal(t, Int64(0), "checkHeapObject");
 }
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
@@ -600,6 +601,11 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 GateRef CircuitBuilder::LoadObjectFromWeakRef(GateRef x)
 {
     return PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
+}
+
+GateRef CircuitBuilder::CreateWeakRef(GateRef x)
+{
+    return PtrAdd(x, IntPtr(JSTaggedValue::TAG_WEAK));
 }
 
 // object operation
@@ -1009,13 +1015,13 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
 }
 
 template<TypedJumpOp Op>
-GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, BranchKind branchKind)
+GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, uint32_t weight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto machineType = MachineType::NOVALUE;
-    auto jumpOp = TypedConditionJump(machineType, Op, branchKind, xType, {currentControl, currentDepend, x});
+    auto jumpOp = TypedConditionJump(machineType, Op, weight, xType, {currentControl, currentDepend, x});
     currentLabel->SetControl(jumpOp);
     currentLabel->SetDepend(jumpOp);
     return jumpOp;
@@ -1237,6 +1243,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
     std::vector<GateRef> inList { currentControl, currentDepend };
     inList.insert(inList.end(), args.begin(), args.end());
     inList.push_back(Int8(static_cast<int8_t>(id)));
+    AppendFrameArgs(inList, hirGate);
 
     auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList);
     currentLabel->SetControl(builtinOp);

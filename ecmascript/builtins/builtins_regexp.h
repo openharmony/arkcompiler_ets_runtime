@@ -86,6 +86,8 @@ public:
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
     static uint32_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, uint32_t index,
                                        bool unicode);
+    // 22.2.6.6 get RegExp.prototype.hasIndices
+    static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
@@ -116,6 +118,10 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    // 22.2.7.8 MakeMatchIndicesIndexPairArray ( S, indices, groupNames, hasGroups )
+    static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
+        const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
+        const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
 };
 
 class RegExpExecResultCache : public TaggedArray {
@@ -135,21 +141,22 @@ public:
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &patten,
                                    const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
                                    CacheType type, const JSHandle<JSTaggedValue> &regexp,
-                                   JSTaggedValue extend = JSTaggedValue::Undefined());
+                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined());
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                  const JSHandle<JSTaggedValue> &patten, const JSHandle<JSTaggedValue> &flags,
                                  const JSHandle<JSTaggedValue> &input, const JSHandle<JSTaggedValue> &resultArray,
-                                 CacheType type, uint32_t lastIndex, JSTaggedValue extend = JSTaggedValue::Undefined());
+                                 CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
+                                 JSTaggedValue extend = JSTaggedValue::Undefined());
 
     static void GrowRegexpCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache);
 
     void ClearEntry(JSThread *thread, int entry);
     void SetEntry(JSThread *thread, int entry, JSTaggedValue &patten, JSTaggedValue &flags, JSTaggedValue &input,
-                  JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
+                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
-               JSTaggedValue &extend);
+               JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend);
     inline void SetHitCount(JSThread *thread, int hitCount)
     {
         Set(thread, CACHE_HIT_COUNT_INDEX, JSTaggedValue(hitCount));
@@ -231,14 +238,15 @@ private:
     static constexpr int PATTERN_INDEX = 0;
     static constexpr int FLAG_INDEX = 1;
     static constexpr int INPUT_STRING_INDEX = 2;
-    static constexpr int LAST_INDEX_INDEX = 3;
-    static constexpr int RESULT_REPLACE_INDEX = 4;
-    static constexpr int RESULT_SPLIT_INDEX = 5;
-    static constexpr int RESULT_MATCH_INDEX = 6;
-    static constexpr int RESULT_EXEC_INDEX = 7;
+    static constexpr int LAST_INDEX_INPUT_INDEX = 3;
+    static constexpr int LAST_INDEX_INDEX = 4;
+    static constexpr int RESULT_REPLACE_INDEX = 5;
+    static constexpr int RESULT_SPLIT_INDEX = 6;
+    static constexpr int RESULT_MATCH_INDEX = 7;
+    static constexpr int RESULT_EXEC_INDEX = 8;
     // Extend index used for saving an additional parameter to judge cached
-    static constexpr int EXTEND_INDEX = 8;
-    static constexpr int ENTRY_SIZE = 9;
+    static constexpr int EXTEND_INDEX = 9;
+    static constexpr int ENTRY_SIZE = 10;
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_H

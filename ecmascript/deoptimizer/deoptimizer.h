@@ -33,7 +33,15 @@ enum class SpecVregIndex: int {
     NEWTARGET_INDEX = -5,
     THIS_OBJECT_INDEX = -6,
     ACTUAL_ARGC_INDEX = -7,
+    FIRST_METHOD_OFFSET_INDEX = -8,
+    PADDING1 = -9,
+    PADDING2 = -10,
+    PADDING3 = -11,
+    MAX_METHOD_OFFSET_INDEX = -12,
 };
+
+static constexpr uint32_t MAX_METHOD_OFFSET_NUM = static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) -
+                                                  static_cast<int32_t>(SpecVregIndex::MAX_METHOD_OFFSET_INDEX) + 1;
 
 struct Context {
     uintptr_t callsiteSp;

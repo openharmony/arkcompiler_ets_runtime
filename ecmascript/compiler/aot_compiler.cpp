@@ -208,6 +208,7 @@ int Main(const int argc, const char **argv)
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
         bool isEnableOptOnHeapCheck = runtimeOptions.IsEnableOptOnHeapCheck();
+        bool isEnableOptLoopInvariantCodeMotion = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
         if (runtimeOptions.IsTargetCompilerMode()) {
             if (!HandleOhosPkgArgs(vm, runtimeOptions, pkgArgs, pandaFileNames)) {
                 LOG_COMPILER(ERROR) << GetHelper();
@@ -229,7 +230,7 @@ int Main(const int argc, const char **argv)
         PassOptions passOptions(isEnableArrayBoundsCheckElimination, isEnableTypeLowering, isEnableEarlyElimination,
                                 isEnableLaterElimination, isEnableValueNumbering, isEnableTypeInfer,
                                 isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling,
-                                isEnableOptOnHeapCheck);
+                                isEnableOptOnHeapCheck, isEnableOptLoopInvariantCodeMotion);
 
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);

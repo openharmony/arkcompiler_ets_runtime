@@ -538,14 +538,16 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
 
 void BytecodeCircuitBuilder::BuildFrameArgs()
 {
-    auto metaData = circuit_->FrameArgs();
-    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS);
+    UInt32PairAccessor accessor(0, 0);
+    auto metaData = circuit_->FrameArgs(accessor.ToValue());
+    size_t numArgs = metaData->GetNumIns();
     std::vector<GateRef> args(numArgs, Circuit::NullGate());
     size_t idx = 0;
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
+    args[idx++] = GetPreFrameArgs();
     GateRef frameArgs = circuit_->NewGate(metaData, args);
     argAcc_.SetFrameArgs(frameArgs);
 }
@@ -883,7 +885,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
     bool writable = !bytecodeInfo.NoSideEffects();
-    bool hasFrameState = bytecodeInfo.HasFrameArgs();
+    bool hasFrameState = bytecodeInfo.HasFrameState();
     size_t pcOffset = GetPcOffset(iterator.Index());
     auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, writable, hasFrameState);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
@@ -1475,8 +1477,6 @@ void BytecodeCircuitBuilder::BuildCircuit()
     if (IsTypeLoweringEnabled()) {
         frameStateBuilder_.BuildFrameState();
     }
-
-    gateAcc_.EliminateRedundantPhi();
 
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");

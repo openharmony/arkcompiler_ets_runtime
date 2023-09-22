@@ -27,7 +27,7 @@
 #endif
 
 namespace panda::ecmascript {
-std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
+std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
     std::string data;
     data.append("    at ");
@@ -40,12 +40,17 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
     // source file
     DebugInfoExtractor *debugExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
-    const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
-    if (sourceFile.empty()) {
-        data.push_back('?');
+    if (enableStackSourceFile) {
+        const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
+        if (sourceFile.empty()) {
+            data.push_back('?');
+        } else {
+            data += sourceFile;
+        }
     } else {
-        data += sourceFile;
+        data.append("hidden");
     }
+
     data.push_back(':');
     // line number and column number
     auto callbackLineFunc = [&data](int32_t line) -> bool {
@@ -67,6 +72,32 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
     return data;
 }
 
+std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets)
+{
+    std::string data;
+    std::map<uint32_t, uint32_t>::reverse_iterator it;
+    for (it = methodOffsets.rbegin(); it != methodOffsets.rend(); it++) {
+        uint32_t methodId = it->second;
+        std::string name;
+        if (methodId == 0) {
+            name = "unknown";
+        } else {
+            name = std::string(MethodLiteral::GetMethodName(pf, EntityId(methodId)));
+            if (name == "") {
+                name = "anonymous";
+            }
+        }
+        data.append("    at ");
+        data.append(name);
+        data.append(" (maybe inlined).");
+        data.append(" depth: ");
+        data.append(std::to_string(it->first));
+
+        data.push_back('\n');
+    }
+    return data;
+}
+
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 {
     std::string data;
@@ -82,7 +113,10 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
         }
         if (!method->IsNativeWithCallField()) {
             auto pcOffset = it.GetBytecodeOffset();
-            data += BuildMethodTrace(method, pcOffset);
+            const JSPandaFile *pf = method->GetJSPandaFile();
+            std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
+            data += BuildInlinedMethodTrace(pf, methodOffsets);
+            data += BuildMethodTrace(method, pcOffset, thread->GetEnableStackSourceFile());
         } else if (needNative) {
             auto addr = method->GetNativePointer();
             std::stringstream strm;
@@ -201,7 +235,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     std::string faultInfo;
     if (method != nullptr) {
         std::string methodName = method->GetMethodName();
-        std::string recordName = method->GetRecordName().c_str();
+        std::string recordName = method->GetRecordNameStr().c_str();
         faultInfo = "Method Name:" + methodName + " Record Name:" + recordName;
     } else {
         faultInfo = "method is nullptr!";
@@ -210,7 +244,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
         uintptr_t func = uctx->uc_mcontext.regs[2];  // 2: func
         JSTaggedValue builtinMethod = JSFunction::Cast(reinterpret_cast<TaggedObject *>(func))->GetMethod();
         uint8_t builtinId = Method::Cast(builtinMethod.GetTaggedObject())->GetBuiltinId();
-        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(CharCodeAt) - 1);  // 1: offset NONE
+        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(StringCharCodeAt) - 1);  // 1: offset NONE
         std::string builtinStr = MessageString::GetMessageString(builtinStart + builtinId);
         faultInfo += " " + builtinStr;
     }

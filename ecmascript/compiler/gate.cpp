@@ -81,6 +81,16 @@ void Gate::CheckGeneralState(size_t idx) const
     }
 }
 
+void Gate::CheckState(size_t idx) const
+{
+    auto gatePtr = GetInGateConst(idx);
+    OpCode actual = gatePtr->GetOpCode();
+    if ((actual != OpCode::STATE_ENTRY) && (!gatePtr->meta_->IsState())) {
+        CheckFailed("State input does not match (expected:<State> actual:" +
+                    GateMetaData::Str(actual) + ")", idx);
+    }
+}
+
 void Gate::CheckStateInput() const
 {
     size_t stateStart = 0;
@@ -110,7 +120,7 @@ void Gate::CheckStateInput() const
                 break;
         }
         if (needCheck) {
-            CheckGeneralState(idx);
+            CheckState(idx);
         }
     }
 }
@@ -166,7 +176,7 @@ void Gate::CheckValueInput(bool isArch64) const
             case OpCode::OBJECT_TYPE_CHECK:
             case OpCode::LOAD_ELEMENT:
             case OpCode::STORE_ELEMENT:
-                if (idx == valueStart + 1) { // 1: idx 1
+                if (idx == valueStart) { // 1: idx 1
                     CheckInputMachineType(idx, MachineType::I64, isArch64);
                 }
                 break;
@@ -189,6 +199,7 @@ void Gate::CheckDependInput() const
     for (size_t idx = dependStart; idx < dependEnd; idx++) {
         if (GetInGateConst(idx)->GetDependCount() == 0 &&
             GetInGateConst(idx)->GetOpCode() != OpCode::DEPEND_ENTRY) {
+            LOG_COMPILER(ERROR) << "depend in of " << GetId() << GateMetaData::Str(GetOpCode()) << "is " << GetInGateConst(idx)->GetId() << GateMetaData::Str(GetInGateConst(idx)->GetOpCode());
             CheckFailed("Depend input is side-effect free", idx);
         }
     }

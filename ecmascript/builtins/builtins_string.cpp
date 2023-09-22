@@ -116,12 +116,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
         valueTable.emplace_back(nextCv);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    std::u16string u16str = base::StringHelper::Utf16ToU16String(valueTable.data(), argLength);
-    const char16_t *constChar16tData = u16str.data();
-    auto *char16tData = const_cast<char16_t *>(constChar16tData);
-    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
-    uint32_t u16strSize = u16str.size();
-    return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
+    return factory->NewFromUtf16Literal(valueTable.data(), valueTable.size()).GetTaggedValue();
 }
 
 // 21.1.2.2
@@ -591,7 +586,8 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
-                                                                 RegExpExecResultCache::MATCH_TYPE, regexp);
+                                                                 RegExpExecResultCache::MATCH_TYPE, regexp,
+                                                                 JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }

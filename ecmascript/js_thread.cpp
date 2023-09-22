@@ -424,7 +424,7 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
     if (isSwitch) {
         Address curAddress;
-#define SWITCH_PGO_STUB_ENTRY(fromName, toName)                                                             \
+#define SWITCH_PGO_STUB_ENTRY(fromName, toName, ...)                                                        \
         curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
         SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);

@@ -57,6 +57,11 @@ GateRef FrameStateBuilder::BuildFrameValues(FrameStateInfo *stateInfo)
     return circuit_->NewGate(circuit_->FrameValues(frameStateInputs), inList);
 }
 
+GateRef FrameStateBuilder::BuildEmptyFrameValues()
+{
+    return circuit_->NewGate(circuit_->FrameValues(0), {});
+}
+
 GateRef FrameStateBuilder::BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output)
 {
     GateRef frameArgs = builder_->GetFrameArgs();
@@ -193,7 +198,12 @@ GateRef FrameStateBuilder::GetPredStateGateBetweenBB(BytecodeRegion *bb, Bytecod
                     if (bb->numOfLoopBacks == 1) {
                         return loopBackState;
                     }
-                    return gateAcc_.GetState(loopBackState, backIndex);
+                    if (backIndex == 0) {
+                        return gateAcc_.GetState(loopBackState);
+                    } else {
+                        auto loopBackMerge = gateAcc_.GetState(loopBackState);
+                        return gateAcc_.GetState(loopBackMerge, backIndex);
+                    }
                 }
                 backIndex++;
             } else {
@@ -499,12 +509,13 @@ void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
     }
 }
 
-void FrameStateBuilder::FindLoopExit(GateRef gate) {
+void FrameStateBuilder::FindLoopExit(GateRef gate)
+{
     // if find the bytecode gate, return.
     if (builder_->IsBcIndexByGate(gate)) {
         return;
     }
-    
+
     // if find the loopExit, do process.
     if (gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT) {
         GateRef findBefore = gateAcc_.GetState(gate);
@@ -537,7 +548,7 @@ void FrameStateBuilder::FindLoopExit(GateRef gate) {
     }
 
     // continue to find the loopExit.
-    ASSERT(gateAcc_. GetStateCount(gate) == 1);
+
     FindLoopExit(gateAcc_.GetState(gate));
 }
 
@@ -687,7 +698,7 @@ GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff, size_
     if ((gateAcc_.GetOpCode(value) != OpCode::LOOP_EXIT_VALUE) || (diff == 0)) {
         return value;
     }
-    
+
     for (size_t i = 0; i < diff; ++i) {
         ASSERT(gateAcc_.GetOpCode(value) == OpCode::LOOP_EXIT_VALUE);
         GateRef loopExit = gateAcc_.GetState(value);

@@ -24,7 +24,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
@@ -196,7 +196,8 @@ public:
         return Get(index);
     }
 
-    static JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+    static JSTaggedValue GetMethodFromCache(
+        JSThread *thread, JSTaggedValue constpool, JSTaggedValue module, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->GetObjectFromCache(index);
@@ -219,13 +220,14 @@ public:
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         ASSERT(jsPandaFile->IsNewVersion());
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
+        JSHandle<JSTaggedValue> moduleHandle(thread, module);
         EcmaVM *vm = thread->GetEcmaVM();
 
         EntityId id = constpoolHandle->GetEntityId(index);
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
         ASSERT(methodLiteral != nullptr);
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle,
+        JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
                                                      entryIndex, isLoadedAOT && hasEntryIndex);
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
@@ -309,7 +311,9 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
-
+                    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+                        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), id.GetOffset());
+                    }
                     val = obj.GetTaggedValue();
                     break;
                 }
@@ -346,7 +350,7 @@ public:
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool,
                                              uint32_t index, JSTaggedValue module)
     {
-        CString entry = SourceTextModule::GetRecordName(module);
+        CString entry = ModuleManager::GetRecordName(module);
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 

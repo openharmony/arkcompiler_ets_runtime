@@ -434,9 +434,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::METHOD: {
 #ifdef PANDA_TARGET_64
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 7U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
 #else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 7U);
 #endif
                 break;
             }
@@ -445,7 +445,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 3U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -735,7 +735,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ARRAY: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 1U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 2U);
                 JSHandle<JSArray> jsArray = factory->NewJSArray();
                 DUMP_FOR_HANDLE(jsArray)
                 break;
@@ -775,7 +775,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::HCLASS: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSHClass::SIZE, 9U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSHClass::SIZE, 10U);
                 JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSHClass::SIZE, JSType::HCLASS, proto);
                 DUMP_FOR_HANDLE(hclass)
                 break;
@@ -802,6 +802,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::CONSTANT_POOL: {
                 JSHandle<ConstantPool> constantPool = factory->NewConstantPool(4);
                 DUMP_FOR_HANDLE(constantPool)
+                break;
+            }
+            case JSType::PROFILE_TYPE_INFO: {
+                JSHandle<ProfileTypeInfo> info = factory->NewProfileTypeInfo(4);
+                DUMP_FOR_HANDLE(info)
                 break;
             }
             case JSType::TAGGED_DICTIONARY: {
@@ -876,6 +881,10 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ProtoChangeMarker::SIZE, 1U);
                 JSHandle<ProtoChangeMarker> protoMaker = factory->NewProtoChangeMarker();
                 DUMP_FOR_HANDLE(protoMaker)
+                break;
+            }
+            case JSType::TRACK_INFO: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TrackInfo::SIZE, 3U);
                 break;
             }
             case JSType::PROTOTYPE_INFO: {

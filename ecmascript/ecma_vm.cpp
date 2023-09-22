@@ -109,7 +109,9 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
     vm->Initialize();
-    JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    if (JsStackInfo::loader == nullptr) {
+        JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
@@ -143,6 +145,9 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
+#ifdef ENABLE_POSTFORK_FORCEEXPAND
+    heap_->NotifyPostFork();
+#endif
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
@@ -262,6 +267,10 @@ EcmaVM::~EcmaVM()
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
+    }
+
+    if (JsStackInfo::loader == GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()) {
+        JsStackInfo::loader = nullptr;
     }
 
     if (heap_ != nullptr) {
@@ -419,6 +428,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         }
     }
     thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
+    GetPGOProfiler()->ProcessReferences(visitor);
 }
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *array)
@@ -479,6 +489,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
+    pgoProfiler_->Iterate(v);
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

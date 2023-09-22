@@ -26,10 +26,19 @@ void GraphEditor::RemoveDeadState(Circuit* circuit, GateRef gate)
     editor.RemoveGate();
 }
 
-void GraphEditor::EliminateRedundantPhi(Circuit* circuit)
+void GraphEditor::EliminateRedundantPhi(Circuit* circuit, bool enableLog, const std::string& methodName)
 {
     GraphEditor editor(circuit);
     editor.EliminatePhi();
+    if (enableLog) {
+        LOG_COMPILER(INFO) << " ";
+        LOG_COMPILER(INFO) << "\033[34m" << "================="
+                           << " After Redundant Phi Elimination "
+                           << "[" << methodName << "] "
+                           << "=================" << "\033[0m";
+        circuit->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
+    }
 }
 
 void GraphEditor::ReplaceGate(GateRef gate)
@@ -117,54 +126,83 @@ void GraphEditor::PropagateMerge(const Edge& edge)
 
 void GraphEditor::EliminatePhi()
 {
+    circuit_->AdvanceTime();
     std::vector<GateRef> gateList;
     acc_.GetAllGates(gateList);
+    std::vector<GateRef> phis;
     std::queue<GateRef> workList;
-    std::set<GateRef> inList;
+    // nomarked phis are unused phis
+    // set previsit for phis in worklist
+    // set visited for used phis
+    // set finished for used gate which is self-use or has same inputs
+
     for (auto gate : gateList) {
         if (acc_.IsValueSelector(gate)) {
-            workList.push(gate);
-            inList.insert(gate);
+            phis.emplace_back(gate);
+            continue;
+        }
+        if (acc_.IsFrameValues(gate)) {
+            continue;
+        }
+        // get used phi
+        auto valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            if (acc_.IsValueSelector(input) && acc_.IsNotMarked(input)) {
+                acc_.SetPrevisit(input);
+                workList.push(input);
+            }
         }
     }
 
+    // visit used phi
     while (!workList.empty()) {
         auto cur = workList.front();
         workList.pop();
-        ASSERT(acc_.IsValueSelector(cur));
-        GateRef first = acc_.GetValueIn(cur, 0);
-        auto use = acc_.Uses(cur);
-        bool sameIns = true;
-        bool selfUse = first == cur;
-        bool noUses = use.begin() == use.end();
+        acc_.SetVisited(cur);
         auto valueNum = acc_.GetNumValueIn(cur);
-        for (size_t i = 1; i < valueNum; ++i) {
+        bool selfUse = false;
+        bool sameIns = true;
+        GateRef first = acc_.GetValueIn(cur, 0);
+        for (size_t i = 0; i < valueNum; ++i) {
             GateRef input = acc_.GetValueIn(cur, i);
+            if (input == cur) {
+                selfUse = true;
+            }
             if (input != first) {
                 sameIns = false;
             }
-            if (input == cur) {
-                ASSERT(acc_.IsLoopHead(acc_.GetState(cur)));
-                selfUse = true;
+            if (acc_.IsValueSelector(input) && acc_.IsNotMarked(input)) {
+                workList.push(input);
+                acc_.SetPrevisit(input);
             }
         }
-        if ((!sameIns) && (!selfUse) && (!noUses)) {
-            inList.erase(cur);
+        
+        if ((!sameIns) && (!selfUse)) {
             continue;
         }
-        for (auto it = use.begin(); it != use.end(); ++it) {
-            if (((*it) == cur) || (!acc_.IsValueSelector(*it)) || inList.count(*it)) {
-                // selfUse or notPhi or inListPhi
-                continue;
+
+        acc_.SetFinished(cur);
+        auto uses = acc_.Uses(cur);
+        for (auto it = uses.begin(); it != uses.end(); it++) {
+            if (acc_.IsValueSelector(*it) && acc_.IsVisited(*it)) {
+                // revisit user
+                acc_.SetPrevisit(*it);
+                workList.push(*it);
             }
-            workList.push(*it);
-            inList.insert(*it);
         }
         acc_.UpdateAllUses(cur, first);
+        acc_.DeleteGate(cur);
     }
-    for (auto phi : inList) {
-        ASSERT(acc_.IsValueSelector(phi));
-        acc_.DeleteGate(phi);
+
+    // delete unused phi
+    for (auto phi : phis) {
+        if (acc_.IsValueSelector(phi) && acc_.IsNotMarked(phi)) {
+            auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
+                JSTaggedValue::VALUE_OPTIMIZED_OUT, GateType::TaggedValue());
+            acc_.UpdateAllUses(phi, optimizedGate);
+            acc_.DeleteGate(phi);
+        }
     }
 }
 }  // namespace panda::ecmascript::kungfu

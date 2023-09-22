@@ -121,7 +121,6 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
 {
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, items, method);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -139,33 +138,31 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
 
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> indexHandle(thread, JSTaggedValue::Undefined());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
+    JSHandle<TaggedArray> elements = factory->ExtendArray(oldElements, totalElements);
     while (index < totalElements) {
         JSTaggedValue key = map->GetKey(index);
-        indexHandle.Update(JSTaggedValue(k));
         if (!key.IsHole()) {
             keyHandle.Update(key);
             valueHandle.Update(map->GetValue(index));
             if (itemKind == IterationKind::KEY) {
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, keyHandle);
+                elements->Set(thread, k, keyHandle);
             } else if (itemKind == IterationKind::VALUE) {
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, valueHandle);
+                elements->Set(thread, k, valueHandle);
             } else {
                 JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
                 array->Set(thread, 0, keyHandle);
                 array->Set(thread, 1, valueHandle);
                 JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, keyAndValue);
+                elements->Set(thread, k, keyAndValue);
             }
             k++;
         }
         index++;
     }
-
-    indexHandle.Update(JSTaggedValue(k));
-    JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle), lengthKey, indexHandle, true);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, k);
+    newArrayHandle->SetElements(thread, elements);
     return newArrayHandle.GetTaggedValue();
 }
 }  // namespace panda::ecmascript

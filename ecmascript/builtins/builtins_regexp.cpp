@@ -271,6 +271,18 @@ JSTaggedValue BuiltinsRegExp::GetGlobal(EcmaRuntimeCallInfo *argv)
     return GetTaggedBoolean(result);
 }
 
+// 22.2.6.6
+JSTaggedValue BuiltinsRegExp::GetHasIndices(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetHasIndices);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisObj = GetThis(argv);
+    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_HASINDICES);
+    return GetTaggedBoolean(result);
+}
+
 // 20.2.5.5
 JSTaggedValue BuiltinsRegExp::GetIgnoreCase(EcmaRuntimeCallInfo *argv)
 {
@@ -414,7 +426,8 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
         // a. Return RegExpExec(rx, S).
         if (useCache) {
             JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputString,
-                                                                     RegExpExecResultCache::EXEC_TYPE, thisObj);
+                                                                     RegExpExecResultCache::EXEC_TYPE, thisObj,
+                                                                     JSTaggedValue(0));
             if (!cacheResult.IsUndefined()) {
                 return cacheResult;
             }
@@ -425,7 +438,8 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
 
     if (useCache) {
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputString,
-                                                                 RegExpExecResultCache::MATCH_TYPE, thisObj);
+                                                                 RegExpExecResultCache::MATCH_TYPE, thisObj,
+                                                                 JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
@@ -468,7 +482,7 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
             if (useCache) {
                 RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flags, inputString,
                                                         JSHandle<JSTaggedValue>(array),
-                                                        RegExpExecResultCache::MATCH_TYPE, 0);
+                                                        RegExpExecResultCache::MATCH_TYPE, 0, 0);
             }
             // 2. Else, return A.
             return array.GetTaggedValue();
@@ -633,9 +647,11 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
     if (length > cacheTable->GetStrLenThreshold()) {
         useCache = true;
     }
+    uint32_t lastIndexInput = lastIndex;
     if (useCache) {
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flagsBits, tagInputString,
                                                                  RegExpExecResultCache::REPLACE_TYPE, regexp,
+                                                                 JSTaggedValue(lastIndexInput),
                                                                  globalConst->GetEmptyString());
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
@@ -697,7 +713,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
     if (useCache) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, tagInputString,
                                                 JSHandle<JSTaggedValue>(resultValue),
-                                                RegExpExecResultCache::REPLACE_TYPE, lastIndex,
+                                                RegExpExecResultCache::REPLACE_TYPE, lastIndexInput, lastIndex,
                                                 globalConst->GetEmptyString());
     }
     return resultValue.GetTaggedValue();
@@ -793,7 +809,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
                     useCache = true;
                     JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flagsBits, string,
                                                                              RegExpExecResultCache::REPLACE_TYPE,
-                                                                             thisObj,
+                                                                             thisObj, JSTaggedValue(0),
                                                                              inputReplaceValue.GetTaggedValue());
                     if (!cacheResult.IsUndefined()) {
                         return cacheResult;
@@ -1008,7 +1024,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
         if (useCache) {
             RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, string,
                                                     JSHandle<JSTaggedValue>(resultValue),
-                                                    RegExpExecResultCache::REPLACE_TYPE, nextIndexHandle->GetInt(),
+                                                    RegExpExecResultCache::REPLACE_TYPE, 0, nextIndexHandle->GetInt(),
                                                     inputReplaceValue.GetTaggedValue());
         }
         return resultValue.GetTaggedValue();
@@ -1022,7 +1038,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
     if (useCache) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, string,
                                                 JSHandle<JSTaggedValue>(resultValue),
-                                                RegExpExecResultCache::REPLACE_TYPE, nextIndexHandle->GetInt(),
+                                                RegExpExecResultCache::REPLACE_TYPE, 0, nextIndexHandle->GetInt(),
                                                 inputReplaceValue.GetTaggedValue());
     }
     return resultValue.GetTaggedValue();
@@ -1162,7 +1178,8 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
     if (useCache) {
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flagsBits, inputString,
-                                                                 RegExpExecResultCache::SPLIT_TYPE, thisObj);
+                                                                 RegExpExecResultCache::SPLIT_TYPE, thisObj,
+                                                                 JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
@@ -1257,7 +1274,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
                     if (useCache) {
                         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, inputString,
                                                                 JSHandle<JSTaggedValue>(array),
-                                                                RegExpExecResultCache::SPLIT_TYPE, lastIndex);
+                                                                RegExpExecResultCache::SPLIT_TYPE, 0, lastIndex);
                     }
                     return array.GetTaggedValue();
                 }
@@ -1292,7 +1309,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
                         if (useCache) {
                             RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, inputString,
                                                                     JSHandle<JSTaggedValue>(array),
-                                                                    RegExpExecResultCache::SPLIT_TYPE, lastIndex);
+                                                                    RegExpExecResultCache::SPLIT_TYPE, 0, lastIndex);
                         }
                         return array.GetTaggedValue();
                     }
@@ -1314,7 +1331,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     if (lim == MAX_SPLIT_LIMIT) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flagsBits, inputString,
                                                 JSHandle<JSTaggedValue>(array), RegExpExecResultCache::SPLIT_TYPE,
-                                                endIndex);
+                                                0, endIndex);
     }
     // 28. Return A.
     return array.GetTaggedValue();
@@ -1397,6 +1414,69 @@ bool BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedV
     uint8_t flags = static_cast<uint8_t>(regexpObj->GetOriginalFlags().GetInt());
     return flags & mask;
 }
+
+// 22.2.7.8
+JSHandle<JSTaggedValue> BuiltinsRegExp::MakeMatchIndicesIndexPairArray(JSThread *thread,
+    const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
+    const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups)
+{
+    // 1. Let n be the number of elements in indices.
+    uint32_t n = indices.size();
+    // Assert: groupNames has n - 1 elements.
+    ASSERT(groupNames.size() == n - 1);
+    // 5. Let A be ! ArrayCreate(n).
+    JSHandle<JSObject> results(JSArray::ArrayCreate(thread, JSTaggedNumber(n)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 6. If hasGroups is true, then
+    //    a. Let groups be OrdinaryObjectCreate(null).
+    // 7. Else,
+    //    a. Let groups be undefined.
+    JSMutableHandle<JSTaggedValue> groups(thread, JSTaggedValue::Undefined());
+    if (hasGroups) {
+        JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
+        JSHandle<JSObject> nullObj = factory->OrdinaryNewJSObjectCreate(nullHandle);
+        groups.Update(nullObj.GetTaggedValue());
+    }
+    // 8. Perform ! CreateDataPropertyOrThrow(A, "groups", groups).
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
+    JSObject::CreateDataProperty(thread, results, groupsKey, groups);
+    // 9. For each integer i such that 0 ≤ i < n, in ascending order, do
+    //    a. Let matchIndices be indices[i].
+    //    b. If matchIndices is not undefined, then
+    //        i. Let matchIndexPair be GetMatchIndexPair(S, matchIndices).
+    //    c. Else,
+    //        i. Let matchIndexPair be undefined.
+    //    d. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(i)), matchIndexPair).
+    //    e. If i > 0 and groupNames[i - 1] is not undefined, then
+    //        i. Assert: groups is not undefined.
+    //        ii. Perform ! CreateDataPropertyOrThrow(groups, groupNames[i - 1], matchIndexPair).
+    JSMutableHandle<JSTaggedValue> matchIndexPair(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < n; i++) {
+        std::pair<JSTaggedValue, JSTaggedValue> matchIndices = indices[i];
+        if (!matchIndices.first.IsUndefined()) {
+            JSHandle<TaggedArray> match = factory->NewTaggedArray(2); // 2 means the length of array
+            match->Set(thread, 0, matchIndices.first);
+            match->Set(thread, 1, matchIndices.second);
+            JSHandle<JSTaggedValue> pair(JSArray::CreateArrayFromList(thread, JSHandle<TaggedArray>::Cast(match)));
+            matchIndexPair.Update(pair.GetTaggedValue());
+        } else {
+            matchIndexPair.Update(JSTaggedValue::Undefined());
+        }
+        JSObject::CreateDataProperty(thread, results, i, matchIndexPair);
+        if (i > 0) {
+            JSHandle<JSTaggedValue> groupName = groupNames[i - 1];
+            if (!groupName->IsUndefined()) {
+                JSHandle<JSObject> groupObject = JSHandle<JSObject>::Cast(groups);
+                JSObject::CreateDataProperty(thread, groupObject, groupName, matchIndexPair);
+            }
+        }
+    }
+    // 10. Return A.
+    return JSHandle<JSTaggedValue>::Cast(results);
+}
+
 // 21.2.5.2.2
 JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                                 const JSHandle<JSTaggedValue> &inputStr, bool useCache)
@@ -1426,15 +1506,18 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     uint8_t flagsBits = static_cast<uint8_t>(flags->GetInt());
     bool global = (flagsBits & RegExpParser::FLAG_GLOBAL) != 0;
     bool sticky = (flagsBits & RegExpParser::FLAG_STICKY) != 0;
+    bool hasIndices = (flagsBits & RegExpParser::FLAG_HASINDICES) != 0;
     if (!global && !sticky) {
-        if (useCache) {
-            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputStr,
-                                                                     RegExpExecResultCache::EXEC_TYPE, regexp);
-            if (!cacheResult.IsUndefined()) {
-                return cacheResult;
-            }
-        }
         lastIndex = 0;
+    }
+    uint32_t lastIndexInput = lastIndex;
+    if (useCache) {
+        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputStr,
+                                                                 RegExpExecResultCache::EXEC_TYPE, regexp,
+                                                                 JSTaggedValue(lastIndexInput));
+        if (!cacheResult.IsUndefined()) {
+            return cacheResult;
+        }
     }
 
     uint32_t length = EcmaStringAccessor(inputStr->GetTaggedObject()).GetLength();
@@ -1479,36 +1562,55 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSObject::CreateDataProperty(thread, results, indexKey, indexValue);
     // 25. Perform CreateDataProperty(A, "input", S).
     JSHandle<JSTaggedValue> inputKey = globalConst->GetHandledInputString();
-
     JSHandle<JSTaggedValue> inputValue(thread, static_cast<EcmaString *>(inputStr->GetTaggedObject()));
     JSObject::CreateDataProperty(thread, results, inputKey, inputValue);
+
     // 27. Perform CreateDataProperty(A, "0", matched_substr).
-    JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second);
+    JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second.capturedValue);
     JSObject::CreateDataProperty(thread, results, 0, zeroValue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
+    // Let indices be a new empty List.
+    // Let groupNames be a new empty List.
+    // Append match to indices.
+    std::vector<std::pair<JSTaggedValue, JSTaggedValue>> indices;
+    std::vector<JSHandle<JSTaggedValue>> groupNames;
+    indices.emplace_back(std::make_pair(JSTaggedValue(matchIndex), JSTaggedValue(endIndex)));
+    // If R contains any GroupName, then
+    //   a. Let groups be OrdinaryObjectCreate(null).
+    //   b. Let hasGroups be true.
+    // Else,
+    //   a. Let groups be undefined.
+    //   b. Let hasGroups be false.
     JSHandle<JSTaggedValue> groupName(thread, regexpObj->GetGroupName());
     JSMutableHandle<JSTaggedValue> groups(thread, JSTaggedValue::Undefined());
+    bool hasGroups = false;
     if (!groupName->IsUndefined()) {
         JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
         JSHandle<JSObject> nullObj = factory->OrdinaryNewJSObjectCreate(nullHandle);
         groups.Update(nullObj.GetTaggedValue());
+        hasGroups = true;
     }
+    // Perform ! CreateDataPropertyOrThrow(A, "groups", groups).
     JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
     JSObject::CreateDataProperty(thread, results, groupsKey, groups);
     // Create a new RegExp on global
     JSHandle<JSObject> globalRegExp = JSHandle<JSObject>(env->GetRegExpFunction());
     JSMutableHandle<JSTaggedValue> keyString(thread, JSTaggedValue::Undefined());
     uint32_t captureIndex = 1;
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     // 28. For each integer i such that i > 0 and i <= n
     for (; captureIndex < capturesSize; captureIndex++) {
         // a. Let capture_i be ith element of r's captures List
         JSTaggedValue capturedValue;
         if (matchResult.captures_[captureIndex].first) {
             capturedValue = JSTaggedValue::Undefined();
+            indices.emplace_back(std::make_pair(JSTaggedValue::Undefined(), JSTaggedValue::Undefined()));
         } else {
-            capturedValue = matchResult.captures_[captureIndex].second.GetTaggedValue();
+            auto captureI = matchResult.captures_[captureIndex].second;
+            capturedValue = captureI.capturedValue.GetTaggedValue();
+            indices.emplace_back(std::make_pair(JSTaggedValue(captureI.startIndex), JSTaggedValue(captureI.endIndex)));
         }
         JSHandle<JSTaggedValue> iValue(thread, capturedValue);
         // add to RegExp.$i and i must <= 9
@@ -1526,8 +1628,21 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
             if (groupArray->GetLength() > captureIndex - 1) {
                 JSHandle<JSTaggedValue> skey(thread, groupArray->Get(captureIndex - 1));
                 JSObject::CreateDataProperty(thread, groupObject, skey, iValue);
+                groupNames.emplace_back(skey);
+            } else {
+                groupNames.emplace_back(undefined);
             }
+        } else {
+            groupNames.emplace_back(undefined);
         }
+    }
+    // If hasIndices is true, then
+    //   a. Let indicesArray be MakeMatchIndicesIndexPairArray(S, indices, groupNames, hasGroups).
+    //   b. Perform ! CreateDataPropertyOrThrow(A, "indices", indicesArray).
+    if (hasIndices) {
+        auto indicesArray = MakeMatchIndicesIndexPairArray(thread, indices, groupNames, hasGroups);
+        JSHandle<JSTaggedValue> indicesKey = globalConst->GetHandledIndicesString();
+        JSObject::CreateDataProperty(thread, results, indicesKey, indicesArray);
     }
     JSHandle<JSTaggedValue> emptyString = thread->GlobalConstants()->GetHandledEmptyString();
     while (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
@@ -1537,10 +1652,10 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
         cell->SetValue(thread, emptyString);
         ++captureIndex;
     }
-    if (lastIndex == 0 && useCache) {
+    if (useCache) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flags, inputStr,
                                                 JSHandle<JSTaggedValue>(results), RegExpExecResultCache::EXEC_TYPE,
-                                                endIndex);
+                                                lastIndexInput, endIndex);
     }
     // 29. Return A.
     return results.GetTaggedValue();
@@ -1631,6 +1746,9 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
             case 'y':
                 flagsBitsTemp = RegExpParser::FLAG_STICKY;
                 break;
+            case 'd':
+                flagsBitsTemp = RegExpParser::FLAG_HASINDICES;
+                break;
             default: {
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
                 JSHandle<JSObject> syntaxError =
@@ -1678,10 +1796,14 @@ JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExp
 
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 {
-    ASSERT((flags & 0xC0) == 0);  // 0xC0: first 2 bits of flags must be 0
+    ASSERT((flags & 0x80) == 0);  // 0x80: first bit of flags must be 0
     BUILTINS_API_TRACE(thread, RegExp, FlagsBitsToString);
     uint8_t *flagsStr = new uint8_t[7];  // 7: maximum 6 flags + '\0'
     size_t flagsLen = 0;
+    if (flags & RegExpParser::FLAG_HASINDICES) {
+        flagsStr[flagsLen] = 'd';
+        flagsLen++;
+    }
     if (flags & RegExpParser::FLAG_GLOBAL) {
         flagsStr[flagsLen] = 'g';
         flagsLen++;
@@ -1742,7 +1864,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
         // 6. ReturnIfAbrupt(F).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         /**
-         * 7. If F contains any code unit other than "g", "i", "m", "u", or "y" or if it contains the same code
+         * 7. If F contains any code unit other than "d", "g", "i", "m", "u", or "y" or if it contains the same code
          * unit more than once, throw a SyntaxError exception.
          **/
         CString checkStr = ConvertToString(*flagsStrHandle, StringConvertedUsage::LOGICOPERATION);
@@ -1856,21 +1978,23 @@ JSTaggedValue RegExpExecResultCache::CreateCacheTable(JSThread *thread)
 JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                       const JSHandle<JSTaggedValue> &flags,
                                                       const JSHandle<JSTaggedValue> &input, CacheType type,
-                                                      const JSHandle<JSTaggedValue> &regexp, JSTaggedValue extend)
+                                                      const JSHandle<JSTaggedValue> &regexp,
+                                                      JSTaggedValue lastIndexInput, JSTaggedValue extend)
 {
     JSTaggedValue patternValue = pattern.GetTaggedValue();
     JSTaggedValue flagsValue = flags.GetTaggedValue();
     JSTaggedValue inputValue = input.GetTaggedValue();
 
-    if (!pattern->IsString() || !flags->IsInt() || !input->IsString()) {
+    if (!pattern->IsString() || !flags->IsInt() || !input->IsString() || !lastIndexInput.IsInt()) {
         return JSTaggedValue::Undefined();
     }
 
-    uint32_t hash = pattern->GetKeyHashCode() + static_cast<uint32_t>(flags->GetInt()) + input->GetKeyHashCode();
+    uint32_t hash = pattern->GetKeyHashCode() + static_cast<uint32_t>(flags->GetInt()) +
+                    input->GetKeyHashCode() + static_cast<uint32_t>(lastIndexInput.GetInt());
     uint32_t entry = hash & static_cast<uint32_t>(GetCacheLength() - 1);
-    if (!Match(entry, patternValue, flagsValue, inputValue, extend)) {
+    if (!Match(entry, patternValue, flagsValue, inputValue, lastIndexInput, extend)) {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(GetCacheLength() - 1);
-        if (!Match(entry2, patternValue, flagsValue, inputValue, extend)) {
+        if (!Match(entry2, patternValue, flagsValue, inputValue, lastIndexInput, extend)) {
             return JSTaggedValue::Undefined();
         }
         entry = entry2;
@@ -1918,7 +2042,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
                                              const JSHandle<JSTaggedValue> &pattern,
                                              const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
                                              const JSHandle<JSTaggedValue> &resultArray, CacheType type,
-                                             uint32_t lastIndex, JSTaggedValue extend)
+                                             uint32_t lastIndexInput, uint32_t lastIndex, JSTaggedValue extend)
 {
     if (!pattern->IsString() || !flags->IsInt() || !input->IsString()) {
         return;
@@ -1936,19 +2060,21 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     JSTaggedValue patternValue = pattern.GetTaggedValue();
     JSTaggedValue flagsValue = flags.GetTaggedValue();
     JSTaggedValue inputValue = input.GetTaggedValue();
+    JSTaggedValue lastIndexInputValue(lastIndexInput);
     JSTaggedValue lastIndexValue(lastIndex);
 
     uint32_t hash = patternValue.GetKeyHashCode() + static_cast<uint32_t>(flagsValue.GetInt()) +
-                    inputValue.GetKeyHashCode();
+                    inputValue.GetKeyHashCode() + lastIndexInput;
     uint32_t entry = hash & static_cast<uint32_t>(cache->GetCacheLength() - 1);
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
         static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     if (cache->Get(index).IsUndefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
-        cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue, lastIndexValue, extend);
+        cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
+                        lastIndexInputValue, lastIndexValue, extend);
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
-    } else if (cache->Match(entry, patternValue, flagsValue, inputValue, extend)) {
+    } else if (cache->Match(entry, patternValue, flagsValue, inputValue, lastIndexInputValue, extend)) {
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
     } else {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(cache->GetCacheLength() - 1);
@@ -1970,15 +2096,17 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         JSTaggedValue extendValue = extendHandle.GetTaggedValue();
         if (cache->Get(index2).IsUndefined()) {
             cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
-            cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue, lastIndexValue, extendValue);
+            cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
+                            lastIndexInputValue, lastIndexValue, extendValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
-        } else if (cache->Match(entry2, patternValue, flagsValue, inputValue, extendValue)) {
+        } else if (cache->Match(entry2, patternValue, flagsValue, inputValue, lastIndexInputValue, extendValue)) {
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else {
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
             cache->SetCacheCount(thread, cache->GetCacheCount() - 1);
             cache->ClearEntry(thread, entry2);
-            cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue, lastIndexValue, extendValue);
+            cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
+                            lastIndexInputValue, lastIndexValue, extendValue);
             cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
         }
     }
@@ -1993,7 +2121,8 @@ void RegExpExecResultCache::GrowRegexpCache(JSThread *thread, JSHandle<RegExpExe
 }
 
 void RegExpExecResultCache::SetEntry(JSThread *thread, int entry, JSTaggedValue &pattern, JSTaggedValue &flags,
-                                     JSTaggedValue &input, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue)
+                                     JSTaggedValue &input, JSTaggedValue &lastIndexInputValue,
+                                     JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue)
 {
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
             static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
@@ -2001,6 +2130,7 @@ void RegExpExecResultCache::SetEntry(JSThread *thread, int entry, JSTaggedValue 
     Set(thread, index + PATTERN_INDEX, pattern);
     Set(thread, index + FLAG_INDEX, flags);
     Set(thread, index + INPUT_STRING_INDEX, input);
+    Set(thread, index + LAST_INDEX_INPUT_INDEX, lastIndexInputValue);
     Set(thread, index + LAST_INDEX_INDEX, lastIndexValue);
     Set(thread, index + EXTEND_INDEX, extendValue);
 }
@@ -2043,7 +2173,7 @@ void RegExpExecResultCache::ClearEntry(JSThread *thread, int entry)
 }
 
 bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedValue &flags, JSTaggedValue &input,
-                                  JSTaggedValue &extend)
+                                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend)
 {
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
             static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
@@ -2051,6 +2181,7 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
     JSTaggedValue keyPattern = Get(index + PATTERN_INDEX);
     JSTaggedValue keyFlags = Get(index + FLAG_INDEX);
     JSTaggedValue keyInput = Get(index + INPUT_STRING_INDEX);
+    JSTaggedValue keyLastIndexInput = Get(index + LAST_INDEX_INPUT_INDEX);
     JSTaggedValue keyExtend = Get(index + EXTEND_INDEX);
 
     if (keyPattern.IsUndefined()) {
@@ -2060,9 +2191,11 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
     EcmaString *patternStr = EcmaString::Cast(pattern.GetTaggedObject());
     uint8_t flagsBits = static_cast<uint8_t>(flags.GetInt());
     EcmaString *inputStr = EcmaString::Cast(input.GetTaggedObject());
+    uint32_t lastIndexInputInt = static_cast<uint32_t>(lastIndexInputValue.GetInt());
     EcmaString *keyPatternStr = EcmaString::Cast(keyPattern.GetTaggedObject());
     uint8_t keyFlagsBits = static_cast<uint8_t>(keyFlags.GetInt());
     EcmaString *keyInputStr = EcmaString::Cast(keyInput.GetTaggedObject());
+    uint32_t keyLastIndexInputInt = static_cast<uint32_t>(keyLastIndexInput.GetInt());
     bool extendEqual = false;
     if (extend.IsString() && keyExtend.IsString()) {
         EcmaString *extendStr = EcmaString::Cast(extend.GetTaggedObject());
@@ -2074,6 +2207,7 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
         return false;
     }
     return EcmaStringAccessor::StringsAreEqual(patternStr, keyPatternStr) && flagsBits == keyFlagsBits &&
-           EcmaStringAccessor::StringsAreEqual(inputStr, keyInputStr) && extendEqual;
+           EcmaStringAccessor::StringsAreEqual(inputStr, keyInputStr) && lastIndexInputInt ==  keyLastIndexInputInt &&
+           extendEqual;
 }
 }  // namespace panda::ecmascript::builtins

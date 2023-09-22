@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
@@ -395,7 +395,9 @@ public:
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
+    bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
@@ -410,6 +412,9 @@ public:
     bool TypedCallIsNoGC(GateRef gate) const;
     bool IsNoGC(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
+    uint32_t TryGetMethodOffset(GateRef gate) const;
+    GateRef GetFrameArgs(GateRef gate) const;
+    void UpdateMethodOffset(GateRef gate, uint32_t methodOffset);
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);
     ElementsKind TryGetElementsKind(GateRef gate) const;
@@ -461,6 +466,7 @@ public:
     bool IsSelector(GateRef g) const;
     bool IsSimpleState(GateRef g) const;
     bool IsValueSelector(GateRef g) const;
+    bool IsFrameValues(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopExit(GateRef gate) const;
     bool IsLoopExitRelated(GateRef gate) const;
@@ -484,8 +490,10 @@ public:
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
     bool IsVisited(GateRef gate) const;
+    bool IsPrevisit(GateRef gate) const;
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
+    void SetPrevisit(GateRef gate);
     void SetVisited(GateRef gate);
     bool IsStateIn(const UseIterator &useIt) const;
     bool IsDependIn(const UseIterator &useIt) const;
@@ -519,6 +527,9 @@ public:
     bool HasIfExceptionUse(GateRef gate) const;
     bool IsIn(GateRef g, GateRef in) const;
     bool IsHeapObjectFromElementsKind(GateRef gate);
+    bool IsConstString(GateRef gate);
+    bool IsSingleCharGate(GateRef gate);
+    uint32_t GetStringIdFromLdaStrGate(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {
@@ -550,6 +561,7 @@ public:
         return gate == GetStateRoot();
     }
 
+    size_t GetFrameDepth(GateRef gate, OpCode op);
     GateRef GetFrameState(GateRef gate) const;
     void ReplaceFrameStateIn(GateRef gate, GateRef in);
     bool HasFrameState(GateRef gate) const;

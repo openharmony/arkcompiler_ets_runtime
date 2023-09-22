@@ -34,7 +34,7 @@ public:
 
     virtual void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                               const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile,
-                              const std::string &methodName) = 0;
+                              const std::string &methodName, bool enableOptInlining) = 0;
 };
 
 class CodeGenerator {
@@ -57,9 +57,9 @@ public:
     }
 
     void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, bool enableOptInlining)
     {
-        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_);
+        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_, enableOptInlining);
     }
 
 private:

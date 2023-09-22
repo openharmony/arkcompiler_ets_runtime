@@ -575,7 +575,7 @@ namespace panda::ecmascript {
     V(Object, HasOwn)                         \
     V(Object, IsPrototypeOf)                  \
     V(Object, ToLocaleString)                 \
-    V(Object, GetBuiltinTag)                  \
+    V(Object, GetBuiltinObjectToString)       \
     V(Object, ToString)                       \
     V(Object, ValueOf)                        \
     V(Object, ProtoGetter)                    \
@@ -647,6 +647,7 @@ namespace panda::ecmascript {
     V(RegExp, Split)                          \
     V(RegExp, Create)                         \
     V(RegExp, GetGlobal)                      \
+    V(RegExp, GetHasIndices)                  \
     V(RegExp, GetIgnoreCase)                  \
     V(RegExp, GetMultiline)                   \
     V(RegExp, GetDotAll)                      \

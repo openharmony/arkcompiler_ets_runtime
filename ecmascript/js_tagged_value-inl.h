@@ -1109,6 +1109,11 @@ inline bool JSTaggedValue::IsProtoChangeMarker() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsProtoChangeMarker();
 }
 
+inline bool JSTaggedValue::IsTrackInfoObject() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTrackInfoObject();
+}
+
 inline bool JSTaggedValue::IsJSGlobalEnv() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJsGlobalEnv();

@@ -112,6 +112,7 @@ public:
                      NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
           acc_(circuit),
+          glue_(acc_.GetGlueFromArgList()),
           builder_(circuit, ctx->GetCompilerConfig()),
           tsManager_(ctx->GetTSManager()),
           ctx_(ctx),
@@ -168,6 +169,8 @@ private:
         return kind == CallKind::CALL_SETTER;
     }
 
+    void CollectInlineInfo();
+    void GetInlinedMethodId(GateRef gate);
     void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
     void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
@@ -208,6 +211,7 @@ private:
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
+    GateRef glue_;
     CircuitBuilder builder_;
     TSManager *tsManager_ {nullptr};
     PassContext *ctx_ {nullptr};

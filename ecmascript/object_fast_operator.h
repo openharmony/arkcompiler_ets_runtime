@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 class ObjectFastOperator final {
 public:
+    static inline JSTaggedValue HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     template<bool UseOwn = false>
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 

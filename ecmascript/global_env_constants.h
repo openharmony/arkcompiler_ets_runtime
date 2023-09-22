@@ -43,6 +43,7 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
+    V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, COWArrayClass, COW_ARRAY_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
@@ -65,6 +66,7 @@ class ObjectFactory;
     V(JSTaggedValue, PendingJobClass, PENDING_JOB_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ProtoChangeMarkerClass, PROTO_CHANGE_MARKER_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
+    V(JSTaggedValue, TrackInfoClass, TRACK_INFO_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
     V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
@@ -129,13 +131,11 @@ class ObjectFactory;
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
     V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \
-    V(JSTaggedValue, ElementDoubleClass, ELEMENT_DOUBLE_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementNumberClass, ELEMENT_NUMBER_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementStringClass, ELEMENT_STRING_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementObjectClass, ELEMENT_OBJECT_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementTaggedClass, ELEMENT_TAGGED_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementHoleIntClass, ELEMENT_HOLE_INT_HCLASS_INDEX, ecma_roots_class)                            \
-    V(JSTaggedValue, ElementHoleDoubleClass, ELEMENT_HOLE_DOUBLE_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleNumberClass, ELEMENT_HOLE_NUMBER_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleStringClass, ELEMENT_HOLE_STRING_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleObjectClass, ELEMENT_HOLE_OBJECT_HCLASS_INDEX, ecma_roots_class)                      \
@@ -407,6 +407,8 @@ class ObjectFactory;
     V(JSTaggedValue, GregoryString, GREGORY_INDEX, gregory)                                                           \
     V(JSTaggedValue, EthioaaString, ETHIOAA_INDEX, ethioaa)                                                           \
     V(JSTaggedValue, StickyString, STICKY_INDEX, sticky)                                                              \
+    V(JSTaggedValue, HasIndicesString, HAS_INDICES_INDEX, hasIndices)                                                 \
+    V(JSTaggedValue, IndicesString, INDICES_INDEX, indices)                                                           \
     V(JSTaggedValue, UString, U_INDEX, u)                                                                             \
     V(JSTaggedValue, IndexString, INDEX_INDEX, index)                                                                 \
     V(JSTaggedValue, InputString, INPUT_INDEX, input)                                                                 \
@@ -462,7 +464,20 @@ class ObjectFactory;
     V(JSTaggedValue, DollarStringSix, DOLLAR_STRING_SIX_INDEX, dollarStrSix)                                          \
     V(JSTaggedValue, DollarStringSeven, DOLLAR_STRING_SEVEN_INDEX, dollarStrSeven)                                    \
     V(JSTaggedValue, DollarStringEight, DOLLAR_STRING_EIGHT_INDEX, dollarStrEight)                                    \
-    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)
+    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)                                       \
+    /* for object to string */                                                                                        \
+    V(JSTaggedValue, UndefinedToString, UNDEFINED_TO_STRING_INDEX, undefinedToString)                                 \
+    V(JSTaggedValue, NullToString, NULL_TO_STRING_INDEX, nullToString)                                                \
+    V(JSTaggedValue, ObjectToString, OBJECT_TO_STRING_INDEX, objectToString)                                          \
+    V(JSTaggedValue, ArrayToString, ARRAY_TO_STRING_INDEX, arrayToString)                                             \
+    V(JSTaggedValue, StringToString, STRING_TO_STRING_INDEX, stringToString)                                          \
+    V(JSTaggedValue, BooleanToString, BOOLEAN_TO_STRING_INDEX, booleanToString)                                       \
+    V(JSTaggedValue, NumberToString, NUMBER_TO_STRING_INDEX, numberToString)                                          \
+    V(JSTaggedValue, ArgumentsToString, ARGUMENTS_TO_STRING_INDEX, argumentsToString)                                 \
+    V(JSTaggedValue, FunctionToString, FUNCTION_TO_STRING_INDEX, functionToString)                                    \
+    V(JSTaggedValue, DateToString, DATE_TO_STRING_INDEX, dateToString)                                                \
+    V(JSTaggedValue, ErrorToString, ERROR_TO_STRING_INDEX, errorToString)                                             \
+    V(JSTaggedValue, RegExpToString, REGEXP_TO_STRING_INDEX, regExpToString)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \

@@ -22,7 +22,6 @@ group("ark_aot_js_test") {
     "dynamicimport",
     "emptyif",
     "formatrangetoparts",
-
     "module",
     "undefined",
     "cjs",
@@ -42,6 +41,7 @@ group("ark_aot_ts_test") {
   test_list = [
     "add",
     "and",
+    "array",
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",
@@ -51,6 +51,7 @@ group("ark_aot_ts_test") {
     "await",
     "await_loop",
     "bind",
+    "binaryop_special_value",
     "builtinmath",
     "call_same_bytecode_func",
     "callithisrange",
@@ -103,6 +104,7 @@ group("ark_aot_ts_test") {
     "exception_case9",
     "exp",
     "fast_call_builtins",
+    "frame_states",
     "forloop",
     "framestatesasync",
     "framestatesphi",
@@ -154,6 +156,7 @@ group("ark_aot_ts_test") {
     "newobjspread",
     "not",
     "numberspeculativeretype",
+    "operations_stub_test",
     "optimization",
     "optimized_call",
     "or",
@@ -184,6 +187,7 @@ group("ark_aot_ts_test") {
     "strictequal",
     "strictnotequal",
     "string",
+    "string_equal",
     "stsuperbyname",
     "sub",
     "supercall",
@@ -211,6 +215,14 @@ group("ark_aot_ts_test") {
     "ts_inline_change_target",
     "ts_inline_deopt",
     "ts_inline_deopt_loop",
+    "ts_inline_exception1",
+    "ts_inline_exception2",
+    "ts_inline_exception3",
+    "ts_inline_exception4",
+    "ts_inline_exception5",
+    "ts_inline_exception6",
+    "ts_inline_exception7",
+    "ts_inline_exception8",
     "ts_inline_extends",
     "ts_inline_loop",
     "ts_inline_max_call",
@@ -221,6 +233,7 @@ group("ark_aot_ts_test") {
     "typedarray",
     "typedarray_load_store",
     "typeof",
+    "unaryop_special_value",
     "xor",
   ]
 
@@ -256,6 +269,7 @@ group("ark_aot_test") {
     "aot_compatibility_test:aot_compatibility_test",
     "aot_multi_constantpool_test:aot_multi_constantpool_test",
     "aot_type_test:aot_type_test",
+    "object:object_test",
     "vtable:vtable_test",
   ]
 }

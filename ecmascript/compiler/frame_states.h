@@ -107,6 +107,7 @@ private:
     void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
     GateRef BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output);
     GateRef BuildFrameValues(FrameStateInfo *stateInfo);
+    GateRef BuildEmptyFrameValues();
 
     FrameStateInfo *CreateEmptyStateInfo();
     void BuildPostOrderList(size_t size);

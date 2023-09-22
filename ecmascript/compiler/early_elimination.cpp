@@ -17,25 +17,12 @@
 
 namespace panda::ecmascript::kungfu {
 
-void EarlyElimination::Run()
+void EarlyElimination::Initialize()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     renames_.resize(circuit_->GetMaxGateId() + 1, Circuit::NullGate()); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
-    VisitGraph();
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After early elimination "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
 }
 
 DependInfoNode* EarlyElimination::GetLoopDependInfo(GateRef depend)
@@ -97,6 +84,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_GETTER:
         case OpCode::LOAD_SETTER:
         case OpCode::ECMA_STRING_CHECK:
+        case OpCode::TYPE_OF_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -289,7 +277,7 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
 
 bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)
 {
-    return GetGateOrder(lhs) < GetGateOrder(rhs);
+    return visitor_->GetGateOrder(lhs) < visitor_->GetGateOrder(rhs);
 }
 
 bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
@@ -332,7 +320,8 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::INDEX_CHECK: {
+        case OpCode::INDEX_CHECK:
+        case OpCode::TYPE_OF_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
                 return false;
             }

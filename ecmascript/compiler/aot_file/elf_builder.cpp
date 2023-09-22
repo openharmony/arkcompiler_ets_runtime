@@ -23,7 +23,7 @@ void ElfBuilder::AddShStrTabSection()
 {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections =
         des_[ShStrTableModuleDesIndex].GetSectionsInfo();
-    
+
     uint32_t size = 1;
     for (auto &s : sections_) {
         std::string str = ModuleSectionDes::GetSecName(s);
@@ -376,7 +376,8 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr) {
+void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
+{
     using Elf64_Sym = llvm::ELF::Elf64_Sym;
 
     uint32_t secSize = des_[FullSecIndex].GetSecSize(ElfSecName::SYMTAB);

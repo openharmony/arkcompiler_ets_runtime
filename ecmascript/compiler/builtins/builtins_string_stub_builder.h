@@ -21,14 +21,20 @@ namespace panda::ecmascript::kungfu {
 class FlatStringStubBuilder;
 struct StringInfoGateRef;
 
-class BuiltinsStringStubBuilder : public StubBuilder {
+class BuiltinsStringStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsStringStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~BuiltinsStringStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStringStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStringStubBuilder);
     void GenerateCircuit() override {}
+
+    void FromCharCode(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
 
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,
@@ -41,6 +47,8 @@ public:
                           GateRef pos, GateRef max, GateRef rhsCount);
     GateRef StringIndexOf(const StringInfoGateRef &lStringInfoGate,
         const StringInfoGateRef &rStringInfoGate, GateRef pos);
+    GateRef GetSingleCharCodeByIndex(GateRef str, GateRef index);
+    GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
@@ -49,6 +57,9 @@ private:
     GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);
     GateRef GetUtf8Data(GateRef stringData, GateRef index);
+    GateRef GetSingleCharCodeFromConstantString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
 };
 
 class FlatStringStubBuilder : public StubBuilder {
@@ -86,7 +97,7 @@ public:
     {
         return length_;
     }
-    
+
 private:
     Variable flatString_ { GetEnvironment(), VariableType::JS_POINTER(), NextVariableId(), Undefined() };
     Variable startIndex_ { GetEnvironment(), VariableType::INT32(), NextVariableId(), Int32(0) };

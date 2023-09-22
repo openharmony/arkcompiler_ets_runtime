@@ -16,7 +16,7 @@
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript::kungfu {
@@ -196,6 +196,5 @@ void LoopAnalysis::LoopExitElimination()
                 break;
         }
     }
-    acc_.EliminateRedundantPhi();
 }
 }  // namespace panda::ecmascript::kungfu

@@ -26,7 +26,10 @@
 #include <type_traits>
 #include <vector>
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/hcr_gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
 #include "ecmascript/compiler/type.h"
 
 #include "libpandabase/macros.h"
@@ -263,6 +266,7 @@ private:
     void CheckInputOpcode(size_t idx, OpCode expected) const;
     void CheckInputMachineType(size_t idx, MachineType expected, bool isArch64) const;
     void CheckNotInputMachineType(size_t idx, MachineType notExpected) const;
+    void CheckState(size_t idx) const;
     void CheckGeneralState(size_t idx) const;
     void CheckFailed(std::string errorString, size_t highlightIdx) const;
     void SetMetaData(const GateMetaData* meta)

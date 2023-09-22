@@ -74,6 +74,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
             Bind(&isHeapObject);
             {
                 Label tryPoly(env);
+                Label tryWithElementPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
                 Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryElementIC,
@@ -81,11 +82,28 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
                 Bind(&tryPoly);
                 {
                     Label firstIsKey(env);
-                    Branch(Int64Equal(firstValue, propKey_), &firstIsKey, slowPath_);
+                    Branch(Int64Equal(firstValue, propKey_), &firstIsKey, &tryWithElementPoly);
                     Bind(&firstIsKey);
-                    GateRef handler = CheckPolyHClass(cachedHandler->ReadVariable(), hclass);
-                    cachedHandler->WriteVariable(handler);
-                    Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                    {
+                        GateRef handler = CheckPolyHClass(cachedHandler->ReadVariable(), hclass);
+                        cachedHandler->WriteVariable(handler);
+                        Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                    }
+                    Bind(&tryWithElementPoly);
+                    {
+                        Label checkSecond(env);
+                        Label checkPoly(env);
+                        Branch(TaggedIsWeak(firstValue), slowPath_, &checkSecond);
+                        Bind(&checkSecond);
+                        {
+                            Branch(TaggedIsHole(cachedHandler->ReadVariable()), &checkPoly, slowPath_);
+                        }
+                        Bind(&checkPoly);
+                        {
+                            cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
+                            Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryElementIC);
+                        }
+                    }
                 }
             }
             Bind(&notHeapObject);
@@ -139,24 +157,46 @@ void ICStubBuilder::LoadICByValue(
     auto env = GetEnvironment();
     Label loadWithHandler(env);
     Label loadElement(env);
+    Label handlerInfoIsElement(env);
+    Label handlerInfoNotElement(env);
+    Label handlerInfoIsStringElement(env);
+    Label handlerInfoNotStringElement(env);
+    Label exit(env);
 
     SetLabels(tryFastPath, slowPath, success);
     GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
+    DEFVARIABLE(ret, VariableType::JS_ANY(), secondValue);
+
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef ret = LoadElement(glue_, receiver_, propKey_, callback);
-        result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        GateRef handlerInfo = GetInt32OfTInt(*cachedHandler);
+        Branch(IsElement(handlerInfo), &handlerInfoIsElement, &handlerInfoNotElement);
+        Bind(&handlerInfoIsElement);
+        {
+            ret = LoadElement(glue_, receiver_, propKey_);
+            Jump(&exit);
+        }
+        Bind(&handlerInfoNotElement);
+        {
+            Branch(IsStringElement(handlerInfo), &handlerInfoIsStringElement, &handlerInfoNotStringElement);
+            Bind(&handlerInfoNotStringElement);
+            Jump(&exit);
+            Bind(&handlerInfoIsStringElement);
+            ret = LoadStringElement(glue_, receiver_, propKey_);
+            Jump(&exit);
+        }
     }
     Bind(&loadWithHandler);
     {
-        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
-        result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+        Jump(&exit);
     }
+    Bind(&exit);
+    result->WriteVariable(*ret);
+    Branch(TaggedIsHole(*ret), slowPath_, success_);
 }
 
 void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
@@ -172,7 +212,7 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);
     Bind(&storeElement);
     {
-        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, secondValue, callback_);
+        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, *cachedHandler);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }

@@ -457,6 +457,7 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
 
     JSHandle<JSArray> cloneObject(NewJSObject(klass));
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
+    cloneObject->SetTrackInfo(thread_, JSTaggedValue::Undefined());
 
     JSHandle<TaggedArray> elements(thread_, object->GetElements());
     static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
@@ -584,7 +585,6 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
 
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
-    cloneFunc->SetModule(thread_, func->GetModule());
     return cloneFunc;
 }
 
@@ -1039,6 +1039,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
 #endif
         case JSType::JS_ARRAY: {
             JSArray::Cast(*obj)->SetLength(0);
+            JSArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
@@ -1614,11 +1615,13 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, Me
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
+    method->SetModule(thread_, JSTaggedValue::Undefined());
     return method;
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-    JSHandle<ConstantPool> constpool, uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
+                                          JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
+                                          uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
 {
     JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
@@ -1627,6 +1630,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method = NewMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
     }
+    method->SetModule(thread_, module);
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
@@ -1746,7 +1750,7 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
         proto = realmHandle->GetGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
-    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(hclass));
+    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
     generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
     return generatorObject;
@@ -2642,9 +2646,9 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     NewObjectHook();
     ASSERT(length > 0);
 
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    size_t size = ProfileTypeInfo::ComputeSize(length);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
 
@@ -3344,6 +3348,7 @@ JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
     functionType->SetReturnGT(GlobalTSTypeRef::Default());
     functionType->SetThisGT(GlobalTSTypeRef::Default());
     functionType->ClearBitField();
+    functionType->SetMethodOffset(0);
 
     JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
     functionType->SetParameterTypes(thread_, parameterTypes);
@@ -4039,6 +4044,7 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
     array->SetElements(thread_, elements);
 
     array->SetLength(elements->GetLength());
+    array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     return array;

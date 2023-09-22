@@ -28,7 +28,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     EcmaVM *vm = thread->GetEcmaVM();
 
     // hot reload and hot patch only support merge-abc file.
-    if (!baseFile->IsMergedPF() || !patchFile->IsMergedPF()) {
+    if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
         LOG_ECMA(ERROR) << "base or patch is not merge abc!";
         return PatchErrorCode::PACKAGE_NOT_ESMODULE;
     }
@@ -113,7 +113,7 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
         JSHandle<JSTaggedValue> module =
             thread->GetCurrentEcmaContext()->GetModuleManager()->HostResolveImportedModuleWithMerge(
                 patchFile->GetJSPandaFileDesc(), recordName);
-        func->SetModule(thread, module);
+        Method::Cast(func->GetMethod())->SetModule(thread, module);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), undefined, undefined, 0);
         EcmaInterpreter::Execute(info);
@@ -183,7 +183,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
             baseFile.get(), baseMethodLiteral->GetMethodId());
         ReplaceMethod(thread, patchMethod, baseMethodLiteral, baseConstpoolValue);
         LOG_ECMA(INFO) << "Replace base method: "
-                       << patchMethod->GetRecordName()
+                       << patchMethod->GetRecordNameStr()
                        << ":" << patchMethod->GetMethodName();
     }
 

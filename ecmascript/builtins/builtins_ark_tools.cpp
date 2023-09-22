@@ -146,6 +146,15 @@ JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(attr.IsNotHole());
 }
 
+JSTaggedValue BuiltinsArkTools::HiddenStackSourceFile(EcmaRuntimeCallInfo *info)
+{
+    [[maybe_unused]] DisallowGarbageCollection noGc;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    thread->SetEnableStackSourceFile(false);
+    return JSTaggedValue::True();
+}
+
 JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

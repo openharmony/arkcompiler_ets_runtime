@@ -588,7 +588,7 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, objFuncPrototype, "toLocaleString", Object::ToLocaleString, FunctionLength::ZERO);
     // 19.1.3.6 Object.prototype.toString()
     SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Object::ToString,
-                FunctionLength::ZERO);
+                FunctionLength::ZERO, BUILTINS_STUB_ID(ObjectToString));
     // 19.1.3.7 Object.prototype.valueOf()
     SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Object::ValueOf,
                 FunctionLength::ZERO);
@@ -1756,15 +1756,15 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // String.prototype method
     SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE,
-                BUILTINS_STUB_ID(CharAt));
+                BUILTINS_STUB_ID(StringCharAt));
     SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
-                BUILTINS_STUB_ID(CharCodeAt));
+                BUILTINS_STUB_ID(StringCharCodeAt));
     SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "concat", BuiltinsString::Concat, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "endsWith", BuiltinsString::EndsWith, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "includes", BuiltinsString::Includes, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "indexOf", BuiltinsString::IndexOf, FunctionLength::ONE,
-                BUILTINS_STUB_ID(IndexOf));
+                BUILTINS_STUB_ID(StringIndexOf));
     SetFunction(env, stringFuncPrototype, "lastIndexOf", BuiltinsString::LastIndexOf, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "localeCompare", BuiltinsString::LocaleCompare, FunctionLength::ONE,
                 BUILTINS_STUB_ID(LocaleCompare));
@@ -1781,7 +1781,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "split", BuiltinsString::Split, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "startsWith", BuiltinsString::StartsWith, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO,
-                BUILTINS_STUB_ID(Substring));
+                BUILTINS_STUB_ID(StringSubstring));
     SetFunction(env, stringFuncPrototype, "substr", BuiltinsString::SubStr, FunctionLength::TWO);
     SetFunction(env, stringFuncPrototype, "at", BuiltinsString::At, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "toLocaleLowerCase", BuiltinsString::ToLocaleLowerCase, FunctionLength::ZERO);
@@ -1801,7 +1801,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
                         BuiltinsString::GetStringIterator, FunctionLength::ZERO);
 
     // String method
-    SetFunction(env, stringFunction, "fromCharCode", BuiltinsString::FromCharCode, FunctionLength::ONE);
+    SetFunction(env, stringFunction, "fromCharCode", BuiltinsString::FromCharCode, FunctionLength::ONE,
+        BUILTINS_STUB_ID(StringFromCharCode));
     SetFunction(env, stringFunction, "fromCodePoint", BuiltinsString::FromCodePoint, FunctionLength::ONE);
     SetFunction(env, stringFunction, "raw", BuiltinsString::Raw, FunctionLength::ONE);
 
@@ -2024,6 +2025,11 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
     SetGetter(regPrototype, globalKey, globalGetter);
 
+    JSHandle<JSTaggedValue> hasIndicesGetter =
+        CreateGetter(env, RegExp::GetHasIndices, "hasIndices", FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCII("hasIndices"));
+    SetGetter(regPrototype, hasIndicesKey, hasIndicesGetter);
+
     JSHandle<JSTaggedValue> ignoreCaseGetter =
         CreateGetter(env, RegExp::GetIgnoreCase, "ignoreCase", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCII("ignoreCase"));
@@ -2125,7 +2131,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
                 BUILTINS_STUB_ID(ArrayLastIndexOf));
     SetFunction(env, arrFuncPrototype, "map", BuiltinsArray::Map, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "pop", BuiltinsArray::Pop, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "push", BuiltinsArray::Push, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "push", BuiltinsArray::Push, FunctionLength::ONE,
+                BUILTINS_STUB_ID(ArrayPush));
     SetFunction(env, arrFuncPrototype, "reduce", BuiltinsArray::Reduce, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "reduceRight", BuiltinsArray::ReduceRight, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "reverse", BuiltinsArray::Reverse, FunctionLength::ZERO,
@@ -3726,6 +3733,8 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "isNotHoleProperty", builtins::BuiltinsArkTools::IsNotHoleProperty,
                 FunctionLength::TWO);
     SetFunction(env, tools, "forceFullGC", builtins::BuiltinsArkTools::ForceFullGC, FunctionLength::ZERO);
+    SetFunction(env, tools, "hiddenStackSourceFile", builtins::BuiltinsArkTools::HiddenStackSourceFile,
+                FunctionLength::ZERO);
     SetFunction(env, tools, "removeAOTFlag", builtins::BuiltinsArkTools::RemoveAOTFlag, FunctionLength::ONE);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     SetFunction(env, tools, "startCpuProf", builtins::BuiltinsArkTools::StartCpuProfiler, FunctionLength::ZERO);

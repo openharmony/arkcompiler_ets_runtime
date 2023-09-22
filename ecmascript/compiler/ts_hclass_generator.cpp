@@ -73,8 +73,8 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
     auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
     const JSThread *thread = tsManager_->GetThread();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    int numOfProps = hclass->NumberOfProps();
-    for (int i = 0; i < numOfProps; i++) {
+    uint32_t numOfProps = hclass->NumberOfProps();
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto key = layoutInfo->GetKey(i);
         if (!key.IsString()) {
             continue;

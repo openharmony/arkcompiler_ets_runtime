@@ -64,10 +64,11 @@ GateRef CircuitBuilder::UndefineConstant()
     return circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
 }
 
-GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight)
+GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight,
+                               const char* comment)
 {
     auto value = BranchAccessor::ToValue(trueWeight, falseWeight);
-    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition });
+    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition }, comment);
 }
 
 GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCounts)
@@ -101,6 +102,23 @@ GateRef CircuitBuilder::LoopBegin(GateRef state)
 GateRef CircuitBuilder::LoopEnd(GateRef state)
 {
     return circuit_->NewGate(circuit_->LoopBack(), { state });
+}
+
+GateRef CircuitBuilder::LoopExit(GateRef state)
+{
+    return circuit_->NewGate(circuit_->LoopExit(), { state });
+}
+
+GateRef CircuitBuilder::LoopExitDepend(GateRef state, GateRef depend)
+{
+    return circuit_->NewGate(circuit_->LoopExitDepend(), { state, depend });
+}
+
+GateRef CircuitBuilder::LoopExitValue(GateRef state, GateRef value)
+{
+    auto machineType = acc_.GetMachineType(value);
+    auto gateType = acc_.GetGateType(value);
+    return circuit_->NewGate(circuit_->LoopExitValue(), machineType, { state, value }, gateType);
 }
 
 GateRef CircuitBuilder::IfTrue(GateRef ifBranch)
@@ -173,7 +191,9 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->HeapObjectCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -219,13 +239,13 @@ GateRef CircuitBuilder::EcmaStringCheck(GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::FlattenStringCheck(GateRef gate)
+GateRef CircuitBuilder::FlattenTreeStringCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->FlattenStringCheck(),
+    GateRef ret = GetCircuit()->NewGate(circuit_->FlattenTreeStringCheck(),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -281,6 +301,18 @@ GateRef CircuitBuilder::LoadTypedArrayLength(GateType type, GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::StringEqual(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->StringEqual(), MachineType::I1,
+                                     { currentControl, currentDepend, x, y }, GateType::BooleanType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -307,6 +339,31 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     return ret;
 }
 
+GateRef CircuitBuilder::TypeOfCheck(GateRef gate, GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOfCheck(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedTypeOf(GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOf(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend}, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 {
     // Elements of JSArray are shared and properties are not yet.
@@ -318,6 +375,12 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
 {
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+}
+
+GateRef CircuitBuilder::IsTaggedArray(GateRef object)
+{
+    GateRef objectType = GetObjectType(LoadHClass(object));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TAGGED_ARRAY)));
 }
 
 GateRef CircuitBuilder::GetElementsArray(GateRef object)
@@ -399,6 +462,11 @@ GateRef CircuitBuilder::ConvertBoolToInt32(GateRef gate, ConvertSupport support)
 GateRef CircuitBuilder::ConvertBoolToFloat64(GateRef gate, ConvertSupport support)
 {
     return CheckAndConvert(gate, ValueType::BOOL, ValueType::FLOAT64, support);
+}
+
+GateRef CircuitBuilder::ConvertCharToEcmaString(GateRef gate)
+{
+    return Convert(gate, ValueType::CHAR, ValueType::ECMA_STRING);
 }
 
 GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
@@ -501,6 +569,46 @@ GateRef CircuitBuilder::CheckTaggedNumberAndConvertToFloat64(GateRef gate)
     return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::FLOAT64);
 }
 
+GateRef CircuitBuilder::CheckNullAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::INT32);
+}
+
 GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
 {
     if (acc_.GetOpCode(gate) == OpCode::CONSTANT) {
@@ -601,7 +709,7 @@ GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
 GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
-    auto numValueIn = inList.size() - 2; // 2: state & depend
+    auto numValueIn = inList.size() - 3; // 3: state & depend & frame state
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     ASSERT(pcOffset != 0);
     return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type, inList.size(), inList.data(),
@@ -735,10 +843,10 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
         type, inList.size(), inList.data(), GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind,
+GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight,
     GateType typeVal, const std::vector<GateRef>& inList)
 {
-    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, branchKind);
+    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, weight);
     return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
         type, inList.size(), inList.data(), GateType::Empty());
 }
@@ -813,24 +921,29 @@ GateRef CircuitBuilder::ExceptionConstant()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_EXCEPTION, type);
 }
 
+GateRef CircuitBuilder::NanValue()
+{
+    return Double(std::numeric_limits<double>::quiet_NaN());
+}
+
 MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
 {
     return type.GetMachineType();
 }
 
 GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
-                                         GateRef left, GateRef right, GateType gateType)
+                                         GateRef left, GateRef right, GateType gateType, const char* comment)
 {
     auto circuit = GetCircuit();
     if (gateType == GateType::Empty()) {
         gateType = acc_.GetGateType(left);
     }
-    return circuit->NewGate(meta, machineType, { left, right }, gateType);
+    return circuit->NewGate(meta, machineType, { left, right }, gateType, comment);
 }
 
-GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right)
+GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment)
 {
-    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue());
+    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue(), comment);
 }
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
@@ -1050,6 +1163,9 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate != Circuit::NullGate()) {
+        AppendFrameArgs(inputs, hirGate);
+        numValuesIn += 1;
+
         GateRef pcOffset = Int64(acc_.TryGetPcOffset(hirGate));
         inputs.emplace_back(pcOffset);
         numValuesIn += 1;
@@ -1112,6 +1228,8 @@ GateRef CircuitBuilder::NoLabelCallRuntime(GateRef glue, GateRef depend, size_t 
     std::vector<GateRef> inputs { depend, target, glue };
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
+    inputs.emplace_back(IntPtr(0));  // framestate slot
+    numValuesIn += 1;
     GateRef pcOffset = Int64(acc_.TryGetPcOffset(hirGate));
     inputs.emplace_back(pcOffset);
     numValuesIn += 1;
@@ -1264,6 +1382,16 @@ GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)
     return ret;
 }
 
+void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate)
+{
+    GateRef frameArgs = acc_.GetFrameArgs(hirGate);
+    if (frameArgs == Circuit::NullGate()) {
+        args.emplace_back(IntPtr(0));
+    } else {
+        args.emplace_back(frameArgs);
+    }
+}
+
 GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
@@ -1275,6 +1403,7 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield, pcOffset), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -1293,6 +1422,7 @@ GateRef CircuitBuilder::TypedCall(GateRef hirGate, std::vector<GateRef> args, bo
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -1311,6 +1441,7 @@ GateRef CircuitBuilder::TypedFastCall(GateRef hirGate, std::vector<GateRef> args
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedFastCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -1328,9 +1459,12 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult };
+    AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset),
                                           MachineType::I64,
-                                          { currentControl, currentDepend, receiver, propertyLookupResult },
+                                          args.size(),
+                                          args.data(),
                                           GateType::AnyType(),
                                           comment);
     currentLabel->SetControl(callGate);
@@ -1348,9 +1482,12 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, value };
+    AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset),
                                           MachineType::I64,
-                                          { currentControl, currentDepend, receiver, propertyLookupResult, value },
+                                          args.size(),
+                                          args.data(),
                                           GateType::AnyType(),
                                           comment);
     currentLabel->SetControl(callGate);
@@ -1508,8 +1645,9 @@ GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    return Load(VariableType::JS_POINTER(), function, offset);
+    GateRef method = GetMethodFromFunction(function);
+    GateRef offset = IntPtr(Method::ECMA_MODULE_OFFSET);
+    return Load(VariableType::JS_POINTER(), method, offset);
 }
 
 GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -1563,7 +1701,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
                 { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
         }
         Jump(&exit);
     }
@@ -1575,7 +1713,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isInt);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) }, hirGate);
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -1754,12 +1892,6 @@ GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-void CircuitBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value);
-}
-
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
@@ -1866,7 +1998,7 @@ void CircuitBuilder::Jump(Label *label)
 }
 
 void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-    uint32_t trueWeight, uint32_t falseWeight)
+                            uint32_t trueWeight, uint32_t falseWeight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -1925,6 +2057,25 @@ void CircuitBuilder::LoopEnd(Label *loopHead)
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
     env_->SetCurrentLabel(nullptr);
+}
+
+// add loop exit info at begin of label (only support not merge label)
+void CircuitBuilder::LoopExit(const std::vector<Variable *> &vars, size_t diff)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto loopExit = currentLabel->GetControl();
+    auto loopExitDepend = currentLabel->GetDepend();
+    std::vector<GateRef> loopExitValues;
+    for (size_t i = 0; i < diff; ++i) {
+        loopExit = LoopExit(loopExit);
+        loopExitDepend = LoopExitDepend(loopExit, loopExitDepend);
+        for (const auto &var : vars) {
+            auto loopExitValue = LoopExitValue(loopExit, var->ReadVariable());
+            var->WriteVariable(loopExitValue);
+        }
+    }
+    currentLabel->SetControl(loopExit);
+    currentLabel->SetDepend(loopExitDepend);
 }
 
 Label::Label(Environment *env)

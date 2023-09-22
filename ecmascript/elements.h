@@ -25,13 +25,11 @@ enum class ElementsKind : uint8_t {
     NONE = 0x00UL,
     HOLE = 0x01UL,
     INT = 0x1UL << 1,      // 2
-    DOUBLE = 0x1UL << 2,   // 4
-    NUMBER = INT | DOUBLE, // 6
+    NUMBER = (0x1UL << 2) | INT, // 6
     STRING = 0x1UL << 3,   // 8
     OBJECT = 0x1UL << 4,   // 16
     TAGGED = 0x1EUL,       // 30
     HOLE_INT = HOLE | INT,
-    HOLE_DOUBLE = HOLE | DOUBLE,
     HOLE_NUMBER = HOLE | NUMBER,
     HOLE_STRING = HOLE | STRING,
     HOLE_OBJECT = HOLE | OBJECT,
@@ -45,7 +43,8 @@ public:
 
     static std::string GetString(ElementsKind kind);
     static bool IsInt(ElementsKind kind);
-    static bool IsDouble(ElementsKind kind);
+    static bool IsNumber(ElementsKind kind);
+    static bool IsTagged(ElementsKind kind);
     static bool IsObject(ElementsKind kind);
     static bool IsHole(ElementsKind kind);
     static bool IsGeneric(ElementsKind kind)
@@ -56,6 +55,11 @@ public:
     static bool IsNone(ElementsKind kind)
     {
         return kind == ElementsKind::NONE;
+    }
+
+    static bool IsComplex(ElementsKind kind)
+    {
+        return IsNumber(kind) || IsTagged(kind);
     }
 
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);

@@ -38,6 +38,8 @@ public:
         enableLog_ = false;
     }
     void GetConstInfo(uintptr_t callsite, LLVMStackMapType::ConstInfo& info, uint8_t *stackmapAddr = nullptr) const;
+    void GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uint32_t, uint32_t>& info,
+                             uint8_t *stackmapAddr) const;
     bool IteratorStackMap(const RootVisitor& visitor,
                           const RootBaseAndDerivedVisitor& derivedVisitor,
                           uintptr_t callSiteAddr, uintptr_t callsiteFp,

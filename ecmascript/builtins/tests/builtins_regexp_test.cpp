@@ -657,4 +657,64 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
                                             RegExpParserCache::CACHE_SIZE, vec).first.IsHole());
     ASSERT_TRUE(regExpParserCache->GetCache(*string2, 0, vec).first.IsHole());
 }
+
+HWTEST_F_L0(BuiltinsRegExpTest, FlagD)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // invoke RegExpConstructor method
+    JSHandle<EcmaString> pattern1 = factory->NewFromASCII("(?<groupname>a)");
+    JSHandle<EcmaString> flags1 = factory->NewFromASCII("gd");
+    JSTaggedValue result1 = CreateBuiltinsRegExpObjByPatternAndFlags(thread, pattern1, flags1);
+    JSHandle<JSTaggedValue> result1Handle(thread, result1);
+
+    // invoke GetFlags method
+    JSHandle<JSTaggedValue> flags(factory->NewFromASCII("flags"));
+    JSHandle<JSTaggedValue> flagsResult(JSObject::GetProperty(thread, result1Handle, flags).GetValue());
+    JSHandle<EcmaString> expectResult = factory->NewFromASCII("dg");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(flagsResult), expectResult), 0);
+
+    // invoke GetHasIndices method
+    JSHandle<JSTaggedValue> hasIndices(factory->NewFromASCII("hasIndices"));
+    JSTaggedValue taggedHasIndicesResult =
+        JSObject::GetProperty(thread, result1Handle, hasIndices).GetValue().GetTaggedValue();
+    ASSERT_EQ(taggedHasIndicesResult.GetRawData(), JSTaggedValue::True().GetRawData());
+
+    JSHandle<EcmaString> inputString = factory->NewFromASCII("babcae");
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(result1Handle.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, inputString.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    // invoke Exec method
+    JSTaggedValue results = BuiltinsRegExp::Exec(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    JSHandle<JSTaggedValue> execResult(thread, results);
+    JSHandle<JSTaggedValue> indices(factory->NewFromASCII("indices"));
+    JSHandle<JSTaggedValue> indicesArr = JSObject::GetProperty(thread, execResult, indices).GetValue();
+    EXPECT_TRUE(indicesArr->IsJSArray());
+
+    JSHandle<JSTaggedValue> indices0 = JSObject::GetProperty(thread, indicesArr, 0).GetValue();
+    EXPECT_TRUE(indices0->IsJSArray());
+    // indices[0] [1, 2]
+    EXPECT_EQ(JSObject::GetProperty(thread, indices0, 0).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSObject::GetProperty(thread, indices0, 1).GetValue()->GetInt(), 2);
+    JSHandle<JSTaggedValue> indices1 = JSObject::GetProperty(thread, indicesArr, 1).GetValue();
+    EXPECT_TRUE(indices1->IsJSArray());
+    // indices[1] [1, 2]
+    EXPECT_EQ(JSObject::GetProperty(thread, indices1, 0).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSObject::GetProperty(thread, indices1, 1).GetValue()->GetInt(), 2);
+
+    JSHandle<JSTaggedValue> groups(factory->NewFromASCII("groups"));
+    JSHandle<JSTaggedValue> groupsObj = JSObject::GetProperty(thread, indicesArr, groups).GetValue();
+    EXPECT_TRUE(groupsObj->IsJSObject());
+    JSHandle<JSTaggedValue> groupName(factory->NewFromASCII("groupname"));
+    JSHandle<JSTaggedValue> groupNameArr = JSObject::GetProperty(thread, groupsObj, groupName).GetValue();
+    EXPECT_TRUE(groupNameArr->IsJSArray());
+    // {groupname: [1,2]]}
+    EXPECT_EQ(JSObject::GetProperty(thread, groupNameArr, 0).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSObject::GetProperty(thread, groupNameArr, 1).GetValue()->GetInt(), 2);
+}
 }  // namespace panda::test

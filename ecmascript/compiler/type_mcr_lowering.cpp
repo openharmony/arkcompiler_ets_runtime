@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -24,26 +24,8 @@
 #include "ecmascript/vtable.h"
 #include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
-void TypeMCRLowering::RunTypeMCRLowering()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        LowerType(gate);
-    }
 
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m" << "=================="
-                           << " After TypeMCRlowering "
-                           << "[" << GetMethodName() << "] "
-                           << "==================" << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End =========================" << "\033[0m";
-    }
-}
-
-void TypeMCRLowering::LowerType(GateRef gate)
+GateRef TypeMCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
@@ -60,8 +42,8 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
-        case OpCode::FLATTEN_STRING_CHECK:
-            LowerFlattenStringCheck(gate, glue);
+        case OpCode::FLATTEN_TREE_STRING_CHECK:
+            LowerFlattenTreeStringCheck(gate, glue);
             break;
         case OpCode::LOAD_STRING_LENGTH:
             LowerStringLength(gate);
@@ -139,9 +121,19 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::INLINE_ACCESSOR_CHECK:
             LowerInlineAccessorCheck(gate);
             break;
+        case OpCode::STRING_EQUAL:
+            LowerStringEqual(gate, glue);
+            break;
+        case OpCode::TYPE_OF_CHECK:
+            LowerTypeOfCheck(gate);
+            break;
+        case OpCode::TYPE_OF:
+            LowerTypeOf(gate, glue);
+            break;
         default:
             break;
     }
+    return Circuit::NullGate();
 }
 
 void TypeMCRLowering::LowerJSCallTargetCheck(GateRef gate)
@@ -336,44 +328,48 @@ void TypeMCRLowering::LowerEcmaStringCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerFlattenStringCheck(GateRef gate, GateRef glue)
+void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef str = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), str);
     Label isTreeString(&builder_);
-    Label notTreeString(&builder_);
-    Label needFlat(&builder_);
     Label exit(&builder_);
 
-    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &notTreeString);
+    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &exit);
     builder_.Bind(&isTreeString);
     {
         Label isFlat(&builder_);
+        Label needFlat(&builder_);
         builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &needFlat);
         builder_.Bind(&isFlat);
         {
             result = builder_.GetFirstFromTreeString(str);
             builder_.Jump(&exit);
         }
+        builder_.Bind(&needFlat);
+        {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
+            builder_.Jump(&exit);
+        }
     }
-    builder_.Bind(&notTreeString);
-    builder_.Branch(builder_.IsSlicedString(str), &needFlat, &exit);
-    builder_.Bind(&needFlat);
-    {
-        result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
-        builder_.Jump(&exit);
-    }
+
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+GateRef TypeMCRLowering::GetLengthFromString(GateRef gate)
+{
+    GateRef shiftCount = builder_.Int32(2); // 2: shift count
+    return builder_.Int32LSR(
+        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), shiftCount);
 }
 
 void TypeMCRLowering::LowerStringLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef length = builder_.Int32LSR(
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, EcmaString::MIX_LENGTH_OFFSET), builder_.Int32(2));
+    GateRef length = GetLengthFromString(receiver);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
@@ -475,22 +471,21 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
     GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
 
     if (LIKELY(static_cast<uint32_t>(level) < SubtypingOperator::DEFAULT_SUPERS_CAPACITY)) {
-        return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level), "checkHClass");
     }
 
     DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     GateRef levelGate = builder_.Int32(level);
     GateRef length = GetLengthFromSupers(supers);
 
-    builder_.Branch(builder_.Int32LessThan(levelGate, length), levelValid, exit,
-        BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
+    GateRef cmp = builder_.Int32LessThan(levelGate, length, "checkSubtyping");
+    builder_.Branch(cmp, levelValid, exit, BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
     builder_.Bind(levelValid);
     {
-        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level), "checkSubtyping");
         builder_.Jump(exit);
     }
     builder_.Bind(exit);
-
     return *check;
 }
 
@@ -509,7 +504,7 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    return builder_.Equal(aotHCGate, receiverHClass);
+    return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
 }
 
 void TypeMCRLowering::LowerRangeCheckPredicate(GateRef gate)
@@ -961,7 +956,8 @@ void TypeMCRLowering::LowerStringLoadElement(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
 
-    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetCharFromEcmaString, { glue, receiver, index });
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetSingleCharCodeByIndex,
+                                       { glue, receiver, index });
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -1556,5 +1552,96 @@ void TypeMCRLowering::LowerInlineAccessorCheck(GateRef gate)
     GateRef compare = builder_.BoolAnd(hclassCompare, *check);
     builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef leftLength = GetLengthFromString(left);
+    GateRef rightLength = GetLengthFromString(right);
+
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label lenEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);
+    builder_.Bind(&lenEqual);
+    {
+        result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringEqual, { glue, left, right });
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeMCRLowering::LowerTypeOfCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType type = acc_.GetParamGateType(gate);
+    GateRef check = Circuit::NullGate();
+    if (type.IsNumberType()) {
+        check = builder_.TaggedIsNumber(value);
+    } else if (type.IsBooleanType()) {
+        check = builder_.TaggedIsBoolean(value);
+    } else if (type.IsNullType()) {
+        check = builder_.TaggedIsNull(value);
+    } else if (type.IsUndefinedType()) {
+        check = builder_.TaggedIsUndefined(value);
+    } else if (type.IsStringType()) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.TaggedIsString(value));
+    } else if (type.IsBigIntType()) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::BIGINT));
+    } else if (type.IsSymbolType()) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::SYMBOL));
+    } else if (tsManager_->IsFunctionTypeKind(type) || tsManager_->IsClassTypeKind(type)) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsCallable(value));
+    } else if (tsManager_->IsObjectTypeKind(type) || tsManager_->IsClassInstanceTypeKind(type)) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_OBJECT));
+    } else if (tsManager_->IsArrayTypeKind(type)) {
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_ARRAY));
+    } else {
+        UNREACHABLE();
+    }
+
+    builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTTYPE);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateType type = acc_.GetParamGateType(gate);
+    GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue,
+        builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(builder_.GetCompilationConfig()->Is32Bit())));
+    ConstantIndex index;
+    if (type.IsNumberType()) {
+        index = ConstantIndex::NUMBER_STRING_INDEX;
+    } else if (type.IsBooleanType()) {
+        index = ConstantIndex::BOOLEAN_STRING_INDEX;
+    } else if (type.IsNullType()) {
+        index = ConstantIndex::OBJECT_STRING_INDEX;
+    } else if (type.IsUndefinedType()) {
+        index = ConstantIndex::UNDEFINED_STRING_INDEX;
+    } else if (type.IsStringType()) {
+        index = ConstantIndex::STRING_STRING_INDEX;
+    } else if (type.IsBigIntType()) {
+        index = ConstantIndex::BIGINT_STRING_INDEX;
+    } else if (type.IsSymbolType()) {
+        index = ConstantIndex::SYMBOL_STRING_INDEX;
+    } else if (tsManager_->IsFunctionTypeKind(type) || tsManager_->IsClassTypeKind(type)) {
+        index = ConstantIndex::FUNCTION_STRING_INDEX;
+    } else if (tsManager_->IsObjectTypeKind(type) || tsManager_->IsClassInstanceTypeKind(type)) {
+        index = ConstantIndex::OBJECT_STRING_INDEX;
+    } else if (tsManager_->IsArrayTypeKind(type)) {
+        index = ConstantIndex::OBJECT_STRING_INDEX;
+    } else {
+        UNREACHABLE();
+    }
+
+    GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, builder_.GetGlobalConstantString(index));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript::kungfu

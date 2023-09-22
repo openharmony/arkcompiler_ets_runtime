@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/ic/ic_runtime.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_operator.h"
@@ -64,7 +65,7 @@ HWTEST_F_L0(ICRunTimeTest, UpdateLoadHandler)
     JSHandle<JSTaggedValue> handleStoreArray(factory->NewTaggedArray(2));
     JSHandle<JSTaggedValue> undefinedVal;
 
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     for (uint32_t i = 0; i < arrayLength; i++) {
         undefinedVal = globalConst->GetHandledUndefinedString();
         if (i == static_cast<uint32_t>(ICKind::NamedLoadIC) || i == static_cast<uint32_t>(ICKind::LoadIC)) {
@@ -74,9 +75,8 @@ HWTEST_F_L0(ICRunTimeTest, UpdateLoadHandler)
                  i == static_cast<uint32_t>(ICKind::LoadIC) + 1) {
             undefinedVal = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Hole());
         }
-        handleTaggedArray->Set(thread, i, undefinedVal.GetTaggedValue());
+        handleProfileTypeInfo->Set(thread, i, undefinedVal.GetTaggedValue());
     }
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
     // test op is Element
     ObjectOperator handleOp1(thread, handleKeyWithElement);
     uint32_t slotId = 2;
@@ -107,7 +107,7 @@ HWTEST_F_L0(ICRunTimeTest, UpdateStoreHandler)
     JSHandle<JSTaggedValue> handleStoreArray(factory->NewTaggedArray(2));
     JSHandle<JSTaggedValue> undefinedVal;
 
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     for (uint32_t i = 0; i < arrayLength; i++) {
         undefinedVal = globalConst->GetHandledUndefinedString();
         if (i == static_cast<uint32_t>(ICKind::NamedStoreIC) || i == static_cast<uint32_t>(ICKind::StoreIC)) {
@@ -117,9 +117,8 @@ HWTEST_F_L0(ICRunTimeTest, UpdateStoreHandler)
                  i == static_cast<uint32_t>(ICKind::StoreIC) + 1) {
             undefinedVal = handleStoreArray;
         }
-        handleTaggedArray->Set(thread, i, undefinedVal.GetTaggedValue());
+        handleProfileTypeInfo->Set(thread, i, undefinedVal.GetTaggedValue());
     }
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
     // test op is Element
     uint32_t slotId = 3;
     ObjectOperator handleOp1(thread, handleKeyWithElement);
@@ -153,8 +152,7 @@ HWTEST_F_L0(ICRunTimeTest, TraceIC)
     JSHandle<JSTaggedValue> handleKeyWithString(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> handleKeyWithElement(thread, JSTaggedValue(2));
 
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
 
     ICRuntime icRuntime(thread, handleProfileTypeInfo, 4, ICKind::NamedGlobalLoadIC);  // 4: means the NamedGlobalLoadIC
     icRuntime.TraceIC(handleReceiver, handleKeyWithString);
@@ -173,8 +171,9 @@ HWTEST_F_L0(ICRunTimeTest, StoreMiss)
     JSHandle<JSTaggedValue> handleKeyWithString(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> handleValueWithElement(thread, JSTaggedValue(2));
 
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 0, JSTaggedValue::Hole());
+    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
     StoreICRuntime storeICRuntime(thread, handleProfileTypeInfo, 0, ICKind::NamedGlobalStoreIC);
     storeICRuntime.StoreMiss(handleReceiver, handleKeyWithString, handleValueWithElement);
     EXPECT_EQ(JSObject::GetProperty(thread, handleReceiver, handleKeyWithString).GetValue(), handleValueWithElement);
@@ -183,7 +182,7 @@ HWTEST_F_L0(ICRunTimeTest, StoreMiss)
 
     SlowRuntimeStub::StGlobalRecord(thread, handleKeyWithString.GetTaggedValue(),
                                     handleKeyWithString.GetTaggedValue(), false);
-    handleTaggedArray->Set(thread, 0, JSTaggedValue::Undefined());
+    handleProfileTypeInfo->Set(thread, 0, JSTaggedValue::Undefined());
     storeICRuntime.StoreMiss(handleReceiver1, handleKeyWithString, handleValueWithElement);
     EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsPropertyBox());
 }
@@ -201,8 +200,9 @@ HWTEST_F_L0(ICRunTimeTest, LoadMiss)
     JSHandle<JSTaggedValue> handleValueWithElement(thread, JSTaggedValue(2));
     JSObject::SetProperty(thread, handleReceiver, handleKeyWithString, handleValueWithElement);
 
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 0, JSTaggedValue::Hole());
+    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
     LoadICRuntime loadICRuntime(thread, handleProfileTypeInfo, 0, ICKind::NamedGlobalStoreIC);
     EXPECT_EQ(loadICRuntime.LoadMiss(handleReceiver, handleKeyWithString), handleValueWithElement.GetTaggedValue());
     EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsHole());

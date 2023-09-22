@@ -94,17 +94,50 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::LDA_STR_ID16:
         case EcmaOpcode::TYPEOF_IMM8:
         case EcmaOpcode::TYPEOF_IMM16:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::NEWLEXENV_IMM8:
+        case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
         case EcmaOpcode::POPLEXENV:
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
+        case EcmaOpcode::ASYNCFUNCTIONENTER:
+        case EcmaOpcode::SETGENERATORSTATE_IMM8:
         case EcmaOpcode::GETRESUMEMODE:
         case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
@@ -118,7 +151,14 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CREATEEMPTYOBJECT:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-        case EcmaOpcode::SETGENERATORSTATE_IMM8:
+        case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
+        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+        case EcmaOpcode::GETUNMAPPEDARGS:
+        case EcmaOpcode::DEBUGGER:
+        case EcmaOpcode::NOP:
             flags |= BytecodeFlags::NO_THROW;
             break;
         default:

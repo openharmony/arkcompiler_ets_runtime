@@ -48,6 +48,11 @@ bool GateAccessor::IsVisited(GateRef gate) const
     return GetMark(gate) == MarkCode::VISITED;
 }
 
+bool GateAccessor::IsPrevisit(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::PREVISIT;
+}
+
 bool GateAccessor::IsNotMarked(GateRef gate) const
 {
     return GetMark(gate) == MarkCode::NO_MARK;
@@ -61,6 +66,11 @@ void GateAccessor::SetFinished(GateRef gate)
 void GateAccessor::SetVisited(GateRef gate)
 {
     SetMark(gate, MarkCode::VISITED);
+}
+
+void GateAccessor::SetPrevisit(GateRef gate)
+{
+    SetMark(gate, MarkCode::PREVISIT);
 }
 
 OpCode GateAccessor::GetOpCode(GateRef gate) const
@@ -262,6 +272,34 @@ bool GateAccessor::HasNumberType(GateRef gate) const
     return false;
 }
 
+bool GateAccessor::HasStringType(GateRef gate) const
+{
+    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
+    if (leftType.IsStringType() && rightType.IsStringType()) {
+        return true;
+    }
+    return false;
+}
+
+// Include number, undefined, null and boolean type.
+bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
@@ -276,7 +314,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
+           GetOpCode(gate) == OpCode::TYPE_OF);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -422,6 +462,48 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             break;
     }
     return 0;
+}
+
+uint32_t GateAccessor::TryGetMethodOffset(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+        case OpCode::FRAME_ARGS: {
+            UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+            return accessor.GetFirstValue();
+        }
+        default:
+            break;
+    }
+    return 0;
+}
+
+GateRef GateAccessor::GetFrameArgs(GateRef gate) const
+{
+    if (!HasFrameState(gate)) {
+        return Circuit::NullGate();
+    }
+    if (GetOpCode(gate) == OpCode::FRAME_STATE) {
+        return GetValueIn(gate, 0); // 0: frame args
+    }
+    GateRef frameState = GetFrameState(gate);
+    OpCode op = GetOpCode(frameState);
+    if (op == OpCode::FRAME_ARGS) {
+        return frameState;
+    }
+    if (op == OpCode::FRAME_STATE) {
+        return GetValueIn(frameState, 0); // 0: frame args
+    }
+    return Circuit::NullGate();
+}
+
+void GateAccessor::UpdateMethodOffset(GateRef gate, uint32_t methodOffset)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_ARGS);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(methodOffset, 0);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
 }
 
 PGOSampleType GateAccessor::TryGetPGOType(GateRef gate) const
@@ -659,6 +741,12 @@ bool GateAccessor::IsSelector(GateRef g) const
 {
     auto op = GetOpCode(g);
     return (op == OpCode::VALUE_SELECTOR) || (op == OpCode::DEPEND_SELECTOR);
+}
+
+bool GateAccessor::IsFrameValues(GateRef g) const
+{
+    auto op = GetOpCode(g);
+    return op == OpCode::FRAME_VALUES;
 }
 
 bool GateAccessor::IsIn(GateRef g, GateRef in) const
@@ -965,11 +1053,6 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
     if (ifException != Circuit::NullGate()) {
         GraphEditor::RemoveDeadState(circuit_, ifException);
     }
-}
-
-void GateAccessor::EliminateRedundantPhi()
-{
-    GraphEditor::EliminateRedundantPhi(circuit_);
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
@@ -1295,6 +1378,20 @@ void GateAccessor::GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, 
     ASSERT(GetDependCount(dependIn) > 0);
 }
 
+size_t GateAccessor::GetFrameDepth(GateRef gate, OpCode op)
+{
+    if (GetOpCode(gate) != op) {
+        return 0;
+    }
+    size_t depth = 0;
+    GateRef prev = GetFrameState(gate);
+    while ((GetOpCode(prev) == op)) {
+        depth++;
+        prev = GetFrameState(prev);
+    }
+    return depth;
+}
+
 GateRef GateAccessor::GetFrameState(GateRef gate) const
 {
     ASSERT(HasFrameState(gate));
@@ -1480,6 +1577,32 @@ bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
     return false;
 }
 
+bool GateAccessor::IsConstString(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = GetByteCodeOpcode(gate);
+        return ecmaOpcode == EcmaOpcode::LDA_STR_ID16;
+    }
+    return false;
+}
+
+bool GateAccessor::IsSingleCharGate(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::LOAD_ELEMENT) {
+        return GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
+    }
+    return false;
+}
+
+uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
+{
+    ASSERT(GetByteCodeOpcode(gate) == EcmaOpcode::LDA_STR_ID16);
+    GateRef stringId = GetValueIn(gate, 0);
+    return GetConstantValue(stringId);
+}
+
 bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
 {
     if (IsStateIn(useIt)) {
@@ -1487,7 +1610,7 @@ bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
     }
     if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
-        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt));
+        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt)); // 2 means the Index
     }
     return false;
 }

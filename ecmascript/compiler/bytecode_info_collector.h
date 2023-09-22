@@ -417,7 +417,9 @@ public:
     using Item = std::unordered_map<uint64_t, ItemData>;
 
     ConstantPoolInfo(JSPandaFile* jsPandaFile) :
-        items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
+        items_(ItemType::ITEM_TYPE_NUM, Item{}),
+        jsPandaFile_(jsPandaFile)
+    {}
 
     Item& GetCPItem(ItemType type)
     {

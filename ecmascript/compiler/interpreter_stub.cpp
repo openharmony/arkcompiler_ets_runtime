@@ -37,7 +37,7 @@
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
-#define DECLARE_ASM_HANDLER_BASE(name, needPrint, V)                                              \
+#define DECLARE_ASM_HANDLER_BASE(name, needPrint, V, format)                                      \
 void name##StubBuilder::GenerateCircuit()                                                         \
 {                                                                                                 \
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));              \
@@ -51,7 +51,7 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef hotnessCounter = Int32Argument(                                                       \
         static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                          \
     DebugPrintInstruction<needPrint>();                                                           \
-    V()                                                                                           \
+    V(format)                                                                                     \
     GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, callback); \
 }
 
@@ -61,24 +61,25 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter,            \
                                      [[maybe_unused]] ProfileOperation callback)
 
-#define REGISTER_PROFILE_CALL_BACK()                                                                              \
-    ProfileOperation callback(                                                                                    \
-        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) { \
-            ProfilerStubBuilder profiler(this);                                                                   \
-            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, values, type);    \
+#define REGISTER_PROFILE_CALL_BACK(format)                                                                             \
+    ProfileOperation callback(                                                                                         \
+        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
+            ProfilerStubBuilder profiler(this);                                                                        \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, values, format, type); \
         });
 
-#define REGISTER_NULL_CALL_BACK() ProfileOperation callback;
+#define REGISTER_NULL_CALL_BACK(format) ProfileOperation callback;
 
-#define DECLARE_ASM_HANDLER(name)                                 \
-    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_NULL_CALL_BACK) \
+#define DECLARE_ASM_HANDLER(name)                                                     \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_NULL_CALL_BACK, SlotIDFormat::IMM8) \
     DECLARE_ASM_HANDLE_IMPLEMENT(name)
 
-#define DECLARE_ASM_HANDLER_NOPRINT(name)                          \
-    DECLARE_ASM_HANDLER_BASE(name, false, REGISTER_NULL_CALL_BACK) \
+#define DECLARE_ASM_HANDLER_NOPRINT(name)                                              \
+    DECLARE_ASM_HANDLER_BASE(name, false, REGISTER_NULL_CALL_BACK, SlotIDFormat::IMM8) \
     DECLARE_ASM_HANDLE_IMPLEMENT(name)
 
-#define DECLARE_ASM_HANDLER_PROFILE(name, ...) DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_CALL_BACK)
+#define DECLARE_ASM_HANDLER_PROFILE(name, base, format) \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_CALL_BACK, format)
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -124,9 +125,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));         \
         GateRef interruptsFlag = Load(VariableType::INT8(), glue, iVecOffset);                                 \
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
+        Label initialized(env);                                                                                \
         Label callRuntime(env);                                                                                \
-        Branch(BoolOr(TaggedIsUndefined(*varProfileTypeInfo), Int8Equal(interruptsFlag,                        \
-            Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
+        Branch(BoolOr(TaggedIsUndefined(*varProfileTypeInfo),                                                  \
+                   Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                      \
+            &callRuntime, &initialized);                                                                       \
         Bind(&callRuntime);                                                                                    \
         {                                                                                                      \
             if (!(callback).IsEmpty()) {                                                                       \
@@ -134,7 +137,10 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             } else {                                                                                           \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
             }                                                                                                  \
+            Jump(&dispatch);                                                                                   \
         }                                                                                                      \
+        Bind(&initialized);                                                                                    \
+        callback.TryDump();                                                                                    \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);
@@ -429,7 +435,6 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
                               { obj, prop, getter, setter, acc }); // acc is flag
-    callback.ProfileObjLayoutByStore(obj);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 
@@ -458,7 +463,6 @@ DECLARE_ASM_HANDLER(HandleCreateemptyobject)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateEmptyObject), {});
-    callback.ProfileCreateObject(res);
     varAcc = res;
     DISPATCH_WITH_ACC(CREATEEMPTYOBJECT);
 }
@@ -1510,7 +1514,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm16)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1536,7 +1540,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm16V8Imm16)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1561,7 +1565,7 @@ DECLARE_ASM_HANDLER(HandleWideStobjbyindexPrefV8Imm32)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1594,7 +1598,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1627,7 +1631,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1659,7 +1663,7 @@ DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -2348,12 +2352,18 @@ DECLARE_ASM_HANDLER(HandleReturn)
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
     Label updateHotness(env);
+    Label isStable(env);
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
 
     GateRef frame = GetFrame(*varSp);
-    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
+    Bind(&isStable);
+    {
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
+            &tryContinue);
+    }
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
@@ -2412,12 +2422,18 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
     Label updateHotness(env);
+    Label isStable(env);
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
 
     GateRef frame = GetFrame(*varSp);
-    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
+    Bind(&isStable);
+    {
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
+            &tryContinue);
+    }
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
@@ -2477,6 +2493,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
     Label updateHotness(env);
+    Label isStable(env);
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
@@ -2494,7 +2511,12 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     }
     Bind(&notException);
     varAcc = res;
-    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
+    Bind(&isStable);
+    {
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
+            &tryContinue);
+    }
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
@@ -2552,6 +2574,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
     Label updateHotness(env);
+    Label isStable(env);
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
@@ -2569,7 +2592,12 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     }
     Bind(&notException);
     varAcc = res;
-    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
+    Bind(&isStable);
+    {
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
+            &tryContinue);
+    }
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
@@ -2884,6 +2912,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     Label pcEqualNullptr(env);
     Label pcNotEqualNullptr(env);
     Label updateHotness(env);
+    Label isStable(env);
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
@@ -2903,7 +2932,12 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     }
     Bind(&notException);
     varAcc = res;
-    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
+    Bind(&isStable);
+    {
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
+            &tryContinue);
+    }
     Bind(&updateHotness);
     {
         GateRef function = GetFunctionFromFrame(frame);
@@ -3497,7 +3531,6 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     callback.ProfileDefineClass(res);
     varAcc = res;
@@ -3532,7 +3565,6 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     callback.ProfileDefineClass(res);
     varAcc = res;
@@ -3569,7 +3601,6 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     varAcc = res;
     DISPATCH_WITH_ACC(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
@@ -4158,7 +4189,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
@@ -4171,7 +4202,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
@@ -4185,7 +4215,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
@@ -4198,7 +4228,6 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
@@ -4212,7 +4241,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
@@ -4223,8 +4252,6 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM8_ID16_IMM8);
     }
@@ -4237,7 +4264,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
@@ -4248,8 +4275,6 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
-        GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-        SetModuleToFunction(glue, *result, GetModuleFromFunction(currentFunc));
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM16_ID16_IMM8);
     }

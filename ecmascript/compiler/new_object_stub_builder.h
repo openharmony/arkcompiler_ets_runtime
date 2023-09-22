@@ -56,24 +56,27 @@ public:
         FlatStringStubBuilder *flatString);
     void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
-                           bool isEmptyArray);
+                           GateRef trackInfo, bool isEmptyArray);
+    GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
-    GateRef CreateEmptyArray(GateRef glue, ProfileOperation callback);
+    GateRef CreateEmptyArray(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
                              ProfileOperation callback);
     GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, GateRef pc,
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    void LoadArrayHClass(Variable *hclass, Label *exit, GateRef glue, GateRef jsFunc,
-        GateRef pc, GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral = Circuit::NullGate());
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
-    GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, ProfileOperation callback);
+    GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
+        GateRef arrayLiteral, ProfileOperation callback);
+    GateRef LoadArrayHClassSlowPath(
+        GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback);
+    GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);

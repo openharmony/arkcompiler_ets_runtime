@@ -37,6 +37,7 @@ public:
     ~ICRuntime() = default;
 
     void UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
+    void UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver);
     void UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
 
     JSThread *GetThread() const
@@ -72,6 +73,7 @@ public:
     ~LoadICRuntime() = default;
 
     JSTaggedValue LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+    JSTaggedValue LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 
 class StoreICRuntime : public ICRuntime {

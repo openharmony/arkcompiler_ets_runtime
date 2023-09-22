@@ -136,3 +136,4 @@ let ret6 = forNestedLoop2(n);
 print(ret6);
 let ret7 = forNestedLoop3(n);
 print(ret7);
+let ret8 = foo(20);

@@ -280,6 +280,7 @@ public:
           loopExitToVregGate_(circuit->chunk()),
           loopExitToAccGate_(circuit->chunk()),
           preFrameState_(circuit_->GetRoot()),
+          preFrameArgs_(circuit_->GetRoot()),
           isInline_(isInline)
     {
     }
@@ -432,9 +433,9 @@ public:
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
     }
 
-    ElementsKind GetElementsKind(GateRef gate) const
+    std::vector<ElementsKind> LoadElementsKinds(GateRef gate) const
     {
-        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
+        return typeRecorder_.LoadElementsKinds(GetPcOffsetByGate(gate));
     }
 
     ElementsKind GetArrayElementsKind(GateRef gate) const
@@ -530,6 +531,16 @@ public:
     void SetPreFrameState(GateRef gate)
     {
         preFrameState_ = gate;
+    }
+
+    GateRef GetPreFrameArgs() const
+    {
+        return preFrameArgs_;
+    }
+
+    void SetPreFrameArgs(GateRef gate)
+    {
+        preFrameArgs_ = gate;
     }
 
     const ChunkVector<size_t>& GetDfsList() const
@@ -635,6 +646,7 @@ private:
     ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
     ChunkMap<GateRef, GateRef> loopExitToAccGate_;
     GateRef preFrameState_ {Circuit::NullGate()};
+    GateRef preFrameArgs_ {Circuit::NullGate()};
     bool isInline_ {false};
 };
 }  // namespace panda::ecmascript::kungfu

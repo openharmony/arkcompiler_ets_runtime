@@ -394,6 +394,23 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
     return 0;
 }
 
+std::map<uint32_t, uint32_t> FrameIterator::GetInlinedMethodInfo()
+{
+    std::map<uint32_t, uint32_t> inlineMethodInfos;
+    FrameType type = this->GetFrameType();
+    switch (type) {
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            CollectMethodOffsetInfo(inlineMethodInfos);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return inlineMethodInfos;
+}
+
 uint32_t FrameIterator::GetBytecodeOffset() const
 {
     FrameType type = this->GetFrameType();
@@ -484,6 +501,11 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
 void FrameIterator::CollectPcOffsetInfo(ConstInfo &info) const
 {
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
+}
+
+void FrameIterator::CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const
+{
+    arkStackMapParser_->GetMethodOffsetInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
 
 void FrameIterator::CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const

@@ -931,6 +931,10 @@ ohos_source_set("libark_jsruntime_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
+  if (current_cpu == "arm64") {
+    defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]
+  }
+
   sources = ecma_source
   sources += ecma_profiler_source
   sources += ecma_debugger_source
@@ -956,6 +960,13 @@ ohos_source_set("libark_jsruntime_set") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
+
+  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
+    if (!is_cross_platform_build) {
+      defines += [ "ENABLE_QOS" ]
+      external_deps += [ "frame_aware_sched:qos_manager" ]
+    }
   }
 
   if (enable_target_compilation) {
@@ -1039,6 +1050,13 @@ ohos_source_set("libark_jsruntime_test_set") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
+
+  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
+    if (!is_cross_platform_build) {
+      defines += [ "ENABLE_QOS" ]
+      external_deps += [ "frame_aware_sched:qos_manager" ]
+    }
   }
 
   if (enable_coverage) {

@@ -92,6 +92,8 @@ private:
 
     template<typename T, typename UnionType, NumberSize size>
     static JSTaggedValue GetValueFromBufferForFloat(uint8_t *block, uint32_t byteIndex, bool littleEndian);
+    template<typename T1, typename T2>
+    static JSTaggedValue CommonConvert(T1 &value, T2 &res, bool littleEndian);
     template<typename T, NumberSize size>
     static JSTaggedValue GetValueFromBufferForBigInt(JSThread *thread, uint8_t *block,
                                                      uint32_t byteIndex, bool littleEndian);

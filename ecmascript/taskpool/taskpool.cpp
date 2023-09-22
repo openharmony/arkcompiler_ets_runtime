@@ -48,11 +48,8 @@ void Taskpool::Destroy(int32_t id)
 
 void Taskpool::TerminateTask(int32_t id, TaskType type)
 {
-    {
-        os::memory::LockHolder lock(mutex_);
-        if (isInitialized_ <= 0) {
-            return;
-        }
+    if (isInitialized_ <= 0) {
+        return;
     }
     runner_->TerminateTask(id, type);
 }

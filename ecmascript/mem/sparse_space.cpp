@@ -514,12 +514,13 @@ void OldSpace::RevertCSet()
 
 void OldSpace::ReclaimCSet()
 {
-    EnumerateCollectRegionSet([this](Region *region) {
+    size_t cachedSize = heap_->GetNewSpace()->GetInitialCapacity();
+    EnumerateCollectRegionSet([this, &cachedSize](Region *region) {
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
         region->DeleteSweepingRSet();
         region->DestroyFreeObjectSets();
-        heapRegionAllocator_->FreeRegion(region);
+        heapRegionAllocator_->FreeRegion(region, cachedSize);
     });
     collectRegionSet_.clear();
 }
@@ -551,7 +552,7 @@ void LocalSpace::Stop()
     }
 }
 
-uintptr_t  NonMovableSpace::CheckAndAllocate(size_t size)
+uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
         !heap_->GetOldGCRequested())
