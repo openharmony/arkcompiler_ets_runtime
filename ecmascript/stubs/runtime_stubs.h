@@ -671,6 +671,8 @@ private:
     static inline JSTaggedValue RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
                                                            JSHandle<JSTaggedValue> newTgt,
                                                            JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
+    static inline JSTaggedValue GetResultValue(JSThread *thread, bool isAotMethod, JSHandle<JSFunction> ctor,
+        CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj);
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline JSTaggedType *GetActualArgvFromStub(JSThread *thread);
