@@ -787,6 +787,9 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
         }
         buffer += *p;
     } while (++p != end);
+    if (buffer.size() == 0) {
+        return BigInt::Uint32ToBigInt(thread, 0).GetTaggedValue();
+    }
     return BigIntHelper::SetBigInt(thread, buffer, radix).GetTaggedValue();
 }
 
