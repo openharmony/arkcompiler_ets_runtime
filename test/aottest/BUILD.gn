@@ -207,6 +207,7 @@ group("ark_aot_ts_test") {
     "try",
     "try_catch_finally",
     "trystglobalbynameprefid32",
+    "ts_hclass_generator",
     "ts_inline",
     "ts_inline_accessor",
     "ts_inline_accessor_deopt",
