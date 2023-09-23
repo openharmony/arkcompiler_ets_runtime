@@ -46,3 +46,13 @@ const a2 = {
 const a3 = new Proxy(a1, a2);
 Object.freeze(a3);
 print(Object.isFrozen(a3));
+
+// CreateObjectWithExcludedKeysDealWithProxy
+const v0 = {
+    value : 'name'
+};
+const v5 = new Proxy(v0, {});
+const {...v1} = v5;
+print(v5.value);
+print(v1.value);
+print(v0.value);
