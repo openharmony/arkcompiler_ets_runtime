@@ -1072,6 +1072,7 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
         auto lastRegion = space->GetCurrentRegion();
         space->EnumerateRegions([&writer, lastRegion, alignedRegionObjSize](Region *current) {
             if (current != lastRegion) {
+                ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(ToUintPtr(current)), DEFAULT_REGION_SIZE);
                 // fixme: Except for the last region of a space,
                 // currently the snapshot feature assumes that every serialized region must have fixed size.
                 // The original region size plus the aligned region object size should not exceed DEFAULT_REGION_SIZE.

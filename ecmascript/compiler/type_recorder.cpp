@@ -90,7 +90,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, GlobalTSTypeRef gt)
 {
     int32_t bcIdx = loc.GetBcIdx();
-    if (bcIdx < 0) {
+    if (bcIdx < 0 || bcIdx >= static_cast<int32_t>(pcOffsets_.size())) {
         return;
     }
 
