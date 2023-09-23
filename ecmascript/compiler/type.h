@@ -18,6 +18,26 @@
 
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
+#define VALUE_TYPE_LIST(V)  \
+    V(BOOL)                 \
+    V(INT32)                \
+    V(UINT32)               \
+    V(FLOAT64)              \
+    V(TAGGED_BOOLEAN)       \
+    V(TAGGED_INT)           \
+    V(TAGGED_DOUBLE)        \
+    V(TAGGED_NUMBER)        \
+    V(CHAR)                 \
+    V(ECMA_STRING)          \
+    V(UNDEFINED)            \
+    V(TAGGED_NULL)
+
+enum class ValueType : uint8_t {
+#define DECLARE_VALUE_TYPE(TYPE) TYPE,
+    VALUE_TYPE_LIST(DECLARE_VALUE_TYPE)
+#undef DECLARE_VALUE_TYPE
+};
+
 namespace panda::ecmascript::kungfu {
 class GateType {
 public:
@@ -292,21 +312,6 @@ private:
     static_assert((SIZE_BITS + GlobalTSTypeRef::GetSizeBits()) <= VALID_BITS);
 
     uint32_t type_ {0};
-};
-
-enum class ValueType : uint8_t {
-    BOOL,
-    INT32,
-    UINT32,
-    FLOAT64,
-    TAGGED_BOOLEAN,
-    TAGGED_INT,
-    TAGGED_DOUBLE,
-    TAGGED_NUMBER,
-    CHAR,
-    ECMA_STRING,
-    UNDEFINED,
-    TAGGED_NULL,
 };
 
 enum class ConvertSupport : uint8_t {
