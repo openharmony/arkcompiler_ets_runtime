@@ -128,3 +128,12 @@ for (let i = 0; i < 5; ++i) {
 for (let i = 0; i < 5; ++i) { 
     print(app.childNodes[i].childNodes[0].childNodes[0].content); 
 }
+let result = []
+try {
+    class C29 {};
+    const v66 = undefined;
+    new C29(...v66);
+} catch (err) {
+    result.push(err.name == "TypeError");
+}
+print(result)
