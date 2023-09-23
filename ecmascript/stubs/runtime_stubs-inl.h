@@ -1980,7 +1980,15 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
             excludedKeys->Set(thread, i, excludedKey);
         }
     }
-    return CommonCreateObjectWithExcludedKeys(thread, objVal, numExcludedKeys, excludedKeys);
+
+    JSHandle<JSTaggedValue> finalVal = objVal;
+    if (finalVal->CheckIsJSProxy()) {
+        JSHandle<JSProxy> proxyVal(thread, finalVal.GetTaggedValue());
+
+        finalVal = proxyVal->GetSourceTarget(thread);
+    }
+
+    return CommonCreateObjectWithExcludedKeys(thread, finalVal, numExcludedKeys, excludedKeys);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
