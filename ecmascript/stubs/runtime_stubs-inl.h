@@ -412,7 +412,14 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
                                                  JSTaggedValue index, const JSHandle<JSTaggedValue> &src)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    ASSERT(dst->IsJSArray() && !src->IsNull() && !src->IsUndefined());
+    ASSERT(dst->IsJSArray());
+    if (dst->IsJSArray()) {
+        if (src->IsNull() || src->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "src is not iterable", JSTaggedValue::Exception());
+        }
+    } else {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "dst is not iterable", JSTaggedValue::Exception());
+    }
     if (src->IsString()) {
         JSHandle<EcmaString> srcString = JSTaggedValue::ToString(thread, src);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
