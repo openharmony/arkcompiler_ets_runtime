@@ -3734,6 +3734,78 @@ GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef i
     return ret;
 }
 
+void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
+    ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(keyVar, VariableType::JS_ANY(), key);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    Branch(TaggedIsHeapObject(obj), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        Label isString(env);
+        Label getByName(env);
+        Label isInternalString(env);
+        Label notIntenalString(env);
+        Branch(TaggedIsString(*keyVar), &isString, &getByName);
+        Bind(&isString);
+        {
+            Branch(IsInternalString(*keyVar), &isInternalString, &notIntenalString);
+            Bind(&isInternalString);
+            Jump(&getByName);
+            Bind(&notIntenalString);
+            {
+                keyVar = CallRuntime(glue, RTSTUB_ID(NewInternalString), { *keyVar });
+                Jump(&getByName);
+            }
+        }
+        Bind(&getByName);
+
+        result = SetPropertyByName(glue, obj, *keyVar, value, false, callback);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue), { obj, *keyVar, value, Int64ToTaggedPtr(Int32(0)) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+
+    Branch(TaggedIsHeapObject(obj), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        result = SetPropertyByIndex(glue, obj, index, value, false);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
+            { obj, IntToTaggedInt(index), value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
 {
     auto env = GetEnvironment();

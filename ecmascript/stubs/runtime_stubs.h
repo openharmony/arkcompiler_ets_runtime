@@ -317,6 +317,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LocaleCompare)                      \
     V(ArraySort)                          \
     V(FastStringify)                      \
+    V(ObjectSlowAssign)                   \
     V(GetLinkedHash)                      \
     V(LinkedHashMapComputeCapacity)       \
     V(LinkedHashSetComputeCapacity)       \

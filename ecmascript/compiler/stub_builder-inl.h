@@ -1089,8 +1089,21 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-    auto isHeapObject = TaggedIsHeapObject(obj);
-    return env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env);
+    Label exit(env);
+    GateRef isHeapObject = TaggedIsHeapObject(obj);
+    Branch(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
@@ -1321,6 +1334,15 @@ inline GateRef StubBuilder::IsAccessor(GateRef attr)
         Int32And(Int32LSR(attr,
             Int32(PropertyAttributes::IsAccessorField::START_BIT)),
             Int32((1LLU << PropertyAttributes::IsAccessorField::SIZE) - 1)),
+        Int32(0));
+}
+
+inline GateRef StubBuilder::IsEnumerable(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(Int32LSR(attr,
+            Int32(PropertyAttributes::EnumerableField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::EnumerableField::SIZE) - 1)),
         Int32(0));
 }
 

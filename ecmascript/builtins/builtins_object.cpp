@@ -60,6 +60,37 @@ JSTaggedValue BuiltinsObject::ObjectConstructor(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::ToObject(thread, value).GetTaggedValue();
 }
 
+JSTaggedValue BuiltinsObject::AssignTaggedValue(JSThread *thread, const JSHandle<JSTaggedValue> &source,
+                                                const JSHandle<JSObject> &toAssign)
+{
+    JSHandle<JSObject> from = JSTaggedValue::ToObject(thread, source);
+    JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>::Cast(from));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    uint32_t keysLen = keys->GetLength();
+    for (uint32_t j = 0; j < keysLen; j++) {
+        PropertyDescriptor desc(thread);
+        key.Update(keys->Get(j));
+        bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(from), key, desc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+        if (success && desc.IsEnumerable()) {
+            JSTaggedValue value = desc.GetValue().GetTaggedValue();
+            if (value.IsUndefined() || JSHandle<JSTaggedValue>::Cast(from)->IsJSProxy()) {
+                value = ObjectFastOperator::FastGetPropertyByValue(thread, from.GetTaggedValue(),
+                                                                   key.GetTaggedValue());
+            }
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+            ObjectFastOperator::FastSetPropertyByValue(thread, toAssign.GetTaggedValue(), key.GetTaggedValue(),
+                                                       value);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+    }
+    return JSTaggedValue::Undefined();
+}
+
 // 19.1.2.1 Object.assign ( target, ...sources )
 JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
 {
