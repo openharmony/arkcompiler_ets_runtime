@@ -3731,9 +3731,10 @@ static void DumpConstantPoolClass(const ConstantPool *arr, std::vector<Reference
     }
 }
 
-static void DumpStringClass(const EcmaString *str, std::vector<Reference> &vec)
+static void DumpStringClass([[maybe_unused]] const EcmaString *str, [[maybe_unused]] std::vector<Reference> &vec)
 {
-    vec.emplace_back(CString("string"), JSTaggedValue(str));
+    // Before EcmaString dump self node, it need not show, so delete.
+    // If some properties need be shown, add here.
 }
 
 static void DumpClass(TaggedObject *obj, std::vector<Reference> &vec)

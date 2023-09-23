@@ -958,30 +958,6 @@ void HeapSnapshot::FillEdges()
         }
         iter++;
     }
-    FillPrimitiveEdge(count, iter);
-}
-
-void HeapSnapshot::FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter)
-{
-    size_t lengthExtend = nodes_.size();
-    while (++count < lengthExtend) {
-        ASSERT(*iter != nullptr);
-        if ((*iter)->GetType() == NodeType::JS_PRIMITIVE_REF) {
-            JSTaggedValue jsFrom(reinterpret_cast<TaggedObject *>((*iter)->GetAddress()));
-            CString valueName;
-            if (jsFrom.IsInt()) {
-                valueName.append(ToCString(jsFrom.GetInt()));
-            } else if (jsFrom.IsDouble()) {
-                valueName.append(FloatToCString(jsFrom.GetDouble()));
-            } else {
-                valueName.append("NaN");
-            }
-            Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, (*iter), (*iter), GetString(valueName));
-            InsertEdgeUnique(edge);
-            (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
-        }
-        iter++;
-    }
 }
 
 void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo)
