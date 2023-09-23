@@ -132,17 +132,19 @@ public:
         AccessorBit::Set<uint32_t>(hasAccessor, &handler);
 
         if (!hasAccessor) {
-            if (!op.GetReceiver()->IsString()) {
-                KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
+            if (op.GetReceiver()->IsString()) {
+                JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
+                EcmaString *proKey = nullptr;
+                if (op.GetKey()->IsString()) {
+                    proKey = EcmaString::Cast(op.GetKey()->GetTaggedObject());
+                }
+                if (EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
+                    KindBit::Set<uint32_t>(HandlerKind::STRING_LENGTH, &handler);
+                } else {
+                    KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
+                }
             } else {
-                KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
-            }
-        } else {
-            JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
-            EcmaString *proKey = EcmaString::Cast(op.GetKey()->GetTaggedObject());
-            if (op.GetReceiver()->IsString() && EcmaStringAccessor::StringsAreEqual(proKey,
-                EcmaString::Cast(lenKey.GetTaggedObject()))) {
-                KindBit::Set<uint32_t>(HandlerKind::STRING_LENGTH, &handler);
+                KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
             }
         }
 

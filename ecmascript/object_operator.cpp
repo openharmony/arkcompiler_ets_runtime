@@ -91,8 +91,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
-    if (holder_->IsString() &&
-        (IsElement() && elementIndex_ < EcmaStringAccessor(holder_->GetTaggedObject()).GetLength())) {
+    if (holder_->IsString() && (GetThroughElement() || GetStringLength())) {
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
     } else {
