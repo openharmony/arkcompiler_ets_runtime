@@ -65,14 +65,14 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] Stream *stream, [[maybe_unused]] Progress *progress,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue)
+                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
-                                  isVmMode, isPrivate, captureNumericValue);
+                                  isVmMode, isPrivate, captureNumericValue, isFullGC);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -82,7 +82,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue)
+                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -115,7 +115,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue);
+    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
@@ -248,6 +248,16 @@ size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
     return vm->GetHeap()->GetHeapObjectSize();
+}
+
+size_t DFXJSNApi::GetHeapLimitSize(const EcmaVM *vm)
+{
+    return vm->GetHeap()->GetHeapLimitSize();
+}
+
+void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->Prepare();
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)

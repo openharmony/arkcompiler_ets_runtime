@@ -1257,6 +1257,13 @@ size_t Heap::GetArrayBufferSize() const
     return result;
 }
 
+size_t Heap::GetHeapLimitSize() const
+{
+    // Obtains the theoretical upper limit of space that can be allocated to JS heap.
+    auto &config = ecmaVm_->GetEcmaParamConfiguration();
+    return config.GetMaxHeapSize();
+}
+
 bool Heap::IsAlive(TaggedObject *object) const
 {
     if (!ContainObject(object)) {

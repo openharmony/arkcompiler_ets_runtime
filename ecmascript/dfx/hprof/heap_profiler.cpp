@@ -127,18 +127,24 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 }
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                                    bool isVmMode, bool isPrivate, bool captureNumericValue)
+                                    bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC)
 {
-    [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
-    ASSERT(heapClean);
+    if (isFullGC) {
+        [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+        ASSERT(heapClean);
+    }
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
     size_t heapSize = vm_->GetHeap()->GetHeapObjectSize();
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
-    int32_t heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
-    if (progress != nullptr) {
-        progress->ReportProgress(0, heapCount);
+    int32_t heapCount = 0;
+    if (isFullGC) {
+        heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
+        if (progress != nullptr) {
+            progress->ReportProgress(0, heapCount);
+        }
     }
-    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue);
+    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
+                                              false, isFullGC);
     ASSERT(snapshot != nullptr);
     entryIdMap_->RemoveDeadEntryId(snapshot);
     isProfiling_ = true;
@@ -278,11 +284,13 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 }
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
-                                             bool captureNumericValue, bool traceAllocation)
+                                             bool captureNumericValue, bool traceAllocation, bool isFullGC)
 {
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
-    DISALLOW_GARBAGE_COLLECTION;
-    const_cast<Heap *>(vm_->GetHeap())->Prepare();
+    if (isFullGC) {
+        DISALLOW_GARBAGE_COLLECTION;
+        const_cast<Heap *>(vm_->GetHeap())->Prepare();
+    }
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, captureNumericValue,
