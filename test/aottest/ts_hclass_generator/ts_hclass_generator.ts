@@ -17,16 +17,20 @@ class SubscribeEvent {
     private static callback?:(event:string) => void;
 
     static createSubscriber(subscribeInfo, callback:(event:string) => void) {
-
+        print("createSubscriber");
     }
 
     static subscribe(subscriber) {
-
+        print("subscribe");
     }
 
     static unSubscribe() {
-
+        print("unSubscribe");
     }
 }
 new SubscribeEvent();
+let a : (event:string) => void = function() : void{};
+SubscribeEvent.createSubscriber("", a);
+SubscribeEvent.subscribe("");
+SubscribeEvent.unSubscribe();
 print(1);
