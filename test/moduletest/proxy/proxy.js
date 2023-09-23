@@ -46,3 +46,9 @@ const a2 = {
 const a3 = new Proxy(a1, a2);
 Object.freeze(a3);
 print(Object.isFrozen(a3));
+
+const arr2 = [1, 2, 3];
+const handler = {};
+const proxy = new Proxy(arr2, handler);
+const arr3 = proxy.constructor(1, 2, 3, 4);
+print(arr3);

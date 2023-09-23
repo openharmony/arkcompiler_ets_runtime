@@ -409,9 +409,10 @@ DECLARE_BUILTINS(ArrayConstructor)
     Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -508,6 +509,12 @@ DECLARE_BUILTINS(ArrayConstructor)
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
         GateRef argv = GetArgv();
         res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&slowPath1);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
 
