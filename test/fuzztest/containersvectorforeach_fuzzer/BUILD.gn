@@ -19,7 +19,7 @@ import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
 ohos_fuzztest("ContainersVectorForEachFuzzTest") {
-  module_out_path = fuzz_test_output_path
+  module_out_path = ets_runtime_output_path
 
   fuzz_config_file =
       "//arkcompiler/ets_runtime/test/fuzztest/containersvectorforeach_fuzzer"
