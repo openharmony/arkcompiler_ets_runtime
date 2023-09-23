@@ -130,7 +130,8 @@ public:
         REPLACE_TYPE,
         SPLIT_TYPE,
         MATCH_TYPE,
-        EXEC_TYPE
+        EXEC_TYPE,
+        INTERMEDIATE_REPLACE_TYPE
     };
     static RegExpExecResultCache *Cast(TaggedObject *object)
     {
@@ -244,9 +245,10 @@ private:
     static constexpr int RESULT_SPLIT_INDEX = 6;
     static constexpr int RESULT_MATCH_INDEX = 7;
     static constexpr int RESULT_EXEC_INDEX = 8;
+    static constexpr int RESULT_INTERMEDIATE_REPLACE_INDEX = 9;
     // Extend index used for saving an additional parameter to judge cached
-    static constexpr int EXTEND_INDEX = 9;
-    static constexpr int ENTRY_SIZE = 10;
+    static constexpr int EXTEND_INDEX = 10;
+    static constexpr int ENTRY_SIZE = 11;
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_H

@@ -35,3 +35,13 @@ true
 false
 true
 true
+aaaabbBbcccC
+aaaabb_Bbccc_C
+aaaabb_Bbccc_C
+_xy_B_xy_C
+aaaabbBbcccC
+aaaabbBbcccC
+aaaabb_Bbccc_C
+aaaabb_Bbccc_C
+_xy_B_xy_C
+aaaabbBbcccC
