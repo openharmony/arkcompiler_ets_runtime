@@ -38,15 +38,9 @@ void BuiltinsStubCSigns::Initialize()
     BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
     COMMON_INIT(name)
 
-    BUILTINS_METHOD_STUB_LIST(INIT_BUILTINS_METHOD)
+    BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD)
 #undef INIT_BUILTINS_METHOD
 
-#define INIT_BUILTINS_CONSTRUCTOR(name)                              \
-    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[name]);    \
-    COMMON_INIT(name)
-
-    BUILTINS_CONSTRUCTOR_STUB_LIST(INIT_BUILTINS_CONSTRUCTOR)
-#undef INIT_BUILTINS_CONSTRUCTOR
 #undef COMMON_INIT
     BuiltinsCallSignature::Initialize(&builtinsCSign_);
     BuiltinsWithArgvCallSignature::Initialize(&builtinsWithArgvCSign_);
