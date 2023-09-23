@@ -36,7 +36,7 @@ const char *Method::GetMethodName(const JSPandaFile *file) const
     return MethodLiteral::GetMethodName(file, GetMethodId());
 }
 
-const CString Method::GetRecordName() const
+const CString Method::GetRecordNameStr() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::GetRecordName(jsPandaFile, GetMethodId());
@@ -102,5 +102,23 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
     JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, methodId);
     method->SetConstantPool(thread, newConstpool);
     return method;
+}
+
+const JSTaggedValue Method::GetRecordName() const
+{
+    JSTaggedValue module = GetModule();
+    if (module.IsSourceTextModule()) {
+        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        if (!recordName.IsString()) {
+            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
+            return JSTaggedValue::Hole();
+        }
+        return recordName;
+    }
+    if (module.IsString()) {
+        return module;
+    }
+    LOG_INTERPRETER(DEBUG) << "record name is undefined";
+    return JSTaggedValue::Hole();
 }
 } // namespace panda::ecmascript

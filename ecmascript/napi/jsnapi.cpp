@@ -1850,8 +1850,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
     if (!jsPandaFile->IsBundlePack()) {
-        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
-        JSTaggedValue recordName = function->GetRecordName();
+        JSTaggedValue recordName = method->GetRecordName();
         ASSERT(!recordName.IsHole());
         entry = ConvertToString(recordName);
     }
@@ -3611,7 +3610,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         return false;
     }
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    ecmascript::CString recordName = method->GetRecordName();
+    ecmascript::CString recordName = method->GetRecordNameStr();
 
     // for debugger, to notify the script loaded and parsed which the concurrent function is in
     auto *notificationMgr = vm->GetJsDebuggerManager()->GetNotificationManager();
@@ -3642,7 +3641,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
-    transFunc->SetModule(thread, module);
+    method->SetModule(thread, module);
     return true;
 }
 
@@ -3731,5 +3730,27 @@ void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
 void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
 {
     vm->SetSourceMapTranslateCallback(callback);
+}
+
+TryCatch::~TryCatch()
+{
+    if (!rethrow_) {
+        ecmaVm_->GetJSThread()->ClearException();
+    }
+}
+
+bool TryCatch::HasCaught() const
+{
+    return ecmaVm_->GetJSThread()->HasPendingException();
+}
+
+void TryCatch::Rethrow()
+{
+    rethrow_ = true;
+}
+
+Local<ObjectRef> TryCatch::GetAndClearException()
+{
+    return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetAndClearEcmaUncaughtException());
 }
 }  // namespace panda

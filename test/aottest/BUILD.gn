@@ -156,6 +156,7 @@ group("ark_aot_ts_test") {
     "newobjspread",
     "not",
     "numberspeculativeretype",
+    "operations_stub_test",
     "optimization",
     "optimized_call",
     "or",

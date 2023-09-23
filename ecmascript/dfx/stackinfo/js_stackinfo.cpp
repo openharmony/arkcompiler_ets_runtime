@@ -235,7 +235,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     std::string faultInfo;
     if (method != nullptr) {
         std::string methodName = method->GetMethodName();
-        std::string recordName = method->GetRecordName().c_str();
+        std::string recordName = method->GetRecordNameStr().c_str();
         faultInfo = "Method Name:" + methodName + " Record Name:" + recordName;
     } else {
         faultInfo = "method is nullptr!";

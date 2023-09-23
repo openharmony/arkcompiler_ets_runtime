@@ -252,3 +252,10 @@ try {
 } catch (error) {
     print(error.name);
 }
+
+
+const v21 = new SharedArrayBuffer(32);
+const v22 = new BigInt64Array(v21);
+Atomics.or(v22, Int16Array, false);
+print(v22);
+print(Atomics.wait(v22, false, true));

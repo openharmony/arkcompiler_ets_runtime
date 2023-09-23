@@ -82,4 +82,94 @@ bool GateMetaData::IsCheckWithOneIn() const
            (opcode_ == OpCode::TYPED_ARRAY_CHECK);
 }
 
+std::string GateMetaData::Str(TypedBinOp op)
+{
+    const std::map<TypedBinOp, const char *> strMap = {
+#define TYPED_BIN_OP_NAME_MAP(OP) { TypedBinOp::OP, #OP },
+    TYPED_BIN_OP_LIST(TYPED_BIN_OP_NAME_MAP)
+#undef TYPED_BIN_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(TypedUnOp op)
+{
+    const std::map<TypedUnOp, const char *> strMap = {
+#define TYPED_UN_OP_NAME_MAP(OP) { TypedUnOp::OP, #OP },
+    TYPED_UN_OP_LIST(TYPED_UN_OP_NAME_MAP)
+#undef TYPED_UN_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(TypedJumpOp op)
+{
+    const std::map<TypedJumpOp, const char *> strMap = {
+#define TYPED_JUMP_OP_NAME_MAP(OP) { TypedJumpOp::OP, #OP },
+    TYPED_JUMP_OP_LIST(TYPED_JUMP_OP_NAME_MAP)
+#undef TYPED_JUMP_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(TypedLoadOp op)
+{
+    const std::map<TypedLoadOp, const char *> strMap = {
+#define TYPED_LOAD_OP_NAME_MAP(OP) { TypedLoadOp::OP, #OP },
+    TYPED_LOAD_OP_LIST(TYPED_LOAD_OP_NAME_MAP)
+#undef TYPED_LOAD_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(TypedStoreOp op)
+{
+    const std::map<TypedStoreOp, const char *> strMap = {
+#define TYPED_STORE_OP_NAME_MAP(OP) { TypedStoreOp::OP, #OP },
+    TYPED_STORE_OP_LIST(TYPED_STORE_OP_NAME_MAP)
+#undef TYPED_STORE_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(TypedCallTargetCheckOp op)
+{
+    const std::map<TypedCallTargetCheckOp, const char *> strMap = {
+#define TYPED_CALL_TARGET_CHECK_OP_NAME_MAP(OP) { TypedCallTargetCheckOp::OP, #OP },
+    TYPED_CALL_TARGET_CHECK_OP_LIST(TYPED_CALL_TARGET_CHECK_OP_NAME_MAP)
+#undef TYPED_CALL_TARGET_CHECK_OP_NAME_MAP
+    };
+    if (strMap.count(op) > 0) {
+        return strMap.at(op);
+    }
+    return "UNKNOW";
+}
+
+std::string GateMetaData::Str(ValueType type)
+{
+    const std::map<ValueType, const char *> strMap = {
+#define VALUE_TYPE_NAME_MAP(TYPE) { ValueType::TYPE, #TYPE },
+    VALUE_TYPE_LIST(VALUE_TYPE_NAME_MAP)
+#undef VALUE_TYPE_NAME_MAP
+    };
+    if (strMap.count(type) > 0) {
+        return strMap.at(type);
+    }
+    return "UNKNOW";
+}
 }

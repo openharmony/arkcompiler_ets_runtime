@@ -40,7 +40,7 @@ void PGOProfiler::ProfileCall(JSTaggedType callTarget, SampleMode mode, int32_t 
         return;
     }
     auto calleeMethod = Method::Cast(JSFunction::Cast(calleeFunc)->GetMethod());
-    JSTaggedValue calleeRecordNameValue = JSFunction::Cast(calleeFunc)->GetRecordName();
+    JSTaggedValue calleeRecordNameValue = calleeMethod->GetRecordName();
     if (calleeRecordNameValue.IsHole()) {
         return;
     }
@@ -194,15 +194,16 @@ void PGOProfiler::HandlePGOPreDump()
             continue;
         }
         JSFunction *func = JSFunction::Cast(funcValue.GetTaggedObject());
-        JSTaggedValue recordNameValue = func->GetRecordName();
+        JSTaggedValue methodValue = func->GetMethod();
+        if (!methodValue.IsMethod()) {
+            continue;
+        }
+        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
         if (!recordNameValue.IsString()) {
             continue;
         }
         CString recordName = ConvertToString(recordNameValue);
-        JSTaggedValue methodValue = func->GetMethod();
-        if (methodValue.IsMethod()) {
-            ProfileByteCode(recordName, methodValue);
-        }
+        ProfileByteCode(recordName, methodValue);
     }
 }
 
@@ -215,17 +216,19 @@ void PGOProfiler::HandlePGODump()
     JSTaggedValue current = PopFromProfileQueue();
     while (current.IsJSFunction()) {
         JSFunction *func = JSFunction::Cast(current.GetTaggedObject());
-        JSTaggedValue recordNameValue = func->GetRecordName();
+        JSTaggedValue methodValue = func->GetMethod();
+        if (!methodValue.IsMethod()) {
+            current = PopFromProfileQueue();
+            continue;
+        }
+        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
         if (!recordNameValue.IsString()) {
             current = PopFromProfileQueue();
             continue;
         }
         CString recordName = ConvertToString(recordNameValue);
-        JSTaggedValue methodValue = func->GetMethod();
-        if (methodValue.IsMethod()) {
-            ProfileByteCode(recordName, methodValue);
-            methodCount_++;
-        }
+        ProfileByteCode(recordName, methodValue);
+        methodCount_++;
         current = PopFromProfileQueue();
     }
     if (state_ == State::PAUSE) {

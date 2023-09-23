@@ -31,34 +31,123 @@
 
 namespace panda::ecmascript::kungfu {
 
+#define TYPED_BIN_OP_LIST(V)    \
+    V(TYPED_ADD)                \
+    V(TYPED_SUB)                \
+    V(TYPED_MUL)                \
+    V(TYPED_DIV)                \
+    V(TYPED_MOD)                \
+    V(TYPED_LESS)               \
+    V(TYPED_LESSEQ)             \
+    V(TYPED_GREATER)            \
+    V(TYPED_GREATEREQ)          \
+    V(TYPED_EQ)                 \
+    V(TYPED_NOTEQ)              \
+    V(TYPED_STRICTEQ)           \
+    V(TYPED_SHL)                \
+    V(TYPED_SHR)                \
+    V(TYPED_ASHR)               \
+    V(TYPED_AND)                \
+    V(TYPED_OR)                 \
+    V(TYPED_XOR)                \
+    V(TYPED_EXP)
+
+#define TYPED_UN_OP_LIST(V) \
+    V(TYPED_NEG)            \
+    V(TYPED_NOT)            \
+    V(TYPED_INC)            \
+    V(TYPED_DEC)            \
+    V(TYPED_ISFALSE)        \
+    V(TYPED_ISTRUE)
+
+#define TYPED_JUMP_OP_LIST(V)   \
+    V(TYPED_JEQZ)               \
+    V(TYPED_JNEZ)
+
+#define TYPED_LOAD_OP_LIST(V)           \
+    V(ARRAY_LOAD_INT_ELEMENT)           \
+    V(ARRAY_LOAD_DOUBLE_ELEMENT)        \
+    V(ARRAY_LOAD_OBJECT_ELEMENT)        \
+    V(ARRAY_LOAD_TAGGED_ELEMENT)        \
+    V(ARRAY_LOAD_HOLE_TAGGED_ELEMENT)   \
+    V(INT8ARRAY_LOAD_ELEMENT)           \
+    V(UINT8ARRAY_LOAD_ELEMENT)          \
+    V(UINT8CLAMPEDARRAY_LOAD_ELEMENT)   \
+    V(INT16ARRAY_LOAD_ELEMENT)          \
+    V(UINT16ARRAY_LOAD_ELEMENT)         \
+    V(INT32ARRAY_LOAD_ELEMENT)          \
+    V(UINT32ARRAY_LOAD_ELEMENT)         \
+    V(FLOAT32ARRAY_LOAD_ELEMENT)        \
+    V(FLOAT64ARRAY_LOAD_ELEMENT)        \
+    V(STRING_LOAD_ELEMENT)
+
+#define TYPED_STORE_OP_LIST(V)          \
+    V(ARRAY_STORE_ELEMENT)              \
+    V(INT8ARRAY_STORE_ELEMENT)          \
+    V(UINT8ARRAY_STORE_ELEMENT)         \
+    V(UINT8CLAMPEDARRAY_STORE_ELEMENT)  \
+    V(INT16ARRAY_STORE_ELEMENT)         \
+    V(UINT16ARRAY_STORE_ELEMENT)        \
+    V(INT32ARRAY_STORE_ELEMENT)         \
+    V(UINT32ARRAY_STORE_ELEMENT)        \
+    V(FLOAT32ARRAY_STORE_ELEMENT)       \
+    V(FLOAT64ARRAY_STORE_ELEMENT)
+
+#define TYPED_CALL_TARGET_CHECK_OP_LIST(V)  \
+    V(JSCALL_IMMEDIATE_AFTER_FUNC_DEF)      \
+    V(JSCALL)                               \
+    V(JSCALL_FAST)                          \
+    V(JSCALLTHIS)                           \
+    V(JSCALLTHIS_FAST)                      \
+    V(JSCALLTHIS_NOGC)                      \
+    V(JSCALLTHIS_FAST_NOGC)
+
+enum class TypedBinOp : uint8_t {
+#define DECLARE_TYPED_BIN_OP(OP) OP,
+    TYPED_BIN_OP_LIST(DECLARE_TYPED_BIN_OP)
+#undef DECLARE_TYPED_BIN_OP
+};
+
+enum class TypedUnOp : uint8_t {
+#define DECLARE_TYPED_UN_OP(OP) OP,
+    TYPED_UN_OP_LIST(DECLARE_TYPED_UN_OP)
+#undef DECLARE_TYPED_UN_OP
+};
+
+enum class TypedJumpOp : uint8_t {
+#define DECLARE_TYPED_JUMP_OP(OP) OP,
+    TYPED_JUMP_OP_LIST(DECLARE_TYPED_JUMP_OP)
+#undef DECLARE_TYPED_JUMP_OP
+};
+
+enum class TypedLoadOp : uint8_t {
+#define DECLARE_TYPED_LOAD_OP(OP) OP,
+    TYPED_LOAD_OP_LIST(DECLARE_TYPED_LOAD_OP)
+#undef DECLARE_TYPED_LOAD_OP
+    TYPED_ARRAY_FIRST = INT8ARRAY_LOAD_ELEMENT,
+    TYPED_ARRAY_LAST = FLOAT64ARRAY_LOAD_ELEMENT,
+};
+
+enum class TypedStoreOp : uint8_t {
+#define DECLARE_TYPED_STORE_OP(OP) OP,
+    TYPED_STORE_OP_LIST(DECLARE_TYPED_STORE_OP)
+#undef DECLARE_TYPED_STORE_OP
+    TYPED_ARRAY_FIRST = INT8ARRAY_STORE_ELEMENT,
+    TYPED_ARRAY_LAST = FLOAT64ARRAY_STORE_ELEMENT,
+};
+
+enum class TypedCallTargetCheckOp : uint8_t {
+#define DECLARE_TYPED_CALL_TARGET_CHECK_OP(OP) OP,
+    TYPED_CALL_TARGET_CHECK_OP_LIST(DECLARE_TYPED_CALL_TARGET_CHECK_OP)
+#undef DECLARE_TYPED_CALL_TARGET_CHECK_OP
+};
+
 enum class BranchKind : uint8_t {
     NORMAL_BRANCH = 0,
     TRUE_BRANCH,
     FALSE_BRANCH,
     STRONG_TRUE_BRANCH,
     STRONG_FALSE_BRANCH,
-};
-
-enum class TypedBinOp : uint8_t {
-    TYPED_ADD = 0,
-    TYPED_SUB,
-    TYPED_MUL,
-    TYPED_DIV,
-    TYPED_MOD,
-    TYPED_LESS,
-    TYPED_LESSEQ,
-    TYPED_GREATER,
-    TYPED_GREATEREQ,
-    TYPED_EQ,
-    TYPED_NOTEQ,
-    TYPED_STRICTEQ,
-    TYPED_SHL,
-    TYPED_SHR,
-    TYPED_ASHR,
-    TYPED_AND,
-    TYPED_OR,
-    TYPED_XOR,
-    TYPED_EXP,
 };
 
 enum class TypedOpKind : uint8_t {
@@ -70,69 +159,8 @@ enum class TypedOpKind : uint8_t {
     TYPED_LOAD_OP,
 };
 
-enum class TypedStoreOp : uint8_t {
-    ARRAY_STORE_ELEMENT = 0,
-    INT8ARRAY_STORE_ELEMENT,
-    UINT8ARRAY_STORE_ELEMENT,
-    UINT8CLAMPEDARRAY_STORE_ELEMENT,
-    INT16ARRAY_STORE_ELEMENT,
-    UINT16ARRAY_STORE_ELEMENT,
-    INT32ARRAY_STORE_ELEMENT,
-    UINT32ARRAY_STORE_ELEMENT,
-    FLOAT32ARRAY_STORE_ELEMENT,
-    FLOAT64ARRAY_STORE_ELEMENT,
-
-    TYPED_ARRAY_FIRST = INT8ARRAY_STORE_ELEMENT,
-    TYPED_ARRAY_LAST = FLOAT64ARRAY_STORE_ELEMENT,
-};
-
 enum class MemoryType : uint8_t {
     ELEMENT_TYPE = 0,
-};
-
-enum class TypedLoadOp : uint8_t {
-    ARRAY_LOAD_INT_ELEMENT = 0,
-    ARRAY_LOAD_DOUBLE_ELEMENT,
-    ARRAY_LOAD_OBJECT_ELEMENT,
-    ARRAY_LOAD_TAGGED_ELEMENT,
-    ARRAY_LOAD_HOLE_TAGGED_ELEMENT,
-    INT8ARRAY_LOAD_ELEMENT,
-    UINT8ARRAY_LOAD_ELEMENT,
-    UINT8CLAMPEDARRAY_LOAD_ELEMENT,
-    INT16ARRAY_LOAD_ELEMENT,
-    UINT16ARRAY_LOAD_ELEMENT,
-    INT32ARRAY_LOAD_ELEMENT,
-    UINT32ARRAY_LOAD_ELEMENT,
-    FLOAT32ARRAY_LOAD_ELEMENT,
-    FLOAT64ARRAY_LOAD_ELEMENT,
-    STRING_LOAD_ELEMENT,
-
-    TYPED_ARRAY_FIRST = INT8ARRAY_LOAD_ELEMENT,
-    TYPED_ARRAY_LAST = FLOAT64ARRAY_LOAD_ELEMENT,
-};
-
-enum class TypedCallTargetCheckOp : uint8_t {
-    JSCALL_IMMEDIATE_AFTER_FUNC_DEF = 0,
-    JSCALL,
-    JSCALL_FAST,
-    JSCALLTHIS,
-    JSCALLTHIS_FAST,
-    JSCALLTHIS_NOGC,
-    JSCALLTHIS_FAST_NOGC,
-};
-
-enum class TypedUnOp : uint8_t {
-    TYPED_NEG = 0,
-    TYPED_NOT,
-    TYPED_INC,
-    TYPED_DEC,
-    TYPED_ISFALSE,
-    TYPED_ISTRUE,
-};
-
-enum class TypedJumpOp : uint8_t {
-    TYPED_JEQZ = 0,
-    TYPED_JNEZ,
 };
 
 class TypedCallMetaData : public OneParameterMetaData {

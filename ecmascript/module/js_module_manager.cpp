@@ -46,8 +46,8 @@ ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 JSTaggedValue ModuleManager::GetCurrentModule()
 {
     FrameHandler frameHandler(vm_->GetJSThread());
-    JSTaggedValue currentFunc = frameHandler.GetFunction();
-    return JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+    Method *currentMethod = frameHandler.GetMethod();
+    return currentMethod->GetModule();
 }
 
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index)
@@ -511,7 +511,8 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + recordName + "', please check the request path.";
+        CString msg = "cannot find record '" + recordName + "', please check the request path.'" 
+                      + moduleFileName + "'.";
         LOG_FULL(ERROR) << msg;
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }

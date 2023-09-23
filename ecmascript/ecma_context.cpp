@@ -256,6 +256,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     CString entry = entryPoint.data();
@@ -273,12 +274,12 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
             moduleName = entry;
         }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
-        func->SetModule(thread_, module);
+        method->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
         JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);
-        func->SetModule(thread_, recordName);
+        method->SetModule(thread_, recordName);
     }
     vm_->CheckStartCpuProfiler();
 

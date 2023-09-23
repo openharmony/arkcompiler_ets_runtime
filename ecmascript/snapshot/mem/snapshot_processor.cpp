@@ -1792,6 +1792,27 @@ void SnapshotProcessor::SerializePandaFileMethod()
     }
 }
 
+uintptr_t SnapshotProcessor::GetNewObj(size_t objectSize, TaggedObject *objectHeader)
+{
+    if (builtinsSerialize_) {
+        return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
+    }
+    auto region = Region::ObjectAddressToRange(objectHeader);
+    if (region->InYoungOrOldSpace()) {
+        return AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
+    }
+    if (region->InMachineCodeSpace()) {
+        return AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
+    }
+    if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
+        return AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
+    }
+    if (region->InHugeObjectSpace()) {
+        return AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
+    }
+    return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
+}
+
 EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                                 std::unordered_map<uint64_t, ObjectEncode> *data)
 {
@@ -1831,24 +1852,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     if (objectSize == 0) {
         LOG_ECMA_MEM(FATAL) << "It is a zero object. Not Support.";
     }
-    uintptr_t newObj = 0;
-    if (builtinsSerialize_) {
-        newObj = AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
-    } else {
-        auto region = Region::ObjectAddressToRange(objectHeader);
-        if (region->InYoungOrOldSpace()) {
-            newObj = AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
-        } else if (region->InMachineCodeSpace()) {
-            newObj = AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
-        } else if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
-            newObj = AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
-        } else if (region->InHugeObjectSpace()) {
-            newObj = AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
-        } else {
-            newObj = AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
-        }
-    }
-
+    uintptr_t newObj = GetNewObj(objectSize, objectHeader);
     if (newObj == 0) {
         LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OOM";
     }

@@ -61,6 +61,11 @@ public:
         return runner_->IsInThreadPool(id);
     }
 
+    void SetThreadPriority(bool isForeground)
+    {
+        runner_->SetQosPriority(isForeground);
+    }
+
 private:
     uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const;
 

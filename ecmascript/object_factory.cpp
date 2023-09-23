@@ -585,7 +585,6 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
 
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
-    cloneFunc->SetModule(thread_, func->GetModule());
     return cloneFunc;
 }
 
@@ -1616,11 +1615,13 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, Me
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
+    method->SetModule(thread_, JSTaggedValue::Undefined());
     return method;
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-    JSHandle<ConstantPool> constpool, uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
+                                          JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
+                                          uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
 {
     JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
@@ -1629,6 +1630,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method = NewMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
     }
+    method->SetModule(thread_, module);
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);

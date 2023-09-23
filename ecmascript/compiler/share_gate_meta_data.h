@@ -33,6 +33,12 @@ namespace panda::ecmascript::kungfu {
 using GateRef = int32_t;
 using PGOSampleType = pgo::PGOSampleType;
 using PGORWOpType = pgo::PGORWOpType;
+enum class TypedBinOp : uint8_t;
+enum class TypedUnOp : uint8_t;
+enum class TypedJumpOp : uint8_t;
+enum class TypedLoadOp : uint8_t;
+enum class TypedStoreOp : uint8_t;
+enum class TypedCallTargetCheckOp : uint8_t;
 
 #define GATE_META_DATA_DEOPT_REASON(V)        \
     V(NotInt, NOTINT)                         \
@@ -59,7 +65,7 @@ using PGORWOpType = pgo::PGORWOpType;
     V(ModZero, MODZERO)                       \
     V(Int32Overflow, INT32OVERFLOW)           \
     V(NotString, NOTSTRING)                   \
-    V(InconsistentType,INCONSISTENTTYPE)      \
+    V(InconsistentType, INCONSISTENTTYPE)     \
     V(NotNull, NOTNULL)
 
 enum class DeoptType : uint8_t {
@@ -198,6 +204,13 @@ public:
     ~GateMetaData() = default;
 
     static std::string Str(OpCode opcode);
+    static std::string Str(TypedBinOp op);
+    static std::string Str(TypedUnOp op);
+    static std::string Str(TypedJumpOp op);
+    static std::string Str(TypedLoadOp op);
+    static std::string Str(TypedStoreOp op);
+    static std::string Str(TypedCallTargetCheckOp op);
+    static std::string Str(ValueType type);
     std::string Str() const
     {
         return Str(opcode_);

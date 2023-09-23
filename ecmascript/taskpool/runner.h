@@ -45,6 +45,8 @@ public:
 
     void PUBLIC_API TerminateThread();
     void TerminateTask(int32_t id, TaskType type);
+    void SetQosPriority(bool isForeground);
+    void RecordThreadId();
 
     uint32_t GetTotalThreadNum() const
     {
@@ -70,6 +72,7 @@ private:
     TaskQueue taskQueue_ {};
     std::array<Task*, MAX_TASKPOOL_THREAD_NUM + 1> runningTask_;
     uint32_t totalThreadNum_ {0};
+    std::vector<uint32_t> gcThreadId_ {};
     os::memory::Mutex mtx_;
     os::memory::Mutex mtxPool_;
 };

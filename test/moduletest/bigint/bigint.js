@@ -51,3 +51,22 @@ try {
 } catch (err) {
     print(err.name)
 }
+
+const v33 = String.fromCharCode(48).padStart(48, String.fromCharCode(48));
+const v35 = [-1073741824, 2, -9007199254740992];
+const v42 = Symbol.toPrimitive;
+Symbol.for(v42.description);
+function f36(a37, a38) {
+    try {
+        a37.lastIndexOf(0);
+    } catch (err) {
+        print(err);
+    }
+    return v33;
+}
+v35[v42] = f36;
+let v49 = -12n;
+v49--;
+const v52 = (v49 >> v49).constructor;
+const t48 = v52.__defineSetter__;
+print(v52(v35));

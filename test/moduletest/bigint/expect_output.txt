@@ -20,3 +20,4 @@ RangeError
 0
 RangeError
 SyntaxError
+0

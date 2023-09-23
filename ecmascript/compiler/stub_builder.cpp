@@ -1652,13 +1652,7 @@ GateRef StubBuilder::LoadICWithHandler(
                         }
                         Bind(&handlerInfoIsStringLength);
                         {
-                            GateRef glueGlobalEnvOffset = IntPtr(
-                                JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                            auto stringProto = GetGlobalEnvValue(VariableType::JS_ANY(),
-                                glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
-                            GateRef lengthAccessor = LoadFromField(stringProto, handlerInfo);
-                            result = CallGetterHelper(glue, receiver, stringProto, lengthAccessor, callback);
+                            result = IntToTaggedPtr(GetLengthFromString(receiver));
                             Jump(&exit);
                         }
                     }
@@ -2838,6 +2832,9 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
         Label isFastTypeArray(env);
         Label notFastTypeArray(env);
         Label checkIsOnPrototypeChain(env);
+        Label notTypedArrayProto(env);
+        Branch(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY))), &exit, &notTypedArrayProto);
+        Bind(&notTypedArrayProto);
         Branch(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
         Bind(&isFastTypeArray);
         {
@@ -5085,9 +5082,8 @@ GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, Gat
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
 }
 
-GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef module, GateRef index)
 {
-    GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
 }

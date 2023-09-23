@@ -270,6 +270,20 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 
+void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, bool isConvinced)
+{
+    if (isConvinced) {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStart();
+    } else {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStartSoon();
+    }
+}
+
+void DFXJSNApi::NotifyHighSensitive(EcmaVM *vm, bool isStart)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyHighSensitive(isStart);
+}
+
 bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
