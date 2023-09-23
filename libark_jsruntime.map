@@ -52,6 +52,7 @@
       panda::WeakMapRef::*;
       panda::WeakSetRef::*;
 
+      panda::TryCatch::*;
       panda::JSNApi::*;
       panda::DFXJSNApi::*;
       panda::ecmascript::tooling::DebuggerApi::*;
