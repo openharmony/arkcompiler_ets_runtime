@@ -21,6 +21,7 @@
 
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mark_word.h"
@@ -41,6 +42,7 @@ IncrementalMarker::IncrementalMarker(Heap *heap)
 
 void IncrementalMarker::TriggerIncrementalMark(int64_t idleMicroSec)
 {
+    ASSERT(!heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark());
     double startTime = GetCurrentTimeInMs();
     switch (states_) {
         case IncrementalGCStates::ROOT_SCAN:

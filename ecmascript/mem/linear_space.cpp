@@ -54,7 +54,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         if (heap_->IsFullMark()) {
             overShootSize_ = heap_->GetOldSpace()->GetMaximumCapacity() - heap_->GetOldSpace()->GetInitialCapacity();
         } else {
-            overShootSize_ = heap_->GetEcmaVM()->GetEcmaParamConfiguration().GetSemiSpaceOvershootSize();
+            size_t stepOverShootSize = heap_->GetEcmaVM()->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
+            size_t maxOverShootSize = std::max(initialCapacity_ / 2, stepOverShootSize); // 2: half
+            if (overShootSize_ < maxOverShootSize) {
+                overShootSize_ += stepOverShootSize;
+            }
         }
 
         if (Expand(isPromoted)) {
