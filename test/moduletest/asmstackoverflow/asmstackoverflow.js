@@ -30,3 +30,14 @@ try {
         print("stack overflow2!");
     }
 }
+
+const obj = {};
+const pro = new Proxy({}, obj);
+obj.__proto__ = pro;
+try {
+    obj[10];
+} catch (e) {
+    if (e instanceof RangeError) {
+        print("proxy stackoverflow!");
+    }
+}
