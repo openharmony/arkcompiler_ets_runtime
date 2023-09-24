@@ -21,6 +21,7 @@
 #include <variant>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "libpandabase/utils/bit_field.h"
 #include "macros.h"
@@ -96,10 +97,10 @@ public:
         return PGOSampleTemplate(static_cast<PGOSampleTemplate::Type>(from.GetType()));
     }
 
-    static PGOSampleTemplate CreateProfileType(int32_t profileType,
+    static PGOSampleTemplate CreateProfileType(ApEntityId recordId, int32_t profileType,
                                                typename ProfileType::Kind kind = ProfileType::Kind::ClassId)
     {
-        return PGOSampleTemplate(PGOProfileType(profileType, kind));
+        return PGOSampleTemplate(PGOProfileType(recordId, profileType, kind));
     }
 
     static PGOSampleTemplate NoneType()
@@ -197,7 +198,7 @@ public:
         uint32_t newMethodId = type.GetProfileType().GetId();
         // If we have recorded a valid method if before, invalidate it.
         if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
-            type_ = PGOProfileType(0);
+            type_ = ProfileType::PROFILE_TYPE_NONE;
         }
         return *this;
     }

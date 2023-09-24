@@ -45,7 +45,7 @@ public:
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
         // For FA jsvm, merge with existed output file
-        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::MERGE);
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
     }
 
     void Destroy()
@@ -91,11 +91,26 @@ public:
         }
     }
 
-    void SamplePandaFileInfo(uint32_t checksum)
+    void SamplePandaFileInfo(uint32_t checksum, const CString &abcName)
     {
         if (encoder_) {
-            encoder_->SamplePandaFileInfo(checksum);
+            encoder_->SamplePandaFileInfo(checksum, abcName);
         }
+    }
+
+    void SetModuleName(const std::string &moduleName)
+    {
+        if (encoder_) {
+            encoder_->ResetOutPathByModuleName(moduleName);
+        }
+    }
+
+    bool GetPandaFileId(const CString &abcName, ApEntityId &entryId) const
+    {
+        if (encoder_) {
+            return encoder_->GetPandaFileId(abcName, entryId);
+        }
+        return false;
     }
 
     void SetApGenMode(ApGenMode mode)

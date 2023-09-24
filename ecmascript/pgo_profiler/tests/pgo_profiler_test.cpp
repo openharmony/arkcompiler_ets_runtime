@@ -21,8 +21,11 @@
 
 #include "ecmascript/elements.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "gtest/gtest.h"
 
 #include "assembler/assembly-emitter.h"
@@ -134,7 +137,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
@@ -182,7 +185,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler1.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
@@ -249,7 +252,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     constPool->SetJSPandaFile(pf.get());
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler2.abc");
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
     JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
@@ -309,7 +312,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler3.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
@@ -364,7 +367,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     option.SetProfileDir(currentPath);
     vm_ = JSNApi::CreateJSVM(option);
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<JSArray> array = vm_->GetFactory()->NewJSArray();
@@ -406,14 +409,14 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler5.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     // worker vm read profile enable from PGOProfilerManager singleton
     option.SetEnableProfile(false);
     auto vm2 = JSNApi::CreateJSVM(option);
     JSHandle<ConstantPool> constPool2 = vm2->GetFactory()->NewConstantPool(4);
     constPool2->SetJSPandaFile(pf.get());
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler5.abc");
     ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm2->GetFactory()->NewMethod(methodLiterals[0]);
@@ -475,7 +478,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler8.abc");
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
 
@@ -520,7 +523,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SetApGenMode(ApGenMode::OVERWRITE);
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler9.abc");
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     for (int i = 61; i < 91; i++) {
@@ -572,6 +575,7 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
 
     PGOProfilerHeader *header = nullptr;
     PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
+    std::unique_ptr<PGOAbcFilePool> abcFilePool = std::make_unique<PGOAbcFilePool>();    
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
     std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
 
@@ -583,12 +587,17 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     auto *jsMethod =
         Method::Cast(vm_->GetFactory()->NewMethod(methodLiteral.get(), MemSpaceType::NON_MOVABLE).GetTaggedValue());
 
-    ASSERT_TRUE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
-    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
-    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
+    ApEntityId recordId(0);
+    recordInfos->GetRecordPool()->TryAdd("test", recordId);
+    ProfileType recordType(0, recordId, ProfileType::Kind::LocalRecordId);
+    ASSERT_TRUE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE, 1));
+    ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE, 1));
+    ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE, 1));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
+    PGOFileSectionInterface::ProcessSectionToBinary(file, header, *abcFilePool->GetPool());
+    header->SetFileSize(static_cast<uint32_t>(file.tellp()));
     header->ProcessToBinary(file);
     PGOProfilerEncoder::AddChecksum(file);
     file.close();
@@ -615,7 +624,7 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.close();
 
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
-                                                                ApGenMode::MERGE));
+                                                                ApGenMode::OVERWRITE));
 
     PGOProfilerDecoder loader("ark-profiler10/modules.ap", 2);
     ASSERT_TRUE(loader.LoadAndVerify(413775942));
@@ -643,7 +652,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // PgoProfiler is disabled as default.
     vm_ = JSNApi::CreateJSVM(option);
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler12.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
@@ -728,7 +737,8 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
                 auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
                 if (std::string(methodName) == "Foot" || std::string(methodName) == "Arm") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
-                    ASSERT_EQ(pgoRWOpType.GetObjectInfo(0).GetProfileType(), ProfileType(methodId.GetOffset()));
+                    ASSERT_EQ(pgoRWOpType.GetObjectInfo(0).GetProfileType(),
+                              ProfileType(ApEntityId(PGORecordPool::RESERVED_COUNT), methodId.GetOffset()));
                 } else if (std::string(methodName) == "foo" || std::string(methodName) == "Body") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                 }
@@ -772,15 +782,15 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
                     }
                     ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 3);
                     ASSERT_EQ(desc->GetPtLayoutDesc().size(), 1);
-                    auto classId = EntityId(sampleType.GetProfileType().GetRaw());
+                    auto classId = EntityId(sampleType.GetProfileType().GetId());
                     auto className = MethodLiteral::GetMethodName(jsPandaFile.get(), classId);
                     if (std::string(className) == "Arm") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetRaw());
+                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
                         ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     } else if (std::string(className) == "Foot") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetRaw());
+                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
                         ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
@@ -985,7 +995,7 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);

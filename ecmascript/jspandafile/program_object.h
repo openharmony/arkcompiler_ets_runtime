@@ -28,6 +28,8 @@
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
 
@@ -312,7 +314,11 @@ public:
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-                        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), id.GetOffset());
+                        pgo::ApEntityId abcId(0);
+                        pgo::PGOProfilerManager::GetInstance()->GetPandaFileId(jsPandaFile->GetJSPandaFileDesc(),
+                                                                               abcId);
+                        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), abcId,
+                                                                                   id.GetOffset());
                     }
                     val = obj.GetTaggedValue();
                     break;

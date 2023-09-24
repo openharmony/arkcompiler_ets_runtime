@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_ENCODER_H
 #define ECMASCRIPT_PGO_PROFILER_ENCODER_H
 
+#include <utility>
+
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "macros.h"
 
@@ -23,7 +25,7 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
-    enum ApGenMode { OVERWRITE, MERGE };
+    enum ApGenMode { OVERWRITE };
 
     PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold, ApGenMode mode)
         : outDir_(outDir), hotnessThreshold_(hotnessThreshold), mode_(mode) {}
@@ -42,7 +44,8 @@ public:
         return isInitialized_;
     }
 
-    void SamplePandaFileInfo(uint32_t checksum);
+    void SamplePandaFileInfo(uint32_t checksum, const CString &abcName);
+    bool GetPandaFileId(const CString &abcName, ApEntityId &entryId);
     void Merge(const PGORecordDetailInfos &recordInfos);
     void Merge(const PGOPandaFileInfos &pandaFileInfos);
     void Merge(const PGOProfilerEncoder &encoder);
@@ -59,12 +62,13 @@ public:
 
     bool PUBLIC_API LoadAPTextFile(const std::string &inPath);
 
+    bool ResetOutPathByModuleName(const std::string &moduleName);
+
 private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
     bool SaveAndRename(const SaveTask *task = nullptr);
-    void MergeWithExistProfile(PGOProfilerEncoder &encoder, PGOProfilerDecoder &decoder,
-                               const SaveTask *task = nullptr);
+    bool ResetOutPath(const std::string& profileFileName);
 
     bool isInitialized_ {false};
     std::string outDir_;
@@ -72,8 +76,11 @@ private:
     std::string realOutPath_;
     PGOProfilerHeader *header_ {nullptr};
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
+    std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
     os::memory::Mutex mutex_;
+    os::memory::RWLock rwLock_;
+    std::string moduleName_;
     ApGenMode mode_ {OVERWRITE};
     friend SaveTask;
 };
