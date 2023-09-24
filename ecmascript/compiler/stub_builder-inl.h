@@ -64,7 +64,7 @@ inline GateRef StubBuilder::Int64(int64_t value)
     return env_->GetBuilder()->Int64(value);
 }
 
-inline GateRef StubBuilder::StringPtr(const std::string &str)
+inline GateRef StubBuilder::StringPtr(std::string_view str)
 {
     return env_->GetBuilder()->StringPtr(str);
 }

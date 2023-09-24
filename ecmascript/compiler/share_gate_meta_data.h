@@ -326,14 +326,14 @@ private:
 
 class StringMetaData : public GateMetaData {
 public:
-    StringMetaData(Chunk* chunk, const std::string &str)
+    StringMetaData(Chunk* chunk, std::string_view str)
         : GateMetaData(OpCode::CONSTSTRING, GateFlags::NONE_FLAG, 0, 0, 0),
         stringData_(str.size() + 1, chunk)
     {
         auto srcLength = str.size();
         auto destlength = stringData_.size();
         auto dest = stringData_.data();
-        auto src = str.c_str();
+        auto src = str.data();
         if (destlength <= static_cast<size_t>(srcLength) || strcpy_s(dest, destlength, src) != EOK) {
             LOG_COMPILER(FATAL) << "StringMetaData strcpy_s failed";
         }
