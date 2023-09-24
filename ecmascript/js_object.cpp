@@ -1325,13 +1325,14 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
         }
     }
     uint32_t elementIndex = 0;
-    while ((filter & NATIVE_KEY_SKIP_STRINGS) && (retArrayEffectivelength > 0) &&
-           (elementIndex < retArrayEffectivelength)) {
-        if (retArray->Get(elementIndex).IsString()) {
-            TaggedArray::RemoveElementByIndex(thread, retArray, elementIndex, retArrayEffectivelength);
-            retArrayEffectivelength--;
-        } else {
-            elementIndex++;
+    if (filter & NATIVE_KEY_SKIP_STRINGS) {
+        while ((retArrayEffectivelength > 0) && (elementIndex < retArrayEffectivelength)) {
+            if (retArray->Get(elementIndex).IsString()) {
+                TaggedArray::RemoveElementByIndex(thread, retArray, elementIndex, retArrayEffectivelength);
+                retArrayEffectivelength--;
+            } else {
+                elementIndex++;
+            }
         }
     }
     if (retArray->GetLength() > retArrayEffectivelength) {

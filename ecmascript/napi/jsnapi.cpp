@@ -1754,7 +1754,6 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     vm->GetHeap()->ClearKeptObjects();
 
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));

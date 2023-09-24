@@ -103,7 +103,7 @@ JSTaggedValue FrameIterator::GetFunction() const
             return JSTaggedValue::Undefined();
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
             UNREACHABLE();
         }
     }
@@ -388,7 +388,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             break;
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
         }
     }
     return 0;
@@ -468,7 +468,7 @@ uintptr_t FrameIterator::GetPrevFrame() const
             break;
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
         }
     }
     return end;

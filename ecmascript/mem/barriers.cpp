@@ -20,7 +20,7 @@
 namespace panda::ecmascript {
 void Barriers::Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *value, Region *valueRegion)
 {
-    JSThread* thread = valueRegion->GetJSThread();
+    JSThread *thread = valueRegion->GetJSThread();
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {

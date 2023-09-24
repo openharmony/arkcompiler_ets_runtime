@@ -431,14 +431,14 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
-void EcmaVM::PushToNativePointerList(JSNativePointer *array)
+void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
 {
-    nativePointerList_.emplace_back(array);
+    nativePointerList_.emplace_back(pointer);
 }
 
-void EcmaVM::RemoveFromNativePointerList(JSNativePointer *array)
+void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
 {
-    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), array);
+    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         object->Destroy();
