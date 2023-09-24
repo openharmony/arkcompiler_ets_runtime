@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/napi/jsnapi_helper.h"
+#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 class ModuleManager {

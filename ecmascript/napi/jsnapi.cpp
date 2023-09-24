@@ -3546,6 +3546,11 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
+void JSNApi::SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list)
+{
+    vm->SetMockModuleList(list);
+}
+
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
 {
     vm->SetConcurrentCallback(cb, data);

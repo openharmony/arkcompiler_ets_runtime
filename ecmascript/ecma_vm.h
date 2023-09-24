@@ -332,6 +332,34 @@ public:
         isBundlePack_ = value;
     }
 
+    void SetMockModuleList(const std::map<std::string, std::string> &list)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            mockModuleList_.emplace(it->first.c_str(), it->second.c_str());
+        }
+    }
+
+    inline bool IsMockModule(const CString &moduleStr) const
+    {
+        if (mockModuleList_.empty()) {
+            return false;
+        }
+        auto it = mockModuleList_.find(moduleStr);
+        if (it == mockModuleList_.end()) {
+            return false;
+        }
+        return true;
+    }
+
+    inline CString GetMockModule(const CString &module) const
+    {
+        auto it = mockModuleList_.find(module);
+        if (it == mockModuleList_.end()) {
+            LOG_ECMA(FATAL) << " Get Mock Module failed";
+        }
+        return it->second;
+    }
+
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
     HeapProfilerInterface *GetHeapProfile();
@@ -490,7 +518,8 @@ private:
     CString bundleName_;
     CString moduleName_;
     CList<CString> deregisterModuleList_;
-    // Registered Callbacks
+    CMap<CString, CString> mockModuleList_;
+
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     void *loop_ {nullptr};

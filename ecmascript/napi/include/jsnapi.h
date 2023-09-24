@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
@@ -1397,6 +1398,7 @@ public:
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+    static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
 
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
