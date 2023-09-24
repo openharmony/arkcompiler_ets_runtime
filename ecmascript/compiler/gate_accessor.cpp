@@ -533,6 +533,10 @@ ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
+        auto elementKind = gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+        if (static_cast<uint32_t>(elementKind) == 4) {
+            return ElementsKind::NUMBER;
+        }
         return gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
     }
     return ElementsKind::GENERIC;

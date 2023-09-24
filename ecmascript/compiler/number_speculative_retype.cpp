@@ -1109,11 +1109,11 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToFloat64(value, GateType::DoubleType(), ConvertSupport::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToInt32(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToInt32(value, GateType::IntType(), ConvertSupport::DISABLE), 2); // 2: value
     } else {
         TypeInfo valueType = GetOutputTypeInfo(value);
         if (valueType == TypeInfo::INT1 || valueType == TypeInfo::INT32 || valueType == TypeInfo::FLOAT64) {
