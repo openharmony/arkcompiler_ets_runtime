@@ -18,36 +18,38 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 void TSTypeTableGenerator::GenerateDefaultTSTypeTables()
 {
+    JSHandle<EcmaString> defaultTypeAbcName = factory_->NewFromASCII(TSTypeTable::DEFAULT_TYPE_VIRTUAL_NAME);
     JSHandle<EcmaString> primitiveTableName = factory_->NewFromASCII(TSTypeTable::PRIMITIVE_TABLE_NAME);
-    AddTypeTable(primitiveTableName);
+    AddTypeTable(defaultTypeAbcName, primitiveTableName);
 
-    GenerateBuiltinsTypeTable();
+    GenerateBuiltinsTypeTable(defaultTypeAbcName);
 
     JSHandle<EcmaString> inferTableName = factory_->NewFromASCII(TSTypeTable::INFER_TABLE_NAME);
-    AddTypeTable(inferTableName);
+    AddTypeTable(defaultTypeAbcName, inferTableName);
 
     JSHandle<EcmaString> runtimeTableName = factory_->NewFromASCII(TSTypeTable::RUNTIME_TABLE_NAME);
-    AddTypeTable(runtimeTableName);
+    AddTypeTable(defaultTypeAbcName, runtimeTableName);
 
     InitRuntimeTypeTable();
 
     JSHandle<EcmaString> genericsTableName = factory_->NewFromASCII(TSTypeTable::GENERICS_TABLE_NAME);
-    AddTypeTable(genericsTableName);
+    AddTypeTable(defaultTypeAbcName, genericsTableName);
 }
 
-void TSTypeTableGenerator::GenerateBuiltinsTypeTable()
+void TSTypeTableGenerator::GenerateBuiltinsTypeTable(JSHandle<EcmaString> defaultTypeAbcName)
 {
     JSHandle<EcmaString> builtinsTableName = factory_->NewFromASCII(TSTypeTable::BUILTINS_TABLE_NAME);
     if (LIKELY(tsManager_->IsBuiltinsDTSEnabled())) {
         tsManager_->GenerateBuiltinSummary();
         uint32_t numOfTypes = tsManager_->GetBuiltinOffset(static_cast<uint32_t>(BuiltinTypeId::NUM_INDEX_IN_SUMMARY));
-        AddTypeTable(builtinsTableName, numOfTypes);
+        AddTypeTable(defaultTypeAbcName, builtinsTableName, numOfTypes);
     } else {
-        AddTypeTable(builtinsTableName);
+        AddTypeTable(defaultTypeAbcName, builtinsTableName);
     }
 }
 
@@ -59,6 +61,7 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::GetOrGenerateTSTypeTable(const JSPan
         return tsManager_->GetTSTypeTable(moduleId);
     }
     JSHandle<EcmaString> recordNameStr = factory_->NewFromUtf8(recordName);
+    JSHandle<EcmaString> abcNameStr = factory_->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
     // when PGO is enabled, no matter whether the abc file is a '.js' or a '.ts' file, it may contain PGO GT
     uint32_t typeNum = tsManager_->GetPGOGTCountByRecordName(recordName);
     if (jsPandaFile->HasTSTypes(recordName)) {
@@ -66,14 +69,15 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::GetOrGenerateTSTypeTable(const JSPan
         TypeSummaryExtractor summExtractor(jsPandaFile, recordName);
         typeNum += summExtractor.GetNumOfTypes();
     }
-    JSHandle<TSTypeTable> table = AddTypeTable(recordNameStr, typeNum);
+    JSHandle<TSTypeTable> table = AddTypeTable(abcNameStr, recordNameStr, typeNum);
     return table;
 }
 
-uint32_t TSTypeTableGenerator::TryGetModuleId(const CString &recordName) const
+uint32_t TSTypeTableGenerator::TryGetModuleId(const CString &abcName, const CString &recordName) const
 {
     JSHandle<EcmaString> recordNameStr = factory_->NewFromUtf8(recordName);
-    int moduleIdBaseOnFile = GetTSModuleTable()->GetGlobalModuleID(thread_, recordNameStr);
+    JSHandle<EcmaString> abcNameStr = factory_->NewFromUtf8(abcName);
+    int moduleIdBaseOnFile = GetTSModuleTable()->GetGlobalModuleID(thread_, recordNameStr, abcNameStr);
     if (moduleIdBaseOnFile != TSModuleTable::NOT_FOUND) {
         return moduleIdBaseOnFile;
     }
@@ -85,19 +89,21 @@ uint32_t TSTypeTableGenerator::TryGetLocalId(const JSHandle<TSTypeTable> &table)
     return table->GetNumberOfTypes() + 1;
 }
 
-JSHandle<TSTypeTable> TSTypeTableGenerator::AddTypeTable(const JSHandle<EcmaString> &recordNameStr,
+JSHandle<TSTypeTable> TSTypeTableGenerator::AddTypeTable(const JSHandle<EcmaString> &abcNameStr,
+                                                         const JSHandle<EcmaString> &recordNameStr,
                                                          uint32_t numTypes)
 {
     JSHandle<TSTypeTable> typeTable = factory_->NewTSTypeTable(numTypes);
 
     JSHandle<TSModuleTable> table = GetTSModuleTable();
     int numberOfTSTypeTable = table->GetNumberOfTSTypeTables();
-    if (TSModuleTable::GetTSTypeTableOffset(numberOfTSTypeTable) > table->GetLength()) {
+    if (TSModuleTable::GetAbcRequestOffset(numberOfTSTypeTable) >= table->GetLength()) {
         table = JSHandle<TSModuleTable>(TaggedArray::SetCapacity(thread_, JSHandle<TaggedArray>(table),
             table->GetLength() * TSModuleTable::INCREASE_CAPACITY_RATE));
     }
     // add ts type table
     table->SetNumberOfTSTypeTables(thread_, numberOfTSTypeTable + 1);
+    table->Set(thread_, TSModuleTable::GetAbcRequestOffset(numberOfTSTypeTable), abcNameStr);
     table->Set(thread_, TSModuleTable::GetModuleRequestOffset(numberOfTSTypeTable), recordNameStr);
     table->Set(thread_, TSModuleTable::GetSortIdOffset(numberOfTSTypeTable), JSTaggedValue(numberOfTSTypeTable));
     table->Set(thread_, TSModuleTable::GetTSTypeTableOffset(numberOfTSTypeTable), typeTable);

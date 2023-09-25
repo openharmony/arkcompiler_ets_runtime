@@ -137,10 +137,11 @@ struct ModuleInfo {
 class TSModuleTable : public TaggedArray {
 public:
     // Each TSTypeTable occupies three positions
-    static constexpr int ELEMENTS_LENGTH = 3;
+    static constexpr int ELEMENTS_LENGTH = 4;
     static constexpr int MODULE_REQUEST_OFFSET = 1;
     static constexpr int SORT_ID_OFFSET = 2;
     static constexpr int TYPE_TABLE_OFFSET = 3;
+    static constexpr int ABC_ID_OFFSET = 4;
     // Reserve a position which is used to store the number of TSTypeTables and a TSTypeTable storage space
     static constexpr int INITIAL_CAPACITY = ELEMENTS_LENGTH + 1;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
@@ -155,7 +156,9 @@ public:
 
     JSHandle<EcmaString> GetModuleRequestByModuleId(JSThread *thread, int entry) const;
 
-    int GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath) const;
+    JSHandle<EcmaString> GetAbcRequestByModuleId(JSThread *thread, int entry) const;
+
+    int GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath, JSHandle<EcmaString> abcPath) const;
 
     inline int GetNumberOfTSTypeTables() const
     {
@@ -180,6 +183,11 @@ public:
     static int GetSortIdOffset(int entry)
     {
         return entry * ELEMENTS_LENGTH + SORT_ID_OFFSET;
+    }
+
+    static uint32_t GetAbcRequestOffset(int entry)
+    {
+        return entry * ELEMENTS_LENGTH + ABC_ID_OFFSET;
     }
 };
 

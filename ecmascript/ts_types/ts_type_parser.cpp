@@ -15,6 +15,8 @@
 
 #include "ecmascript/ts_types/ts_type_parser.h"
 
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -88,7 +90,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
         return ResolveType(jsPandaFile, recordName, &typeLiteralExtractor);
     }
 
-    uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(jsPandaFile->GetNormalizedFileDesc(), recordName);
     if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << recordName << " will not be parsed and will be treated as any.";
@@ -164,7 +166,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
 
-    uint32_t moduleId = tableGenerator_.TryGetModuleId(entryPoint);
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(jsPandaFile->GetNormalizedFileDesc(), entryPoint);
     if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << entryPoint << " will not be parsed and will be treated as any.";
@@ -609,7 +611,7 @@ GlobalTSTypeRef TSTypeParser::IterateStarExport(JSHandle<EcmaString> target, con
             if (markSet.find(star) != markSet.end()) {
                 continue;
             }
-            uint32_t starModuleId = tableGenerator_.TryGetModuleId(star);
+            uint32_t starModuleId = tableGenerator_.TryGetModuleId(jsPandaFile->GetNormalizedFileDesc(), star);
             if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(starModuleId))) {
                 continue;
             }
@@ -811,9 +813,30 @@ GlobalTSTypeRef TSTypeParser::CreatePGOGT(PGOInfo info)
     return ParsePGOType(info);
 }
 
+bool TSTypeParser::GetAbcNameFromProfileType(ProfileType profileType, PGOProfilerDecoder *decoder, CString &abcName)
+{
+    if (profileType.IsBuiltinsType()) {
+        // drop abcName in ap file, just use compiler's
+        abcName = panda::ecmascript::TSTypeTable::DEFAULT_TYPE_VIRTUAL_NAME;
+    } else {
+        auto abcId = profileType.GetAbcId();
+        if (!decoder->GetAbcNameById(abcId, abcName)) {
+            return false;
+        }
+        abcName = JSPandaFile::GetNormalizedFileDesc(abcName);
+    }
+    return true;
+}
+
 GlobalTSTypeRef TSTypeParser::ParsePGOType(PGOInfo &info)
 {
-    uint32_t moduleId = tableGenerator_.TryGetModuleId(info.recordName);
+    CString abcName = info.jsPandaFile->GetNormalizedFileDesc();
+    if (info.pgoType.IsProfileType()) {
+        if (!GetAbcNameFromProfileType(info.pgoType.GetProfileType(), info.decoder, abcName)) {
+            return GlobalTSTypeRef::Default();
+        }
+    }
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(abcName, info.recordName);
     if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << info.recordName << " will not be parsed and will be treated as any.";

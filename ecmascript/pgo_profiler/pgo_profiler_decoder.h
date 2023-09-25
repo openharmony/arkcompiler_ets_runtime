@@ -20,6 +20,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/platform/map.h"
 
@@ -47,6 +48,8 @@ public:
     bool PUBLIC_API SaveAPTextFile(const std::string &outPath);
 
     void Merge(const PGOProfilerDecoder &decoder);
+
+    void SwapAbcIdPool(PGOProfilerDecoder &decoder);
 
     bool InitMergeData();
 
@@ -137,6 +140,23 @@ public:
     const PGOPandaFileInfos &GetPandaFileInfos() const
     {
         return pandaFileInfos_;
+    }
+
+    bool GetAbcNameById(ApEntityId abcId, CString &abcName) const
+    {
+        ASSERT(header_ != nullptr);
+        if (!header_->SupportProfileTypeWithAbcId()) {
+            return false;
+        }
+        ASSERT(abcFilePool_ != nullptr);
+        ASSERT(abcFilePool_->GetPool() != nullptr);
+        const auto *entry = abcFilePool_->GetPool()->GetEntry(abcId);
+        if (entry == nullptr) {
+            LOG_COMPILER(ERROR) << "Can not find abcId in pgo file. abcId: " << abcId;
+            return false;
+        }
+        abcName = entry->GetData();
+        return true;
     }
 
 private:

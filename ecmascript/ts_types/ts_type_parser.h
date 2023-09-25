@@ -182,6 +182,8 @@ private:
 
     GlobalTSTypeRef ParsePGOType(PGOInfo &info);
 
+    bool GetAbcNameFromProfileType(ProfileType profileType, PGOProfilerDecoder *decoder, CString &abcName);
+
     JSHandle<JSTaggedValue> ParseNonImportPGOType(GlobalTSTypeRef gt, PGOInfo &info);
 
     JSHandle<JSTaggedValue> ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info);

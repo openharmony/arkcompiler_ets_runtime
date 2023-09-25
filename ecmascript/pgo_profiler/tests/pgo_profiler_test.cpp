@@ -575,7 +575,7 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
 
     PGOProfilerHeader *header = nullptr;
     PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
-    std::unique_ptr<PGOAbcFilePool> abcFilePool = std::make_unique<PGOAbcFilePool>();    
+    std::unique_ptr<PGOAbcFilePool> abcFilePool = std::make_unique<PGOAbcFilePool>();
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
     std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
 
