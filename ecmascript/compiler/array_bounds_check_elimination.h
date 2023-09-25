@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_ARRAY_BOUNDS_CHECK_ELIMINATION_H
 
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/pass_manager.h"
@@ -28,7 +28,7 @@ class ArrayBoundsCheckElimination {
 public:
     ArrayBoundsCheckElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
         : acc_(circuit), bounds_(chunk), circuit_(circuit), builder_(circuit), chunk_(chunk), enableLog_(enableLog),
-        graphLinearizer_(circuit, enableLog, name, chunk, true), methodName_(name), indexCheckInfo_(chunk) {}
+        graphLinearizer_(circuit, enableLog, name, chunk, true, true), methodName_(name), indexCheckInfo_(chunk) {}
 
     ~ArrayBoundsCheckElimination() = default;
     void Run();
@@ -86,7 +86,7 @@ private:
         {
             return new Bound(lower_, lowerGate_, upper_, upperGate_);
         }
-        
+
     private:
         int upper_;
         GateRef upperGate_;
@@ -110,7 +110,7 @@ private:
     typedef ChunkVector<BoundStack*> BoundMap;
     typedef ChunkVector<int> IntegerStack;
     typedef ChunkVector<GateRef> GateLists;
-    
+
     void AddAccessIndexedInfo(GateLists &indices, GateRef gate, int idx, GateRef indexCheck);
     void AddIfCondition(IntegerStack &pushed, GateRef x, GateRef y, TypedBinOp op);
     Bound *AndOp(Bound *bound, Bound *b);
@@ -140,7 +140,7 @@ private:
     Bound *VisitGate(GateRef gate);
 
     void ReplaceIn(GateRef stateIn, GateRef dependIn, GateRef newGate);
-    
+
     GateRef Predicate(GateRef left, TypedBinOp cond, GateRef right);
     GateRef PredicateCmpWithConst(GateRef left, TypedBinOp cond, int right);
     GateRef PredicateAdd(GateRef left, int leftConst, TypedBinOp cond, GateRef right);
@@ -154,7 +154,7 @@ private:
     bool enableLog_ {false};
     GraphLinearizer graphLinearizer_;
     std::string methodName_;
-    
+
     class IndexCheckInfo {
     public:
         IndexCheckInfo(Chunk* chunk): list_(chunk) {}

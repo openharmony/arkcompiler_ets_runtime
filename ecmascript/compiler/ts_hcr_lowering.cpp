@@ -183,13 +183,13 @@ void TSHCRLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_EQ>(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_EQ>(gate, false);
             break;
         case EcmaOpcode::STRICTEQ_IMM8_V8:
             LowerTypedStrictEq(gate);
             break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate, false);
             break;
         case EcmaOpcode::SHL2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_SHL>(gate);
@@ -315,6 +315,10 @@ void TSHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             LowerTypedCallthisrange(gate);
             break;
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+            LowerTypedTypeOf(gate);
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -323,11 +327,11 @@ void TSHCRLowering::Lower(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TSHCRLowering::LowerTypedBinOp(GateRef gate)
+void TSHCRLowering::LowerTypedBinOp(GateRef gate, bool convertNumberType)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
+    if (HasNumberType(gate, left, right, convertNumberType)) {
         SpeculateNumbers<Op>(gate);
     } else if (HasStringType(gate, left, right)) {
         SpeculateStrings<Op>(gate);
@@ -351,7 +355,7 @@ void TSHCRLowering::LowerTypedStrictEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right)) {
+    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right, false)) {
         GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
             left, right, leftType, rightType, gateType, sampleType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -363,21 +367,27 @@ bool TSHCRLowering::HasNumberType(GateRef gate, GateRef value) const
     GateType valueType = acc_.GetGateType(value);
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
     if (sampleType.IsNumber() ||
-        (sampleType.IsNone() && valueType.IsNumberType())) {
+        (sampleType.IsNone() && valueType.IsPrimitiveNumberType())) {
         return true;
     }
     return false;
 }
 
-bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) const
+bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right, bool convertNumberType) const
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
 
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNumber() ||
-        (sampleType.IsNone() && leftType.IsNumberType() && rightType.IsNumberType())) {
+    if (sampleType.IsNumber()) {
         return true;
+    } else if (convertNumberType && sampleType.IsNone() && leftType.IsPrimitiveNumberType() &&
+               rightType.IsPrimitiveNumberType()) {
+        return true;
+    } else if (!convertNumberType && sampleType.IsNone() && leftType.IsNumberType() && rightType.IsNumberType()) {
+        return true;
+    } else {
+        return false;
     }
     return false;
 }
@@ -386,7 +396,6 @@ bool TSHCRLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, G
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
-
     // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
     if (leftType.IsStringType() && rightType.IsStringType()) {
         return true;
@@ -494,21 +503,11 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateRef jump = Circuit::NullGate();
-    auto branchKind = BranchKind::NORMAL_BRANCH;
     PGOSampleType sampleType = acc_.TryGetPGOType(value);
-    if (sampleType.IsLikely()) {
-        branchKind = BranchKind::TRUE_BRANCH;
-    } else if (sampleType.IsUnLikely()) {
-        branchKind = BranchKind::FALSE_BRANCH;
-    } else if (sampleType.IsStrongLikely()) {
-        branchKind = BranchKind::STRONG_TRUE_BRANCH;
-    } else if (sampleType.IsStrongUnLikely()) {
-        branchKind = BranchKind::STRONG_FALSE_BRANCH;
-    }
     if (flag) {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, branchKind);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, sampleType.GetWeight());
     } else {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, branchKind);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, sampleType.GetWeight());
     }
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
@@ -924,7 +923,7 @@ GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, Ele
     GateRef result = Circuit::NullGate();
     if (Elements::IsInt(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
-    } else if (Elements::IsDouble(kind)) {
+    } else if (Elements::IsNumber(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
     } else if (Elements::IsObject(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);
@@ -1071,7 +1070,7 @@ void TSHCRLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     auto value = acc_.GetValueIn(gate, 0);
     auto valueType = acc_.GetGateType(value);
-    if ((!valueType.IsNumberType()) && (!valueType.IsBooleanType())) {
+    if ((!valueType.IsPrimitiveNumberType()) && (!valueType.IsBooleanType())) {
         return;
     }
 
@@ -1592,5 +1591,27 @@ void TSHCRLowering::AddHitBytecodeCount()
     } else {
         bytecodeHitTimeMap_[currentOp_] = 1;
     }
+}
+
+
+void TSHCRLowering::LowerTypedTypeOf(GateRef gate)
+{
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetGateType(gate);
+    if (!valueType.IsDigitablePrimitiveType() && !valueType.IsStringType() && !valueType.IsSymbolType()) {
+        if (!tsManager_->IsFunctionTypeKind(valueType) && !tsManager_->IsObjectTypeKind(valueType) &&
+            !tsManager_->IsClassTypeKind(valueType) && !tsManager_->IsClassInstanceTypeKind(valueType) &&
+            !tsManager_->IsArrayTypeKind(valueType)) {
+            return;
+        }
+    }
+    AddProfiling(gate);
+    if (!Uncheck()) {
+        builder_.TypeOfCheck(value, valueType);
+    }
+    GateRef result = builder_.TypedTypeOf(valueType);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 }  // namespace panda::ecmascript

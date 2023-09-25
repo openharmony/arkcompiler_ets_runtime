@@ -247,7 +247,7 @@ public:
     ~CircuitBuilder() = default;
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
-    static constexpr uint32_t GATE_TWO_VALUESIN = 2;
+
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -272,6 +272,8 @@ public:
     template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
+    GateRef TypeOfCheck(GateRef gate, GateType type);
+    GateRef TypedTypeOf(GateType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -291,6 +293,7 @@ public:
     GateType GetGateTypeOfValueType(ValueType type);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef objectType);
+    GateRef IsTaggedArray(GateRef object);
     GateRef GetElementsArray(GateRef object);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
@@ -319,6 +322,14 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
     GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToInt32(GateRef gate);
+    GateRef CheckNullAndConvertToFloat64(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToBool(GateRef gate);
+    GateRef CheckUndefinedAndConvertToInt32(GateRef gate);
     GateRef InsertStableArrayCheck(GateRef array);
     GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
@@ -326,7 +337,7 @@ public:
                                 GateType gateType, PGOSampleType sampleType, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     void AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate);
-    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind, GateType typeVal,
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
@@ -342,7 +353,7 @@ public:
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
     GateRef IntPtr(int64_t val);
-    GateRef StringPtr(const std::string &str);
+    GateRef StringPtr(std::string_view str);
     GateRef Boolean(bool value);
     GateRef Double(double value);
     GateRef UndefineConstant();
@@ -350,25 +361,29 @@ public:
     GateRef NullPtrConstant();
     GateRef NullConstant();
     GateRef ExceptionConstant();
+    GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
     GateRef Alloca(size_t size);
-    GateRef Branch(GateRef state, GateRef condition,
-        uint32_t leftWeight = 1, uint32_t rightWeight = 1);  // 1: default branch weight
+    GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
+                   const char* comment = nullptr);  // 1: default branch weight
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
     GateRef Return(GateRef state, GateRef depend, GateRef value);
     GateRef ReturnVoid(GateRef state, GateRef depend);
     GateRef Goto(GateRef state);
     GateRef LoopBegin(GateRef state);
     GateRef LoopEnd(GateRef state);
+    GateRef LoopExit(GateRef state);
+    GateRef LoopExitDepend(GateRef state, GateRef depend);
+    GateRef LoopExitValue(GateRef state, GateRef value);
     GateRef IfTrue(GateRef ifBranch);
     GateRef IfFalse(GateRef ifBranch);
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
     GateRef ReadSp();
-    GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
-        GateRef left, GateRef right, GateType gateType = GateType::Empty());
-    GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
+    GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left,
+                             GateRef right, GateType gateType = GateType::Empty(), const char* comment = nullptr);
+    GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment = nullptr);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef GetCallBuiltinId(GateRef method);
     Circuit *GetCircuit() const
@@ -419,35 +434,35 @@ public:
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
     void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
 
-#define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                 \
-    inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty())          \
-    {                                                                                     \
-        return BinaryArithmetic(circuit_->OPCODEID(), MACHINETYPEID, x, y, type);         \
+#define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                        \
+    inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty(), const char* comment = nullptr)  \
+    {                                                                                                            \
+        return BinaryArithmetic(circuit_->OPCODEID(), MACHINETYPEID, x, y, type, comment);                       \
     }
 
     BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_BINARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_BINARY_OP_WITH_BITWIDTH
 
-#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
-    inline GateRef NAME(GateRef x)                                                                  \
-    {                                                                                               \
-        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue()); \
+#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                     \
+    inline GateRef NAME(GateRef x, const char* comment = nullptr)                                            \
+    {                                                                                                        \
+        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue(), comment); \
     }
 
     UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_UNARY_OP_WITH_BITWIDTH
 
-#define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                         \
-    inline GateRef NAME(GateRef x, GateRef y)                                             \
-    {                                                                                     \
-        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y);     \
+#define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                                \
+    inline GateRef NAME(GateRef x, GateRef y, const char* comment = nullptr)                     \
+    {                                                                                            \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y, comment);   \
     }
 
     BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(CMP_BINARY_OP_WITHOUT_BITWIDTH)
 #undef CMP_BINARY_OP_WITHOUT_BITWIDTH
 
-    inline GateRef Equal(GateRef x, GateRef y);
-    inline GateRef NotEqual(GateRef x, GateRef y);
+    inline GateRef Equal(GateRef x, GateRef y, const char* comment = nullptr);
+    inline GateRef NotEqual(GateRef x, GateRef y, const char* comment = nullptr);
 
     // js world
     // cast operation
@@ -529,6 +544,7 @@ public:
     GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
+    inline GateRef CreateWeakRef(GateRef x);
     GateRef ComputeTaggedArraySize(GateRef length);
 
     GateRef IsJSHClass(GateRef obj);
@@ -540,7 +556,7 @@ public:
     template<TypedUnOp Op>
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
     template<TypedJumpOp Op>
-    inline GateRef TypedConditionJump(GateRef x, GateType xType, BranchKind branchKind);
+    inline GateRef TypedConditionJump(GateRef x, GateType xType, uint32_t weight);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
     // middle ir: object operations
@@ -625,7 +641,6 @@ public:
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetFunctionLexicalEnv(GateRef function);
-    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
@@ -674,10 +689,11 @@ public:
     inline void Bind(Label *label, bool justSlowPath);
     void Jump(Label *label);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-        uint32_t trueWeight = 1, uint32_t falseWeight = 1);   // 1: default branch weight
+                uint32_t trueWeight = 1, uint32_t falseWeight = 1);   // 1: default branch weight
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
+    void LoopExit(const std::vector<Variable*> &vars, size_t diff = 1);
     inline Label *GetCurrentLabel() const;
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
@@ -690,13 +706,15 @@ public:
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
 
 private:
+    static constexpr uint32_t GATE_TWO_VALUESIN = 2;
+
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
 
-#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
-    inline GateRef NAME(GateRef x)                                                                  \
-    {                                                                                               \
-        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue()); \
+#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                     \
+    inline GateRef NAME(GateRef x, const char* comment = nullptr)                                            \
+    {                                                                                                        \
+        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue(), comment); \
     }
 
     UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)

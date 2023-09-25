@@ -269,10 +269,10 @@ RangeInfo RangeAnalysis::GetRangeOfCompare(GateRef gate, GateRef value, bool fla
     ASSERT((left == value) || (right == value));
     bool swap = right == value;
     if (flag) {
-        op = GateMetaData::GetRevCompareOp(op);
+        op = TypedBinaryMetaData::GetRevCompareOp(op);
     }
     if (swap) {
-        op = GateMetaData::GetSwapCompareOp(op);
+        op = TypedBinaryMetaData::GetSwapCompareOp(op);
     }
     auto range = GetRange(swap ? left : right);
     if (range.IsNone()) {
@@ -296,12 +296,6 @@ RangeInfo RangeAnalysis::GetRangeOfCompare(GateRef gate, GateRef value, bool fla
             UNREACHABLE();
             return RangeInfo::ANY();
     }
-}
-
-void RangeAnalysis::Run()
-{
-    // visit gate in RPO, propagate range info
-    VisitGraph();
 }
 
 void RangeAnalysis::PrintRangeInfo() const

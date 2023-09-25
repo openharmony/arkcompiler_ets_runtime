@@ -64,10 +64,11 @@ GateRef CircuitBuilder::UndefineConstant()
     return circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
 }
 
-GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight)
+GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight,
+                               const char* comment)
 {
     auto value = BranchAccessor::ToValue(trueWeight, falseWeight);
-    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition });
+    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition }, comment);
 }
 
 GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCounts)
@@ -101,6 +102,23 @@ GateRef CircuitBuilder::LoopBegin(GateRef state)
 GateRef CircuitBuilder::LoopEnd(GateRef state)
 {
     return circuit_->NewGate(circuit_->LoopBack(), { state });
+}
+
+GateRef CircuitBuilder::LoopExit(GateRef state)
+{
+    return circuit_->NewGate(circuit_->LoopExit(), { state });
+}
+
+GateRef CircuitBuilder::LoopExitDepend(GateRef state, GateRef depend)
+{
+    return circuit_->NewGate(circuit_->LoopExitDepend(), { state, depend });
+}
+
+GateRef CircuitBuilder::LoopExitValue(GateRef state, GateRef value)
+{
+    auto machineType = acc_.GetMachineType(value);
+    auto gateType = acc_.GetGateType(value);
+    return circuit_->NewGate(circuit_->LoopExitValue(), machineType, { state, value }, gateType);
 }
 
 GateRef CircuitBuilder::IfTrue(GateRef ifBranch)
@@ -173,7 +191,9 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->HeapObjectCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -319,6 +339,31 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     return ret;
 }
 
+GateRef CircuitBuilder::TypeOfCheck(GateRef gate, GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOfCheck(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedTypeOf(GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOf(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend}, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 {
     // Elements of JSArray are shared and properties are not yet.
@@ -330,6 +375,12 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
 {
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+}
+
+GateRef CircuitBuilder::IsTaggedArray(GateRef object)
+{
+    GateRef objectType = GetObjectType(LoadHClass(object));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TAGGED_ARRAY)));
 }
 
 GateRef CircuitBuilder::GetElementsArray(GateRef object)
@@ -516,6 +567,46 @@ GateRef CircuitBuilder::CheckTaggedDoubleAndConvertToFloat64(GateRef gate)
 GateRef CircuitBuilder::CheckTaggedNumberAndConvertToFloat64(GateRef gate)
 {
     return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::INT32);
 }
 
 GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
@@ -752,10 +843,10 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
         type, inList.size(), inList.data(), GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind,
+GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight,
     GateType typeVal, const std::vector<GateRef>& inList)
 {
-    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, branchKind);
+    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, weight);
     return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
         type, inList.size(), inList.data(), GateType::Empty());
 }
@@ -785,7 +876,7 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
 }
 
-GateRef CircuitBuilder::StringPtr(const std::string &str)
+GateRef CircuitBuilder::StringPtr(std::string_view str)
 {
     return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());
 }
@@ -830,24 +921,29 @@ GateRef CircuitBuilder::ExceptionConstant()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_EXCEPTION, type);
 }
 
+GateRef CircuitBuilder::NanValue()
+{
+    return Double(std::numeric_limits<double>::quiet_NaN());
+}
+
 MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
 {
     return type.GetMachineType();
 }
 
 GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
-                                         GateRef left, GateRef right, GateType gateType)
+                                         GateRef left, GateRef right, GateType gateType, const char* comment)
 {
     auto circuit = GetCircuit();
     if (gateType == GateType::Empty()) {
         gateType = acc_.GetGateType(left);
     }
-    return circuit->NewGate(meta, machineType, { left, right }, gateType);
+    return circuit->NewGate(meta, machineType, { left, right }, gateType, comment);
 }
 
-GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right)
+GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment)
 {
-    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue());
+    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue(), comment);
 }
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
@@ -1549,8 +1645,9 @@ GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    return Load(VariableType::JS_POINTER(), function, offset);
+    GateRef method = GetMethodFromFunction(function);
+    GateRef offset = IntPtr(Method::ECMA_MODULE_OFFSET);
+    return Load(VariableType::JS_POINTER(), method, offset);
 }
 
 GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -1604,7 +1701,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
                 { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
         }
         Jump(&exit);
     }
@@ -1616,7 +1713,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isInt);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) }, hirGate);
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -1795,12 +1892,6 @@ GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-void CircuitBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value);
-}
-
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
@@ -1907,7 +1998,7 @@ void CircuitBuilder::Jump(Label *label)
 }
 
 void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-    uint32_t trueWeight, uint32_t falseWeight)
+                            uint32_t trueWeight, uint32_t falseWeight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -1966,6 +2057,25 @@ void CircuitBuilder::LoopEnd(Label *loopHead)
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
     env_->SetCurrentLabel(nullptr);
+}
+
+// add loop exit info at begin of label (only support not merge label)
+void CircuitBuilder::LoopExit(const std::vector<Variable *> &vars, size_t diff)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto loopExit = currentLabel->GetControl();
+    auto loopExitDepend = currentLabel->GetDepend();
+    std::vector<GateRef> loopExitValues;
+    for (size_t i = 0; i < diff; ++i) {
+        loopExit = LoopExit(loopExit);
+        loopExitDepend = LoopExitDepend(loopExit, loopExitDepend);
+        for (const auto &var : vars) {
+            auto loopExitValue = LoopExitValue(loopExit, var->ReadVariable());
+            var->WriteVariable(loopExitValue);
+        }
+    }
+    currentLabel->SetControl(loopExit);
+    currentLabel->SetDepend(loopExitDepend);
 }
 
 Label::Label(Environment *env)

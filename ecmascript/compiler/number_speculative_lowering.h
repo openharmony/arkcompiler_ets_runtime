@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -68,6 +68,7 @@ private:
     void VisitNumberMod(GateRef gate);
     void VisitBooleanJump(GateRef gate);
     void VisitIsTrueOrFalse(GateRef gate, bool flag);
+    void VisitStrictEqual(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);

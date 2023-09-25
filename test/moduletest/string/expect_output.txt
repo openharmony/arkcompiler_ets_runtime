@@ -25,3 +25,10 @@ wode
 wode1
 true
 true
+
+A
+AB
+—
+
+testfiles就发(2)
+testfileswodet

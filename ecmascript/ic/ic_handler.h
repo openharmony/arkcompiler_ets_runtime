@@ -29,6 +29,8 @@ public:
         FIELD,
         ELEMENT,
         DICTIONARY,
+        STRING,
+        STRING_LENGTH,
         NON_EXIST,
     };
 
@@ -64,9 +66,24 @@ public:
         return GetKind(handler) == HandlerKind::FIELD;
     }
 
+    static inline bool IsString(uint32_t handler)
+    {
+        return GetKind(handler) == HandlerKind::STRING;
+    }
+
+    static inline bool IsStringLength(uint32_t handler)
+    {
+        return GetKind(handler) == HandlerKind::STRING_LENGTH;
+    }
+
     static inline bool IsElement(uint32_t handler)
     {
         return GetKind(handler) == HandlerKind::ELEMENT;
+    }
+
+    static inline bool IsStringElement(uint32_t handler)
+    {
+        return GetKind(handler) == HandlerKind::STRING;
     }
 
     static inline bool IsDictionary(uint32_t handler)
@@ -113,8 +130,22 @@ public:
         }
         bool hasAccessor = op.IsAccessorDescriptor();
         AccessorBit::Set<uint32_t>(hasAccessor, &handler);
+
         if (!hasAccessor) {
-            KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
+            if (op.GetReceiver()->IsString()) {
+                JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
+                EcmaString *proKey = nullptr;
+                if (op.GetKey()->IsString()) {
+                    proKey = EcmaString::Cast(op.GetKey()->GetTaggedObject());
+                }
+                if (EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
+                    KindBit::Set<uint32_t>(HandlerKind::STRING_LENGTH, &handler);
+                } else {
+                    KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
+                }
+            } else {
+                KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
+            }
         }
 
         if (op.IsInlinedProps()) {
@@ -138,10 +169,21 @@ public:
         UNREACHABLE();
     }
 
-    static inline JSHandle<JSTaggedValue> LoadElement(const JSThread *thread)
+    static inline JSHandle<JSTaggedValue> LoadElement(const JSThread *thread, const ObjectOperator &op)
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
+
+        if (op.GetReceiver()->IsJSArray()) {
+            IsJSArrayBit::Set<uint32_t>(true, &handler);
+        }
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+    }
+
+    static inline JSHandle<JSTaggedValue> LoadStringElement(const JSThread *thread)
+    {
+        uint32_t handler = 0;
+        KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 };

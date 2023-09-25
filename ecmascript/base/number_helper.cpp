@@ -90,32 +90,78 @@ bool NumberHelper::IsEmptyString(const uint8_t *start, const uint8_t *end)
 
 JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int radix)
 {
-    bool negative = false;
-    if (number < 0.0) {
-        negative = true;
+    static constexpr int BUFFER_SIZE = 2240; // 2240: The size of the character array buffer
+    static constexpr int HALF_BUFFER_SIZE = BUFFER_SIZE >> 1;
+    char buffer[BUFFER_SIZE];
+    size_t integerCursor = HALF_BUFFER_SIZE;
+    size_t fractionCursor = integerCursor;
+
+    bool negative = number < 0.0;
+    if (negative) {
         number = -number;
     }
 
-    double numberInteger = std::floor(number);
-    double numberFraction = number - numberInteger;
+    double integer = std::floor(number);
+    double fraction = number - integer;
 
     auto value = bit_cast<uint64_t>(number);
     value += 1;
     double delta = HALF * (bit_cast<double>(value) - number);
 
-    CString result;
-    if (numberFraction != 0 && numberFraction >= delta) {
-        result += ".";
-        result += DecimalsToString(&numberInteger, numberFraction, radix, delta);
+    if (fraction != 0 && fraction >= delta) {
+        buffer[fractionCursor++] = '.';
+        while (fraction >= delta) {
+            fraction *= radix;
+            delta *= radix;
+            int64_t digit = std::floor(fraction);
+            fraction -= digit;
+            buffer[fractionCursor++] = CHARS[digit];
+            bool needCarry = (fraction > HALF) && (fraction + delta > 1);
+            if (needCarry) {
+                size_t fractionEnd = fractionCursor - 1;
+                buffer[fractionEnd] = Carry(buffer[fractionEnd], radix);
+                for (; fractionEnd > HALF_BUFFER_SIZE; fractionEnd--) {
+                    if (buffer[fractionEnd] == '0') {
+                        buffer[fractionEnd - 1] = Carry(buffer[fractionEnd - 1], radix);
+                    } else {
+                        break;
+                    }
+                }
+                if (fractionEnd == HALF_BUFFER_SIZE) {
+                    ++integer;
+                }
+                break;
+            }
+        }
+        // delete 0 in the end
+        size_t fractionEnd = fractionCursor - 1;
+        while (buffer[fractionEnd] == '0') {
+            --fractionEnd;
+        }
+        fractionCursor = fractionEnd + 1;
     }
 
-    result = IntegerToString(numberInteger, radix) + result;
+    ASSERT(radix >= MIN_RADIX && radix <= MAX_RADIX);
+    while (integer / radix > MAX_MANTISSA) {
+        integer /= radix;
+        buffer[--integerCursor] = '0';
+    }
+    do {
+        double remainder = std::fmod(integer, radix);
+        buffer[--integerCursor] = CHARS[static_cast<int>(remainder)];
+        integer = (integer - remainder) / radix;
+    } while (integer > 0);
 
     if (negative) {
-        result = "-" + result;
+        buffer[--integerCursor] = '-';
     }
+    buffer[fractionCursor++] = '\0';
 
-    return BuiltinsBase::GetTaggedString(thread, result.c_str());
+    size_t size = fractionCursor - integerCursor;
+    std::unique_ptr<char[]> result = std::make_unique<char[]>(size);
+    memcpy_s(result.get(), size, buffer + integerCursor, size);
+
+    return BuiltinsBase::GetTaggedString(thread, result.get());
 }
 
 JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number, int digit)
@@ -272,40 +318,6 @@ CString NumberHelper::IntegerToString(double number, int radix)
         result = CHARS[static_cast<int>(remainder)] + result;
         number = (number - remainder) / radix;
     } while (number > 0);
-    return result;
-}
-
-CString NumberHelper::DecimalsToString(double *numberInteger, double fraction, int radix, double delta)
-{
-    CString result;
-    while (fraction >= delta) {
-        fraction *= radix;
-        delta *= radix;
-        int64_t integer = std::floor(fraction);
-        fraction -= integer;
-        result += CHARS[integer];
-        if (fraction > HALF && fraction + delta > 1) {
-            size_t fractionEnd = result.size() - 1;
-            result[fractionEnd] = Carry(*result.rbegin(), radix);
-            for (; fractionEnd > 0; fractionEnd--) {
-                if (result[fractionEnd] == '0') {
-                    result[fractionEnd - 1] = Carry(result[fractionEnd - 1], radix);
-                } else {
-                    break;
-                }
-            }
-            if (fractionEnd == 0) {
-                (*numberInteger)++;
-            }
-            break;
-        }
-    }
-    // delete 0 in the end
-    size_t found = result.find_last_not_of('0');
-    if (found != CString::npos) {
-        result.erase(found + 1);
-    }
-
     return result;
 }
 
@@ -775,6 +787,9 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
         }
         buffer += *p;
     } while (++p != end);
+    if (buffer.size() == 0) {
+        return BigInt::Uint32ToBigInt(thread, 0).GetTaggedValue();
+    }
     return BigIntHelper::SetBigInt(thread, buffer, radix).GetTaggedValue();
 }
 

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
@@ -395,6 +395,7 @@ public:
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;

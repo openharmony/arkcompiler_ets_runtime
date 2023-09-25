@@ -307,6 +307,61 @@ HWTEST_F_L0(GCTest, ArkToolsForceFullGC)
     ASSERT_TRUE(thread->GetEcmaVM()->GetHeap()->GetCommittedSize() < newSize);
 }
 
+HWTEST_F_L0(GCTest, ColdStartForceExpand)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    size_t originalHeapSize = heap->GetCommittedSize();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 500; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    usleep(2500000);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t newSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    EXPECT_TRUE(originalHeapSize < expandHeapSize);
+    EXPECT_TRUE(expandHeapSize > newSize);
+}
+
+HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    size_t originalHeapSize = heap->GetCommittedSize();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->NotifyHighSensitive(true);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 500; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t newSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    EXPECT_TRUE(originalHeapSize < expandHeapSize);
+    EXPECT_TRUE(expandHeapSize > newSize);
+}
+
 HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
 {
 #ifdef NDEBUG

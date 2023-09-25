@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/number_speculative_retype.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include <cstdint>
@@ -71,6 +71,10 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, TypeInfo type)
     TypeInfo old = GetOutputTypeInfo(gate);
     SetOutputTypeInfo(gate, type);
     return old == type ? Circuit::NullGate() : gate;
+}
+void NumberSpeculativeRetype::setState(NumberSpeculativeRetype::State state)
+{
+    state_ = state;
 }
 
 GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
@@ -138,6 +142,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::LOAD_CONST_OFFSET:
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
+        case OpCode::TYPE_OF_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -146,10 +151,23 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
 {
+    if (acc_.HasStringType(gate)) {
+        return VisitStringBinaryOp(gate);
+    }
+
+    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ) {
+        if (acc_.HasPrimitiveNumberType(gate)) {
+            return VisitNumberBinaryOp(gate);
+        }
+    }
+
+    return VisitStrictEqual(gate);
+}
+
+GateRef NumberSpeculativeRetype::VisitStrictEqual(GateRef gate)
+{
     if (acc_.HasNumberType(gate)) {
         return VisitNumberBinaryOp(gate);
-    } else if (acc_.HasStringType(gate)) {
-        return VisitStringBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
@@ -439,7 +457,7 @@ GateRef NumberSpeculativeRetype::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsNumberType());
+    ASSERT(type.IsPrimitiveNumberType());
     if (type.IsIntType()) {
         return VisitIntMonocular(gate);
     } else {
@@ -482,7 +500,7 @@ GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType valueType = accessor.GetTypeValue();
-    ASSERT(valueType.IsNumberType() || valueType.IsBooleanType());
+    ASSERT(valueType.IsPrimitiveNumberType());
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
     }
@@ -502,14 +520,15 @@ GateRef NumberSpeculativeRetype::VisitNumberNot(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType valueType = accessor.GetTypeValue();
-    ASSERT(valueType.IsNumberType());
+    ASSERT(valueType.IsPrimitiveNumberType());
     if (IsRetype()) {
         return SetOutputType(gate, GateType::IntType());
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         GateRef value = acc_.GetValueIn(gate, 0);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, valueType), 0);
+        acc_.ReplaceValueIn(gate,
+            CheckAndConvertToInt32(value, valueType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL), 0);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -642,6 +661,10 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
         case TypeInfo::TAGGED: {
             if (gateType.IsBooleanType()) {
                 return builder_.CheckTaggedBooleanAndConvertToBool(gate);
+            } else if (gateType.IsUndefinedType()) {
+                return builder_.CheckUndefinedAndConvertToBool(gate);
+            } else if (gateType.IsNullType()) {
+                return builder_.CheckNullAndConvertToBool(gate);
             } else {
                 ASSERT(gateType.IsNumberType());
                 return builder_.CheckTaggedNumberAndConvertToBool(gate);
@@ -813,7 +836,18 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
                 result = builder_.CheckTaggedIntAndConvertToInt32(gate);
             } else if (gateType.IsDoubleType()) {
                 result = builder_.CheckTaggedDoubleAndConvertToInt32(gate);
+            } else if (gateType.IsNullType()) {
+                result = builder_.CheckNullAndConvertToInt32(gate);
+            } else if (gateType.IsBooleanType()) {
+                result = builder_.CheckTaggedBooleanAndConvertToInt32(gate);
+            } else if (gateType.IsUndefinedType()) {
+                if (type == OpType::SHIFT_AND_LOGICAL) {
+                    result = builder_.CheckUndefinedAndConvertToInt32(gate);
+                } else {
+                    LOG_ECMA(FATAL) << "undefined cannot convert to int type";
+                }
             } else {
+                ASSERT(gateType.IsNumberType());
                 result = builder_.CheckTaggedNumberAndConvertToInt32(gate);
             }
             break;
@@ -854,7 +888,14 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
                 result = builder_.CheckTaggedIntAndConvertToFloat64(gate);
             } else if (gateType.IsDoubleType()) {
                 result = builder_.CheckTaggedDoubleAndConvertToFloat64(gate);
+            } else if (gateType.IsNullType()) {
+                result = builder_.CheckNullAndConvertToFloat64(gate);
+            } else if (gateType.IsBooleanType()) {
+                result = builder_.CheckTaggedBooleanAndConvertToFloat64(gate);
+            } else if (gateType.IsUndefinedType()) {
+                result = builder_.CheckUndefinedAndConvertToFloat64(gate);
             } else {
+                ASSERT(gateType.IsNumberType());
                 result = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
             }
             break;
@@ -1068,11 +1109,11 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToFloat64(value, GateType::DoubleType(), ConvertSupport::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToInt32(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToInt32(value, GateType::IntType(), ConvertSupport::DISABLE), 2); // 2: value
     } else {
         TypeInfo valueType = GetOutputTypeInfo(value);
         if (valueType == TypeInfo::INT1 || valueType == TypeInfo::INT32 || valueType == TypeInfo::FLOAT64) {
@@ -1156,15 +1197,10 @@ GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
     return Circuit::NullGate();
 }
 
-void NumberSpeculativeRetype::Run()
+GateRef NumberSpeculativeRetypeManager::VisitGate(GateRef gate)
 {
-    // visit gate in RPO, propagate use infos and
-    // reset the machine type of number operator gate and related phi,
-    // if some tagged phi is used as native value, change it to native phi.
-    state_ = State::Retype;
-    VisitGraph();
-    state_ = State::Convert;
-    VisitGraph();
+    retype_->setState(state_);
+    return retype_->VisitGate(gate);
 }
 
 }  // namespace panda::ecmascript::kungfu

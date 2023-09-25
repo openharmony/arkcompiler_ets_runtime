@@ -1405,6 +1405,64 @@ DEF_CALL_SIGNATURE(CallOptimized)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(Dump)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 1;
+    CallSignature dump("Dump", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = dump;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::JS_POINTER() // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DebugDump)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 1;
+    CallSignature debugDump("DebugDump", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugDump;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::JS_POINTER() // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DumpWithHint)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 2;
+    CallSignature dumpWithHint("DumpWithHint", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = dumpWithHint;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::NATIVE_POINTER(), // String created via CircuitBuilder::StringPtr()
+        VariableType::JS_POINTER()      // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DebugDumpWithHint)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 2;
+    CallSignature debugDumpWithHint("DebugDumpWithHint", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugDumpWithHint;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::NATIVE_POINTER(), // String created via CircuitBuilder::StringPtr()
+        VariableType::JS_POINTER()      // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(DebugPrint)
 {
     // 1 : 1 input parameters
@@ -1429,7 +1487,7 @@ DEF_CALL_SIGNATURE(DebugPrintCustom)
     *callSign = debugPrintCustom;
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
-        VariableType::NATIVE_POINTER()
+        VariableType::NATIVE_POINTER() // Format string created via CircuitBuilder::StringPtr()
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
@@ -1469,118 +1527,6 @@ DEF_CALL_SIGNATURE(Comment)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(ProfileCall)
-{
-    // 4 : 4 input parameters
-    CallSignature callProfilerInstruction("ProfileCall", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = callProfilerInstruction;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ProfileDefineClass)
-{
-    // 4: 4 input parameters
-    CallSignature defineProfInstruction(
-        "ProfileDefineClass", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = defineProfInstruction;
-    // 4: 4 input parameters
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ProfileCreateObject)
-{
-    // 5: 5 input parameters
-    CallSignature defineProfInstruction(
-        "ProfileCreateObject", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = defineProfInstruction;
-    // 4: 4 input parameters
-    std::array<VariableType, 5> params = { // 5 : 5 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ProfileOpType)
-{
-    // 4: 4 input parameters
-    CallSignature typeProfInstruction("ProfileOpType", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = typeProfInstruction;
-    // 4: 4 input parameters
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-        VariableType::INT32(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ProfileObjLayout)
-{
-    // 4: 4 input parameters
-    CallSignature layoutProfInstruction("ProfileObjLayout", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = layoutProfInstruction;
-    // 4: 4 input parameters
-    std::array<VariableType, 5> params = { // 5 : 5 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ProfileObjIndex)
-{
-    // 4: 4 input parameters
-    CallSignature layoutProfInstruction("ProfileObjIndex", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = layoutProfInstruction;
-    // 4: 4 input parameters
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::INT32(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetVariadicArgs(true);
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(FatalPrint)
 {
     // 1 : 1 input parameters
@@ -1605,7 +1551,7 @@ DEF_CALL_SIGNATURE(FatalPrintCustom)
     *callSign = fatalPrintCustom;
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
-        VariableType::NATIVE_POINTER()
+        VariableType::NATIVE_POINTER() // Format string created via CircuitBuilder::StringPtr()
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
@@ -1759,12 +1705,13 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
 
 DEF_CALL_SIGNATURE(DoubleToInt)
 {
-    // 1 : 1 input parameters
-    CallSignature index("DoubleToInt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    // 2 : 2 input parameters
+    CallSignature index("DoubleToInt", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
         VariableType::FLOAT64(),
+        VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

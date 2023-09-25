@@ -84,6 +84,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "call_signature.cpp",
     "circuit.cpp",
     "circuit_builder.cpp",
+    "combined_pass_visitor.cpp",
     "common_stubs.cpp",
     "compilation_driver.cpp",
     "compiler_log.cpp",
@@ -93,18 +94,19 @@ ohos_source_set("libark_jsoptimizer_set") {
     "frame_states.cpp",
     "gate.cpp",
     "gate_accessor.cpp",
-    "gate_meta_data.cpp",
     "graph_editor.cpp",
     "graph_linearizer.cpp",
-    "graph_visitor.cpp",
+    "hcr_gate_meta_data.cpp",
     "ic_stub_builder.cpp",
     "interpreter_stub.cpp",
     "later_elimination.cpp",
+    "lcr_gate_meta_data.cpp",
     "lcr_lowering.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "loop_analysis.cpp",
     "loop_peeling.cpp",
+    "mcr_gate_meta_data.cpp",
     "new_object_stub_builder.cpp",
     "ntype_hcr_lowering.cpp",
     "ntype_mcr_lowering.cpp",
@@ -119,6 +121,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "range_guard.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
+    "share_gate_meta_data.cpp",
     "slowpath_lowering.cpp",
     "state_split_linearizer.cpp",
     "stub.cpp",
@@ -471,6 +474,11 @@ action("gen_stub_file") {
         rebase_path(root_out_dir_with_host_toolchain) +
         "/${icu_subsystem_name}/${icu_part_name}:" +
         rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/zlib:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/resourceschedule/frame_aware_sched:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/thirdparty/bounds_checking_function:" +
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
 

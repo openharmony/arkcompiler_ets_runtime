@@ -26,6 +26,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -63,7 +64,7 @@ inline GateRef StubBuilder::Int64(int64_t value)
     return env_->GetBuilder()->Int64(value);
 }
 
-inline GateRef StubBuilder::StringPtr(const std::string &str)
+inline GateRef StubBuilder::StringPtr(std::string_view str)
 {
     return env_->GetBuilder()->StringPtr(str);
 }
@@ -1397,6 +1398,33 @@ inline GateRef StubBuilder::IsField(GateRef attr)
         Int32(HandlerBase::HandlerKind::FIELD));
 }
 
+inline GateRef StubBuilder::IsElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::ELEMENT));
+}
+
+inline GateRef StubBuilder::IsStringElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::STRING));
+}
+
+inline GateRef StubBuilder::IsStringLength(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::STRING_LENGTH));
+}
+
 inline GateRef StubBuilder::IsNonExist(GateRef attr)
 {
     return Int32Equal(
@@ -1613,6 +1641,12 @@ inline void StubBuilder::SetTransitionsToHClass(VariableType type, GateRef glue,
     Store(type, glue, hClass, offset, transition);
 }
 
+inline void StubBuilder::SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent)
+{
+    GateRef offset = IntPtr(JSHClass::PARENT_OFFSET);
+    Store(type, glue, hClass, offset, parent);
+}
+
 inline void StubBuilder::SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value)
 {
     GateRef oldValue = ZExtInt1ToInt32(value);
@@ -1710,6 +1744,16 @@ inline GateRef StubBuilder::GetInlinedPropertiesFromHClass(GateRef hClass)
         Int32(JSHClass::InlinedPropsStartBits::START_BIT)),
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
     return Int32Sub(objectSizeInWords, inlinedPropsStart);
+}
+
+inline void StubBuilder::SetElementsKindToTrackInfo(GateRef glue, GateRef trackInfo, GateRef elementsKind)
+{
+    GateRef bitfield = Load(VariableType::INT32(), trackInfo, IntPtr(TrackInfo::BIT_FIELD_OFFSET));
+    GateRef oldWithMask = Int32And(bitfield,
+        Int32(~static_cast<uint32_t>(TrackInfo::ElementsKindBits::Mask())));
+    GateRef newValue = Int32LSR(elementsKind, Int32(TrackInfo::ElementsKindBits::START_BIT));
+    GateRef newBitfield = Int32Or(oldWithMask, newValue);
+    Store(VariableType::INT32(), glue, trackInfo, IntPtr(TrackInfo::BIT_FIELD_OFFSET), newBitfield);
 }
 
 inline GateRef StubBuilder::GetElementsKindFromHClass(GateRef hClass)
@@ -2505,18 +2549,22 @@ inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
     return pfHeader;
 }
 
-inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef traceId)
+inline GateRef StubBuilder::LoadHCIndexInfosFromConstPool(GateRef jsFunc)
+{
+    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    auto length = GetLengthOfTaggedArray(constPool);
+    auto index = Int32Sub(length, Int32(ConstantPool::CONSTANT_INDEX_INFO_INDEX));
+    return GetValueFromTaggedArray(constPool, index);
+}
+
+inline GateRef StubBuilder::LoadHCIndexFromConstPool(
+    GateRef cachedArray, GateRef cachedLength, GateRef traceId, Label *miss)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
 
-    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
-    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
-    auto length = GetLengthOfTaggedArray(constPool);
-    auto index = Int32Sub(length, Int32(ConstantPool::CONSTANT_INDEX_INFO_INDEX));
-    auto constantIndexInfo = GetValueFromTaggedArray(constPool, index);
-    auto indexInfoLength = GetLengthOfTaggedArray(constantIndexInfo);
     DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
     DEFVARIABLE(constantIndex, VariableType::INT32(),
         Int32(static_cast<int32_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
@@ -2527,16 +2575,16 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef tra
     Label afterLoop(env);
     Label matchSuccess(env);
     Label afterUpdate(env);
-    Branch(Int32LessThan(*i, indexInfoLength), &loopHead, &afterLoop);
+    Branch(Int32LessThan(*i, cachedLength), &loopHead, miss);
     LoopBegin(&loopHead);
-    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, *i));
+    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, *i));
     Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
-    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32Add(*i, Int32(1))));
+    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, Int32Add(*i, Int32(1))));
     Jump(&afterLoop);
     Bind(&afterUpdate);
     i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
-    Branch(Int32LessThan(*i, indexInfoLength), &loopEnd, &afterLoop);
+    Branch(Int32LessThan(*i, cachedLength), &loopEnd, miss);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);

@@ -17,7 +17,7 @@
 #include <cmath>
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"

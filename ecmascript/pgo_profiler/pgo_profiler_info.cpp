@@ -174,7 +174,7 @@ uint32_t PGOMethodInfo::CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_
     return checksum;
 }
 
-bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount)
+bool PGOMethodInfoMap::AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode, int32_t incCount)
 {
     PGOMethodId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
@@ -187,7 +187,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
         CString methodName = jsMethod->GetMethodName();
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
-        void *infoAddr = chunk->Allocate(size);
+        void *infoAddr = allocator->Allocate(size);
         auto info = new (infoAddr) PGOMethodInfo(methodId, incCount, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
         auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(), jsMethod->GetBytecodeArray(),
@@ -568,7 +568,7 @@ bool PGORecordDetailInfos::AddMethod(const CString &recordName, Method *jsMethod
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
     ASSERT(jsMethod != nullptr);
-    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode, incCount);
+    return curMethodInfos->AddMethod(&nativeAreaAllocator_, jsMethod, mode, incCount);
 }
 
 bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type)
@@ -621,6 +621,20 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
         if (!JSHClass::DumpForProfile(hclassObject, oldDescInfo, kind)) {
             return false;
         }
+    } else {
+        LOG_ECMA(DEBUG) << "The current class did not find a definition";
+        return false;
+    }
+    return true;
+}
+
+bool PGORecordDetailInfos::UpdateElementsKind(PGOSampleType type, ElementsKind kind)
+{
+    PGOHClassLayoutDesc descInfo(type.GetProfileType());
+    auto iter = moduleLayoutDescInfos_.find(descInfo);
+    if (iter != moduleLayoutDescInfos_.end()) {
+        auto &oldDescInfo = const_cast<PGOHClassLayoutDesc &>(*iter);
+        oldDescInfo.UpdateElementKind(kind);
     } else {
         LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;

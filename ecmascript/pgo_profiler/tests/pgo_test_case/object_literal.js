@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-let a = {x: 1, y: 2, z: 1}
-let b = {u: 1.3, y: 2, t: "test"}
+let a = {x: 1, y: 2, z: 1};
+let b = {u: 1.3, y: 2, t: 'test'};
 
-b.y = 1.1
+b.y = 1.1;
 
 function foo(p) {
-    return p.x
+  return p.x;
 }
 
-foo(a)
-foo(b)
+foo(a);
+foo(b);

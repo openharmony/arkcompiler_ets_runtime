@@ -20,7 +20,7 @@ import("//build/test.gni")
 
 ####################################fuzztest##################################
 ohos_fuzztest("ContainersTreeMapRemoveFuzzTest") {
-  module_out_path = "arkcompiler/ets_runtime"
+  module_out_path = ets_runtime_output_path
 
   fuzz_config_file =
       "//arkcompiler/ets_runtime/test/fuzztest/containerstreemapremove_fuzzer"

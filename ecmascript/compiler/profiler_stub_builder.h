@@ -30,22 +30,27 @@ public:
     void GenerateCircuit() override {}
 
     void PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
-        const std::vector<GateRef> &values, OperationType type);
-    void ProfileCall(GateRef glue, GateRef pc, GateRef func, GateRef target);
-    void ProfileOpType(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type);
-    void ProfileDefineClass(GateRef glue, GateRef pc, GateRef func, GateRef constructor);
-    void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef newObj);
-    void ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef object, GateRef store);
-    void ProfileObjIndex(GateRef glue, GateRef pc, GateRef func, GateRef object);
-    void ProfileBranch(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, bool isTrue);
-    GateRef GetBranchTypeFromWeight(GateRef trueWeight, GateRef falseWeight);
+        const std::vector<GateRef> &values, SlotIDFormat format, OperationType type);
 
-    void ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver, GateRef key, GateRef isStore,
-        ProfileOperation callback);
+    void TryDump(GateRef glue, GateRef func, GateRef profileTypeInfo);
+    void TryPreDump(GateRef glue, GateRef func, GateRef profileTypeInfo);
+
+    void ProfileCall(
+        GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format);
+    void ProfileOpType(
+        GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type, SlotIDFormat format);
+    void ProfileDefineClass(
+        GateRef glue, GateRef pc, GateRef func, GateRef constructor, GateRef profileTypeInfo, SlotIDFormat format);
+    void ProfileCreateObject(
+        GateRef glue, GateRef pc, GateRef func, GateRef newObj, GateRef profileTypeInfo, SlotIDFormat format);
+    void ProfileBranch(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, bool isTrue);
+
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
-    void UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr, GateRef attrIndex,
-        GateRef value, ProfileOperation callback);
+    void UpdatePropAttrWithValue(
+        GateRef glue, GateRef layout, GateRef attr, GateRef attrIndex, GateRef value, ProfileOperation callback);
+
+    GateRef IsProfileTypeInfoChanged(GateRef profileTypeInfo, ProfileOperation callback);
 
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
@@ -53,6 +58,12 @@ private:
     static constexpr size_t BITS_OF_WORD = 8;
     static constexpr size_t HIGH_WORD_OFFSET = 2;
     static constexpr size_t LOW_WORD_OFFSET = 1;
+
+    void TryPreDumpInner(GateRef glue, GateRef func, GateRef profileTypeInfo);
+
+    GateRef GetSlotID(GateRef pc, SlotIDFormat format);
+    GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoChanged(GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
 };
 } // namespace panda::ecmascript::kungfu

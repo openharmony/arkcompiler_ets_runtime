@@ -433,9 +433,9 @@ public:
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
     }
 
-    ElementsKind GetElementsKind(GateRef gate) const
+    std::vector<ElementsKind> LoadElementsKinds(GateRef gate) const
     {
-        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
+        return typeRecorder_.LoadElementsKinds(GetPcOffsetByGate(gate));
     }
 
     ElementsKind GetArrayElementsKind(GateRef gate) const

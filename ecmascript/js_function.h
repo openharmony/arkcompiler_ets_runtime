@@ -58,6 +58,12 @@ public:
         return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
     }
 
+    JSTaggedValue GetModule() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->GetModule();
+    }
+
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -227,8 +233,7 @@ public:
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
-    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, LAST_OFFSET)
+    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, SIZE)

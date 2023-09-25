@@ -78,15 +78,13 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetICState)
     JSHandle<JSTaggedValue> newBox(factory->NewPropertyBox(newValue));
 
     uint32_t arrayLength = 6;
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(arrayLength);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 1, JSTaggedValue::Hole());
-    handleDetailsArray->Set(thread, 2, newArray.GetTaggedValue());
-    handleDetailsArray->Set(thread, 3, newArray.GetTaggedValue());
-    handleDetailsArray->Set(thread, 4, newBox.GetTaggedValue());
-    handleDetailsArray->Set(thread, 5, newArray.GetTaggedValue());
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
+    handleProfileTypeInfo->Set(thread, 2, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 3, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 4, newBox.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 5, newArray.GetTaggedValue());
 
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
     // slotId = 0
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, 0, ICKind::StoreIC);
@@ -133,12 +131,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddHandlerWithoutKey)
     handleTaggedArray->Set(thread, 0, JSTaggedValue(1));
     handleTaggedArray->Set(thread, 1, JSTaggedValue(2));
 
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(4);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 1, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 2, JSTaggedValue::Hole());
-    handleDetailsArray->Set(thread, 3, JSTaggedValue::Undefined());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
+    handleProfileTypeInfo->Set(thread, 2, JSTaggedValue::Hole());
 
     uint32_t slotId = 0; // test profileData is Undefined
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
@@ -188,10 +182,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddElementHandler)
     JSHandle<JSTaggedValue> objClassVal(thread, handleObj->GetJSHClass());
     JSHandle<JSTaggedValue> HandlerValue(thread, JSTaggedValue(3));
 
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(4);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 1, JSTaggedValue::Undefined());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
 
     uint32_t slotId = 0;
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
@@ -227,12 +218,9 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddHandlerWithKey)
     handleTaggedArray->Set(thread, 0, JSTaggedValue(1));
     handleTaggedArray->Set(thread, 1, JSTaggedValue(2));
 
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(4);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 1, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 2, handleTaggedArray.GetTaggedValue());
-    handleDetailsArray->Set(thread, 3, handleTaggedArray.GetTaggedValue());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
+    handleProfileTypeInfo->Set(thread, 2, handleTaggedArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 3, handleTaggedArray.GetTaggedValue());
 
     uint32_t slotId = 0; // test profileData is Undefined
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
@@ -273,10 +261,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalHandlerKey)
     handleTaggedArray->Set(thread, 1, JSTaggedValue(333));
     JSHandle<JSTaggedValue> arrayKey(factory->NewFromASCII("array"));
 
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(2);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue::Undefined());
-    handleDetailsArray->Set(thread, 1, handleTaggedArray.GetTaggedValue());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(2);
+    handleProfileTypeInfo->Set(thread, 1, handleTaggedArray.GetTaggedValue());
 
     uint32_t slotId = 0;
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
@@ -313,17 +299,16 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalRecordHandler)
     JSHandle<JSTaggedValue> HandlerValue1(thread, JSTaggedValue(232));
     JSHandle<JSTaggedValue> HandlerValue2(thread, JSTaggedValue(5));
 
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(2);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(2);
     uint32_t slotId = 0;
     ProfileTypeAccessor handleProfileTypeAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleProfileTypeAccessor.AddGlobalRecordHandler(HandlerValue1);
     EXPECT_EQ(handleProfileTypeInfo->Get(slotId).GetInt(), 232);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsUndefined());
 
     handleProfileTypeAccessor.AddGlobalRecordHandler(HandlerValue2);
     EXPECT_EQ(handleProfileTypeInfo->Get(slotId).GetInt(), 5);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsUndefined());
 }
 
 /**
@@ -337,11 +322,10 @@ HWTEST_F_L0(ProfileTypeInfoTest, SetAsMega)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 2;
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(arrayLength);
-    handleDetailsArray->Set(thread, 0, JSTaggedValue(111));
-    handleDetailsArray->Set(thread, 1, JSTaggedValue(222));
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 0, JSTaggedValue(111));
+    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue(222));
 
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
     uint32_t slotId = 0;
     ProfileTypeAccessor handleProfileTypeAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
@@ -368,8 +352,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetWeakRef)
     JSTaggedValue weakRefValue(handleObj.GetTaggedValue());
 
     uint32_t arrayLength = 2;
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
 
     uint32_t slotId = 0;
@@ -397,8 +380,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetRefFromWeak)
     handleProfileType.CreateWeakRef();
 
     uint32_t arrayLength = 2;
-    JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
 
     uint32_t slotId = 0;

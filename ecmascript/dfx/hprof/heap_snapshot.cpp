@@ -247,6 +247,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
+        case JSType::PROFILE_TYPE_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), "ProfileTypeInfo[");
         case JSType::TAGGED_DICTIONARY:
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
         case JSType::AOT_LITERAL_INFO:
@@ -953,30 +955,6 @@ void HeapSnapshot::FillEdges()
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
-        }
-        iter++;
-    }
-    FillPrimitiveEdge(count, iter);
-}
-
-void HeapSnapshot::FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter)
-{
-    size_t lengthExtend = nodes_.size();
-    while (++count < lengthExtend) {
-        ASSERT(*iter != nullptr);
-        if ((*iter)->GetType() == NodeType::JS_PRIMITIVE_REF) {
-            JSTaggedValue jsFrom(reinterpret_cast<TaggedObject *>((*iter)->GetAddress()));
-            CString valueName;
-            if (jsFrom.IsInt()) {
-                valueName.append(ToCString(jsFrom.GetInt()));
-            } else if (jsFrom.IsDouble()) {
-                valueName.append(FloatToCString(jsFrom.GetDouble()));
-            } else {
-                valueName.append("NaN");
-            }
-            Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, (*iter), (*iter), GetString(valueName));
-            InsertEdgeUnique(edge);
-            (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
         }
         iter++;
     }

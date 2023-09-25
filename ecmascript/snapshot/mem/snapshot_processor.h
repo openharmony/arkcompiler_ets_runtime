@@ -58,6 +58,7 @@ public:
     void RelocateSpaceObject(const JSPandaFile *jsPandaFile, Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
     void SerializePandaFileMethod();
+    uintptr_t GetNewObj(size_t objectSize, TaggedObject *objectHeader);
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
     EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,

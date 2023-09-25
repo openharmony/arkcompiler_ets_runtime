@@ -37,7 +37,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 
     auto globalConst = thread->GlobalConstants();
@@ -48,15 +47,21 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             func->SetPropertyInlinedProps(thread, PROTOTYPE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             accessor = globalConst->GetHandledFunctionNameAccessor();
             func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<JSFunction> objFun(env->GetObjectFunction());
-            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
+                // Not duplicate codes, it will slow the performace if combining and put outside!
+                JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                JSHandle<JSFunction> objFun(env->GetObjectFunction());
+                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
             if (kind == FunctionKind::GENERATOR_FUNCTION) {
+                // Not duplicate codes, it will slow the performace if combining and put outside!
+                JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                JSHandle<JSFunction> objFun(env->GetObjectFunction());
+                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
@@ -798,23 +803,5 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
         return value;
     }
     return JSTaggedValue::Undefined();
-}
-
-JSTaggedValue JSFunction::GetRecordName() const
-{
-    JSTaggedValue module = GetModule();
-    if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
-        if (!recordName.IsString()) {
-            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
-            return JSTaggedValue::Hole();
-        }
-        return recordName;
-    }
-    if (module.IsString()) {
-        return module;
-    }
-    LOG_INTERPRETER(DEBUG) << "record name is undefined";
-    return JSTaggedValue::Hole();
 }
 }  // namespace panda::ecmascript

@@ -33,6 +33,7 @@ inline JSHClass *JSHClass::Cast(const TaggedObject *object)
 void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent, const JSHandle<JSHClass> &child,
                               const JSHandle<JSTaggedValue> &key, PropertyAttributes attributes)
 {
+    UpdateRootHClass(thread, parent, child);
     JSTaggedValue transitions = parent->GetTransitions();
     if (transitions.IsUndefined()) {
         JSTaggedValue weakChild = JSTaggedValue(child.GetTaggedValue().CreateAndGetWeakRef());
@@ -68,6 +69,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
                                    const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                    const JSHandle<JSTaggedValue> &proto)
 {
+    UpdateRootHClass(thread, parent, child);
     JSTaggedValue transitions = parent->GetTransitions();
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());
     if (transitions.IsUndefined()) {
@@ -186,6 +188,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::AOT_LITERAL_INFO:
         case JSType::VTABLE:
         case JSType::COW_TAGGED_ARRAY:
+        case JSType::PROFILE_TYPE_INFO:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;
@@ -236,6 +239,28 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
     SetBitField(jshclass->GetBitField());
     SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
     SetNumberOfProps(jshclass->NumberOfProps());
+}
+
+inline JSHClass *JSHClass::FindRootHClass(JSHClass *hclass)
+{
+    auto root = hclass;
+    auto parent = hclass->GetParent();
+    while (parent.IsJSHClass()) {
+        root = JSHClass::Cast(parent.GetTaggedObject());
+        parent = root->GetParent();
+    }
+    return root;
+}
+
+inline void JSHClass::UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
+                                       const JSHandle<JSHClass> &child)
+{
+    auto rootHClass = parent->GetParent();
+    if (rootHClass.IsJSHClass()) {
+        child->SetParent(thread, rootHClass);
+    } else {
+        child->SetParent(thread, parent);
+    }
 }
 
 inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)

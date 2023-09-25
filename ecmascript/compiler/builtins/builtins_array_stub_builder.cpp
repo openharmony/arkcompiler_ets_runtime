@@ -51,8 +51,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
             // Creates an empty array on fast path
             Bind(&argValIsEmpty);
             NewObjectStubBuilder newBuilder(this);
-            ProfileOperation callback;
-            result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+            result->WriteVariable(newBuilder.CreateEmptyArray(glue));
             Jump(exit);
         }
     }
@@ -76,8 +75,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
         // Creates an empty array on fast path
         Bind(&isCallable);
         NewObjectStubBuilder newBuilder(this);
-        ProfileOperation callback;
-        result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
 }
@@ -158,8 +156,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
         // Creates a new empty array on fast path
         Bind(&noArgs);
         NewObjectStubBuilder newBuilder(this);
-        ProfileOperation callback;
-        result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
 }
@@ -216,5 +213,77 @@ GateRef BuiltinsArrayStubBuilder::IsJsArrayWithLengthLimit(GateRef glue, GateRef
     GateRef ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStability(env);
+    Label setLength(env);
+    Label smallArgs(env);
+    Label checkSmallArgs(env);
+
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    Branch(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+
+    Branch(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+
+    GateRef oldLength = GetArrayLength(thisValue);
+    *result = IntToTaggedPtr(oldLength);
+
+    Branch(Int32Equal(ChangeIntPtrToInt32(numArgs), Int32(0)), exit, &checkSmallArgs);
+    Bind(&checkSmallArgs);
+    // now unsupport more than 2 args
+    Branch(Int32LessThanOrEqual(ChangeIntPtrToInt32(numArgs), Int32(2)), &smallArgs, slowPath);
+    Bind(&smallArgs);
+    GateRef newLength = Int32Add(oldLength, ChangeIntPtrToInt32(numArgs));
+
+    DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
+    GateRef capacity = GetLengthOfTaggedArray(*elements);
+    Label grow(env);
+    Label setValue(env);
+    Branch(Int32GreaterThan(newLength, capacity), &grow, &setValue);
+    Bind(&grow);
+    {
+        elements =
+            CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newLength) });
+        Jump(&setValue);
+    }
+    Bind(&setValue);
+    {
+        Label oneArg(env);
+        Label twoArg(env);
+        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+        DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+        Branch(Int64Equal(numArgs, IntPtr(1)), &oneArg, &twoArg);  // 1 one arg
+        Bind(&oneArg);
+        {
+            value = GetCallArg0(numArgs);
+            index = Int32Add(oldLength, Int32(0));  // 0 slot index
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, *elements, *index, *value);
+            Jump(&setLength);
+        }
+        Bind(&twoArg);
+        {
+            value = GetCallArg0(numArgs);
+            index = Int32Add(oldLength, Int32(0));  // 0 slot index
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, *elements, *index, *value);
+
+            value = GetCallArg1(numArgs);
+            index = Int32Add(oldLength, Int32(1));  // 1 slot index
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, *elements, *index, *value);
+            Jump(&setLength);
+        }
+    }
+    Bind(&setLength);
+    SetArrayLength(glue, thisValue, newLength);
+    result->WriteVariable(IntToTaggedPtr(newLength));
+    Jump(exit);
 }
 }  // namespace panda::ecmascript::kungfu

@@ -686,14 +686,22 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Object, HasOwnProperty);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let P be ToPropertyKey(V).
+    JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     JSHandle<JSTaggedValue> prop = GetCallArg(argv, 0);
+
+    JSTaggedValue result = ObjectFastOperator::HasOwnProperty(thread, thisValue.GetTaggedValue(),
+        prop.GetTaggedValue());
+    if (!result.IsHole()) {
+        return GetTaggedBoolean(true);
+    }
+
     JSHandle<JSTaggedValue> property = JSTaggedValue::ToPropertyKey(thread, prop);
 
     // 2. ReturnIfAbrupt(P).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let O be ToObject(this value).
-    JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, GetThis(argv));
+    JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, thisValue);
 
     // 4. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -791,44 +799,47 @@ JSTaggedValue BuiltinsObject::ToLocaleString(EcmaRuntimeCallInfo *argv)
     return JSFunction::Invoke(info, calleeKey);
 }
 
-JSTaggedValue BuiltinsObject::GetBuiltinTag(JSThread *thread, const JSHandle<JSObject> &object)
+JSTaggedValue BuiltinsObject::GetBuiltinObjectToString(JSThread *thread, const JSHandle<JSObject> &object)
 {
-    BUILTINS_API_TRACE(thread, Object, GetBuiltinTag);
+    BUILTINS_API_TRACE(thread, Object, GetBuiltinObjectToString);
     // 4. Let isArray be IsArray(O).
     bool isArray = object->IsJSArray();
     // 5. ReturnIfAbrupt(isArray).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> builtinTag = factory->NewFromASCII("Object");
-    // 6. If isArray is true, let builtinTag be "Array".
     if (isArray) {
-        builtinTag = factory->NewFromASCII("Array");
+        // 6. If isArray is true, return "[object Array]".
+        return thread->GlobalConstants()->GetArrayToString();
     } else if (object->IsJSPrimitiveRef()) {
-        // 7. Else, if O is an exotic String object, let builtinTag be "String".
+        // 7. Else, if O is an exotic String object, return "[object String]".
         JSPrimitiveRef *primitiveRef = JSPrimitiveRef::Cast(*object);
         if (primitiveRef->IsString()) {
-            builtinTag = factory->NewFromASCII("String");
+            return thread->GlobalConstants()->GetStringToString();
         } else if (primitiveRef->IsBoolean()) {
-            // 11. Else, if O has a [[BooleanData]] internal slot, let builtinTag be "Boolean".
-            builtinTag = factory->NewFromASCII("Boolean");
+            // 11. Else, if O has a [[BooleanData]] internal slot, return "[object Boolean]".
+            return thread->GlobalConstants()->GetBooleanToString();
         } else if (primitiveRef->IsNumber()) {
-            // 12. Else, if O has a [[NumberData]] internal slot, let builtinTag be "Number".
-            builtinTag = factory->NewFromASCII("Number");
+            // 12. Else, if O has a [[NumberData]] internal slot, return "[object Number]".
+            return thread->GlobalConstants()->GetNumberToString();
         }
     } else if (object->IsArguments()) {
-        builtinTag = factory->NewFromASCII("Arguments");
+        // if O has a [[ArgumentsData]] internal slot, return "[object Arguments]".
+        return thread->GlobalConstants()->GetArgumentsToString();
     } else if (object->IsCallable()) {
-        builtinTag = factory->NewFromASCII("Function");
+        // if O has a [[CallableData]] internal slot, return "[object Function]".
+        return thread->GlobalConstants()->GetFunctionToString();
     } else if (object->IsJSError()) {
-        builtinTag = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledErrorString());
+        // if O has a [[ErrorData]] internal slot, return "[object Error]".
+        return thread->GlobalConstants()->GetErrorToString();
     } else if (object->IsDate()) {
-        builtinTag = factory->NewFromASCII("Date");
+        // if O has a [[DateData]] internal slot, return "[object Date]".
+        return thread->GlobalConstants()->GetDateToString();
     } else if (object->IsJSRegExp()) {
-        builtinTag = factory->NewFromASCII("RegExp");
+        // if O has a [[RegExpData]] internal slot, return "[object JSRegExp]".
+        return thread->GlobalConstants()->GetRegExpToString();
     }
-    // 15. Else, let builtinTag be "Object".
-    return builtinTag.GetTaggedValue();
+    // 15. Else, return "[Object Object]".
+    return thread->GlobalConstants()->GetObjectToString();
 }
 
 // 19.1.3.6 Object.prototype.toString()
@@ -842,17 +853,16 @@ JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> msg = GetThis(argv);
     if (msg->IsUndefined()) {
-        return GetTaggedString(thread, "[object Undefined]");
+        return thread->GlobalConstants()->GetUndefinedToString();
     }
     // 2. If the this value is null, return "[object Null]".
     if (msg->IsNull()) {
-        return GetTaggedString(thread, "[object Null]");
+        return thread->GlobalConstants()->GetNullToString();
     }
 
     // 3. Let O be ToObject(this value).
     JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, GetThis(argv));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> builtinTag(thread, GetBuiltinTag(thread, object));
 
     // 16. Let tag be Get (O, @@toStringTag).
     auto ecmaVm = thread->GetEcmaVM();
@@ -864,9 +874,9 @@ JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
     // 17. ReturnIfAbrupt(tag).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 18. If Type(tag) is not String, let tag be builtinTag.
+    // 18. If Type(tag) is not String, return builtin object to string.
     if (!tag->IsString()) {
-        tag = builtinTag;
+        return GetBuiltinObjectToString(thread, object);
     }
 
     // 19. Return the String that is the result of concatenating "[object ", tag, and "]".

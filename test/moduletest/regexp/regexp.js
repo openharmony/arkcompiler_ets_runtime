@@ -285,6 +285,26 @@ print(str1.replace(/[^A-Z0-9]+/gi, ''))
 
 let reg50 = /^[ABCEGHJKLMNPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][\s-]?\d[ABCEGHJ-NPRSTV-Z]\d$/i
 
+let regabc = /abc/g;
+let strabcd = "abcdabcdabcd";
+for (let i = 0; i < 10; i++) {
+  // cache is used in this case
+  print(regabc.test(strabcd));
+}
+
+let str2 = "aaaabbBbcccC";
+for (let i = 0; i < 2; i++) {
+  print(str2);
+  let t1 = str2.replace(/([A-Z])/g, function(e) {
+    return "_" + e;
+  });
+  print(t1);
+  let t2 = str2.replace(/([A-Z])/g, "_$1");
+  print(t2);
+  print(t1.replace(/([a-z]+)/g, "_xy"));
+  print(t2.replace(/_/g, ""));
+}
+
 // regexp cache test
 let mediaReg = "\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)";
 let string = '(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s';

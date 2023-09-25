@@ -141,9 +141,9 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
+    method->SetModule(vm_->GetJSThread(), recordName);
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
     // Loader
     PGOProfilerDecoder loader("ark-profiler/modules.ap", 2);
@@ -196,16 +196,16 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
-    func1->SetModule(vm_->GetJSThread(), recordName);
-    func2->SetModule(vm_->GetJSThread(), recordName);
+    method->SetModule(vm_->GetJSThread(), recordName);
+    method1->SetModule(vm_->GetJSThread(), recordName);
+    method2->SetModule(vm_->GetJSThread(), recordName);
     for (int i = 0; i < 5; i++) {
-        vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     }
     for (int i = 0; i < 50; i++) {
-        vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func2.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func2.GetTaggedType());
     }
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func1.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -257,14 +257,14 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
-    JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
+    JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
+    method->SetModule(vm_->GetJSThread(), recordName);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test1"));
-    func1->SetModule(vm_->GetJSThread(), recordName1);
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method1->SetModule(vm_->GetJSThread(), recordName1);
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     for (int i = 0; i < 5; i++) {
-        vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func1.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
     }
     JSNApi::DestroyJSVM(vm_);
 
@@ -317,8 +317,8 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -368,14 +368,14 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<JSArray> array = vm_->GetFactory()->NewJSArray();
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, array.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(array.GetTaggedType());
 
     // RecordName is hole
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
-    func->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("", 2);
@@ -420,8 +420,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
     JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm2->GetJSThread(), recordName);
-    vm2->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method->SetModule(vm2->GetJSThread(), recordName);
+    vm2->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
 
     JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[0]);
     JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
@@ -430,10 +430,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test"));
-    func1->SetModule(vm_->GetJSThread(), recordName);
-    func2->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func1.GetTaggedType());
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func2.GetTaggedType());
+    method1->SetModule(vm_->GetJSThread(), recordName);
+    method2->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func2.GetTaggedType());
 
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
@@ -482,8 +482,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler8/modules.ap", 2);
@@ -527,10 +527,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
         JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[i]);
         method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
         JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
-        func->SetModule(vm_->GetJSThread(), recordName);
-        vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        method->SetModule(vm_->GetJSThread(), recordName);
+        vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
         if (i % 3 == 0) {
-            vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+            vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
         }
     }
 
@@ -653,8 +653,8 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    method->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -692,8 +692,8 @@ HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
         decoder2.MatchAndMarkMethod(targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
         if (std::string(methodName) == "Test") {
-            ASSERT_TRUE(!decoder1.Match(targetRecordName, methodId));
-            ASSERT_TRUE(!decoder2.Match(targetRecordName, methodId));
+            ASSERT_TRUE(decoder1.Match(targetRecordName, methodId));
+            ASSERT_TRUE(decoder2.Match(targetRecordName, methodId));
         } else {
             ASSERT_TRUE(decoder1.Match(targetRecordName, methodId));
             ASSERT_TRUE(decoder2.Match(targetRecordName, methodId));
@@ -778,24 +778,15 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
                         auto superClassId = EntityId(desc->GetSuperProfileType().GetRaw());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
-                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
-                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                        ASSERT_EQ(desc->GetLayoutDesc()[2].first, "t");
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     } else if (std::string(className) == "Foot") {
                         auto superClassId = EntityId(desc->GetSuperProfileType().GetRaw());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 4);
-                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
-                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                        ASSERT_EQ(desc->GetLayoutDesc()[2].first, "u");
-                        ASSERT_EQ(desc->GetLayoutDesc()[3].first, "v");
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     } else {
                         ASSERT_EQ(desc->GetSuperProfileType().GetRaw(), 0);
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 2);
-                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
-                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     }
                 }
             }
@@ -818,7 +809,7 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify(checksum));
     std::string types[17] =
-        { "6145", "1", "6145", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
+        { "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
     int index = 0;
     auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
@@ -835,7 +826,15 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
                     return;
                 }
                 if (std::string(methodName) == "advance") {
-                    ASSERT_EQ(sampleType.GetTypeString(), types[index++]);
+                    if (sampleType.GetWeight() > 0) {
+                        auto trueWeight = sampleType.GetWeight() >> 10;
+                        auto falseWeight = sampleType.GetWeight() & 0x7FF;
+                        auto primitiveType = sampleType.GetPrimitiveType();
+                        ASSERT_GT(trueWeight, falseWeight);
+                        ASSERT_EQ(static_cast<uint32_t>(primitiveType), PGOSampleType::IntType());
+                    } else {
+                        ASSERT_EQ(sampleType.GetTypeString(), types[index++]);
+                    }
                 }
             }
         };
@@ -845,67 +844,65 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     rmdir("ark-profiler16/");
 }
 
-// HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
-// {
-//     mkdir("ark-profiler18/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-//     const char *targetRecordName = "array_test";
-//     std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler18/", targetRecordName);
-//     ASSERT_NE(jsPandaFile, nullptr);
-//     uint32_t checksum = jsPandaFile->GetChecksum();
+HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
+{
+    mkdir("ark-profiler18/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "array_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler18/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
 
-//     // Loader
-//     PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
-//     ASSERT_TRUE(decoder.LoadAndVerify(checksum));
-//     auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
-//     for (auto iter : methodLiterals) {
-//         auto methodLiteral = iter.second;
-//         auto methodId = methodLiteral->GetMethodId();
-//         auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
-//         decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
-//         ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
-//         auto callback = [methodName, &decoder, jsPandaFile](uint32_t offset, PGOType *type) {
-//             if (type->IsScalarOpType()) {
-//                 auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
-//                 if (sampleType.IsClassType()) {
-//                     ASSERT_EQ(std::string(methodName), "func_main_0");
-//                     PGOHClassLayoutDesc *desc;
-//                     if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
-//                         return;
-//                     }
-//                     ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
-//                     ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
-//                     ASSERT_EQ(desc->GetLayoutDesc().size(), 1);
-//                 }
-//             } else if (type->IsRwOpType()) {
-//                 auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
-//                 if (std::string(methodName) == "foo") {
-//                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
-//                     auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetClassType());
-//                     PGOHClassLayoutDesc *desc;
-//                     ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-//                     ASSERT_EQ(desc->GetElementsKind(), ElementsKind::NUMBER);
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        auto callback = [methodName, &decoder, jsPandaFile](uint32_t offset, PGOType *type) {
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                if (sampleType.IsProfileType()) {
+                    ASSERT_EQ(std::string(methodName), "func_main_0");
+                    PGOHClassLayoutDesc *desc;
+                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                        return;
+                    }
+                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
+                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
+                    ASSERT_EQ(desc->GetLayoutDesc().size(), 1);
+                }
+            } else if (type->IsRwOpType()) {
+                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                if (std::string(methodName) == "foo") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
+                    auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
+                    ASSERT_TRUE(classType.IsElementType());
+                    ASSERT_EQ(classType.GetId(), static_cast<uint32_t>(ElementsKind::NUMBER));
 
-//                     classType = PGOSampleType(pgoRWOpType.GetObjectInfo(1).GetClassType());
-//                     ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-//                     ASSERT_EQ(desc->GetElementsKind(), ElementsKind::HOLE_NUMBER);
+                    classType = pgoRWOpType.GetObjectInfo(1).GetProfileType();
+                    ASSERT_TRUE(classType.IsElementType());
+                    ASSERT_EQ(classType.GetId(), static_cast<uint32_t>(ElementsKind::HOLE_INT));
 
-//                     classType = PGOSampleType(pgoRWOpType.GetObjectInfo(2).GetClassType());
-//                     ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-//                     ASSERT_EQ(desc->GetElementsKind(), ElementsKind::HOLE_TAGGED);
-//                 } else if (std::string(methodName) == "foo1") {
-//                     ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
-//                     auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetClassType());
-//                     PGOHClassLayoutDesc *desc;
-//                     ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-//                     ASSERT_EQ(desc->GetElementsKind(), ElementsKind::TAGGED);
-//                 }
-//             }
-//         };
-//         decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
-//     }
-//     unlink("ark-profiler18/modules.ap");
-//     rmdir("ark-profiler18/");
-// }
+                    classType = pgoRWOpType.GetObjectInfo(2).GetProfileType();
+                    ASSERT_TRUE(classType.IsElementType());
+                    ASSERT_EQ(classType.GetId(), static_cast<uint32_t>(ElementsKind::TAGGED));
+                } else if (std::string(methodName) == "foo1") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+                    auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
+                    ASSERT_TRUE(classType.IsElementType());
+                    ASSERT_EQ(classType.GetId(), static_cast<uint32_t>(ElementsKind::TAGGED));
+                }
+            }
+        };
+        decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
+    }
+    unlink("ark-profiler18/modules.ap");
+    rmdir("ark-profiler18/");
+}
 
 HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
 {
@@ -995,9 +992,9 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    func->SetModule(vm_->GetJSThread(), recordName);
+    method->SetModule(vm_->GetJSThread(), recordName);
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
-    vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // write to corrupt the ap file's consistency

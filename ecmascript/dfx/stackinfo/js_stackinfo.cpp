@@ -235,7 +235,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     std::string faultInfo;
     if (method != nullptr) {
         std::string methodName = method->GetMethodName();
-        std::string recordName = method->GetRecordName().c_str();
+        std::string recordName = method->GetRecordNameStr().c_str();
         faultInfo = "Method Name:" + methodName + " Record Name:" + recordName;
     } else {
         faultInfo = "method is nullptr!";
@@ -244,7 +244,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
         uintptr_t func = uctx->uc_mcontext.regs[2];  // 2: func
         JSTaggedValue builtinMethod = JSFunction::Cast(reinterpret_cast<TaggedObject *>(func))->GetMethod();
         uint8_t builtinId = Method::Cast(builtinMethod.GetTaggedObject())->GetBuiltinId();
-        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(CharCodeAt) - 1);  // 1: offset NONE
+        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(StringCharCodeAt) - 1);  // 1: offset NONE
         std::string builtinStr = MessageString::GetMessageString(builtinStart + builtinId);
         faultInfo += " " + builtinStr;
     }

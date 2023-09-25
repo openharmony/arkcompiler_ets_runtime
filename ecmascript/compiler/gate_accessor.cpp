@@ -283,6 +283,23 @@ bool GateAccessor::HasStringType(GateRef gate) const
     return false;
 }
 
+// Include number, undefined, null and boolean type.
+bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
@@ -297,7 +314,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
+           GetOpCode(gate) == OpCode::TYPE_OF);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -514,6 +533,10 @@ ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
+        auto elementKind = gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+        if (static_cast<uint32_t>(elementKind) == 4) {
+            return ElementsKind::NUMBER;
+        }
         return gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
     }
     return ElementsKind::GENERIC;
@@ -1591,7 +1614,7 @@ bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
     }
     if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
-        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt));
+        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt)); // 2 means the Index
     }
     return false;
 }

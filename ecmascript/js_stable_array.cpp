@@ -216,6 +216,20 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
+void JSStableArray::SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength)
+{
+    if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        sep = EcmaStringAccessor(sepStringHandle).Get(0);
+    } else if (EcmaStringAccessor(sepStringHandle).GetLength() == 0) {
+        sep = JSStableArray::SeparatorFlag::MINUS_TWO;
+        sepLength = 0;
+    } else {
+        sep = JSStableArray::SeparatorFlag::MINUS_ONE;
+        sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
+    }
+}
+
 JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
@@ -233,16 +247,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
             sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
         }
-        if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            sep = EcmaStringAccessor(sepStringHandle).Get(0);
-        } else if (EcmaStringAccessor(sepStringHandle).GetLength() == 0) {
-            sep = JSStableArray::SeparatorFlag::MINUS_TWO;
-            sepLength = 0;
-        } else {
-            sep = JSStableArray::SeparatorFlag::MINUS_ONE;
-            sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
-        }
+        SetSepValue(sepStringHandle, sep, sepLength);
     }
     if (length == 0) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -922,9 +927,9 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
 
-    uint32_t i = 0, r = actualStart + actualSkipCount;
+    int64_t i = 0, r = actualStart + actualSkipCount;
 
-    for (uint32_t idx = 0; idx < actualStart; idx++, i++) {
+    for (int64_t idx = 0; idx < actualStart; idx++, i++) {
         auto kValue = srcElementsHandle->Get(idx);
         if (kValue.IsHole()) {
             destElements->Set(thread, i, JSTaggedValue::Undefined());
@@ -932,7 +937,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
             destElements->Set(thread, i, kValue);
         }
     }
-    
+
     for (uint32_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
         auto element = base::BuiltinsBase::GetCallArg(argv, pos);
         destElements->Set(thread, i, element.GetTaggedValue());

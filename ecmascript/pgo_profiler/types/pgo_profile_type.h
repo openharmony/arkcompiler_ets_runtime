@@ -39,7 +39,8 @@ public:
         ElementId,
         BuiltinsId,
         TotalKinds,
-        LegacyKind = TotalKinds
+        UnknowId,
+        LegacyKind = UnknowId
     };
 
     static constexpr uint32_t ID_BITFIELD_NUM = 29;
@@ -76,6 +77,16 @@ public:
     bool IsBuiltinsType() const
     {
         return GetKind() == Kind::BuiltinsId;
+    }
+
+    bool IsClassType() const
+    {
+        return GetKind() == Kind::ClassId;
+    }
+
+    bool IsElementType() const
+    {
+        return GetKind() == Kind::ElementId;
     }
 
     uint32_t GetId() const

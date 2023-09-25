@@ -19,6 +19,472 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] GateRef thisValue,
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(value, VariableType::INT16(), Int16(0));
+    Label lengthIsZero(env);
+    Label lengthNotZero(env);
+    Label lengthIsOne(env);
+    Label canBeCompress(env);
+    Label isInt(env);
+    Label notInt(env);
+    Label newObj(env);
+    Label canNotBeCompress(env);
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Branch(Int64Equal(IntPtr(0), numArgs), &lengthIsZero, &lengthNotZero);
+    Bind(&lengthIsZero);
+    res->WriteVariable(GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX));
+    Jump(exit);
+    Bind(&lengthNotZero);
+    {
+        Branch(Int64Equal(IntPtr(1), numArgs), &lengthIsOne, slowPath);
+        Bind(&lengthIsOne);
+        {
+            GateRef codePointTag = GetCallArg0(numArgs);
+            GateRef codePointValue = ToNumber(glue, codePointTag);
+            Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+            Bind(&isPendingException);
+            {
+                res->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&noPendingException);
+            {
+                Branch(TaggedIsInt(codePointValue), &isInt, &notInt);
+                Bind(&isInt);
+                {
+                    value = TruncInt32ToInt16(GetInt32OfTInt(codePointValue));
+                    Jump(&newObj);
+                }
+                Bind(&notInt);
+                {
+                    value = TruncInt32ToInt16(DoubleToInt(glue, GetDoubleOfTDouble(codePointValue), base::INT16_BITS));
+                    Jump(&newObj);
+                }
+                Bind(&newObj);
+                Branch(IsASCIICharacter(ZExtInt16ToInt32(*value)), &canBeCompress, &canNotBeCompress);
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                Bind(&canBeCompress);
+                {
+                    Label afterNew(env);
+                    newBuilder.AllocLineStringObject(res, &afterNew, Int32(1), true);
+                    Bind(&afterNew);
+                    {
+                        GateRef dst = PtrAdd(res->ReadVariable(), IntPtr(LineEcmaString::DATA_OFFSET));
+                        Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt16ToInt8(*value));
+                        Jump(exit);
+                    }
+                }
+                Bind(&canNotBeCompress);
+                {
+                    Label afterNew1(env);
+                    newBuilder.AllocLineStringObject(res, &afterNew1, Int32(1), false);
+                    Bind(&afterNew1);
+                    {
+                        GateRef dst = PtrAdd(res->ReadVariable(), IntPtr(LineEcmaString::DATA_OFFSET));
+                        Store(VariableType::INT16(), glue, dst, IntPtr(0), *value);
+                        Jump(exit);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label next(env);
+    Label posTagNotUndefined(env);
+    Label posTagIsInt(env);
+    Label posTagNotInt(env);
+    Label posNotGreaterLen(env);
+    Label posGreaterLen(env);
+    Label posNotLessZero(env);
+    Label posTagIsDouble(env);
+    Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+            Bind(&flattenFastPath);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
+            Bind(&posTagNotUndefined);
+            {
+                GateRef posTag = GetCallArg0(numArgs);
+                Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                Bind(&posTagIsInt);
+                pos = GetInt32OfTInt(posTag);
+                Jump(&next);
+                Bind(&posTagNotInt);
+                Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                Bind(&posTagIsDouble);
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                Branch(Int32GreaterThanOrEqual(*pos, thisLen), &posGreaterLen, &posNotGreaterLen);
+                Bind(&posNotGreaterLen);
+                {
+                    Branch(Int32LessThan(*pos, Int32(0)), &posGreaterLen, &posNotLessZero);
+                    Bind(&posNotLessZero);
+                    {
+                        StringInfoGateRef stringInfoGate(&thisFlat);
+                        res->WriteVariable(CreateFromEcmaString(glue, *pos, stringInfoGate));
+                        Jump(exit);
+                    }
+                }
+                Bind(&posGreaterLen);
+                {
+                    res->WriteVariable(GetGlobalConstantValue(
+                        VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX));
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label next(env);
+    Label posTagNotUndefined(env);
+    Label posTagIsInt(env);
+    Label posTagNotInt(env);
+    Label posNotGreaterLen(env);
+    Label posNotLessZero(env);
+    Label posTagIsDouble(env);
+    Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+            Bind(&flattenFastPath);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
+            Bind(&posTagNotUndefined);
+            {
+                GateRef posTag = GetCallArg0(numArgs);
+                Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                Bind(&posTagIsInt);
+                pos = GetInt32OfTInt(posTag);
+                Jump(&next);
+                Bind(&posTagNotInt);
+                Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                Bind(&posTagIsDouble);
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                Branch(Int32GreaterThanOrEqual(*pos, thisLen), exit, &posNotGreaterLen);
+                Bind(&posNotGreaterLen);
+                {
+                    Branch(Int32LessThan(*pos, Int32(0)), exit, &posNotLessZero);
+                    Bind(&posNotLessZero);
+                    {
+                        StringInfoGateRef stringInfoGate(&thisFlat);
+                        res->WriteVariable(IntToTaggedPtr(StringAt(stringInfoGate, *pos)));
+                        Jump(exit);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label isSearchString(env);
+    Label next(env);
+    Label resPosGreaterZero(env);
+    Label searchTagIsHeapObject(env);
+    Label posTagNotUndefined(env);
+    Label posTagIsInt(env);
+    Label posTagNotInt(env);
+    Label posTagIsDouble(env);
+    Label nextCount(env);
+    Label posNotLessThanLen(env);
+    Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
+    Label flattenFastPath1(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            GateRef searchTag = GetCallArg0(numArgs);
+            Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
+            Bind(&searchTagIsHeapObject);
+            Branch(IsString(searchTag), &isSearchString, slowPath);
+            Bind(&isSearchString);
+            {
+                GateRef thisLen = GetLengthFromString(thisValue);
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
+                Bind(&posTagNotUndefined);
+                {
+                    GateRef posTag = GetCallArg1(numArgs);
+                    Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                    Bind(&posTagIsInt);
+                    pos = GetInt32OfTInt(posTag);
+                    Jump(&next);
+                    Bind(&posTagNotInt);
+                    Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                    Bind(&posTagIsDouble);
+                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
+                    Jump(&next);
+                }
+                Bind(&next);
+                {
+                    Label posGreaterThanZero(env);
+                    Label posNotGreaterThanZero(env);
+                    Branch(Int32GreaterThan(*pos, Int32(0)), &posGreaterThanZero, &posNotGreaterThanZero);
+                    Bind(&posNotGreaterThanZero);
+                    {
+                        pos = Int32(0);
+                        Jump(&nextCount);
+                    }
+                    Bind(&posGreaterThanZero);
+                    {
+                        Branch(Int32LessThanOrEqual(*pos, thisLen), &nextCount, &posNotLessThanLen);
+                        Bind(&posNotLessThanLen);
+                        {
+                            pos = thisLen;
+                            Jump(&nextCount);
+                        }
+                    }
+                    Bind(&nextCount);
+                    {
+                        FlatStringStubBuilder thisFlat(this);
+                        thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+                        Bind(&flattenFastPath);
+                        FlatStringStubBuilder searchFlat(this);
+                        searchFlat.FlattenString(glue, searchTag, &flattenFastPath1);
+                        Bind(&flattenFastPath1);
+                        StringInfoGateRef thisStringInfoGate(&thisFlat);
+                        StringInfoGateRef searchStringInfoGate(&searchFlat);
+                        GateRef resPos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, *pos);
+                        Branch(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, exit);
+                        Bind(&resPosGreaterZero);
+                        {
+                            Label resPosLessZero(env);
+                            Branch(Int32LessThanOrEqual(resPos, thisLen), &resPosLessZero, exit);
+                            Bind(&resPosLessZero);
+                            {
+                                res->WriteVariable(IntToTaggedPtr(resPos));
+                                Jump(exit);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(end, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(from, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(to, VariableType::INT32(), Int32(0));
+
+    Label objNotUndefinedAndNull(env);
+    Label isString(env);
+    Label isSearchString(env);
+    Label countStart(env);
+    Label endTagIsUndefined(env);
+    Label startNotGreatZero(env);
+    Label countEnd(env);
+    Label endNotGreatZero(env);
+    Label countFrom(env);
+    Label countRes(env);
+    Label startTagNotUndefined(env);
+    Label posTagIsInt(env);
+    Label posTagNotInt(env);
+    Label posTagIsDouble(env);
+    Label endTagNotUndefined(env);
+    Label endTagIsInt(env);
+    Label endTagNotInt(env);
+    Label endTagIsDouble(env);
+    Label endGreatZero(env);
+    Label endGreatLen(env);
+    Label startGreatZero(env);
+    Label startGreatEnd(env);
+    Label startNotGreatEnd(env);
+    Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
+    Label sliceString(env);
+    Label fastSubstring(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        Bind(&thisIsHeapobject);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            Label next(env);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
+            Bind(&startTagNotUndefined);
+            {
+                GateRef startTag = GetCallArg0(numArgs);
+                Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
+                Bind(&posTagIsInt);
+                start = GetInt32OfTInt(startTag);
+                Jump(&next);
+                Bind(&posTagNotInt);
+                Branch(TaggedIsDouble(startTag), &posTagIsDouble, slowPath);
+                Bind(&posTagIsDouble);
+                start = DoubleToInt(glue, GetDoubleOfTDouble(startTag));
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagIsUndefined, &endTagNotUndefined);
+                Bind(&endTagIsUndefined);
+                {
+                    end = thisLen;
+                    Jump(&countStart);
+                }
+                Bind(&endTagNotUndefined);
+                {
+                    GateRef endTag = GetCallArg1(numArgs);
+                    Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
+                    Bind(&endTagIsInt);
+                    end = GetInt32OfTInt(endTag);
+                    Jump(&countStart);
+                    Bind(&endTagNotInt);
+                    Branch(TaggedIsDouble(endTag), &endTagIsDouble, slowPath);
+                    Bind(&endTagIsDouble);
+                    end = DoubleToInt(glue, GetDoubleOfTDouble(endTag));
+                    Jump(&countStart);
+                }
+            }
+            Bind(&countStart);
+            {
+                Label startGreatLen(env);
+                Branch(Int32GreaterThan(*start, Int32(0)), &startGreatZero, &startNotGreatZero);
+                Bind(&startNotGreatZero);
+                {
+                    start = Int32(0);
+                    Jump(&countEnd);
+                }
+                Bind(&startGreatZero);
+                {
+                    Branch(Int32GreaterThan(*start, thisLen), &startGreatLen, &countEnd);
+                    Bind(&startGreatLen);
+                    {
+                        start = thisLen;
+                        Jump(&countEnd);
+                    }
+                }
+            }
+            Bind(&countEnd);
+            {
+                Branch(Int32GreaterThan(*end, Int32(0)), &endGreatZero, &endNotGreatZero);
+                Bind(&endNotGreatZero);
+                {
+                    end = Int32(0);
+                    Jump(&countFrom);
+                }
+                Bind(&endGreatZero);
+                {
+                    Branch(Int32GreaterThan(*end, thisLen), &endGreatLen, &countFrom);
+                    Bind(&endGreatLen);
+                    {
+                        end = thisLen;
+                        Jump(&countFrom);
+                    }
+                }
+            }
+            Bind(&countFrom);
+            {
+                Branch(Int32GreaterThan(*start, *end), &startGreatEnd, &startNotGreatEnd);
+                Bind(&startGreatEnd);
+                {
+                    from = *end;
+                    to = *start;
+                    Jump(&countRes);
+                }
+                Bind(&startNotGreatEnd);
+                {
+                    from = *start;
+                    to = *end;
+                    Jump(&countRes);
+                }
+            }
+            Bind(&countRes);
+            {
+                GateRef len = Int32Sub(*to, *from);
+                FlatStringStubBuilder thisFlat(this);
+                thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+                Bind(&flattenFastPath);
+                {
+                    Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
+                        &sliceString, &fastSubstring);
+                    Bind(&sliceString);
+                    {
+                        NewObjectStubBuilder newBuilder(this);
+                        newBuilder.SetParameters(glue, 0);
+                        newBuilder.AllocSlicedStringObject(res, exit, *from, len, &thisFlat);
+                    }
+                    Bind(&fastSubstring);
+                    StringInfoGateRef stringInfoGate(&thisFlat);
+                    res->WriteVariable(FastSubString(glue, thisValue, *from, len, stringInfoGate));
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)
 {
     auto env = GetEnvironment();

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"
@@ -109,10 +109,24 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    if (acc_.HasStringType(gate)) {
+        VisitStringBinaryOp(gate);
+        return;
+    }
+
+    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ) {
+        if (acc_.HasPrimitiveNumberType(gate)) {
+            VisitNumberBinaryOp(gate);
+        }
+    } else {
+        VisitStrictEqual(gate);
+    }
+}
+
+void NumberSpeculativeLowering::VisitStrictEqual(GateRef gate)
+{
     if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
-    } else if (acc_.HasStringType(gate)) {
-        VisitStringBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
@@ -390,7 +404,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsNumberType());
+    ASSERT(type.IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
@@ -410,7 +424,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 
 void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
 {
-    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsNumberType());
+    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.Int32Not(value);
     UpdateRange(result, GetRange(gate));
@@ -437,25 +451,8 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
     TypedJumpOp jumpOp = jumpAcc.GetTypedJumpOp();
     ASSERT((jumpOp == TypedJumpOp::TYPED_JEQZ) || (jumpOp == TypedJumpOp::TYPED_JNEZ));
     GateRef condition = acc_.GetValueIn(gate, 0);
-    uint32_t trueWeight = BranchWeight::ONE_WEIGHT;
-    uint32_t falseWeight = BranchWeight::ONE_WEIGHT;
-    BranchKind kind = jumpAcc.GetBranchKind();
-    switch (kind) {
-        case BranchKind::TRUE_BRANCH:
-            trueWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::FALSE_BRANCH:
-            falseWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::STRONG_TRUE_BRANCH:
-            trueWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        case BranchKind::STRONG_FALSE_BRANCH:
-            falseWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        default:
-            break;
-    }
+    uint32_t trueWeight = jumpAcc.GetTrueWeight();
+    uint32_t falseWeight = jumpAcc.GetFalseWeight();
     if (jumpOp == TypedJumpOp::TYPED_JEQZ) {
         std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);
@@ -844,8 +841,12 @@ void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range
 
 RangeInfo NumberSpeculativeLowering::GetRange(GateRef gate) const
 {
-    ASSERT(!rangeInfos_[acc_.GetId(gate)].IsNone());
-    return rangeInfos_[acc_.GetId(gate)];
+    auto id = acc_.GetId(gate);
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
+    ASSERT(!rangeInfos_[id].IsNone());
+    return rangeInfos_[id];
 }
 
 GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)

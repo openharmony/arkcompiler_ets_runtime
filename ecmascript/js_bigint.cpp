@@ -588,6 +588,9 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
 {
     ASSERT(cValue != nullptr);
     ASSERT(lossless != nullptr);
+    if (bigint->IsBoolean()) {
+        bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
+    }
     JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigInt64.GetTaggedValue(), bigint.GetTaggedValue())) {
@@ -602,6 +605,9 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
 {
     ASSERT(cValue != nullptr);
     ASSERT(lossless != nullptr);
+    if (bigint->IsBoolean()) {
+        bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
+    }
     JSHandle<BigInt> bigUint64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigUint64.GetTaggedValue(), bigint.GetTaggedValue())) {

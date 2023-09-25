@@ -413,16 +413,14 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(BigIntSameValueZero)                  \
+    V(Dump)                                 \
+    V(DebugDump)                            \
+    V(DumpWithHint)                         \
+    V(DebugDumpWithHint)                    \
     V(DebugPrint)                           \
     V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \
     V(Comment)                              \
-    V(ProfileCall)                          \
-    V(ProfileDefineClass)                   \
-    V(ProfileCreateObject)                  \
-    V(ProfileOpType)                        \
-    V(ProfileObjLayout)                     \
-    V(ProfileObjIndex)                      \
     V(FatalPrint)                           \
     V(FatalPrintCustom)                     \
     V(GetActualArgvNoGC)                    \

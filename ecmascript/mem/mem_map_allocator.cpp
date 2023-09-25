@@ -33,6 +33,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
 
     MemMap mem;
     if (regular) {
+        mem = memMapPool_.GetRegularMemFromCommitted(size);
+        if (mem.GetMem() != nullptr) {
+            return mem;
+        }
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
@@ -56,6 +60,24 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
+}
+
+void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize)
+{
+    if (isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
+        // Cache regions to accelerate allocation.
+        memMapPool_.AddMemToCommittedCache(mem, size);
+        return;
+    }
+    Free(mem, size, isRegular);
+    if (isRegular && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
+        int freeNum = memMapPool_.ShouldFreeMore(cachedSize);
+        for (int i = 0; i < freeNum; i++) {
+            void *freeMem = memMapPool_.GetRegularMemFromCommitted(size).GetMem();
+            ASSERT(freeMem != nullptr);
+            Free(freeMem, size, isRegular);
+        }
+    }
 }
 
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)

@@ -14,99 +14,87 @@
  */
 #include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
-void LCRLowering::Run()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        auto op = acc_.GetOpCode(gate);
-        switch (op) {
-            case OpCode::GET_CONSTPOOL:
-                LowerGetConstPool(gate);
-                break;
-            case OpCode::STATE_SPLIT:
-                DeleteStateSplit(gate);
-                break;
-            case OpCode::ARRAY_GUARDIAN_CHECK:
-                LowerArrayGuardianCheck(gate);
-                break;
-            case OpCode::HCLASS_STABLE_ARRAY_CHECK:
-                LowerHClassStableArrayCheck(gate);
-                break;
-            case OpCode::HEAP_OBJECT_CHECK:
-                LowerHeapObjectCheck(gate);
-                break;
-            case OpCode::LOAD_CONST_OFFSET:
-                LowerLoadConstOffset(gate);
-                break;
-            case OpCode::STORE_CONST_OFFSET:
-                LowerStoreConstOffset(gate);
-                break;
-            case OpCode::CONVERT_HOLE_AS_UNDEFINED:
-                LowerConvertHoleAsUndefined(gate);
-                break;
-            case OpCode::GET_GLOBAL_ENV:
-                LowerGetGlobalEnv(gate);
-                break;
-            case OpCode::GET_GLOBAL_ENV_OBJ:
-                LowerGetGlobalEnvObj(gate);
-                break;
-            case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
-                LowerGetGlobalEnvObjHClass(gate);
-                break;
-            case OpCode::GET_GLOBAL_CONSTANT_VALUE:
-                LowerGetGlobalConstantValue(gate);
-                break;
-            case OpCode::HEAP_ALLOC:
-                LowerHeapAllocate(gate);
-                break;
-            case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
-                LowerInt32CheckRightIsZero(gate);
-                break;
-            case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
-                LowerFloat64CheckRightIsZero(gate);
-                break;
-            case OpCode::VALUE_CHECK_NEG_OVERFLOW:
-                LowerValueCheckNegOverflow(gate);
-                break;
-            case OpCode::OVERFLOW_CHECK:
-                LowerOverflowCheck(gate);
-                break;
-            case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
-                LowerInt32UnsignedUpperBoundCheck(gate);
-                break;
-            case OpCode::INT32_DIV_WITH_CHECK:
-                LowerInt32DivWithCheck(gate);
-                break;
-            case OpCode::LEX_VAR_IS_HOLE_CHECK:
-                LowerLexVarIsHoleCheck(gate);
-                break;
-            case OpCode::STORE_MEMORY:
-                LowerStoreMemory(gate);
-                break;
-            case OpCode::CHECK_AND_CONVERT:
-                LowerCheckAndConvert(gate);
-                break;
-            default:
-            break;
-        }
-    }
 
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << " ";
-        LOG_COMPILER(INFO) << "\033[34m" << "================="
-                           << " After LCRLowering "
-                           << "[" << GetMethodName() << "] "
-                           << "=================" << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
+GateRef LCRLowering::VisitGate(GateRef gate)
+{
+    auto op = acc_.GetOpCode(gate);
+    switch (op) {
+        case OpCode::GET_CONSTPOOL:
+            LowerGetConstPool(gate);
+            break;
+        case OpCode::STATE_SPLIT:
+            DeleteStateSplit(gate);
+            break;
+        case OpCode::ARRAY_GUARDIAN_CHECK:
+            LowerArrayGuardianCheck(gate);
+            break;
+        case OpCode::HCLASS_STABLE_ARRAY_CHECK:
+            LowerHClassStableArrayCheck(gate);
+            break;
+        case OpCode::HEAP_OBJECT_CHECK:
+            LowerHeapObjectCheck(gate);
+            break;
+        case OpCode::LOAD_CONST_OFFSET:
+            LowerLoadConstOffset(gate);
+            break;
+        case OpCode::STORE_CONST_OFFSET:
+            LowerStoreConstOffset(gate);
+            break;
+        case OpCode::CONVERT_HOLE_AS_UNDEFINED:
+            LowerConvertHoleAsUndefined(gate);
+            break;
+        case OpCode::GET_GLOBAL_ENV:
+            LowerGetGlobalEnv(gate);
+            break;
+        case OpCode::GET_GLOBAL_ENV_OBJ:
+            LowerGetGlobalEnvObj(gate);
+            break;
+        case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
+            LowerGetGlobalEnvObjHClass(gate);
+            break;
+        case OpCode::GET_GLOBAL_CONSTANT_VALUE:
+            LowerGetGlobalConstantValue(gate);
+            break;
+        case OpCode::HEAP_ALLOC:
+            LowerHeapAllocate(gate);
+            break;
+        case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
+            LowerInt32CheckRightIsZero(gate);
+            break;
+        case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
+            LowerFloat64CheckRightIsZero(gate);
+            break;
+        case OpCode::VALUE_CHECK_NEG_OVERFLOW:
+            LowerValueCheckNegOverflow(gate);
+            break;
+        case OpCode::OVERFLOW_CHECK:
+            LowerOverflowCheck(gate);
+            break;
+        case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
+            LowerInt32UnsignedUpperBoundCheck(gate);
+            break;
+        case OpCode::INT32_DIV_WITH_CHECK:
+            LowerInt32DivWithCheck(gate);
+            break;
+        case OpCode::LEX_VAR_IS_HOLE_CHECK:
+            LowerLexVarIsHoleCheck(gate);
+            break;
+        case OpCode::STORE_MEMORY:
+            LowerStoreMemory(gate);
+            break;
+        case OpCode::CHECK_AND_CONVERT:
+            LowerCheckAndConvert(gate);
+            break;
+        default:
+            break;
     }
+    return Circuit::NullGate();
 }
 
 void LCRLowering::LowerConvertHoleAsUndefined(GateRef gate)
@@ -205,9 +193,15 @@ void LCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
     ElementsKind kind = accessor.GetElementsKind();
     if (accessor.IsLoadElement() && !Elements::IsHole(kind)) {
-        GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
-                                                   builder_.GetElementsKindByHClass(hclass));
-        check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        if (Elements::IsComplex(kind)) {
+            GateRef elementsKindCheck = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
+                                                                         builder_.GetElementsKindByHClass(hclass));
+            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        } else {
+            GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
+                                                       builder_.GetElementsKindByHClass(hclass));
+            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        }
     } else {
         check = stableCheck;
     }
@@ -365,6 +359,12 @@ void LCRLowering::LowerCheckAndConvert(GateRef gate)
         case ValueType::BOOL:
             LowerCheckSupportAndConvert(gate, frameState);
             break;
+        case ValueType::TAGGED_NULL:
+            LowerCheckNullAndConvert(gate, frameState);
+            break;
+        case ValueType::UNDEFINED:
+            LowerUndefinedAndConvert(gate, frameState);
+            break;
         default:
             UNREACHABLE();
     }
@@ -453,8 +453,52 @@ void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameStat
     GateRef typeCheck = builder_.TaggedIsBoolean(value);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTBOOL);
     GateRef result = Circuit::NullGate();
-    ASSERT(acc_.GetDstType(gate) == ValueType::BOOL);
-    result = ConvertTaggedBooleanToBool(value);
+    GateRef boolValue = ConvertTaggedBooleanToBool(value);
+    if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = boolValue;
+    } else if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.ZExtInt1ToInt32(boolValue);
+    } else if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.BooleanToFloat64(boolValue);
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerCheckNullAndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsNull(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.Int32(0);
+    } else if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.Double(0);
+    } else if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = builder_.False();
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerUndefinedAndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsUndefined(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.NanValue();
+    } else if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = builder_.False();
+    } else if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.Int32(0);
+    } else {
+        UNREACHABLE();
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -594,10 +638,12 @@ void LCRLowering::LowerHeapAllocate(GateRef gate)
 
 void LCRLowering::HeapAllocateInYoung(GateRef gate)
 {
-    Label success(&builder_);
-    Label callRuntime(&builder_);
     Label exit(&builder_);
     GateRef size = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+#ifndef ARK_ASAN_ON
+    Label success(&builder_);
+    Label callRuntime(&builder_);
     size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
     size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
     GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
@@ -605,7 +651,6 @@ void LCRLowering::HeapAllocateInYoung(GateRef gate)
     GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
     GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
 
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     GateRef newTop = builder_.PtrAdd(top, size);
     builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
     builder_.Bind(&success);
@@ -615,6 +660,7 @@ void LCRLowering::HeapAllocateInYoung(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&callRuntime);
+#endif
     {
         result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
                                       {builder_.ToTaggedInt(size)}, gate);

@@ -367,7 +367,7 @@ void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObjec
 }
 
 // For Serialization use. Does not support JSGlobalObject
-void JSObject::GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector)
+void JSObject::GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT_PRINT(!obj->IsJSGlobalObject(), "Do not support get key of JSGlobal Object");
@@ -375,7 +375,8 @@ void JSObject::GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedVal
     if (!array->IsDictionaryMode()) {
         int end = static_cast<int>(obj->GetJSHClass()->NumberOfProps());
         if (end > 0) {
-            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->GetAllKeys(end, keyVector, obj);
+            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->GetAllKeysForSerialization(end,
+                keyVector);
         }
     } else {
         NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
@@ -814,7 +815,7 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     JSHandle<JSTaggedValue> func(thread, setter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        profiler->ProfileCall(func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
@@ -840,7 +841,7 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     JSHandle<JSTaggedValue> func(thread, getter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        profiler->ProfileCall(func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);
@@ -902,7 +903,8 @@ JSTaggedValue JSObject::GetProperty(JSThread *thread, ObjectOperator *op)
     JSHandle<JSTaggedValue> holder = op->GetHolder();
     if (holder->IsJSProxy()) {
         if (op->IsElement()) {
-            return JSProxy::GetProperty(thread, JSHandle<JSProxy>::Cast(holder), op->GetKey(), receiver)
+            JSHandle<JSTaggedValue> key(thread, JSTaggedValue(op->GetElementIndex()));
+            return JSProxy::GetProperty(thread, JSHandle<JSProxy>::Cast(holder), key, receiver)
                 .GetValue()
                 .GetTaggedValue();
         }
@@ -1216,21 +1218,6 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     return true;
 }
 
-JSTaggedValue JSObject::GetCtorFromPrototype(JSThread *thread, JSTaggedValue prototype)
-{
-    if (!prototype.IsJSObject()) {
-        return JSTaggedValue::Undefined();
-    }
-    JSHandle<JSTaggedValue> object(thread, prototype);
-    JSHandle<JSTaggedValue> ctorKey = thread->GlobalConstants()->GetHandledConstructorString();
-    JSHandle<JSTaggedValue> ctorObj(JSObject::GetProperty(thread, object, ctorKey).GetValue());
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        return JSTaggedValue::Undefined();
-    }
-    return ctorObj.GetTaggedValue();
-}
-
 bool JSObject::HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -1338,16 +1325,19 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
         }
     }
     uint32_t elementIndex = 0;
-    while ((filter & NATIVE_KEY_SKIP_STRINGS) && (retArrayEffectivelength > 0) &&
-           (elementIndex < retArrayEffectivelength)) {
-        if (retArray->Get(elementIndex).IsString()) {
-            TaggedArray::RemoveElementByIndex(thread, retArray, elementIndex, retArrayEffectivelength);
-            retArrayEffectivelength--;
-        } else {
-            elementIndex++;
+    if (filter & NATIVE_KEY_SKIP_STRINGS) {
+        while ((retArrayEffectivelength > 0) && (elementIndex < retArrayEffectivelength)) {
+            if (retArray->Get(elementIndex).IsString()) {
+                TaggedArray::RemoveElementByIndex(thread, retArray, elementIndex, retArrayEffectivelength);
+                retArrayEffectivelength--;
+            } else {
+                elementIndex++;
+            }
         }
     }
-    retArray->Trim(thread, retArrayEffectivelength);
+    if (retArray->GetLength() > retArrayEffectivelength) {
+        retArray->Trim(thread, retArrayEffectivelength);
+    }
     return retArray;
 }
 
@@ -2281,9 +2271,7 @@ int32_t ECMAObject::GetHash() const
             return 0;
         }
     }
-    JSThread *thread = this->GetJSThread();
-    JSHandle<JSTaggedValue> valueHandle(thread, value);
-    return JSTaggedValue::ToInt32(thread, valueHandle);
+    return value.GetInt();
 }
 
 bool ECMAObject::HasHash() const

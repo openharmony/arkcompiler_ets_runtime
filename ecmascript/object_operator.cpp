@@ -91,8 +91,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
-    if (holder_->IsString() &&
-        (IsElement() && elementIndex_ < EcmaStringAccessor(holder_->GetTaggedObject()).GetLength())) {
+    if (holder_->IsString() && (GetThroughElement() || GetStringLength())) {
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
     } else {
@@ -481,10 +480,12 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetElements())->Set(thread_,
                     GetIndex(), value.GetTaggedValue());
-                return true;
+            } else {
+                elements->Set(thread_, GetIndex(), value.GetTaggedValue());
             }
-            elements->Set(thread_, GetIndex(), value.GetTaggedValue());
-            JSHClass::TransitToElementsKind(thread_, receiver, value);
+            if (JSHClass::TransitToElementsKind(thread_, receiver, value)) {
+                SetIsTransition(true);
+            }
             return true;
         }
 

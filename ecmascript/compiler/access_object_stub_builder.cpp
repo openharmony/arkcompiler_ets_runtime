@@ -40,20 +40,14 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetPropertyByName(glue, receiver, propKey, callback);
-        Label notHole(env);
-        Branch(TaggedIsHole(*result), &slowPath, &notHole);
-        Bind(&notHole);
-        {
-            callback.ProfileObjLayoutByLoad(receiver);
-            Jump(&exit);
-        }
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
-        callback.ProfileObjLayoutByLoad(receiver);
+        callback.TryPreDump();
         Jump(&exit);
     }
     Bind(&exit);
@@ -117,7 +111,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId) });
-        callback.ProfileObjLayoutByStore(receiver);
+        callback.TryPreDump();
         Jump(&exit);
     }
 
@@ -166,7 +160,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
             { profileTypeInfo, receiver, key, IntToTaggedInt(slotId) });
-        ProfilerStubBuilder(env).ProfileObjLayoutOrIndex(glue, receiver, key, False(), callback);
+        callback.TryPreDump();
         Jump(&exit);
     }
     Bind(&exit);
@@ -227,7 +221,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     {
         result = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
             { profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId) });
-        ProfilerStubBuilder(env).ProfileObjLayoutOrIndex(glue, receiver, key, True(), callback);
+        callback.TryPreDump();
         Jump(&exit);
     }
     Bind(&exit);

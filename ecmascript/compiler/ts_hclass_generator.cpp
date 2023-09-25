@@ -73,8 +73,8 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
     auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
     const JSThread *thread = tsManager_->GetThread();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    int numOfProps = hclass->NumberOfProps();
-    for (int i = 0; i < numOfProps; i++) {
+    uint32_t numOfProps = hclass->NumberOfProps();
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto key = layoutInfo->GetKey(i);
         if (!key.IsString()) {
             continue;
@@ -221,6 +221,8 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     JSHandle<TSObjLayoutInfo> tsLayout(thread, prototypeType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
+    // There is only function information in abc, which needs to be brought up to the front for processing. Other fields should be collected first and then optimized to the end.
+    // Please note that there may be a problem with order in this way
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -292,14 +294,13 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
     JSHandle<TSObjectType> constructorType(thread, classType->GetConstructorType());
     JSHandle<TSObjLayoutInfo> tsLayout(thread, constructorType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties() + ClassInfoExtractor::STATIC_RESERVED_LENGTH;
-    JSHandle<JSHClass> hclass;
-    uint32_t functionFirstIndex = numOfProps;
-    uint32_t numNonStaticFunc = 0;
-    bool hasFunction = false;
+    JSHandle<JSHClass> hclass;    
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+        std::vector<JSHandle<JSTaggedValue>> noFunc;
+        int functionCount = -1;
         for (uint32_t index = 0; index < numOfProps; ++index) {
             JSTaggedValue tsPropKey;
             PropertyAttributes attributes;
@@ -307,14 +308,17 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
                 case ClassInfoExtractor::LENGTH_INDEX:
                     attributes = PropertyAttributes::Default(false, false, true);
                     tsPropKey = globalConst->GetLengthString();
+                    functionCount++;
                     break;
                 case ClassInfoExtractor::NAME_INDEX:
                     attributes = PropertyAttributes::Default(false, false, true);
                     tsPropKey = globalConst->GetNameString();
+                    functionCount++;
                     break;
                 case ClassInfoExtractor::PROTOTYPE_INDEX:
                     attributes = PropertyAttributes::DefaultAccessor(false, false, false);
                     tsPropKey = globalConst->GetPrototypeString();
+                    functionCount++;
                     break;
                 default:
                     attributes = PropertyAttributes::Default(true, false, true);
@@ -322,33 +326,28 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
                     JSTaggedValue typeId = tsLayout->GetTypeId(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
                     GlobalTSTypeRef gt(static_cast<uint32_t>(typeId.GetNumber()));
                     if (!tsManager->IsFunctionTypeKind(gt)) {
+                        noFunc.emplace_back(JSHandle<JSTaggedValue>(thread, tsPropKey));
                         continue;
-                    }
-                    if (!hasFunction) {
-                        hasFunction = true;
-                        functionFirstIndex = index;
-                        numNonStaticFunc = functionFirstIndex - ClassInfoExtractor::STATIC_RESERVED_LENGTH;
                     }
                     if (tsManager->IsGetterSetterFunc(gt)) {
                         attributes.SetIsAccessor(true);
                     }
+                    functionCount++;
                     break;
             }
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(JSHandle<JSTaggedValue>(thread, tsPropKey)),
                          "Key is not a property key");
             attributes.SetIsInlinedProps(true);
             attributes.SetRepresentation(Representation::NONE);
-            attributes.SetOffset(index - numNonStaticFunc);
-            layout->AddKey(thread, index - numNonStaticFunc, tsPropKey, attributes);
+            attributes.SetOffset(functionCount);
+            layout->AddKey(thread, functionCount, tsPropKey, attributes);
         }
-        uint32_t numStaticFunc = numOfProps - functionFirstIndex;
-        for (uint32_t index = ClassInfoExtractor::STATIC_RESERVED_LENGTH; index < functionFirstIndex; index++) {
-            JSTaggedValue tsPropKey = tsLayout->GetKey(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
+        for (uint32_t index = 1; index <= noFunc.size(); index++) {
             PropertyAttributes attributes = PropertyAttributes::Default();
             attributes.SetIsInlinedProps(true);
             attributes.SetRepresentation(Representation::NONE);
-            attributes.SetOffset(index + numStaticFunc);
-            layout->AddKey(thread, index + numStaticFunc, tsPropKey, attributes);
+            attributes.SetOffset(index + functionCount);
+            layout->AddKey(thread, index + functionCount, noFunc[index - 1].GetTaggedValue(), attributes);
         }
         hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, numOfProps);
         hclass->SetLayout(thread, layout);

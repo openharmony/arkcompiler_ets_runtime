@@ -54,16 +54,24 @@ enum class Tokens : uint8_t {
 
 template<typename T>
 class JsonParser {
-public:
+protected:
     using Text = const T *;
+    // Instantiation of the class is prohibited
     JsonParser() = default;
     explicit JsonParser(JSThread *thread) : thread_(thread) {}
     ~JsonParser() = default;
     NO_COPY_SEMANTIC(JsonParser);
     NO_MOVE_SEMANTIC(JsonParser);
-    JSHandle<JSTaggedValue> Parse(Text begin, Text end)
+
+    JSHandle<JSTaggedValue> Launch(Text begin, Text end)
     {
-        end_ = (end == begin) ? end : end - 1;
+        // check empty
+        if (UNLIKELY(begin == end)) {
+            return JSHandle<JSTaggedValue>(thread_, [&]() -> JSTaggedValue {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            }());
+        }
+        end_ = end - 1;
         current_ = begin;
 
         auto vm = thread_->GetEcmaVM();
@@ -72,62 +80,37 @@ public:
 
         SkipEndWhiteSpace();
         range_ = end_;
-        JSTaggedValue result = ParseJSONText<false>();
+        JSTaggedValue result = ParseJSONText();
         return JSHandle<JSTaggedValue>(thread_, result);
     }
 
-    JSHandle<JSTaggedValue> ParseUtf8(EcmaString *str)
-    {
-        ASSERT(str != nullptr);
-        isAsciiString_ = true;
-        uint32_t len = EcmaStringAccessor(str).GetLength();
-        ASSERT(len != UINT32_MAX);
-        CVector<T> buf(len + 1); // 1 means add '\0' in the end of buf
-        EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len + 1);
-        Text begin = buf.data();
-        return Parse(begin, begin + len);
-    }
-
-    JSHandle<JSTaggedValue> ParseUtf16(EcmaString *str)
-    {
-        ASSERT(str != nullptr);
-        uint32_t len = EcmaStringAccessor(str).GetLength();
-        CVector<T> buf(len);
-        EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
-        Text begin = buf.data();
-        return Parse(begin, begin + len);
-    }
-
-private:
-    template<bool inObjorArr = false>
-    JSTaggedValue ParseJSONText()
+    JSTaggedValue ParseJSONText(bool inObjorArr = false)
     {
         SkipStartWhiteSpace();
         Tokens token = ParseToken();
         switch (token) {
             case Tokens::OBJECT:
-                return ParseObject<inObjorArr>();
+                return ParseObject(inObjorArr);
             case Tokens::ARRAY:
-                return ParseArray<inObjorArr>();
+                return ParseArray(inObjorArr);
             case Tokens::LITERAL_TRUE:
-                return ParseLiteral("true", Tokens::LITERAL_TRUE);
+                return ParseLiteralTrue();
             case Tokens::LITERAL_FALSE:
-                return ParseLiteral("false", Tokens::LITERAL_FALSE);
+                return ParseLiteralFalse();
             case Tokens::LITERAL_NULL:
-                return ParseLiteral("null", Tokens::LITERAL_NULL);
+                return ParseLiteralNull();
             case Tokens::NUMBER:
-                return ParseNumber<inObjorArr>();
+                return ParseNumber(inObjorArr);
             case Tokens::STRING:
-                return ParseString<inObjorArr>();
+                return ParseString(inObjorArr);
             default:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
         }
     }
 
-    template<bool inObjOrArr = false>
-    JSTaggedValue ParseNumber()
+    JSTaggedValue ParseNumber(bool inObjorArr = false)
     {
-        if (inObjOrArr) {
+        if (inObjorArr) {
             bool isFast = true;
             bool isNumber = ReadNumberRange(isFast);
             if (!isNumber) {
@@ -174,62 +157,42 @@ private:
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
 
-    bool ReadJsonStringRange(bool &isFastString, bool &isAscii)
-    {
-        current_++;
-        if (isAsciiString_) {
-            return ReadAsciiStringRange(isFastString);
-        }
-        return ReadStringRange(isFastString, isAscii);
-    }
-
-    bool IsFastParseJsonString(bool &isFastString, bool &isAscii)
-    {
-        current_++;
-        if (isAsciiString_) {
-            return IsFastParseAsciiString(isFastString);
-        }
-        return IsFastParseString(isFastString, isAscii);
-    }
-
-    bool ParseBackslash(CString &res)
+    bool ParseBackslash(std::string &res)
     {
         if (current_ == end_) {
             return false;
         }
-        current_++;
+        Advance();
         switch (*current_) {
             case '\"':
-                res += "\"";
+                res += '\"';
                 break;
             case '\\':
-                res += "\\";
+                res += '\\';
                 break;
             case '/':
-                res += "/";
+                res += '/';
                 break;
             case 'b':
-                res += "\b";
+                res += '\b';
                 break;
             case 'f':
-                res += "\f";
+                res += '\f';
                 break;
             case 'n':
-                res += "\n";
+                res += '\n';
                 break;
             case 'r':
-                res += "\r";
+                res += '\r';
                 break;
             case 't':
-                res += "\t";
+                res += '\t';
                 break;
             case 'u': {
-                CVector<uint16_t> vec;
-                if (UNLIKELY(!ConvertStringUnicode(vec))) {
+                std::u16string u16Str;
+                if (UNLIKELY(!ConvertStringUnicode(u16Str))) {
                     return false;
                 }
-                std::u16string u16Str;
-                u16Str.assign(vec.begin(), vec.end());
                 res += base::StringHelper::U16stringToString(u16Str);
                 break;
             }
@@ -242,93 +205,40 @@ private:
     JSTaggedValue SlowParseString()
     {
         end_--;
-        CString res;
+        std::string res;
+        res.reserve(end_ - current_);
         while (current_ <= end_) {
             if (*current_ == '\\') {
                 bool isLegalChar = ParseBackslash(res);
                 if (!isLegalChar) {
                     THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON", JSTaggedValue::Exception());
                 }
-                current_++;
-            } else if (UNLIKELY(*current_ > ASCII_END)) {
-                if (UNLIKELY(*current_ >= utf_helper::DECODE_LEAD_LOW && *current_ <= utf_helper::DECODE_LEAD_HIGH &&
-                             *(current_ + 1) >= utf_helper::DECODE_TRAIL_LOW &&
-                             *(current_ + 1) <= utf_helper::DECODE_TRAIL_HIGH)) {
-                    std::u16string str(current_, current_ + 2);  // 2 means twice as many bytes as normal u16string
-                    res += ConvertToString(StringHelper::U16stringToString(str));
-                    current_ += 2;  // 2 means twice as many bytes as normal u16string
-                } else {
-                    std::u16string str(current_, current_ + 1);
-                    res += ConvertToString(StringHelper::U16stringToString(str));
-                    current_++;
-                }
+                Advance();
             } else {
-                res += *current_;
-                current_++;
+                Text nextCurrent = current_;
+                while (nextCurrent <= end_ && *nextCurrent != '\\') {
+                    ++nextCurrent;
+                }
+                ParticalParseString(res, current_, nextCurrent);
+                current_ = nextCurrent;
             }
         }
-        ASSERT(res.length() <= static_cast<size_t>(UINT32_MAX));
-        return factory_->NewFromUtf8Literal(reinterpret_cast<const uint8_t *>(res.c_str()), res.length())
+        ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
+        return factory_->NewFromUtf8Literal(reinterpret_cast<const uint8_t *>(res.c_str()), res.size())
             .GetTaggedValue();
     }
 
-    template<bool inObjorArr = false>
-    JSTaggedValue ParseString()
-    {
-        bool isFastString = true;
-        bool isAscii = true;
-        bool isLegal = true;
-        if (inObjorArr) {
-            isLegal = ReadJsonStringRange(isFastString, isAscii);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
-            }
-            if (isFastString) {
-                if (isAscii) {
-                    CString value(current_, end_);
-                    current_ = end_;
-                    ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
-                    return factory_->NewFromUtf8LiteralCompress(
-                        reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
-                }
-                std::u16string value(current_, end_);
-                current_ = end_;
-                ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
-                return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
-            }
-        } else {
-            if (*end_ != '"' || current_ == end_) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
-            }
-            isLegal = IsFastParseJsonString(isFastString, isAscii);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
-            }
-            if (LIKELY(isFastString)) {
-                if (isAscii) {
-                    CString value(current_, end_);
-                    ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
-                    return factory_->NewFromUtf8LiteralCompress(
-                        reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
-                }
-                std::u16string value(current_, end_);
-                ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
-                return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
-            }
-        }
-        return SlowParseString();
-    }
+    virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;
 
-    template<bool inObjorArr = false>
-    JSTaggedValue ParseArray()
+    virtual JSTaggedValue ParseString(bool inObjorArr = false) = 0;
+
+    JSTaggedValue ParseArray(bool inObjorArr = false)
     {
         if (UNLIKELY(*range_ != ']' && !inObjorArr)) {
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON", JSTaggedValue::Exception());
         }
 
-        current_++;
+        Advance();
         SkipStartWhiteSpace();
         JSHandle<JSArray> arr = factory_->NewJSArray();
         if (*current_ == ']') {
@@ -338,12 +248,12 @@ private:
         JSTaggedValue value;
         uint32_t index = 0;
         while (current_ <= range_) {
-            value = ParseJSONText<true>();
+            value = ParseJSONText(true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             ObjectFastOperator::SetPropertyByIndex<true>(thread_, arr.GetTaggedValue(), index++, value);
             GetNextNonSpaceChar();
             if (*current_ == ',') {
-                current_++;
+                Advance();
             } else if (*current_ == ']') {
                 if (inObjorArr || current_ == range_) {
                     return arr.GetTaggedValue();
@@ -355,8 +265,7 @@ private:
         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON", JSTaggedValue::Exception());
     }
 
-    template<bool inObjorArr = false>
-    JSTaggedValue ParseObject()
+    JSTaggedValue ParseObject(bool inObjorArr = false)
     {
         if (UNLIKELY(*range_ != '}' && !inObjorArr)) {
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
@@ -364,7 +273,7 @@ private:
 
         JSHandle<JSFunction> proto(env_->GetObjectFunction());
         JSHandle<JSObject> result = factory_->NewJSObjectByConstructor(proto);
-        current_++;
+        Advance();
         if (*current_ == '}') {
             return result.GetTaggedValue();
         }
@@ -374,7 +283,7 @@ private:
         while (current_ <= range_) {
             SkipStartWhiteSpace();
             if (*current_ == '"') {
-                keyHandle.Update(ParseString<true>());
+                keyHandle.Update(ParseString(true));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             } else {
                 if (*current_ == '}' && (inObjorArr || current_ == range_)) {
@@ -384,11 +293,11 @@ private:
             }
             GetNextNonSpaceChar();
             if (*current_ == ':') {
-                current_++;
+                Advance();
             } else {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
             }
-            value = ParseJSONText<true>();
+            value = ParseJSONText(true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             // fast path
             JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<true>(thread_, result.GetTaggedValue(),
@@ -401,7 +310,7 @@ private:
             }
             GetNextNonSpaceChar();
             if (*current_ == ',') {
-                current_++;
+                Advance();
             } else if (*current_ == '}') {
                 if (inObjorArr || current_ == range_) {
                     return result.GetTaggedValue();
@@ -428,7 +337,7 @@ private:
     {
         while (current_ != end_) {
             if (*current_ == ' ' || *current_ == '\r' || *current_ == '\n' || *current_ == '\t') {
-                current_++;
+                Advance();
             } else {
                 break;
             }
@@ -437,7 +346,7 @@ private:
 
     void GetNextNonSpaceChar()
     {
-        current_++;
+        Advance();
         SkipStartWhiteSpace();
     }
 
@@ -473,41 +382,55 @@ private:
         }
     }
 
-    JSTaggedValue ParseLiteral(CString str, Tokens literalToken)
+    JSTaggedValue ParseLiteralTrue()
     {
-        ASSERT((str.size() - 1) <= static_cast<size_t>(UINT32_MAX));
-        uint32_t strLen = str.size() - 1;
+        static const char literalTrue[] = "true";
         uint32_t remainingLength = range_ - current_;
-        if (UNLIKELY(remainingLength < strLen)) {
+        if (UNLIKELY(remainingLength < 3)) { // 3: literalTrue length - 1
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
         }
-
-        bool isMatch = MatchText(str, strLen);
+        bool isMatch = MatchText(literalTrue, 3); // 3: literalTrue length - 1
         if (LIKELY(isMatch)) {
-            switch (literalToken) {
-                case Tokens::LITERAL_TRUE:
-                    return JSTaggedValue::True();
-                case Tokens::LITERAL_FALSE:
-                    return JSTaggedValue::False();
-                case Tokens::LITERAL_NULL:
-                    return JSTaggedValue::Null();
-                default:
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
-                    UNREACHABLE();
-            }
+            return JSTaggedValue::True();
         }
         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
     }
 
-    bool MatchText(CString str, uint32_t matchLen)
+    JSTaggedValue ParseLiteralFalse()
     {
-        const char *text = str.c_str();
-        uint32_t pos = 1;
-        while (pos <= matchLen) {
-            if (current_[pos] != text[pos]) {
+        static const char literalFalse[] = "false";
+        uint32_t remainingLength = range_ - current_;
+        if (UNLIKELY(remainingLength < 4)) { // 4: literalFalse length - 1
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        }
+        bool isMatch = MatchText(literalFalse, 4); // 4: literalFalse length - 1
+        if (LIKELY(isMatch)) {
+            return JSTaggedValue::False();
+        }
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    }
+
+    JSTaggedValue ParseLiteralNull()
+    {
+        static const char literalNull[] = "null";
+        uint32_t remainingLength = range_ - current_;
+        if (UNLIKELY(remainingLength < 3)) { // 3: literalNull length - 1
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        }
+        bool isMatch = MatchText(literalNull, 3); // 3: literalNull length - 1
+        if (LIKELY(isMatch)) {
+            return JSTaggedValue::Null();
+        }
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    }
+
+    bool MatchText(const char *str, uint32_t matchLen)
+    {
+        // first char is already matched
+        for (uint32_t pos = 1; pos <= matchLen; ++pos) {
+            if (current_[pos] != str[pos]) {
                 return false;
             }
-            pos++;
         }
         current_ += matchLen;
         return true;
@@ -578,7 +501,7 @@ private:
             if (current_ == end_) {
                 return false;
             }
-            current_++;
+            Advance();
             if (IsNumberCharacter(*current_)) {
                 return true;
             }
@@ -593,14 +516,14 @@ private:
         }
 
         while (current_ != end_) {
-            current_++;
+            Advance();
             if (IsNumberCharacter(*current_)) {
                 continue;
             } else if (*current_ == 'e' || *current_ == 'E') {
                 if (hasExponent || current_ == end_) {
                     return false;
                 }
-                current_++;
+                Advance();
                 if (!IsExponentNumber()) {
                     return false;
                 }
@@ -617,7 +540,7 @@ private:
         if (hasExponent || current_ == end_) {
             return false;
         }
-        current_++;
+        Advance();
         if (!IsExponentNumber()) {
             return false;
         }
@@ -625,111 +548,46 @@ private:
             if (!IsNumberCharacter(*current_)) {
                 return false;
             }
-            current_++;
+            Advance();
         }
         return true;
     }
 
-    bool ReadStringRange(bool &isFast, bool &isAscii)
+    bool ConvertStringUnicode(std::u16string &u16Str)
     {
-        T c = 0;
-        Text current = current_;
-
-        while (current != range_) {
-            c = *current;
-            if (c == '"') {
-                end_ = current;
+        do {
+            uint32_t remainingLength = end_ - current_;
+            if (remainingLength < UNICODE_DIGIT_LENGTH) {
+                return false;
+            }
+            uint16_t res = 0;
+            for (uint32_t pos = 0; pos < UNICODE_DIGIT_LENGTH; pos++) {
+                Advance();
+                if (*current_ >= '0' && *current_ <= '9') {
+                    res *= NUMBER_SIXTEEN;
+                    res += (*current_ - '0');
+                } else if (*current_ >= 'a' && *current_ <= 'f') {
+                    res *= NUMBER_SIXTEEN;
+                    res += (*current_ - 'a' + NUMBER_TEN);
+                } else if (*current_ >= 'A' && *current_ <= 'F') {
+                    res *= NUMBER_SIXTEEN;
+                    res += (*current_ - 'A' + NUMBER_TEN);
+                } else {
+                    return false;
+                }
+            }
+            u16Str.push_back(res);
+        } while ([&]() -> bool {
+            static const int unicodePrefixLen = 2;
+            if (end_ - current_ < unicodePrefixLen) {
+                return false;
+            }
+            if (*(current_ + 1) == '\\' && *(current_ + unicodePrefixLen) == 'u') {
+                AdvanceMultiStep(unicodePrefixLen);
                 return true;
-            } else if (UNLIKELY(c == '\\')) {
-                current++;
-                isFast = false;
             }
-            if (!IsLegalAsciiCharacter(c, isAscii)) {
-                return false;
-            }
-            current++;
-        }
-        return false;
-    }
-
-    bool ReadAsciiStringRange(bool &isFast)
-    {
-        T c = 0;
-        Text current = current_;
-
-        while (current != range_) {
-            c = *current;
-            if (c == '"') {
-                end_ = current;
-                return true;
-            } else if (UNLIKELY(c == '\\')) {
-                current++;
-                isFast = false;
-            } else if (UNLIKELY(c < CODE_SPACE)) {
-                return false;
-            }
-            current++;
-        }
-        return false;
-    }
-
-    bool IsFastParseString(bool &isFast, bool &isAscii)
-    {
-        Text current = current_;
-        while (current != end_) {
-            if (!IsLegalAsciiCharacter(*current, isAscii)) {
-                return false;
-            }
-            if (*current == '\\') {
-                isFast = false;
-            }
-            current++;
-        }
-        return true;
-    }
-
-    bool IsFastParseAsciiString(bool &isFast)
-    {
-        Text current = current_;
-        while (current != end_) {
-            if (*current < CODE_SPACE) {
-                return false;
-            } else if (*current == '\\') {
-                isFast = false;
-            }
-            current++;
-        }
-        return true;
-    }
-
-    bool ConvertStringUnicode(CVector<uint16_t> &vec)
-    {
-        uint32_t remainingLength = end_ - current_;
-        if (remainingLength < UNICODE_DIGIT_LENGTH) {
             return false;
-        }
-        uint16_t res = 0;
-        uint32_t exponent = UNICODE_DIGIT_LENGTH;
-        for (uint32_t pos = 0; pos < UNICODE_DIGIT_LENGTH; pos++) {
-            current_++;
-            exponent--;
-            if (*current_ >= '0' && *current_ <= '9') {
-                res += (*current_ - '0') * pow(NUMBER_SIXTEEN, exponent);
-            } else if (*current_ >= 'a' && *current_ <= 'f') {
-                res += (*current_ - 'a' + NUMBER_TEN) * pow(NUMBER_SIXTEEN, exponent);
-            } else if (*current_ >= 'A' && *current_ <= 'F') {
-                res += (*current_ - 'A' + NUMBER_TEN) * pow(NUMBER_SIXTEEN, exponent);
-            } else {
-                return false;
-            }
-        }
-
-        vec.emplace_back(res);
-
-        if (*(current_ + 1) == '\\' && *(current_ + 2) == 'u') {  // 2: next two chars
-            current_ += 2;                                        // 2: point moves backwards by two digits
-            return ConvertStringUnicode(vec);
-        }
+        }());
         return true;
     }
 
@@ -754,7 +612,7 @@ private:
     bool CheckNonZeroBeginNumber(bool &hasExponent)
     {
         while (current_ != end_) {
-            current_++;
+            Advance();
             if (IsNumberCharacter(*current_)) {
                 continue;
             } else if (*current_ == '.') {
@@ -772,25 +630,230 @@ private:
         return true;
     }
 
-    bool IsLegalAsciiCharacter(T c, bool &isAscii)
+    inline void Advance()
     {
-        if (c <= ASCII_END) {
-            if (c >= CODE_SPACE) {
-                return true;
-            }
-            return false;
-        }
-        isAscii = false;
-        return true;
+        ++current_;
     }
 
-    bool isAsciiString_ {false};
+    inline void AdvanceMultiStep(int step)
+    {
+        current_ += step;
+    }
+
     Text end_ {nullptr};
     Text current_ {nullptr};
     Text range_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     GlobalEnv *env_ {nullptr};
+};
+
+class Utf8JsonParser : public JsonParser<uint8_t> {
+public:
+    Utf8JsonParser() = default;
+    explicit Utf8JsonParser(JSThread *thread) : JsonParser(thread) {}
+    ~Utf8JsonParser() = default;
+    NO_COPY_SEMANTIC(Utf8JsonParser);
+    NO_MOVE_SEMANTIC(Utf8JsonParser);
+
+    JSHandle<JSTaggedValue> Parse(EcmaString *str)
+    {
+        ASSERT(str != nullptr);
+        uint32_t len = EcmaStringAccessor(str).GetLength();
+        ASSERT(len != UINT32_MAX);
+        CVector<uint8_t> buf(len);
+        EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len);
+        Text begin = buf.data();
+        return Launch(begin, begin + len);
+    }
+
+private:
+    void ParticalParseString(std::string& str, Text current, Text nextCurrent) override
+    {
+        str += std::string_view(reinterpret_cast<const char *>(current), nextCurrent - current);
+    }
+
+    JSTaggedValue ParseString(bool inObjorArr = false) override
+    {
+        bool isFastString = true;
+        bool isLegal = true;
+        if (inObjorArr) {
+            isLegal = ReadJsonStringRange(isFastString);
+            if (!isLegal) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            if (isFastString) {
+                std::string_view value(reinterpret_cast<const char *>(current_), end_ - current_);
+                current_ = end_;
+                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                return factory_->NewFromUtf8LiteralCompress(
+                    reinterpret_cast<const uint8_t *>(value.data()), value.size()).GetTaggedValue();
+            }
+        } else {
+            if (*end_ != '"' || current_ == end_) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            isLegal = IsFastParseJsonString(isFastString);
+            if (!isLegal) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            if (LIKELY(isFastString)) {
+                std::string_view value(reinterpret_cast<const char *>(current_), end_ - current_);
+                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                return factory_->NewFromUtf8LiteralCompress(
+                    reinterpret_cast<const uint8_t *>(value.data()), value.size()).GetTaggedValue();
+            }
+        }
+        return SlowParseString();
+    }
+
+    bool ReadJsonStringRange(bool &isFastString)
+    {
+        Advance();
+        // chars are within Ascii
+        for (Text current = current_; current != range_; ++current) {
+            uint8_t c = *current;
+            if (c == '"') {
+                end_ = current;
+                return true;
+            } else if (UNLIKELY(c == '\\')) {
+                current++;
+                isFastString = false;
+            } else if (UNLIKELY(c < CODE_SPACE)) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    bool IsFastParseJsonString(bool &isFastString)
+    {
+        Advance();
+        // chars are within Ascii
+        for (Text current = current_; current != end_; ++current) {
+            if (*current < CODE_SPACE) {
+                return false;
+            } else if (*current == '\\') {
+                isFastString = false;
+            }
+        }
+        return true;
+    }
+};
+
+class Utf16JsonParser : public JsonParser<uint16_t> {
+public:
+    Utf16JsonParser() = default;
+    explicit Utf16JsonParser(JSThread *thread) : JsonParser(thread) {}
+    ~Utf16JsonParser() = default;
+    NO_COPY_SEMANTIC(Utf16JsonParser);
+    NO_MOVE_SEMANTIC(Utf16JsonParser);
+
+    JSHandle<JSTaggedValue> Parse(EcmaString *str)
+    {
+        ASSERT(str != nullptr);
+        uint32_t len = EcmaStringAccessor(str).GetLength();
+        CVector<uint16_t> buf(len);
+        EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
+        Text begin = buf.data();
+        return Launch(begin, begin + len);
+    }
+
+private:
+    void ParticalParseString(std::string& str, Text current, Text nextCurrent) override
+    {
+        str += StringHelper::U16stringToString(std::u16string(current, nextCurrent));
+    }
+
+    JSTaggedValue ParseString(bool inObjorArr = false) override
+    {
+        bool isFastString = true;
+        bool isAscii = true;
+        bool isLegal = true;
+        if (inObjorArr) {
+            isLegal = ReadJsonStringRange(isFastString, isAscii);
+            if (!isLegal) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            if (isFastString) {
+                if (isAscii) {
+                    std::string value(current_, end_); // from uint16_t* to std::string, can't use std::string_view
+                    current_ = end_;
+                    ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                    return factory_->NewFromUtf8LiteralCompress(
+                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()).GetTaggedValue();
+                }
+                std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
+                current_ = end_;
+                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                return factory_->NewFromUtf16LiteralNotCompress(
+                    reinterpret_cast<const uint16_t *>(value.data()), value.size()).GetTaggedValue();
+            }
+        } else {
+            if (*end_ != '"' || current_ == end_) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            isLegal = IsFastParseJsonString(isFastString, isAscii);
+            if (!isLegal) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            }
+            if (LIKELY(isFastString)) {
+                if (isAscii) {
+                    std::string value(current_, end_);  // from uint16_t* to std::string, can't use std::string_view
+                    ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                    return factory_->NewFromUtf8LiteralCompress(
+                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()).GetTaggedValue();
+                }
+                std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
+                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
+                return factory_->NewFromUtf16LiteralNotCompress(
+                    reinterpret_cast<const uint16_t *>(value.data()), value.size()).GetTaggedValue();
+            }
+        }
+        return SlowParseString();
+    }
+
+    bool ReadJsonStringRange(bool &isFastString, bool &isAscii)
+    {
+        Advance();
+        for (Text current = current_; current != range_; ++current) {
+            uint16_t c = *current;
+            if (c == '"') {
+                end_ = current;
+                return true;
+            } else if (UNLIKELY(c == '\\')) {
+                ++current;
+                isFastString = false;
+            }
+            if (!IsLegalAsciiCharacter(c, isAscii)) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    bool IsFastParseJsonString(bool &isFastString, bool &isAscii)
+    {
+        Advance();
+        for (Text current = current_; current != end_; ++current) {
+            if (!IsLegalAsciiCharacter(*current, isAscii)) {
+                return false;
+            }
+            if (*current == '\\') {
+                isFastString = false;
+            }
+        }
+        return true;
+    }
+
+    bool IsLegalAsciiCharacter(uint16_t c, bool &isAscii)
+    {
+        if (c <= ASCII_END) {
+            return c >= CODE_SPACE ? true : false;
+        }
+        isAscii = false;
+        return true;
+    }
 };
 
 class Internalize {

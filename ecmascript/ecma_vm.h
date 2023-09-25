@@ -185,8 +185,8 @@ public:
         return icEnabled_;
     }
 
-    void PushToNativePointerList(JSNativePointer *array);
-    void RemoveFromNativePointerList(JSNativePointer *array);
+    void PushToNativePointerList(JSNativePointer *pointer);
+    void RemoveFromNativePointerList(JSNativePointer *pointer);
     void PushToDeregisterModuleList(CString module);
     void RemoveFromDeregisterModuleList(CString module);
     bool ContainInDeregisterModuleList(CString module);

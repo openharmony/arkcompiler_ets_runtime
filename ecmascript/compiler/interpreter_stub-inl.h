@@ -247,7 +247,8 @@ GateRef InterpreterStubBuilder::GetProfileTypeInfoFromMethod(GateRef method)
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
+    GateRef method = GetMethodFromFunction(function);
+    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::ECMA_MODULE_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -258,6 +259,12 @@ GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
 GateRef InterpreterStubBuilder::GetConstpoolFromMethod(GateRef method)
 {
     return Load(VariableType::JS_POINTER(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef InterpreterStubBuilder::GetModule(GateRef sp)
+{
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    return GetModuleFromFunction(currentFunc);
 }
 
 GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
@@ -312,12 +319,6 @@ void InterpreterStubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef funct
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
-}
-
-void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
 void InterpreterStubBuilder::SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,

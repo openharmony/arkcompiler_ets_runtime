@@ -19,7 +19,7 @@
 #include <functional>
 #include <initializer_list>
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 
 namespace panda::ecmascript::kungfu {
 enum class OperationType : uint8_t {
@@ -27,12 +27,13 @@ enum class OperationType : uint8_t {
     OPERATION_TYPE,
     DEFINE_CLASS,
     CREATE_OBJECT,
-    STORE_LAYOUT,
-    LOAD_LAYOUT,
-    INDEX,
     TRUE_BRANCH,
     FALSE_BRANCH,
+    TRY_DUMP,
+    TRY_PREDUMP,
 };
+
+using SlotIDFormat = BytecodeInstruction::Format;
 
 #define COMBINE_TYPE_CALL_BACK(curType, type) \
     callback.ProfileCombineOpType(            \
@@ -86,24 +87,17 @@ public:
         }
     }
 
-    inline void ProfileObjLayoutByStore(GateRef object) const
+    inline void TryDump() const
     {
         if (callback_) {
-            callback_({ object }, OperationType::STORE_LAYOUT);
+            callback_({ }, OperationType::TRY_DUMP);
         }
     }
 
-    inline void ProfileObjLayoutByLoad(GateRef object) const
+    inline void TryPreDump() const
     {
         if (callback_) {
-            callback_({ object }, OperationType::LOAD_LAYOUT);
-        }
-    }
-
-    inline void ProfileObjIndex(GateRef object) const
-    {
-        if (callback_) {
-            callback_({ object }, OperationType::INDEX);
+            callback_({ }, OperationType::TRY_PREDUMP);
         }
     }
 

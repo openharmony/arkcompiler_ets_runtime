@@ -52,7 +52,7 @@ void FunctionCallTimer::StopCount(Method *method)
 CString FunctionCallTimer::GetFullName(Method *method)
 {
     CString funcName(method->GetMethodName());
-    CString recordName = method->GetRecordName();
+    CString recordName = method->GetRecordNameStr();
     CString fullName = funcName + "@" + recordName;
     return fullName;
 }

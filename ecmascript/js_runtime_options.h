@@ -141,6 +141,7 @@ enum CommandValues {
     OPTION_COMPILER_PKG_INFO,
     OPTION_COMPILER_EXTERNAL_PKG_INFO,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
+    OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1203,6 +1204,16 @@ public:
         return enableOptLoopPeeling_;
     }
 
+    void SetEnableOptLoopInvariantCodeMotion(bool value)
+    {
+        enableOptLoopInvariantCodeMotion_ = value;
+    }
+
+    bool IsEnableOptLoopInvariantCodeMotion() const
+    {
+        return enableOptLoopInvariantCodeMotion_;
+    }
+
     void SetEnableOptOnHeapCheck(bool value)
     {
         enableOptOnHeapCheck_ = value;
@@ -1311,6 +1322,7 @@ private:
     bool fastAOTCompileMode_ {false};
     bool enableOptLoopPeeling_ {true};
     bool enableOptOnHeapCheck_ {true};
+    bool enableOptLoopInvariantCodeMotion_ {false};
 };
 }  // namespace panda::ecmascript
 

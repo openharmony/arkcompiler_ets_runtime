@@ -38,3 +38,5 @@ true
 true
 true
 RangeError
+0,0,0,0
+not-equal

@@ -43,8 +43,9 @@ public:
 
     void PostTask(std::unique_ptr<Task> task) const
     {
-        ASSERT(isInitialized_ > 0);
-        runner_->PostTask(std::move(task));
+        if (isInitialized_ > 0) {
+            runner_->PostTask(std::move(task));
+        }
     }
 
     // Terminate a task of a specified type
@@ -60,11 +61,16 @@ public:
         return runner_->IsInThreadPool(id);
     }
 
+    void SetThreadPriority(bool isForeground)
+    {
+        runner_->SetQosPriority(isForeground);
+    }
+
 private:
     uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const;
 
     std::unique_ptr<Runner> runner_;
-    int isInitialized_ = 0;
+    volatile int isInitialized_ = 0;
     os::memory::Mutex mutex_;
 };
 }  // namespace panda::ecmascript

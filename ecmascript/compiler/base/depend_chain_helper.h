@@ -18,7 +18,6 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/range_guard.h"
 #include "ecmascript/mem/chunk_containers.h"

@@ -81,6 +81,16 @@ void Gate::CheckGeneralState(size_t idx) const
     }
 }
 
+void Gate::CheckState(size_t idx) const
+{
+    auto gatePtr = GetInGateConst(idx);
+    OpCode actual = gatePtr->GetOpCode();
+    if ((actual != OpCode::STATE_ENTRY) && (!gatePtr->meta_->IsState())) {
+        CheckFailed("State input does not match (expected:<State> actual:" +
+                    GateMetaData::Str(actual) + ")", idx);
+    }
+}
+
 void Gate::CheckStateInput() const
 {
     size_t stateStart = 0;
@@ -110,7 +120,7 @@ void Gate::CheckStateInput() const
                 break;
         }
         if (needCheck) {
-            CheckGeneralState(idx);
+            CheckState(idx);
         }
     }
 }
@@ -166,7 +176,7 @@ void Gate::CheckValueInput(bool isArch64) const
             case OpCode::OBJECT_TYPE_CHECK:
             case OpCode::LOAD_ELEMENT:
             case OpCode::STORE_ELEMENT:
-                if (idx == valueStart + 1) { // 1: idx 1
+                if (idx == valueStart) { // 1: idx 1
                     CheckInputMachineType(idx, MachineType::I64, isArch64);
                 }
                 break;
@@ -189,6 +199,8 @@ void Gate::CheckDependInput() const
     for (size_t idx = dependStart; idx < dependEnd; idx++) {
         if (GetInGateConst(idx)->GetDependCount() == 0 &&
             GetInGateConst(idx)->GetOpCode() != OpCode::DEPEND_ENTRY) {
+            LOG_COMPILER(ERROR) << "depend in of " << GetId() << GateMetaData::Str(GetOpCode()) << "is "
+                << GetInGateConst(idx)->GetId() << GateMetaData::Str(GetInGateConst(idx)->GetOpCode());
             CheckFailed("Depend input is side-effect free", idx);
         }
     }
@@ -712,13 +724,14 @@ std::string Gate::GateTypeStr(GateType gateType) const
            std::string(", L=") + std::to_string(l) + std::string(")");
 }
 
-void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) const
+void Gate::Print(std::string additionOp, bool inListPreview, size_t highlightIdx) const
 {
     auto opcode = GetOpCode();
     if (opcode != OpCode::NOP && opcode != OpCode::DEAD) {
         std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GateMetaData::Str(opcode) + "\", ");
-        log += ((bytecode.compare("") == 0) ? "" : "\"bytecode\":\"") + bytecode;
-        log += ((bytecode.compare("") == 0) ? "" : "\", ");
+        std::string additionOpName = (opcode == OpCode::JS_BYTECODE) ? "bytecode" : "typedop";
+        log += ((additionOp.compare("") == 0) ? "" : "\"" + additionOpName + "\":\"") + additionOp;
+        log += ((additionOp.compare("") == 0) ? "" : "\", ");
         log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
 
         std::ostringstream oss;
@@ -846,9 +859,9 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
     return idx;
 }
 
-void Gate::PrintByteCode(std::string bytecode) const
+void Gate::PrintGateWithAdditionOp(std::string additionOp) const
 {
-    Print(bytecode);
+    Print(additionOp);
 }
 
 MarkCode Gate::GetMark(TimeStamp stamp) const
