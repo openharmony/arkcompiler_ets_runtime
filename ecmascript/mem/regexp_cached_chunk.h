@@ -24,7 +24,7 @@
 
 namespace panda::ecmascript {
 class NativeAreaAllocator;
-class RegExpCachedChunk: public Chunk {
+class RegExpCachedChunk : public Chunk {
 public:
 
     explicit RegExpCachedChunk(JSThread *JSThread);
