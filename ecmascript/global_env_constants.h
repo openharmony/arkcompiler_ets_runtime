@@ -66,6 +66,7 @@ class ObjectFactory;
     V(JSTaggedValue, PendingJobClass, PENDING_JOB_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ProtoChangeMarkerClass, PROTO_CHANGE_MARKER_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
+    V(JSTaggedValue, MarkerCellClass, MARKER_CELL_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, TrackInfoClass, TRACK_INFO_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \

@@ -60,6 +60,10 @@ public:
     static void FastAdd(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
                         const JSHandle<JSTaggedValue> &value, const PropertyAttributes &attr);
 
+    void UpdateDetector();
+    static void UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    static bool IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key);
+
     NO_COPY_SEMANTIC(ObjectOperator);
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(ObjectOperator);
     ~ObjectOperator() = default;

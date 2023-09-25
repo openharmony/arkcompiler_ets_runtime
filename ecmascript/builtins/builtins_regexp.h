@@ -89,6 +89,11 @@ public:
     // 22.2.6.6 get RegExp.prototype.hasIndices
     static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
+    static JSTaggedValue ReplaceInternal(JSThread *thread,
+                                         JSHandle<JSTaggedValue> thisObj,
+                                         JSHandle<JSTaggedValue> string,
+                                         JSHandle<JSTaggedValue> inputReplaceValue);
+
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;

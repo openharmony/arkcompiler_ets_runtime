@@ -166,6 +166,7 @@ class StoreTSHandler;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
+class MarkerCell;
 class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
@@ -272,6 +273,8 @@ public:
 
     inline LexicalEnv *InlineNewLexicalEnv(int numSlots);
 
+    JSHandle<JSSymbol> NewEmptySymbol();
+
     JSHandle<JSSymbol> NewJSSymbol();
 
     JSHandle<JSSymbol> NewPrivateSymbol();
@@ -356,6 +359,8 @@ public:
     JSHandle<ProtoChangeMarker> NewProtoChangeMarker();
 
     JSHandle<ProtoChangeDetails> NewProtoChangeDetails();
+
+    JSHandle<MarkerCell> NewMarkerCell();
     JSHandle<BigInt> NewBigInt(uint32_t length);
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,

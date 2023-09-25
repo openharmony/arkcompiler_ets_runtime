@@ -408,15 +408,20 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         return SetPropertyByIndex<UseOwn>(thread, receiver, index, value);
     }
     if (!key.IsNumber()) {
-        if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
-            // update string stable
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
-            JSHandle<JSTaggedValue> valueHandler(thread, value);
-            key = JSTaggedValue(thread->GetEcmaVM()->GetFactory()->InternString(JSHandle<JSTaggedValue>(thread, key)));
-            // Maybe moved by GC
-            receiver = receiverHandler.GetTaggedValue();
-            value = valueHandler.GetTaggedValue();
+        if (key.IsString()) {
+            if (!EcmaStringAccessor(key).IsInternString()) {
+                // update string stable
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
+                JSHandle<JSTaggedValue> valueHandler(thread, value);
+                key = JSTaggedValue(
+                    thread->GetEcmaVM()->GetFactory()->InternString(JSHandle<JSTaggedValue>(thread, key)));
+                // Maybe moved by GC
+                receiver = receiverHandler.GetTaggedValue();
+                value = valueHandler.GetTaggedValue();
+            }
+        } else {
+            ObjectOperator::UpdateDetector(thread, receiver, key);
         }
         return ObjectFastOperator::SetPropertyByName<UseOwn>(thread, receiver, key, value);
     }

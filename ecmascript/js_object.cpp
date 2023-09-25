@@ -687,6 +687,7 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
     JSThread *thread = op->GetThread();
+    op->UpdateDetector();
 
     JSHandle<JSTaggedValue> receiver = op->GetReceiver();
     JSHandle<JSTaggedValue> holder = op->GetHolder();
@@ -1065,6 +1066,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         PropertyAttributes attr(desc);
         bool success = false;
         if (!desc.IsAccessorDescriptor()) {
+            op->UpdateDetector();
             success = op->AddPropertyInHolder(desc.GetValue(), attr);
         } else {  // is AccessorDescriptor
             // may GC in NewAccessorData, so we need to handle getter and setter.
@@ -1077,6 +1079,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
             if (desc.HasSetter()) {
                 accessor->SetSetter(thread, desc.GetSetter());
             }
+            op->UpdateDetector();
             success = op->AddPropertyInHolder(JSHandle<JSTaggedValue>::Cast(accessor), attr);
         }
 
@@ -1165,6 +1168,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         // 10. If O is not undefined, then
         // a. For each field of Desc that is present, set the corresponding attribute of the property named P of object
         // O to the value of the field.
+        op->UpdateDetector();
         return op->WriteDataPropertyInHolder(desc);
     }
     return true;
