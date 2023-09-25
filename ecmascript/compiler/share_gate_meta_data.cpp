@@ -171,6 +171,21 @@ bool GateMetaData::IsControlCase() const
     }
 }
 
+bool GateMetaData::IsIfOrSwitchRelated() const
+{
+    switch (opcode_) {
+        case OpCode::IF_TRUE:
+        case OpCode::IF_FALSE:
+        case OpCode::SWITCH_CASE:
+        case OpCode::DEFAULT_CASE:
+        case OpCode::IF_SUCCESS:
+        case OpCode::IF_EXCEPTION:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool GateMetaData::IsLoopHead() const
 {
     return (opcode_ == OpCode::LOOP_BEGIN);
@@ -179,6 +194,11 @@ bool GateMetaData::IsLoopHead() const
 bool GateMetaData::IsNop() const
 {
     return (opcode_ == OpCode::NOP || opcode_ == OpCode::DEAD);
+}
+
+bool GateMetaData::IsDead() const
+{
+    return opcode_ == OpCode::DEAD;
 }
 
 bool GateMetaData::IsConstant() const

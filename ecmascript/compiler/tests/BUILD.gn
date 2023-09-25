@@ -53,6 +53,38 @@ host_unittest_action("TypedArrayLoweringTest") {
   ]
 }
 
+host_unittest_action("DeadCodeEliminationTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "dead_code_elimination_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
+host_unittest_action("CombinedPassVisitorTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "combined_pass_visitor_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
 host_unittest_action("LoopOptimizationTest") {
   module_out_path = module_output_path
 

@@ -508,6 +508,8 @@ public:
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
+    void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement);
+    void ReplaceGate(GateRef gate, GateRef replacement);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
     uint32_t GetFirstValue(GateRef gate) const;
@@ -530,6 +532,7 @@ public:
     bool IsConstString(GateRef gate);
     bool IsSingleCharGate(GateRef gate);
     uint32_t GetStringIdFromLdaStrGate(GateRef gate);
+    bool IsIfOrSwitchRelated(GateRef gate) const;
 
     GateRef GetCircuitRoot() const
     {

@@ -871,6 +871,11 @@ bool GateAccessor::IsGeneralState(GateRef gate) const
     return GetMetaData(gate)->IsGeneralState();
 }
 
+bool GateAccessor::IsIfOrSwitchRelated(GateRef gate) const
+{
+    return GetMetaData(gate)->IsIfOrSwitchRelated();
+}
+
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -1055,7 +1060,7 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
     // delete old gate
     DeleteGate(hirGate);
     if (ifException != Circuit::NullGate()) {
-        GraphEditor::RemoveDeadState(circuit_, ifException);
+        ReplaceGate(ifException, circuit_->DeadGate());
     }
 }
 
@@ -1292,6 +1297,42 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
     DeleteGate(gate);
 }
 
+void GateAccessor::ReplaceGate(GateRef gate, GateRef replacement)
+{
+    GateRef depend = Circuit::NullGate();
+    if (GetDependCount(gate) > 0) {
+        ASSERT(GetDependCount(gate) == 1); // 1: one dep
+        depend = GetDep(gate);
+    }
+    GateRef state = Circuit::NullGate();
+    if (GetStateCount(gate) > 0) {
+        ASSERT(GetStateCount(gate) == 1);  // 1: one state
+        state = GetState(gate);
+    }
+    return ReplaceGate(gate, StateDepend {state, depend}, replacement);
+}
+
+void GateAccessor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
+{
+    ASSERT(gate != replacement);
+    auto state = stateDepend.State();
+    auto depend = stateDepend.Depend();
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            ASSERT(state != Circuit::NullGate());
+            it = ReplaceIn(it, state);
+        } else if (IsDependIn(it)) {
+            ASSERT(depend != Circuit::NullGate());
+            it = ReplaceIn(it, depend);
+        } else {
+            it = ReplaceIn(it, replacement);
+        }
+    }
+    DeleteGate(gate);
+}
+
+
 // When Insert newGate, all the stateIn from state and dependIn from depend can be replaced to newGate
 void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate)
 {
@@ -1507,6 +1548,11 @@ bool GateAccessor::MetaDataEqu(GateRef g1, GateRef g2) const
 bool GateAccessor::IsNop(GateRef g) const
 {
     return GetMetaData(g)->IsNop();
+}
+
+bool GateAccessor::IsDead(GateRef gate) const
+{
+    return GetMetaData(gate)->IsDead();
 }
 
 bool GateAccessor::IsRoot(GateRef g) const
