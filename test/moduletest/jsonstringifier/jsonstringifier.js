@@ -41,3 +41,19 @@ const a = new Uint32Array(0x10);
 let  b = a.__proto__;
 b[1073741823] = {}
 print(JSON.stringify(a))
+
+let o = {
+    get g() {
+        this[1225] |= 4294967295;    
+        return 9;    
+    },
+    "f1":1,
+    "f2":1,
+    "f3":1,
+    "f4":1,
+    "f5":1,
+    "f6":1,
+    "f7":1,
+    "f8":1,
+}
+print(JSON.stringify(o))
