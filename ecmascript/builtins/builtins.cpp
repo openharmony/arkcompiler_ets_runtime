@@ -3800,25 +3800,60 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
 
 void Builtins::InitializeGlobalRegExp(JSHandle<JSObject> &obj) const
 {
-    JSHandle<JSTaggedValue> emptyString = thread_->GlobalConstants()->GetHandledEmptyString();
-    JSHandle<JSTaggedValue> newBox1 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$1", newBox1);
-    JSHandle<JSTaggedValue> newBox2 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$2", newBox2);
-    JSHandle<JSTaggedValue> newBox3 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$3", newBox3);
-    JSHandle<JSTaggedValue> newBox4 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$4", newBox4);
-    JSHandle<JSTaggedValue> newBox5 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$5", newBox5);
-    JSHandle<JSTaggedValue> newBox6 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$6", newBox6);
-    JSHandle<JSTaggedValue> newBox7 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$7", newBox7);
-    JSHandle<JSTaggedValue> newBox8 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$8", newBox8);
-    JSHandle<JSTaggedValue> newBox9 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
-    SetConstantObject(obj, "$9", newBox9);
+    // $1
+    auto accessor1 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture1),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture1));
+    PropertyDescriptor descriptor1(thread_, JSHandle<JSTaggedValue>::Cast(accessor1), true, false, true);
+    JSHandle<JSTaggedValue> dollar1Key = thread_->GlobalConstants()->GetHandledDollarStringOne();
+    JSObject::DefineOwnProperty(thread_, obj, dollar1Key, descriptor1);
+    // $2
+    auto accessor2 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture2),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture2));
+    PropertyDescriptor descriptor2(thread_, JSHandle<JSTaggedValue>::Cast(accessor2), true, false, true);
+    JSHandle<JSTaggedValue> dollar2Key = thread_->GlobalConstants()->GetHandledDollarStringTwo();
+    JSObject::DefineOwnProperty(thread_, obj, dollar2Key, descriptor2);
+    // $3
+    auto accessor3 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture3),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture3));
+    PropertyDescriptor descriptor3(thread_, JSHandle<JSTaggedValue>::Cast(accessor3), true, false, true);
+    JSHandle<JSTaggedValue> dollar3Key = thread_->GlobalConstants()->GetHandledDollarStringThree();
+    JSObject::DefineOwnProperty(thread_, obj, dollar3Key, descriptor3);
+    // $4
+    auto accessor4 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture4),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture4));
+    PropertyDescriptor descriptor4(thread_, JSHandle<JSTaggedValue>::Cast(accessor4), true, false, true);
+    JSHandle<JSTaggedValue> dollar4Key = thread_->GlobalConstants()->GetHandledDollarStringFour();
+    JSObject::DefineOwnProperty(thread_, obj, dollar4Key, descriptor4);
+    // $5
+    auto accessor5 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture5),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture5));
+    PropertyDescriptor descriptor5(thread_, JSHandle<JSTaggedValue>::Cast(accessor5), true, false, true);
+    JSHandle<JSTaggedValue> dollar5Key = thread_->GlobalConstants()->GetHandledDollarStringFive();
+    JSObject::DefineOwnProperty(thread_, obj, dollar5Key, descriptor5);
+    // $6
+    auto accessor6 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture6),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture6));
+    PropertyDescriptor descriptor6(thread_, JSHandle<JSTaggedValue>::Cast(accessor6), true, false, true);
+    JSHandle<JSTaggedValue> dollar6Key = thread_->GlobalConstants()->GetHandledDollarStringSix();
+    JSObject::DefineOwnProperty(thread_, obj, dollar6Key, descriptor6);
+    // $7
+    auto accessor7 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture7),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture7));
+    PropertyDescriptor descriptor7(thread_, JSHandle<JSTaggedValue>::Cast(accessor7), true, false, true);
+    JSHandle<JSTaggedValue> dollar7Key = thread_->GlobalConstants()->GetHandledDollarStringSeven();
+    JSObject::DefineOwnProperty(thread_, obj, dollar7Key, descriptor7);
+    // $8
+    auto accessor8 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture8),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture8));
+    PropertyDescriptor descriptor8(thread_, JSHandle<JSTaggedValue>::Cast(accessor8), true, false, true);
+    JSHandle<JSTaggedValue> dollar8Key = thread_->GlobalConstants()->GetHandledDollarStringEight();
+    JSObject::DefineOwnProperty(thread_, obj, dollar8Key, descriptor8);
+    // $9
+    auto accessor9 = factory_->NewInternalAccessor(reinterpret_cast<void *>(RegExp::SetCapture9),
+                                                   reinterpret_cast<void *>(RegExp::GetCapture9));
+    PropertyDescriptor descriptor9(thread_, JSHandle<JSTaggedValue>::Cast(accessor9), true, false, true);
+    JSHandle<JSTaggedValue> dollar9Key = thread_->GlobalConstants()->GetHandledDollarStringNine();
+    JSObject::DefineOwnProperty(thread_, obj, dollar9Key, descriptor9);
 }
 
 JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const

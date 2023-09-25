@@ -2557,15 +2557,6 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     GateRef propAttr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
                     GateRef attr = GetInt32OfTInt(propAttr);
                     GateRef value = JSObjectGetProperty(*holder, hclass, attr);
-                    Label isPropertyBox(env);
-                    Label notPropertyBox(env);
-                    Branch(TaggedIsPropertyBox(value), &isPropertyBox, &notPropertyBox);
-                    Bind(&isPropertyBox);
-                    {
-                        result = GetValueFromPropertyBox(value);
-                        Jump(&exit);
-                    }
-                    Bind(&notPropertyBox);
                     Label isAccessor(env);
                     Label notAccessor(env);
                     Branch(IsAccessor(attr), &isAccessor, &notAccessor);

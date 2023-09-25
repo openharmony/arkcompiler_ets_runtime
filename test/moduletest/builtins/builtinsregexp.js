@@ -65,4 +65,10 @@ var reg7 = /\/(?:\B)/gm;
 var str7 = "/";
 print(reg7.test(str7));
 
+// Test 8 - RegExp.test $1
+var regexp = /(\d+)/g
+var str8 = "Test1234"
+print(regexp.test(str8));
+print(RegExp.$1);
+
 print("builtins regexp end");

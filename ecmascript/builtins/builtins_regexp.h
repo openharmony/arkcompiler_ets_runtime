@@ -26,19 +26,6 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsRegExp : public base::BuiltinsBase {
 public:
-    enum RegExpGlobalArrayIndex {
-        DUMP_HEAD,
-        DOLLAR_ONE,
-        DOLLAR_TWO,
-        DOLLAR_THREE,
-        DOLLAR_FOUR,
-        DOLLAR_FIVE,
-        DOLLAR_SIX,
-        DOLLAR_SEVEN,
-        DOLLAR_EIGHT,
-        DOLLAR_NINE
-    };
-
     // 21.2.3.1 RegExp ( pattern, flags )
     static JSTaggedValue RegExpConstructor(EcmaRuntimeCallInfo *argv);
 
@@ -93,6 +80,22 @@ public:
                                          JSHandle<JSTaggedValue> thisObj,
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define SET_GET_CAPTURE(index)                                                                                \
+    static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
+    static bool SetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj,                            \
+                                 const JSHandle<JSTaggedValue> &value, bool mayThrow);
+
+    SET_GET_CAPTURE(1)
+    SET_GET_CAPTURE(2)
+    SET_GET_CAPTURE(3)
+    SET_GET_CAPTURE(4)
+    SET_GET_CAPTURE(5)
+    SET_GET_CAPTURE(6)
+    SET_GET_CAPTURE(7)
+    SET_GET_CAPTURE(8)
+    SET_GET_CAPTURE(9)
+#undef SET_GET_CAPTURE
 
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
@@ -112,8 +115,6 @@ private:
     static JSTaggedValue RegExpAlloc(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget);
 
     static uint32_t UpdateExpressionFlags(JSThread *thread, const CString &checkStr);
-
-    static JSHandle<JSTaggedValue> GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index);
 
     // 21.2.3.2.2 Runtime Semantics: RegExpInitialize ( obj, pattern, flags )
     static JSTaggedValue RegExpInitialize(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -255,5 +256,32 @@ private:
     static constexpr int EXTEND_INDEX = 10;
     static constexpr int ENTRY_SIZE = 11;
 };
+
+class RegExpGlobalResult : public TaggedArray {
+public:
+    static RegExpGlobalResult *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<RegExpGlobalResult *>(object);
+    }
+    static JSTaggedValue CreateGloablResultTable(JSThread *thread);
+
+    void SetCapture(JSThread *thread, int index, JSTaggedValue value)
+    {
+        ASSERT(CAPTURE_START_INDEX + index - 1 < GLOBAL_TABLE_SIZE);
+        Set(thread, CAPTURE_START_INDEX + index - 1, value);
+    }
+
+    template <int N>
+    JSTaggedValue GetCapture()
+    {
+        return Get(CAPTURE_START_INDEX + N - 1);
+    }
+
+private:
+    static constexpr int GLOBAL_TABLE_SIZE = 9;
+    static constexpr int DOLLAR_NUMBER = 9;
+    static constexpr int CAPTURE_START_INDEX = 0;
+};
+
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_H

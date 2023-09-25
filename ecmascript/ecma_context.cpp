@@ -100,6 +100,7 @@ bool EcmaContext::Initialize()
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
     SetupRegExpResultCache();
+    SetupRegExpGlobalResult();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
@@ -669,6 +670,11 @@ void EcmaContext::SetupRegExpResultCache()
     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::SetupRegExpGlobalResult()
+{
+    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGloablResultTable(thread_);
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -676,6 +682,7 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     if (moduleManager_) {
         moduleManager_->Iterate(v);
