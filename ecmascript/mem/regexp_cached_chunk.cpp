@@ -19,7 +19,8 @@
 
 namespace panda::ecmascript {
 
-RegExpCachedChunk::RegExpCachedChunk(JSThread *JSThread) : jsThread_(JSThread) {
+RegExpCachedChunk::RegExpCachedChunk(JSThread *JSThread) : jsThread_(JSThread)
+{
     allocator_ = jsThread_->GetNativeAreaAllocator();
     currentArea_ = jsThread_->GetOrCreateRegExpCache();
     ptr_ = currentArea_->GetBegin();
