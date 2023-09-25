@@ -68,6 +68,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
@@ -161,6 +162,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
     SetConstant(ConstantIndex::PROTO_CHANGE_DETAILS_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeDetails::SIZE, JSType::PROTOTYPE_INFO));
+    SetConstant(ConstantIndex::MARKER_CELL_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, MarkerCell::SIZE, JSType::MARKER_CELL));
     SetConstant(ConstantIndex::TRACK_INFO_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TrackInfo::SIZE, JSType::TRACK_INFO));
     SetConstant(ConstantIndex::PROTOTYPE_HANDLER_CLASS_INDEX,

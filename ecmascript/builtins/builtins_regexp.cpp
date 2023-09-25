@@ -736,6 +736,14 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
     // 3. Let S be ToString(string).
     JSHandle<JSTaggedValue> string = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> inputReplaceValue = GetCallArg(argv, 1);
+    return ReplaceInternal(thread, thisObj, string, inputReplaceValue);
+}
+
+JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
+                                              JSHandle<JSTaggedValue> thisObj,
+                                              JSHandle<JSTaggedValue> string,
+                                              JSHandle<JSTaggedValue> inputReplaceValue)
+{
     JSHandle<EcmaString> srcString = JSTaggedValue::ToString(thread, string);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
@@ -1694,10 +1702,22 @@ JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTagg
     // 3. Let exec be Get(R, "exec").
     JSHandle<EcmaString> inputStr = JSTaggedValue::ToString(thread, inputString);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> execHandle = globalConst->GetHandledExecString();
     JSTaggedValue execVal = ObjectFastOperator::FastGetPropertyByValue(thread, regexp.GetTaggedValue(),
                                                                        execHandle.GetTaggedValue());
+    if (execVal == env->GetTaggedRegExpExecFunction()) {
+        JSTaggedValue result = RegExpBuiltinExec(thread, regexp, JSHandle<JSTaggedValue>(inputStr), useCache);
+        // b. ReturnIfAbrupt(result).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!result.IsECMAObject() && !result.IsNull()) {
+            // throw a TypeError exception.
+            THROW_TYPE_ERROR_AND_RETURN(thread, "exec result is null or is not Object", JSTaggedValue::Exception());
+        }
+        return result;
+    }
+
     JSHandle<JSTaggedValue> exec(thread, execVal);
     // 4. ReturnIfAbrupt(exec).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -672,6 +672,8 @@ private:
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
     void InitializeArguments();
+    void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
+
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
 };

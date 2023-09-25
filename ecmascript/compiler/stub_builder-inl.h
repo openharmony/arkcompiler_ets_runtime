@@ -2536,6 +2536,20 @@ inline GateRef StubBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef inde
     return env_->GetBuilder()->LoadObjectFromConstPool(jsFunc, index);
 }
 
+inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
+{
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef keyAddr = ChangeTaggedPointerToInt64(key);
+    GateRef firstDetectorName = GetGlobalEnvValue(
+        VariableType::INT64(), glueGlobalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
+    GateRef lastDetectorName = GetGlobalEnvValue(
+        VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
+    GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
+                                     Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
+    Branch(isDetectorName, slow, fallthrough);
+}
+
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
 {
     GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));

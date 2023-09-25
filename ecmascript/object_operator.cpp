@@ -31,6 +31,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/property_attributes.h"
+#include "ecmascript/property_detector-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -211,6 +212,54 @@ void ObjectOperator::FastAdd(JSThread *thread, const JSTaggedValue &receiver, co
 {
     ObjectOperator op(thread, receiver, name, attr);
     op.AddPropertyInternal(value);
+}
+
+void ObjectOperator::UpdateDetector()
+{
+    if (IsElement()) {
+        return;
+    }
+    ObjectOperator::UpdateDetector(thread_, holder_.GetTaggedValue(), key_.GetTaggedValue());
+}
+
+// static
+void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+{
+    // skip env prepare
+    if (!thread->IsAllContextsInitialized()) {
+        return;
+    }
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    bool maybeDetector = IsDetectorName(env, key);
+    if (!maybeDetector) {
+        return;
+    }
+    // only support symbol keys now
+    ASSERT(key.IsSymbol());
+    if (key == env->GetTaggedReplaceSymbol()) {
+        if (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype()) {
+            if (!PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateRegExpReplaceDetector(env);
+        }
+    } else if (key == env->GetTaggedSplitSymbol()) {
+        if (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype()) {
+            if (!PropertyDetector::IsRegExpSplitDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateRegExpSplitDetector(env);
+        }
+    }
+}
+
+// static
+bool ObjectOperator::IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key)
+{
+    uintptr_t start = GlobalEnv::GetFirstDetectorSymbolAddr(*env);
+    uintptr_t end = GlobalEnv::GetLastDetectorSymbolAddr(*env);
+    uintptr_t addr = key.GetRawData();
+    return (start <= addr) && (addr <= end);
 }
 
 void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
@@ -649,7 +698,7 @@ void ObjectOperator::DeletePropertyInHolder()
     if (IsElement()) {
         return DeleteElementInHolder();
     }
-
+    ObjectOperator::UpdateDetector(thread_, holder_.GetTaggedValue(), key_.GetTaggedValue());
     JSObject::DeletePropertyInternal(thread_, JSHandle<JSObject>(holder_), key_, GetIndex());
 }
 
