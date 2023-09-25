@@ -95,7 +95,7 @@ private:
     static inline JSTaggedValue AddPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
 
-    static inline int32_t TryToElementsIndex(JSTaggedValue key);
+    static inline int64_t TryToElementsIndex(JSTaggedValue key);
 
     static inline bool GetNumFromString(const char *str, int len, int *index, int *num);
 

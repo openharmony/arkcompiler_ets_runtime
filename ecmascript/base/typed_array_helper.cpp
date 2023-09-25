@@ -56,12 +56,12 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
     JSHandle<JSTaggedValue> firstArg = BuiltinsBase::GetCallArg(argv, 0);
     if (!firstArg->IsECMAObject()) {
         // es11 22.2.4.1 TypedArray ( )
-        int32_t elementLength = 0;
+        uint32_t elementLength = 0;
         // es11 22.2.4.2 TypedArray ( length )
         if (!firstArg->IsUndefined()) {
             JSTaggedNumber index = JSTaggedValue::ToIndex(thread, firstArg);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            elementLength = static_cast<int32_t>(index.GetNumber());
+            elementLength = static_cast<uint32_t>(index.GetNumber());
         }
         JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget,
                                                                       elementLength, arrayType);
@@ -415,7 +415,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(JSThread *thread,
 // es11 22.2.4.2.1 Runtime Semantics: AllocateTypedArray ( constructorName, newTarget, defaultProto, length )
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(JSThread *thread,
                                                         const JSHandle<JSTaggedValue> &constructorName,
-                                                        const JSHandle<JSTaggedValue> &newTarget, int32_t length,
+                                                        const JSHandle<JSTaggedValue> &newTarget, uint32_t length,
                                                         const DataViewType arrayType)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

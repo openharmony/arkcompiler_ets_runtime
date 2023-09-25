@@ -494,7 +494,11 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
     if constexpr (std::is_same_v<T, float>) {
         unionValue.uValue = *reinterpret_cast<uint32_t *>(block + byteIndex);
         if (std::isnan(unionValue.value)) {
-            return GetTaggedDouble(unionValue.value);
+            if (!JSTaggedValue::IsImpureNaN(unionValue.value)) {
+                return GetTaggedDouble(unionValue.value);
+            } else {
+                return GetTaggedDouble(base::NAN_VALUE);
+            }
         }
         if (!littleEndian) {
             uint32_t res = LittleEndianToBigEndian(unionValue.uValue);
@@ -512,6 +516,10 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
                 return GetTaggedDouble(base::bit_cast<T>(base::pureNaN));
             }
             return GetTaggedDouble(d);
+        } else {
+            if (JSTaggedValue::IsImpureNaN(unionValue.value)) {
+                return GetTaggedDouble(base::NAN_VALUE);
+            }
         }
     }
 

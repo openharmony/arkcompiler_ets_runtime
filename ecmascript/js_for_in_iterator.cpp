@@ -143,6 +143,7 @@ std::pair<JSTaggedValue, bool> JSForInIterator::NextInternal(JSThread *thread, c
         visited.Update(JSTaggedValue(newQueue));
         it->SetVisitedObjs(thread, visited);
         JSTaggedValue proto = JSTaggedValue::GetPrototype(thread, object);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, std::make_pair(JSTaggedValue::Exception(), false));
         it->SetObject(thread, proto);
         it->SetWasVisited(false);
         it->SetHasVisitObjs(true);

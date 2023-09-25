@@ -230,9 +230,10 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
         auto *hclass = holder.GetTaggedObject()->GetClass();
         JSType jsType = hclass->GetObjectType();
         if (IsSpecialIndexedObj(jsType)) {
+            if (jsType == JSType::JS_TYPED_ARRAY) {
+                return JSTaggedValue::Hole();
+            }
             if (IsFastTypeArray(jsType)) {
-                holder = JSObject::Cast(holder)->GetJSHClass()->GetPrototype();
-                CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
                 return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, jsType);
             }
             if (IsSpecialContainer(jsType)) {
@@ -746,7 +747,7 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
-int32_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
+int64_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
 {
     if (LIKELY(key.IsInt())) {
         return key.GetInt();
@@ -754,7 +755,7 @@ int32_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
     if (key.IsString()) {
         uint32_t index = 0;
         if (JSTaggedValue::StringToElementIndex(key, &index)) {
-            return static_cast<int32_t>(index);
+            return static_cast<int64_t>(index);
         }
     } else if (key.IsDouble()) {
         double number = key.GetDouble();

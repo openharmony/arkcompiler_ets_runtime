@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,24 +14,19 @@
  */
 
 /*
- * @tc.name:setobjectwithproto
- * @tc.desc:test set object with proto
+ * @tc.name:arraywith
+ * @tc.desc:test Array.with
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var object = {
-    __proto__: null
-};
 
-print(Object.getPrototypeOf(object));
+const arr0 = [0, , undefined, 1];
+print(arr0.indexOf(undefined));
+const arr1 = arr0.with(0, 0);
+print(arr0.indexOf(undefined));
+print(arr1.indexOf(undefined));
 
-class C32 extends String {
-
-}
-let obj1 = new C32();
-print(obj1.__proto__ == C32.prototype);
-print(C32.__proto__ == String);
-C32.__proto__ = Array;
-let obj2 = new C32();
-print(obj2.__proto__ == C32.prototype);
-print(C32.__proto__ == Array);
+const arr2 = new Array(1025);
+for(let i = 0; i < 1025; i = i + 1)
+    arr2[i] = i;
+const arr3 = arr2.with(0, 0);

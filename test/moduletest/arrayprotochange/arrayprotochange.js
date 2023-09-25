@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,24 +14,14 @@
  */
 
 /*
- * @tc.name:setobjectwithproto
- * @tc.desc:test set object with proto
+ * @tc.name:arrayprotochange
+ * @tc.desc:test Array function when prototype changes
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI7O616
  */
-var object = {
-    __proto__: null
-};
 
-print(Object.getPrototypeOf(object));
-
-class C32 extends String {
-
-}
-let obj1 = new C32();
-print(obj1.__proto__ == C32.prototype);
-print(C32.__proto__ == String);
-C32.__proto__ = Array;
-let obj2 = new C32();
-print(obj2.__proto__ == C32.prototype);
-print(C32.__proto__ == Array);
+var arr = [0, 1, 2, 3, 4];
+var arr2 = [0, , , 3, 4];
+arr2.__proto__ = arr;
+print(arr2[1]);
+print(arr2.at(1));

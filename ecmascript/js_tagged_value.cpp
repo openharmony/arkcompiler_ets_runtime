@@ -812,6 +812,16 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
     if (obj->IsSpecialContainer() || !obj->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not set Prototype on Container or non ECMA Object", false);
     }
+    if (obj->IsJSFunction() && proto->IsJSFunction()) {
+        JSHandle<JSFunction> objFunc = JSHandle<JSFunction>::Cast(obj);
+        JSHandle<JSFunction> protoFunc = JSHandle<JSFunction>::Cast(proto);
+        JSTaggedValue objProtoOrHClass(objFunc->GetProtoOrHClass());
+        JSTaggedValue protoOrHClass(protoFunc->GetProtoOrHClass());
+        if (objProtoOrHClass.IsJSHClass() && protoOrHClass.IsJSHClass() && objProtoOrHClass != protoOrHClass) {
+            JSHandle<JSHClass> cachedJSHClass = JSHandle<JSHClass>(thread, objProtoOrHClass);
+            objFunc->SetProtoOrHClass(thread, cachedJSHClass->GetPrototype());
+        }
+    }
 
     return JSObject::SetPrototype(thread, JSHandle<JSObject>(obj), proto);
 }

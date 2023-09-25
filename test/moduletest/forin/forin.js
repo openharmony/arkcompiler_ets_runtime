@@ -112,3 +112,17 @@ try {
 } catch (err) {
     print(err instanceof TypeError);
 }
+
+// PoC testcase
+try {
+    class C {
+
+    }
+    C.getPrototypeOf = 3014;
+    const proxy = new Proxy([7], C);
+    for (const v in proxy) {
+    
+    }
+} catch (err) {
+    print(err instanceof TypeError);
+}
