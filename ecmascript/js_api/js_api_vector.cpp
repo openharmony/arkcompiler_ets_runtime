@@ -336,6 +336,9 @@ JSTaggedValue JSAPIVector::ReplaceAllElements(JSThread *thread, const JSHandle<J
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
         if (length != vector->GetSize()) {  // prevent length change
             length = vector->GetSize();
+            if (k >= length) {
+                break;
+            }
         }
         vector->Set(thread, k, funcResult);
     }
@@ -444,7 +447,7 @@ void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
     uint32_t length = obj->GetLength();
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     ASSERT(!elements->IsDictionaryMode());
-    for (uint32_t i = 0; i <= length; ++i) {
+    for (uint32_t i = 0; i < length; ++i) {
         elements->Set(thread, i, JSTaggedValue::Hole());
     }
     obj->SetLength(0);

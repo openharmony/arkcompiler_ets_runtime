@@ -36,3 +36,8 @@ var obj = {
     2147483648: 2289
 }
 print(JSON.stringify(obj));
+
+const a = new Uint32Array(0x10);
+let  b = a.__proto__;
+b[1073741823] = {}
+print(JSON.stringify(a))

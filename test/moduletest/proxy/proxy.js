@@ -56,3 +56,9 @@ const {...v1} = v5;
 print(v5.value);
 print(v1.value);
 print(v0.value);
+
+const arr2 = [1, 2, 3];
+const handler = {};
+const proxy = new Proxy(arr2, handler);
+const arr3 = proxy.constructor(1, 2, 3, 4);
+print(arr3);

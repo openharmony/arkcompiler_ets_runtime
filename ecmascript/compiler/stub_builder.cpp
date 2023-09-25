@@ -2709,6 +2709,9 @@ GateRef StubBuilder::SetPropertyByIndex(
         Label isFastTypeArray(env);
         Label notFastTypeArray(env);
         Label checkIsOnPrototypeChain(env);
+        Label notTypedArrayProto(env);
+        Branch(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY))), &exit, &notTypedArrayProto);
+        Bind(&notTypedArrayProto);
         Branch(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
         Bind(&isFastTypeArray);
         {
