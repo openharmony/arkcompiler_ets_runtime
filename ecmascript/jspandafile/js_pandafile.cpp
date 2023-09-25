@@ -20,6 +20,9 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
+namespace {
+const CString OHOS_PKG_ABC_PATH_ROOT = "/ets/";  // abc file always under /ets/ dir in HAP/HSP
+}  // namespace
 bool JSPandaFile::loadedFirstPandaFile = false;
 JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     : pf_(pf), desc_(descriptor)
@@ -337,5 +340,37 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
             UNREACHABLE();
     }
     return kind;
+}
+
+/*
+ handle desc like:
+ case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
+ case2: /data/storage/el1/bundle/entry/ets/widgets.abc -> entry/ets/widgets.abc
+ case3: /data/app/el1/bundle/public/com.xx.xx/entry/ets/modules.abc -> entry/ets/modules.abc
+ case4: /data/app/el1/bundle/public/com.xx.xx/entry/ets/widgets.abc -> entry/ets/widgets.abc
+*/
+CString JSPandaFile::GetNormalizedFileDesc(const CString &desc)
+{
+    // file not in OHOS package.
+    if (desc.rfind('/', 0) != 0) {
+        return desc;
+    }
+    auto etsTokenPos = desc.rfind(OHOS_PKG_ABC_PATH_ROOT);
+    if (etsTokenPos == std::string::npos) {
+        // file not in OHOS package.
+        return desc;
+    }
+    auto ohosModulePos = desc.rfind('/', etsTokenPos - 1);
+    if (ohosModulePos == std::string::npos) {
+        LOG_ECMA(ERROR) << "Get abcPath from desc failed. desc: " << desc;
+        return desc;
+    }
+    // substring likes {ohosModuleName}/ets/modules.abc or {ohosModuleName}/ets/widgets.abc
+    return desc.substr(ohosModulePos + 1);
+}
+
+CString JSPandaFile::GetNormalizedFileDesc() const
+{
+    return GetNormalizedFileDesc(desc_);
 }
 }  // namespace panda::ecmascript

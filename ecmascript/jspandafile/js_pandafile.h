@@ -87,6 +87,10 @@ public:
         return desc_;
     }
 
+    CString GetNormalizedFileDesc() const;
+
+    static CString GetNormalizedFileDesc(const CString &desc);
+
     uint32_t GetChecksum() const
     {
         return checksum_;
