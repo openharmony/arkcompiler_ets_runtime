@@ -74,6 +74,7 @@ static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;
 static constexpr size_t MAX_CACHED_CHUNK_AREA_SIZE = 16_KB;
 static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
+static constexpr size_t MAX_REGEXP_CACHE_SIZE = 8_KB;
 
 // idle gc
 static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;

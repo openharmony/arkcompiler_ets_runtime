@@ -304,3 +304,10 @@ for (let i = 0; i < 2; i++) {
   print(t1.replace(/([a-z]+)/g, "_xy"));
   print(t2.replace(/_/g, ""));
 }
+
+// regexp cache test
+let mediaReg = "\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)";
+let string = '(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s';
+const regex1 = new RegExp(mediaReg);
+let matchArray = string.match(regex1);
+print(matchArray);

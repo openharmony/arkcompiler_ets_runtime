@@ -951,6 +951,7 @@ public:
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
+    Area *GetOrCreateRegExpCache();
 
 private:
     NO_COPY_SEMANTIC(JSThread);
@@ -980,6 +981,7 @@ private:
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
+    Area *regExpCache_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;

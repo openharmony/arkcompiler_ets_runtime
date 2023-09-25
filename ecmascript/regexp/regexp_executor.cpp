@@ -277,16 +277,8 @@ MatchResult RegExpExecutor::GetResult(const JSThread *thread, bool isSuccess) co
                         reinterpret_cast<const uint16_t *>(captureState->captureStart), len / 2);
                 } else {
                     // create utf-8 string
-                    CVector<uint8_t> buffer(len + 1);
-                    uint8_t *dest = buffer.data();
-                    if (memcpy_s(dest, len + 1, reinterpret_cast<const uint8_t *>(captureState->captureStart), len) !=
-                        EOK) {
-                        LOG_FULL(FATAL) << "memcpy_s failed";
-                        UNREACHABLE();
-                    }
-                    dest[len] = '\0';  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     pair.second.capturedValue =
-                        factory->NewFromUtf8(reinterpret_cast<const uint8_t *>(buffer.data()), len);
+                        factory->NewFromUtf8(reinterpret_cast<const uint8_t *>(captureState->captureStart), len);
                     pair.second.startIndex = captureState->captureStart - input_;
                     pair.second.endIndex = captureState->captureEnd - input_;
                 }
