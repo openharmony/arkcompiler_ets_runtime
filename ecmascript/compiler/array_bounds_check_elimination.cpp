@@ -689,7 +689,7 @@ void ArrayBoundsCheckElimination::ProcessIndexCheck(GateRegion *loopHeader, Gate
 void ArrayBoundsCheckElimination::ProcessIf(IntegerStack &pushed, GateRegion *parent, OpCode cond)
 {
     auto& gateLists = parent->GetGates();
-    for (int i = gateLists.size() - 1; i >= 0; i--) { // Found the last BinaryOp
+    for (int i = static_cast<int>(gateLists.size()) - 1; i >= 0; i--) { // Found the last BinaryOp
         GateRef gate = gateLists[i];
         if (gate == Circuit::NullGate()) continue;
         OpCode opGate = acc_.GetOpCode(gate);

@@ -83,7 +83,7 @@ public:
 
     int ShouldFreeMore(size_t cachedSize) {
         os::memory::LockHolder lock(lock_);
-        int result = regularMapCommitted_.size();
+        size_t result = regularMapCommitted_.size();
         return result - cachedSize / REGULAR_MMAP_SIZE;
     }
 

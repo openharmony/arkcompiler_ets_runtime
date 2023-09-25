@@ -116,7 +116,7 @@ void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uin
         ASSERT(it->kind == LocationTy::Kind::CONSTANT);
         ASSERT(std::holds_alternative<LLVMStackMapType::IntType>(it->value));
         auto v = std::get<LLVMStackMapType::IntType>(it->value);
-        info[static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - id] = v;
+        info[static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - id] = static_cast<uint32_t>(v);
     }
 }
 

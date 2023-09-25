@@ -119,7 +119,7 @@ public:
             abcName_ = value;
         } else if (strcmp(key, KEY_ABC_OFFSET) == 0) {
             char *str = nullptr;
-            abcOffset_ = strtol(value, &str, 0);
+            abcOffset_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else if (strcmp(key, KEY_ABC_SIZE) == 0) {
             char *str = nullptr;
             abcSize_ = static_cast<uint32_t>(strtol(value, &str, 0));

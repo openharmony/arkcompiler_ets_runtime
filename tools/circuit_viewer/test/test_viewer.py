@@ -21,27 +21,27 @@ import cv2
 import tempfile
 import pytest
 
-webPath = os.path.realpath("../dist")
+web_path = os.path.realpath("../dist")
 
 
 class MyHttpRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=webPath, **kwargs)
+        super().__init__(*args, directory=web_path, **kwargs)
 
 
 httpd = socketserver.TCPServer(("", 9999), MyHttpRequestHandler)
 driver = webdriver.Chrome()
 actions = ActionChains(driver)
 reader = easyocr.Reader(['ch_sim', 'en'], verbose=False)
-windowWidth = -1
-windowHeight = -1
-tempImageFile = os.path.join(tempfile.gettempdir(), "test.png")
+window_width = -1
+window_height = -1
+temp_image_file = os.path.join(tempfile.gettempdir(), "test.png")
 
 
 def cut_image(image, x, y, w, h):
     x = int(x)
     y = int(y)
-    return image[y:y+h, x:x+w]
+    return image[y:y + h, x:x + w]
 
 
 oldx = 0
@@ -50,7 +50,7 @@ oldy = 0
 
 def click_on_page(x, y):
     global oldx, oldy
-    actions.move_by_offset(x-oldx, y-oldy).click().perform()
+    actions.move_by_offset(x - oldx, y - oldy).click().perform()
     oldx = x
     oldy = y
     time.sleep(1)
@@ -71,9 +71,9 @@ def setup():
     print("setup : selenium打开测试页面")
     driver.implicitly_wait(10)
     driver.get("http://127.0.0.1:9999")
-    global windowWidth, windowHeight
-    windowWidth = driver.execute_script("return document.body.clientWidth")
-    windowHeight = driver.execute_script("return document.body.clientHeight")
+    global window_width, window_height
+    window_width = driver.execute_script("return document.body.clientWidth")
+    window_height = driver.execute_script("return document.body.clientHeight")
 
 
 def teardown():
@@ -85,16 +85,16 @@ def teardown():
 
 
 def test_loading():  # 验证载入中画面
-    driver.get_screenshot_as_file(tempImageFile)
-    image = cv2.imread(tempImageFile)
-    result = reader.readtext(cut_image(image, windowWidth/2-100, windowHeight/2-20, 200, 40))
+    driver.get_screenshot_as_file(temp_image_file)
+    image = cv2.imread(temp_image_file)
+    result = reader.readtext(cut_image(image, window_width / 2 - 100, window_height / 2 - 20, 200, 40))
     assert result[0][1][:7] == "Loading"
 
 
 def test_start():  # 验证主画面显示
     time.sleep(5)
-    driver.get_screenshot_as_file(tempImageFile)
-    image = cv2.imread(tempImageFile)
+    driver.get_screenshot_as_file(temp_image_file)
+    image = cv2.imread(temp_image_file)
     result = reader.readtext(cut_image(image, 10, 100, 60, 20))
     assert result[0][1] == "隐藏选中"
 
@@ -107,7 +107,7 @@ def find_string_in_result(s, result):
         if d < dis:
             dis = d
             p = i
-    if dis < len(s)/2:
+    if dis < len(s) / 2:
         return result[p]
     return False
 
@@ -116,8 +116,8 @@ def test_selectfunc():  # 点击优化类型切换下拉菜单，选择优化类
     click_on_page(420, 50)
     click_on_page(420, 150)
 
-    driver.get_screenshot_as_file(tempImageFile)
-    image = cv2.imread(tempImageFile)
+    driver.get_screenshot_as_file(temp_image_file)
+    image = cv2.imread(temp_image_file)
     result = reader.readtext(image)
     ret = find_string_in_result("0,CIRCUIT_ROOT", result)
     assert ret != False
@@ -127,8 +127,8 @@ def test_hide():  # 点击state和root按钮，隐藏0,CIRCUIT_ROOT
     click_on_page(40, 80)
     click_on_page(350, 80)
 
-    driver.get_screenshot_as_file(tempImageFile)
-    image = cv2.imread(tempImageFile)
+    driver.get_screenshot_as_file(temp_image_file)
+    image = cv2.imread(temp_image_file)
     result = reader.readtext(image)
     ret = find_string_in_result("0,CIRCUIT_ROOT", result)
     assert ret == False
