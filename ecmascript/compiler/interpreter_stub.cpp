@@ -140,7 +140,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Jump(&dispatch);                                                                                   \
         }                                                                                                      \
         Bind(&initialized);                                                                                    \
-        callback.TryDump();                                                                                    \
+        (callback).TryDump();                                                                                  \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);

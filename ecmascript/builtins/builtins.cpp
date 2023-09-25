@@ -2767,7 +2767,8 @@ void Builtins::LazyInitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env) c
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("SharedArrayBuffer"));
-    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::SharedArrayBuffer));
+    auto accessor =
+        factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::SharedArrayBuffer));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetSharedArrayBufferFunction(thread_, accessor);
 }

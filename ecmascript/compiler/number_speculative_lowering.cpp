@@ -383,7 +383,7 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        if(GetRange(right).MaybeZero()) {
+        if (GetRange(right).MaybeZero()) {
             builder_.Int32CheckRightIsZero(right);
         }
         result = CalculateInts<Op>(left, right);
@@ -628,7 +628,7 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
         }
         case TypedBinOp::TYPED_MUL:
-            if(!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
+            if (!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
                 return builder_.Int32Mul(left, right);
             }
             res = builder_.MulWithOverflow(left, right);

@@ -294,7 +294,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
     JSHandle<TSObjectType> constructorType(thread, classType->GetConstructorType());
     JSHandle<TSObjLayoutInfo> tsLayout(thread, constructorType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties() + ClassInfoExtractor::STATIC_RESERVED_LENGTH;
-    JSHandle<JSHClass> hclass;    
+    JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();

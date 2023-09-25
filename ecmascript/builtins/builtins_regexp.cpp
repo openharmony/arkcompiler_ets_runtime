@@ -1531,7 +1531,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     if (!global && !sticky) {
         lastIndex = 0;
     }
-    uint32_t lastIndexInput = lastIndex;
+    uint32_t lastIndexInput = static_cast<uint32_t>(lastIndex);
     if (useCache) {
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputStr,
                                                                  RegExpExecResultCache::EXEC_TYPE, regexp,

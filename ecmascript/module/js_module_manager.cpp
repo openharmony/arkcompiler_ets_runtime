@@ -511,7 +511,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + recordName + "', please check the request path.'" 
+        CString msg = "cannot find record '" + recordName + "', please check the request path.'"
                       + moduleFileName + "'.";
         LOG_FULL(ERROR) << msg;
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());

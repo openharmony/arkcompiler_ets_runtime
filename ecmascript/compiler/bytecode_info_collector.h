@@ -416,10 +416,7 @@ public:
     // key:constantpool index, value:ItemData
     using Item = std::unordered_map<uint64_t, ItemData>;
 
-    ConstantPoolInfo(JSPandaFile* jsPandaFile) :
-        items_(ItemType::ITEM_TYPE_NUM, Item{}),
-        jsPandaFile_(jsPandaFile)
-    {}
+    ConstantPoolInfo(JSPandaFile* jsPandaFile) : items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
 
     Item& GetCPItem(ItemType type)
     {

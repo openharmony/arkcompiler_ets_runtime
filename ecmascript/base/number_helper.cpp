@@ -107,7 +107,6 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     auto value = bit_cast<uint64_t>(number);
     value += 1;
     double delta = HALF * (bit_cast<double>(value) - number);
-
     if (fraction != 0 && fraction >= delta) {
         buffer[fractionCursor++] = '.';
         while (fraction >= delta) {
@@ -159,8 +158,10 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
 
     size_t size = fractionCursor - integerCursor;
     std::unique_ptr<char[]> result = std::make_unique<char[]>(size);
-    memcpy_s(result.get(), size, buffer + integerCursor, size);
-
+    if (memcpy_s(result.get(), size, buffer + integerCursor, size) != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
     return BuiltinsBase::GetTaggedString(thread, result.get());
 }
 
