@@ -146,6 +146,7 @@ JSTaggedValue BuiltinsMath::Atanh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (value >= -1 && value <= 1) {
