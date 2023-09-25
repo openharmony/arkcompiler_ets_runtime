@@ -396,9 +396,9 @@ void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
             localCount = static_cast<int>(i);
         }
         if (sy->getType() == llvm::ELF::STT_SECTION) {
-            sy->st_shndx = shStrTabIndex;
+            sy->st_shndx = static_cast<uint16_t>(shStrTabIndex);
         } else if (sy->getType() == llvm::ELF::STT_FUNC) {
-            sy->st_shndx = textSecIndex;
+            sy->st_shndx = static_cast<uint16_t>(textSecIndex);
             sy->st_value += textSecOffset;
         }
         if (sy->st_shndx > secNum) {
