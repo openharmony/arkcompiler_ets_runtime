@@ -22,11 +22,11 @@ namespace panda::ecmascript::kungfu {
 MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, size_t methodId,
                                  bool enableLog, const std::string &name, const CString &recordName,
                                  MethodInfo *methodInfo, const MethodLiteral *methodLiteral,
-                                 bool enableGlobalTypeInfer)
+                                 bool enableGlobalTypeInfer, bool hasType)
     : builder_(builder), circuit_(circuit), gateAccessor_(circuit), tsManager_(ctx->GetTSManager()), ctx_(ctx),
       lexEnvManager_(ctx->GetLexEnvManager()), methodId_(methodId), enableLog_(enableLog), methodName_(name),
       recordName_(recordName), methodInfo_(methodInfo), methodLiteral_(methodLiteral),
-      inQueue_(circuit_->GetGateCount(), true), enableGlobalTypeInfer_(enableGlobalTypeInfer)
+      inQueue_(circuit_->GetGateCount(), true), enableGlobalTypeInfer_(enableGlobalTypeInfer), hasType_(hasType)
 {
     if (enableGlobalTypeInfer_ && methodInfo->IsNamespace()) {
         uint32_t methodOffset = methodLiteral_->GetMethodId().GetOffset();
@@ -1040,6 +1040,9 @@ bool MethodTypeInfer::InferLdLexVarDyn(GateRef gate)
     auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
+    if (!hasType_ && type.IsUndefinedType()) {
+        type = GateType::AnyType();
+    }
     return UpdateType(gate, type);
 }
 

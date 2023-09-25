@@ -22,7 +22,7 @@ namespace panda::ecmascript::kungfu {
 class GlobalTypeInfer {
 public:
     GlobalTypeInfer(PassContext *ctx, const uint32_t methodOffset, const CString &recordName,
-                    PGOProfilerDecoder *decoder, bool enableOptTrackField, bool enableLog);
+                    PGOProfilerDecoder *decoder, bool enableOptTrackField, bool enableLog, bool hasType);
     ~GlobalTypeInfer();
 
     void ProcessTypeInference(BytecodeCircuitBuilder *builder, Circuit *circuit);
@@ -57,6 +57,7 @@ private:
     PGOProfilerDecoder *decoder_ {nullptr};
     bool enableOptTrackField_ {false};
     bool enableLog_ {false};
+    bool hasType_ {false};
     bool enableGlobalTypeInfer_ {false};
     std::set<uint32_t> namespaceTypes_ {};
     std::vector<BytecodeCircuitBuilder *> builders_ {};

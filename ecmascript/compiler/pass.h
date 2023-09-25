@@ -246,7 +246,7 @@ public:
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
-                                        enableLog);
+                                        enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
         if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
             InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
