@@ -104,7 +104,7 @@ GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef arra
         {
             GateRef offset = GetByteOffset(array);
             result = GetValueFromBuffer(buffer, index, offset, jsType);
-            Jump(&exit);
+            Branch(TaggedIsNumber(*result), &exit, &slowPath);
         }
     }
     Bind(&slowPath);

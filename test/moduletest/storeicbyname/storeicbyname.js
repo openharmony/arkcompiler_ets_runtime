@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,24 +14,17 @@
  */
 
 /*
- * @tc.name:setobjectwithproto
- * @tc.desc:test set object with proto
+ * @tc.name:storeicbyname
+ * @tc.desc:test storeicbyname
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI7UTOA
  */
-var object = {
-    __proto__: null
-};
 
-print(Object.getPrototypeOf(object));
-
-class C32 extends String {
+const arr = [];
+for (let i = 0; i < 200; i++) {
 
 }
-let obj1 = new C32();
-print(obj1.__proto__ == C32.prototype);
-print(C32.__proto__ == String);
-C32.__proto__ = Array;
-let obj2 = new C32();
-print(obj2.__proto__ == C32.prototype);
-print(C32.__proto__ == Array);
+for (let i = 0; i < 100; i++) {
+    arr.length = 1025;
+}
+print("test successful !!!");

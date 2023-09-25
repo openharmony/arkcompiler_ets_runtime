@@ -361,17 +361,21 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
     GetCurrentEcmaContext()->ShrinkHandleStorage(prevIndex);
 }
 
-void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
+void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind)
 {
     if (!glueData_.stableArrayElementsGuardians_) {
         return;
     }
-    if (!receiver->GetJSHClass()->IsPrototype()) {
+    if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
         return;
     }
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
+        glueData_.stableArrayElementsGuardians_ = false;
+        return;
+    }
+    if (changeKind == StableArrayChangeKind::PROTO && receiver->IsJSArray()) {
         glueData_.stableArrayElementsGuardians_ = false;
     }
 }

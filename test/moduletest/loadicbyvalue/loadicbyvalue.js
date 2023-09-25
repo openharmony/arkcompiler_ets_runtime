@@ -30,3 +30,29 @@ for (let j = 300; j > 0; j--)
     func1(obj);
 }
 print(obj[i]);
+
+// PoC testcase
+const arr = []
+for (let i = 0; i < 20; i ++) {
+    const v0 = "p" + i;
+    const v1 = Symbol.iterator;
+    const v2 = {
+        [v1]() {},
+    };
+    arr[v0] = i;
+}
+const v3 = new Uint8Array(128);
+v3[arr];
+print("test successful !!!");
+
+var obj1 = {
+    0: 0,
+    2147483647: 1,
+    2147483648: 2,
+    4294967295: 3,
+    4294967296: 4,
+}
+
+for (let item in obj1) {
+    print(item + " " + obj1[item]);
+}
