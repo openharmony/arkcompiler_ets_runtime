@@ -976,6 +976,7 @@ void Heap::PrepareRecordRegionsForReclaim()
 
 void Heap::TriggerConcurrentMarking()
 {
+    ASSERT(idleTask_ != IdleTaskType::INCREMENTAL_MARK);
     if (idleTask_ == IdleTaskType::YOUNG_GC && IsFullMark()) {
         ClearIdleTask();
         DisableNotifyIdle();
