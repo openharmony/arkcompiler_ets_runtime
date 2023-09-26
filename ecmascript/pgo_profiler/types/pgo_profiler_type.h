@@ -181,7 +181,7 @@ public:
     {
         if (type_.index() == 0) {
             auto oldType = static_cast<uint32_t>(std::get<Type>(type_));
-            oldType = oldType & AnyType();
+            oldType = oldType & static_cast<uint32_t>(AnyType());
             type_ =
                 Type(oldType | static_cast<uint32_t>(std::get<Type>(type.type_)));
         } else {
@@ -230,7 +230,7 @@ public:
     Type GetPrimitiveType() const
     {
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
-        return Type(type & AnyType());
+        return Type(type & static_cast<uint32_t>(AnyType()));
     }
 
     uint32_t GetWeight() const

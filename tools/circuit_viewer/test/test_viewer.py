@@ -20,6 +20,7 @@ import nltk
 import cv2
 import tempfile
 import pytest
+import subprocess
 
 web_path = os.path.realpath("../dist")
 
@@ -60,7 +61,7 @@ def setup():
     os.chdir("..")
 
     print("setup : 编译项目")
-    os.system("npm run dist")
+    subprocess.run(["npm", "run", "dist"])
 
     print("setup : 拷贝测试文件")
     shutil.copy("examples/log_loop.txt", "dist/test.txt")
