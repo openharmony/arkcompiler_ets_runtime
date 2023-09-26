@@ -28,18 +28,17 @@ namespace panda::ecmascript {
 constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 
 template <typename Callback>
-inline bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+ARK_INLINE bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                 bool needBarrier, Callback callback)
 {
     auto hclass = root->SynchronizedGetClass();
-    if (hclass->IsAllTaggedProp()) {
-        return false;
-    }
+    Region *rootRegion = Region::ObjectAddressToRange(root);
     int index = 0;
     for (ObjectSlot slot = start; slot < end; slot++) {
         auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
-            callback(slot);
+            callback(slot, rootRegion, needBarrier);
         }
     }
     return true;
@@ -134,12 +133,9 @@ inline void NonMovableMarker::RecordWeakReference(uint32_t threadId, JSTaggedTyp
 }
 
 template <typename Callback>
-inline bool MovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+ARK_INLINE bool MovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
 {
     auto hclass = root->GetClass();
-    if (hclass->IsAllTaggedProp()) {
-        return false;
-    }
     int index = 0;
     for (ObjectSlot slot = start; slot < end; slot++) {
         TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
@@ -150,7 +146,7 @@ inline bool MovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, 
         auto layout = LayoutInfo::Cast(dst);
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
-            callback(slot);
+            callback(slot, root);
         }
     }
     return true;
