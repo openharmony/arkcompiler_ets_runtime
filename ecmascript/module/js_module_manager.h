@@ -30,8 +30,10 @@ public:
 
     JSTaggedValue GetModuleValueInner(int32_t index);
     JSTaggedValue GetModuleValueInner(int32_t index, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleValueInner(int32_t index, JSHandle<JSTaggedValue> currentModule);
     JSTaggedValue GetModuleValueOutter(int32_t index);
     JSTaggedValue GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleValueOutter(int32_t index, JSHandle<JSTaggedValue> currentModule);
     void StoreModuleValue(int32_t index, JSTaggedValue value);
     void StoreModuleValue(int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleNamespace(int32_t index);
