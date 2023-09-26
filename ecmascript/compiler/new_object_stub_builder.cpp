@@ -773,48 +773,50 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     auto env = GetEnvironment();
     ConstantIndex iterClassIdx = static_cast<ConstantIndex>(0);
     int32_t iterOffset = 0;       // ITERATED_SET_OFFSET
-    int32_t iterPrototypeIdx = 0; // ITERATOR_PROTOTYPE_INDEX
     size_t linkedOffset = 0;      // LINKED_MAP_OFFSET
     if constexpr (std::is_same_v<IteratorType, JSSetIterator>) {
         iterClassIdx = ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX;
         iterOffset = IteratorType::ITERATED_SET_OFFSET;
-        iterPrototypeIdx = GlobalEnv::SET_ITERATOR_PROTOTYPE_INDEX;
         linkedOffset = CollectionType::LINKED_SET_OFFSET;
+        size_ = IntPtr(JSSetIterator::SIZE);
     } else {
         iterClassIdx = ConstantIndex::JS_MAP_ITERATOR_CLASS_INDEX;
         iterOffset = IteratorType::ITERATED_MAP_OFFSET;
-        iterPrototypeIdx = GlobalEnv::MAP_ITERATOR_PROTOTYPE_INDEX;
         linkedOffset = CollectionType::LINKED_MAP_OFFSET;
+        size_ = IntPtr(JSMapIterator::SIZE);
     }
     GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, iterClassIdx);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
-    GateRef prototype = GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv, iterPrototypeIdx);
-    SetPrototypeToHClass(VariableType::JS_POINTER(), glue_, iteratorHClass, prototype);
 
     Label afterAllocate(env);
-    NewJSObject(result, &afterAllocate, iteratorHClass);
+    // Be careful. NO GC is allowed when initization is not complete.
+    AllocateInYoung(result, &afterAllocate);
     Bind(&afterAllocate);
-    Label setProperties(env);
-    Branch(TaggedIsException(result->ReadVariable()), exit, &setProperties);
-    Bind(&setProperties);
+    Label noException(env);
+    Branch(TaggedIsException(result->ReadVariable()), exit, &noException);
+    Bind(&noException);
+    {
+        StoreHClass(glue_, result->ReadVariable(), iteratorHClass);
+        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        auto emptyArray = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
 
-    SetExtensibleToBitfield(glue_, result->ReadVariable(), true);
-    // GetLinked
-    GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
+        // GetLinked
+        GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
+        // SetIterated
+        GateRef iteratorOffset = IntPtr(iterOffset);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
 
-    // SetIterated
-    GateRef iteratorOffset = IntPtr(iterOffset);
-    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
+        // SetIteratorNextIndex
+        GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), nextIndexOffset, Int32(0));
 
-    // SetIteratorNextIndex
-    GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);
-    Store(VariableType::INT32(), glue_, result->ReadVariable(), nextIndexOffset, Int32(0));
-
-    // SetIterationKind
-    GateRef kindBitfieldOffset = IntPtr(IteratorType::BIT_FIELD_OFFSET);
-    Store(VariableType::INT32(), glue_, result->ReadVariable(), kindBitfieldOffset, kind);
-    Jump(exit);
+        // SetIterationKind
+        GateRef kindBitfieldOffset = IntPtr(IteratorType::BIT_FIELD_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), kindBitfieldOffset, kind);
+        Jump(exit);
+    }
 }
 
 template void NewObjectStubBuilder::CreateJSCollectionIterator<JSSetIterator, JSSet>(

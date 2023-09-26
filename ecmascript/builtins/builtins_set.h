@@ -29,17 +29,17 @@
     /* Set.prototype.add ( value ) */                           \
     V("add",     Add,     1, SetAdd)                            \
     /* Set.prototype.clear ( ) */                               \
-    V("clear",   Clear,   0, INVALID)                           \
+    V("clear",   Clear,   0, SetClear)                          \
     /* Set.prototype.delete ( value ) */                        \
     V("delete",  Delete,  1, SetDelete)                         \
     /* Set.prototype.entries ( ) */                             \
-    V("entries", Entries, 0, INVALID)                           \
+    V("entries", Entries, 0, SetEntries)                        \
     /* Set.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
     V("forEach", ForEach, 1, SetForEach)                        \
     /* Set.prototype.has ( value ) */                           \
-    V("has",     Has,     1, INVALID)                           \
+    V("has",     Has,     1, SetHas)                            \
     /* Set.prototype.values ( ) */                              \
-    V("values",  Values,  0, INVALID)
+    V("values",  Values,  0, SetValues)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsSet : public base::BuiltinsBase {

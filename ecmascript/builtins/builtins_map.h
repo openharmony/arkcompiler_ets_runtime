@@ -25,23 +25,23 @@
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_MAP_PROTOTYPE_FUNCTIONS(V)                      \
     /* Map.prototype.clear ( ) */                               \
-    V("clear",   Clear,   0, INVALID)                           \
+    V("clear",   Clear,   0, MapClear)                          \
     /* Map.prototype.delete ( key ) */                          \
     V("delete",  Delete,  1, MapDelete)                         \
     /* Map.prototype.entries ( ) */                             \
-    V("entries", Entries, 0, INVALID)                           \
+    V("entries", Entries, 0, MapEntries)                        \
     /* Map.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
     V("forEach", ForEach, 1, MapForEach)                        \
     /* Map.prototype.get ( key ) */                             \
     V("get",     Get,     1, INVALID)                           \
     /* Map.prototype.has ( key ) */                             \
-    V("has",     Has,     1, INVALID)                           \
+    V("has",     Has,     1, MapHas)                            \
     /* Map.prototype.keys ( ) */                                \
-    V("keys",    Keys,    0, INVALID)                           \
+    V("keys",    Keys,    0, MapKeys)                           \
     /* Map.prototype.set ( key, value ) */                      \
     V("set",     Set,     2, MapSet)                            \
     /* Map.prototype.values ( ) */                              \
-    V("values",  Values,  0, INVALID)
+    V("values",  Values,  0, MapValues)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsMap : public base::BuiltinsBase {
