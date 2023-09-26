@@ -2206,62 +2206,23 @@ JSTaggedValue BuiltinsArray::Some(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, Sort);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, Sort);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let obj be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    // 1. If comparefn is not undefined and IsCallable(comparefn) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Callable is false", JSTaggedValue::Exception());
     }
 
-    // 2. Let len be ToLength(Get(obj, "length")).
-    int64_t len = ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(thisObjHandle));
-    // 3. ReturnIfAbrupt(len).
+    // 2. Let obj be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    for (int i = 1; i < len; i++) {
-        int beginIndex = 0;
-        int endIndex = i;
-        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), i));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        while (beginIndex < endIndex) {
-            int middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(
-                ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            double compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (compareResult > 0) {
-                endIndex = middleIndex;
-            } else {
-                beginIndex = middleIndex + 1;
-            }
-        }
-
-        if (endIndex >= 0 && endIndex < i) {
-            for (int j = i; j > endIndex; j--) {
-                previousValue.Update(
-                    ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), j - 1));
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
-                                                           previousValue.GetTaggedValue());
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            }
-            ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
-                                                       presentValue.GetTaggedValue());
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
-    }
-
+    // Array sort
+    JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
     return thisObjHandle.GetTaggedValue();
 }
 
@@ -3064,20 +3025,20 @@ JSTaggedValue BuiltinsArray::ToSorted(EcmaRuntimeCallInfo *argv)
     // the following steps when called:
     //    a. Return ? CompareArrayElements(x, y, comparefn).
     // 6. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, read-through-holes).
-    JSTaggedValue sortedList = ArrayHelper::SortIndexedProperties(thread, thisObjHandle, len, callbackFnHandle,
-                                                                  base::HolesType::READ_THROUGH_HOLES);
+    JSHandle<TaggedArray> sortedList =
+        ArrayHelper::SortIndexedProperties(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), len, callbackFnHandle,
+                                           base::HolesType::READ_THROUGH_HOLES);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> sortedArray(thread, sortedList);
 
     //7. Let j be 0.
     int64_t j = 0;
     // 8. Repeat, while j < len,
     //     a. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(j)), sortedList[j]).
     //     b. Set j to j + 1.
+    JSMutableHandle<JSTaggedValue> itemValue(thread, JSTaggedValue::Undefined());
     while (j < len) {
-        JSHandle<JSTaggedValue> item = JSArray::FastGetPropertyByValue(thread, sortedArray, j);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, j, item);
+        itemValue.Update(sortedList->Get(j));
+        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, j, itemValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ++j;
     }

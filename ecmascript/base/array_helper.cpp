@@ -366,9 +366,9 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
     return BuiltinsBase::GetTaggedDouble(tempArgs.start);
 }
 
-JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandle<JSObject> &thisObj,
-                                                 int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
-                                                 HolesType holes)
+JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
+                                                         int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                         HolesType holes)
 {
     // 1. Let items be a new empty List.
     JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
@@ -386,33 +386,34 @@ JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandl
     //         ii. Append kValue to items.
     //     e. Set k to k + 1.
     bool kRead = false;
-    JSHandle<JSTaggedValue> thisObjVal(thisObj);
     JSMutableHandle<JSTaggedValue> pk(thread, JSTaggedValue::Undefined());
 
+    int64_t index = 0;
     while (k < len) {
         if (holes == HolesType::SKIP_HOLES) {
-        pk.Update(JSTaggedValue(k));
-            kRead = JSTaggedValue::HasProperty(thread, thisObjVal, pk);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            pk.Update(JSTaggedValue(k));
+            kRead = JSTaggedValue::HasProperty(thread, thisObj, pk);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
         } else {
             ASSERT(holes == HolesType::READ_THROUGH_HOLES);
             kRead = true;
         }
         if (kRead) {
-            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            items->Set(thread, k, kValue.GetTaggedValue());
+            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObj, k);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
+            items->Set(thread, index++, kValue.GetTaggedValue());
         }
         ++k;
     }
-    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, items));
-    JSHandle<JSObject> arrayObj = JSHandle<JSObject>::Cast(array);
+    if (index < k) {
+        items->Trim(thread, index);
+    }
     // 4. Sort items using an implementation-defined sequence of calls to SortCompare.
     // If any such call returns an abrupt completion,
     // stop before performing any further calls to SortCompare and return that Completion Record.
-    JSArray::Sort(thread, arrayObj, callbackFnHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSArray::SortElements(thread, items, callbackFnHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
     // 5. Return items.
-    return arrayObj.GetTaggedValue();
+    return items;
 }
 }  // namespace panda::ecmascript::base

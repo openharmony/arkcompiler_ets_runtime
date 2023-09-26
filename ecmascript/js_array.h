@@ -91,13 +91,15 @@ public:
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
-    static void Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &fn);
+    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
+    static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
+                             const JSHandle<JSTaggedValue> &fn);
 };
 
 class TrackInfo : public TaggedObject {

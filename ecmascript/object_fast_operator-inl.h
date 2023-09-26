@@ -482,12 +482,11 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
     return result;
 }
 
-template<bool UseHole>  // UseHole is only for Array::Sort() which requires Hole order
 JSTaggedValue ObjectFastOperator::FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByIndex);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByIndex(thread, receiver, index);
-    if (result.IsHole() && !UseHole) {
+    if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread,
             JSHandle<JSTaggedValue>(thread, receiver), index).GetValue().GetTaggedValue();
     }
