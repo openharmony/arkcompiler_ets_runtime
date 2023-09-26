@@ -17,6 +17,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
@@ -32,6 +33,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -3940,26 +3942,66 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
 {
+    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-    callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    GateRef fixedArray = GetObjectLiteralInfoFromConstPool(glue, constpool, imm, module);
+    GateRef result = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
+    GateRef hasMethod = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_HAS_METHOD_INDEX));
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label fastpath(env);
+    Label slowpath(env);
+    Label dispatch(env);
+    GateRef flag = BoolOr(IsDictionaryModeByHClass(LoadHClass(result)), TaggedIsTrue(hasMethod));
+    Branch(flag, &slowpath, &fastpath);
+    Bind(&slowpath);
+    {
+        GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+        res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+        Jump(&dispatch);
+    }
+    Bind(&fastpath);
+    {
+        BuiltinsObjectStubBuilder builder(this);
+        res = builder.CloneObjectLiteral(glue, result);
+        Jump(&dispatch);
+    }
+    Bind(&dispatch);
+    callback.ProfileCreateObject(*res);
+    CHECK_EXCEPTION_WITH_ACC(*res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
 {
+    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-    callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    GateRef fixedArray = GetObjectLiteralInfoFromConstPool(glue, constpool, imm, module);
+    GateRef result = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
+    GateRef hasMethod = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_HAS_METHOD_INDEX));
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label fastpath(env);
+    Label slowpath(env);
+    Label dispatch(env);
+    GateRef flag = BoolOr(IsDictionaryModeByHClass(LoadHClass(result)), TaggedIsTrue(hasMethod));
+    Branch(flag, &slowpath, &fastpath);
+    Bind(&slowpath);
+    {
+        GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+        res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+        Jump(&dispatch);
+    }
+    Bind(&fastpath);
+    {
+        BuiltinsObjectStubBuilder builder(this);
+        res = builder.CloneObjectLiteral(glue, result);
+        Jump(&dispatch);
+    }
+    Bind(&dispatch);
+    callback.ProfileCreateObject(*res);
+    CHECK_EXCEPTION_WITH_ACC(*res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)

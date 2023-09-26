@@ -580,6 +580,57 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     return ret;
 }
 
+GateRef CircuitBuilder::GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
+                                                   ConstPoolType type)
+{
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    return GetObjectInfoFromConstPool(glue, hirGate, constPool, module, index, type);
+}
+
+GateRef CircuitBuilder::GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
+                                                   GateRef index, ConstPoolType type)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label cacheMiss(env_);
+    Label cache(env_);
+
+    auto cacheValue = GetValueFromTaggedArray(constPool, index);
+    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
+    Bind(&cacheMiss);
+    {
+        if (type == ConstPoolType::OBJECT_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralInfoFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+        } else {
+            UNREACHABLE();
+        }
+        Jump(&exit);
+    }
+    Bind(&cache);
+    {
+        if (type == ConstPoolType::OBJECT_LITERAL) {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralInfoFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                Jump(&exit);
+            }
+        } else {
+            UNREACHABLE();
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));

@@ -1004,6 +1004,16 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET));
+}
+
+inline void StubBuilder::SetExtractLengthOfTaggedArray(GateRef glue, GateRef array, GateRef extraLength)
+{
+    return Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), extraLength);
+}
+
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSHClass), TaggedIsHeapObject(obj));
