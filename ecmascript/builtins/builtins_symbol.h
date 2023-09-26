@@ -20,6 +20,44 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_value.h"
 
+#define BUILTIN_WELL_KNOWN_SYMBOLS(V)                   \
+    V(hasInstance,        HasInstance)                  \
+    V(isConcatSpreadable, IsConcatSpreadable)           \
+    V(toStringTag,        ToStringTag)
+
+#define BUILTIN_PUBLIC_SYMBOLS(V)                       \
+    V(asyncIterator, AsyncIterator)                     \
+    V(attach,        Attach)                            \
+    V(detach,        Detach)                            \
+    V(iterator,      Iterator)                          \
+    V(match,         Match)                             \
+    V(matchAll,      MatchAll)                          \
+    V(replace,       Replace)                           \
+    V(search,        Search)                            \
+    V(species,       Species)                           \
+    V(split,         Split)                             \
+    V(toPrimitive,   ToPrimitive)                       \
+    V(unscopables,   Unscopables)
+
+#define BUILTIN_ALL_SYMBOLS(V)      \
+    BUILTIN_WELL_KNOWN_SYMBOLS(V)   \
+    BUILTIN_PUBLIC_SYMBOLS(V)
+
+// List of functions in Symbol, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsSymbol::func refers to the native implementation of Symbol[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_SYMBOL_FUNCTIONS(V)             \
+    V("for",    For,    1, INVALID)             \
+    V("keyFor", KeyFor, 1, INVALID)
+
+// List of get accessors in Symbol.prototype, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsSymbol::func refers to the native implementation of Symbol.prototype[name].
+#define BUILTIN_SYMBOL_PROTOTYPE_FUNCTIONS(V)   \
+    V("toString", ToString, 0, INVALID)         \
+    V("valueOf",  ValueOf,  0, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsSymbol : public base::BuiltinsBase {
 public:
@@ -45,6 +83,31 @@ public:
     static JSTaggedValue ToPrimitive(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue SymbolDescriptiveString(JSThread *thread, JSTaggedValue sym);
+
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetSymbolFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(SYMBOL_FUNCTIONS);
+    }
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetSymbolPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(SYMBOL_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_SYMBOL_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSymbol::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array SYMBOL_FUNCTIONS = {
+        BUILTIN_SYMBOL_FUNCTIONS(BUILTIN_SYMBOL_FUNCTION_ENTRY)
+    };
+    static constexpr std::array SYMBOL_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_SYMBOL_PROTOTYPE_FUNCTIONS(BUILTIN_SYMBOL_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY
+#undef BUILTIN_TYPED_ARRAY_ACCESSOR_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_SYMBOL_H

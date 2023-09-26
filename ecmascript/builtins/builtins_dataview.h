@@ -19,6 +19,40 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_dataview.h"
 
+// List of functions in DataView, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsDataView::func refers to the native implementation of DataView.prototype[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_DATA_VIEW_PROTOTYPE_FUNCTIONS(V)                                    \
+    /* For %Type% of 1 byte: */                                                     \
+    /*   DataView.prototype.get%Type% ( byteOffset ) */                             \
+    /* For %Type% of 2 or more bytes: */                                            \
+    /*   DataView.prototype.get%Type% ( byteOffset [ , littleEndian ] ) */          \
+    V("getFloat32",     GetFloat32,     1, INVALID)                                 \
+    V("getFloat64",     GetFloat64,     1, INVALID)                                 \
+    V("getInt8",        GetInt8,        1, INVALID)                                 \
+    V("getInt16",       GetInt16,       1, INVALID)                                 \
+    V("getInt32",       GetInt32,       1, INVALID)                                 \
+    V("getBigInt64",    GetBigInt64,    1, INVALID)                                 \
+    V("getUint16",      GetUint16,      1, INVALID)                                 \
+    V("getUint32",      GetUint32,      1, INVALID)                                 \
+    V("getUint8",       GetUint8,       1, INVALID)                                 \
+    V("getBigUint64",   GetBigUint64,   1, INVALID)                                 \
+    /* For %Type% of 1 bytes: */                                                    \
+    /*   DataView.prototype.setInt8 ( byteOffset, value ) */                        \
+    /* For %Type% of 2 or more bytes: */                                            \
+    /*   DataView.prototype.setInt16 ( byteOffset, value [ , littleEndian ] ) */    \
+    V("setFloat32",     SetFloat32,     2, INVALID)                                 \
+    V("setFloat64",     SetFloat64,     2, INVALID)                                 \
+    V("setInt8",        SetInt8,        2, INVALID)                                 \
+    V("setInt16",       SetInt16,       2, INVALID)                                 \
+    V("setInt32",       SetInt32,       2, INVALID)                                 \
+    V("setBigInt64",    SetBigInt64,    2, INVALID)                                 \
+    V("setUint8",       SetUint8,       2, INVALID)                                 \
+    V("setUint16",      SetUint16,      2, INVALID)                                 \
+    V("setUint32",      SetUint32,      2, INVALID)                                 \
+    V("setBigUint64",   SetBigUint64,   2, INVALID)
+
 namespace panda::ecmascript::builtins {
 using DataViewType = ecmascript::DataViewType;
 class BuiltinsDataView : public base::BuiltinsBase {
@@ -72,7 +106,22 @@ public:
     // 25.3.4.16 DataView.prototype.setBigUint64 ( byteOffset, value [ , littleEndian ] )
     static JSTaggedValue SetBigUint64(EcmaRuntimeCallInfo *argv);
 
+    // Excluding the '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetDataViewPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(DATA_VIEW_PROTOTYPE_FUNCTIONS);
+    }
+
 private:
+#define BUILTIN_DATA_VIEW_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsDataView::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array DATA_VIEW_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_DATA_VIEW_PROTOTYPE_FUNCTIONS(BUILTIN_DATA_VIEW_FUNCTION_ENTRY)
+    };
+
+#undef BUILTIN_DATA_VIEW_FUNCTION_ENTRY
+
     // 24.2.1.1 GetViewValue ( view, requestIndex, isLittleEndian, type )
     static JSTaggedValue GetViewValue(JSThread *thread, const JSHandle<JSTaggedValue> &view,
                                       const JSHandle<JSTaggedValue> &requestIndex,

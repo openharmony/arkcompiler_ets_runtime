@@ -19,6 +19,28 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in Set, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsSet::func refers to the native implementation of Set.prototype[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+// The following functions are not listed:
+//   - Set.prototype.keys ( ), which is strictly equal to Set.prototype.values
+#define BUILTIN_SET_PROTOTYPE_FUNCTIONS(V)                      \
+    /* Set.prototype.add ( value ) */                           \
+    V("add",     Add,     1, SetAdd)                            \
+    /* Set.prototype.clear ( ) */                               \
+    V("clear",   Clear,   0, INVALID)                           \
+    /* Set.prototype.delete ( value ) */                        \
+    V("delete",  Delete,  1, SetDelete)                         \
+    /* Set.prototype.entries ( ) */                             \
+    V("entries", Entries, 0, INVALID)                           \
+    /* Set.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
+    V("forEach", ForEach, 1, SetForEach)                        \
+    /* Set.prototype.has ( value ) */                           \
+    V("has",     Has,     1, INVALID)                           \
+    /* Set.prototype.values ( ) */                              \
+    V("values",  Values,  0, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsSet : public base::BuiltinsBase {
 public:
@@ -42,6 +64,22 @@ public:
     static JSTaggedValue GetSize(EcmaRuntimeCallInfo *argv);
     // 23.2.3.10
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetSetPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(SET_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_SET_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSet::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array SET_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_SET_PROTOTYPE_FUNCTIONS(BUILTIN_SET_FUNCTION_ENTRY)
+    };
+
+#undef BUILTIN_SET_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_SET_H

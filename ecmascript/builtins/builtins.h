@@ -28,7 +28,7 @@ namespace panda::ecmascript {
 struct ErrorParameter {
     EcmaEntrypoint nativeConstructor{nullptr};
     EcmaEntrypoint nativeMethod{nullptr};
-    const char *nativePropertyName{nullptr};
+    std::string_view nativePropertyName{};
     JSType nativeJstype{JSType::INVALID};
 };
 
@@ -52,13 +52,13 @@ private:
     EcmaVM *vm_{nullptr};
 
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                                               EcmaEntrypoint ctorFunc, const char *name, int length,
+                                               EcmaEntrypoint ctorFunc, std::string_view name, int length,
                                                kungfu::BuiltinsStubCSigns::ID builtinId =
                                                kungfu::BuiltinsStubCSigns::INVALID) const;
 
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                           const char *name, int length) const;
+                                           std::string_view name, int length) const;
 
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                      EcmaEntrypoint func, int length,
@@ -71,7 +71,7 @@ private:
         const JSHandle<AccessorData> &accessor) const;
 
     void InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                        const JSHandle<JSFunction> &ctor, const char *name, int length) const;
+                        const JSHandle<JSFunction> &ctor, std::string_view name, int length) const;
 
     void InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject);
 
@@ -149,9 +149,9 @@ private:
 
     // for Intl.
     JSHandle<JSFunction> NewIntlConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                                            EcmaEntrypoint ctorFunc, const char *name, int length);
+                                            EcmaEntrypoint ctorFunc, std::string_view name, int length);
     void InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                            const JSHandle<JSFunction> &ctor, const char *name, int length);
+                            const JSHandle<JSFunction> &ctor, std::string_view name, int length);
     void InitializeIntl(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeValue);
     void InitializeLocale(const JSHandle<GlobalEnv> &env);
     void InitializeDateTimeFormat(const JSHandle<GlobalEnv> &env);
@@ -171,8 +171,8 @@ private:
     void LazyInitializeDisplayNames(const JSHandle<GlobalEnv> &env) const;
     void LazyInitializeListFormat(const JSHandle<GlobalEnv> &env) const;
 
-    void GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method, const char *name,
-                            JSType type) const;
+    void GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method,
+                            std::string_view name, JSType type) const;
 
     void InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void LazyInitializeSet(const JSHandle<GlobalEnv> &env);
@@ -247,7 +247,7 @@ private:
     void InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
     JSHandle<JSFunction> InitializeExoticConstructor(const JSHandle<GlobalEnv> &env, EcmaEntrypoint ctorFunc,
-                                                     const char *name, int length);
+                                                     std::string_view name, int length);
 
     void InitializePromise(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &promiseFuncClass);
 
@@ -263,7 +263,7 @@ private:
 
     void InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) const;
 
-    void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
+    void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
                      kungfu::BuiltinsStubCSigns::INVALID) const;
 
@@ -282,31 +282,38 @@ private:
                                               kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
-                               const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func, int length);
+                               const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length);
 
     template<int type = JSSymbol::SYMBOL_DEFAULT_TYPE>
     void SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
-                             const JSHandle<JSTaggedValue> &symbol, const char *name, EcmaEntrypoint func,
+                             const JSHandle<JSTaggedValue> &symbol, std::string_view name, EcmaEntrypoint func,
                              int length) const;
 
-    void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key) const;
-    JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func, const char *name,
-                                         int length) const;
+    void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                            std::string_view key) const;
+    JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                         std::string_view name, int length) const;
+    JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                         JSHandle<JSTaggedValue> key, int length) const;
 
-    void SetConstant(const JSHandle<JSObject> &obj, const char *key, JSTaggedValue value) const;
+    void SetConstant(const JSHandle<JSObject> &obj, std::string_view key, JSTaggedValue value) const;
 
-    void SetGlobalThis(const JSHandle<JSObject> &obj, const char *key, const JSHandle<JSTaggedValue> &globalValue);
+    void SetGlobalThis(const JSHandle<JSObject> &obj, std::string_view key,
+                       const JSHandle<JSTaggedValue> &globalValue);
 
-    void SetAttribute(const JSHandle<JSObject> &obj, const char *key, const char *value) const;
+    void SetAttribute(const JSHandle<JSObject> &obj, std::string_view key,  std::string_view value) const;
 
-    void SetNoneAttributeProperty(const JSHandle<JSObject> &obj, const char *key,
+    void SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::string_view key,
                                   const JSHandle<JSTaggedValue> &value) const;
 
     void StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
                                                   const JSHandle<JSObject> &prototype) const;
 
-    JSHandle<JSTaggedValue> CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func, const char *name,
-                                         int length);
+    JSHandle<JSTaggedValue> CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                         std::string_view name, int length) const;
+    JSHandle<JSTaggedValue> CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                         JSHandle<JSTaggedValue> key, int length) const;
+
     void SetArgumentsSharedAccessor(const JSHandle<GlobalEnv> &env);
     void SetAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                      const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
@@ -316,10 +323,12 @@ private:
     void InitializeGlobalRegExp(JSHandle<JSObject> &obj) const;
     // Using to initialize jsapi container
     JSHandle<JSObject> InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const;
-    void SetConstantObject(const JSHandle<JSObject> &obj, const char *key, JSHandle<JSTaggedValue> &value) const;
-    void SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
+    void SetConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
+                           JSHandle<JSTaggedValue> &value) const;
+    void SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                            EcmaEntrypoint func, int length) const;
-    void SetNonConstantObject(const JSHandle<JSObject> &obj, const char *key, JSHandle<JSTaggedValue> &value) const;
+    void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
+                              JSHandle<JSTaggedValue> &value) const;
 
     friend class builtins::BuiltinsLazyCallback;
 };

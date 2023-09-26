@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_H
 
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
 class ObjectFastOperator final {

@@ -507,7 +507,7 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
 {
     auto search = constantCache_.find({machineType, value, type});
     if (search != constantCache_.end()) {
-        return constantCache_.at({machineType, value, type});
+        return search->second;
     }
     auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
     constantCache_[{machineType, value, type}] = gate;

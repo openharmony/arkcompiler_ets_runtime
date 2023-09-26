@@ -19,6 +19,73 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_thread.h"
 
+#define BUILTIN_GLOBAL_CONSTANTS(V)     \
+    V("Infinity",  INFINITY_VALUE)      \
+    V("NaN",       NAN_VALUE)           \
+    V("undefined", UNDEFINED_VALUE)
+
+// List of functions in the global object.
+// V(name, func, length, stubIndex)
+// where BuiltinsGlobal::func refers to the native implementation of globalThis[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+// The following global object properties are not implemented yet:
+//   - Encode ( string, extraUnescaped )
+//   - Decode ( string, preserveEscapeSet )
+//   - ParseHexOctet ( string, position )
+// The following global object properties are not listed here:
+//   - parseFloat ( string ), listed in builtins_number.h instead.
+//   - parseInt ( string ), listed in builtins_number.h instead.
+#define BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                              \
+    /* decodeURI ( encodedURI ) */                                      \
+    V("decodeURI",             DecodeURI,             1, INVALID)       \
+    /* decodeURIComponent ( encodedURIComponent ) */                    \
+    V("decodeURIComponent",    DecodeURIComponent,    1, INVALID)       \
+    /* encodeURI ( uri ) */                                             \
+    V("encodeURI",             EncodeURI,             1, INVALID)       \
+    /* encodeURIComponent ( uriComponent ) */                           \
+    V("encodeURIComponent",    EncodeURIComponent,    1, INVALID)       \
+    /* escape ( string ), defined in B.2.1 */                           \
+    V("escape",                Escape,                1, INVALID)       \
+    /* eval ( x ), which is NOT supported in ArkTS engine */            \
+    V("eval",                  NotSupportEval,        1, INVALID)       \
+    /* isFinite ( number ) */                                           \
+    V("isFinite",              IsFinite,              1, INVALID)       \
+    /* isNaN ( number ) */                                              \
+    V("isNaN",                 IsNaN,                 1, INVALID)       \
+    /* unescape ( string )*/                                            \
+    V("unescape",              Unescape,              1, INVALID)       \
+    /* The following are ArkTS extensions */                            \
+    V("markModuleCollectable", MarkModuleCollectable, 0, INVALID)       \
+    V("print",                 PrintEntrypoint,       0, INVALID)
+
+#if ECMASCRIPT_ENABLE_RUNTIME_STAT
+#define BUILTIN_GLOBAL_FUNCTIONS_RUNTIME_STAT(V)        \
+    V("startRuntimeStat", StartRuntimeStat, 0, INVALID) \
+    V("stopRuntimeStat",  StopRuntimeStat,  0, INVALID)
+#else
+#define BUILTIN_GLOBAL_FUNCTIONS_RUNTIME_STAT(V) // Nothing
+#endif
+
+#if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
+#define BUILTIN_GLOBAL_FUNCTIONS_OPT_CODE_PROFILER(V)   \
+    V("printOptStat", PrintOptStat, 0, INVALID)
+#else
+#define BUILTIN_GLOBAL_FUNCTIONS_OPT_CODE_PROFILER(V) // Nothing
+#endif
+
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+#define BUILTIN_GLOBAL_FUNCTIONS_FUNCTION_CALL_TIMER(V) \
+    V("printFunctionCallStat", PrintFunctionCallStat, 0, INVALID)
+#else
+#define BUILTIN_GLOBAL_FUNCTIONS_FUNCTION_CALL_TIMER(V) // Nothing
+#endif
+
+#define BUILTIN_GLOBAL_FUNCTIONS(V)                     \
+    BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                  \
+    BUILTIN_GLOBAL_FUNCTIONS_RUNTIME_STAT(V)            \
+    BUILTIN_GLOBAL_FUNCTIONS_OPT_CODE_PROFILER(V)       \
+    BUILTIN_GLOBAL_FUNCTIONS_FUNCTION_CALL_TIMER(V)
+
 namespace panda::ecmascript::builtins {
 static constexpr uint8_t BIT_MASK = 0x0F;
 static constexpr uint8_t BIT_MASK_FF = 0xFF;
@@ -35,6 +102,10 @@ enum class Placement {
 
 class BuiltinsGlobal : public base::BuiltinsBase {
 public:
+    static const inline JSTaggedValue INFINITY_VALUE = JSTaggedValue(base::POSITIVE_INFINITY);
+    static const inline JSTaggedValue NAN_VALUE = JSTaggedValue(base::NAN_VALUE);
+    static const inline JSTaggedValue UNDEFINED_VALUE = JSTaggedValue::Undefined();
+
     // 18.2.1
     static JSTaggedValue NotSupportEval(EcmaRuntimeCallInfo *msg);
     // 18.2.2
@@ -68,7 +139,31 @@ public:
     // B.2.1.2 unescape ( string )
     static JSTaggedValue Unescape(EcmaRuntimeCallInfo *msg);
 
+    static Span<const base::BuiltinConstantEntry> GetGlobalConstants()
+    {
+        return Span<const base::BuiltinConstantEntry>(GLOBAL_CONSTANTS);
+    }
+
+    static Span<const base::BuiltinFunctionEntry> GetGlobalFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(GLOBAL_FUNCTIONS);
+    }
+
 private:
+#define BUILTIN_GLOBAL_CONSTANT_ENTRY(name, var) \
+    base::BuiltinConstantEntry::Create(name, BuiltinsGlobal::var),
+#define BUILTIN_GLOBAL_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsGlobal::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static inline std::array GLOBAL_CONSTANTS = {
+        BUILTIN_GLOBAL_CONSTANTS(BUILTIN_GLOBAL_CONSTANT_ENTRY)
+    };
+    static constexpr std::array GLOBAL_FUNCTIONS = {
+        BUILTIN_GLOBAL_FUNCTIONS(BUILTIN_GLOBAL_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_GLOBAL_CONSTANT_ENTRY
+#undef BUILTIN_GLOBAL_FUNCTION_ENTRY
+
     static void PrintString(JSThread *thread, EcmaString *string);
     static void PrintValue(int64_t value, int64_t tag);
     static JSTaggedValue Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet);

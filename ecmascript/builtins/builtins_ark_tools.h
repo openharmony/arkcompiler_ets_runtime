@@ -19,6 +19,39 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_thread.h"
 
+// List of functions in ArkTools, extension of ArkTS engine.
+// V(name, func, length, stubIndex)
+// where BuiltinsArkTools::func refers to the native implementation of ArkTools[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                           \
+    V("compareHClass",                CompareHClass,                2, INVALID)         \
+    V("dumpHClass",                   DumpHClass,                   1, INVALID)         \
+    V("excutePendingJob",             ExcutePendingJob,             0, INVALID)         \
+    V("forceFullGC",                  ForceFullGC,                  0, INVALID)         \
+    V("getHClass",                    GetHClass,                    1, INVALID)         \
+    V("getLexicalEnv",                GetLexicalEnv,                1, INVALID)         \
+    V("hasTSSubtyping",               HasTSSubtyping,               1, INVALID)         \
+    V("hiddenStackSourceFile",        HiddenStackSourceFile,        0, INVALID)         \
+    V("isNotHoleProperty",            IsNotHoleProperty,            2, INVALID)         \
+    V("isPrototype",                  IsPrototype,                  1, INVALID)         \
+    V("isRegExpReplaceDetectorValid", IsRegExpReplaceDetectorValid, 0, INVALID)         \
+    V("isTSHClass",                   IsTSHClass,                   1, INVALID)         \
+    V("print",                        ObjectDump,                   0, INVALID)         \
+    V("removeAOTFlag",                RemoveAOTFlag,                1, INVALID)         \
+    V("timeInUs",                     TimeInUs,                     0, INVALID)
+
+#ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
+    V("startCpuProf", StartCpuProfiler, 0, INVALID)     \
+    V("stopCpuProf",  StopCpuProfiler,  0, INVALID)
+#else
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V) // Nothing
+#endif
+
+#define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
 public:
@@ -64,6 +97,20 @@ public:
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+    static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(ARK_TOOLS_FUNCTIONS);
+    }
+
+private:
+#define BUILTINS_ARK_TOOLS_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsArkTools::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array ARK_TOOLS_FUNCTIONS  = {
+        BUILTIN_ARK_TOOLS_FUNCTIONS(BUILTINS_ARK_TOOLS_FUNCTION_ENTRY)
+    };
+#undef BUILTINS_ARK_TOOLS_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 
