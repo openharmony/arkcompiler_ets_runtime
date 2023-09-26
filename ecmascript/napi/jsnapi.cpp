@@ -665,7 +665,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
 void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     if (hostVm != nullptr && workerVm != nullptr) {
-        hostVm->WorkersetInfo(hostVm, workerVm);
+        hostVm->WorkersetInfo(workerVm);
         workerVm->SetBundleName(hostVm->GetBundleName());
     }
 }
@@ -673,7 +673,7 @@ void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 bool JSNApi::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     if (hostVm != nullptr && workerVm != nullptr) {
-        return hostVm->DeleteWorker(hostVm, workerVm);
+        return hostVm->DeleteWorker(workerVm);
     }
     return false;
 }
