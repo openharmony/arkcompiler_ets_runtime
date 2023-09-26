@@ -89,3 +89,10 @@ let name2 = 'testfileswodetwwwpng';
 let filename2 = name2.substring(0, 14);
 let kk2 = filename2.toLowerCase();
 print(kk2);
+
+
+var strA = name2 + name1;
+for (let i = 0; i < 100; i++) {
+strA.toLocaleString();
+}
+print("true");
