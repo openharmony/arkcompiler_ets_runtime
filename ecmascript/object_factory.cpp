@@ -1978,25 +1978,25 @@ JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTable(const JSHandle<JSTaggedValu
     return obj;
 }
 
-JSHandle<JSSymbol> ObjectFactory::NewPrivateNameSymbolWithChar(const char *description)
+JSHandle<JSSymbol> ObjectFactory::NewPrivateNameSymbolWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewPrivateNameSymbol(JSHandle<JSTaggedValue>(string));
 }
 
-JSHandle<JSSymbol> ObjectFactory::NewWellKnownSymbolWithChar(const char *description)
+JSHandle<JSSymbol> ObjectFactory::NewWellKnownSymbolWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewWellKnownSymbol(JSHandle<JSTaggedValue>(string));
 }
 
-JSHandle<JSSymbol> ObjectFactory::NewPublicSymbolWithChar(const char *description)
+JSHandle<JSSymbol> ObjectFactory::NewPublicSymbolWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 
-JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTableWithChar(const char *description)
+JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTableWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewSymbolWithTable(JSHandle<JSTaggedValue>(string));
@@ -3451,31 +3451,31 @@ JSHandle<TSNamespaceType> ObjectFactory::NewTSNamespaceType()
     return namespaceType;
 }
 // ----------------------------------- new string ----------------------------------------
-JSHandle<EcmaString> ObjectFactory::NewFromASCII(const CString &data)
+JSHandle<EcmaString> ObjectFactory::NewFromASCII(std::string_view data)
 {
-    auto utf8Data = reinterpret_cast<const uint8_t *>(data.c_str());
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTable(utf8Data, data.length(), true);
 }
 
-JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(const CString &data)
+JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data)
 {
-    auto utf8Data = reinterpret_cast<const uint8_t *>(data.c_str());
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTableNonMovable(utf8Data, data.length());
 }
 
-JSHandle<EcmaString> ObjectFactory::NewFromUtf8(const CString &data)
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
 {
-    auto utf8Data = reinterpret_cast<const uint8_t *>(data.c_str());
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
 }
 
-JSHandle<EcmaString> ObjectFactory::NewFromUtf16(const CS16tring &data)
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16(std::u16string_view data)
 {
     uint32_t length = data.length();
-    auto utf16Data = reinterpret_cast<const uint16_t *>(data.c_str());
+    auto utf16Data = reinterpret_cast<const uint16_t *>(data.data());
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, length);
     return GetStringFromStringTable(utf16Data, length, canBeCompress);
 }

@@ -456,8 +456,9 @@ void RuntimeStubs::DumpToStreamWithHint(std::ostream &out, std::string_view hint
     // Begin line
     out << dumpDelimiterLine << " Begin dump: " << hint << ' ' << dumpDelimiterLine << std::endl;
     // Dumps raw data
-    out << "(Raw value = 0x" << std::setw(16) << std::hex << std::setfill('0') << value.GetRawData() << ") ";
-    out << std::setfill(' '); // Recovers fill character
+    out << "(Raw value = 0x" << std::setw(base::INT64_HEX_DIGITS) << std::hex
+        << std::setfill('0') << value.GetRawData() << ") ";
+    out << std::dec << std::setfill(' '); // Recovers integer radix & fill character
     // Dumps tagged value
     value.Dump(out);
     // End line

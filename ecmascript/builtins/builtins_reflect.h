@@ -20,6 +20,38 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_array.h"
 
+// List of functions in Reflect, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsRefject::func refers to the native implementation of Reflect[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_REFLECT_FUNCTIONS(V)                                                    \
+    /* Reflect.apply ( target, thisArgument, argumentsList ) */                         \
+    V("apply",                    ReflectApply,                    3, INVALID)          \
+    /* Reflect.construct ( target, argumentsList [ , newTarget ] ) */                   \
+    V("construct",                ReflectConstruct,                2, INVALID)          \
+    /* Reflect.defineProperty ( target, propertyKey, attributes ) */                    \
+    V("defineProperty",           ReflectDefineProperty,           3, INVALID)          \
+    /* Reflect.deleteProperty ( target, propertyKey ) */                                \
+    V("deleteProperty",           ReflectDeleteProperty,           2, INVALID)          \
+    /* Reflect.get ( target, propertyKey [ , receiver ] ) */                            \
+    V("get",                      ReflectGet,                      2, INVALID)          \
+    /* Reflect.getOwnPropertyDescriptor ( target, propertyKey ) */                      \
+    V("getOwnPropertyDescriptor", ReflectGetOwnPropertyDescriptor, 2, INVALID)          \
+    /* Reflect.getPrototypeOf ( target ) */                                             \
+    V("getPrototypeOf",           ReflectGetPrototypeOf,           1, INVALID)          \
+    /* Reflect.has ( target, propertyKey ) */                                           \
+    V("has",                      ReflectHas,                      2, INVALID)          \
+    /* Reflect.isExtensible ( target ) */                                               \
+    V("isExtensible",             ReflectIsExtensible,             1, INVALID)          \
+    /* Reflect.ownKeys ( target ) */                                                    \
+    V("ownKeys",                  ReflectOwnKeys,                  1, INVALID)          \
+    /* Reflect.preventExtensions ( target ) */                                          \
+    V("preventExtensions",        ReflectPreventExtensions,        1, INVALID)          \
+    /* Reflect.set ( target, propertyKey, V [ , receiver ] ) */                         \
+    V("set",                      ReflectSet,                      3, INVALID)          \
+    /* Reflect.setPrototypeOf ( target, proto ) */                                      \
+    V("setPrototypeOf",           ReflectSetPrototypeOf,           2, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsReflect : public base::BuiltinsBase {
 public:
@@ -61,6 +93,21 @@ public:
 
     // ecma 26.1.13
     static JSTaggedValue ReflectSetPrototypeOf(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetReflectFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(REFLECT_FUNCTIONS);
+    }
+
+private:
+#define BUILTINS_REFLECT_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsReflect::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array REFLECT_FUNCTIONS  = {
+        BUILTIN_REFLECT_FUNCTIONS(BUILTINS_REFLECT_FUNCTION_ENTRY)
+    };
+#undef BUILTINS_REFLECT_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REFLECT_H

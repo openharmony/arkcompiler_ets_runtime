@@ -18,7 +18,9 @@
 
 #include <vector>
 
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {

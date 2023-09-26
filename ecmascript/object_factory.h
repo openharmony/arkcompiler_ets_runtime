@@ -287,13 +287,13 @@ public:
 
     JSHandle<JSSymbol> NewSymbolWithTable(const JSHandle<JSTaggedValue> &name);
 
-    JSHandle<JSSymbol> NewPrivateNameSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewPrivateNameSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewWellKnownSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewWellKnownSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewPublicSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewPublicSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewSymbolWithTableWithChar(const char *description);
+    JSHandle<JSSymbol> NewSymbolWithTableWithChar(std::string_view description);
 
     JSHandle<AccessorData> NewAccessorData();
     JSHandle<AccessorData> NewInternalAccessor(void *setter, void *getter);
@@ -518,9 +518,9 @@ public:
     JSHandle<TSNamespaceType> NewTSNamespaceType();
 
     // ----------------------------------- new string ----------------------------------------
-    JSHandle<EcmaString> NewFromASCII(const CString &data);
-    JSHandle<EcmaString> NewFromUtf8(const CString &data);
-    JSHandle<EcmaString> NewFromUtf16(const CS16tring &data);
+    JSHandle<EcmaString> NewFromASCII(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 
@@ -673,7 +673,7 @@ private:
     JSHandle<JSObject> NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used to create nonmovable utf8 string at global constants
-    JSHandle<EcmaString> NewFromASCIINonMovable(const CString &data);
+    JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
 
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);

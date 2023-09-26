@@ -545,66 +545,15 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // Object method.
-    // 19.1.2.1Object.assign ( target, ...sources )
-    SetFunction(env, objFunc, "assign", Object::Assign, FunctionLength::TWO);
-    // 19.1.2.2Object.create ( O [ , Properties ] )
-    SetFunction(env, objFunc, "create", Object::Create, FunctionLength::TWO);
-    // 19.1.2.3Object.defineProperties ( O, Properties )
-    SetFunction(env, objFunc, "defineProperties", Object::DefineProperties, FunctionLength::TWO);
-    // 19.1.2.4Object.defineProperty ( O, P, Attributes )
-    SetFunction(env, objFunc, "defineProperty", Object::DefineProperty, FunctionLength::THREE);
-    // 19.1.2.5Object.freeze ( O )
-    SetFunction(env, objFunc, "freeze", Object::Freeze, FunctionLength::ONE);
-    // 19.1.2.6Object.getOwnPropertyDescriptor ( O, P )
-    SetFunction(env, objFunc, "getOwnPropertyDescriptor", Object::GetOwnPropertyDescriptor, FunctionLength::TWO);
-    // 19.1.2.7Object.getOwnPropertyNames ( O )
-    SetFunction(env, objFunc, "getOwnPropertyNames", Object::GetOwnPropertyNames, FunctionLength::ONE);
-    // 19.1.2.8Object.getOwnPropertySymbols ( O )
-    SetFunction(env, objFunc, "getOwnPropertySymbols", Object::GetOwnPropertySymbols, FunctionLength::ONE);
-    // 19.1.2.9Object.getPrototypeOf ( O )
-    SetFunction(env, objFunc, "getPrototypeOf", Object::GetPrototypeOf, FunctionLength::ONE);
-    // 19.1.2.10Object.is ( value1, value2 )
-    SetFunction(env, objFunc, "is", Object::Is, 2);
-    // 19.1.2.11Object.isExtensible ( O )
-    SetFunction(env, objFunc, "isExtensible", Object::IsExtensible, FunctionLength::ONE);
-    // 19.1.2.12Object.isFrozen ( O )
-    SetFunction(env, objFunc, "isFrozen", Object::IsFrozen, FunctionLength::ONE);
-    // 19.1.2.13Object.isSealed ( O )
-    SetFunction(env, objFunc, "isSealed", Object::IsSealed, FunctionLength::ONE);
-    // 19.1.2.14 Object.keys(O)
-    SetFunction(env, objFunc, "keys", Object::Keys, FunctionLength::ONE);
-    // 20.1.2.22 Object.values(O)
-    SetFunction(env, objFunc, "values", Object::Values, FunctionLength::ONE);
-    // 19.1.2.15 Object.preventExtensions(O)
-    SetFunction(env, objFunc, "preventExtensions", Object::PreventExtensions, FunctionLength::ONE);
-    // 19.1.2.17 Object.seal(O)
-    SetFunction(env, objFunc, "seal", Object::Seal, FunctionLength::ONE);
-    // 19.1.2.18 Object.setPrototypeOf(O, proto)
-    SetFunction(env, objFunc, "setPrototypeOf", Object::SetPrototypeOf, FunctionLength::TWO);
-    // 20.1.2.5 Object.entries ( O )
-    SetFunction(env, objFunc, "entries", Object::Entries, FunctionLength::ONE);
-    // 20.1.2.7 Object.fromEntries ( iterable )
-    SetFunction(env, objFunc, "fromEntries", Object::FromEntries, FunctionLength::ONE);
-    // 20.1.2.13 Object.hasOwn ( O, P )
-    SetFunction(env, objFunc, "hasOwn", Object::HasOwn, FunctionLength::TWO);
-
-    // Object.property method
-    // 19.1.3.2 Object.prototype.hasOwnProperty(V)
-    SetFunction(env, objFuncPrototype, "hasOwnProperty", Object::HasOwnProperty, FunctionLength::ONE);
-    // 19.1.3.3 Object.prototype.isPrototypeOf(V)
-    SetFunction(env, objFuncPrototype, "isPrototypeOf", Object::IsPrototypeOf, FunctionLength::ONE);
-    // 19.1.3.4 Object.prototype.propertyIsEnumerable(V)
-    SetFunction(env, objFuncPrototype, "propertyIsEnumerable", Object::PropertyIsEnumerable, FunctionLength::ONE);
-    // 19.1.3.5 Object.prototype.toLocaleString([reserved1[, reserved2]])
-    SetFunction(env, objFuncPrototype, "toLocaleString", Object::ToLocaleString, FunctionLength::ZERO);
-    // 19.1.3.6 Object.prototype.toString()
-    SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Object::ToString,
-                FunctionLength::ZERO, BUILTINS_STUB_ID(ObjectToString));
-    // 19.1.3.7 Object.prototype.valueOf()
-    SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Object::ValueOf,
-                FunctionLength::ZERO);
-
-    SetFunction(env, objFuncPrototype, "createRealm", Object::CreateRealm, FunctionLength::ZERO);
+    for (const base::BuiltinFunctionEntry &entry: Object::GetObjectFunctions()) {
+        SetFunction(env, objFunc, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // Object.prototype method
+    for (const base::BuiltinFunctionEntry &entry: Object::GetObjectPrototypeFunctions()) {
+        SetFunction(env, objFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // B.2.2.1 Object.prototype.__proto__
     JSHandle<JSTaggedValue> protoKey(factory_->NewFromASCII("__proto__"));
@@ -635,8 +584,10 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(symbolFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, symbolFuncPrototype, constructorKey, descriptor);
 
-    SetFunction(env, symbolFunction, "for", Symbol::For, FunctionLength::ONE);
-    SetFunction(env, symbolFunction, "keyFor", Symbol::KeyFor, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Symbol::GetSymbolFunctions()) {
+        SetFunction(env, symbolFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // Symbol attribute
     JSHandle<JSTaggedValue> hasInstanceSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.hasInstance"));
@@ -760,25 +711,18 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(symbolFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, symbolFuncPrototype, constructorKey, descriptor);
 
-    SetFunction(realm, symbolFunction, "for", Symbol::For, FunctionLength::ONE);
-    SetFunction(realm, symbolFunction, "keyFor", Symbol::KeyFor, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Symbol::GetSymbolFunctions()) {
+        SetFunction(realm, symbolFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
+#define BUILTIN_SYMBOL_CREATE_WITH_REALM(name, Name)                            \
+    SetNoneAttributeProperty(symbolFunction, #name, env->Get##Name##Symbol());  \
+    realm->Set##Name##Symbol(thread_, env->Get##Name##Symbol());
+
+    realm->SetSymbolFunction(thread_, symbolFunction);
     // Symbol attribute
-    SetNoneAttributeProperty(symbolFunction, "hasInstance", env->GetHasInstanceSymbol());
-    SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", env->GetIsConcatSpreadableSymbol());
-    SetNoneAttributeProperty(symbolFunction, "toStringTag", env->GetToStringTagSymbol());
-    SetNoneAttributeProperty(symbolFunction, "iterator", env->GetIteratorSymbol());
-    SetNoneAttributeProperty(symbolFunction, "asyncIterator", env->GetAsyncIteratorSymbol());
-    SetNoneAttributeProperty(symbolFunction, "match", env->GetMatchSymbol());
-    SetNoneAttributeProperty(symbolFunction, "matchAll", env->GetMatchAllSymbol());
-    SetNoneAttributeProperty(symbolFunction, "replace", env->GetReplaceSymbol());
-    SetNoneAttributeProperty(symbolFunction, "search", env->GetSearchSymbol());
-    SetNoneAttributeProperty(symbolFunction, "species", env->GetSpeciesSymbol());
-    SetNoneAttributeProperty(symbolFunction, "split", env->GetSplitSymbol());
-    SetNoneAttributeProperty(symbolFunction, "toPrimitive", env->GetToPrimitiveSymbol());
-    SetNoneAttributeProperty(symbolFunction, "unscopables", env->GetUnscopablesSymbol());
-    SetNoneAttributeProperty(symbolFunction, "attach", env->GetAttachSymbol());
-    SetNoneAttributeProperty(symbolFunction, "detach", env->GetDetachSymbol());
+    BUILTIN_ALL_SYMBOLS(BUILTIN_SYMBOL_CREATE_WITH_REALM)
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
@@ -791,28 +735,10 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
                                                             "[Symbol.toPrimitive]", Symbol::ToPrimitive,
                                                             FunctionLength::ONE);
     // install the Symbol.prototype methods
-    SetFunction(realm, symbolFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Symbol::ToString,
-                FunctionLength::ZERO);
-    SetFunction(realm, symbolFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Symbol::ValueOf,
-                FunctionLength::ZERO);
-
-    realm->SetSymbolFunction(thread_, symbolFunction);
-    realm->SetHasInstanceSymbol(thread_, env->GetHasInstanceSymbol());
-    realm->SetIsConcatSpreadableSymbol(thread_, env->GetIsConcatSpreadableSymbol());
-    realm->SetToStringTagSymbol(thread_, env->GetToStringTagSymbol());
-    realm->SetIteratorSymbol(thread_, env->GetIteratorSymbol());
-    realm->SetAsyncIteratorSymbol(thread_, env->GetAsyncIteratorSymbol());
-    realm->SetMatchSymbol(thread_, env->GetMatchSymbol());
-    realm->SetMatchAllSymbol(thread_, env->GetMatchAllSymbol());
-    realm->SetReplaceSymbol(thread_, env->GetReplaceSymbol());
-    realm->SetSearchSymbol(thread_, env->GetSearchSymbol());
-    realm->SetSpeciesSymbol(thread_, env->GetSpeciesSymbol());
-    realm->SetSplitSymbol(thread_, env->GetSplitSymbol());
-    realm->SetToPrimitiveSymbol(thread_, env->GetToPrimitiveSymbol());
-    realm->SetUnscopablesSymbol(thread_, env->GetUnscopablesSymbol());
-    realm->SetAttachSymbol(thread_, env->GetAttachSymbol());
-    realm->SetDetachSymbol(thread_, env->GetDetachSymbol());
-
+    for (const base::BuiltinFunctionEntry &entry: Symbol::GetSymbolPrototypeFunctions()) {
+        SetFunction(realm, symbolFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // Setup %SymbolPrototype%
     SetStringTagSymbol(realm, symbolFuncPrototype, "Symbol");
 
@@ -827,6 +753,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
         realm, funcFuncPrototypeObj, realm->GetHasInstanceSymbol(), "[Symbol.hasInstance]",
         Function::FunctionPrototypeHasInstance, FunctionLength::ONE);
 }
+#undef BUILTIN_SYMBOL_CREATE_WITH_REALM
 
 void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                 const JSHandle<JSHClass> &primRefObjHClass)
@@ -848,37 +775,23 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     numFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, numFuncInstanceHClass.GetTaggedValue());
 
     // Number.prototype method
-    SetFunction(env, numFuncPrototype, "toExponential", Number::ToExponential, FunctionLength::ONE);
-    SetFunction(env, numFuncPrototype, "toFixed", Number::ToFixed, FunctionLength::ONE);
-    SetFunction(env, numFuncPrototype, "toLocaleString", Number::ToLocaleString, FunctionLength::ZERO);
-    SetFunction(env, numFuncPrototype, "toPrecision", Number::ToPrecision, FunctionLength::ONE);
-    SetFunction(env, numFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Number::ToString,
-                FunctionLength::ONE);
-    SetFunction(env, numFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Number::ValueOf,
-                FunctionLength::ZERO);
-
+    for (const base::BuiltinFunctionEntry &entry: Number::GetNumberPrototypeFunctions()) {
+        SetFunction(env, numFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // Number method
-    SetFunction(env, numFunction, "isFinite", Number::IsFinite, FunctionLength::ONE);
-    SetFunction(env, numFunction, "isInteger", Number::IsInteger, FunctionLength::ONE);
-    SetFunction(env, numFunction, "isNaN", Number::IsNaN, FunctionLength::ONE);
-    SetFunction(env, numFunction, "isSafeInteger", Number::IsSafeInteger, FunctionLength::ONE);
-    SetFuncToObjAndGlobal(env, globalObject, numFunction, "parseFloat", Number::ParseFloat, FunctionLength::ONE);
-    SetFuncToObjAndGlobal(env, globalObject, numFunction, "parseInt", Number::ParseInt, FunctionLength::TWO);
-
+    for (const base::BuiltinFunctionEntry &entry: Number::GetNumberNonGlobalFunctions()) {
+        SetFunction(env, numFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    for (const base::BuiltinFunctionEntry &entry: Number::GetNumberGlobalFunctions()) {
+        SetFuncToObjAndGlobal(env, globalObject, numFunction,
+                              entry.GetName(), entry.GetEntrypoint(), entry.GetLength());
+    }
     // Number constant
-    const double epsilon = 2.220446049250313e-16;
-    const double maxSafeInteger = 9007199254740991;
-    const double maxValue = 1.7976931348623157e+308;
-    const double minValue = 5e-324;
-    const double positiveInfinity = std::numeric_limits<double>::infinity();
-    SetConstant(numFunction, "MAX_VALUE", JSTaggedValue(maxValue));
-    SetConstant(numFunction, "MIN_VALUE", JSTaggedValue(minValue));
-    SetConstant(numFunction, "NaN", JSTaggedValue(NAN));
-    SetConstant(numFunction, "NEGATIVE_INFINITY", JSTaggedValue(-positiveInfinity));
-    SetConstant(numFunction, "POSITIVE_INFINITY", JSTaggedValue(positiveInfinity));
-    SetConstant(numFunction, "MAX_SAFE_INTEGER", JSTaggedValue(maxSafeInteger));
-    SetConstant(numFunction, "MIN_SAFE_INTEGER", JSTaggedValue(-maxSafeInteger));
-    SetConstant(numFunction, "EPSILON", JSTaggedValue(epsilon));
+    for (const base::BuiltinConstantEntry &entry: Number::GetNumberConstants()) {
+        SetConstant(numFunction, entry.GetName(), entry.GetTaggedValue());
+    }
 
     env->SetNumberFunction(thread_, numFunction);
 }
@@ -927,7 +840,6 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
 void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    constexpr int utcLength = 7;
     // Date.prototype
     JSHandle<JSObject> dateFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSHandle<JSTaggedValue> dateFuncPrototypeValue(dateFuncPrototype);
@@ -943,64 +855,20 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSH
     JSHandle<JSFunction>(dateFunction)->SetFunctionPrototype(thread_, dateFuncInstanceHClass.GetTaggedValue());
 
     // Date.prototype method
-    SetFunction(env, dateFuncPrototype, "getDate", Date::GetDate, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getDay", Date::GetDay, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getFullYear", Date::GetFullYear, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getHours", Date::GetHours, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getMilliseconds", Date::GetMilliseconds, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getMinutes", Date::GetMinutes, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getMonth", Date::GetMonth, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getSeconds", Date::GetSeconds, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getTime", Date::GetTime, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getTimezoneOffset", Date::GetTimezoneOffset, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCDate", Date::GetUTCDate, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCDay", Date::GetUTCDay, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCFullYear", Date::GetUTCFullYear, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCHours", Date::GetUTCHours, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCMilliseconds", Date::GetUTCMilliseconds, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCMinutes", Date::GetUTCMinutes, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCMonth", Date::GetUTCMonth, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "getUTCSeconds", Date::GetUTCSeconds, FunctionLength::ZERO);
-
-    SetFunction(env, dateFuncPrototype, "setDate", Date::SetDate, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "setFullYear", Date::SetFullYear, FunctionLength::THREE);
-    SetFunction(env, dateFuncPrototype, "setHours", Date::SetHours, FunctionLength::FOUR);
-    SetFunction(env, dateFuncPrototype, "setMilliseconds", Date::SetMilliseconds, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "setMinutes", Date::SetMinutes, FunctionLength::THREE);
-    SetFunction(env, dateFuncPrototype, "setMonth", Date::SetMonth, FunctionLength::TWO);
-    SetFunction(env, dateFuncPrototype, "setSeconds", Date::SetSeconds, FunctionLength::TWO);
-    SetFunction(env, dateFuncPrototype, "setTime", Date::SetTime, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "setUTCDate", Date::SetUTCDate, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "setUTCFullYear", Date::SetUTCFullYear, FunctionLength::THREE);
-    SetFunction(env, dateFuncPrototype, "setUTCHours", Date::SetUTCHours, FunctionLength::FOUR);
-    SetFunction(env, dateFuncPrototype, "setUTCMilliseconds", Date::SetUTCMilliseconds, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "setUTCMinutes", Date::SetUTCMinutes, FunctionLength::THREE);
-    SetFunction(env, dateFuncPrototype, "setUTCMonth", Date::SetUTCMonth, FunctionLength::TWO);
-    SetFunction(env, dateFuncPrototype, "setUTCSeconds", Date::SetUTCSeconds, FunctionLength::TWO);
-
-    SetFunction(env, dateFuncPrototype, "toDateString", Date::ToDateString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toISOString", Date::ToISOString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toJSON", Date::ToJSON, FunctionLength::ONE);
-    SetFunction(env, dateFuncPrototype, "toLocaleDateString", Date::ToLocaleDateString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toLocaleString", Date::ToLocaleString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toLocaleTimeString", Date::ToLocaleTimeString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Date::ToString,
-                FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toTimeString", Date::ToTimeString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, "toUTCString", Date::ToUTCString, FunctionLength::ZERO);
-    SetFunction(env, dateFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Date::ValueOf,
-                FunctionLength::ZERO);
-
+    for (const base::BuiltinFunctionEntry &entry: Date::GetDatePrototypeFunctions()) {
+        SetFunction(env, dateFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     SetFunctionAtSymbol(env, dateFuncPrototype, env->GetToPrimitiveSymbol(), "[Symbol.toPrimitive]", Date::ToPrimitive,
                         FunctionLength::ONE);
 
     // Date method
-    SetFunction(env, dateFunction, "now", Date::Now, FunctionLength::ZERO);
-    SetFunction(env, dateFunction, "parse", Date::Parse, FunctionLength::ONE);
-    SetFunction(env, dateFunction, "UTC", Date::UTC, utcLength);
-
+    for (const base::BuiltinFunctionEntry &entry: Date::GetDateFunctions()) {
+        SetFunction(env, dateFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // Date.length
-    SetConstant(dateFunction, "length", JSTaggedValue(utcLength));
+    SetConstant(dateFunction, "length", JSTaggedValue(Date::UTC_LENGTH));
 
     env->SetDateFunction(thread_, dateFunction);
 }
@@ -1052,7 +920,7 @@ void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
 }
 
 JSHandle<JSFunction> Builtins::InitializeExoticConstructor(const JSHandle<GlobalEnv> &env, EcmaEntrypoint ctorFunc,
-                                                           const char *name, int length)
+                                                           std::string_view name, int length)
 {
     JSHandle<JSFunction> ctor =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
@@ -1208,7 +1076,7 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
 }
 
 void Builtins::GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method,
-                                  const char *name, JSType type) const
+                                  std::string_view name, JSType type) const
 {
     error->nativeConstructor = constructor;
     error->nativeMethod = method;
@@ -1311,7 +1179,7 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 }  // namespace panda::ecmascript
 
 void Builtins::InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                              const JSHandle<JSFunction> &ctor, const char *name, int length) const
+                              const JSHandle<JSFunction> &ctor, std::string_view name, int length) const
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
@@ -1351,23 +1219,12 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
-    // set.prototype.add()
-    SetFunction(env, setFuncPrototype, "add", BuiltinsSet::Add, FunctionLength::ONE, BUILTINS_STUB_ID(SetAdd));
-    // set.prototype.clear()
-    SetFunction(env, setFuncPrototype, "clear", BuiltinsSet::Clear, FunctionLength::ZERO);
-    // set.prototype.delete()
-    SetFunction(env, setFuncPrototype, "delete", BuiltinsSet::Delete, FunctionLength::ONE,
-        BUILTINS_STUB_ID(SetDelete));
-    // set.prototype.has()
-    SetFunction(env, setFuncPrototype, "has", BuiltinsSet::Has, FunctionLength::ONE);
-    // set.prototype.forEach()
-    SetFunction(env, setFuncPrototype, "forEach", BuiltinsSet::ForEach, FunctionLength::ONE,
-        BUILTINS_STUB_ID(SetForEach));
-    // set.prototype.entries()
-    SetFunction(env, setFuncPrototype, "entries", BuiltinsSet::Entries, FunctionLength::ZERO);
-    // set.prototype.keys()
-    SetFunction(env, setFuncPrototype, "values", BuiltinsSet::Values, FunctionLength::ZERO);
-    // set.prototype.values()
+    // Set.prototype functions, excluding keys()
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsSet::GetSetPrototypeFunctions()) {
+        SetFunction(env, setFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // Set.prototype.keys, which is strictly equal to Set.prototype.values
     JSHandle<JSTaggedValue> keys(factory_->NewFromASCII("keys"));
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
     JSHandle<JSTaggedValue> valuesFunc =
@@ -1428,28 +1285,11 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(mapFuncPrototype), constructorKey, mapFunction);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
-    // map.prototype.set()
-    SetFunction(env, mapFuncPrototype, globalConst->GetHandledSetString(), BuiltinsMap::Set, FunctionLength::TWO,
-        BUILTINS_STUB_ID(MapSet));
-    // map.prototype.clear()
-    SetFunction(env, mapFuncPrototype, "clear", BuiltinsMap::Clear, FunctionLength::ZERO);
-    // map.prototype.delete()
-    SetFunction(env, mapFuncPrototype, "delete", BuiltinsMap::Delete, FunctionLength::ONE,
-        BUILTINS_STUB_ID(MapDelete));
-    // map.prototype.has()
-    SetFunction(env, mapFuncPrototype, "has", BuiltinsMap::Has, FunctionLength::ONE);
-    // map.prototype.get()
-    SetFunction(env, mapFuncPrototype, thread_->GlobalConstants()->GetHandledGetString(), BuiltinsMap::Get,
-                FunctionLength::ONE);
-    // map.prototype.forEach()
-    SetFunction(env, mapFuncPrototype, "forEach", BuiltinsMap::ForEach, FunctionLength::ONE,
-        BUILTINS_STUB_ID(MapForEach));
-    // map.prototype.keys()
-    SetFunction(env, mapFuncPrototype, "keys", BuiltinsMap::Keys, FunctionLength::ZERO);
-    // map.prototype.values()
-    SetFunction(env, mapFuncPrototype, "values", BuiltinsMap::Values, FunctionLength::ZERO);
-    // map.prototype.entries()
-    SetFunction(env, mapFuncPrototype, "entries", BuiltinsMap::Entries, FunctionLength::ZERO);
+    // Map.prototype functions
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsMap::GetMapPrototypeFunctions()) {
+        SetFunction(env, mapFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // @@ToStringTag
     SetStringTagSymbol(env, mapFuncPrototype, "Map");
 
@@ -1584,18 +1424,11 @@ void Builtins::InitializeAtomics(const JSHandle<GlobalEnv> &env,
     JSHandle<JSHClass> atomicsHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT,
                                                                    objFuncPrototypeVal);
     JSHandle<JSObject> atomicsObject = factory_->NewJSObject(atomicsHClass);
-    SetFunction(env, atomicsObject, "add", Atomics::Add, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "and", Atomics::And, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "sub", Atomics::Sub, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "or", Atomics::Or, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "xor", Atomics::Xor, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "compareExchange", Atomics::CompareExchange, FunctionLength::FOUR);
-    SetFunction(env, atomicsObject, "exchange", Atomics::Exchange, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "isLockFree", Atomics::IsLockFree, FunctionLength::ONE);
-    SetFunction(env, atomicsObject, "load", Atomics::Load, FunctionLength::TWO);
-    SetFunction(env, atomicsObject, "store", Atomics::Store, FunctionLength::THREE);
-    SetFunction(env, atomicsObject, "wait", Atomics::Wait, FunctionLength::FOUR);
-    SetFunction(env, atomicsObject, "notify", Atomics::Notify, FunctionLength::THREE);
+    // Atomics functions
+    for (const base::BuiltinFunctionEntry &entry: Atomics::GetAtomicsFunctions()) {
+        SetFunction(env, atomicsObject, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     JSHandle<JSTaggedValue> atomicsString(factory_->NewFromASCII("Atomics"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor atomicsDesc(thread_, JSHandle<JSTaggedValue>::Cast(atomicsObject), true, false, true);
@@ -1695,50 +1528,14 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
     RandomGenerator::InitRandom();
-    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, BUILTINS_STUB_ID(ABS));
-    SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE, BUILTINS_STUB_ID(ACOS));
-    SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "asin", Math::Asin, FunctionLength::ONE);
-    SetFunction(env, mathObject, "asinh", Math::Asinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "atan", Math::Atan, FunctionLength::ONE, BUILTINS_STUB_ID(ATAN));
-    SetFunction(env, mathObject, "atanh", Math::Atanh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "atan2", Math::Atan2, FunctionLength::TWO);
-    SetFunction(env, mathObject, "cbrt", Math::Cbrt, FunctionLength::ONE);
-    SetFunction(env, mathObject, "ceil", Math::Ceil, FunctionLength::ONE);
-    SetFunction(env, mathObject, "clz32", Math::Clz32, FunctionLength::ONE);
-    SetFunction(env, mathObject, "cos", Math::Cos, FunctionLength::ONE, BUILTINS_STUB_ID(COS));
-    SetFunction(env, mathObject, "cosh", Math::Cosh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "exp", Math::Exp, FunctionLength::ONE);
-    SetFunction(env, mathObject, "expm1", Math::Expm1, FunctionLength::ONE);
-    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE, BUILTINS_STUB_ID(FLOOR));
-    SetFunction(env, mathObject, "fround", Math::Fround, FunctionLength::ONE);
-    SetFunction(env, mathObject, "hypot", Math::Hypot, FunctionLength::TWO);
-    SetFunction(env, mathObject, "imul", Math::Imul, FunctionLength::TWO);
-    SetFunction(env, mathObject, "log", Math::Log, FunctionLength::ONE);
-    SetFunction(env, mathObject, "log1p", Math::Log1p, FunctionLength::ONE);
-    SetFunction(env, mathObject, "log10", Math::Log10, FunctionLength::ONE);
-    SetFunction(env, mathObject, "log2", Math::Log2, FunctionLength::ONE);
-    SetFunction(env, mathObject, "max", Math::Max, FunctionLength::TWO);
-    SetFunction(env, mathObject, "min", Math::Min, FunctionLength::TWO);
-    SetFunction(env, mathObject, "pow", Math::Pow, FunctionLength::TWO);
-    SetFunction(env, mathObject, "random", Math::Random, FunctionLength::ZERO);
-    SetFunction(env, mathObject, "round", Math::Round, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sign", Math::Sign, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sin", Math::Sin, FunctionLength::ONE, BUILTINS_STUB_ID(SIN));
-    SetFunction(env, mathObject, "sinh", Math::Sinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sqrt", Math::Sqrt, FunctionLength::ONE, BUILTINS_STUB_ID(SQRT));
-    SetFunction(env, mathObject, "tan", Math::Tan, FunctionLength::ONE);
-    SetFunction(env, mathObject, "tanh", Math::Tanh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "trunc", Math::Trunc, FunctionLength::ONE);
 
-    SetConstant(mathObject, "E", JSTaggedValue(Math::E));
-    SetConstant(mathObject, "LN10", JSTaggedValue(Math::LN10));
-    SetConstant(mathObject, "LN2", JSTaggedValue(Math::LN2));
-    SetConstant(mathObject, "LOG10E", JSTaggedValue(Math::LOG10E));
-    SetConstant(mathObject, "LOG2E", JSTaggedValue(Math::LOG2E));
-    SetConstant(mathObject, "PI", JSTaggedValue(Math::PI));
-    SetConstant(mathObject, "SQRT1_2", JSTaggedValue(Math::SQRT1_2));
-    SetConstant(mathObject, "SQRT2", JSTaggedValue(Math::SQRT2));
+    for (const base::BuiltinFunctionEntry &entry: Math::GetMathFunctions()) {
+        SetFunction(env, mathObject, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    for (const base::BuiltinConstantEntry &entry: Math::GetMathConstants()) {
+        SetConstant(mathObject, entry.GetName(), entry.GetTaggedValue());
+    }
 
     JSHandle<JSTaggedValue> mathString(factory_->NewFromASCII("Math"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
@@ -1786,56 +1583,18 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     stringFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, stringFuncInstanceHClass.GetTaggedValue());
 
     // String.prototype method
-    SetFunction(env, stringFuncPrototype, "charAt", BuiltinsString::CharAt, FunctionLength::ONE,
-                BUILTINS_STUB_ID(StringCharAt));
-    SetFunction(env, stringFuncPrototype, "charCodeAt", BuiltinsString::CharCodeAt, FunctionLength::ONE,
-                BUILTINS_STUB_ID(StringCharCodeAt));
-    SetFunction(env, stringFuncPrototype, "codePointAt", BuiltinsString::CodePointAt, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "concat", BuiltinsString::Concat, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "endsWith", BuiltinsString::EndsWith, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "includes", BuiltinsString::Includes, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "indexOf", BuiltinsString::IndexOf, FunctionLength::ONE,
-                BUILTINS_STUB_ID(StringIndexOf));
-    SetFunction(env, stringFuncPrototype, "lastIndexOf", BuiltinsString::LastIndexOf, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "localeCompare", BuiltinsString::LocaleCompare, FunctionLength::ONE,
-                BUILTINS_STUB_ID(LocaleCompare));
-    SetFunction(env, stringFuncPrototype, "match", BuiltinsString::Match, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "matchAll", BuiltinsString::MatchAll, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "repeat", BuiltinsString::Repeat, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "normalize", BuiltinsString::Normalize, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "padStart", BuiltinsString::PadStart, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "padEnd", BuiltinsString::PadEnd, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "replace", BuiltinsString::Replace, FunctionLength::TWO);
-    SetFunction(env, stringFuncPrototype, "replaceAll", BuiltinsString::ReplaceAll, FunctionLength::TWO);
-    SetFunction(env, stringFuncPrototype, "search", BuiltinsString::Search, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "slice", BuiltinsString::Slice, FunctionLength::TWO);
-    SetFunction(env, stringFuncPrototype, "split", BuiltinsString::Split, FunctionLength::TWO);
-    SetFunction(env, stringFuncPrototype, "startsWith", BuiltinsString::StartsWith, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "substring", BuiltinsString::Substring, FunctionLength::TWO,
-                BUILTINS_STUB_ID(StringSubstring));
-    SetFunction(env, stringFuncPrototype, "substr", BuiltinsString::SubStr, FunctionLength::TWO);
-    SetFunction(env, stringFuncPrototype, "at", BuiltinsString::At, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "toLocaleLowerCase", BuiltinsString::ToLocaleLowerCase, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "toLocaleUpperCase", BuiltinsString::ToLocaleUpperCase, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "toLowerCase", BuiltinsString::ToLowerCase, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(),
-                BuiltinsString::ToString, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "toUpperCase", BuiltinsString::ToUpperCase, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "trim", BuiltinsString::Trim, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "trimStart", BuiltinsString::TrimStart, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "trimEnd", BuiltinsString::TrimEnd, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "trimLeft", BuiltinsString::TrimLeft, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, "trimRight", BuiltinsString::TrimRight, FunctionLength::ZERO);
-    SetFunction(env, stringFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(),
-                BuiltinsString::ValueOf, FunctionLength::ZERO);
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringPrototypeFunctions()) {
+        SetFunction(env, stringFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     SetFunctionAtSymbol(env, stringFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
                         BuiltinsString::GetStringIterator, FunctionLength::ZERO);
 
     // String method
-    SetFunction(env, stringFunction, "fromCharCode", BuiltinsString::FromCharCode, FunctionLength::ONE,
-        BUILTINS_STUB_ID(StringFromCharCode));
-    SetFunction(env, stringFunction, "fromCodePoint", BuiltinsString::FromCodePoint, FunctionLength::ONE);
-    SetFunction(env, stringFunction, "raw", BuiltinsString::Raw, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
+        SetFunction(env, stringFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // String.prototype.length
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env, BuiltinsString::GetLength, "length", FunctionLength::ZERO);
@@ -2141,55 +1900,11 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     arrayFuncFunction->SetFunctionPrototype(thread_, arrFuncInstanceHClass.GetTaggedValue());
 
-    // Array.prototype method
-    SetFunction(env, arrFuncPrototype, "concat", BuiltinsArray::Concat, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayConcat));
-    SetFunction(env, arrFuncPrototype, "copyWithin", BuiltinsArray::CopyWithin, FunctionLength::TWO);
-    SetFunction(env, arrFuncPrototype, "entries", BuiltinsArray::Entries, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "every", BuiltinsArray::Every, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "fill", BuiltinsArray::Fill, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "filter", BuiltinsArray::Filter, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayFilter));
-    SetFunction(env, arrFuncPrototype, "find", BuiltinsArray::Find, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "findIndex", BuiltinsArray::FindIndex, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "findLast", BuiltinsArray::FindLast, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "findLastIndex", BuiltinsArray::FindLastIndex, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "forEach", BuiltinsArray::ForEach, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayForEach));
-    SetFunction(env, arrFuncPrototype, "indexOf", BuiltinsArray::IndexOf, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayIndexOf));
-    SetFunction(env, arrFuncPrototype, "join", BuiltinsArray::Join, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "keys", BuiltinsArray::Keys, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "lastIndexOf", BuiltinsArray::LastIndexOf, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayLastIndexOf));
-    SetFunction(env, arrFuncPrototype, "map", BuiltinsArray::Map, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "pop", BuiltinsArray::Pop, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "push", BuiltinsArray::Push, FunctionLength::ONE,
-                BUILTINS_STUB_ID(ArrayPush));
-    SetFunction(env, arrFuncPrototype, "reduce", BuiltinsArray::Reduce, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "reduceRight", BuiltinsArray::ReduceRight, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "reverse", BuiltinsArray::Reverse, FunctionLength::ZERO,
-                BUILTINS_STUB_ID(ArrayReverse));
-    SetFunction(env, arrFuncPrototype, "shift", BuiltinsArray::Shift, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "slice", BuiltinsArray::Slice, FunctionLength::TWO,
-                BUILTINS_STUB_ID(ArraySlice));
-    SetFunction(env, arrFuncPrototype, "some", BuiltinsArray::Some, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "sort", BuiltinsArray::Sort, FunctionLength::ONE, BUILTINS_STUB_ID(SORT));
-    SetFunction(env, arrFuncPrototype, "splice", BuiltinsArray::Splice, FunctionLength::TWO);
-    SetFunction(env, arrFuncPrototype, thread_->GlobalConstants()->GetHandledToLocaleStringString(),
-                BuiltinsArray::ToLocaleString, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), BuiltinsArray::ToString,
-                FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "unshift", BuiltinsArray::Unshift, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "values", BuiltinsArray::Values, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "includes", BuiltinsArray::Includes, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "flat", BuiltinsArray::Flat, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "flatMap", BuiltinsArray::FlatMap, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "at", BuiltinsArray::At, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "toReversed", BuiltinsArray::ToReversed, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "with", BuiltinsArray::With, FunctionLength::TWO);
-    SetFunction(env, arrFuncPrototype, "toSorted", BuiltinsArray::ToSorted, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "toSpliced", BuiltinsArray::ToSpliced, FunctionLength::TWO);
+    // Array.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsArray::GetArrayPrototypeFunctions()) {
+        SetFunction(env, arrFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // %ArrayPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
@@ -2200,10 +1915,11 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     PropertyDescriptor iteartorDesc(thread_, valuesFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, arrFuncPrototype, iteratorSymbol, iteartorDesc);
 
-    // Array method
-    SetFunction(env, arrayFunction, "from", BuiltinsArray::From, FunctionLength::ONE);
-    SetFunction(env, arrayFunction, "isArray", BuiltinsArray::IsArray, FunctionLength::ONE);
-    SetFunction(env, arrayFunction, "of", BuiltinsArray::Of, FunctionLength::ZERO);
+    // Array methods (excluding '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsArray::GetArrayFunctions()) {
+        SetFunction(env, arrayFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // 22.1.2.5 get %Array% [ @@species ]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
@@ -2251,59 +1967,19 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
         ->SetProtoOrHClass(thread_, typedArrFuncInstanceHClass.GetTaggedValue());
 
     // TypedArray.prototype method
-    SetFunction(env, typedArrFuncPrototype, "copyWithin", BuiltinsTypedArray::CopyWithin, FunctionLength::TWO);
-    SetFunction(env, typedArrFuncPrototype, "entries", BuiltinsTypedArray::Entries, FunctionLength::ZERO);
-    SetFunction(env, typedArrFuncPrototype, "every", BuiltinsTypedArray::Every, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "at", BuiltinsTypedArray::At, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "fill", BuiltinsTypedArray::Fill, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "filter", BuiltinsTypedArray::Filter, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "find", BuiltinsTypedArray::Find, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "findIndex", BuiltinsTypedArray::FindIndex, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "findLast", BuiltinsTypedArray::FindLast, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "findLastIndex", BuiltinsTypedArray::FindLastIndex, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "forEach", BuiltinsTypedArray::ForEach, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "indexOf", BuiltinsTypedArray::IndexOf, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "join", BuiltinsTypedArray::Join, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "keys", BuiltinsTypedArray::Keys, FunctionLength::ZERO);
-    SetFunction(env, typedArrFuncPrototype, "lastIndexOf", BuiltinsTypedArray::LastIndexOf, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "map", BuiltinsTypedArray::Map, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "reduce", BuiltinsTypedArray::Reduce, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "reduceRight", BuiltinsTypedArray::ReduceRight, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "reverse", BuiltinsTypedArray::Reverse, FunctionLength::ZERO);
-    SetFunction(env, typedArrFuncPrototype, "set", BuiltinsTypedArray::Set, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "slice", BuiltinsTypedArray::Slice, FunctionLength::TWO);
-    SetFunction(env, typedArrFuncPrototype, "some", BuiltinsTypedArray::Some, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "sort", BuiltinsTypedArray::Sort, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "toSorted", BuiltinsTypedArray::ToSorted, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "subarray", BuiltinsTypedArray::Subarray, FunctionLength::TWO);
-    SetFunction(env, typedArrFuncPrototype, thread_->GlobalConstants()->GetHandledToLocaleStringString(),
-                BuiltinsTypedArray::ToLocaleString, FunctionLength::ZERO);
-    SetFunction(env, typedArrFuncPrototype, "values", BuiltinsTypedArray::Values, FunctionLength::ZERO);
-    SetFunction(env, typedArrFuncPrototype, "with", BuiltinsTypedArray::With, FunctionLength::TWO);
-    SetFunction(env, typedArrFuncPrototype, "includes", BuiltinsTypedArray::Includes, FunctionLength::ONE);
-    SetFunction(env, typedArrFuncPrototype, "toReversed", BuiltinsTypedArray::ToReversed, FunctionLength::ZERO);
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsTypedArray::GetTypedArrayPrototypeFunctions()) {
+        SetFunction(env, typedArrFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // TypedArray.prototype get accessor
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsTypedArray::GetTypedArrayPrototypeAccessors()) {
+        JSHandle<JSTaggedValue> getter =
+            CreateGetter(env, entry.GetEntrypoint(), entry.GetName(), entry.GetLength());
+        JSHandle<JSTaggedValue> key(factory_->NewFromASCII(entry.GetName()));
+        SetGetter(typedArrFuncPrototype, key, getter);
+    }
 
-    JSHandle<JSTaggedValue> bufferGetter =
-        CreateGetter(env, BuiltinsTypedArray::GetBuffer, "buffer", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> bufferKey(factory_->NewFromASCII("buffer"));
-    SetGetter(typedArrFuncPrototype, bufferKey, bufferGetter);
-
-    JSHandle<JSTaggedValue> byteLengthGetter =
-        CreateGetter(env, BuiltinsTypedArray::GetByteLength, "byteLength", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> byteLengthKey(factory_->NewFromASCII("byteLength"));
-    SetGetter(typedArrFuncPrototype, byteLengthKey, byteLengthGetter);
-
-    JSHandle<JSTaggedValue> byteOffsetGetter =
-        CreateGetter(env, BuiltinsTypedArray::GetByteOffset, "byteOffset", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> byteOffsetKey(factory_->NewFromASCII("byteOffset"));
-    SetGetter(typedArrFuncPrototype, byteOffsetKey, byteOffsetGetter);
-
-    JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(env, BuiltinsTypedArray::GetLength, "length", FunctionLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory_->NewFromASCII("length"));
-    SetGetter(typedArrFuncPrototype, lengthKey, lengthGetter);
-
-    // %TypedArray%.prototype.toString()
+    // %TypedArray%.prototype.toString(), which is strictly equal to Array.prototype.toString
     JSHandle<JSTaggedValue> arrFuncPrototype = env->GetArrayPrototype();
     JSHandle<JSTaggedValue> toStringFunc =
         JSObject::GetMethod(thread_, arrFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString());
@@ -2328,8 +2004,10 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetGetter(typedArrFuncPrototype, toStringTagSymbol, toStringTagGetter);
 
     // TypedArray method
-    SetFunction(env, typedArrayFunction, "from", BuiltinsTypedArray::From, FunctionLength::ONE);
-    SetFunction(env, typedArrayFunction, "of", BuiltinsTypedArray::Of, FunctionLength::ZERO);
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsTypedArray::GetTypedArrayFunctions()) {
+        SetFunction(env, typedArrayFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // 22.2.2.4 get %TypedArray% [ @@species ]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
@@ -2345,17 +2023,10 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     specificTypedArrayFuncClass->SetConstructor(true);
     env->SetSpecificTypedArrayFunctionClass(thread_, specificTypedArrayFuncClass);
 
-    InitializeInt8Array(env, typedArrFuncInstanceHClass);
-    InitializeUint8Array(env, typedArrFuncInstanceHClass);
-    InitializeUint8ClampedArray(env, typedArrFuncInstanceHClass);
-    InitializeInt16Array(env, typedArrFuncInstanceHClass);
-    InitializeUint16Array(env, typedArrFuncInstanceHClass);
-    InitializeInt32Array(env, typedArrFuncInstanceHClass);
-    InitializeUint32Array(env, typedArrFuncInstanceHClass);
-    InitializeFloat32Array(env, typedArrFuncInstanceHClass);
-    InitializeFloat64Array(env, typedArrFuncInstanceHClass);
-    InitializeBigInt64Array(env, typedArrFuncInstanceHClass);
-    InitializeBigUint64Array(env, typedArrFuncInstanceHClass);
+#define BUILTIN_TYPED_ARRAY_CALL_INITIALIZE(Type, TYPE, bytesPerElement) \
+    Initialize##Type(env, typedArrFuncInstanceHClass);
+    BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_CALL_INITIALIZE)
+#undef BUILTIN_TYPED_ARRAY_CALL_INITIALIZE
 }
 
 void Builtins::LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const
@@ -2369,299 +2040,50 @@ void Builtins::LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const
     env->SetTypedArrayFunction(thread_, accessor);
     env->SetTypedArrayPrototype(thread_, accessor);
     env->SetSpecificTypedArrayFunctionClass(thread_, accessor);
-    LazyInitializeInt8Array(env);
-    LazyInitializeUint8Array(env);
-    LazyInitializeUint8ClampedArray(env);
-    LazyInitializeInt16Array(env);
-    LazyInitializeUint16Array(env);
-    LazyInitializeInt32Array(env);
-    LazyInitializeUint32Array(env);
-    LazyInitializeFloat32Array(env);
-    LazyInitializeFloat64Array(env);
-    LazyInitializeBigInt64Array(env);
-    LazyInitializeBigUint64Array(env);
+
+#define BUILTIN_TYPED_ARRAY_CALL_LAZY_INITIALIZE(Type, TYPE, bytesPerElement) \
+    LazyInitialize##Type(env);
+    BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_CALL_LAZY_INITIALIZE)
+#undef BUILTIN_TYPED_ARRAY_CALL_LAZY_INITIALIZE
 }
 
-void Builtins::InitializeInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Int8Array.prototype
-    JSHandle<JSObject> int8ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> int8ArrFuncPrototypeValue(int8ArrFuncPrototype);
-
-    // Int8Array.prototype_or_hclass
-    JSHandle<JSHClass> int8ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_INT8_ARRAY, int8ArrFuncPrototypeValue);
-
-    // Int8Array = new Function()
-    JSHandle<JSFunction> int8ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Int8ArrayConstructor));
-    InitializeCtor(env, int8ArrFuncPrototype, int8ArrayFunction, "Int8Array", FunctionLength::THREE);
-
-    int8ArrayFunction->SetProtoOrHClass(thread_, int8ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 1;
-    SetConstant(int8ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(int8ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetInt8ArrayFunction(thread_, int8ArrayFunction);
+#define BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE(Type, TYPE, bytesPerElement)                                      \
+void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &arrFuncClass) const   \
+{                                                                                                               \
+    [[maybe_unused]] EcmaHandleScope scope(thread_);                                                            \
+    /* %TypedArray%.prototype (where %TypedArray% is one of Int8Array, Uint8Array, etc.) */                     \
+    JSHandle<JSObject> arrFuncPrototype = factory_->NewJSObjectWithInit(arrFuncClass);                          \
+    JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);                                            \
+    /* %TypedArray%.prototype_or_hclass */                                                                      \
+    JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewEcmaHClass(                                         \
+        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_##TYPE, arrFuncPrototypeValue);                       \
+    /* %TypedArray% = new Function() */                                                                         \
+    JSHandle<JSFunction> arrayFunction = factory_->NewSpecificTypedArrayFunction(                               \
+        env, reinterpret_cast<void *>(BuiltinsTypedArray::Type##Constructor));                                  \
+    InitializeCtor(env, arrFuncPrototype, arrayFunction, #Type, FunctionLength::THREE);                         \
+                                                                                                                \
+    arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \
+    SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
+    SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
+    env->Set##Type##Function(thread_, arrayFunction);                                                           \
 }
 
-void Builtins::InitializeUint8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Uint8Array.prototype
-    JSHandle<JSObject> uint8ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> uint8ArrFuncPrototypeValue(uint8ArrFuncPrototype);
+BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE)
+#undef BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE
 
-    // Uint8Array.prototype_or_hclass
-    JSHandle<JSHClass> uint8ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_UINT8_ARRAY, uint8ArrFuncPrototypeValue);
-
-    // Uint8Array = new Function()
-    JSHandle<JSFunction> uint8ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Uint8ArrayConstructor));
-    InitializeCtor(env, uint8ArrFuncPrototype, uint8ArrayFunction, "Uint8Array", FunctionLength::THREE);
-
-    uint8ArrayFunction->SetProtoOrHClass(thread_, uint8ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 1;
-    SetConstant(uint8ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(uint8ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetUint8ArrayFunction(thread_, uint8ArrayFunction);
+#define BUILTIN_TYPED_ARRAY_DEFINE_LAZY_INITIALIZE(Type, TYPE, bytesPerElement)                                     \
+void Builtins::LazyInitialize##Type(const JSHandle<GlobalEnv> &env) const                                           \
+{                                                                                                                   \
+    [[maybe_unused]] EcmaHandleScope scope(thread_);                                                                \
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                               \
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#Type));                                                      \
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Type));   \
+    SetLazyAccessor(globalObject, key, accessor);                                                                   \
+    env->Set##Type##Function(thread_, accessor);                                                                    \
 }
 
-#define TYPED_ARRAY_LAZY_INITIALIZE(type)                                                                             \
-    void Builtins::LazyInitialize##type(const JSHandle<GlobalEnv> &env) const                                         \
-    {                                                                                                                 \
-         [[maybe_unused]] EcmaHandleScope scope(thread_);                                                             \
-        JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                             \
-        JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#type));                                                    \
-        auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::type)); \
-        SetLazyAccessor(globalObject, key, accessor);                                                                 \
-        env->Set##type##Function(thread_, accessor);                                                                  \
-    }
-
-ITERATE_TYPED_ARRAY(TYPED_ARRAY_LAZY_INITIALIZE)
-#undef TYPED_ARRAY_LAZY_INITIALIZE
-
-void Builtins::InitializeUint8ClampedArray(const JSHandle<GlobalEnv> &env,
-                                           const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Uint8ClampedArray.prototype
-    JSHandle<JSObject> uint8ClampedArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> uint8ClampedArrFuncPrototypeValue(uint8ClampedArrFuncPrototype);
-
-    // Uint8ClampedArray.prototype_or_hclass
-    JSHandle<JSHClass> uint8ClampedArrFuncInstanceHClass =
-        factory_->NewEcmaHClass(panda::ecmascript::JSTypedArray::SIZE, JSType::JS_UINT8_CLAMPED_ARRAY,
-                                  uint8ClampedArrFuncPrototypeValue);
-
-    // Uint8ClampedArray = new Function()
-    JSHandle<JSFunction> uint8ClampedArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Uint8ClampedArrayConstructor));
-    InitializeCtor(env, uint8ClampedArrFuncPrototype, uint8ClampedArrayFunction, "Uint8ClampedArray",
-                   FunctionLength::THREE);
-
-    uint8ClampedArrayFunction->SetProtoOrHClass(thread_, uint8ClampedArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 1;
-    SetConstant(uint8ClampedArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(uint8ClampedArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetUint8ClampedArrayFunction(thread_, uint8ClampedArrayFunction);
-}
-
-void Builtins::InitializeInt16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Int16Array.prototype
-    JSHandle<JSObject> int16ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> int16ArrFuncPrototypeValue(int16ArrFuncPrototype);
-
-    // Int16Array.prototype_or_hclass
-    JSHandle<JSHClass> int16ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_INT16_ARRAY, int16ArrFuncPrototypeValue);
-
-    // Int16Array = new Function()
-    JSHandle<JSFunction> int16ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Int16ArrayConstructor));
-    InitializeCtor(env, int16ArrFuncPrototype, int16ArrayFunction, "Int16Array", FunctionLength::THREE);
-
-    int16ArrayFunction->SetProtoOrHClass(thread_, int16ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 2;
-    SetConstant(int16ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(int16ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetInt16ArrayFunction(thread_, int16ArrayFunction);
-}
-
-void Builtins::InitializeUint16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Uint16Array.prototype
-    JSHandle<JSObject> uint16ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> uint16ArrFuncPrototypeValue(uint16ArrFuncPrototype);
-
-    // Uint16Array.prototype_or_hclass
-    JSHandle<JSHClass> uint16ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_UINT16_ARRAY, uint16ArrFuncPrototypeValue);
-
-    // Uint16Array = new Function()
-    JSHandle<JSFunction> uint16ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Uint16ArrayConstructor));
-    InitializeCtor(env, uint16ArrFuncPrototype, uint16ArrayFunction, "Uint16Array", FunctionLength::THREE);
-
-    uint16ArrayFunction->SetProtoOrHClass(thread_, uint16ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 2;
-    SetConstant(uint16ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(uint16ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetUint16ArrayFunction(thread_, uint16ArrayFunction);
-}
-
-void Builtins::InitializeInt32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Int32Array.prototype
-    JSHandle<JSObject> int32ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> int32ArrFuncPrototypeValue(int32ArrFuncPrototype);
-
-    // Int32Array.prototype_or_hclass
-    JSHandle<JSHClass> int32ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_INT32_ARRAY, int32ArrFuncPrototypeValue);
-
-    // Int32Array = new Function()
-    JSHandle<JSFunction> int32ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Int32ArrayConstructor));
-    InitializeCtor(env, int32ArrFuncPrototype, int32ArrayFunction, "Int32Array", FunctionLength::THREE);
-
-    int32ArrayFunction->SetProtoOrHClass(thread_, int32ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 4;
-    SetConstant(int32ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(int32ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetInt32ArrayFunction(thread_, int32ArrayFunction);
-}
-
-void Builtins::InitializeUint32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Uint32Array.prototype
-    JSHandle<JSObject> uint32ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> uint32ArrFuncPrototypeValue(uint32ArrFuncPrototype);
-
-    // Uint32Array.prototype_or_hclass
-    JSHandle<JSHClass> uint32ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_UINT32_ARRAY, uint32ArrFuncPrototypeValue);
-
-    // Uint32Array = new Function()
-    JSHandle<JSFunction> uint32ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Uint32ArrayConstructor));
-    InitializeCtor(env, uint32ArrFuncPrototype, uint32ArrayFunction, "Uint32Array", FunctionLength::THREE);
-
-    uint32ArrayFunction->SetProtoOrHClass(thread_, uint32ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 4;
-    SetConstant(uint32ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(uint32ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetUint32ArrayFunction(thread_, uint32ArrayFunction);
-}
-
-void Builtins::InitializeFloat32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Float32Array.prototype
-    JSHandle<JSObject> float32ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> float32ArrFuncPrototypeValue(float32ArrFuncPrototype);
-
-    // Float32Array.prototype_or_hclass
-    JSHandle<JSHClass> float32ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_FLOAT32_ARRAY, float32ArrFuncPrototypeValue);
-
-    // Float32Array = new Function()
-    JSHandle<JSFunction> float32ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Float32ArrayConstructor));
-    InitializeCtor(env, float32ArrFuncPrototype, float32ArrayFunction, "Float32Array", FunctionLength::THREE);
-
-    float32ArrayFunction->SetProtoOrHClass(thread_, float32ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 4;
-    SetConstant(float32ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(float32ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetFloat32ArrayFunction(thread_, float32ArrayFunction);
-}
-
-void Builtins::InitializeFloat64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // Float64Array.prototype
-    JSHandle<JSObject> float64ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> float64ArrFuncPrototypeValue(float64ArrFuncPrototype);
-
-    // Float64Array.prototype_or_hclass
-    JSHandle<JSHClass> float64ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_FLOAT64_ARRAY, float64ArrFuncPrototypeValue);
-
-    // Float64Array = new Function()
-    JSHandle<JSFunction> float64ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Float64ArrayConstructor));
-    InitializeCtor(env, float64ArrFuncPrototype, float64ArrayFunction, "Float64Array", FunctionLength::THREE);
-
-    float64ArrayFunction->SetProtoOrHClass(thread_, float64ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 8;
-    SetConstant(float64ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(float64ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetFloat64ArrayFunction(thread_, float64ArrayFunction);
-}
-
-void Builtins::InitializeBigInt64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // BigInt64Array.prototype
-    JSHandle<JSObject> bigInt64ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> bigInt64ArrFuncPrototypeValue(bigInt64ArrFuncPrototype);
-
-    // BigInt64Array.prototype_or_hclass
-    JSHandle<JSHClass> bigInt64ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_BIGINT64_ARRAY, bigInt64ArrFuncPrototypeValue);
-
-    // BigInt64Array = new Function()
-    JSHandle<JSFunction> bigInt64ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::BigInt64ArrayConstructor));
-    InitializeCtor(env, bigInt64ArrFuncPrototype, bigInt64ArrayFunction, "BigInt64Array", FunctionLength::THREE);
-
-    bigInt64ArrayFunction->SetProtoOrHClass(thread_, bigInt64ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 8;
-    SetConstant(bigInt64ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(bigInt64ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetBigInt64ArrayFunction(thread_, bigInt64ArrayFunction);
-}
-
-void Builtins::InitializeBigUint64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // BigUint64Array.prototype
-    JSHandle<JSObject> bigUint64ArrFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSHandle<JSTaggedValue> bigUint64ArrFuncPrototypeValue(bigUint64ArrFuncPrototype);
-
-    // BigUint64Array.prototype_or_hclass
-    JSHandle<JSHClass> bigUint64ArrFuncInstanceHClass = factory_->NewEcmaHClass(
-        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_BIGUINT64_ARRAY, bigUint64ArrFuncPrototypeValue);
-
-    // BigUint64Array = new Function()
-    JSHandle<JSFunction> bigUint64ArrayFunction = factory_->NewSpecificTypedArrayFunction(
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::BigUint64ArrayConstructor));
-    InitializeCtor(env, bigUint64ArrFuncPrototype, bigUint64ArrayFunction, "BigUint64Array", FunctionLength::THREE);
-
-    bigUint64ArrayFunction->SetProtoOrHClass(thread_, bigUint64ArrFuncInstanceHClass.GetTaggedValue());
-
-    constexpr int bytesPerElement = 8;
-    SetConstant(bigUint64ArrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    SetConstant(JSHandle<JSObject>(bigUint64ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
-    env->SetBigUint64ArrayFunction(thread_, bigUint64ArrayFunction);
-}
+BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_LAZY_INITIALIZE)
+#undef BUILTIN_TYPED_ARRAY_DEFINE_LAZY_INITIALIZE
 
 void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
@@ -2724,20 +2146,11 @@ void Builtins::InitializeReflect(const JSHandle<GlobalEnv> &env,
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> reflectObject = factory_->NewJSObjectWithInit(reflectHClass);
 
-    SetFunction(env, reflectObject, "apply", Reflect::ReflectApply, FunctionLength::THREE);
-    SetFunction(env, reflectObject, "construct", Reflect::ReflectConstruct, FunctionLength::TWO);
-    SetFunction(env, reflectObject, "defineProperty", Reflect::ReflectDefineProperty, FunctionLength::THREE);
-    SetFunction(env, reflectObject, "deleteProperty", Reflect::ReflectDeleteProperty, FunctionLength::TWO);
-    SetFunction(env, reflectObject, "get", Reflect::ReflectGet, FunctionLength::TWO);
-    SetFunction(env, reflectObject, "getOwnPropertyDescriptor", Reflect::ReflectGetOwnPropertyDescriptor,
-                FunctionLength::TWO);
-    SetFunction(env, reflectObject, "getPrototypeOf", Reflect::ReflectGetPrototypeOf, FunctionLength::ONE);
-    SetFunction(env, reflectObject, "has", Reflect::ReflectHas, FunctionLength::TWO);
-    SetFunction(env, reflectObject, "isExtensible", Reflect::ReflectIsExtensible, FunctionLength::ONE);
-    SetFunction(env, reflectObject, "ownKeys", Reflect::ReflectOwnKeys, FunctionLength::ONE);
-    SetFunction(env, reflectObject, "preventExtensions", Reflect::ReflectPreventExtensions, FunctionLength::ONE);
-    SetFunction(env, reflectObject, "set", Reflect::ReflectSet, FunctionLength::THREE);
-    SetFunction(env, reflectObject, "setPrototypeOf", Reflect::ReflectSetPrototypeOf, FunctionLength::TWO);
+    // Reflect functions
+    for (const base::BuiltinFunctionEntry &entry: Reflect::GetReflectFunctions()) {
+        SetFunction(env, reflectObject, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     JSHandle<JSTaggedValue> reflectString(factory_->NewFromASCII("Reflect"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
@@ -2821,18 +2234,15 @@ void Builtins::InitializePromise(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSFunction>(promiseFunction)->SetFunctionPrototype(thread_, promiseFuncInstanceHClass.GetTaggedValue());
 
     // Promise method
-    SetFunction(env, promiseFunction, "all", Promise::All, FunctionLength::ONE);
-    SetFunction(env, promiseFunction, "race", Promise::Race, FunctionLength::ONE);
-    SetFunction(env, promiseFunction, "resolve", Promise::Resolve, FunctionLength::ONE);
-    SetFunction(env, promiseFunction, "reject", Promise::Reject, FunctionLength::ONE);
-    SetFunction(env, promiseFunction, "any", Promise::Any, FunctionLength::ONE);
-    SetFunction(env, promiseFunction, "allSettled", Promise::AllSettled, FunctionLength::ONE);
-
+    for (const base::BuiltinFunctionEntry &entry: Promise::GetPromiseFunctions()) {
+        SetFunction(env, promiseFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // promise.prototype method
-    SetFunction(env, promiseFuncPrototype, "catch", Promise::Catch, FunctionLength::ONE);
-    SetFunction(env, promiseFuncPrototype, "then", Promise::Then, FunctionLength::TWO);
-    SetFunction(env, promiseFuncPrototype, "finally", Promise::Finally, FunctionLength::ONE);
-
+    for (const base::BuiltinFunctionEntry &entry: Promise::GetPromisePrototypeFunctions()) {
+        SetFunction(env, promiseFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // Promise.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, promiseFuncPrototype, "Promise");
 
@@ -2928,26 +2338,10 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle
 
     JSHandle<JSFunction>(dataViewFunction)->SetProtoOrHClass(thread_, dataViewFuncInstanceHClass.GetTaggedValue());
     // DataView.prototype method
-    SetFunction(env, dataViewFuncPrototype, "getFloat32", DataView::GetFloat32, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getFloat64", DataView::GetFloat64, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getInt8", DataView::GetInt8, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getInt16", DataView::GetInt16, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getInt32", DataView::GetInt32, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getUint8", DataView::GetUint8, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getUint16", DataView::GetUint16, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getUint32", DataView::GetUint32, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getBigInt64", DataView::GetBigInt64, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "getBigUint64", DataView::GetBigUint64, FunctionLength::ONE);
-    SetFunction(env, dataViewFuncPrototype, "setFloat32", DataView::SetFloat32, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setFloat64", DataView::SetFloat64, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setInt8", DataView::SetInt8, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setInt16", DataView::SetInt16, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setInt32", DataView::SetInt32, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setUint8", DataView::SetUint8, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setUint16", DataView::SetUint16, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setUint32", DataView::SetUint32, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setBigInt64", DataView::SetBigInt64, FunctionLength::TWO);
-    SetFunction(env, dataViewFuncPrototype, "setBigUint64", DataView::SetBigUint64, FunctionLength::TWO);
+    for (const base::BuiltinFunctionEntry &entry: DataView::GetDataViewPrototypeFunctions()) {
+        SetFunction(env,  dataViewFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // 24.2.4.1 get DataView.prototype.buffer
     JSHandle<JSTaggedValue> bufferGetter = CreateGetter(env, DataView::GetBuffer, "buffer", FunctionLength::ZERO);
@@ -2982,7 +2376,7 @@ void Builtins::LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                     const char *name, int length,
+                                                     std::string_view name, int length,
                                                      kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> ctor =
@@ -2993,7 +2387,7 @@ JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &
 
 JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                                  const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                 const char *name, int length) const
+                                                 std::string_view name, int length) const
 {
     JSHandle<JSFunction> ctor =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
@@ -3027,7 +2421,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
     return function;
 }
 
-void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
+void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                            EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
@@ -3061,7 +2455,7 @@ JSHandle<JSFunction> Builtins::SetAndReturnFunction(const JSHandle<GlobalEnv> &e
     return function;
 }
 
-void Builtins::SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
+void Builtins::SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                                  EcmaEntrypoint func, int length) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
@@ -3072,8 +2466,8 @@ void Builtins::SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<
 
 template<int flag>
 void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
-                                   const JSHandle<JSTaggedValue> &symbol, const char *name, EcmaEntrypoint func,
-                                   int length) const
+                                   const JSHandle<JSTaggedValue> &symbol, std::string_view name,
+                                   EcmaEntrypoint func, int length) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
@@ -3098,7 +2492,8 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
     JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
 }
 
-void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key) const
+void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                  std::string_view key) const
 {
     JSHandle<JSTaggedValue> tag(factory_->NewFromUtf8(key));
     JSHandle<JSTaggedValue> symbol = env->GetToStringTagSymbol();
@@ -3106,43 +2501,56 @@ void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle
     JSObject::DefineOwnProperty(thread_, obj, symbol, desc);
 }
 
-JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func, const char *name,
-                                               int length) const
+JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                               std::string_view name, int length) const
+{
+    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
+    return CreateGetter(env, func, funcName, length);
+}
+
+JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                               JSHandle<JSTaggedValue> key, int length) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledGetString();
-    JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), funcName, prefix);
+    JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
     return JSHandle<JSTaggedValue>(function);
 }
 
-JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func, const char *name,
-                                               int length)
+JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                               std::string_view name, int length) const
+{
+    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
+    return CreateSetter(env, func, funcName, length);
+}
+
+JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                               JSHandle<JSTaggedValue> key, int length) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledSetString();
-    JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), funcName, prefix);
+    JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
     return JSHandle<JSTaggedValue>(function);
 }
 
-void Builtins::SetConstant(const JSHandle<JSObject> &obj, const char *key, JSTaggedValue value) const
+void Builtins::SetConstant(const JSHandle<JSObject> &obj, std::string_view key, JSTaggedValue value) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, value), false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
-void Builtins::SetConstantObject(const JSHandle<JSObject> &obj, const char *key, JSHandle<JSTaggedValue> &value) const
+void Builtins::SetConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
+                                 JSHandle<JSTaggedValue> &value) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     PropertyDescriptor descriptor(thread_, value, false, false, false);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
-void Builtins::SetNonConstantObject(const JSHandle<JSObject> &obj, const char *key,
+void Builtins::SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                                     JSHandle<JSTaggedValue> &value) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
@@ -3150,21 +2558,22 @@ void Builtins::SetNonConstantObject(const JSHandle<JSObject> &obj, const char *k
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
-void Builtins::SetGlobalThis(const JSHandle<JSObject> &obj, const char *key, const JSHandle<JSTaggedValue> &globalValue)
+void Builtins::SetGlobalThis(const JSHandle<JSObject> &obj, std::string_view key,
+                             const JSHandle<JSTaggedValue> &globalValue)
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     PropertyDescriptor descriptor(thread_, globalValue, true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
-void Builtins::SetAttribute(const JSHandle<JSObject> &obj, const char *key, const char *value) const
+void Builtins::SetAttribute(const JSHandle<JSObject> &obj, std::string_view key, std::string_view value) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(factory_->NewFromUtf8(value)), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
 }
 
-void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, const char *key,
+void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::string_view key,
                                         const JSHandle<JSTaggedValue> &value) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
@@ -3173,7 +2582,8 @@ void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, const cha
 }
 
 void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
-                                     const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func, int length)
+                                     const JSHandle<JSObject> &obj, std::string_view key,
+                                     EcmaEntrypoint func, int length)
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
@@ -3387,9 +2797,10 @@ void Builtins::SetGetter(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedV
     PropertyAttributes attr = PropertyAttributes::DefaultAccessor(false, false, true);
     JSObject::AddAccessor(thread_, JSHandle<JSTaggedValue>::Cast(obj), key, accessor, attr);
 }
+
 #ifdef ARK_SUPPORT_INTL
 JSHandle<JSFunction> Builtins::NewIntlConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                                                  EcmaEntrypoint ctorFunc, const char *name, int length)
+                                                  EcmaEntrypoint ctorFunc, std::string_view name, int length)
 {
     JSHandle<JSFunction> ctor =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
@@ -3413,7 +2824,7 @@ ITERATE_INTL(INTL_LAZY_INITIALIZE)
 #undef INTL_LAZY_INITIALIZE
 
 void Builtins::InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                                  const JSHandle<JSFunction> &ctor, const char *name, int length)
+                                  const JSHandle<JSFunction> &ctor, std::string_view name, int length)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
@@ -3770,32 +3181,15 @@ void Builtins::InitializeListFormat(const JSHandle<GlobalEnv> &env)
     // 13.4.5 Intl.ListFormat.prototype.resolvedOptions()
     SetFunction(env, lfPrototype, "resolvedOptions", ListFormat::ResolvedOptions, FunctionLength::ZERO);
 }
-#endif
+#endif // #ifdef ARK_SUPPORT_INTL
+
 JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) const
 {
     JSHandle<JSObject> tools = factory_->NewEmptyJSObject();
-    SetFunction(env, tools, "print", builtins::BuiltinsArkTools::ObjectDump, FunctionLength::ZERO);
-    SetFunction(env, tools, "excutePendingJob", builtins::BuiltinsArkTools::ExcutePendingJob, FunctionLength::ZERO);
-    SetFunction(env, tools, "getLexicalEnv", builtins::BuiltinsArkTools::GetLexicalEnv, FunctionLength::ONE);
-    SetFunction(env, tools, "compareHClass", builtins::BuiltinsArkTools::CompareHClass, FunctionLength::TWO);
-    SetFunction(env, tools, "dumpHClass", builtins::BuiltinsArkTools::DumpHClass, FunctionLength::ONE);
-    SetFunction(env, tools, "isTSHClass", builtins::BuiltinsArkTools::IsTSHClass, FunctionLength::ONE);
-    SetFunction(env, tools, "getHClass", builtins::BuiltinsArkTools::GetHClass, FunctionLength::ONE);
-    SetFunction(env, tools, "hasTSSubtyping", builtins::BuiltinsArkTools::HasTSSubtyping, FunctionLength::ONE);
-    SetFunction(env, tools, "isNotHoleProperty", builtins::BuiltinsArkTools::IsNotHoleProperty,
-                FunctionLength::TWO);
-    SetFunction(env, tools, "forceFullGC", builtins::BuiltinsArkTools::ForceFullGC, FunctionLength::ZERO);
-    SetFunction(env, tools, "hiddenStackSourceFile", builtins::BuiltinsArkTools::HiddenStackSourceFile,
-                FunctionLength::ZERO);
-    SetFunction(env, tools, "removeAOTFlag", builtins::BuiltinsArkTools::RemoveAOTFlag, FunctionLength::ONE);
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    SetFunction(env, tools, "startCpuProf", builtins::BuiltinsArkTools::StartCpuProfiler, FunctionLength::ZERO);
-    SetFunction(env, tools, "stopCpuProf", builtins::BuiltinsArkTools::StopCpuProfiler, FunctionLength::ZERO);
-#endif
-    SetFunction(env, tools, "isPrototype", builtins::BuiltinsArkTools::IsPrototype, FunctionLength::ONE);
-    SetFunction(env, tools, "isRegExpReplaceDetectorValid", builtins::BuiltinsArkTools::IsRegExpReplaceDetectorValid,
-                FunctionLength::ZERO);
-    SetFunction(env, tools, "timeInUs",  builtins::BuiltinsArkTools::TimeInUs, FunctionLength::ZERO);
+    for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsArkTools::GetArkToolsFunctions()) {
+        SetFunction(env, tools, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     return tools;
 }
 
