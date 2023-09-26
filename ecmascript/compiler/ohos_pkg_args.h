@@ -162,7 +162,7 @@ public:
 
     std::string GetFullName() const
     {
-        return pkgPath_ + GetPathSeparator() + abcName_;
+        return pkgPath_ + GetPathSeparator() + moduleName_ + GetPathSeparator() + abcName_;
     }
 
     uint32_t GetOffset() const
