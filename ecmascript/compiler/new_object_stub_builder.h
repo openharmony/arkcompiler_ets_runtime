@@ -54,6 +54,8 @@ public:
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
     void AllocSlicedStringObject(Variable *result, Label *exit, GateRef from, GateRef length,
         FlatStringStubBuilder *flatString);
+    void AllocTreeStringObject(Variable *result, Label *exit, GateRef first, GateRef second,
+        GateRef length, bool compressed);
     void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            GateRef trackInfo, bool isEmptyArray);

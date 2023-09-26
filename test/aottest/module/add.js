@@ -17,3 +17,26 @@ export function add(a, b)
 {
     return a + b; 
 }
+
+var a = "abcdwodehhhhjjjjkkkkkooodfjsar";
+var a1 = a.substring(4, 28);
+var b = "efgh"
+var c = "我的bbb";
+var d = "你的";
+var a2 = a + b;
+var a3 = a + c;
+var a4 = c + d;
+var a5 = a1 + d;
+var a6 = a2 + a5;
+var a7 = d.toLowerCase() + a1.substring(1);
+var a8 = a2.toUpperCase() + a3.substring(2);
+var a9 = a7 + a8;
+print(a1);
+print(a2);
+print(a3);
+print(a4);
+print(a5);
+print(a6);
+print(a7);
+print(a8);
+print(a9);

@@ -588,7 +588,7 @@ GateRef OperationsStubBuilder::Add(GateRef glue, GateRef left, GateRef right, Pr
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label slowPath(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), FastAdd(left, right, callback));
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastAdd(glue, left, right, callback));
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
@@ -609,7 +609,7 @@ GateRef OperationsStubBuilder::Sub(GateRef glue, GateRef left, GateRef right, Pr
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label slowPath(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), FastSub(left, right, callback));
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastSub(glue, left, right, callback));
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
@@ -630,7 +630,7 @@ GateRef OperationsStubBuilder::Mul(GateRef glue, GateRef left, GateRef right, Pr
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label slowPath(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), FastMul(left, right, callback));
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastMul(glue, left, right, callback));
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {

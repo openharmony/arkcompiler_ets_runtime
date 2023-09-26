@@ -42,7 +42,8 @@ public:
     GateRef FastSubUtf8String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf16String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
-    void CopyUtf16AsUtf8(GateRef glue, GateRef src, GateRef dst, GateRef sourceLength);
+    void CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
+    void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
     GateRef StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
                           GateRef pos, GateRef max, GateRef rhsCount);
     GateRef StringIndexOf(const StringInfoGateRef &lStringInfoGate,
@@ -50,9 +51,15 @@ public:
     GateRef GetSingleCharCodeByIndex(GateRef str, GateRef index);
     GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
+    GateRef StringConcat(GateRef glue, GateRef leftString, GateRef rightString);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
 private:
+    GateRef ChangeStringTaggedPointerToInt64(GateRef x)
+    {
+        return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
+    }
+    GateRef GetStringDataFromLineOrConstantString(GateRef str);
     GateRef CanBeCompressed(GateRef utf16Data, GateRef utf16Len, bool isUtf16);
     GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);

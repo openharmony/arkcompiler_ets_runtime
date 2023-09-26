@@ -40,6 +40,7 @@ class Environment;
 class Label;
 class Variable;
 class StubBuilder;
+class BuiltinsStringStubBuilder;
 class TSHCRLowering;
 class NTypeHCRLowering;
 class SlowPathLowering;
@@ -725,6 +726,7 @@ private:
     Environment *env_ {nullptr};
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
+    friend BuiltinsStringStubBuilder;
     friend TSHCRLowering;
     friend NTypeHCRLowering;
     friend SlowPathLowering;

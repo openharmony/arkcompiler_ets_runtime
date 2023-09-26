@@ -1573,7 +1573,7 @@ inline GateRef StubBuilder::GetBitFieldFromHClass(GateRef hClass)
 inline GateRef StubBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
+    return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 }
 
 inline GateRef StubBuilder::GetFirstFromTreeString(GateRef string)
@@ -2448,7 +2448,7 @@ inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
 
 inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)
 {
-    GateRef len = Int32LSL(length, Int32(2));
+    GateRef len = Int32LSL(length, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
     GateRef mixLength;
     if (compressed) {
         mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
@@ -2460,7 +2460,7 @@ inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bo
 
 inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed)
 {
-    GateRef len = Int32LSL(length, Int32(2));
+    GateRef len = Int32LSL(length, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
     GateRef mixLength = Int32Or(len, isCompressed);
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
 }
