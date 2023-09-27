@@ -24,6 +24,8 @@
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
+using base::ArrayHelper;
+
 JSTaggedValue JSArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self)
 {
     return JSTaggedValue(JSArray::Cast(*self)->GetLength());
@@ -387,30 +389,67 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
                                                       value.GetTaggedValue());
 }
 
-void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &fn)
+// ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
+JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
 {
-    if (!fn->IsUndefined() && !fn->IsCallable()) {
-        THROW_TYPE_ERROR(thread, "Callable is false");
+    ASSERT(fn->IsUndefined() || fn->IsCallable());
+    // 3. Let len be ?LengthOfArrayLike(obj).
+    int64_t len = ArrayHelper::GetArrayLength(thread, obj);
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
+    // the following steps when called:
+    //    a. Return ? CompareArrayElements(x, y, comparefn).
+    // 5. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, SKIP-HOLES).
+    JSHandle<TaggedArray> sortedList =
+        ArrayHelper::SortIndexedProperties(thread, obj, len, fn, base::HolesType::SKIP_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 6. Let itemCount be the number of elements in sortedList.
+    uint32_t itemCount = sortedList->GetLength();
+
+    // 7. Let j be 0.
+    uint32_t j = 0;
+    // 8. Repeat, while j < itemCount,
+    //     a. Perform ! Set(obj, ! ToString((j)), sortedList[j], true).
+    //     b. Set j to j + 1.
+    JSMutableHandle<JSTaggedValue> item(thread, JSTaggedValue::Undefined());
+    while (j < itemCount) {
+        item.Update(sortedList->Get(j));
+        JSArray::FastSetPropertyByValue(thread, obj, j, item);
+        ASSERT_NO_ABRUPT_COMPLETION(thread);
+        ++j;
+    }
+    // 9. NOTE: The call to SortIndexedProperties in step 5 uses SKIP-HOLES.The remaining indices are deleted to
+    // preserve the number of holes that were detected and excluded from the sort.
+    // 10. Repeat, while j < len,
+    //       a. Perform ? DeletePropertyOrThrow(obj, ! ToString((j))).
+    //       b. Set j to j + 1.
+    while (j < len) {
+        item.Update(JSTaggedValue(j));
+        JSTaggedValue::DeletePropertyOrThrow(thread, obj, item);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ++j;
     }
 
-    // 2. Let len be ToLength(Get(obj, "length")).
-    int64_t len = base::ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(obj));
-    // 3. ReturnIfAbrupt(len).
-    RETURN_IF_ABRUPT_COMPLETION(thread);
+    return obj.GetTaggedValue();
+}
+
+void JSArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements, const JSHandle<JSTaggedValue> &fn)
+{
+    ASSERT(fn->IsUndefined() || fn->IsCallable());
 
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    for (int64_t i = 1; i < len; i++) {
-        int64_t beginIndex = 0;
-        int64_t endIndex = i;
-        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), i));
-        RETURN_IF_ABRUPT_COMPLETION(thread);
+    uint32_t len = elements->GetLength();
+    for (uint32_t i = 1; i < len; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        presentValue.Update(elements->Get(i));
         while (beginIndex < endIndex) {
-            int64_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(
-                ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), middleIndex));
-            RETURN_IF_ABRUPT_COMPLETION(thread);
+            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            middleValue.Update(elements->Get(middleIndex));
             int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
@@ -421,17 +460,11 @@ void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHand
         }
 
         if (endIndex >= 0 && endIndex < i) {
-            for (int64_t j = i; j > endIndex; j--) {
-                previousValue.Update(
-                    ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), j - 1));
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-                ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), j,
-                                                           previousValue.GetTaggedValue());
-                RETURN_IF_ABRUPT_COMPLETION(thread);
+            for (uint32_t j = i; j > endIndex; j--) {
+                previousValue.Update(elements->Get(j - 1));
+                elements->Set(thread, j, previousValue);
             }
-            ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), endIndex,
-                                                       presentValue.GetTaggedValue());
-            RETURN_IF_ABRUPT_COMPLETION(thread);
+            elements->Set(thread, endIndex, presentValue);
         }
     }
 }

@@ -45,7 +45,7 @@ JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *threa
     // are ordered as if an Array of the same values had been sorted using
     // Array.prototype.sort using undefined as comparefn.
     JSHandle<JSArray> exportsArray = JSArray::CreateArrayFromList(thread, exports);
-    JSHandle<JSObject> sortedExports = JSHandle<JSObject>::Cast(exportsArray);
+    JSHandle<JSTaggedValue> sortedExports = JSHandle<JSTaggedValue>::Cast(exportsArray);
     JSHandle<JSTaggedValue> fn = globalConst->GetHandledUndefined();
     JSArray::Sort(thread, sortedExports, fn);
     // 8. Set M.[[Exports]] to sortedExports.

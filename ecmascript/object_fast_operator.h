@@ -55,7 +55,6 @@ public:
 
     static inline JSTaggedValue FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
-    template<bool UseHole = false>
     static inline JSTaggedValue FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
     static inline JSTaggedValue FastParseDate(const EcmaString *str);

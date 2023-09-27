@@ -70,9 +70,9 @@ public:
                                           const JSHandle<JSTaggedValue> &thisObjVal, const FlattenArgs &args,
                                           const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                           const JSHandle<JSTaggedValue> &thisArg);
-    static JSTaggedValue SortIndexedProperties(JSThread *thread, const JSHandle<JSObject> &thisObj,
-                                               int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
-                                               HolesType holes);
+    static JSHandle<TaggedArray> SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
+                                                       int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                       HolesType holes);
 };
 }  // namespace panda::ecmascript::base
 
