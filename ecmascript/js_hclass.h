@@ -622,7 +622,7 @@ public:
 
     inline bool HasOrdinaryGet() const
     {
-        return (IsTypedArray() || IsSpecialContainer() || IsModuleNamespace());
+        return (IsSpecialContainer() || IsModuleNamespace() || IsJSBigInt64Array() || IsJSBigUint64Array());
     }
 
     inline bool IsJSTypedArray() const

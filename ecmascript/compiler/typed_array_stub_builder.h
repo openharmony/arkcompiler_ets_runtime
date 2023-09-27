@@ -31,6 +31,9 @@ public:
     void GenerateCircuit() override {}
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef array, GateRef index, GateRef jsType);
     GateRef FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array);
+    GateRef LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType);
+    GateRef StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value, GateRef jsType);
+    GateRef CheckTypedArrayIndexInRange(GateRef array, GateRef index);
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);

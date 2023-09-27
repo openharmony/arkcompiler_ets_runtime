@@ -14,6 +14,7 @@
  */
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/typed_array_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
@@ -161,6 +162,7 @@ void ICStubBuilder::LoadICByValue(
     Label handlerInfoNotElement(env);
     Label handlerInfoIsStringElement(env);
     Label handlerInfoNotStringElement(env);
+    Label handlerInfoIsTypedArrayElement(env);
     Label exit(env);
 
     SetLabels(tryFastPath, slowPath, success);
@@ -182,11 +184,23 @@ void ICStubBuilder::LoadICByValue(
         Bind(&handlerInfoNotElement);
         {
             Branch(IsStringElement(handlerInfo), &handlerInfoIsStringElement, &handlerInfoNotStringElement);
-            Bind(&handlerInfoNotStringElement);
-            Jump(&exit);
             Bind(&handlerInfoIsStringElement);
-            ret = LoadStringElement(glue_, receiver_, propKey_);
-            Jump(&exit);
+            {
+                ret = LoadStringElement(glue_, receiver_, propKey_);
+                Jump(&exit);
+            }
+            Bind(&handlerInfoNotStringElement);
+            {
+                Branch(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArrayElement, &exit);
+                Bind(&handlerInfoIsTypedArrayElement);
+                {
+                    GateRef hclass = LoadHClass(receiver_);
+                    GateRef jsType = GetObjectType(hclass);
+                    TypedArrayStubBuilder typedArrayBuilder(reinterpret_cast<StubBuilder*>(this));
+                    ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
+                    Jump(&exit);
+                }
+            }
         }
     }
     Bind(&loadWithHandler);
