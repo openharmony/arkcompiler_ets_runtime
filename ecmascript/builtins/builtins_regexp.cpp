@@ -1598,7 +1598,6 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second.capturedValue);
     JSObject::CreateDataProperty(thread, results, 0, zeroValue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     // Let indices be a new empty List.
     // Let groupNames be a new empty List.
@@ -1625,10 +1624,9 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
     JSObject::CreateDataProperty(thread, results, groupsKey, groups);
     // Create a new RegExp on global
-    JSHandle<JSObject> globalRegExp = JSHandle<JSObject>(env->GetRegExpFunction());
-    JSMutableHandle<JSTaggedValue> keyString(thread, JSTaggedValue::Undefined());
     uint32_t captureIndex = 1;
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    JSHandle<RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
     // 28. For each integer i such that i > 0 and i <= n
     for (; captureIndex < capturesSize; captureIndex++) {
         // a. Let capture_i be ith element of r's captures List
@@ -1644,10 +1642,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
         JSHandle<JSTaggedValue> iValue(thread, capturedValue);
         // add to RegExp.$i and i must <= 9
         if (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
-            keyString.Update(GetDollarString(thread, static_cast<RegExpGlobalArrayIndex>(captureIndex)));
-            ObjectOperator op(thread, globalRegExp, keyString);
-            PropertyBox *cell = PropertyBox::Cast(op.GetValue().GetTaggedObject());
-            cell->SetValue(thread, iValue);
+            globalTable->SetCapture(thread, captureIndex, capturedValue);
         }
 
         JSObject::CreateDataProperty(thread, results, captureIndex, iValue);
@@ -1675,10 +1670,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     }
     JSHandle<JSTaggedValue> emptyString = thread->GlobalConstants()->GetHandledEmptyString();
     while (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
-        keyString.Update(GetDollarString(thread, static_cast<RegExpGlobalArrayIndex>(captureIndex)));
-        ObjectOperator op(thread, globalRegExp, keyString);
-        PropertyBox *cell = PropertyBox::Cast(op.GetValue().GetTaggedObject());
-        cell->SetValue(thread, emptyString);
+        globalTable->SetCapture(thread, captureIndex, emptyString.GetTaggedValue());
         ++captureIndex;
     }
     if (useCache) {
@@ -1806,33 +1798,6 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
         flagsBits |= flagsBitsTemp;
     }
     return flagsBits;
-}
-
-JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index)
-{
-    BUILTINS_API_TRACE(thread, RegExp, GetDollarString);
-    switch (index) {
-        case DOLLAR_ONE:
-            return thread->GlobalConstants()->GetHandledDollarStringOne();
-        case DOLLAR_TWO:
-            return thread->GlobalConstants()->GetHandledDollarStringTwo();
-        case DOLLAR_THREE:
-            return thread->GlobalConstants()->GetHandledDollarStringThree();
-        case DOLLAR_FOUR:
-            return thread->GlobalConstants()->GetHandledDollarStringFour();
-        case DOLLAR_FIVE:
-            return thread->GlobalConstants()->GetHandledDollarStringFive();
-        case DOLLAR_SIX:
-            return thread->GlobalConstants()->GetHandledDollarStringSix();
-        case DOLLAR_SEVEN:
-            return thread->GlobalConstants()->GetHandledDollarStringSeven();
-        case DOLLAR_EIGHT:
-            return thread->GlobalConstants()->GetHandledDollarStringEight();
-        case DOLLAR_NINE:
-            return thread->GlobalConstants()->GetHandledDollarStringNine();
-        default:
-            return thread->GlobalConstants()->GetHandledEmptyString();
-    }
 }
 
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
@@ -2000,6 +1965,32 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
 
     return *factory->NewFromUtf8(srcStdStr);
 }
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define SET_GET_CAPTURE_IMPL(index)                                                                                   \
+    JSTaggedValue BuiltinsRegExp::GetCapture##index(JSThread *thread, [[maybe_unused]] const JSHandle<JSObject> &obj) \
+    {                                                                                                                 \
+        JSHandle<RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());           \
+        return globalTable->GetCapture<index>();                                                                      \
+    }                                                                                                                 \
+    bool BuiltinsRegExp::SetCapture##index([[maybe_unused]] JSThread *thread,                                         \
+                                           [[maybe_unused]] const JSHandle<JSObject> &obj,                            \
+                                           [[maybe_unused]] const JSHandle<JSTaggedValue> &value,                     \
+                                           [[maybe_unused]] bool mayThrow)                                            \
+    {                                                                                                                 \
+        return true;                                                                                                  \
+    }
+
+    SET_GET_CAPTURE_IMPL(1)
+    SET_GET_CAPTURE_IMPL(2)
+    SET_GET_CAPTURE_IMPL(3)
+    SET_GET_CAPTURE_IMPL(4)
+    SET_GET_CAPTURE_IMPL(5)
+    SET_GET_CAPTURE_IMPL(6)
+    SET_GET_CAPTURE_IMPL(7)
+    SET_GET_CAPTURE_IMPL(8)
+    SET_GET_CAPTURE_IMPL(9)
+#undef SET_GET_CAPTURE_IMPL
 
 JSTaggedValue RegExpExecResultCache::CreateCacheTable(JSThread *thread)
 {
@@ -2257,5 +2248,18 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
     return EcmaStringAccessor::StringsAreEqual(patternStr, keyPatternStr) && flagsBits == keyFlagsBits &&
            EcmaStringAccessor::StringsAreEqual(inputStr, keyInputStr) && lastIndexInputInt ==  keyLastIndexInputInt &&
            extendEqual;
+}
+
+JSTaggedValue RegExpGlobalResult::CreateGloablResultTable(JSThread *thread)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto table = static_cast<RegExpGlobalResult *>(
+        *factory->NewTaggedArray(GLOBAL_TABLE_SIZE, JSTaggedValue::Undefined()));
+    // initialize dollars with empty string
+    JSTaggedValue emptyString = factory->GetEmptyString().GetTaggedValue();
+    for (int i = 1; i <= DOLLAR_NUMBER; i++) {
+        table->SetCapture(thread, CAPTURE_START_INDEX + i, emptyString);
+    }
+    return JSTaggedValue(table);
 }
 }  // namespace panda::ecmascript::builtins
