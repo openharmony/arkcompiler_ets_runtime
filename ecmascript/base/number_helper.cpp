@@ -439,8 +439,8 @@ double NumberHelper::TruncateDouble(double d)
         return 0;
     }
     double ret = (d >= 0) ? std::floor(d) : std::ceil(d);
-    if (ret == double(-0.0)) {
-        ret = +0;
+    if (ret == 0.0) {
+        ret = 0;
     }
     return ret;
 }
