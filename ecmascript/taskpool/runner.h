@@ -23,7 +23,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/task_queue.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
@@ -55,7 +55,7 @@ public:
 
     bool IsInThreadPool(std::thread::id id)
     {
-        os::memory::LockHolder holder(mtxPool_);
+        LockHolder holder(mtxPool_);
         for (auto &thread : threadPool_) {
             if (thread->get_id() == id) {
                 return true;
@@ -73,8 +73,8 @@ private:
     std::array<Task*, MAX_TASKPOOL_THREAD_NUM + 1> runningTask_;
     uint32_t totalThreadNum_ {0};
     std::vector<uint32_t> gcThreadId_ {};
-    os::memory::Mutex mtx_;
-    os::memory::Mutex mtxPool_;
+    Mutex mtx_;
+    Mutex mtxPool_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TASKPOOL_RUNNER_H

@@ -311,7 +311,7 @@ public:
     void EnumerateWorkerVm(Callback cb)
     {
         // since there is a lock, so cannot mark function const
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         for (const auto &item : workerList_) {
             cb(item.second);
         }
@@ -566,7 +566,7 @@ private:
     friend class JSPandaFileExecutor;
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -185,13 +185,13 @@ void SemiSpace::Restart()
 
 uintptr_t SemiSpace::AllocateSync(size_t size)
 {
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     return Allocate(size, true);
 }
 
 bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 {
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     if (committedSize_ + region->GetCapacity() > maximumCapacity_ + overShootSize_) {
         return false;
     }

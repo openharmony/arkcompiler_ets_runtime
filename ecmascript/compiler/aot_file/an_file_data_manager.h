@@ -76,7 +76,7 @@ private:
         return loadedAn_.at(index);
     }
 
-    os::memory::RWLock lock_ {};
+    RWLock lock_ {};
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_ {};
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};

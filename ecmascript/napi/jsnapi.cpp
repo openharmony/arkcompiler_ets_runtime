@@ -92,7 +92,7 @@
 
 #include "ohos/init_data.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && defined(PANDA_TARGET_IOS)
 namespace OHOS::ArkCompiler::Toolchain {
@@ -160,6 +160,8 @@ using ecmascript::job::QueueType;
 using ecmascript::JSRuntimeOptions;
 using ecmascript::BigInt;
 using ecmascript::MemMapAllocator;
+using ecmascript::Mutex;
+using ecmascript::LockHolder;
 using ecmascript::JSMapIterator;
 using ecmascript::JSSetIterator;
 using ecmascript::IterationKind;
@@ -197,7 +199,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
-static os::memory::Mutex *mutex = new panda::os::memory::Mutex();
+static Mutex *mutex = new panda::Mutex();
 #define XPM_PROC_PREFIX "/proc/"
 #define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
@@ -332,7 +334,7 @@ void JSNApi::DestroyJSContext(EcmaVM *vm, EcmaContext *context)
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     {
-        os::memory::LockHolder lock(*mutex);
+        LockHolder lock(*mutex);
         vmCount_++;
         if (!initialize_) {
             ecmascript::Log::Initialize(options);
@@ -351,7 +353,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 
 void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
 {
-    os::memory::LockHolder lock(*mutex);
+    LockHolder lock(*mutex);
     if (!initialize_) {
         return;
     }

@@ -988,7 +988,7 @@ void Heap::TriggerConcurrentMarking()
 
 void Heap::WaitRunningTaskFinished()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     while (runningTaskCount_ > 0) {
         waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
     }
@@ -996,7 +996,7 @@ void Heap::WaitRunningTaskFinished()
 
 void Heap::WaitClearTaskFinished()
 {
-    os::memory::LockHolder holder(waitClearTaskFinishedMutex_);
+    LockHolder holder(waitClearTaskFinishedMutex_);
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
     }
@@ -1026,7 +1026,7 @@ void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 
 void Heap::IncreaseTaskCount()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     runningTaskCount_++;
 }
 
@@ -1120,7 +1120,7 @@ void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
 void Heap::NotifyFinishColdStart(bool isMainThread)
 {
     {
-        os::memory::LockHolder holder(finishColdStartMutex_);
+        LockHolder holder(finishColdStartMutex_);
         if (!onStartupEvent_) {
             return;
         }
@@ -1187,13 +1187,13 @@ bool Heap::NeedStopCollection()
 
 bool Heap::CheckCanDistributeTask()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     return runningTaskCount_ < maxMarkTaskCount_;
 }
 
 void Heap::ReduceTaskCount()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     runningTaskCount_--;
     if (runningTaskCount_ == 0) {
         waitTaskFinishedCV_.SignalAll();

@@ -28,7 +28,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
-os::memory::Mutex CpuProfiler::synchronizationMutex_;
+Mutex CpuProfiler::synchronizationMutex_;
 CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, const EcmaVM *>();
 CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interval_(interval)
 {
@@ -71,7 +71,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
 
@@ -133,7 +133,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
     outToFile_ = true;
@@ -388,7 +388,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     CpuProfiler *profiler = nullptr;
     JSThread *thread = nullptr;
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
         const EcmaVM *vm = profilerMap_[tid];
         if (vm == nullptr) {

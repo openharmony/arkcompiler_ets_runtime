@@ -25,7 +25,7 @@
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/platform/map.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 #include "securec.h"
 
@@ -109,7 +109,7 @@ public:
           wasted_(0),
           snapshotData_(0)
     {
-        lock_ = new os::memory::Mutex();
+        lock_ = new Mutex();
     }
 
     ~Region() = default;
@@ -593,7 +593,7 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
-    os::memory::Mutex *lock_ {nullptr};
+    Mutex *lock_ {nullptr};
     uint64_t wasted_;
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of
     // the huge object, and the lower 32 bits are used to store the region index

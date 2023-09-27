@@ -108,14 +108,14 @@ public:
         if (node == nullptr) {
             return;
         }
-        os::memory::LockHolder lock(mtx_);
+        LockHolder lock(mtx_);
         node->SetNext(top_);
         top_ = node;
     }
 
     bool Pop(WorkNode **node)
     {
-        os::memory::LockHolder lock(mtx_);
+        LockHolder lock(mtx_);
         if (top_ == nullptr) {
             return false;
         }
@@ -126,7 +126,7 @@ public:
 
 private:
     WorkNode *top_ {nullptr};
-    os::memory::Mutex mtx_;
+    Mutex mtx_;
 };
 
 struct WorkNodeHolder {
@@ -221,7 +221,7 @@ private:
     uintptr_t spaceStart_;
     uintptr_t spaceEnd_;
     std::vector<uintptr_t> agedSpaces_;
-    os::memory::Mutex mtx_;
+    Mutex mtx_;
     ParallelGCTaskPhase parallelGCTaskPhase_;
     std::atomic<bool> initialized_ {false};
 };

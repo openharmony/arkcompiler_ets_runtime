@@ -25,7 +25,7 @@ bool VmThreadControl::NotifyVMThreadSuspension() // block caller thread
     }
     SetVMNeedSuspension(true);
     thread_->SetCheckSafePointStatus();
-    os::memory::LockHolder lock(vmThreadSuspensionMutex_);
+    LockHolder lock(vmThreadSuspensionMutex_);
     while (!IsSuspended()) {
         if (vmThreadNeedSuspensionCV_.TimedWait(&vmThreadSuspensionMutex_, TIME_OUT_MS)) {
             SetVMNeedSuspension(false);
@@ -58,7 +58,7 @@ bool VmThreadControl::IsSuspended() const
 
 void VmThreadControl::SuspendVM() // block vm thread
 {
-    os::memory::LockHolder lock(vmThreadSuspensionMutex_);
+    LockHolder lock(vmThreadSuspensionMutex_);
     SetVMSuspended(true);
     vmThreadNeedSuspensionCV_.Signal(); // wake up the thread who needs suspend vmthread
     while (VMNeedSuspension()) {
@@ -69,7 +69,7 @@ void VmThreadControl::SuspendVM() // block vm thread
 
 void VmThreadControl::ResumeVM()
 {
-    os::memory::LockHolder lock(vmThreadSuspensionMutex_);
+    LockHolder lock(vmThreadSuspensionMutex_);
     SetVMNeedSuspension(false);
     vmThreadHasSuspendedCV_.Signal();
 }

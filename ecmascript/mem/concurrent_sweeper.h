@@ -22,7 +22,7 @@
 #include "ecmascript/mem/space.h"
 #include "ecmascript/taskpool/task.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 // CONFIG_DISABLE means concurrent sweeper is disabled by options or macros and cannot be changed.
@@ -108,8 +108,8 @@ private:
 
     void WaitingTaskFinish(MemSpaceType type);
 
-    std::array<os::memory::Mutex, FREE_LIST_NUM> mutexs_;
-    std::array<os::memory::ConditionVariable, FREE_LIST_NUM> cvs_;
+    std::array<Mutex, FREE_LIST_NUM> mutexs_;
+    std::array<ConditionVariable, FREE_LIST_NUM> cvs_;
     std::array<std::atomic_int, FREE_LIST_NUM> remainingTaskNum_ = {0, 0, 0};
 
     Heap *heap_;

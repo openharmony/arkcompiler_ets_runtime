@@ -26,7 +26,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 const int MAX_STACK_SIZE = 128; // 128:the maximum size of the js stack
@@ -108,7 +108,7 @@ private:
     FrameStackAndInfo frames_[QUEUE_CAPACITY] = {};
     int front_ = 0;
     int rear_ = 0;
-    os::memory::Mutex mtx_;
+    Mutex mtx_;
 };
 
 class SamplesRecord {

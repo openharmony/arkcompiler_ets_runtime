@@ -834,7 +834,10 @@ ecma_profiler_source += [
 
 ecma_platform_source = []
 
-ecma_platform_source += [ "ecmascript/platform/common/map.cpp" ]
+ecma_platform_source += [
+  "ecmascript/platform/common/map.cpp",
+  "ecmascript/platform/common/mutex.cpp",
+]
 
 config("include_llvm") {
   if (compile_llvm_online) {

@@ -86,7 +86,7 @@ public:
 
 private:
     static constexpr int GROWING_FACTOR = 2;
-    os::memory::Mutex lock_;
+    Mutex lock_;
     size_t minimumCapacity_;
 };
 

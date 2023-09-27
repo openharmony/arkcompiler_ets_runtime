@@ -129,7 +129,7 @@ void PGOProfiler::PGODump(JSTaggedType func)
         return;
     }
     {
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         dumpWorkList_.emplace_back(func);
         if (state_ == State::STOP) {
             state_ = State::START;
@@ -144,7 +144,7 @@ void PGOProfiler::PausePGODump()
     if (!isEnable_) {
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (state_ == State::START) {
         state_ = State::PAUSE;
         condition_.Wait(&mutex_);
@@ -156,7 +156,7 @@ void PGOProfiler::ResumePGODump()
     if (!isEnable_) {
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (state_ == State::PAUSE) {
         state_ = State::START;
         Taskpool::GetCurrentTaskpool()->PostTask(
@@ -169,7 +169,7 @@ void PGOProfiler::WaitPGODumpFinish()
     if (!isEnable_) {
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     while (state_ == State::START) {
         condition_.Wait(&mutex_);
     }
@@ -180,7 +180,7 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
     if (!isEnable_) {
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     preDumpWorkList_.emplace(func);
 }
 
@@ -192,7 +192,7 @@ void PGOProfiler::HandlePGOPreDump()
     DISALLOW_GARBAGE_COLLECTION;
     CSet<JSTaggedType> preDumpWorkList;
     {
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         preDumpWorkList = preDumpWorkList_;
     }
     for (auto iter : preDumpWorkList) {
@@ -256,7 +256,7 @@ void PGOProfiler::HandlePGODump()
 
 JSTaggedValue PGOProfiler::PopFromProfileQueue()
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     auto result = JSTaggedValue::Undefined();
     while (result.IsUndefined()) {
         if (dumpWorkList_.empty()) {

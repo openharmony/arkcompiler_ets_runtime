@@ -801,7 +801,7 @@ void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
 void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStack,
                              int frameInfoTempsLength, int frameStackLength)
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     if (!IsFull()) {
         // frameInfoTemps
         for (int i = 0; i < frameInfoTempsLength; i++) {
@@ -836,7 +836,7 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
 void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
                                  CVector<MethodKey> &napiFrameStack)
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     if (!IsFull()) {
         size_t frameInfoTempsLength = napiFrameInfoTemps.size();
         size_t frameStackLength = napiFrameStack.size();
@@ -873,7 +873,7 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
 
 FrameStackAndInfo *SamplesQueue::PopFrame()
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     if (!IsEmpty()) {
         FrameStackAndInfo *frame = &frames_[front_];
         front_ = (front_ + 1) % QUEUE_CAPACITY;

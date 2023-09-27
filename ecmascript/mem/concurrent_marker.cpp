@@ -31,7 +31,7 @@
 
 namespace panda::ecmascript {
 size_t ConcurrentMarker::taskCounts_ = 0;
-os::memory::Mutex ConcurrentMarker::taskCountMutex_;
+Mutex ConcurrentMarker::taskCountMutex_;
 
 ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)
     : heap_(heap),
@@ -83,7 +83,7 @@ void ConcurrentMarker::ReMark()
 
 void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
-    os::memory::LockHolder lock(waitMarkingFinishedMutex_);
+    LockHolder lock(waitMarkingFinishedMutex_);
     if (notifyMarkingFinished_) {
         heap_->CollectGarbage(heap_->IsFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC,
                               GCReason::ALLOCATION_LIMIT);
@@ -92,7 +92,7 @@ void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 
 void ConcurrentMarker::WaitMarkingFinished()  // call in EcmaVm thread, wait for mark finished
 {
-    os::memory::LockHolder lock(waitMarkingFinishedMutex_);
+    LockHolder lock(waitMarkingFinishedMutex_);
     if (!notifyMarkingFinished_) {
         vmThreadWaitMarkingFinished_ = true;
         waitMarkingFinishedCV_.Wait(&waitMarkingFinishedMutex_);
@@ -164,7 +164,7 @@ bool ConcurrentMarker::MarkerTask::Run(uint32_t threadId)
 
 void ConcurrentMarker::FinishMarking(float spendTime)
 {
-    os::memory::LockHolder lock(waitMarkingFinishedMutex_);
+    LockHolder lock(waitMarkingFinishedMutex_);
     thread_->SetMarkStatus(MarkStatus::MARK_FINISHED);
     thread_->SetCheckSafePointStatus();
     if (vmThreadWaitMarkingFinished_) {

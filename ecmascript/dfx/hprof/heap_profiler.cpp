@@ -110,7 +110,7 @@ void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
 
 void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (isProfiling_) {
         entryIdMap_->Move(address, reinterpret_cast<Address>(forwardAddress));
         if (heapTracker_ != nullptr) {

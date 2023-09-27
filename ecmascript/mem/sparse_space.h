@@ -136,7 +136,7 @@ private:
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
 
-    os::memory::Mutex lock_;
+    Mutex lock_;
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
     size_t liveObjectSize_ {0};
@@ -198,7 +198,7 @@ private:
     static constexpr size_t PARTIAL_GC_MIN_COLLECT_REGION_SIZE = 5;
 
     CVector<Region *> collectRegionSet_;
-    os::memory::Mutex lock_;
+    Mutex lock_;
     size_t mergeSize_ {0};
 };
 

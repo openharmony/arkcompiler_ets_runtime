@@ -17,7 +17,7 @@
 #define ECMASCRIPT_VM_THREAD_CONTROL_H
 
 #include "ecmascript/js_thread.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
@@ -46,9 +46,9 @@ public:
 
 private:
     JSThread *thread_;
-    os::memory::Mutex vmThreadSuspensionMutex_;
-    os::memory::ConditionVariable vmThreadNeedSuspensionCV_;
-    os::memory::ConditionVariable vmThreadHasSuspendedCV_;
+    Mutex vmThreadSuspensionMutex_;
+    ConditionVariable vmThreadNeedSuspensionCV_;
+    ConditionVariable vmThreadHasSuspendedCV_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_VM_THREAD_CONTROL_H

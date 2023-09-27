@@ -78,8 +78,8 @@ private:
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
-    os::memory::Mutex mutex_;
-    os::memory::RWLock rwLock_;
+    Mutex mutex_;
+    RWLock rwLock_;
     std::string moduleName_;
     ApGenMode mode_ {OVERWRITE};
     friend SaveTask;

@@ -173,7 +173,7 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
 
 std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::GetWorkloadSafe()
 {
-    os::memory::LockHolder holder(mutex_);
+    LockHolder holder(mutex_);
     std::unique_ptr<Workload> unit;
     if (!workloads_.empty()) {
         unit = std::move(workloads_.back());

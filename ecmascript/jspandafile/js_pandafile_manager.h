@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda {
 namespace ecmascript {
@@ -59,7 +60,7 @@ public:
     template<typename Callback>
     void EnumerateJSPandaFiles(Callback cb)
     {
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
             if (!cb(item.second.first.get())) {
                 return;
@@ -97,7 +98,7 @@ private:
     static void *AllocateBuffer(size_t size);
     static void FreeBuffer(void *mem);
 
-    os::memory::RecursiveMutex jsPandaFileLock_;
+    RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was hold by ecma vm list.
     using JSPandaFileVmsPair = std::pair<std::shared_ptr<JSPandaFile>, std::set<const EcmaVM *>>;
     std::unordered_map<const CString, JSPandaFileVmsPair, CStringHash> loadedJSPandaFiles_;

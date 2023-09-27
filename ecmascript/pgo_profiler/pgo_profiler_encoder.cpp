@@ -46,7 +46,7 @@ void PGOProfilerEncoder::Destroy()
 
 bool PGOProfilerEncoder::ResetOutPathByModuleName(const std::string &moduleName)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     // only first assign takes effect
     if (!moduleName_.empty() || moduleName.empty()) {
         return false;
@@ -88,7 +88,7 @@ void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &a
     if (!isInitialized_) {
         return;
     }
-    os::memory::WriteLockHolder lock(rwLock_);
+    WriteLockHolder lock(rwLock_);
     pandaFileInfos_->Sample(checksum);
     ApEntityId entryId(0);
     abcFilePool_->TryAdd(abcName, entryId);
@@ -99,7 +99,7 @@ bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entr
     if (!isInitialized_) {
         return false;
     }
-    os::memory::ReadLockHolder lock(rwLock_);
+    ReadLockHolder lock(rwLock_);
     return abcFilePool_->GetEntryId(abcName, entryId);
 }
 
@@ -108,7 +108,7 @@ void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
     if (!isInitialized_) {
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     globalRecordInfos_->Merge(recordInfos);
 }
 
@@ -134,7 +134,7 @@ bool PGOProfilerEncoder::Save()
     if (!isInitialized_) {
         return false;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     return InternalSave();
 }
 
@@ -151,7 +151,7 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     {
-        os::memory::ReadLockHolder lock(rwLock_);
+        ReadLockHolder lock(rwLock_);
         PGOFileSectionInterface::ProcessSectionToBinary(fileStream, header_, *abcFilePool_->GetPool());
     }
     header_->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
@@ -234,7 +234,7 @@ void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
         LOG_ECMA(ERROR) << "StartSaveTask: task is already terminate";
         return;
     }
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     InternalSave(task);
 }
 

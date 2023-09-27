@@ -353,7 +353,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ClearCrossRegionRSet();
     });
     if (!clearTaskFinished_) {
-        os::memory::LockHolder holder(waitClearTaskFinishedMutex_);
+        LockHolder holder(waitClearTaskFinishedMutex_);
         clearTaskFinished_ = true;
         waitClearTaskFinishedCV_.SignalAll();
     }
