@@ -24,7 +24,7 @@
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/task.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
@@ -48,7 +48,7 @@ public:
     {
         size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
         {
-            os::memory::LockHolder holder(taskCountMutex_);
+            LockHolder holder(taskCountMutex_);
             // total counts of running concurrent mark tasks should be less than taskPoolSize
             if (taskCounts_ + 1 < taskPoolSize) {
                 taskCounts_++;
@@ -61,7 +61,7 @@ public:
 
     static void DecreaseTaskCounts()
     {
-        os::memory::LockHolder holder(taskCountMutex_);
+        LockHolder holder(taskCountMutex_);
         taskCounts_--;
     }
 
@@ -145,7 +145,7 @@ private:
     void FinishMarking(float spendTime);
 
     static size_t taskCounts_;
-    static os::memory::Mutex taskCountMutex_;
+    static Mutex taskCountMutex_;
 
     Heap *heap_ {nullptr};
     EcmaVM *vm_ {nullptr};
@@ -160,8 +160,8 @@ private:
     bool notifyMarkingFinished_ {false};         // notify js-thread that marking is finished and sweeping is needed
     bool vmThreadWaitMarkingFinished_ {false};   // jsMainThread waiting for concurrentGC FINISHED
     bool isConcurrentMarking_ {false};
-    os::memory::Mutex waitMarkingFinishedMutex_;
-    os::memory::ConditionVariable waitMarkingFinishedCV_;
+    Mutex waitMarkingFinishedMutex_;
+    ConditionVariable waitMarkingFinishedCV_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CONCURRENT_MARKER_H

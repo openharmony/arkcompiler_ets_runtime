@@ -26,7 +26,7 @@ Taskpool *Taskpool::GetCurrentTaskpool()
 
 void Taskpool::Initialize(int threadNum)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (isInitialized_++ <= 0) {
         runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum));
     }
@@ -34,7 +34,7 @@ void Taskpool::Initialize(int threadNum)
 
 void Taskpool::Destroy(int32_t id)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (isInitialized_ <= 0) {
         return;
     }

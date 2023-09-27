@@ -124,7 +124,7 @@ private:
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

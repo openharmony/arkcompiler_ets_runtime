@@ -20,7 +20,7 @@ static constexpr size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory u
 
 JSSharedMemoryManager::~JSSharedMemoryManager()
 {
-    os::memory::LockHolder lock(jsSharedMemoryLock_);
+    LockHolder lock(jsSharedMemoryLock_);
     auto iter = loadedJSSharedMemory_.begin();
     while (iter != loadedJSSharedMemory_.end()) {
         const void *pointer = ToVoidPtr(iter->first);
@@ -44,7 +44,7 @@ bool JSSharedMemoryManager::CreateOrLoad(void **pointer, size_t size)
 
 void JSSharedMemoryManager::InsertSharedMemory(const void *pointer)
 {
-    os::memory::LockHolder lock(jsSharedMemoryLock_);
+    LockHolder lock(jsSharedMemoryLock_);
     if (loadedJSSharedMemory_.find((uint64_t)pointer) == loadedJSSharedMemory_.end()) {
         loadedJSSharedMemory_[(uint64_t)pointer] = 1;
     }
@@ -52,7 +52,7 @@ void JSSharedMemoryManager::InsertSharedMemory(const void *pointer)
 
 void JSSharedMemoryManager::IncreaseRefSharedMemory(const void *pointer)
 {
-    os::memory::LockHolder lock(jsSharedMemoryLock_);
+    LockHolder lock(jsSharedMemoryLock_);
     if (loadedJSSharedMemory_.find((uint64_t)pointer) != loadedJSSharedMemory_.end()) {
         loadedJSSharedMemory_[(uint64_t)pointer]++;
     }
@@ -60,7 +60,7 @@ void JSSharedMemoryManager::IncreaseRefSharedMemory(const void *pointer)
 
 void JSSharedMemoryManager::DecreaseRefSharedMemory(const void *pointer)
 {
-    os::memory::LockHolder lock(jsSharedMemoryLock_);
+    LockHolder lock(jsSharedMemoryLock_);
     auto iter = loadedJSSharedMemory_.find((uint64_t)pointer);
     if (iter != loadedJSSharedMemory_.end()) {
         if (iter->second > 1) {

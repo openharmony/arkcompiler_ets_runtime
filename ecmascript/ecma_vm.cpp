@@ -635,7 +635,7 @@ void EcmaVM::DumpCallTimeInfo()
 
 void EcmaVM::WorkersetInfo(EcmaVM *workerVm)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
     if (thread != nullptr) {
         auto tid = thread->GetThreadId();
@@ -647,7 +647,7 @@ void EcmaVM::WorkersetInfo(EcmaVM *workerVm)
 
 EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     EcmaVM *workerVm = nullptr;
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
@@ -660,7 +660,7 @@ EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
 
 bool EcmaVM::DeleteWorker(EcmaVM *workerVm)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
     if (thread != nullptr) {
         auto tid = thread->GetThreadId();
@@ -679,7 +679,7 @@ bool EcmaVM::DeleteWorker(EcmaVM *workerVm)
 
 bool EcmaVM::SuspendWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
         if (iter != workerList_.end()) {
@@ -691,7 +691,7 @@ bool EcmaVM::SuspendWorkerVm(uint32_t tid)
 
 void EcmaVM::ResumeWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
         if (iter != workerList_.end()) {

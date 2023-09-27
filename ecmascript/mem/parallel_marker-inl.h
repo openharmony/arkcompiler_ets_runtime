@@ -363,7 +363,7 @@ inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *
 
 inline uintptr_t CompressGCMarker::AllocateReadOnlySpace(size_t size)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     uintptr_t forwardAddress = heap_->GetReadOnlySpace()->Allocate(size);
     if (UNLIKELY(forwardAddress == 0)) {
         LOG_ECMA_MEM(FATAL) << "Evacuate Read only Object: alloc failed: "
@@ -375,7 +375,7 @@ inline uintptr_t CompressGCMarker::AllocateReadOnlySpace(size_t size)
 
 inline uintptr_t CompressGCMarker::AllocateAppSpawnSpace(size_t size)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     uintptr_t forwardAddress = heap_->GetAppSpawnSpace()->Allocate(size);
     if (UNLIKELY(forwardAddress == 0)) {
         LOG_ECMA_MEM(FATAL) << "Evacuate AppSpawn Object: alloc failed: "

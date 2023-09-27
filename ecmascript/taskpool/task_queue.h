@@ -22,7 +22,7 @@
 #include <memory>
 
 #include "ecmascript/taskpool/task.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class TaskQueue {
@@ -43,8 +43,8 @@ private:
     std::deque<std::unique_ptr<Task>> tasks_;
 
     std::atomic_bool terminate_ = false;
-    os::memory::Mutex mtx_;
-    os::memory::ConditionVariable cv_;
+    Mutex mtx_;
+    ConditionVariable cv_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TASKPOOL_TASK_QUEUE_H

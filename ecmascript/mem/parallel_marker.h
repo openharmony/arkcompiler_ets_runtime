@@ -181,7 +181,7 @@ protected:
 
 private:
     bool isAppSpawn_ {false};
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_H

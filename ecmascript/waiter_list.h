@@ -19,12 +19,9 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/c_containers.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
-using Mutex = os::memory::Mutex;
-using LockHolder = os::memory::LockHolder<Mutex>;
-
 class WaiterListNode {
 public:
     WaiterListNode() = default;
@@ -36,7 +33,7 @@ public:
     WaiterListNode *prev_ {nullptr};
     WaiterListNode *next_ {nullptr};
     // Used to call wait or Signal() to unlock wait and wake up
-    os::memory::ConditionVariable cond_;
+    ConditionVariable cond_;
 
     // Managed Arraybuffer or SharedArrayBuffer memory data
     void *date_ {nullptr};
@@ -88,20 +85,19 @@ private:
     Singleton() = default;
 };
 
-class SCOPED_CAPABILITY MutexGuard
-{
+class MutexGuard {
 public:
     explicit MutexGuard(Mutex *mutex) : mutex_(mutex), lockHolder_(*mutex) {}
-    void Unlock() RELEASE()
+    void Unlock()
     {
         mutex_->Unlock();
     }
     
-    void Lock() ACQUIRE()
+    void Lock()
     {
         mutex_->Lock();
     }
-
+private:
     Mutex *mutex_;
     LockHolder lockHolder_;
 };

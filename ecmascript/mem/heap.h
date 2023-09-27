@@ -231,7 +231,7 @@ public:
 
     void NotifyPostFork()
     {
-        os::memory::LockHolder holder(finishColdStartMutex_);
+        LockHolder holder(finishColdStartMutex_);
         onStartupEvent_ = true;
     }
 
@@ -714,16 +714,16 @@ private:
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
 
     bool clearTaskFinished_ {true};
-    os::memory::Mutex waitClearTaskFinishedMutex_;
-    os::memory::ConditionVariable waitClearTaskFinishedCV_;
+    Mutex waitClearTaskFinishedMutex_;
+    ConditionVariable waitClearTaskFinishedCV_;
     uint32_t runningTaskCount_ {0};
     // parallel marker task number.
     uint32_t maxMarkTaskCount_ {0};
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
-    os::memory::Mutex finishColdStartMutex_;
-    os::memory::Mutex waitTaskFinishedMutex_;
-    os::memory::ConditionVariable waitTaskFinishedCV_;
+    Mutex finishColdStartMutex_;
+    Mutex waitTaskFinishedMutex_;
+    ConditionVariable waitTaskFinishedCV_;
 
     /*
      * The memory controller providing memory statistics (by allocations and coleections),

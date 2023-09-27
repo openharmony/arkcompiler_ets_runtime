@@ -38,7 +38,7 @@ void AnFileDataManager::DestroyFileMapMem(MemMap &fileMapMem)
 
 void AnFileDataManager::SafeDestroyAllData()
 {
-    os::memory::WriteLockHolder lock(lock_);
+    WriteLockHolder lock(lock_);
     if (loadedStub_ != nullptr) {
         ExecutedMemoryAllocator::DestroyBuf(loadedStub_->GetStubsMem());
         loadedStub_ = nullptr;
@@ -53,7 +53,7 @@ void AnFileDataManager::SafeDestroyAllData()
 
 void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
 {
-    os::memory::WriteLockHolder lock(lock_);
+    WriteLockHolder lock(lock_);
     std::string anBasename = JSFilePath::GetBaseName(fileName);
     auto index = UnSafeGetFileInfoIndex(anBasename);
     if (index == INVALID_INDEX) {
@@ -65,7 +65,7 @@ void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
 
 bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
 {
-    os::memory::WriteLockHolder lock(lock_);
+    WriteLockHolder lock(lock_);
     if (type == Type::STUB) {
         if (loadedStub_ != nullptr) {
             return true;
@@ -133,19 +133,19 @@ uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 
 uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     return UnSafeGetFileInfoIndex(fileName);
 }
 
 std::shared_ptr<AnFileInfo> AnFileDataManager::SafeGetAnFileInfo(uint32_t index)
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     return UnSafeGetAnFileInfo(index);
 }
 
 std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     return loadedStub_;
 }
 
@@ -165,7 +165,7 @@ bool AnFileDataManager::SafeTryReadLock()
 
 bool AnFileDataManager::SafeInsideStub(uintptr_t pc)
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     if (loadedStub_ == nullptr) {
         LOG_COMPILER(ERROR) << "SafeInsideStub: The stub file is not loaded.";
         return false;
@@ -189,7 +189,7 @@ bool AnFileDataManager::SafeInsideStub(uintptr_t pc)
 
 bool AnFileDataManager::SafeInsideAOT(uintptr_t pc)
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     for (auto &info : loadedAn_) {
         const std::vector<ModuleSectionDes> &des = info->GetCodeUnits();
         for (const auto &curDes : des) {
@@ -203,7 +203,7 @@ bool AnFileDataManager::SafeInsideAOT(uintptr_t pc)
 
 AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAddr)
 {
-    os::memory::ReadLockHolder lock(lock_);
+    ReadLockHolder lock(lock_);
     AOTFileInfo::CallSiteInfo callsiteInfo;
 
     bool ans = false;

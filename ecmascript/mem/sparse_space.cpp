@@ -189,7 +189,7 @@ void SparseSpace::SortSweepingRegion()
 
 Region *SparseSpace::GetSweepingRegionSafe()
 {
-    os::memory::LockHolder holder(lock_);
+    LockHolder holder(lock_);
     Region *region = nullptr;
     if (!sweepingList_.empty()) {
         region = sweepingList_.back();
@@ -200,13 +200,13 @@ Region *SparseSpace::GetSweepingRegionSafe()
 
 void SparseSpace::AddSweptRegionSafe(Region *region)
 {
-    os::memory::LockHolder holder(lock_);
+    LockHolder holder(lock_);
     sweptList_.emplace_back(region);
 }
 
 Region *SparseSpace::GetSweptRegionSafe()
 {
-    os::memory::LockHolder holder(lock_);
+    LockHolder holder(lock_);
     Region *region = nullptr;
     if (!sweptList_.empty()) {
         region = sweptList_.back();
@@ -231,7 +231,7 @@ Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
     if (sweptList_.empty()) {
         return nullptr;
     }
-    os::memory::LockHolder holder(lock_);
+    LockHolder holder(lock_);
     for (auto iter = sweptList_.begin(); iter != sweptList_.end(); iter++) {
         if (allocator_->MatchFreeObjectSet(*iter, size)) {
             Region *region = *iter;
@@ -373,7 +373,7 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
 
 Region *OldSpace::TryToGetExclusiveRegion(size_t size)
 {
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     uintptr_t result = allocator_->LookupSuitableFreeObject(size);
     if (result != 0) {
         // Remove region from global old space
@@ -397,7 +397,7 @@ Region *OldSpace::TryToGetExclusiveRegion(size_t size)
 void OldSpace::Merge(LocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     size_t oldCommittedSize = committedSize_;
     localSpace->EnumerateRegions([&](Region *region) {
         localSpace->DetachFreeObjectSet(region);

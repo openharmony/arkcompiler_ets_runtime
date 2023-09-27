@@ -20,7 +20,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/runner.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class Taskpool {
@@ -30,7 +30,7 @@ public:
     Taskpool() = default;
     PUBLIC_API ~Taskpool()
     {
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         runner_->TerminateThread();
         isInitialized_ = 0;
     }
@@ -71,7 +71,7 @@ private:
 
     std::unique_ptr<Runner> runner_;
     volatile int isInitialized_ = 0;
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PALTFORM_PLATFORM_H

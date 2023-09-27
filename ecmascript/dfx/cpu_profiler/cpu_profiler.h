@@ -98,7 +98,7 @@ public:
 
     static CMap<pthread_t, const EcmaVM *> profilerMap_;
 private:
-    static os::memory::Mutex synchronizationMutex_;
+    static Mutex synchronizationMutex_;
 
     void GetStack(FrameIterator &it);
     static uint64_t GetPcFromContext(void *context);

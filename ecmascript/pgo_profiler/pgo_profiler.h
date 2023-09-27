@@ -25,6 +25,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
@@ -153,8 +154,8 @@ private:
     State state_ { State::STOP };
     uint32_t methodCount_ { 0 };
     std::chrono::system_clock::time_point saveTimestamp_;
-    os::memory::Mutex mutex_;
-    os::memory::ConditionVariable condition_;
+    Mutex mutex_;
+    ConditionVariable condition_;
     CList<JSTaggedType> dumpWorkList_;
     CSet<JSTaggedType> preDumpWorkList_;
     CMap<JSTaggedType, ProfileType> tracedProfiles_;
