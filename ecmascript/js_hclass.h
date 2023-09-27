@@ -367,6 +367,9 @@ public:
                                               const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                       const JSHandle<JSTaggedValue> &proto);
+    static JSHandle<JSHClass> CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                const JSHandle<JSTaggedValue> &key,
+                                                const JSHandle<JSTaggedValue> &proto);
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
     static void TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
@@ -1716,6 +1719,7 @@ public:
     static uint32_t ComputeHashcode(const JSHClass *hclass);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
+    inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
 private:
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
@@ -1726,8 +1730,6 @@ private:
     static inline void AddProtoTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                            const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                            const JSHandle<JSTaggedValue> &proto);
-
-    inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

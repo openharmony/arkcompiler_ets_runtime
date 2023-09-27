@@ -38,6 +38,7 @@ namespace panda::ecmascript::kungfu {
     V(StringCharAt)                                 \
     V(StringFromCharCode)                           \
     V(ObjectToString)                               \
+    V(ObjectCreate)                                 \
     V(VectorForEach)                                \
     V(VectorReplaceAllElements)                     \
     V(StackForEach)                                 \

@@ -2350,6 +2350,11 @@ bool RuntimeStubs::BigIntSameValueZero(JSTaggedType left, JSTaggedType right)
     return BigInt::SameValueZero(JSTaggedValue(left), JSTaggedValue(right));
 }
 
+JSTaggedValue RuntimeStubs::JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto)
+{
+    return JSTaggedValue(cls->FindProtoTransitions(key, proto));
+}
+
 double RuntimeStubs::TimeClip(double time)
 {
     return JSDate::TimeClip(time);
@@ -2582,6 +2587,15 @@ JSTaggedValue RuntimeStubs::RuntimeArraySort(JSThread *thread, JSHandle<JSTagged
     JSHandle<JSTaggedValue> callbackFnHandle(thread, JSTaggedValue::Undefined());
     JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
     return thisObjHandle.GetTaggedValue();
+}
+
+DEF_RUNTIME_STUBS(HClassCloneWithAddProto)
+{
+    RUNTIME_STUBS_HEADER(HClassCloneWithAddProto);
+    JSHandle<JSHClass> jshclass = GetHArg<JSHClass>(argv, argc, 0);            // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);       // 1: means the first parameter
+    JSHandle<JSTaggedValue> proto = GetHArg<JSTaggedValue>(argv, argc, 2);     // 2: means the second parameter
+    return JSHClass::CloneWithAddProto(thread, jshclass, key, proto).GetTaggedValue().GetRawData();
 }
 
 void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)

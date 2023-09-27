@@ -530,7 +530,7 @@ DECLARE_BUILTINS(type##method)                                                  
     Label thisCollectionObj(env);                                                                   \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    BuiltinsObjectStubBuilder builder(this, glue, thisValue);                                       \
+    BuiltinsObjectStubBuilder builder(this, glue, thisValue, numArgs);                              \
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -544,6 +544,8 @@ DECLARE_BUILTINS(type##method)                                                  
 
 // Object.protetype.ToString
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, ToString, VariableType::JS_ANY(), Undefined());
+// Object.protetype.Create
+DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Create, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
 #define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \

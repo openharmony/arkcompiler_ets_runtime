@@ -22,18 +22,23 @@ class BuiltinsObjectStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsObjectStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
-    BuiltinsObjectStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue)
-        : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue) {}
+    BuiltinsObjectStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue, GateRef numArgs)
+        : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsObjectStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsObjectStubBuilder);
     void GenerateCircuit() override {}
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     void ToString(Variable *result, Label *exit, Label *slowPath);
+    void Create(Variable *result, Label *exit, Label *slowPath);
 
 private:
+    GateRef OrdinaryNewJSObjectCreate(GateRef proto);
+    GateRef TransProtoWithoutLayout(GateRef hClass, GateRef proto);
+
     GateRef glue_;
     GateRef thisValue_;
+    GateRef numArgs_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_OBJECT_STUB_BUILDER_H
