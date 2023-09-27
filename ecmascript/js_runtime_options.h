@@ -140,6 +140,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_ON_HEAP_CHECK,
     OPTION_COMPILER_PKG_INFO,
     OPTION_COMPILER_EXTERNAL_PKG_INFO,
+    OPTION_COMPILER_ENABLE_EXTERNAL_PKG,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
     OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
 };
@@ -212,6 +213,16 @@ public:
     const std::string &GetCompilerExternalPkgJsonInfo() const
     {
         return compilerExternalPkgInfo_;
+    }
+
+    void SetCompilerEnableExternalPkg(bool compilerEnableExternalPkg)
+    {
+        compilerEnableExternalPkg_ = compilerEnableExternalPkg;
+    }
+
+    bool GetCompilerEnableExternalPkg() const
+    {
+        return compilerEnableExternalPkg_;
     }
 
     bool WasStubFileSet() const
@@ -1246,6 +1257,7 @@ private:
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
+    bool compilerEnableExternalPkg_ {false};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();

@@ -147,6 +147,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'false'\n"
     "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
+    "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -230,6 +231,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-array-onheap-check", required_argument, nullptr, OPTION_COMPILER_OPT_ON_HEAP_CHECK},
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
+        {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -758,6 +760,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_COMPILER_EXTERNAL_PKG_INFO:
                 SetCompilerExternalPkgJsonInfo(optarg);
+                break;
+            case OPTION_COMPILER_ENABLE_EXTERNAL_PKG:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerEnableExternalPkg(argBool);
+                } else {
+                    return false;
+                }
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";

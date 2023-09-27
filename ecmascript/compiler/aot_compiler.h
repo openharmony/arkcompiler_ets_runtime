@@ -33,8 +33,7 @@ struct AbcFileInfo {
 };
 
 struct CompilationOptions {
-    explicit CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions,
-                                OhosPkgArgs &pkgArgs, arg_list_t &pandaFileNames);
+    explicit CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions);
 
     std::string triple_;
     std::string outputFileName_;
@@ -64,9 +63,9 @@ struct CompilationOptions {
 
 class CompilationPreprocessor {
 public:
-    CompilationPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, OhosPkgArgs &pkgArgs,
+    CompilationPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::map<std::string, OhosPkgArgs> &pkgsArgs,
                             PGOProfilerDecoder &profilerDecoder, arg_list_t &pandaFileNames)
-        : vm_(vm), runtimeOptions_(runtimeOptions), pkgArgs_(pkgArgs),
+        : vm_(vm), runtimeOptions_(runtimeOptions), pkgsArgs_(pkgsArgs),
           profilerDecoder_(profilerDecoder), pandaFileNames_(pandaFileNames) {};
     ~CompilationPreprocessor() = default;
 
@@ -106,7 +105,7 @@ private:
 
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;
-    OhosPkgArgs &pkgArgs_;
+    std::map<std::string, OhosPkgArgs> &pkgsArgs_;
     PGOProfilerDecoder &profilerDecoder_;
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;

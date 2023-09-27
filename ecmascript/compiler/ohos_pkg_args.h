@@ -17,12 +17,14 @@
 #define ECMASCRIPT_COMPILER_OHOS_PKG_ARGS_H
 
 #include <limits>
+#include <vector>
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/platform/file.h"
@@ -39,7 +41,44 @@ public:
 
     OhosPkgArgs() = default;
 
-    static bool ParseListFromJson(EcmaVM *vm, const std::string &jsonInfo, std::list<OhosPkgArgs> &infoList)
+    bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
+    {
+        std::string hapPath;
+        uint32_t offset {};
+        uint32_t size {};
+        if (Valid()) {
+            hapPath = GetPath();
+            offset = GetOffset();
+            size = GetSize();
+        } else {
+            // for legacy params
+            hapPath = runtimeOptions.GetHapPath();
+            offset = runtimeOptions.GetHapAbcOffset();
+            size = runtimeOptions.GetHapAbcSize();
+        }
+        if (size == 0) {
+            LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
+            return false;
+        }
+        std::string realPath;
+        if (!RealPath(hapPath, realPath, false)) {
+            LOG_ECMA(ERROR) << "realpath for hap path failed!";
+            return false;
+        }
+        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+        if (fileMapMem.GetOriginAddr() == nullptr) {
+            LOG_ECMA(ERROR) << "File mmap failed";
+            return false;
+        }
+        uint8_t *buffer = reinterpret_cast<uint8_t *>(fileMapMem.GetOriginAddr()) + offset;
+        JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
+        pf = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, GetFullName().c_str());
+        FileUnMap(fileMapMem);
+        fileMapMem.Reset();
+        return true;
+    }
+
+    static bool ParseListFromJson(EcmaVM *vm, const std::string &jsonInfo, std::map<std::string, OhosPkgArgs> &argsMap)
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
@@ -67,7 +106,7 @@ public:
                 LOG_COMPILER(ERROR) << "Pkg list entry info parse failed. jsonData: " << jsonInfo.c_str();
                 return false;
             }
-            infoList.emplace_back(pkgInfo);
+            argsMap[pkgInfo.GetFullName()] = pkgInfo;
         }
         return true;
     }
@@ -140,9 +179,9 @@ public:
 
     void Dump() const
     {
-        LOG_ECMA(INFO) << "PkgInfo: " << KEY_BUNDLE_NAME << ": " << bundleName_ << ", " << KEY_MODULE_NAME << ": "
-                       << moduleName_ << ", " << KEY_PKG_PATH << ": " << pkgPath_ << ", " << KEY_ABC_OFFSET << ": "
-                       << std::hex << abcOffset_ << ", " << KEY_ABC_SIZE << ": " << abcSize_;
+        LOG_COMPILER(INFO) << "PkgInfo: " << KEY_BUNDLE_NAME << ": " << bundleName_ << ", " << KEY_MODULE_NAME << ": "
+                           << moduleName_ << ", " << KEY_PKG_PATH << ": " << pkgPath_ << ", " << KEY_ABC_OFFSET << ": "
+                           << std::hex << abcOffset_ << ", " << KEY_ABC_SIZE << ": " << abcSize_;
     }
 
     const std::string &GetBundleName() const
