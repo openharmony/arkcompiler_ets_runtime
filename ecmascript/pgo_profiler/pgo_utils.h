@@ -24,7 +24,8 @@
 namespace panda::ecmascript::pgo {
 static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
 using PGOMethodId = panda_file::File::EntityId;
-using ApEntityId = panda_file::File::EntityId;
+using ApEntityId = uint32_t;
+
 class DumpUtils {
 public:
     static const std::string ELEMENT_SEPARATOR;

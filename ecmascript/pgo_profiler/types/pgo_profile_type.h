@@ -20,6 +20,8 @@
 #include <string>
 #include <variant>
 
+#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "libpandabase/utils/bit_field.h"
@@ -38,27 +40,31 @@ public:
         LiteralId,
         ElementId,
         BuiltinsId,
+        LegacyKind = BuiltinsId,
+        LocalRecordId,
         TotalKinds,
-        UnknowId,
-        LegacyKind = UnknowId
+        UnknowId
     };
 
+    static const ProfileType PROFILE_TYPE_NONE;
+
     static constexpr uint32_t ID_BITFIELD_NUM = 29;
-    static constexpr uint32_t RECORD_ID_BITFIELD_NUM = 20;
+    static constexpr uint32_t ABC_ID_BITFIELD_NUM = 20;
     static constexpr uint32_t KIND_BITFIELD_NUM = 15;
     using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
-    using IdRecordBits = IdBits::NextField<uint32_t, RECORD_ID_BITFIELD_NUM>;
-    using KindBits = IdRecordBits::NextField<Kind, KIND_BITFIELD_NUM>;
+    using AbcIdBits = IdBits::NextField<uint32_t, ABC_ID_BITFIELD_NUM>;
+    using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
 
     static_assert(KindBits::IsValid(Kind::TotalKinds));
 
     ProfileType() = default;
     ProfileType(PGOContext &context, ProfileTypeRef typeRef);
-    explicit ProfileType(uint32_t type, Kind kind = Kind::ClassId)
+    ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId)
     {
         if (UNLIKELY(!IdBits::IsValid(type))) {
             type_ = 0;
         } else {
+            UpdateAbcId(abcId);
             UpdateId(type);
             UpdateKind(kind);
         }
@@ -66,7 +72,7 @@ public:
 
     bool IsNone() const
     {
-        return type_ == 0;
+        return type_ == PROFILE_TYPE_NONE.type_;
     }
 
     uint64_t GetRaw() const
@@ -99,9 +105,14 @@ public:
         return KindBits::Decode(type_);
     }
 
-    uint32_t GetRecordId() const
+    ApEntityId GetAbcId() const
     {
-        return IdRecordBits::Decode(type_);
+        return AbcIdBits::Decode(type_);
+    }
+
+    void UpdateAbcId(ApEntityId abcId)
+    {
+        type_ = AbcIdBits::Update(type_, abcId);
     }
 
     bool operator<(const ProfileType &right) const
@@ -121,12 +132,22 @@ public:
 
     std::string GetTypeString() const
     {
-        return std::to_string(type_);
+        std::stringstream stream;
+        stream << "type: " << std::showbase << std::hex << type_ <<
+                "(kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
+                ", abcId: " << GetAbcId() <<
+                ", id: " << GetId() << ")";
+        return stream.str();
     }
 
-    void UpdateRecordId(uint32_t recordId)
+    void UpdateId(uint32_t id)
     {
-        type_ = IdRecordBits::Update(type_, recordId);
+        type_ = IdBits::Update(type_, id);
+    }
+
+    void UpdateKind(Kind kind)
+    {
+        type_ = KindBits::Update(type_, kind);
     }
 
 private:
@@ -135,10 +156,6 @@ private:
         type_ = IdBits::Update(type_, type);
     }
 
-    void UpdateKind(Kind kind)
-    {
-        type_ = KindBits::Update(type_, kind);
-    }
     uint64_t type_ {0};
 };
 
@@ -153,7 +170,7 @@ public:
 
     bool IsNone() const
     {
-        return typeId_.GetOffset() == 0;
+        return typeId_ == 0;
     }
 
     ApEntityId GetId() const
@@ -173,7 +190,7 @@ public:
 
     std::string GetTypeString() const
     {
-        return std::to_string(typeId_.GetOffset());
+        return std::to_string(typeId_);
     }
 
     void UpdateId(ApEntityId typeId)
@@ -184,6 +201,7 @@ public:
 private:
     ApEntityId typeId_ {0};
 };
+static_assert(sizeof(ProfileTypeRef) == sizeof(uint32_t));
 
 class ProfileTypeLegacy {
 public:
@@ -206,10 +224,7 @@ public:
         }
     }
 
-    explicit ProfileTypeLegacy(ProfileTypeRef profileTypeRef)
-    {
-        type_ = profileTypeRef.GetId().GetOffset();
-    }
+    explicit ProfileTypeLegacy(ProfileTypeRef profileTypeRef) : type_(profileTypeRef.GetId()) {}
 
     bool IsNone() const
     {

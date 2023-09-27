@@ -39,8 +39,15 @@ bool PGOProfilerDecoder::Load()
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
+
     if (!recordSimpleInfos_) {
         recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
+    }
+    if (!abcFilePool_) {
+        abcFilePool_ = std::make_unique<PGOAbcFilePool>();
+    }
+    if (header_->SupportProfileTypeWithAbcId()) {
+        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePool_->GetPool());
     }
     recordSimpleInfos_->ParseFromBinary(addr, header_);
     UnLoadAPBinaryFile();
@@ -97,6 +104,14 @@ bool PGOProfilerDecoder::LoadFull()
     if (!recordDetailInfos_) {
         recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
     }
+
+    if (!abcFilePool_) {
+        abcFilePool_ = std::make_unique<PGOAbcFilePool>();
+    }
+
+    if (header_->SupportProfileTypeWithAbcId()) {
+        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePool_->GetPool());
+    }
     recordDetailInfos_->ParseFromBinary(addr, header_);
 
     isLoaded_ = true;
@@ -123,6 +138,7 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
     }
     pandaFileInfos_.ProcessToText(fileStream);
     recordDetailInfos_->ProcessToText(fileStream);
+    abcFilePool_->GetPool()->ProcessToText(fileStream);
     return true;
 }
 
@@ -163,6 +179,9 @@ void PGOProfilerDecoder::Clear()
         hotnessThreshold_ = 0;
         PGOProfilerHeader::Destroy(&header_);
         pandaFileInfos_.Clear();
+        if (abcFilePool_) {
+            abcFilePool_->Clear();
+        }
         if (recordDetailInfos_) {
             recordDetailInfos_->Clear();
         }
@@ -181,7 +200,7 @@ bool PGOProfilerDecoder::Match(const CString &recordName, PGOMethodId methodId)
     if (!isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->Match(recordName, methodId);
+    return recordSimpleInfos_->Match(recordName, EntityId(methodId));
 }
 
 bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const

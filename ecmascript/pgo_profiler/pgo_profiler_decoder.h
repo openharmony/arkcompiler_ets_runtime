@@ -152,6 +152,7 @@ private:
     uint32_t hotnessThreshold_ {0};
     PGOProfilerHeader *header_ {nullptr};
     PGOPandaFileInfos pandaFileInfos_;
+    std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;

@@ -14,13 +14,18 @@
  */
 
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "macros.h"
 
 namespace panda::ecmascript::pgo {
+const ProfileType ProfileType::PROFILE_TYPE_NONE = ProfileType(0, 0);
+
 ProfileTypeRef::ProfileTypeRef(PGOContext &context, const ProfileType &type)
 {
-    ApEntityId apId;
+    ApEntityId apId(0);
     context.GetProfileTypePool()->TryAdd(type, apId);
     UpdateId(apId);
 }
@@ -32,7 +37,7 @@ ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
         UpdateId(legacy.GetId());
         UpdateKind(legacy.GetKind());
     } else {
-        const auto *typeEntry = context.GetProfileTypePool()->GetRecord(typeRef.GetId());
+        const auto *typeEntry = context.GetProfileTypePool()->GetEntry(typeRef.GetId());
         if (typeEntry == nullptr) {
             LOG_ECMA(ERROR) << "Profile type ref: " << typeRef.GetTypeString() << " not found in ap file.";
         } else {

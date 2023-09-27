@@ -370,7 +370,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8
 std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(pf, desc);
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum());
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum(),
+                                                           jsPandaFile->GetJSPandaFileDesc());
     return jsPandaFile;
 }
 

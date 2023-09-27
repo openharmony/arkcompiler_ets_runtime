@@ -3692,6 +3692,7 @@ std::string JSNApi::GetBundleName(EcmaVM *vm)
 void JSNApi::SetModuleName(EcmaVM *vm, const std::string &moduleName)
 {
     ecmascript::CString name = moduleName.c_str();
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetModuleName(moduleName);
     vm->SetModuleName(name);
 }
 

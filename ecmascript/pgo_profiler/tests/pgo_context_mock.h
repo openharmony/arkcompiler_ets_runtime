@@ -22,13 +22,13 @@
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript::pgo {
 class PGOContextMock : public PGOContext {
 public:
     explicit PGOContextMock(base::FileHeaderBase::VersionType version)
     {
-        recordPool_ = std::make_shared<PGORecordPool>();
         profileTypePool_ = std::make_shared<PGOProfileTypePool>();
         PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
         header_->SetVersion(version);
@@ -38,10 +38,7 @@ public:
         delete header_;
         header_ = nullptr;
     };
-    std::shared_ptr<PGORecordPool> GetRecordPool() const override
-    {
-        return recordPool_;
-    }
+
     std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const override
     {
         return profileTypePool_;
@@ -63,7 +60,6 @@ public:
 private:
     NO_COPY_SEMANTIC(PGOContextMock);
     NO_MOVE_SEMANTIC(PGOContextMock);
-    std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     PGOProfilerHeader *header_ {};
     uint32_t threshold_ {};

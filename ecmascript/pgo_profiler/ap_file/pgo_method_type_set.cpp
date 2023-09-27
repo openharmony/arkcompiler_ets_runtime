@@ -102,7 +102,7 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
         }
     }
 
-    for (auto typeInfo : objDefOpTypeInfos_) {
+    for (const auto &typeInfo : objDefOpTypeInfos_) {
         ObjDefOpTypeInfoRef infoRef(typeInfo.GetOffset(),
                                         PGOSampleTypeRef::ConvertFrom(context, typeInfo.GetType()),
                                         PGOSampleTypeRef::ConvertFrom(context, typeInfo.GetSuperType()));
