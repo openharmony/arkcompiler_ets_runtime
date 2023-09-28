@@ -155,6 +155,25 @@ void GlobalDictionary::GetAllKeysByFilter(const JSThread *thread,
     }
 }
 
+std::pair<uint32_t, uint32_t> GlobalDictionary::GetNumOfEnumKeys() const
+{
+    uint32_t enumKeys = 0;
+    uint32_t shadowKeys = 0;
+    int size = Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = GetKey(hashIndex);
+        if (key.IsString()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            if (attr.IsEnumerable()) {
+                enumKeys++;
+            } else {
+                shadowKeys++;
+            }
+        }
+    }
+    return std::make_pair(enumKeys, shadowKeys);
+}
+
 void GlobalDictionary::GetEnumAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray,
                                       uint32_t *keys) const
 {

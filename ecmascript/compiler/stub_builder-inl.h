@@ -30,6 +30,7 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
@@ -1205,6 +1206,32 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
+inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
+}
+
+inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MODULE_NAMESPACE)));
+}
+
+inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return BoolAnd(
+            Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
+}
+
+inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
+}
+
 inline GateRef StubBuilder::IsJsArray(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -1421,6 +1448,86 @@ inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hClass)
         Int32(static_cast<int32_t>(JSType::PROPERTY_BOX)));
 }
 
+inline GateRef StubBuilder::TaggedIsProtoChangeMarker(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsProtoChangeMarker(obj);
+}
+
+inline GateRef StubBuilder::GetEmptyArray(GateRef glue)
+{
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    GateRef offset = GetGlobalConstantOffset(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    return Load(VariableType::JS_ANY(), gConstAddr, offset);
+}
+
+inline GateRef StubBuilder::GetLengthFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetIndexFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetKeysFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetObjectFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetCachedHclassFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline void StubBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, length);
+}
+
+inline void StubBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, index);
+}
+
+inline void StubBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, keys);
+}
+
+inline void StubBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, object);
+}
+
+inline void StubBuilder::SetCachedHclassOFForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
+}
+
+inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef newIndex = Int32Add(index, Int32(1));
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, newIndex);
+}
+
 inline GateRef StubBuilder::IsField(GateRef attr)
 {
     return Int32Equal(
@@ -1590,6 +1697,18 @@ inline GateRef StubBuilder::GetPrototypeFromHClass(GateRef hClass)
     return Load(VariableType::JS_ANY(), hClass, protoOffset);
 }
 
+inline GateRef StubBuilder::GetEnumCacheFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
+inline GateRef StubBuilder::GetProtoChangeMarkerFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
 inline GateRef StubBuilder::GetLayoutFromHClass(GateRef hClass)
 {
     GateRef attrOffset = IntPtr(JSHClass::LAYOUT_OFFSET);
@@ -1745,6 +1864,15 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::NumberOfPropsBits::START_BIT)),
         Int32((1LLU << JSHClass::NumberOfPropsBits::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::HasDeleteProperty(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::HasDeletePropertyBit::START_BIT)),
+                 Int32((1LLU << JSHClass::HasDeletePropertyBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline GateRef StubBuilder::IsTSHClass(GateRef hClass)
@@ -2099,7 +2227,7 @@ inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
     return Int64Mul(Int64(sizeof(JSTaggedValue)), index);
 }
 
-inline GateRef StubBuilder::GetGlobalConstantString(ConstantIndex index)
+inline GateRef StubBuilder::GetGlobalConstantOffset(ConstantIndex index)
 {
     if (env_->Is32Bit()) {
         return Int32Mul(Int32(sizeof(JSTaggedValue)), Int32(static_cast<int>(index)));

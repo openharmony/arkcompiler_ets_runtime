@@ -40,6 +40,9 @@ class JSArray;
 class JSForInIterator;
 class LexicalEnv;
 class GlobalEnv;
+class TaggedQueue;
+
+using EnumCacheKind = EnumCache::EnumCacheKind;
 // Integrity level for objects
 enum IntegrityLevel { SEALED, FROZEN };
 
@@ -424,6 +427,8 @@ public:
     // [[GetPrototypeOf]]
     static JSTaggedValue GetPrototype(const JSHandle<JSObject> &obj);
 
+    static JSTaggedValue GetPrototype(JSTaggedValue obj);
+
     // [[SetPrototypeOf]]
     static bool SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &proto);
 
@@ -503,6 +508,14 @@ public:
 
     static JSHandle<TaggedArray> GetAllPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t filter);
 
+    static void CollectEnumKeysAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj,
+                                               JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                                               JSHandle<TaggedQueue> shadowQueue, int32_t lastLength = -1);
+
+    static void AppendOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj,
+                                          JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                                          JSHandle<TaggedQueue> shadowQueue);
+
     static JSHandle<TaggedArray> GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);
 
     // 9.1.13 ObjectCreate
@@ -512,8 +525,11 @@ public:
     static bool InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &object,
                            const JSHandle<JSTaggedValue> &target);
 
+    static JSTaggedValue TryGetEnumCache(JSThread *thread, JSTaggedValue obj);
+
     // 13.7.5.15 EnumerateObjectProperties ( O ); same as [[Enumerate]]
     static JSHandle<JSForInIterator> EnumerateObjectProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSHandle<JSForInIterator> LoadEnumerateProperties(JSThread *thread, const JSHandle<JSTaggedValue> &object);
 
     static bool IsRegExp(JSThread *thread, const JSHandle<JSTaggedValue> &argument);
 
@@ -588,17 +604,21 @@ public:
 
     static void GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
                                             std::vector<JSTaggedValue> &keyVector);
+    std::pair<uint32_t, uint32_t> GetNumberOfEnumKeys() const;
     uint32_t GetNumberOfKeys();
     uint32_t GetNumberOfElements();
 
     static JSHandle<TaggedArray> GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                     uint32_t numOfElements, uint32_t *keys);
+    static void CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                                   JSHandle<TaggedArray> elementArray, uint32_t *keys,
+                                                   int32_t lastLength = -1);
     static void GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                    const JSHandle<TaggedArray> &keyArray);
-    static JSHandle<TaggedArray> GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+    static JSHandle<TaggedArray> GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,
                                                 uint32_t numOfKeys, uint32_t *keys);
-    static void GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
-                               const JSHandle<TaggedArray> &keyArray);
+    static uint32_t GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                   const JSHandle<TaggedArray> &keyArray);
 
     static void AddAccessor(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<AccessorData> &value, PropertyAttributes attr);
@@ -637,6 +657,15 @@ public:
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
+    static bool IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
+                                 JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key);
+
+    static void SetEnumCacheKind(JSThread *thread, TaggedArray *array, EnumCacheKind kind);
+    static EnumCacheKind GetEnumCacheKind(JSThread *thread, TaggedArray *array);
+    static EnumCacheKind GetEnumCacheKind(JSThread *thread, JSTaggedValue enumCache);
+
+    static void ClearHasDeleteProperty(JSHandle<JSTaggedValue> object);
+
     static JSHandle<JSTaggedValue> IterableToList(JSThread *thread, const JSHandle<JSTaggedValue> &items,
                                                   JSTaggedValue method = JSTaggedValue::Undefined());
 
@@ -674,6 +703,8 @@ private:
     static uint32_t SetValuesOrEntries(JSThread *thread, const JSHandle<TaggedArray> &prop, uint32_t index,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
                                        PropertyKind kind);
+    static bool IsSimpleEnumCacheValid(JSTaggedValue receiver);
+    static bool IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver);
 };
 }  // namespace ecmascript
 }  // namespace panda

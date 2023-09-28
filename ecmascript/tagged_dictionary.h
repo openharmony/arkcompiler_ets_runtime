@@ -62,7 +62,15 @@ public:
     void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
     void GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
         TaggedArray *keyArray, uint32_t filter) const;
-    void GetAllEnumKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const;
+    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys() const;
+    void GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                        JSHandle<TaggedQueue> shadowQueue, int32_t lastLength) const;
+    void GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys) const;
+    static inline bool CompHandleKey(const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &a,
+                                     const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &b)
+    {
+        return a.second.GetDictionaryOrder() < b.second.GetDictionaryOrder();
+    }
     static inline bool CompKey(const std::pair<JSTaggedValue, PropertyAttributes> &a,
                                const std::pair<JSTaggedValue, PropertyAttributes> &b)
     {
@@ -114,8 +122,8 @@ public:
                            const JSHandle<TaggedArray> &keyArray);
     static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<NumberDictionary> &obj,
         uint32_t &keyArrayEffectivelength, const JSHandle<TaggedArray> &keyArray, uint32_t filter);
-    static void GetAllEnumKeys(const JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
-                               const JSHandle<TaggedArray> &keyArray, uint32_t *keys);
+    static void GetAllEnumKeys(JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
+                               const JSHandle<TaggedArray> &keyArray, uint32_t *keys, int32_t lastLength = -1);
     static inline bool CompKey(const JSTaggedValue &a, const JSTaggedValue &b)
     {
         ASSERT(a.IsNumber() && b.IsNumber());

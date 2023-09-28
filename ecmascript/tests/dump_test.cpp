@@ -629,7 +629,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_FORIN_ITERATOR: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSForInIterator::SIZE, 4U);
                 JSHandle<JSTaggedValue> array(thread, factory->NewJSArray().GetTaggedValue());
-                JSHandle<JSForInIterator> forInIter = factory->NewJSForinIterator(array);
+                JSHandle<JSTaggedValue> keys(thread, factory->EmptyArray().GetTaggedValue());
+                JSHandle<JSTaggedValue> hclass(thread, JSTaggedValue::Undefined());
+                JSHandle<JSForInIterator> forInIter = factory->NewJSForinIterator(array, keys, hclass);
                 DUMP_FOR_HANDLE(forInIter);
                 break;
             }

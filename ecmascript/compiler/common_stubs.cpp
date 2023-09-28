@@ -919,6 +919,23 @@ void FastStringEqualStubBuilder::GenerateCircuit()
     Return(result);
 }
 
+void GetpropiteratorStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef object = TaggedArgument(1);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef result = newBuilder.EnumerateObjectProperties(glue, object);
+    Return(result);
+}
+
+void GetnextpropnameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef iter = TaggedArgument(1);
+    GateRef result = NextInternal(glue, iter);
+    Return(result);
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

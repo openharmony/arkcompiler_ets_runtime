@@ -27,29 +27,27 @@ class JSForInIterator : public JSObject {
 public:
     CAST_CHECK(JSForInIterator, IsForinIterator);
 
-    static std::pair<JSTaggedValue, bool> NextInternal(JSThread *thread, const JSHandle<JSForInIterator> &it);
+    static JSTaggedValue NextInternal(JSThread *thread, const JSHandle<JSForInIterator> &it);
+    static JSTaggedValue NextInternalSlowpath(JSThread *thread, const JSHandle<JSForInIterator> &it);
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *msg);
 
-    static bool CheckObjProto(const JSThread *thread, const JSHandle<JSForInIterator> &it);
-
-    static void GetAllEnumKeys(JSThread *thread, const JSHandle<JSForInIterator> &it,
-                               const JSHandle<JSTaggedValue> &object);
-
     static constexpr size_t OBJECT_OFFSET = JSObject::SIZE;
-    ACCESSORS(Object, OBJECT_OFFSET, VISITED_KEYS_OFFSET)
-    ACCESSORS(VisitedObjs, VISITED_KEYS_OFFSET, REMAINING_KEYS_OFFSET)
-    ACCESSORS(RemainingKeys, REMAINING_KEYS_OFFSET, BIT_FIELD_OFFSET)
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    ACCESSORS(Object, OBJECT_OFFSET, CACHED_HCLASS_OFFSET)
+    ACCESSORS(CachedHclass, CACHED_HCLASS_OFFSET, KEYS_OFFSET)
+    ACCESSORS(Keys, KEYS_OFFSET, INDEX_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Index, uint32_t, INDEX_OFFSET, LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    // define BitField
-    static constexpr size_t WAS_VISITED_BITS = 3;
-    FIRST_BIT_FIELD(BitField, WasVisited, bool, WAS_VISITED_BITS)
-    NEXT_BIT_FIELD(BitField, HasVisitObjs, bool, 1, WasVisited)
-
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OBJECT_OFFSET, BIT_FIELD_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OBJECT_OFFSET, INDEX_OFFSET)
     DECL_DUMP()
+
+private:
+    static bool IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHclass, EnumCacheKind kind);
+    static bool NeedCheckProperty(JSTaggedValue receiver);
+    static bool HasProperty(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+
 };
 }  // namespace panda::ecmascript
 

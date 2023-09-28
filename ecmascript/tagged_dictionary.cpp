@@ -16,6 +16,7 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/filter_helper.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
@@ -112,22 +113,71 @@ void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArr
     }
 }
 
-void NameDictionary::GetAllEnumKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const
+std::pair<uint32_t, uint32_t> NameDictionary::GetNumOfEnumKeys() const
 {
-    uint32_t arrayIndex = 0;
-    CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
+    uint32_t enumKeys = 0;
+    uint32_t shadowKeys = 0;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key = GetKey(hashIndex);
         if (key.IsString()) {
             PropertyAttributes attr = GetAttributes(hashIndex);
             if (attr.IsEnumerable()) {
-                std::pair<JSTaggedValue, PropertyAttributes> pair(key, attr);
+                enumKeys++;
+            } else {
+                shadowKeys++;
+            }
+        }
+    }
+    return std::make_pair(enumKeys, shadowKeys);
+}
+
+void NameDictionary::GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                                    JSHandle<TaggedQueue> shadowQueue, int32_t lastLength) const
+{
+    uint32_t arrayIndex = 0;
+    CVector<std::pair<JSHandle<JSTaggedValue>, PropertyAttributes>> sortArr;
+    int size = Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(hashIndex));
+        if (keyHandle->IsString()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            if (attr.IsEnumerable()) {
+                std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(keyHandle, attr);
+                bool isDuplicated = JSObject::IsDepulicateKeys(thread, keyArray, lastLength, shadowQueue, keyHandle);
+                if (isDuplicated) {
+                    continue;
+                }
+                sortArr.push_back(pair);
+            } else {
+                TaggedQueue::PushFixedQueue(thread, shadowQueue, keyHandle);
+            }
+        }
+    }
+    std::sort(sortArr.begin(), sortArr.end(), CompHandleKey);
+    for (auto entry : sortArr) {
+        keyArray->Set(thread, arrayIndex + static_cast<uint32_t>(offset), entry.first);
+        arrayIndex++;
+    }
+    *keys += arrayIndex;
+}
+
+void NameDictionary::GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys) const
+{
+    uint32_t arrayIndex = 0;
+    CVector<std::pair<JSHandle<JSTaggedValue>, PropertyAttributes>> sortArr;
+    int size = Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(hashIndex));
+        if (keyHandle->IsString()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            if (attr.IsEnumerable()) {
+                std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(keyHandle, attr);
                 sortArr.push_back(pair);
             }
         }
     }
-    std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    std::sort(sortArr.begin(), sortArr.end(), CompHandleKey);
     for (auto entry : sortArr) {
         keyArray->Set(thread, arrayIndex + static_cast<uint32_t>(offset), entry.first);
         arrayIndex++;
@@ -268,16 +318,15 @@ void NumberDictionary::GetAllKeysByFilter(const JSThread *thread, const JSHandle
         }
     }
     std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    ASSERT_NO_ABRUPT_COMPLETION(thread);
     for (auto entry : sortArr) {
-        JSHandle<JSTaggedValue> keyHandle(thread, entry);
-        ASSERT_NO_ABRUPT_COMPLETION(thread);
-        keyArray->Set(thread, keyArrayEffectivelength, keyHandle.GetTaggedValue());
+        keyArray->Set(thread, keyArrayEffectivelength, entry);
         keyArrayEffectivelength++;
     }
 }
 
-void NumberDictionary::GetAllEnumKeys(const JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
-                                      const JSHandle<TaggedArray> &keyArray, uint32_t *keys)
+void NumberDictionary::GetAllEnumKeys(JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
+                                      const JSHandle<TaggedArray> &keyArray, uint32_t *keys, int32_t lastLength)
 {
     ASSERT_PRINT(offset + obj->EntriesCount() <= static_cast<int>(keyArray->GetLength()),
                  "keyArray capacity is not enough for dictionary");
@@ -294,10 +343,18 @@ void NumberDictionary::GetAllEnumKeys(const JSThread *thread, const JSHandle<Num
         }
     }
     std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedQueue> emptyQueue = factory->GetEmptyTaggedQueue();
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     for (auto entry : sortArr) {
-        JSHandle<JSTaggedValue> keyHandle(thread, entry);
+        keyHandle.Update(entry);
         JSHandle<EcmaString> str = JSTaggedValue::ToString(const_cast<JSThread *>(thread), keyHandle);
         ASSERT_NO_ABRUPT_COMPLETION(thread);
+        bool isDuplicated = JSObject::IsDepulicateKeys(thread, keyArray, lastLength, emptyQueue,
+                                                       JSHandle<JSTaggedValue>(str));
+        if (isDuplicated) {
+            continue;
+        }
         keyArray->Set(thread, arrayIndex + static_cast<uint32_t>(offset), str.GetTaggedValue());
         arrayIndex++;
     }

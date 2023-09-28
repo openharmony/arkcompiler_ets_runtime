@@ -464,6 +464,8 @@ private:
     V(GetSingleCharCodeByIndex)             \
     V(CreateStringBySingleCharCode)         \
     V(FastStringEqual)                      \
+    V(Getpropiterator)                      \
+    V(Getnextpropname)                      \
     V(JSHClassFindProtoTransitions)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

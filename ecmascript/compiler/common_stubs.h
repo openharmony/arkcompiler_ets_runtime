@@ -78,6 +78,8 @@ namespace panda::ecmascript::kungfu {
     V(JsBoundCallInternal)            \
     V(JsProxyCallInternal)            \
     V(CreateStringBySingleCharCode)   \
+    V(Getpropiterator)                \
+    V(Getnextpropname)                \
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)
 

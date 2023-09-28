@@ -222,6 +222,7 @@ public:
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
+    GateRef TaggedIsProtoChangeMarker(GateRef obj);
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
     GateRef DoubleIsINF(GateRef x);
@@ -318,6 +319,10 @@ public:
     GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
+    GateRef IsJSGlobalObject(GateRef obj);
+    GateRef IsModuleNamespace(GateRef obj);
+    GateRef ObjIsSpecialContainer(GateRef obj);
+    GateRef IsJSPrimitiveRef(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
@@ -392,6 +397,8 @@ public:
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
     GateRef GetPrototypeFromHClass(GateRef hClass);
+    GateRef GetEnumCacheFromHClass(GateRef hClass);
+    GateRef GetProtoChangeMarkerFromHClass(GateRef hClass);
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
@@ -420,6 +427,7 @@ public:
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
+    GateRef HasDeleteProperty(GateRef hClass);
     GateRef IsTSHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     void SetElementsKindToTrackInfo(GateRef glue, GateRef trackInfo, GateRef elementsKind);
@@ -534,7 +542,7 @@ public:
     GateRef TruncInt64ToInt1(GateRef x);
     GateRef TruncInt32ToInt1(GateRef x);
     GateRef GetGlobalConstantAddr(GateRef index);
-    GateRef GetGlobalConstantString(ConstantIndex index);
+    GateRef GetGlobalConstantOffset(ConstantIndex index);
     GateRef IsCallableFromBitField(GateRef bitfield);
     GateRef IsCallable(GateRef obj);
     GateRef GetOffsetFieldInPropAttr(GateRef attr);
@@ -610,6 +618,34 @@ public:
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);
     GateRef JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index);
+
+    // for-in
+    GateRef NextInternal(GateRef glue, GateRef iter);
+    GateRef GetLengthFromForInIterator(GateRef iter);
+    GateRef GetIndexFromForInIterator(GateRef iter);
+    GateRef GetKeysFromForInIterator(GateRef iter);
+    GateRef GetObjectFromForInIterator(GateRef iter);
+    GateRef GetCachedHclassFromForInIterator(GateRef iter);
+    void SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length);
+    void SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index);
+    void SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys);
+    void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
+    void SetCachedHclassOFForInIterator(GateRef glue, GateRef iter, GateRef hclass);
+    void IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index);
+    GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
+    GateRef GetEmptyArray(GateRef glue);
+    GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);
+    GateRef NeedCheckProperty(GateRef receiver);
+
+    GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
+    GateRef GetFunctionPrototype(GateRef glue, size_t index);
+    GateRef ToPrototypeOrObj(GateRef glue, GateRef obj);
+    GateRef IsSpecialKeysObject(GateRef obj);
+    GateRef IsSlowKeysObject(GateRef obj);
+    GateRef TryGetEnumCache(GateRef glue, GateRef obj);
+    GateRef GetNumberOfElements(GateRef obj);
+    GateRef IsSimpleEnumCacheValid(GateRef obj);
+    GateRef IsEnumCacheWithProtoChainInfoValid(GateRef obj);
 
     // Exception handle
     GateRef HasPendingException(GateRef glue);

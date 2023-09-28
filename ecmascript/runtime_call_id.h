@@ -99,6 +99,8 @@ namespace panda::ecmascript {
     V(Ldlexvar)                  \
     V(Ldlexenv)                  \
     V(GetPropIterator)              \
+    V(GetPropIteratorSlowpath)      \
+    V(PrimitiveStringCreate)        \
     V(CreateIterResultObj)          \
     V(SuspendGenerator)             \
     V(ResumeGenerator)              \
@@ -179,6 +181,7 @@ namespace panda::ecmascript {
     V(CreateRegExpWithLiteral)      \
     V(CreateArrayWithBuffer)        \
     V(GetNextPropName)              \
+    V(GetNextPropNameSlowpath)      \
     V(CopyDataProperties)           \
     V(GetUnmapedArgs)               \
     V(TryStGlobalByName)            \

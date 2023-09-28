@@ -56,7 +56,7 @@ GateRef CircuitBuilder::DoubleIsINF(GateRef x)
 // Js World
 // cast operation
 
-GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
+GateRef CircuitBuilder::GetGlobalConstantOffset(ConstantIndex index)
 {
     return PtrMul(IntPtr(sizeof(JSTaggedValue)), IntPtr(static_cast<int>(index)));
 }

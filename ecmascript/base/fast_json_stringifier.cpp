@@ -488,7 +488,7 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
     if (!propertiesArr->IsDictionaryMode()) {
         JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
-        if (!enumCache.IsNull()) {
+        if (JSObject::GetEnumCacheKind(thread_, enumCache) == EnumCacheKind::ONLY_OWN_KEYS) {
             JSHandle<TaggedArray> cache(thread_, enumCache);
             uint32_t length = cache->GetLength();
             for (uint32_t i = 0; i < length; i++) {
@@ -765,7 +765,7 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
     if (!propertiesArr->IsDictionaryMode()) {
         JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
-        if (!enumCache.IsNull()) {
+        if (JSObject::GetEnumCacheKind(thread_, enumCache) == EnumCacheKind::ONLY_OWN_KEYS) {
             JSHandle<TaggedArray> cache(thread_, enumCache);
             uint32_t length = cache->GetLength();
             for (uint32_t i = 0; i < length; i++) {

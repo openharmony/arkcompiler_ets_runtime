@@ -676,6 +676,8 @@ public:
     bool IsProtoChangeDetails() const;
     bool IsMarkerCell() const;
     bool IsTrackInfoObject() const;
+    bool IsSpecialKeysObject() const;
+    bool IsSlowKeysObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
     bool IsTSType() const;
