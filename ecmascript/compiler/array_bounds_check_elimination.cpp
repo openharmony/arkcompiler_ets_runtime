@@ -545,9 +545,6 @@ bool ArrayBoundsCheckElimination::LoopInvariant(GateRegion *loopHeader, GateRef 
         return true;
     }
     auto gateRegion = graphLinearizer_.GateToRegion(gate);
-    if (!gateRegion) {
-        return true;
-    }
     GateRegion* g = loopHeader->GetDominator();
     while (g != nullptr) {
         if (g == gateRegion) {

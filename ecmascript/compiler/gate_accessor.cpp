@@ -1352,10 +1352,6 @@ void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef n
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         if (IsDependIn(useIt) && (*useIt != newGate)) {
             ASSERT(newGate != Circuit::NullGate());
-            if (!IsState(*useIt)) {
-                useIt++;
-                continue;
-            }
             useIt = ReplaceIn(useIt, newGate);
         } else {
             useIt++;
