@@ -68,6 +68,14 @@ JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index, JSTaggedValue js
     return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), index, false);
 }
 
+JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index, JSHandle<JSTaggedValue> currentModule)
+{
+    if (currentModule->IsUndefined()) {
+        LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
+    }
+    return SourceTextModule::Cast(currentModule->GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), index, false);
+}
+
 JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index)
 {
     JSTaggedValue currentModule = GetCurrentModule();
@@ -78,6 +86,11 @@ JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index, JSTaggedValue j
 {
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
     return GetModuleValueOutterInternal(index, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index, JSHandle<JSTaggedValue> currentModule)
+{
+    return GetModuleValueOutterInternal(index, currentModule.GetTaggedValue());
 }
 
 JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule)
