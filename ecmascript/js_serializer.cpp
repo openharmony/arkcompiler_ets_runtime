@@ -1101,6 +1101,7 @@ JSDeserializer::~JSDeserializer()
 
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(end_ - begin_));
     size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
     size_t dataSize = end_ - begin_;
     if (dataSize > maxSerializerSize) {
