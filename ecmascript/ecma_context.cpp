@@ -38,6 +38,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/platform/log.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -576,7 +577,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
 bool EcmaContext::HasPendingJob()

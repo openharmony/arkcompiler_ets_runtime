@@ -93,6 +93,7 @@
 #include "ohos/init_data.h"
 
 #include "ecmascript/platform/mutex.h"
+#include "ecmascript/platform/log.h"
 
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && defined(PANDA_TARGET_IOS)
 namespace OHOS::ArkCompiler::Toolchain {
@@ -262,7 +263,8 @@ bool JSNApi::CheckSecureMem(uintptr_t mem)
         if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
-            LOG_ECMA(ERROR) << "print exception info:";                               \
+            LOG_ECMA(ERROR) << panda::ecmascript::previewerTag <<                     \
+                "print exception info:";                                              \
             JSNApi::PrintExceptionInfo(vm);                                           \
             return returnVal;                                                         \
         }                                                                             \
@@ -276,7 +278,8 @@ bool JSNApi::CheckSecureMem(uintptr_t mem)
         if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
-            LOG_ECMA(ERROR) << "print exception info:";                               \
+            LOG_ECMA(ERROR) << panda::ecmascript::previewerTag <<                     \
+                "print exception info:";                                              \
             JSNApi::PrintExceptionInfo(vm);                                           \
             return;                                                                   \
         }                                                                             \
