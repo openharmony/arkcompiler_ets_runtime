@@ -21,6 +21,7 @@
 
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
@@ -102,6 +103,20 @@ bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entr
     }
     ReadLockHolder lock(rwLock_);
     return abcFilePool_->GetEntryId(abcName, entryId);
+}
+
+bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
+{
+    if (!isInitialized_) {
+        return false;
+    }
+    os::memory::ReadLockHolder lock(rwLock_);
+    const auto *entry = abcFilePool_->GetEntry(abcId);
+    if (entry == nullptr) {
+        return false;
+    }
+    desc = entry->GetData();
+    return true;
 }
 
 void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)

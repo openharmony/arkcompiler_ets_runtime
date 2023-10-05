@@ -18,11 +18,14 @@
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <utility>
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
@@ -668,7 +671,7 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
         if (newIter == idMapping.end()) {
             continue;
         }
-        auto newRecordType = PGOProfiler::GetRecordProfileType(oldRecordType.GetAbcId(), newIter->second);
+        auto newRecordType = PGOProfiler::GetLocalRecordProfileType(oldRecordType.GetAbcId(), newIter->second);
         auto fromMethodInfos = iter->second;
 
         auto recordInfosIter = recordInfos_.find(newRecordType);
@@ -920,16 +923,24 @@ void PGORecordDetailInfos::Clear()
     InitSections();
 }
 
-bool PGORecordSimpleInfos::Match(const CString &recordName, EntityId methodId)
+bool PGORecordSimpleInfos::Match(const CString &abcNormalizedDesc, const CString &recordName, EntityId methodId)
 {
-    auto methodIdsIter = methodIds_.find(recordName);
-    if (methodIdsIter == methodIds_.end()) {
+    auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+    if (abcMethodIds == methodIds_.end()) {
+        LOG_COMPILER(DEBUG) << "AbcDesc not found. abcNormalizedDesc: " << abcNormalizedDesc
+                            << ", methodIdsCount: " << methodIds_.size();
+        return false;
+    }
+    auto methodIdsIter = abcMethodIds->second.find(recordName);
+    if (methodIdsIter == abcMethodIds->second.end()) {
+        LOG_COMPILER(DEBUG) << "AbcDesc not found. recordName: " << recordName;
         return false;
     }
     return methodIdsIter->second->Match(methodId);
 }
 
-void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
+void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header,
+                                           std::shared_ptr<PGOAbcFilePool> &abcFilePool)
 {
     header_ = header;
     ParseSectionsFromBinary(apSectionList_, buffer, header);
@@ -937,12 +948,18 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
         CString recordName;
+        const char *abcDesc = "";
         ProfileType recordType;
         if (header->SupportProfileTypeWithAbcId()) {
             auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId)));
             recordType = ProfileType(*this, recordTypeRef);
             auto recordId = recordType.GetId();
             recordName = recordPool_->GetEntry(recordId)->GetData();
+            auto abcId = recordType.GetAbcId();
+            const auto *entry = abcFilePool->GetPool()->GetEntry(abcId);
+            if (entry != nullptr) {
+                abcDesc = entry->GetData().c_str();
+            }
         } else if (header->SupportRecordPool()) {
             auto recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
             recordName = recordPool_->GetEntry(recordId)->GetData();
@@ -951,7 +968,8 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         }
         PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
         if (methodIds->ParseFromBinary(*this, &addr)) {
-            methodIds_.emplace(recordName, methodIds);
+            auto methodIdsResult = methodIds_.try_emplace(JSPandaFile::GetNormalizedFileDesc(abcDesc));
+            (methodIdsResult.first->second).emplace(recordName, methodIds);
         }
     }
 
@@ -968,15 +986,18 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
 {
     std::map<ApEntityId, ApEntityId> idMapping;
     recordPool_->Merge(*simpleInfos.recordPool_, idMapping);
-    for (const auto &method : simpleInfos.methodIds_) {
-        auto result = methodIds_.find(method.first);
-        if (result == methodIds_.end()) {
-            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
-            auto ret = methodIds_.emplace(method.first, methodIds);
-            ASSERT(ret.second);
-            result = ret.first;
+    for (const auto &fromAbcMethodIds : simpleInfos.methodIds_) {
+        auto toAbcMethodIds = methodIds_.try_emplace(fromAbcMethodIds.first);
+        for (const auto &method : fromAbcMethodIds.second) {
+            auto result = toAbcMethodIds.first->second.find(method.first);
+            if (result == toAbcMethodIds.first->second.end()) {
+                PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
+                auto ret = toAbcMethodIds.first->second.emplace(method.first, methodIds);
+                ASSERT(ret.second);
+                result = ret.first;
+            }
+            const_cast<PGOMethodIdSet &>(*result->second).Merge(*method.second);
         }
-        const_cast<PGOMethodIdSet &>(*result->second).Merge(*method.second);
     }
     // Merge global layout desc infos to global method info map
     for (const auto &moduleLayoutDescInfo : simpleInfos.moduleLayoutDescInfos_) {
@@ -1013,9 +1034,11 @@ void PGORecordSimpleInfos::InitSections()
 
 void PGORecordSimpleInfos::Clear()
 {
-    for (const auto &iter : methodIds_) {
-        iter.second->Clear();
-        nativeAreaAllocator_.Delete(iter.second);
+    for (const auto &abcMethodIds: methodIds_) {
+        for (const auto &iter : abcMethodIds.second) {
+            iter.second->Clear();
+            nativeAreaAllocator_.Delete(iter.second);
+        }
     }
     methodIds_.clear();
     recordPool_->Clear();

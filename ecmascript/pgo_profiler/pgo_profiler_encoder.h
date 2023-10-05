@@ -51,6 +51,7 @@ public:
 
     void SamplePandaFileInfo(uint32_t checksum, const CString &abcName);
     bool GetPandaFileId(const CString &abcName, ApEntityId &entryId);
+    bool GetPandaFileDesc(ApEntityId abcId, CString &desc);
     void Merge(const PGORecordDetailInfos &recordInfos);
     void Merge(const PGOPandaFileInfos &pandaFileInfos);
     void Merge(const PGOProfilerEncoder &encoder);

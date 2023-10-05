@@ -351,10 +351,6 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
 */
 CString JSPandaFile::GetNormalizedFileDesc(const CString &desc)
 {
-    // file not in OHOS package.
-    if (desc.rfind('/', 0) != 0) {
-        return desc;
-    }
     auto etsTokenPos = desc.rfind(OHOS_PKG_ABC_PATH_ROOT);
     if (etsTokenPos == std::string::npos) {
         // file not in OHOS package.

@@ -22,11 +22,13 @@
 #include <memory>
 
 #include "ecmascript/common.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pool_template.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
@@ -154,9 +156,39 @@ public:
 
     void Merge(const PGORecordPool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
     {
-        pool_->Merge(*recordPool.pool_,
-                     [&](ApEntityId oldId, ApEntityId newId) { idMapping.try_emplace(oldId, newId); });
+        if (!recordPool.ModuleRecordTypeEmpty()) {
+            MergeWithModuleRecordType(recordPool, idMapping);
+        } else {
+            pool_->Merge(*recordPool.pool_,
+                         [&](ApEntityId oldId, ApEntityId newId) { idMapping.try_emplace(oldId, newId); });
+        }
     }
+
+    void AddModuleRecordType(ProfileType profileType, const CString &recordName)
+    {
+        ASSERT(profileType.GetKind() == ProfileType::Kind::ModuleRecordId);
+        LOG_ECMA(DEBUG) << "Add profileType: " << profileType.GetTypeString() << ", recordName: " << recordName;
+        moduleRecordTypeToName_.try_emplace(profileType.GetRaw(), recordName);
+    }
+
+    bool ModuleRecordTypeEmpty() const
+    {
+        return moduleRecordTypeToName_.empty();
+    }
+
+private:
+    void MergeWithModuleRecordType(const PGORecordPool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
+    {
+        for (const auto &entry : recordPool.moduleRecordTypeToName_) {
+            ApEntityId id {0};
+            pool_->TryAdd(entry.second, id);
+            LOG_ECMA(DEBUG) << "MergeWithModuleRecordType. recordName: " << entry.second.c_str()
+                            << ", id: " << ProfileType(entry.first).GetId() << " -> " << id;
+            idMapping.emplace(ProfileType(entry.first).GetId(), id);
+        }
+    }
+
+    std::unordered_map<uint64_t, CString> moduleRecordTypeToName_;
 };
 
 class PGOAbcFilePool : public PGOStringPool {
