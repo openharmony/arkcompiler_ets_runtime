@@ -1426,13 +1426,22 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(static_cast<JSTaggedType>(rootObjectAddr));
             if (!isRootObjRelocate_ && item.IsTaggedArray()) {
-                vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->AddConstantPool(fileName_, item);
+                root_ = item;
                 isRootObjRelocate_ = true;
             }
             break;
         }
         default:
             break;
+    }
+}
+
+void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const CString &fileName)
+{
+    if (type == SnapshotType::AI) {
+        ASSERT(!root_.IsHole());
+        AOTFileManager *aotFileManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        aotFileManager->ParseDeserializedData(fileName, root_);
     }
 }
 

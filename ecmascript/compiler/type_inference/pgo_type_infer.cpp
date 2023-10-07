@@ -133,10 +133,9 @@ void PGOTypeInfer::InferLdObjByName(GateRef gate)
     }
     GateRef constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
     uint16_t propIndex = acc_.GetConstantValue(constData);
-    JSTaggedValue prop = tsManager_->GetStringFromConstantPool(propIndex);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
 
-    UpdateTypeForRWOp(gate, receiver, prop);
+    UpdateTypeForRWOp(gate, receiver, propIndex);
 }
 
 void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)
@@ -146,7 +145,6 @@ void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)
     }
     GateRef constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
     uint16_t propIndex = acc_.GetConstantValue(constData);
-    JSTaggedValue prop = tsManager_->GetStringFromConstantPool(propIndex);
     GateRef receiver = Circuit::NullGate();
     if (isThis) {
         // 3: number of value inputs
@@ -158,7 +156,7 @@ void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)
         receiver = acc_.GetValueIn(gate, 2); // 2: receiver
     }
 
-    UpdateTypeForRWOp(gate, receiver, prop);
+    UpdateTypeForRWOp(gate, receiver, propIndex);
 }
 
 void PGOTypeInfer::InferStOwnByName(GateRef gate)
@@ -170,10 +168,9 @@ void PGOTypeInfer::InferStOwnByName(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef constData = acc_.GetValueIn(gate, 0);
     uint16_t propIndex = acc_.GetConstantValue(constData);
-    JSTaggedValue prop = tsManager_->GetStringFromConstantPool(propIndex);
     GateRef receiver = acc_.GetValueIn(gate, 1);
 
-    UpdateTypeForRWOp(gate, receiver, prop);
+    UpdateTypeForRWOp(gate, receiver, propIndex);
 }
 
 void PGOTypeInfer::InferCreateArray(GateRef gate)
@@ -222,7 +219,7 @@ void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
     TrySetElementsKind(gate);
 }
 
-void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop)
+void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIndex)
 {
     GateType tsType = acc_.GetGateType(receiver);
     PGORWOpType pgoTypes = builder_->GetPGOType(gate);
@@ -237,6 +234,10 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
     }
 
     // polymorphism is not currently supported
+    JSTaggedValue prop = JSTaggedValue::Undefined();
+    if (propIndex != INVALID_INDEX) {
+        prop = tsManager_->GetStringFromConstantPool(propIndex);
+    }
     ChunkSet<GateType> inferTypes = helper_.GetInferTypes(chunk_, types, prop);
     AddProfiler(gate, tsType, pgoTypes, inferTypes);
     if (!IsMonoTypes(inferTypes)) {

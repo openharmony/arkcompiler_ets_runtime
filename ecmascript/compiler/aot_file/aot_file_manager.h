@@ -125,7 +125,6 @@ public:
 
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
-    static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;
 
     void LoadStubFile(const std::string &fileName);
     static bool LoadAnFile(const std::string &fileName);
@@ -149,13 +148,17 @@ public:
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     static bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
+    void ParseDeserializedData(const CString &snapshotFileName, JSTaggedValue deserializedData);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
     const Heap *GetHeap();
 
     static void DumpAOTInfo() DUMP_API_ATTR;
 
 private:
+    using MultiConstantPoolMap = CMap<int32_t, JSTaggedValue>; // key: constpool id, value: constantpool
+    using FileNameToMultiConstantPoolMap = CMap<CString, MultiConstantPoolMap>;
+    using AIDatum = CUnorderedMap<uint32_t, FileNameToMultiConstantPoolMap>; // key: ai file index
+
     static void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
@@ -163,7 +166,7 @@ private:
                                                    const AsmInterParsedOption &asmInterOpt);
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    std::unordered_map<uint32_t, CMap<int32_t, JSTaggedValue>> desCPs_ {};
+    AIDatum aiDatum_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
     friend class AnFileInfo;

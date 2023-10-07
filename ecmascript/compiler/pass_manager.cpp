@@ -13,42 +13,24 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/pass_manager.h"
+
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/compilation_driver.h"
+#include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
-bool PassManager::ShouldCollect() const
-{
-    return passOptions_->EnableTypeInfer() &&
-        (profilerDecoder_.IsLoaded() || vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes() ||
-         log_->OutputType());
-}
-
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
 
-    if (jsPandaFile == nullptr) {
-        LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
-        return false;
-    }
-
-    if (!PGOProfilerManager::MergeApFiles(jsPandaFile->GetChecksum(), profilerDecoder_)) {
-        LOG_COMPILER(ERROR) << "Load and verify profiler failure";
-        return false;
-    }
-
-    ResolveModule(jsPandaFile, fileName);
-    BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, maxAotMethodSize_, ShouldCollect());
-
+    BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_,
+                                    maxAotMethodSize_, passOptions_->EnableCollectLiteralInfo());
     // Checking released/debuggable pandafile uses method literals, which are initialized in BytecodeInfoCollector,
     // should after it.
     if (!IsReleasedPandaFile(jsPandaFile)) {
@@ -182,21 +164,5 @@ bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
     DebugInfoExtractor *debugInfoExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     LocalVariableTable lvt = debugInfoExtractor->GetLocalVariableTable(methodId);
     return lvt.empty();
-}
-
-void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)
-{
-    const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
-    JSThread *thread = vm_->GetJSThread();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    [[maybe_unused]] EcmaHandleScope scope(thread);
-    for (auto info: recordInfo) {
-        if (jsPandaFile->IsModule(info.second)) {
-            auto recordName = info.first;
-            JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
-                recordName);
-            SourceTextModule::Instantiate(thread, moduleRecord);
-        }
-    }
 }
 } // namespace panda::ecmascript::kungfu

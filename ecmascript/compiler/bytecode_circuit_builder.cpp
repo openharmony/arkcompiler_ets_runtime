@@ -1296,7 +1296,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
                     ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
                     auto oldType = gateAcc_.GetGateType(ans);
                     if (!type.IsAnyType() && oldType.IsAnyType()) {
-                        typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(ans), type);
+                        typeRecorder_.GetOrUpdatePGOType(gateAcc_.TryGetPcOffset(ans));
                         gateAcc_.SetGateType(ans, type);
                     }
                     break;
@@ -1423,7 +1423,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
 
             auto type = typeRecorder_.GetType(bcIndex);
             gateAcc_.SetGateType(gate, type);
-            auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
+            auto pgoType = typeRecorder_.GetOrUpdatePGOType(gateAcc_.TryGetPcOffset(gate));
             gateAcc_.TrySetPGOType(gate, pgoType);
 
             auto valueCount = gateAcc_.GetInValueCount(gate);

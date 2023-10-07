@@ -357,6 +357,17 @@ public:
         }
     }
 
+    static bool IsDefineClassWithBufferOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
+            case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
 private:
     static uint8_t ReadByte(const uint8_t *pc)
     {
