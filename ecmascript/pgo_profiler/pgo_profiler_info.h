@@ -462,8 +462,8 @@ public:
     bool AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
-    bool AddDefine(
-        ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type,
+                   PGOSampleType superType);
     bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
     bool UpdateElementsKind(PGOSampleType type, ElementsKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);

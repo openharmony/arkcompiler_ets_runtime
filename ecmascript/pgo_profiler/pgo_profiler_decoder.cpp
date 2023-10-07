@@ -236,6 +236,14 @@ bool PGOProfilerDecoder::InitMergeData()
     return true;
 }
 
+void PGOProfilerDecoder::SwapAbcIdPool(PGOProfilerDecoder &decoder)
+{
+    if (abcFilePool_) {
+        abcFilePool_->Clear();
+    }
+    abcFilePool_.swap(decoder.abcFilePool_);
+}
+
 void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
 {
     if (!isLoaded_ || !isVerifySuccess_) {

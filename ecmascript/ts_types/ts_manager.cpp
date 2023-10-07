@@ -1721,7 +1721,8 @@ void TSManager::GenerateBuiltinSummary()
 {
     ASSERT(IsBuiltinsDTSEnabled());
     CString builtinsDTSFileName = GetBuiltinsDTS();
-    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(
+        builtinsDTSFileName, panda::ecmascript::TSTypeTable::DEFAULT_TYPE_VIRTUAL_NAME);
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
@@ -1744,6 +1745,8 @@ void TSManager::PrintNumOfTypes() const
     for (uint32_t i = 0; i < length; i++) {
         JSHandle<EcmaString> valueString = mTable->GetModuleRequestByModuleId(thread_, i);
         std::string name = EcmaStringAccessor(valueString).ToStdString();
+        valueString = mTable->GetAbcRequestByModuleId(thread_, i);
+        std::string abcName = EcmaStringAccessor(valueString).ToStdString();
         JSHandle<TSTypeTable> tTable = GetTSTypeTable(i);
         uint32_t numOfExpectedTypes = static_cast<uint32_t>(tTable->GetNumberOfTypes());
         uint32_t numOfTypes = 0;
@@ -1755,6 +1758,7 @@ void TSManager::PrintNumOfTypes() const
         }
         totalNumOfTypes += numOfTypes;
         LOG_COMPILER(DEBUG) << "module table: " << i << ", "
+                            << "abc name: " << abcName << ", "
                             << "module name: " << name << ", "
                             << "number of types: " << numOfTypes;
     }
@@ -1791,12 +1795,21 @@ JSHandle<EcmaString> TSModuleTable::GetModuleRequestByModuleId(JSThread *thread,
     return amiPath;
 }
 
-int TSModuleTable::GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath) const
+JSHandle<EcmaString> TSModuleTable::GetAbcRequestByModuleId(JSThread *thread, int entry) const
+{
+    int amiOffset = GetAbcRequestOffset(entry);
+    JSHandle<EcmaString> abcPath(thread, Get(amiOffset));
+    return abcPath;
+}
+
+int TSModuleTable::GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath, JSHandle<EcmaString> abcPath) const
 {
     uint32_t length = GetNumberOfTSTypeTables();
     for (uint32_t i = 0; i < length; i++) {
-        JSHandle<EcmaString> valueString = GetModuleRequestByModuleId(thread, i);
-        if (EcmaStringAccessor::StringsAreEqual(*amiPath, *valueString)) {
+        JSHandle<EcmaString> moduleString = GetModuleRequestByModuleId(thread, i);
+        JSHandle<EcmaString> abcName = GetAbcRequestByModuleId(thread, i);
+        if (EcmaStringAccessor::StringsAreEqual(*amiPath, *moduleString) &&
+            EcmaStringAccessor::StringsAreEqual(*abcPath, *abcName)) {
             return i;
         }
     }

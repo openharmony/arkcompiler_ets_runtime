@@ -345,13 +345,18 @@ void JSPandaFileManager::ObsoleteLoadedJSPandaFile(const CString &filename)
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFile(const CString &filename)
 {
+    return OpenJSPandaFile(filename, filename);
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFile(const CString &filename, const CString &desc)
+{
     auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
     }
 
-    return NewJSPandaFile(pf.release(), filename);
+    return NewJSPandaFile(pf.release(), desc);
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8_t *buffer,

@@ -72,7 +72,7 @@ public:
         }
 
     private:
-        ApEntityId entryId_ {};
+        ApEntityId entryId_ {0};
         CString name_;
     };
     using PoolType = PoolTemplate<Entry, CString>;
