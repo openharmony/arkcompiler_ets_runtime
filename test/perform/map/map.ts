@@ -30,11 +30,8 @@ function testSet() {
 
 function testClear() {
     let myMap = new Map();
-    for (let i = 0; i < 100_000; i++) {
-        myMap.set(i, i);
-    }
     let start = ArkTools.timeInUs();
-    for (let i = 0; i < 100_000; i++) {
+    for (let i = 0; i < 1_000_000; i++) {
         myMap.clear();
     }
     let end = ArkTools.timeInUs();
@@ -57,12 +54,11 @@ function testDelete() {
 
 function testHas() {
     let myMap = new Map();
-    for (let i = 0; i < 100_000; i++) {
-        myMap.set(i, i);
-    }
+    let key = "key";
+    myMap.set(key, key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
-        myMap.has(i);
+        myMap.has(key);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000
@@ -72,9 +68,8 @@ function testHas() {
 function setElements(value, key, map) {}
 function testForEach() {
     let myMap = new Map();
-    for (let i = 0; i < 10; i++) {
-        myMap.set(i, i);
-    }
+    let key = "key";
+    myMap.set(key, key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         myMap.forEach(setElements);
@@ -86,9 +81,6 @@ function testForEach() {
 
 function testKeys() {
     let myMap = new Map();
-    for (let i = 0; i < 10; i++) {
-        myMap.set(i, i);
-    }
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         myMap.keys();
@@ -100,9 +92,6 @@ function testKeys() {
 
 function testValues() {
     let myMap = new Map();
-    for (let i = 0; i < 10; i++) {
-        myMap.set(i, i);
-    }
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         myMap.values();
@@ -114,9 +103,6 @@ function testValues() {
 
 function testEntries() {
     let myMap = new Map();
-    for (let i = 0; i < 10; i++) {
-        myMap.set(i, i);
-    }
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         myMap.entries();

@@ -12,7 +12,7 @@
 # limitations under the License.
 
 declare function print(arg:any) : string;
-declare interface ArkTools{
+declare interface ArkTools {
     timeInUs(arg:any):number
 }
 
@@ -29,10 +29,9 @@ function testAdd() {
 }
 
 function testDelete() {
-    let key = "key";
     const mySet = new Set();
+    let key = "key";
     mySet.add(key);
-
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         mySet.delete(key);
@@ -44,12 +43,11 @@ function testDelete() {
 
 function testHas() {
     const mySet = new Set();
-    for (let i = 0; i < 100_000; i++) {
-        mySet.add(i);
-    }
+    let key = "key";
+    mySet.add(key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
-        mySet.has(i);
+        mySet.has(key);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000
@@ -59,9 +57,8 @@ function testHas() {
 function setElements(value1, value2, set) {}
 function testForEach() {
     const mySet = new Set();
-    for (let i = 0; i < 10; i++) {
-        mySet.add(i);
-    }
+    let key = "key";
+    mySet.add(key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         mySet.forEach(setElements);
@@ -73,9 +70,8 @@ function testForEach() {
 
 function testClear() {
     const mySet = new Set();
-    for (let i = 0; i < 10; i++) {
-        mySet.add(i);
-    }
+    let key = "key";
+    mySet.add(key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         mySet.clear();
@@ -87,9 +83,6 @@ function testClear() {
 
 function testValues() {
     const mySet = new Set();
-    for (let i = 0; i < 10; i++) {
-        mySet.add(i);
-    }
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         mySet.values();
@@ -101,9 +94,6 @@ function testValues() {
 
 function testEntries() {
     const mySet = new Set();
-    for (let i = 0; i < 10; i++) {
-        mySet.add(i);
-    }
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
         mySet.entries();
