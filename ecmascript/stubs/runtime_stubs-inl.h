@@ -862,6 +862,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                   lexenv, ihclass, chclass);
     }
 
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread); 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return cls.GetTaggedValue();
