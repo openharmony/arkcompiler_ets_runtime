@@ -65,10 +65,6 @@ namespace panda::ecmascript::kungfu {
     LCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                     \
     LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)
 
-#define LCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                              \
-    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)            \
-    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)
-
 #define LCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
     V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \

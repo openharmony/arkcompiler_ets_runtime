@@ -58,7 +58,6 @@ namespace panda::ecmascript::kungfu {
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                       \
-    V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)
 
@@ -126,7 +125,7 @@ namespace panda::ecmascript::kungfu {
     MCR_GATE_META_DATA_LIST_WITH_BOOL(V)
 
 #define GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                                  \
-    LCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)
+    HCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)
 
 #define GATE_OPCODE_LIST(V)     \
     SHARE_GATE_OPCODE_LIST(V)   \
