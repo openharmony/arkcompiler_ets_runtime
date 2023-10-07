@@ -221,7 +221,8 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     JSHandle<TSObjLayoutInfo> tsLayout(thread, prototypeType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
-    // There is only function information in abc, which needs to be brought up to the front for processing. Other fields should be collected first and then optimized to the end.
+    // There is only function information in abc, which needs to be brought up to the front for processing.
+    // Other fields should be collected first and then optimized to the end.
     // Please note that there may be a problem with order in this way
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();

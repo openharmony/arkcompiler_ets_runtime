@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#ifndef PROPERTY_DETECTOR_INL_H_
+#define PROPERTY_DETECTOR_INL_H_
+
 #include "ecmascript/property_detector.h"
 
 #include "ecmascript/global_env.h"
@@ -38,3 +41,5 @@ GLOBAL_ENV_DETECTOR_FIELDS(DETECTOR_DEFINITION)
 #undef DETECTOR_DEFINITION
 
 } // namespace panda::ecmascript
+
+#endif  // PROPERTY_DETECTOR_INL_H_
