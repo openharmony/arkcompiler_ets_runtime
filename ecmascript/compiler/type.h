@@ -244,12 +244,12 @@ public:
     // some numerical computation.
     bool IsPrimitiveNumberType() const
     {
-        return IsNumberType() || IsBooleanType();
+        return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType();
     }
 
     bool IsPrimitiveIntType() const
     {
-        return IsIntType() || IsBooleanType();
+        return IsIntType() || IsNullType() || IsBooleanType();
     }
 
     bool IsGCRelated() const

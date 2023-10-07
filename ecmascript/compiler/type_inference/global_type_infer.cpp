@@ -17,10 +17,10 @@
 
 namespace panda::ecmascript::kungfu {
 GlobalTypeInfer::GlobalTypeInfer(PassContext *ctx, const uint32_t methodOffset, const CString &recordName,
-                                 PGOProfilerDecoder *decoder, bool enableOptTrackField, bool enableLog)
+                                 PGOProfilerDecoder *decoder, bool enableOptTrackField, bool enableLog, bool hasType)
     : ctx_(ctx), jsPandaFile_(ctx_->GetJSPandaFile()), bcInfo_(ctx->GetBytecodeInfo()), methodOffset_(methodOffset),
       recordName_(recordName), decoder_(decoder), enableOptTrackField_(enableOptTrackField), enableLog_(enableLog),
-      enableGlobalTypeInfer_(ctx_->GetTSManager()->GetEcmaVM()->GetJSOptions().IsEnableGlobalTypeInfer())
+      hasType_(hasType), enableGlobalTypeInfer_(ctx_->GetTSManager()->GetEcmaVM()->GetJSOptions().IsEnableGlobalTypeInfer())
 {
     CollectNamespaceMethods(methodOffset);
     for (const auto namespaceMethod : namespaceTypes_) {
@@ -76,7 +76,7 @@ void GlobalTypeInfer::NewTypeInfer(const uint32_t methodOffset)
 
     MethodTypeInfer *typeInfer = new MethodTypeInfer(builder, circuit, ctx_, methodInfo.GetMethodInfoIndex(),
                                                      enableLog_, fullName, recordName_, &methodInfo,
-                                                     methodLiteral, enableGlobalTypeInfer_);
+                                                     methodLiteral, enableGlobalTypeInfer_, hasType_);
     typeInfers_.insert(std::make_pair(methodOffset, typeInfer));
 }
 
@@ -114,7 +114,7 @@ void GlobalTypeInfer::ProcessTypeInference(BytecodeCircuitBuilder *builder, Circ
     MethodTypeInfer typeInfer(builder, circuit, ctx_, methodInfo.GetMethodInfoIndex(), enableLog_,
                               builder->GetMethodName(), recordName_, &methodInfo,
                               jsPandaFile_->FindMethodLiteral(methodOffset_),
-                              enableGlobalTypeInfer_);
+                              enableGlobalTypeInfer_, hasType_);
 
     TSManager *tsManager = ctx_->GetTSManager();
     std::stack<MethodTypeInfer *> typeInferStack;
