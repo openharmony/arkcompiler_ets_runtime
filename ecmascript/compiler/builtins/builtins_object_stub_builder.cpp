@@ -192,4 +192,99 @@ void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *s
         }
     }
 }
+
+GateRef BuiltinsObjectStubBuilder::TransProtoWithoutLayout(GateRef hClass, GateRef proto)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef key = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+        ConstantIndex::PROTOTYPE_STRING_INDEX);
+    GateRef newClass = CallNGCRuntime(glue_, RTSTUB_ID(JSHClassFindProtoTransitions), { hClass, key, proto });
+    Label undef(env);
+    Label find(env);
+    Branch(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);
+    Bind(&find);
+    {
+        result = newClass;
+        Jump(&exit);
+    }
+    Bind(&undef);
+    {
+        result = CallRuntime(glue_, RTSTUB_ID(HClassCloneWithAddProto), { hClass, key, proto });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::OrdinaryNewJSObjectCreate(GateRef proto)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef hClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+        ConstantIndex::OBJECT_HCLASS_INDEX);
+    GateRef newClass = TransProtoWithoutLayout(hClass, proto);
+    Label exception(env);
+    Label noexception(env);
+    Branch(TaggedIsException(newClass), &exception, &noexception);
+    Bind(&exception);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noexception);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef newObj = newBuilder.NewJSObject(glue_, newClass);
+    Label exceptionNewObj(env);
+    Label noexceptionNewObj(env);
+    Branch(TaggedIsException(newObj), &exceptionNewObj, &noexceptionNewObj);
+    Bind(&exceptionNewObj);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noexceptionNewObj);
+    {
+        SetExtensibleToBitfield(glue_, newObj, True());
+        result = newObj;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label newObject(env);
+
+    GateRef proto = GetCallArg0(numArgs_);
+    GateRef protoIsNull = TaggedIsNull(proto);
+    GateRef protoIsEcmaObj = IsEcmaObject(proto);
+    Branch(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), slowPath, &newObject);
+    Bind(&newObject);
+    {
+        Label noProperties(env);
+        GateRef propertiesObject = GetCallArg1(numArgs_);
+        Branch(TaggedIsUndefined(propertiesObject), &noProperties, slowPath);
+        Bind(&noProperties);
+        {
+            // OrdinaryNewJSObjectCreate
+            *result = OrdinaryNewJSObjectCreate(proto);
+            Jump(exit);
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

@@ -126,7 +126,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(SetDateValues)                           \
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
-    V(BigIntSameValueZero)
+    V(BigIntSameValueZero)                     \
+    V(JSHClassFindProtoTransitions)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -319,7 +320,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetLinkedHash)                      \
     V(LinkedHashMapComputeCapacity)       \
     V(LinkedHashSetComputeCapacity)       \
-    V(JSObjectGrowElementsCapacity)
+    V(JSObjectGrowElementsCapacity)       \
+    V(HClassCloneWithAddProto)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -394,6 +396,7 @@ public:
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
+    static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);

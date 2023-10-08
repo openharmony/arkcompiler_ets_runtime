@@ -463,7 +463,8 @@ private:
     V(EndCallTimer)                         \
     V(GetSingleCharCodeByIndex)             \
     V(CreateStringBySingleCharCode)         \
-    V(FastStringEqual)
+    V(FastStringEqual)                      \
+    V(JSHClassFindProtoTransitions)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

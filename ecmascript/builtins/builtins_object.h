@@ -31,7 +31,7 @@
     /* Object.assign ( target, ...sources ) */                                      \
     V("assign",                   Assign,                   2, INVALID)             \
     /* Object.create ( O, Properties ) */                                           \
-    V("create",                   Create,                   2, INVALID)             \
+    V("create",                   Create,                   2, ObjectCreate)        \
     /* Object.defineProperties ( O, Properties ) */                                 \
     V("defineProperties",         DefineProperties,         2, INVALID)             \
     /* Object.defineProperty ( O, P, Attributes ) */                                \

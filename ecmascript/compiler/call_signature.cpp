@@ -1164,6 +1164,22 @@ DEF_CALL_SIGNATURE(StringsAreEquals)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(JSHClassFindProtoTransitions)
+{
+    // 3 : 3 input parameters
+    CallSignature bigIntSameValueZero("JSHClassFindProtoTransitions", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = bigIntSameValueZero;
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(BigIntEquals)
 {
     // 2 : 2 input parameters

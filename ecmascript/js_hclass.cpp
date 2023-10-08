@@ -352,6 +352,20 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
     return newJsHClass;
 }
 
+JSHandle<JSHClass> JSHClass::CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                               const JSHandle<JSTaggedValue> &key,
+                                               const JSHandle<JSTaggedValue> &proto)
+{
+    // 1. new a hclass
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
+    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
+
+    // 2. Add newJsHClass to old jshclass's parent's transitions.
+    AddProtoTransitions(thread, jshclass, newJsHClass, key, proto);
+    // parent is the same as jshclass, already copy
+    return newJsHClass;
+}
+
 JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &proto)
 {
@@ -364,15 +378,7 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
         }
     }
 
-    // 2. new a hclass
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
-
-    // 3. Add newJsHClass to old jshclass's parent's transitions.
-    AddProtoTransitions(thread, jshclass, newJsHClass, key, proto);
-
-    // parent is the same as jshclass, already copy
-    return newJsHClass;
+    return CloneWithAddProto(thread, jshclass, key, proto);
 }
 
 void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
