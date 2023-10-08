@@ -1201,11 +1201,7 @@ DEF_RUNTIME_STUBS(OptAsyncGeneratorResolve)
 DEF_RUNTIME_STUBS(OptCreateObjectWithExcludedKeys)
 {
     RUNTIME_STUBS_HEADER(OptCreateObjectWithExcludedKeys);
-    JSTaggedValue numKeys = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> objVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue firstArgRegIdx = GetArg(argv, argc, 2);  // 2: means the second parameter
-    return RuntimeOptCreateObjectWithExcludedKeys(thread, static_cast<uint16_t>(numKeys.GetInt()), objVal,
-        static_cast<uint16_t>(firstArgRegIdx.GetInt()), argv, argc).GetRawData();
+    return RuntimeOptCreateObjectWithExcludedKeys(thread, argv, argc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(UpFrame)

@@ -661,10 +661,7 @@ private:
                                                                    const JSHandle<JSTaggedValue> &objVal,
                                                                    uint32_t numExcludedKeys,
                                                                    JSHandle<TaggedArray> excludedKeys);
-    static inline JSTaggedValue RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
-                                                                       const JSHandle<JSTaggedValue> &objVal,
-                                                                       uint16_t firstArgRegIdx,
-                                                                       uintptr_t argv, uint32_t argc);
+    static inline JSTaggedValue RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptNewObjRange(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
                                                     JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,

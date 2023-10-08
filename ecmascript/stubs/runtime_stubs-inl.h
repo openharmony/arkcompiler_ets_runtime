@@ -1948,18 +1948,17 @@ JSTaggedValue RuntimeStubs::CommonCreateObjectWithExcludedKeys(JSThread *thread,
     return restObj.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
-                                                                   const JSHandle<JSTaggedValue> &objVal,
-                                                                   uint16_t firstArgRegIdx,
-                                                                   uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uintptr_t argv, uint32_t argc)
 {
-    firstArgRegIdx += 4; // firstArgRegIdx + 4: means the remain parameter
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const JSHandle<JSTaggedValue> &objVal = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the objVal
+    uint32_t firstArgRegIdx = 1; // 1: means the firstArgRegIdx
     uint32_t numExcludedKeys = 0;
-    JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys + 1);
+    uint32_t numKeys = argc - 1;
+    JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys);
     JSTaggedValue excludedKey = GetArg(argv, argc, firstArgRegIdx);
     if (!excludedKey.IsUndefined()) {
-        numExcludedKeys = numKeys + 1;
+        numExcludedKeys = numKeys;
         excludedKeys->Set(thread, 0, excludedKey);
         for (uint32_t i = 1; i < numExcludedKeys; i++) {
             excludedKey = GetArg(argv, argc, firstArgRegIdx + i);

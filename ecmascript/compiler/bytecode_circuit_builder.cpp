@@ -933,8 +933,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     if (bytecodeInfo.IsGeneratorRelative()) {
         //exclude...
         if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
-            bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8 ||
-            bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8) {
+            bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8) {
             auto hole = circuit_->GetConstantGate(MachineType::I64,
                                                   JSTaggedValue::VALUE_HOLE,
                                                   GateType::TaggedValue());
@@ -1437,15 +1436,6 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 auto inIdx = valueIdx + valueStarts;
                 if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                     continue;
-                }
-                if (bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8) {
-                    GateRef depIn = gateAcc_.GetDep(gate);
-                    size_t depCount = gateAcc_.GetNumValueIn(depIn);
-                    GateRef defVreg = Circuit::NullGate();
-                    for (size_t idx = 0; idx < depCount; idx++) {
-                        defVreg = ResolveDef(bb, bcIndex, idx, false);
-                        gateAcc_.ReplaceValueIn(depIn, defVreg, idx);
-                    }
                 }
                 if (valueIdx < bytecodeInfo.inputs.size()) {
                     auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
