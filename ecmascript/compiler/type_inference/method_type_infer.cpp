@@ -525,7 +525,10 @@ bool MethodTypeInfer::InferSub2(GateRef gate)
     if ((firInType.IsIntType() && secInType.IsIntType())) {
         return UpdateType(gate, GateType::IntType());
     }
-    return UpdateType(gate, GateType::NumberType());
+    if (firInType.IsNumberType() && secInType.IsNumberType()) {
+        return UpdateType(gate, GateType::NumberType());
+    }
+    return UpdateType(gate, GateType::AnyType());
 }
 
 /*
@@ -622,7 +625,10 @@ bool MethodTypeInfer::InferIncDec(GateRef gate)
     if (firInType.IsIntType()) {
         return UpdateType(gate, GateType::IntType());
     }
-    return UpdateType(gate, GateType::NumberType());
+    if (firInType.IsNumberType()) {
+        return UpdateType(gate, GateType::NumberType());
+    }
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool MethodTypeInfer::InferToNumberic(GateRef gate)
