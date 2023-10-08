@@ -438,7 +438,11 @@ double NumberHelper::TruncateDouble(double d)
     if (d == 0.0) {
         return 0;
     }
-    return (d >= 0) ? std::floor(d) : std::ceil(d);
+    double ret = (d >= 0) ? std::floor(d) : std::ceil(d);
+    if (ret == 0.0) {
+        ret = 0;
+    }
+    return ret;
 }
 
 int64_t NumberHelper::DoubleToInt64(double d)
