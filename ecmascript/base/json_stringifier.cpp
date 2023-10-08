@@ -668,7 +668,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     }
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
-                                                    JSHandle<JSTaggedValue>(obj));
+                            JSHandle<JSTaggedValue>(obj));
                         if (obj->GetProperties().IsDictionary()) {
                             hasChangedToDictionaryMode = true;
                             propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
@@ -677,7 +677,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-                } 
+                }
             } else {
                     JSHandle<NameDictionary> nameDic(propertiesArr);
                     int index = nameDic->FindEntry(key);
