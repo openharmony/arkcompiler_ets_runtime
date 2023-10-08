@@ -230,8 +230,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
         entryMap_.InsertEntry(node);
     } else {
         LOG_DEBUGGER(WARN) << "Untracked object moves from " << address << " to " << forwardAddress;
-        int32_t sequenceId = -1;
-        GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
+        GenerateNode(JSTaggedValue(forwardAddress), size, false);
     }
 }
 
