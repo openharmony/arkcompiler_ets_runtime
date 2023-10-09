@@ -154,9 +154,9 @@ public:
         return true;
     }
 
-    void IncreaseCount(int32_t inc)
+    void IncreaseCount()
     {
-        count_ += static_cast<uint32_t>(inc);
+        count_++;
     }
 
     void ClearCount()
@@ -275,7 +275,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode, int32_t incCount);
+    bool AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
@@ -458,7 +458,7 @@ public:
     void InitSections();
 
     // If it is a new method, return true.
-    bool AddMethod(ProfileType recordProfileType, Method *jsMethod, SampleMode mode, int32_t incCount);
+    bool AddMethod(ProfileType recordProfileType, Method *jsMethod, SampleMode mode);
     bool AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);

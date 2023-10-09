@@ -128,6 +128,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
+    "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
+                                           "Unit seconds. Default: '30s'\n"
     "--compiler-target-triple:             CPU triple for aot compiler or stub compiler. \n"
     "                                      values: ['x86_64-unknown-linux-gnu', 'arm-unknown-linux-gnu', \n"
     "                                      'aarch64-unknown-linux-gnu'], Default: 'x86_64-unknown-linux-gnu'\n"
@@ -217,6 +219,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
+        {"compiler-pgo-save-min-interval", required_argument, nullptr, OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL},
         {"compiler-verify-vtable", required_argument, nullptr, OPTION_COMPILER_VERIFY_VTABLE},
         {"compiler-select-methods", required_argument, nullptr, OPTION_COMPILER_SELECT_METHODS},
         {"compiler-skip-methods", required_argument, nullptr, OPTION_COMPILER_SKIP_METHODS},
@@ -572,6 +575,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("pgo-hotness-threshold", &argUint32);
                 if (ret) {
                     SetPGOHotnessThreshold(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL:
+                ret = ParseUint32Param("compiler-pgo-save-min-interval)", &argUint32);
+                if (ret) {
+                    SetPGOSaveMinInterval(argUint32);
                 } else {
                     return false;
                 }

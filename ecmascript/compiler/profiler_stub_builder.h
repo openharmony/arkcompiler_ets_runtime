@@ -50,7 +50,7 @@ public:
     void UpdatePropAttrWithValue(
         GateRef glue, GateRef layout, GateRef attr, GateRef attrIndex, GateRef value, ProfileOperation callback);
 
-    GateRef IsProfileTypeInfoChanged(GateRef profileTypeInfo, ProfileOperation callback);
+    GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
@@ -63,7 +63,10 @@ private:
 
     GateRef GetSlotID(GateRef pc, SlotIDFormat format);
     GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
-    GateRef IsProfileTypeInfoChanged(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoPreDumped(GateRef profileTypeInfo);
+    void SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
+    void SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
 };
 } // namespace panda::ecmascript::kungfu

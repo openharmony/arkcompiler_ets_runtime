@@ -2361,8 +2361,8 @@ DECLARE_ASM_HANDLER(HandleReturn)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
-            &tryContinue);
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
+            &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2431,8 +2431,8 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
-            &tryContinue);
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
+            &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2514,8 +2514,8 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
-            &tryContinue);
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
+            &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2595,8 +2595,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
-            &tryContinue);
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
+            &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2935,8 +2935,8 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoChanged(*varProfileTypeInfo, callback), &updateHotness,
-            &tryContinue);
+        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
+            &updateHotness);
     }
     Bind(&updateHotness);
     {

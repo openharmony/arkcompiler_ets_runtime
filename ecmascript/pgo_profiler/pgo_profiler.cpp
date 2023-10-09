@@ -17,6 +17,7 @@
 
 #include <chrono>
 
+#include "ecmascript/elements.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
@@ -32,29 +33,6 @@
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
-void PGOProfiler::ProfileCall(JSTaggedType callTarget, SampleMode mode, int32_t incCount)
-{
-    if (!isEnable_) {
-        return;
-    }
-    DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue calleeFunc(callTarget);
-    if (!calleeFunc.IsJSFunction()) {
-        return;
-    }
-    if (!JSFunction::Cast(calleeFunc)->GetMethod().IsMethod()) {
-        return;
-    }
-    auto calleeMethod = Method::Cast(JSFunction::Cast(calleeFunc)->GetMethod());
-    JSTaggedValue calleeRecordNameValue = calleeMethod->GetRecordName();
-    if (calleeRecordNameValue.IsHole()) {
-        return;
-    }
-    CString calleeRecordName = ConvertToString(calleeRecordNameValue);
-    ProfileType calleeRecordType = GetRecordProfileType(JSFunction::Cast(calleeFunc), calleeRecordName);
-    recordInfos_->AddMethod(calleeRecordType, calleeMethod, mode, incCount);
-}
-
 void PGOProfiler::ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId)
 {
     if (!isEnable_) {
@@ -102,10 +80,19 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKi
     if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
         auto oldKind = trackInfo->GetElementsKind();
-        if (oldKind == newKind) {
+        if (Elements::IsGeneric(oldKind) || oldKind == newKind) {
             return;
         }
-        trackInfo->SetElementsKind(newKind);
+        auto mixKind = Elements::MergeElementsKind(oldKind, newKind);
+        if (mixKind == oldKind) {
+            return;
+        }
+        trackInfo->SetElementsKind(mixKind);
+        auto thread = vm_->GetJSThread();
+        auto globalConst = thread->GlobalConstants();
+        auto constantId = thread->GetArrayHClassIndexMap().at(mixKind);
+        auto hclass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
+        trackInfo->SetCachedHClass(vm_->GetJSThread(), hclass);
         auto func = trackInfo->GetCachedFunc();
         if (!func.IsJSFunction()) {
             return;
@@ -116,8 +103,8 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKi
             return;
         }
         auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
-        if (!profileTypeInfo->IsProfileTypeInfoChanged()) {
-            profileTypeInfo->ResetPeriodCount();
+        if (!profileTypeInfo->IsProfileTypeInfoPreDumped()) {
+            profileTypeInfo->SetPreDumpPeriodIndex();
             PGOPreDump(JSTaggedType(func.GetTaggedObject()));
         }
     }
@@ -128,18 +115,40 @@ void PGOProfiler::PGODump(JSTaggedType func)
     if (!isEnable_) {
         return;
     }
-    {
+    auto funcValue = JSTaggedValue(func);
+    if (!funcValue.IsJSFunction()) {
+        return;
+    }
+    auto methodValue = JSFunction::Cast(funcValue)->GetMethod();
+    if (!methodValue.IsMethod()) {
+        return;
+    }
+    auto function = JSFunction::Cast(funcValue);
+    auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
+    if (workNode == nullptr) {
+        workNode = vm_->GetNativeAreaAllocator()->New<WorkNode>(JSTaggedType(function));
+        function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
         LockHolder lock(mutex_);
-        dumpWorkList_.emplace_back(func);
-        if (state_ == State::STOP) {
-            state_ = State::START;
-            Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+        dumpWorkList_.PushBack(workNode);
+    } else {
+        workNode->SetValue(JSTaggedType(function));
+        auto workList = workNode->GetWorkList();
+        LockHolder lock(mutex_);
+        if (workList == &preDumpWorkList_) {
+            preDumpWorkList_.Remove(workNode);
         }
+        if (workList != &dumpWorkList_) {
+            dumpWorkList_.PushBack(workNode);
+        }
+    }
+    if (state_ == State::STOP) {
+        state_ = State::START;
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
     }
 }
 
-void PGOProfiler::PausePGODump()
+void PGOProfiler::WaitPGODumpPause()
 {
     if (!isEnable_) {
         return;
@@ -151,7 +160,7 @@ void PGOProfiler::PausePGODump()
     }
 }
 
-void PGOProfiler::ResumePGODump()
+void PGOProfiler::WaitPGODumpResume()
 {
     if (!isEnable_) {
         return;
@@ -180,8 +189,32 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
     if (!isEnable_) {
         return;
     }
-    LockHolder lock(mutex_);
-    preDumpWorkList_.emplace(func);
+    auto funcValue = JSTaggedValue(func);
+    if (!funcValue.IsJSFunction()) {
+        return;
+    }
+    auto methodValue = JSFunction::Cast(funcValue)->GetMethod();
+    if (!methodValue.IsMethod()) {
+        return;
+    }
+    auto function = JSFunction::Cast(funcValue);
+    auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
+    if (workNode == nullptr) {
+        workNode = vm_->GetNativeAreaAllocator()->New<WorkNode>(JSTaggedType(function));
+        function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
+        LockHolder lock(mutex_);
+        preDumpWorkList_.PushBack(workNode);
+    } else {
+        workNode->SetValue(JSTaggedType(function));
+        auto workList = workNode->GetWorkList();
+        LockHolder lock(mutex_);
+        if (workList == &dumpWorkList_) {
+            workList->Remove(workNode);
+        }
+        if (workList != &preDumpWorkList_) {
+            preDumpWorkList_.PushBack(workNode);
+        }
+    }
 }
 
 void PGOProfiler::HandlePGOPreDump()
@@ -190,29 +223,26 @@ void PGOProfiler::HandlePGOPreDump()
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
-    CSet<JSTaggedType> preDumpWorkList;
-    {
-        LockHolder lock(mutex_);
-        preDumpWorkList = preDumpWorkList_;
-    }
-    for (auto iter : preDumpWorkList) {
-        auto funcValue = JSTaggedValue(iter);
+    preDumpWorkList_.Iterate([this](WorkNode *node) {
+        JSTaggedValue funcValue = JSTaggedValue(node->GetValue());
         if (!funcValue.IsJSFunction()) {
-            continue;
+            return;
         }
-        JSFunction *func = JSFunction::Cast(funcValue.GetTaggedObject());
+        auto func = JSFunction::Cast(funcValue);
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
-            continue;
+            return;
         }
         JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
         if (!recordNameValue.IsString()) {
-            continue;
+            return;
         }
         CString recordName = ConvertToString(recordNameValue);
         auto abcId = GetMethodAbcId(func);
-        ProfileByteCode(abcId, recordName, methodValue);
-    }
+        ProfileType recordType = GetRecordProfileType(abcId, recordName);
+        recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE);
+        ProfileBytecode(abcId, recordName, methodValue);
+    });
 }
 
 void PGOProfiler::HandlePGODump()
@@ -222,8 +252,12 @@ void PGOProfiler::HandlePGODump()
     }
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue current = PopFromProfileQueue();
-    while (current.IsJSFunction()) {
-        JSFunction *func = JSFunction::Cast(current.GetTaggedObject());
+    while (!current.IsUndefined()) {
+        if (!current.IsJSFunction()) {
+            current = PopFromProfileQueue();
+            continue;
+        }
+        auto func = JSFunction::Cast(current);
         JSTaggedValue methodValue = func->GetMethod();
         if (!methodValue.IsMethod()) {
             current = PopFromProfileQueue();
@@ -236,16 +270,21 @@ void PGOProfiler::HandlePGODump()
         }
         CString recordName = ConvertToString(recordNameValue);
         auto abcId = GetMethodAbcId(func);
-        ProfileByteCode(abcId, recordName, methodValue);
-        methodCount_++;
+        ProfileType recordType = GetRecordProfileType(abcId, recordName);
+        if (recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE)) {
+            methodCount_++;
+        }
+        ProfileBytecode(abcId, recordName, methodValue);
         current = PopFromProfileQueue();
     }
     if (state_ == State::PAUSE) {
         return;
     }
-    // Merged every 10 methods and merge interval greater than minimal interval
+    // Merged every 50 methods and merge interval greater than minimal interval
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
-    if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
+    auto minIntervalOption = vm_->GetJSOptions().GetPGOSaveMinInterval();
+    auto mergeMinInterval = std::chrono::milliseconds(minIntervalOption * MS_PRE_SECOND);
+    if (methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) {
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
         PGOProfilerManager::GetInstance()->Merge(this);
         PGOProfilerManager::GetInstance()->AsynSave();
@@ -259,7 +298,7 @@ JSTaggedValue PGOProfiler::PopFromProfileQueue()
     LockHolder lock(mutex_);
     auto result = JSTaggedValue::Undefined();
     while (result.IsUndefined()) {
-        if (dumpWorkList_.empty()) {
+        if (dumpWorkList_.IsEmpty()) {
             state_ = State::STOP;
             condition_.SignalAll();
             break;
@@ -268,18 +307,25 @@ JSTaggedValue PGOProfiler::PopFromProfileQueue()
             condition_.SignalAll();
             break;
         }
-        auto func = dumpWorkList_.front();
-        dumpWorkList_.pop_front();
-        result = JSTaggedValue(func);
-        auto iter = std::find(preDumpWorkList_.begin(), preDumpWorkList_.end(), func);
-        if (iter != preDumpWorkList_.end()) {
-            preDumpWorkList_.erase(iter);
-        }
+        auto node = dumpWorkList_.PopFront();
+        result = JSTaggedValue(node->GetValue());
     }
     return result;
 }
 
-void PGOProfiler::ProfileByteCode(ApEntityId abcId, const CString &recordName, JSTaggedValue value)
+bool PGOProfiler::PausePGODump()
+{
+    if (state_ == State::PAUSE) {
+        os::memory::LockHolder lock(mutex_);
+        if (state_ == State::PAUSE) {
+            condition_.SignalAll();
+            return true;
+        }
+    }
+    return false;
+}
+
+void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value)
 {
     Method *method = Method::Cast(value.GetTaggedObject());
     JSTaggedValue profileTypeInfoVal = method->GetProfileTypeInfo();
@@ -292,6 +338,9 @@ void PGOProfiler::ProfileByteCode(ApEntityId abcId, const CString &recordName, J
     auto bcInsLast = bcIns.JumpTo(codeSize);
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        if (PausePGODump()) {
+            break;
+        }
         auto opcode = bcIns.GetOpcode();
         auto bcOffset = bcIns.GetAddress() - pcStart;
         auto pc = bcIns.GetAddress();
@@ -476,7 +525,9 @@ void PGOProfiler::DumpICByValue(ApEntityId abcId, const CString &recordName, Ent
     // Check key
     if ((firstValue.IsString() || firstValue.IsSymbol())) {
         JSTaggedValue secondValue = profileTypeInfo->Get(slotId + 1);
-        DumpICByNameWithPoly(abcId, recordName, methodId, bcOffset, secondValue, type);
+        if (secondValue.IsHeapObject()) {
+            DumpICByNameWithPoly(abcId, recordName, methodId, bcOffset, secondValue, type);
+        }
         return;
     }
     // Check without key
@@ -883,25 +934,19 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         }
         ++iter;
     }
-
-    std::vector<JSTaggedType> fwdVector;
-    for (auto iter = preDumpWorkList_.begin(); iter != preDumpWorkList_.end();) {
-        auto object = reinterpret_cast<TaggedObject *>(*iter);
+    preDumpWorkList_.Iterate([this, &visitor](WorkNode *node) {
+        auto object = reinterpret_cast<TaggedObject *>(node->GetValue());
         auto fwd = visitor(object);
         if (fwd == nullptr) {
-            iter = preDumpWorkList_.erase(iter);
-            continue;
+            preDumpWorkList_.Remove(node);
+            vm_->GetNativeAreaAllocator()->Delete(node);
+            return;
         }
         if (fwd != object) {
-            fwdVector.emplace_back(JSTaggedType(fwd));
-            iter = preDumpWorkList_.erase(iter);
-            continue;
+            node->SetValue(JSTaggedType(fwd));
+            return;
         }
-        ++iter;
-    }
-    for (auto iter : fwdVector) {
-        preDumpWorkList_.emplace(iter);
-    }
+    });
 }
 
 void PGOProfiler::Iterate(const RootVisitor &visitor)
@@ -911,9 +956,9 @@ void PGOProfiler::Iterate(const RootVisitor &visitor)
     }
     // If the IC of the method is stable, the current design forces the dump data.
     // Must pause dump during GC.
-    for (auto &iter : dumpWorkList_) {
-        visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&iter)));
-    }
+    dumpWorkList_.Iterate([&visitor](WorkNode *node) {
+        visitor(Root::ROOT_VM, ObjectSlot(node->GetValueAddr()));
+    });
 }
 
 PGOProfiler::PGOProfiler(EcmaVM *vm, bool isEnable) : vm_(vm), isEnable_(isEnable)
@@ -978,5 +1023,65 @@ ProfileType PGOProfiler::GetRecordProfileType(ApEntityId abcId, const CString &r
 ProfileType PGOProfiler::GetRecordProfileType(ApEntityId abcId, ApEntityId recordId)
 {
     return {abcId, recordId, ProfileType::Kind::LocalRecordId};
+}
+
+void PGOProfiler::WorkList::PushBack(WorkNode *node)
+{
+    if (last_ == nullptr) {
+        first_ = node;
+        last_ = node;
+    } else {
+        last_->SetNext(node);
+        node->SetPrev(last_);
+        last_ = node;
+    }
+    node->SetWorkList(this);
+}
+
+PGOProfiler::WorkNode *PGOProfiler::WorkList::PopFront()
+{
+    WorkNode *result = nullptr;
+    if (first_ != nullptr) {
+        result = first_;
+        if (first_->GetNext() != nullptr) {
+            first_ = first_->GetNext();
+            first_->SetPrev(nullptr);
+        } else {
+            first_ = nullptr;
+            last_ = nullptr;
+        }
+        result->SetNext(nullptr);
+        result->SetWorkList(nullptr);
+    }
+    return result;
+}
+
+void PGOProfiler::WorkList::Remove(WorkNode *node)
+{
+    if (node->GetPrev() != nullptr) {
+        node->GetPrev()->SetNext(node->GetNext());
+    }
+    if (node->GetNext() != nullptr) {
+        node->GetNext()->SetPrev(node->GetPrev());
+    }
+    if (node == first_) {
+        first_ = node->GetNext();
+    }
+    if (node == last_) {
+        last_ = node->GetPrev();
+    }
+    node->SetPrev(nullptr);
+    node->SetNext(nullptr);
+    node->SetWorkList(nullptr);
+}
+
+void PGOProfiler::WorkList::Iterate(Callback callback) const
+{
+    auto current = first_;
+    while (current != nullptr) {
+        auto next = current->GetNext();
+        callback(current);
+        current = next;
+    }
 }
 } // namespace panda::ecmascript::pgo

@@ -1064,10 +1064,6 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     if (profileTypeInfo.IsUndefined()) {
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), pgo::SampleMode::HOTNESS_MODE);
-        if (!res.IsUndefined()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->PGOPreDump(thisFunc.GetTaggedType());
-        }
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -2437,14 +2433,6 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
     if (targetFunc->IsClassConstructor()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot called without 'new'",
                                     JSTaggedValue::Exception());
-    }
-    if (thread->IsPGOProfilerEnable()) {
-        ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(targetFunc.GetTaggedValue().GetTaggedObject());
-        ASSERT(callTarget != nullptr);
-        Method *method = callTarget->GetCallTarget();
-        if (!method->IsNativeWithCallField()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
-        }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
     const uint32_t boundLength = boundArgs->GetLength();

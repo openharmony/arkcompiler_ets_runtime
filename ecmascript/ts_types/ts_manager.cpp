@@ -303,6 +303,24 @@ bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
     return functionType->GetStatic();
 }
 
+bool TSManager::IsHotnessFunc(GlobalTSTypeRef gt) const
+{
+    ASSERT(IsFunctionTypeKind(gt));
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsHotness();
+}
+
+void TSManager::SetHotnessFunc(GlobalTSTypeRef gt, bool isHotness) const
+{
+    ASSERT(IsFunctionTypeKind(gt));
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    functionType->SetIsHotness(isHotness);
+}
+
 bool TSManager::GetSuperGateType(kungfu::GateType &gateType) const
 {
     JSHandle<JSTaggedValue> type = GetTSType(gateType.GetGTRef());

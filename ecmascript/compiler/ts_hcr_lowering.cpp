@@ -1312,6 +1312,9 @@ void TSHCRLowering::LowerTypedCallrange(GateRef gate)
 void TSHCRLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
 {
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
+    if (!tsManager_->IsHotnessFunc(funcGt)) {
+        return;
+    }
     uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();

@@ -63,13 +63,11 @@ void ProfilerStubBuilder::TryDump(GateRef glue, GateRef func, GateRef profileTyp
     Label updatePeriodCounter(env);
     Label exit(env);
 
-    Branch(IsProfileTypeInfoChanged(profileTypeInfo), &updatePeriodCounter, &exit);
+    Branch(IsProfileTypeInfoDumped(profileTypeInfo), &exit, &updatePeriodCounter);
     Bind(&updatePeriodCounter);
     {
-        GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
-        GateRef newCount = Int32(1);
-        Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
-        CallRuntime(glue, RTSTUB_ID(PGODump), {func});
+        SetDumpPeriodIndex(glue, profileTypeInfo);
+        CallRuntime(glue, RTSTUB_ID(PGODump), { func });
         Jump(&exit);
     }
     Bind(&exit);
@@ -284,12 +282,12 @@ void ProfilerStubBuilder::ProfileCall(
     env->SubCfgExit();
 }
 
-GateRef ProfilerStubBuilder::IsProfileTypeInfoChanged(GateRef profileTypeInfo, ProfileOperation callback)
+GateRef ProfilerStubBuilder::IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback)
 {
     if (callback.IsEmpty()) {
         return Boolean(true);
     }
-    return IsProfileTypeInfoChanged(profileTypeInfo);
+    return IsProfileTypeInfoDumped(profileTypeInfo);
 }
 
 GateRef ProfilerStubBuilder::UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback)
@@ -447,7 +445,8 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, GateRef pc, GateRef func, 
         Branch(TaggedIsHole(slotValue), &exit, &hasSlot);   // ishole -- isundefined
         Bind(&hasSlot);
         {
-            Branch(TaggedIsInt(slotValue), &compareLabel, &updateSlot);
+            Label uninitialized(env);
+            Branch(TaggedIsInt(slotValue), &compareLabel, &uninitialized);
             Bind(&compareLabel);
             {
                 GateRef oldSlotValue = TaggedGetInt(slotValue);
@@ -464,6 +463,10 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, GateRef pc, GateRef func, 
                     newFalse = Int32Add(*newFalse, oldFalse);
                     Jump(&updateSlot);
                 }
+            }
+            Bind(&uninitialized);
+            {
+                Branch(TaggedIsUndefined(slotValue), &updateSlot, &exit);
             }
             Bind(&updateSlot);
             {
@@ -499,14 +502,18 @@ void ProfilerStubBuilder::TryPreDumpInner(GateRef glue, GateRef func, GateRef pr
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
-    Label resetPeriodCounter(env);
+    Label setPreDumpPeriodIndex(env);
+    Label isInPredumpWorkList(env);
+    Label addPredumpWorkList(env);
     Label exit(env);
-    Branch(IsProfileTypeInfoChanged(profileTypeInfo), &exit, &resetPeriodCounter);
-    Bind(&resetPeriodCounter);
+    Branch(IsProfileTypeInfoPreDumped(profileTypeInfo), &exit, &setPreDumpPeriodIndex);
+    Bind(&setPreDumpPeriodIndex);
     {
-        GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
-        GateRef newCount = Int32(0);
-        Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
+        SetPreDumpPeriodIndex(glue, profileTypeInfo);
+        Jump(&addPredumpWorkList);
+    }
+    Bind(&addPredumpWorkList);
+    {
         CallRuntime(glue, RTSTUB_ID(PGOPreDump), { func });
         Jump(&exit);
     }
@@ -534,10 +541,31 @@ GateRef ProfilerStubBuilder::GetBitFieldOffsetFromProfileTypeInfo(GateRef profil
     return PtrAdd(indexOffset, IntPtr(TaggedArray::DATA_OFFSET));
 }
 
-GateRef ProfilerStubBuilder::IsProfileTypeInfoChanged(GateRef profileTypeInfo)
+GateRef ProfilerStubBuilder::IsProfileTypeInfoDumped(GateRef profileTypeInfo)
 {
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
     GateRef count = Load(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
-    return Int32Equal(count, Int32(ProfileTypeInfo::CHANGED_PEROID_COUNT));
+    return Int32Equal(count, Int32(ProfileTypeInfo::DUMP_PEROID_INDEX));
+}
+
+GateRef ProfilerStubBuilder::IsProfileTypeInfoPreDumped(GateRef profileTypeInfo)
+{
+    GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef count = Load(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
+    return Int32Equal(count, Int32(ProfileTypeInfo::PRE_DUMP_PEROID_INDEX));
+}
+
+void ProfilerStubBuilder::SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo)
+{
+    GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef newCount = Int32(ProfileTypeInfo::DUMP_PEROID_INDEX);
+    Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
+}
+
+void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo)
+{
+    GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef newCount = Int32(ProfileTypeInfo::PRE_DUMP_PEROID_INDEX);
+    Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
 }
 } // namespace panda::ecmascript::kungfu

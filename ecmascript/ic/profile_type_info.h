@@ -99,7 +99,9 @@ public:
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
     static constexpr size_t BIT_FIELD_INDEX = 1;
     static constexpr size_t RESERVED_LENGTH = BIT_FIELD_INDEX;
-    static constexpr size_t CHANGED_PEROID_COUNT = 0;
+    static constexpr size_t INITIAL_PEROID_INDEX = 0;
+    static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
+    static constexpr size_t DUMP_PEROID_INDEX = 2;
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -126,17 +128,17 @@ public:
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
-        ResetPeriodCount();
+        SetPeriodIndex(INITIAL_PEROID_INDEX);
     }
 
-    void ResetPeriodCount()
+    void SetPreDumpPeriodIndex()
     {
-        SetPeriodCount(0);
+        SetPeriodIndex(PRE_DUMP_PEROID_INDEX);
     }
 
-    bool IsProfileTypeInfoChanged() const
+    bool IsProfileTypeInfoPreDumped() const
     {
-        return GetPeroidCount() == CHANGED_PEROID_COUNT;
+        return GetPeroidIndex() == PRE_DUMP_PEROID_INDEX;
     }
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
@@ -144,12 +146,12 @@ public:
     DECL_DUMP()
 
 private:
-    uint32_t GetPeroidCount() const
+    uint32_t GetPeroidIndex() const
     {
         return Barriers::GetValue<uint32_t>(GetData(), GetBitfieldOffset());
     }
 
-    void SetPeriodCount(uint32_t count)
+    void SetPeriodIndex(uint32_t count)
     {
         Barriers::SetPrimitive(GetData(), GetBitfieldOffset(), count);
     }

@@ -36,6 +36,7 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
 {
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 
