@@ -53,9 +53,20 @@ public:
 
     bool InitMergeData();
 
+    void SetInPath(const std::string &inPath)
+    {
+        LOG_COMPILER(INFO) << "Set Profiler paths: " << inPath;
+        inPath_ = inPath;
+    }
+
     const std::string& GetInPath() const
     {
         return inPath_;
+    }
+
+    void SetHotnessThreshold(uint32_t hotnessThreshold)
+    {
+        hotnessThreshold_ = hotnessThreshold;
     }
 
     uint32_t GetHotnessThreshold() const

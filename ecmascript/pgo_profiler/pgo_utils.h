@@ -41,5 +41,17 @@ public:
     static const std::string PANDA_FILE_INFO_HEADER;
     static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS;
 };
-} // namespace panda::ecmascript::pgo
+
+class ApNameUtils {
+public:
+    static const std::string AP_SUFFIX;
+    static const std::string RUNTIME_AP_PREFIX;
+    static const std::string DEFAULT_AP_NAME;
+    static std::string GetRuntimeApName(const std::string &ohosModuleName);
+    static std::string GetOhosPkgApName(const std::string &ohosModuleName);
+
+private:
+    static std::string GetBriefApName(const std::string &ohosModuleName);
+};
+}  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
