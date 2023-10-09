@@ -1126,18 +1126,20 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint8_t numKeys = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
             uint16_t firstArgRegIdx = READ_INST_8_2();
-            info.inputs.emplace_back(Immediate(numKeys));
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(Immediate(firstArgRegIdx));
+            for (int i = 0; i <= numKeys; i++) {
+                info.inputs.emplace_back(VirtualRegister(firstArgRegIdx + i));
+            }
             break;
         }
         case EcmaOpcode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8: {
             uint16_t numKeys = READ_INST_16_1();
             uint16_t v0 = READ_INST_8_3();
             uint16_t firstArgRegIdx = READ_INST_8_4();
-            info.inputs.emplace_back(Immediate(numKeys));
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.inputs.emplace_back(Immediate(firstArgRegIdx));
+            for (int i = 0; i <= numKeys; i++) {
+                info.inputs.emplace_back(VirtualRegister(firstArgRegIdx + i));
+            }
             break;
         }
         case EcmaOpcode::COPYRESTARGS_IMM8: {

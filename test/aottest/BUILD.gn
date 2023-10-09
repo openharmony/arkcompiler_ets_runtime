@@ -71,6 +71,7 @@ group("ark_aot_ts_test") {
     "createiterresultobj",
     "createobjecthavingmethod",
     "createobjectwithbuffer",
+    "createobjectwithexcludedkeys",
     "createregexpwithliteral",
     "dec",
     "defineasyncfunc",
