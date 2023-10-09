@@ -44,6 +44,7 @@ class Local;
 class JSValueRef;
 class PrimitiveRef;
 class ArrayRef;
+class BigIntRef;
 class StringRef;
 class ObjectRef;
 class FunctionRef;
@@ -401,6 +402,7 @@ public:
 
     Local<NumberRef> ToNumber(const EcmaVM *vm);
     Local<BooleanRef> ToBoolean(const EcmaVM *vm);
+    Local<BigIntRef> ToBigInt(const EcmaVM *vm);
     Local<StringRef> ToString(const EcmaVM *vm);
     Local<ObjectRef> ToObject(const EcmaVM *vm);
     Local<NativePointerRef> ToNativePointer(const EcmaVM *vm);
