@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/type_inference/pgo_type_infer_helper.h"
+
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {

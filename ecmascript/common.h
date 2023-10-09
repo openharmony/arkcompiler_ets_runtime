@@ -156,13 +156,13 @@ using Address = uintptr_t;
 #ifdef PANDA_TARGET_32
 #define STATIC_ASSERT_EQ_ARCH32(a, b) static_assert(a == b)
 #else
-#define STATIC_ASSERT_EQ_ARCH32(a, b)
+#define STATIC_ASSERT_EQ_ARCH32(a, b) static_assert(true)
 #endif
 
 #ifdef PANDA_TARGET_64
 #define STATIC_ASSERT_EQ_ARCH64(a, b) static_assert(a == b)
 #else
-#define STATIC_ASSERT_EQ_ARCH64(a, b)
+#define STATIC_ASSERT_EQ_ARCH64(a, b) static_assert(true)
 #endif
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
@@ -172,7 +172,7 @@ using Address = uintptr_t;
 #endif
 
 #define STATIC_ASSERT_EQ_ARCH(expect, valueArch32, valueArch64) \
-    STATIC_ASSERT_EQ_ARCH32(expect, valueArch32)                \
+    STATIC_ASSERT_EQ_ARCH32(expect, valueArch32);               \
     STATIC_ASSERT_EQ_ARCH64(expect, valueArch64)
 }  // namespace ecmascript
 }  // namespace panda

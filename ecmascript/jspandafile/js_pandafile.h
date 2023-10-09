@@ -17,7 +17,6 @@
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 
 #include "ecmascript/common.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"

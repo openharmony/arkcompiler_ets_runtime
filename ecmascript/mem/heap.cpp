@@ -15,6 +15,9 @@
 
 #include "ecmascript/mem/heap-inl.h"
 
+#include <chrono>
+#include <thread>
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
@@ -1242,7 +1245,7 @@ bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 
 bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    usleep(2000000);  // 2000000 means 2s
+    std::this_thread::sleep_for(std::chrono::microseconds(2000000));  // 2000000 means 2s
     heap_->NotifyFinishColdStart(false);
     return true;
 }

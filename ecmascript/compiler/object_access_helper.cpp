@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/object_access_helper.h"
+
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
