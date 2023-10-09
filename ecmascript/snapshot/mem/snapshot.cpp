@@ -36,7 +36,7 @@ namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
     TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    JSTaggedValue root = tsManager->GetSnapshotCPList();
+    JSTaggedValue root = tsManager->GetSnapshotData();
     if (root == JSTaggedValue::Hole()) {
         // root equals hole means no data stored.
         LOG_COMPILER(ERROR) << "error: no data for ai file generation!";
@@ -145,7 +145,7 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
         UNREACHABLE();
     }
 
-    SnapshotProcessor processor(vm_, snapshotFile);
+    SnapshotProcessor processor(vm_);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
@@ -180,6 +180,7 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
     }
     // relocate object field
     processor.Relocate(type, jsPandaFile.get(), hdr.rootObjectSize);
+    processor.AddRootObjectToAOTFileManager(type, snapshotFile);
     LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();
     return true;
 }

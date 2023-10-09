@@ -194,8 +194,31 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
             return;
         }
         CollectLiteralGT(tsManager, loc, gt);
-        GateType gateType = GateType(gt);
-        bcOffsetGtMap_.emplace(bcIdx, gateType);
+    });
+}
+
+void TypeRecorder::BindPgoTypeToGateType(const JSPandaFile *jsPandaFile, TSManager *tsManager,
+                                         const MethodLiteral *methodLiteral) const
+{
+    uint32_t methodOffset = methodLiteral->GetMethodId().GetOffset();
+    PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
+    bcInfo->IterateInfoAndType(methodOffset, [this, methodOffset, &jsPandaFile, tsManager]
+        (const PGOBCInfo::Type, const uint32_t bcIdx, const uint32_t bcOffset, const uint32_t) {
+        auto it = bcOffsetPGOOpTypeMap_.find(bcOffset);
+        if (it == bcOffsetPGOOpTypeMap_.end()) {
+            return;
+        }
+        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
+        if (!tsManager->GetLiteralGT(loc).IsDefault()) {
+            GlobalTSTypeRef gt = tsManager->GetLiteralGT(loc);
+            PGOHClassLayoutDesc *desc;
+            if (decoder_->GetHClassLayoutDesc(it->second, &desc)) {
+                GateType gateType(gt);
+                tsManager->InsertPtToGtMap(desc->GetProfileType(), gateType);
+                TSHClassGenerator generator(tsManager);
+                generator.UpdateTSHClassFromPGO(gateType, *desc, enableOptTrackField_);
+            }
+        }
     });
 }
 
@@ -285,7 +308,7 @@ ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
     return ElementsKind::GENERIC;
 }
 
-PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
+PGOSampleType TypeRecorder::GetOrUpdatePGOType(int32_t offset) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
         const auto iter = bcOffsetPGOOpTypeMap_.at(offset);
@@ -294,8 +317,6 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
             if (!decoder_->GetHClassLayoutDesc(iter, &desc)) {
                 return PGOSampleType::NoneProfileType();
             }
-            TSHClassGenerator generator(tsManager);
-            generator.UpdateTSHClassFromPGO(type, *desc, enableOptTrackField_);
         }
         return iter;
     }

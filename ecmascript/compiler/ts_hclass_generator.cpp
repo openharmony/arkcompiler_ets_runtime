@@ -52,11 +52,7 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
         return;
     }
 
-    tsManager_->InsertPtToGtMap(desc.GetProfileType(), type);
     if (!enableOptTrackField) {
-        return;
-    }
-    if (tsManager_->IsInSkipTrackFieldSet(desc.GetProfileType())) {
         return;
     }
 

@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
+    using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
     void Save(const std::string &filename, Triple triple);
@@ -71,6 +72,21 @@ public:
 
     void Destroy() override;
 
+    void MappingEntryFuncsToAbcFiles(std::string curCompileFileName, uint32_t start, uint32_t end)
+    {
+        while (start < end) {
+            entryIdxToFileNameMap_[start] = curCompileFileName;
+            ++start;
+        }
+    }
+
+    const CMap<FuncEntryIndexKey, uint32_t>& GetMethodToEntryIndexMap() const
+    {
+        return methodToEntryIndexMap_;
+    }
+
+    void GenerateMethodToEntryIndexMap();
+
     void Dump() const;
 
 private:
@@ -82,6 +98,8 @@ private:
     uint64_t curTextSecOffset_ {0};
     std::unordered_map<uint32_t, std::pair<uint64_t, bool>> mainEntryMap_ {};
     bool isLoad_ {false};
+    CUnorderedMap<uint32_t, std::string> entryIdxToFileNameMap_ {};
+    CMap<FuncEntryIndexKey, uint32_t> methodToEntryIndexMap_ {};
 
     friend class AnFileDataManager;
 };

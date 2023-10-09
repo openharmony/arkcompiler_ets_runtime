@@ -180,4 +180,16 @@ void AnFileInfo::AddFuncEntrySec()
     uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
     des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
 }
+
+void AnFileInfo::GenerateMethodToEntryIndexMap()
+{
+    const std::vector<AOTFileInfo::FuncEntryDes> &entries = GetStubs();
+    uint32_t entriesSize = entries.size();
+    for (uint32_t i = 0; i < entriesSize; ++i) {
+        const AOTFileInfo::FuncEntryDes &entry = entries[i];
+        std::string &fileName = entryIdxToFileNameMap_.at(i);
+        auto key = std::make_pair(fileName, entry.indexInKindOrMethodId_);
+        methodToEntryIndexMap_[key] = i;
+    }
+}
 }  // namespace panda::ecmascript

@@ -296,7 +296,9 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
 void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
 {
     std::map<uintptr_t, std::string> addr2name;
+    uint32_t lastEntryIdx = aotInfo_.GetEntrySize();
     module->CollectFuncEntryInfo(addr2name, aotInfo_, moduleIdx, GetLog());
+    aotInfo_.MappingEntryFuncsToAbcFiles(curCompileFileName_, lastEntryIdx, aotInfo_.GetEntrySize());
     ModuleSectionDes des;
     uint64_t textOffset = RollbackTextSize(module);
     module->CollectAnModuleSectionDes(des, textOffset, pc2CallSiteInfoVec_, pc2DeoptVec_);
@@ -322,16 +324,6 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
     LLVMAssembler* ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     return &modulePackage_.back();
-}
-
-void AOTFileGenerator::GenerateMethodToEntryIndexMap()
-{
-    const std::vector<AOTFileInfo::FuncEntryDes> &entries = aotInfo_.GetStubs();
-    uint32_t entriesSize = entries.size();
-    for (uint32_t i = 0; i < entriesSize; ++i) {
-        const AOTFileInfo::FuncEntryDes &entry = entries[i];
-        methodToEntryIndexMap_[entry.indexInKindOrMethodId_] = i;
-    }
 }
 
 Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
@@ -439,7 +431,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     }
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
-    GenerateMethodToEntryIndexMap();
+    aotInfo_.GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename, cfg_.GetTriple());
     if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
@@ -452,7 +444,8 @@ void AOTFileGenerator::SaveSnapshotFile()
     TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
+    const auto &methodToEntryIndexMap = aotInfo_.GetMethodToEntryIndexMap();
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap);
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {
