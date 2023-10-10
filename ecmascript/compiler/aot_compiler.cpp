@@ -26,6 +26,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/platform/file.h"
@@ -42,8 +43,7 @@ std::string GetHelper()
     return str;
 }
 
-CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions,
-                                       OhosPkgArgs &pkgArgs, arg_list_t &pandaFileNames)
+CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions)
 {
     triple_ = runtimeOptions.GetTargetTriple();
     if (runtimeOptions.GetAOTOutputFile().empty()) {
@@ -91,22 +91,21 @@ bool CompilationPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOpti
 bool CompilationPreprocessor::HandleOhosPkgArgs()
 {
     ASSERT(runtimeOptions_.IsTargetCompilerMode());
+    OhosPkgArgs pkgArgs;
     if (!runtimeOptions_.GetCompilerPkgJsonInfo().empty()) {
-        if (pkgArgs_.ParseFromJson(vm_, runtimeOptions_.GetCompilerPkgJsonInfo())) {
+        if (pkgArgs.ParseFromJson(vm_, runtimeOptions_.GetCompilerPkgJsonInfo())) {
             LOG_COMPILER(INFO) << "Parse main pkg info success.";
-            pkgArgs_.Dump();
-            pandaFileNames_.emplace_back(pkgArgs_.GetFullName());
+            pkgsArgs_[pkgArgs.GetFullName()] = pkgArgs;
         } else {
             return false;
         }
     }
-    // for external pkg, dump it first.
-    if (!runtimeOptions_.GetCompilerExternalPkgJsonInfo().empty()) {
-        std::list<OhosPkgArgs> externalList;
-        OhosPkgArgs::ParseListFromJson(vm_, runtimeOptions_.GetCompilerExternalPkgJsonInfo(), externalList);
-        for (const auto &externalPkg : externalList) {
-            externalPkg.Dump();
-        }
+    if (runtimeOptions_.GetCompilerEnableExternalPkg() && !runtimeOptions_.GetCompilerExternalPkgJsonInfo().empty()) {
+        OhosPkgArgs::ParseListFromJson(vm_, runtimeOptions_.GetCompilerExternalPkgJsonInfo(), pkgsArgs_);
+    }
+    for (const auto &pkgInfo : pkgsArgs_) {
+        pandaFileNames_.emplace_back(pkgInfo.first);
+        pkgInfo.second.Dump();
     }
     return true;
 }
@@ -125,7 +124,7 @@ void CompilationPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
 
 bool CompilationPreprocessor::HandlePandaFileNames(const int argc, const char **argv)
 {
-    if (runtimeOptions_.GetCompilerPkgJsonInfo().empty() || !pkgArgs_.Valid()) {
+    if (runtimeOptions_.GetCompilerPkgJsonInfo().empty() || pkgsArgs_.empty()) {
         // if no pkgArgs, last param must be abc file
         std::string files = argv[argc - 1];
         if (!base::StringHelper::EndsWith(files, ".abc")) {
@@ -182,37 +181,14 @@ std::shared_ptr<JSPandaFile> CompilationPreprocessor::CreateAndVerifyJSPandaFile
     JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
     std::shared_ptr<JSPandaFile> jsPandaFile = nullptr;
     if (runtimeOptions_.IsTargetCompilerMode()) {
-        std::string hapPath;
-        uint32_t offset {};
-        uint32_t size {};
-        if (pkgArgs_.Valid()) {
-            hapPath = pkgArgs_.GetPath();
-            offset = pkgArgs_.GetOffset();
-            size = pkgArgs_.GetSize();
-        } else {
-            // for legacy params
-            hapPath = runtimeOptions_.GetHapPath();
-            offset = runtimeOptions_.GetHapAbcOffset();
-            size = runtimeOptions_.GetHapAbcSize();
-        }
-        if (size == 0) {
-            LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
+        auto pkgArgsIter = pkgsArgs_.find(fileName);
+        if (pkgArgsIter == pkgsArgs_.end()) {
+            LOG_COMPILER(ERROR) << "Can not find file in ohos pkgs args. file name: " << fileName;
             return nullptr;
         }
-        std::string realPath;
-        if (!RealPath(hapPath, realPath, false)) {
-            LOG_ECMA(ERROR) << "realpath for hap path failed!";
+        if (!(pkgArgsIter->second.GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
             return nullptr;
         }
-        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
-        if (fileMapMem.GetOriginAddr() == nullptr) {
-            LOG_ECMA(ERROR) << "File mmap failed";
-            return nullptr;
-        }
-        uint8_t *buffer = reinterpret_cast<uint8_t *>(fileMapMem.GetOriginAddr()) + offset;
-        jsPandaFile = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, fileName.c_str());
-        FileUnMap(fileMapMem);
-        fileMapMem.Reset();
     } else {
         jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
     }
@@ -342,15 +318,15 @@ int Main(const int argc, const char **argv)
     {
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
-        OhosPkgArgs pkgArgs;
-        CompilationOptions cOptions(vm, runtimeOptions, pkgArgs, pandaFileNames);
+        std::map<std::string, OhosPkgArgs> pkgArgsMap;
+        CompilationOptions cOptions(vm, runtimeOptions);
 
         CompilerLog log(cOptions.logOption_);
         log.SetEnableCompilerLogTime(cOptions.compilerLogTime_);
         AotMethodLogList logList(cOptions.logMethodsList_);
         PGOProfilerDecoder profilerDecoder(cOptions.profilerIn_, cOptions.hotnessThreshold_);
 
-        CompilationPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgs, profilerDecoder, pandaFileNames);
+        CompilationPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) ||
             !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return 1;
