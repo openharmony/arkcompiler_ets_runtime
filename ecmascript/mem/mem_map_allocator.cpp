@@ -74,8 +74,11 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
         int freeNum = memMapPool_.ShouldFreeMore(cachedSize);
         for (int i = 0; i < freeNum; i++) {
             void *freeMem = memMapPool_.GetRegularMemFromCommitted(size).GetMem();
-            ASSERT(freeMem != nullptr);
-            Free(freeMem, size, isRegular);
+            if (freeMem != nullptr) {
+                Free(freeMem, size, isRegular);
+            } else {
+                return;
+            }
         }
     }
 }
