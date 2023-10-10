@@ -16,6 +16,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
 #include <chrono>
+#include <memory>
 
 #include "ecmascript/elements.h"
 #include "ecmascript/ic/ic_handler.h"
@@ -157,6 +158,9 @@ void PGOProfiler::WaitPGODumpPause()
     if (state_ == State::START) {
         state_ = State::PAUSE;
         condition_.Wait(&mutex_);
+    } else if (state_ == State::FORCE_SAVE) {
+        state_ = State::FORCE_SAVE_PAUSE;
+        condition_.Wait(&mutex_);
     }
 }
 
@@ -168,6 +172,10 @@ void PGOProfiler::WaitPGODumpResume()
     LockHolder lock(mutex_);
     if (state_ == State::PAUSE) {
         state_ = State::START;
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+    } else if (state_ == State::FORCE_SAVE_PAUSE) {
+        state_ = State::FORCE_SAVE;
         Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
     }
@@ -245,7 +253,7 @@ void PGOProfiler::HandlePGOPreDump()
     });
 }
 
-void PGOProfiler::HandlePGODump()
+void PGOProfiler::HandlePGODump(bool force)
 {
     if (!isEnable_) {
         return;
@@ -284,10 +292,12 @@ void PGOProfiler::HandlePGODump()
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
     auto minIntervalOption = vm_->GetJSOptions().GetPGOSaveMinInterval();
     auto mergeMinInterval = std::chrono::milliseconds(minIntervalOption * MS_PRE_SECOND);
-    if (methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) {
+    if ((methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) || (force && methodCount_ > 0)) {
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
         PGOProfilerManager::GetInstance()->Merge(this);
-        PGOProfilerManager::GetInstance()->AsynSave();
+        if (!force) {
+            PGOProfilerManager::GetInstance()->AsynSave();
+        }
         SetSaveTimestamp(std::chrono::system_clock::now());
         methodCount_ = 0;
     }
@@ -723,6 +733,23 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     }
 }
 
+void PGOProfiler::DumpByForce()
+{
+    isForce_ = true;
+    LockHolder lock(mutex_);
+    if (state_ == State::START) {
+        state_ = State::FORCE_SAVE;
+        condition_.Wait(&mutex_);
+    } else if (state_ == State::STOP && !dumpWorkList_.IsEmpty()) {
+        state_ = State::FORCE_SAVE;
+        condition_.Wait(&mutex_);
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
+    } else if (state_ == State::PAUSE) {
+        state_ = State::FORCE_SAVE_PAUSE;
+        condition_.Wait(&mutex_);
+    }
+}
 void PGOProfiler::DumpOpType(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                              uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
 {
