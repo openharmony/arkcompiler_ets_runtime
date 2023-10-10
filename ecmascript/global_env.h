@@ -80,6 +80,7 @@ class JSThread;
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpPrototype, REGEXP_PROTOTYPE_INDEX)                                       \
+    V(JSTaggedValue, RegExpPrototypeClass, REGEXP_PROTOTYPE_CLASS_INDEX)                            \
     V(JSTaggedValue, BuiltinsSetFunction, BUILTINS_SET_FUNCTION_INDEX)                              \
     V(JSTaggedValue, SetPrototype, SET_PROTOTYPE_INDEX)                                             \
     V(JSTaggedValue, BuiltinsMapFunction, BUILTINS_MAP_FUNCTION_INDEX)                              \

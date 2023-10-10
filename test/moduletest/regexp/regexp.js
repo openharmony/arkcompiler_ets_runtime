@@ -311,3 +311,33 @@ let string = '(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s';
 const regex1 = new RegExp(mediaReg);
 let matchArray = string.match(regex1);
 print(matchArray);
+
+// Test regexp.test fastpath
+var protoExec = RegExp.prototype.exec
+RegExp.prototype.exec = function () {
+  return null
+}
+var reg = /a/
+print(reg.test("aaaaa"));
+
+delete RegExp.prototype.exec
+print(reg.test("aaaaa"));
+
+Object.prototype.exec = function () {
+  return null
+}
+print(reg.test("aaaaa"));
+
+delete Object.prototype.exec
+RegExp.prototype.exec = protoExec
+print(reg.test("aaaaa"));
+
+var protoTest = RegExp.prototype.test
+RegExp.prototype.test = function () {
+    return false
+}
+var reg2 = /foo*/
+print(reg2.test("fooooooo"));
+
+RegExp.prototype.test = protoTest
+print(reg2.test("fooooooo"));

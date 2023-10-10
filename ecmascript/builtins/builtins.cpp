@@ -1876,6 +1876,10 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     env->SetRegExpFunction(thread_, regexpFunction);
     env->SetRegExpPrototype(thread_, regPrototype);
     env->SetRegExpExecFunction(thread_, execFunc);
+    // Set RegExp.prototype hclass
+    JSHandle<JSHClass> regPrototypeClass(thread_, regPrototype->GetJSHClass());
+    env->SetRegExpPrototypeClass(thread_, regPrototypeClass.GetTaggedValue());
+
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->SetConstant(ConstantIndex::JS_REGEXP_CLASS_INDEX, regexpFuncInstanceHClass.GetTaggedValue());
 }

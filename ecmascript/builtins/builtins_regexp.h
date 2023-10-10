@@ -101,6 +101,7 @@ private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
+    static constexpr uint32_t LAST_INDEX_OFFSET = 0;
 
     static RegExpExecutor::MatchResult Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                                const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
@@ -124,6 +125,11 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
+                                        const JSHandle<JSTaggedValue> &inputString, bool useCache);
+    static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
+                                               const JSHandle<JSTaggedValue> &inputStr, bool useCache);
+    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> &regexp);
     // 22.2.7.8 MakeMatchIndicesIndexPairArray ( S, indices, groupNames, hasGroups )
     static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
@@ -137,7 +143,8 @@ public:
         SPLIT_TYPE,
         MATCH_TYPE,
         EXEC_TYPE,
-        INTERMEDIATE_REPLACE_TYPE
+        INTERMEDIATE_REPLACE_TYPE,
+        TEST_TYPE
     };
     static RegExpExecResultCache *Cast(TaggedObject *object)
     {
@@ -252,9 +259,10 @@ private:
     static constexpr int RESULT_MATCH_INDEX = 7;
     static constexpr int RESULT_EXEC_INDEX = 8;
     static constexpr int RESULT_INTERMEDIATE_REPLACE_INDEX = 9;
+    static constexpr int RESULT_TEST_INDEX = 10;
     // Extend index used for saving an additional parameter to judge cached
-    static constexpr int EXTEND_INDEX = 10;
-    static constexpr int ENTRY_SIZE = 11;
+    static constexpr int EXTEND_INDEX = 11;
+    static constexpr int ENTRY_SIZE = 12;
 };
 
 class RegExpGlobalResult : public TaggedArray {

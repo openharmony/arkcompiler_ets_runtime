@@ -46,3 +46,9 @@ aaaabb_Bbccc_C
 _xy_B_xy_C
 aaaabbBbcccC
 (s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s,(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(,s,(,s,(,s,(,s,(,s,(,s,(,s,(,s
+false
+true
+false
+true
+false
+true

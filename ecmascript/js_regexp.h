@@ -24,6 +24,8 @@
 namespace panda::ecmascript {
 class JSRegExp : public JSObject {
 public:
+    static constexpr int EXEC_INLINE_PROPERTY_INDEX = 1;
+
     CAST_CHECK(JSRegExp, IsJSRegExp);
 
     static constexpr size_t REGEXP_BYTE_CODE_OFFSET = JSObject::SIZE;
