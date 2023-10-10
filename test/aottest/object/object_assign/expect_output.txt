@@ -11,17 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("object_test") {
-  testonly = true
-
-  test_list = [
-    "object_assign",
-    "object_hasOwnProperty",
-    "object_toString",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
-}
+1
+6
+6
+3
+false
+a,b,c

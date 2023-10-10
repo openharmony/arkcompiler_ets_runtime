@@ -323,6 +323,7 @@ public:
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsJSObject(GateRef obj);
+    GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
@@ -555,6 +556,9 @@ public:
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
+    void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
+        ProfileOperation callback = ProfileOperation());
+    void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation()); // Crawl prototype chain

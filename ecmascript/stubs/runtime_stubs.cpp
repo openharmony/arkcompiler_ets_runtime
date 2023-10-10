@@ -57,6 +57,7 @@
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/builtins/builtins_object.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "macros.h"
 #ifdef ARK_SUPPORT_INTL
@@ -2636,6 +2637,14 @@ DEF_RUNTIME_STUBS(LinkedHashSetComputeCapacity)
     RUNTIME_STUBS_HEADER(LinkedHashSetComputeCapacity);
     JSTaggedValue value = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue(LinkedHashSet::ComputeCapacity(value.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ObjectSlowAssign)
+{
+    RUNTIME_STUBS_HEADER(ObjectSlowAssign);
+    JSHandle<JSObject> toAssign = GetHArg<JSObject>(argv, argc, 0);            // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> source = GetHArg<JSTaggedValue>(argv, argc, 1);    // 1: means the first parameter
+    return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)
