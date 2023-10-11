@@ -51,3 +51,11 @@ abstract class C {
 }
 
 print(C.prototype.bar());
+
+function f26() {
+    function f29() {}
+    f29();
+    throw f29
+}
+const v31 = f26();
+class C33 {}
