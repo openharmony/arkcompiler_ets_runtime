@@ -684,4 +684,67 @@ void BuiltinsObjectStubBuilder::Assign(Variable *result, Label *exit, Label *slo
         }
     }
 }
+
+GateRef BuiltinsObjectStubBuilder::CloneObjectLiteral(GateRef glue, GateRef objLiteral)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    Label loopHead(env);
+    Label loopExit(env);
+    Label loopBack(env);
+    env->SubCfgEntry(&entry);
+    auto klass = LoadHClass(objLiteral);
+    NewObjectStubBuilder objBuilder(this);
+    auto newObj = objBuilder.NewJSObject(glue, klass);
+
+    auto elements = GetElementsArray(objLiteral);
+    auto newElements = CloneProperties(glue, elements);
+    SetElementsArray(VariableType::JS_ANY(), glue, newObj, newElements);
+
+    auto properties = GetPropertiesArray(objLiteral);
+    auto newProperties = CloneProperties(glue, properties);
+    SetPropertiesArray(VariableType::JS_ANY(), glue, newObj, newProperties);
+
+    auto inlinedProperties = GetInlinedPropertiesFromHClass(klass);
+    DEFVARIABLE(idx, VariableType::INT32(), Int32(0));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    Branch(Int32UnsignedLessThan(*idx, inlinedProperties), &loopBack, &loopExit);
+    Bind(&loopBack);
+    {
+        auto value = GetPropertyInlinedProps(objLiteral, klass, *idx);
+        SetPropertyInlinedProps(glue, newObj, klass, value, *idx, VariableType::JS_ANY());
+        idx = Int32Add(*idx, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&loopExit);
+    env->SubCfgExit();
+    return newObj;
+}
+
+GateRef BuiltinsObjectStubBuilder::CloneProperties(GateRef glue, GateRef old)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(idx, VariableType::INT32(), Int32(0));
+    auto newLength = GetLengthOfTaggedArray(old);
+    Label exit(env);
+    Label loopHead(env);
+    Label loopBack(env);
+    NewObjectStubBuilder newObjBuilder(GetEnvironment());
+    auto newArray = newObjBuilder.NewTaggedArray(glue, newLength);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    Branch(Int32UnsignedLessThan(*idx, newLength), &loopBack, &exit);
+    Bind(&loopBack);
+    auto value = GetValueFromTaggedArray(old, *idx);
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArray, *idx, value);
+    idx = Int32Add(*idx, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&exit);
+    env->SubCfgExit();
+    return newArray;
+}
 }  // namespace panda::ecmascript::kungfu
