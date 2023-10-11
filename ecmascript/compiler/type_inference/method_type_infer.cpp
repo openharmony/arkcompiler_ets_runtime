@@ -692,6 +692,9 @@ bool MethodTypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
         ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
         inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     }
+    if (!hasType_ && inValueType.IsUndefinedType()) {
+        inValueType = GateType::AnyType();
+    }
     if (stringIdToGateType_.find(stringId) != stringIdToGateType_.end()) {
         stringIdToGateType_[stringId] = inValueType;
     } else {
