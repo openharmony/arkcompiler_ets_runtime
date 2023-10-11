@@ -313,8 +313,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetArgumentsClass(thread_, argumentsClass);
     SetArgumentsSharedAccessor(env);
 
-    InitializeGlobalObject(env, globalObject);
     InitializeMath(env, objFuncPrototypeVal);
+    InitializeGlobalObject(env, globalObject);
     InitializeAtomics(env, objFuncPrototypeVal);
     InitializeJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncClass);

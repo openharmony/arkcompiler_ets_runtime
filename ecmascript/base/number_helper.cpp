@@ -860,4 +860,15 @@ double RandomGenerator::ToDouble(uint64_t state)
     uint64_t random = (state >> base::RIGHT12) | EXPONENTBITS_RANGE_IN_ONE_AND_TWO;
     return base::bit_cast<double>(random) - 1;
 }
+
+int32_t RandomGenerator::Next(int bits)
+{
+    uint64_t val = XorShift64(&randomState_);
+    return static_cast<int32_t>(val >> (INT64_BITS - bits));
+}
+
+int32_t RandomGenerator::GenerateIdentityHash()
+{
+    return RandomGenerator::Next(INT32_BITS) & INT32_MAX;
+}
 }  // namespace panda::ecmascript::base
