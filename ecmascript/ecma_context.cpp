@@ -670,7 +670,7 @@ void EcmaContext::SetupRegExpResultCache()
 
 void EcmaContext::SetupRegExpGlobalResult()
 {
-    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGloablResultTable(thread_);
+    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGlobalResultTable(thread_);
 }
 
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
