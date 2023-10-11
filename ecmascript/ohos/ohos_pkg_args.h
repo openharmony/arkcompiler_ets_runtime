@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_OHOS_PKG_ARGS_H
-#define ECMASCRIPT_COMPILER_OHOS_PKG_ARGS_H
+#ifndef ECMASCRIPT_OHOS_OHOS_PKG_ARGS_H
+#define ECMASCRIPT_OHOS_OHOS_PKG_ARGS_H
 
 #include <limits>
 

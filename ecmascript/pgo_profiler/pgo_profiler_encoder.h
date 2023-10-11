@@ -39,6 +39,11 @@ public:
 
     void PUBLIC_API Destroy();
 
+    void SetBundleName(const std::string &bundleName)
+    {
+        bundleName_ = bundleName;
+    }
+
     bool IsInitialized() const
     {
         return isInitialized_;
@@ -68,6 +73,7 @@ private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
     bool SaveAndRename(const SaveTask *task = nullptr);
+    void RequestAot();
     bool ResetOutPath(const std::string& profileFileName);
 
     bool isInitialized_ {false};
@@ -81,6 +87,7 @@ private:
     Mutex mutex_;
     RWLock rwLock_;
     std::string moduleName_;
+    std::string bundleName_;
     ApGenMode mode_ {OVERWRITE};
     friend SaveTask;
 };

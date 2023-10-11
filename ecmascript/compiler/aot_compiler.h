@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_COMPILER_H
 #define ECMASCRIPT_COMPILER_AOT_COMPILER_H
 
-#include "ecmascript/compiler/ohos_pkg_args.h"
+#include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 

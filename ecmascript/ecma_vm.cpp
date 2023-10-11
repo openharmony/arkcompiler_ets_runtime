@@ -699,13 +699,4 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
         }
     }
 }
-
-bool EcmaVM::RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
-{
-    if (requestAotCallback_ == nullptr) {
-        LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
-        return false;
-    }
-    return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
-}
 }  // namespace panda::ecmascript
