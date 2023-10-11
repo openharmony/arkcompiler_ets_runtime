@@ -31,7 +31,7 @@ public:
     void NotifyPatchLoaded(const JSPandaFile *baseFile, const JSPandaFile *patchFile);
     void NotifyPatchUnloaded(const JSPandaFile *patchFile);
 
-    DebugInfoExtractor *GetPatchExtractor(const std::string &url) const;
+    std::vector<DebugInfoExtractor *> GetPatchExtractors(const std::string &url) const;
     const JSPandaFile *GetBaseJSPandaFile(const JSPandaFile *jsPandaFile) const;
 
 private:
@@ -39,7 +39,7 @@ private:
 
     const EcmaVM *vm_;
     CUnorderedMap<const JSPandaFile *, const JSPandaFile *> baseJSPandaFiles_ {};
-    CUnorderedMap<std::string, DebugInfoExtractor *> patchExtractors_ {};
+    CUnorderedMap<std::string, std::vector<DebugInfoExtractor *>> patchExtractors_ {};
 };
 }  // namespace panda::ecmascript::tooling
 #endif  // ECMASCRIPT_DEBUGGER_HOT_RELOAD_MANAGER_H

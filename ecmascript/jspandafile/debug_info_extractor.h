@@ -93,7 +93,7 @@ public:
 
     template<class Callback>
     bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column,
-        const std::string &url, const std::string &debugRecordName)
+        const std::string &url, const std::unordered_set<std::string> &debugRecordName)
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
@@ -110,9 +110,13 @@ public:
             panda_file::ClassDataAccessor cda(pandaFile, id);
             CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
             // the recordName for testcases is empty
-            if (!debugRecordName.empty() && recordName != debugRecordName.c_str()
-                && debugRecordName != JSPandaFile::ENTRY_MAIN_FUNCTION) {
-                continue;
+            if (!jsPandaFile_->IsBundlePack()) {
+                if (!debugRecordName.empty()) {
+                    auto iter = debugRecordName.find(std::string(recordName));
+                    if (iter == debugRecordName.end()) {
+                        continue;
+                    }
+                }
             }
             cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
                 methodIds.push_back(mda.GetMethodId());
