@@ -248,6 +248,15 @@ private:
 
     static JSTaggedValue Pad(EcmaRuntimeCallInfo *argv, bool isStart);
     static int32_t ConvertDoubleToInt(double d);
+    static JSTaggedValue CreateArrayFromString(JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim);
+    static JSTaggedValue CreateArrayBySplitString(JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
+        uint32_t thisLength, uint32_t seperatorLength, uint32_t lim);
+    static JSTaggedValue CreateArrayThisStringAndSeperatorStringAreNotEmpty(
+        JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
+        uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
     // 21.1.3.17.1
 };
 }  // namespace panda::ecmascript::builtins
