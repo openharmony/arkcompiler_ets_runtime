@@ -83,7 +83,8 @@ void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule>
 {
     JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE) {
+    if (!thread->GetEcmaVM()->IsWorkerThread() &&
+        (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE)) {
         if (TryToRemoveSO(thread, module)) {
             LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " successfully.";
         } else {
