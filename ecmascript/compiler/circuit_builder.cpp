@@ -26,6 +26,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 
@@ -563,11 +564,17 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isAOTLiteralInfo(env_);
-            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Label notAotLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &notAotLiteralInfo);
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
                     { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                Jump(&exit);
+            }
+            Bind(&notAotLiteralInfo);
+            {
+                result = GetValueFromTaggedArray(cacheValue, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
                 Jump(&exit);
             }
         } else {
