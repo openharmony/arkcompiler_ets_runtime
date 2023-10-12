@@ -23,9 +23,9 @@
         "deps": {
             "components": [
               "faultloggerd",
-              "frame_aware_sched",
               "hitrace",
               "hilog",
+              "qos_manager",
               "runtime_core",
               "c_utils",
               "code_signature"
