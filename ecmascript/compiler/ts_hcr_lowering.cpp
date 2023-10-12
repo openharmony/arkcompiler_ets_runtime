@@ -1435,20 +1435,19 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
         if (id != BuiltinsStubCSigns::ID::NONE) {
             AddProfiling(gate);
             SpeculateCallBuiltin(gate, func, { a0 }, id, true);
+            return;
         }
-    } else {
-        if (a0Type.IsNumberType()) {
+    } else if (a0Type.IsNumberType()) {
             AddProfiling(gate);
             SpeculateCallBuiltin(gate, func, { a0 }, id, false);
-        } else {
-            if (!CanOptimizeAsFastCall(func)) {
-                return;
-            }
-            GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
-            LowerTypedThisCall(gate, func, actualArgc, 1);
-        }
+            return;
     }
+    if (!CanOptimizeAsFastCall(func)) {
+        return;
+    }
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
+    LowerTypedThisCall(gate, func, actualArgc, 1);
 }
 
 void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
