@@ -67,6 +67,7 @@ private:
     GateRef GetSingleCharCodeFromConstantString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
+    GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
 };
 
 class FlatStringStubBuilder : public StubBuilder {

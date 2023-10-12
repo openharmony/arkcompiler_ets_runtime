@@ -359,9 +359,6 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
     Label startGreatEnd(env);
     Label startNotGreatEnd(env);
     Label thisIsHeapobject(env);
-    Label flattenFastPath(env);
-    Label sliceString(env);
-    Label fastSubstring(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -465,26 +462,75 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
             Bind(&countRes);
             {
                 GateRef len = Int32Sub(*to, *from);
-                FlatStringStubBuilder thisFlat(this);
-                thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
-                Bind(&flattenFastPath);
-                {
-                    Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
-                        &sliceString, &fastSubstring);
-                    Bind(&sliceString);
-                    {
-                        NewObjectStubBuilder newBuilder(this);
-                        newBuilder.SetParameters(glue, 0);
-                        newBuilder.AllocSlicedStringObject(res, exit, *from, len, &thisFlat);
-                    }
-                    Bind(&fastSubstring);
-                    StringInfoGateRef stringInfoGate(&thisFlat);
-                    res->WriteVariable(FastSubString(glue, thisValue, *from, len, stringInfoGate));
-                    Jump(exit);
-                }
+                res->WriteVariable(GetSubString(glue, thisValue, *from, len));
+                Jump(exit);
             }
         }
     }
+}
+
+GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label flattenFastPath(env);
+    Label sliceString(env);
+    Label mayGetSliceString(env);
+    Label fastSubstring(env);
+    Label isUtf16(env);
+    Label isUtf8(env);
+    Label afterNew(env);
+    FlatStringStubBuilder thisFlat(this);
+    thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+    Bind(&flattenFastPath);
+    {
+        Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
+            &mayGetSliceString, &fastSubstring);
+        Bind(&mayGetSliceString);
+        {
+            Branch(IsUtf16String(thisValue), &isUtf16, &sliceString);
+            Bind(&isUtf16);
+            {
+                StringInfoGateRef stringInfoGate(&thisFlat);
+                GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
+                GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+                GateRef canBeCompressed = CanBeCompressed(source, len, true);
+                Branch(canBeCompressed, &isUtf8, &sliceString);
+                Bind(&isUtf8);
+                {
+                    NewObjectStubBuilder newBuilder(this);
+                    newBuilder.SetParameters(glue, 0);
+                    newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
+                    Bind(&afterNew);
+                    {
+                        GateRef source1 = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+                        GateRef dst =
+                            ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
+                        CopyUtf16AsUtf8(glue, dst, source1, len);
+                        Jump(&exit);
+                    }
+                }
+            }
+            Bind(&sliceString);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                newBuilder.AllocSlicedStringObject(&result, &exit, from, len, &thisFlat);
+            }
+        }
+        Bind(&fastSubstring);
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        result = FastSubString(glue, thisValue, from, len, stringInfoGate);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)

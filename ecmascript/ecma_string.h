@@ -110,6 +110,8 @@ private:
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static EcmaString *GetSlicedString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+    static EcmaString *GetSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     // require src is LineString
     // not change src data structure
     static inline EcmaString *FastSubUtf8String(const EcmaVM *vm,
@@ -919,10 +921,10 @@ public:
     }
 
     // get
-    static EcmaString *GetSlicedString(const EcmaVM *vm,
+    static EcmaString *GetSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
     {
-        return EcmaString::GetSlicedString(vm, src, start, length);
+        return EcmaString::GetSubString(vm, src, start, length);
     }
 
     bool IsUtf8() const
