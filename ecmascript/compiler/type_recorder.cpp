@@ -374,6 +374,13 @@ std::vector<ElementsKind> TypeRecorder::LoadElementsKinds(int32_t offset) const
         elementsKinds.emplace_back(elementsKind);
     }
 
+    // fiterate ElementsKind::None
+    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
+        if (elementsKinds[i] == ElementsKind::NONE) {
+            elementsKinds[i] = ElementsKind::GENERIC;
+        }
+    }
+
     return elementsKinds;
 }
 
