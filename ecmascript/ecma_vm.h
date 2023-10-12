@@ -272,13 +272,6 @@ public:
         return resolveBufferCallback_;
     }
 
-    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const;
-
-    void SetRequestAotCallback(const RequestAotCallback &cb)
-    {
-        requestAotCallback_ = cb;
-    }
-
     void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
     {
         unloadNativeModuleCallback_ = cb;
@@ -529,9 +522,6 @@ private:
 
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
-
-    // trigger local aot
-    RequestAotCallback requestAotCallback_ {nullptr};
 
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};

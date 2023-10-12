@@ -20,10 +20,11 @@
 #include <string>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/ohos/white_list_helper.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
-
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #include "os/mutex.h"
@@ -172,7 +173,26 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
         LOG_ECMA(ERROR) << "Rename " << tmpOutPath << " --> " << realOutPath_ << " failure!, errno: " << errno;
         return false;
     }
+    RequestAot();
     return true;
+}
+
+void PGOProfilerEncoder::RequestAot()
+{
+    if (bundleName_.empty() || moduleName_.empty()) {
+        return;
+    }
+
+    if (!WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
+        LOG_ECMA(INFO) << "Request local aot failed. App Not in whitelist, bundle: " << bundleName_
+                       << ", module: " << moduleName_;
+        return;
+    }
+
+    LOG_ECMA(INFO) << "Request local aot, bundle: " << bundleName_ << ", module: " << moduleName_;
+    if (!PGOProfilerManager::GetInstance()->RequestAot(bundleName_, moduleName_, RequestAotMode::RE_COMPILE_ON_IDLE)) {
+        LOG_ECMA(ERROR) << "Request aot failed, bundle: " << bundleName_ << ", module: " << moduleName_;
+    }
 }
 
 bool PGOProfilerEncoder::InternalSave(const SaveTask *task)

@@ -38,6 +38,7 @@
         },
         "build": {
             "sub_component": [
+                "//arkcompiler/ets_runtime:app_aot_white_list",
                 "//arkcompiler/ets_runtime:ark_js_packages"
             ],
             "inner_kits": [

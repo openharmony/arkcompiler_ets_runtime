@@ -654,6 +654,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", aot: " << jsOption.GetEnableAOT()
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     vm->ResetPGOProfiler();
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
@@ -855,11 +856,10 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     vm->SetResolveBufferCallback(cb);
 }
 
-void JSNApi::SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
-                    const std::string &moduleName,
-                    int32_t triggerMode)> &cb)
+void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t
+    (const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)> &cb)
 {
-    vm->SetRequestAotCallback(cb);
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetRequestAotCallback(cb);
 }
 
 void JSNApi::SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb)
