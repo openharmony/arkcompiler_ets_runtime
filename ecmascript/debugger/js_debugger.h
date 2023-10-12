@@ -150,6 +150,14 @@ public:
     }
     void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
+    bool GetSingleStepStatus()
+    {
+        return singleStepOnDebuggerStmt_;
+    }
+    void SetSingleStepStatus(bool status)
+    {
+        singleStepOnDebuggerStmt_ = status;
+    }
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
@@ -158,10 +166,12 @@ private:
     bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
     bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
     void DumpBreakpoints();
+    bool IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint);
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};
     NotificationManager *notificationMgr_ {nullptr};
+    bool singleStepOnDebuggerStmt_ {false};
 
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
 };
