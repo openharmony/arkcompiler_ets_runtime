@@ -388,6 +388,40 @@ void JSThread::ResetGuardians()
     glueData_.stableArrayElementsGuardians_ = true;
 }
 
+void JSThread::SetInitialBuiltinHClass(BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *prototypeHClass)
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    auto &entry = glueData_.builtinHClassEntries_.entries[index];
+    LOG_ECMA(DEBUG) << "JSThread::SetInitialBuiltinHClass: "
+                    << "Builtin = " << ToString(type)
+                    << ", builtinHClass = " << builtinHClass
+                    << ", prototypeHClass = " << prototypeHClass;
+    entry.builtinHClass = builtinHClass;
+    entry.prototypeHClass = prototypeHClass;
+}
+
+JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].builtinHClass;
+}
+
+JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].prototypeHClass;
+}
+
+size_t JSThread::GetBuiltinHClassOffset(BuiltinTypeId type, bool isArch32)
+{
+    return GetGlueDataOffset() + GlueData::GetBuiltinHClassOffset(type, isArch32);
+}
+
+size_t JSThread::GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
+{
+    return GetGlueDataOffset() + GlueData::GetBuiltinPrototypeHClassOffset(type, isArch32);
+}
+
 void JSThread::CheckSwitchDebuggerBCStub()
 {
     auto isDebug = GetEcmaVM()->GetJsDebuggerManager()->IsDebugMode();

@@ -29,9 +29,10 @@ JSTaggedValue BuiltinsLazyCallback::Date(JSThread *thread, const JSHandle<JSObje
     ObjectFactory *factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
     ResetLazyInternalAttr(thread, obj, "Date");
-    JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
+
+    JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
     Builtins builtin(thread, factory, vm);
-    builtin.InitializeDate(env, objFuncClass);
+    builtin.InitializeDate(env, objFuncPrototypeVal);
     return env->GetDateFunction().GetTaggedValue();
 }
 
@@ -43,9 +44,10 @@ JSTaggedValue BuiltinsLazyCallback::Set(JSThread *thread, const JSHandle<JSObjec
     ObjectFactory *factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
     ResetLazyInternalAttr(thread, obj, "Set");
+
     Builtins builtin(thread, factory, vm);
-    JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
-    builtin.InitializeSet(env, objFuncClass);
+    JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
+    builtin.InitializeSet(env, objFuncPrototypeVal);
     return env->GetBuiltinsSetFunction().GetTaggedValue();
 }
 
@@ -57,9 +59,10 @@ JSTaggedValue BuiltinsLazyCallback::Map(JSThread *thread, const JSHandle<JSObjec
     ObjectFactory *factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
     ResetLazyInternalAttr(thread, obj, "Map");
+
     Builtins builtin(thread, factory, vm);
-    JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
-    builtin.InitializeMap(env, objFuncClass);
+    JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
+    builtin.InitializeMap(env, objFuncPrototypeVal);
     return env->GetBuiltinsMapFunction().GetTaggedValue();
 }
 
@@ -133,9 +136,10 @@ JSTaggedValue BuiltinsLazyCallback::TypedArray(JSThread *thread, const JSHandle<
 
 ITERATE_TYPED_ARRAY(RESET_TYPED_ARRAY_INTERNAL_ATTR)
 #undef RESET_TYPED_ARRAY_INTERNAL_ATTR
+
     Builtins builtin(thread, factory, vm);
-    JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
-    builtin.InitializeTypedArray(env, objFuncClass);
+    JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
+    builtin.InitializeTypedArray(env, objFuncPrototypeVal);
     return env->GetTypedArrayFunction().GetTaggedValue();
 }
 
@@ -175,9 +179,10 @@ JSTaggedValue BuiltinsLazyCallback::DataView(JSThread *thread, const JSHandle<JS
     ObjectFactory *factory = vm->GetFactory();
     auto env = vm->GetGlobalEnv();
     ResetLazyInternalAttr(thread, obj, "DataView");
+
     Builtins builtin(thread, factory, vm);
-    JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
-    builtin.InitializeDataView(env, objFuncClass);
+    JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
+    builtin.InitializeDataView(env, objFuncPrototypeVal);
     return env->GetDataViewFunction().GetTaggedValue();
 }
 

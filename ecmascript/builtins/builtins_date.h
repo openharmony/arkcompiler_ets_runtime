@@ -282,6 +282,14 @@ public:
         return Span<const base::BuiltinFunctionEntry>(DATE_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 2 : 2 more inline properties in Date.prototype:
+        //   (1) Date.prototype.constructor
+        //   (2) Date.prototype [ @@toPrimitive ]
+        return GetDatePrototypeFunctions().Size() + 2;
+    }
+
 private:
 #define BUILTIN_DATE_FUNCTION_ENTRY(name, func, length, builtinId) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsDate::func, length, kungfu::BuiltinsStubCSigns::builtinId),

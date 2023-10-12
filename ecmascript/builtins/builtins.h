@@ -89,7 +89,7 @@ private:
 
     void InitializeBigIntWithRealm(const JSHandle<GlobalEnv> &realm) const;
 
-    void InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeDate(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjClass) const;
@@ -100,7 +100,7 @@ private:
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
-    void InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
@@ -174,10 +174,10 @@ private:
     void GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method,
                             std::string_view name, JSType type) const;
 
-    void InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeSet(const JSHandle<GlobalEnv> &env);
 
-    void InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeMap(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
@@ -199,7 +199,7 @@ private:
 
     void InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
-    void InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjHClass) const;
+    void InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
 
     void InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
@@ -224,7 +224,7 @@ private:
     void InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void LazyInitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env) const;
 
-    void InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeDataView(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeForPromiseFuncClass(const JSHandle<GlobalEnv> &env);

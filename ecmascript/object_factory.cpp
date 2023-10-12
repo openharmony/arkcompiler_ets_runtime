@@ -391,11 +391,19 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
                                                 bool isOptimized, bool canFastCall)
 {
+    const int inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    return NewEcmaHClass(size, inlinedProps, type, prototype, isOptimized, canFastCall);
+}
+
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+                                                const JSHandle<JSTaggedValue> &prototype,
+                                                bool isOptimized, bool canFastCall)
+{
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
-    newClass->Initialize(thread_, size, type, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS, isOptimized, canFastCall);
+    newClass->Initialize(thread_, size, type, inlinedProps, isOptimized, canFastCall);
     JSHandle<JSHClass> hclass(thread_, newClass);
     hclass->SetPrototype(thread_, prototype.GetTaggedValue());
     return hclass;
@@ -691,10 +699,10 @@ JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedV
     return regexpClass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto)
+JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, JSType::JS_ARRAY, proto);
+    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, inlinedProps, JSType::JS_ARRAY, proto);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSArray::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);

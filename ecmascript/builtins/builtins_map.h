@@ -82,6 +82,16 @@ public:
         return Span<const base::BuiltinFunctionEntry>(MAP_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 4 : 4 more inline properties in Map.prototype
+        //   (1) Map.prototype.constructor
+        //   (2) Map.prototype [ @@toStringTag ]
+        //   (3) Map.prototype [ @@iterator ] ( )
+        //   (4) get Map.prototype.size
+        return GetMapPrototypeFunctions().Size() + 4;
+    }
+
 private:
 #define BUILTIN_MAP_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsMap::func, length, kungfu::BuiltinsStubCSigns::id),

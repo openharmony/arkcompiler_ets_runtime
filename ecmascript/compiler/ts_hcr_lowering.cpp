@@ -17,9 +17,9 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
-#include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
 bool TSHCRLowering::RunTSHCRLowering()
@@ -695,21 +695,54 @@ void TSHCRLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef recei
 
 bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
 {
+    // String: primitive string type only
+    // e.g. let s1 = "ABC"; // OK
+    //      let s2 = new String("DEF"); // Not included, whose type is JSType::JS_PRIMITIVE_REF
+    if (receiverType.IsStringType()) {
+        return TryLowerTypedLdObjByNameForBuiltin(gate, key, BuiltinTypeId::STRING);
+    }
+    // Array: created via either array literal or new Array(...)
+    // e.g. let a1 = [1, 2, 3]; // OK
+    //      let a2 = new Array(1, 2, 3); // OK
+    if (tsManager_->IsArrayTypeKind(receiverType) ||
+        tsManager_->IsBuiltinInstanceType(BuiltinTypeId::ARRAY, receiverType)) {
+        return TryLowerTypedLdObjByNameForBuiltin(gate, key, BuiltinTypeId::ARRAY);
+    }
+    // Other valid types: let x = new X(...);
+    const auto hclassEntries = thread_->GetBuiltinHClassEntries();
+    for (BuiltinTypeId type: BuiltinHClassEntries::BUILTIN_TYPES) {
+        if (type == BuiltinTypeId::ARRAY || type == BuiltinTypeId::STRING || !hclassEntries.EntryIsValid(type)) {
+            continue; // Checked before or invalid
+        }
+        if (!tsManager_->IsBuiltinInstanceType(type, receiverType)) {
+            continue; // Type mismatch
+        }
+        return TryLowerTypedLdObjByNameForBuiltin(gate, key, type);
+    }
+    return false; // No lowering performed
+}
+
+bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+{
     EcmaString *propString = EcmaString::Cast(key.GetTaggedObject());
+    // (1) get length
     EcmaString *lengthString = EcmaString::Cast(thread_->GlobalConstants()->GetLengthString().GetTaggedObject());
     if (propString == lengthString) {
-        if (tsManager_->IsArrayTypeKind(receiverType)) {
+        if (type == BuiltinTypeId::ARRAY) {
             LowerTypedLdArrayLength(gate);
             return true;
-        } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
-            LowerTypedLdTypedArrayLength(gate);
-            return true;
-        } else if (receiverType.IsStringType()) {
+        }
+        if (type == BuiltinTypeId::STRING) {
             LowerTypedLdStringLength(gate);
             return true;
         }
+        if (IsTypedArrayType(type)) {
+            LowerTypedLdTypedArrayLength(gate);
+            return true;
+        }
     }
-    return TryLowerTypedLdObjByNameForBuiltinMethod(gate, receiverType, key);
+    // (2) other functions
+    return TryLowerTypedLdObjByNameForBuiltinMethod(gate, key, type);
 }
 
 bool TSHCRLowering::IsCreateArray(GateRef gate)
@@ -770,28 +803,38 @@ void TSHCRLowering::LowerTypedLdStringLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, GateType receiverType, JSTaggedValue key)
+bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
 {
-    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
-    if (receiverType.IsStringType()) {
-        JSHClass *stringPhc = globalEnv->GetStringPrototype()->GetTaggedObject()->GetClass();
-        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, stringPhc, key);
-        // Unable to handle accessor at the moment
-        if (!plr.IsFound() || plr.IsAccessor()) {
-            return false;
-        }
-        AddProfiling(gate);
-        GateRef str = acc_.GetValueIn(gate, 2);
-        if (!Uncheck()) {
-            builder_.EcmaStringCheck(str);
-        }
-        GateRef plrGate = builder_.Int32(plr.GetData());
-        GateRef strPrototype = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), GlobalEnv::STRING_PROTOTYPE_INDEX);
-        GateRef result = builder_.LoadProperty(strPrototype, plrGate, plr.IsFunction());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-        return true;
+    std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
+    if (!protoField.has_value()) {
+        return false;
     }
-    return false;
+    size_t protoFieldIndex = static_cast<size_t>(*protoField);
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHClass *prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
+    PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, prototypeHClass, key);
+    // Unable to handle accessor at the moment
+    if (!plr.IsFound() || plr.IsAccessor()) {
+        return false;
+    }
+    GateRef receiver = acc_.GetValueIn(gate, 2);
+    if (!Uncheck()) {
+        // For Array type only: array stability shall be ensured.
+        if (type == BuiltinTypeId::ARRAY) {
+            builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
+        }
+        // This check is not required by String, since string is a primitive type.
+        if (type != BuiltinTypeId::STRING) {
+            builder_.BuiltinPrototypeHClassCheck(receiver, type);
+        }
+    }
+    // Successfully goes to typed path
+    AddProfiling(gate);
+    GateRef plrGate = builder_.Int32(plr.GetData());
+    GateRef prototype = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(*protoField));
+    GateRef result = builder_.LoadProperty(prototype, plrGate, plr.IsFunction());
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    return true;
 }
 
 void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)

@@ -71,6 +71,17 @@ public:
         return Span<const base::BuiltinFunctionEntry>(SET_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 5 : 5 more inline properties in Set.prototype
+        //   (1) Set.prototype.constructor
+        //   (2) Set.prototype [ @@toStringTag ]
+        //   (3) Set.prototype [ @@iterator ]
+        //   (4) get Set.prototype.size
+        //   (5) Set.prototype.keys, which is not included in BuiltinsSet::GetSetPrototypeFunctions()
+        return GetSetPrototypeFunctions().Size() + 5;
+    }
+
 private:
 #define BUILTIN_SET_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsSet::func, length, kungfu::BuiltinsStubCSigns::id),

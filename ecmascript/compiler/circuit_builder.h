@@ -379,6 +379,9 @@ public:
     inline GateRef HasConstructorByHClass(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
     inline GateRef LoadHClass(GateRef object);
+    inline GateRef LoadHClassByConstOffset(GateRef object);
+    inline GateRef LoadPrototype(GateRef hclass);
+    inline GateRef LoadPrototypeHClass(GateRef object);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type);
 
@@ -394,6 +397,7 @@ public:
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
+    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);

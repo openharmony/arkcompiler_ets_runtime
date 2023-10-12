@@ -221,6 +221,16 @@ public:
         return Span<const base::BuiltinFunctionEntry>(ARRAY_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 4 : 4 More inlined entries in Array.prototype for the following functions/accessors:
+        //   (1) 'length' accessor
+        //   (2) Array.prototype.constructor, i.e. Array()
+        //   (3) Array.prototype[@@iterator]()
+        //   (4) Array.prototype[@@unscopables]()
+        return GetArrayPrototypeFunctions().Size() + 4;
+    }
+
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, kungfu::BuiltinsStubCSigns::id),
