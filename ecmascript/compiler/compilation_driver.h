@@ -51,7 +51,7 @@ public:
     {
         const auto &methodList = bytecodeInfo_.GetMethodList();
         auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
-        if (pfDecoder_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
+        if (pfDecoder_.Match(jsPandaFile_, recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
             return;
         }
         // update profile and update compile queue
@@ -66,7 +66,7 @@ public:
                 return fullResolvedMethodSet;
             };
 
-        pfDecoder_.Update(recordName, dfs);
+        pfDecoder_.Update(jsPandaFile_, recordName, dfs);
 
         if (fullResolvedMethodSet.size() > 0) {
             bytecodeInfo_.AddRecordName(recordName);
@@ -279,7 +279,7 @@ private:
                 }
                 importNames.emplace_back(importRecord);
                 mainMethodInfo.SetIsPGO(true);
-                pfDecoder_.Update(importRecord, getMainMethodSet);
+                pfDecoder_.Update(jsPandaFile_, importRecord, getMainMethodSet);
                 AddDependList(importRecord, mainMethodOffset, importList);
             }
         };

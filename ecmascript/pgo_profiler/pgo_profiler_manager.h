@@ -46,6 +46,8 @@ public:
     {
         // For FA jsvm, merge with existed output file
         encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
+        // InitData in appspawn
+        encoder_->InitializeData();
     }
 
     void SetBundleName(const std::string &bundleName)
@@ -130,6 +132,14 @@ public:
     {
         if (encoder_) {
             return encoder_->GetPandaFileId(abcName, entryId);
+        }
+        return false;
+    }
+
+    bool GetPandaFileDesc(ApEntityId abcId, CString &desc) const
+    {
+        if (encoder_) {
+            return encoder_->GetPandaFileDesc(abcId, desc);
         }
         return false;
     }

@@ -22,6 +22,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
@@ -1003,24 +1004,61 @@ ApEntityId PGOProfiler::GetMethodAbcId(JSFunction *jsFunction)
     return abcId;
 }
 
-ApEntityId PGOProfiler::GetRecordId(const CString &recordName)
-{
-    ApEntityId recordId(0);
-    recordInfos_->GetRecordPool()->TryAdd(recordName, recordId);
-    return recordId;
-}
-
 ProfileType PGOProfiler::GetRecordProfileType(JSFunction *jsFunction, const CString &recordName)
 {
-    return GetRecordProfileType(GetMethodAbcId(jsFunction), GetRecordId(recordName));
+    CString pfName;
+    auto jsMethod = jsFunction->GetMethod();
+    if (jsMethod.IsMethod()) {
+        const auto *pf = Method::Cast(jsMethod)->GetJSPandaFile();
+        if (pf != nullptr) {
+            pfName = pf->GetJSPandaFileDesc();
+        }
+    }
+    const auto &pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(pfName);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "Get record profile type failed. pf is null, pfName: " << pfName
+                        << ", recordName: " << recordName;
+        return ProfileType::PROFILE_TYPE_NONE;
+    }
+    return GetRecordProfileType(pf, GetMethodAbcId(jsFunction), recordName);
 }
 
 ProfileType PGOProfiler::GetRecordProfileType(ApEntityId abcId, const CString &recordName)
 {
-    return GetRecordProfileType(abcId, GetRecordId(recordName));
+    CString pfDesc;
+    PGOProfilerManager::GetInstance()->GetPandaFileDesc(abcId, pfDesc);
+    const auto &pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(pfDesc);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "Get record profile type failed. pf is null, pfDesc: " << pfDesc
+                        << ", recordName: " << recordName;
+        return ProfileType::PROFILE_TYPE_NONE;
+    }
+    return GetRecordProfileType(pf, abcId, recordName);
 }
 
-ProfileType PGOProfiler::GetRecordProfileType(ApEntityId abcId, ApEntityId recordId)
+ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
+                                              const CString &recordName)
+{
+    ASSERT(pf != nullptr);
+    JSRecordInfo recordInfo;
+    bool hasRecord = pf->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "Get recordInfo failed. recordName: " << recordName;
+        return ProfileType::PROFILE_TYPE_NONE;
+    }
+    ProfileType recordType {0};
+    if (recordInfo.moduleRecordIdx != -1) {
+        recordType = GetModuleRecordProfileType(abcId, recordInfo.moduleRecordIdx);
+        recordInfos_->GetRecordPool()->AddModuleRecordType(recordType, recordName);
+        return recordType;
+    }
+    ApEntityId recordId {0};
+    recordInfos_->GetRecordPool()->TryAdd(recordName, recordId);
+    recordType = GetLocalRecordProfileType(abcId, recordId);
+    return recordType;
+}
+
+ProfileType PGOProfiler::GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId)
 {
     return {abcId, recordId, ProfileType::Kind::LocalRecordId};
 }
@@ -1083,5 +1121,10 @@ void PGOProfiler::WorkList::Iterate(Callback callback) const
         callback(current);
         current = next;
     }
+}
+
+ProfileType PGOProfiler::GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId)
+{
+    return {abcId, moduleRecordId, ProfileType::Kind::ModuleRecordId};
 }
 } // namespace panda::ecmascript::pgo

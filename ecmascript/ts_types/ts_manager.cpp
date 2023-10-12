@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/ts_types/ts_manager.h"
+#include <utility>
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -172,7 +173,8 @@ int TSManager::GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor)
     if (HasOffsetFromGT(classGT)) {
         uint32_t literalOffset = 0;
         CString recordName = "";
-        std::tie(recordName, literalOffset) = GetOffsetFromGt(classGT);
+        CString abcNormalizedDesc = "";
+        std::tie(abcNormalizedDesc, recordName, literalOffset) = GetOffsetFromGt(classGT);
         GetCompilationDriver()->AddResolvedMethod(recordName, literalOffset);
     }
     // make sure already setting correct curCP_ and curCPID_ before calling this method

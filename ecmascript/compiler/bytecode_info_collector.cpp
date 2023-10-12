@@ -128,7 +128,7 @@ void BytecodeInfoCollector::ProcessClasses()
 
             SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
-            pfDecoder_.MatchAndMarkMethod(recordName, name.c_str(), methodId);
+            pfDecoder_.MatchAndMarkMethod(jsPandaFile_, recordName, name.c_str(), methodId);
         });
     }
     // class Construct need to use new target, can not fastcall

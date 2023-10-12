@@ -42,6 +42,7 @@ public:
         BuiltinsId,
         LegacyKind = BuiltinsId,
         LocalRecordId,
+        ModuleRecordId,
         TotalKinds,
         UnknowId
     };
@@ -58,6 +59,7 @@ public:
     static_assert(KindBits::IsValid(Kind::TotalKinds));
 
     ProfileType() = default;
+    explicit ProfileType(uint64_t rawType) : type_(rawType) {};
     ProfileType(PGOContext &context, ProfileTypeRef typeRef);
     ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId)
     {

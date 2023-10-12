@@ -496,7 +496,7 @@ public:
             idGTMap_.emplace(id, gt);
         }
         if (!isImportType && !id.IsPGOType()) {
-            auto value = std::make_pair(recordName, id.GetTypeId());
+            auto value = std::make_tuple(id.GetJSPandaFile()->GetNormalizedFileDesc(), recordName, id.GetTypeId());
             gtLiteralOffsetMap_.emplace(gt, value);
         }
     }
@@ -516,7 +516,7 @@ public:
         return gtLiteralOffsetMap_.find(gt) != gtLiteralOffsetMap_.end();
     }
 
-    inline std::pair<CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
+    inline std::tuple<CString, CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
     {
         return gtLiteralOffsetMap_.at(gt);
     }
@@ -1114,7 +1114,7 @@ private:
     SnapshotData snapshotData_ {};
 
     std::unordered_map<GlobalTypeID, GlobalTSTypeRef, HashGlobalTypeID> idGTMap_ {};
-    std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
+    std::map<GlobalTSTypeRef, std::tuple<CString, CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};
