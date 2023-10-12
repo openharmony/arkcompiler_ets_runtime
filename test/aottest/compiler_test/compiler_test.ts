@@ -55,4 +55,15 @@ function f59() : number[] {}
 class C60 extends f59 {}
 const v75 : number = new C60()
 
+// case6: NewJSError Stack Overflow
+function f230():string {
+    const v292:number = -2;
+    const v303:number[] = [1000,-1970969808,536870887,257,17933,11,1024];
+    try { new v292(64, ...v303, ...v303, ...v303, ...v303); } catch (e) {}
+    return "bigint";
+}
+for (let v316:number = 0; v316 < 5; v316++) {
+    f230();
+}
+
 print("compiler success");
