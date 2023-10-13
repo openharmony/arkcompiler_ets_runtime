@@ -73,3 +73,7 @@ bfoo(2);
 
 var array = [1];
 array.forEach(bfoo);
+
+const v6 = []
+const v21 = Float32Array.bind(v6, 1, 2);
+print(v21)
