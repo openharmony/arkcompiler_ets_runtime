@@ -111,15 +111,9 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     }
     auto breakpointAtDebugger = FindBreakpoint(method, bcOffset);
     // if a breakpoint is set on the same line as debugger stmt,
-    // then the debugger stmt is effective when
-    // the breakpoint has no condition or its condition is not satisfied,
-    // and ineffective when its condition has been met
+    // the debugger stmt is ineffective
     if (breakpointAtDebugger.has_value()) {
-        // check if it has any condition and which is satisfied
-        if (IsBreakpointCondSatisfied(breakpointAtDebugger)) {
-            LOG_DEBUGGER(INFO) << "HandleDebuggerStmt: debugger already paused on breakpoint";
-            return false;
-        }
+        return false;
     }
     JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
     hooks_->DebuggerStmt(location);
