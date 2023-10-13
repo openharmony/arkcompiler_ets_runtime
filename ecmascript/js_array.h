@@ -59,9 +59,10 @@ public:
 
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TRACE_INDEX_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(TraceIndex, uint32_t, TRACE_INDEX_OFFSET, SIZE)
+    ACCESSORS_PRIMITIVE_FIELD(TraceIndex, uint32_t, TRACE_INDEX_OFFSET, TRACK_INFO_OFFSET)
+    ACCESSORS(TrackInfo, TRACK_INFO_OFFSET, SIZE)
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TRACK_INFO_OFFSET, SIZE)
 
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
@@ -90,13 +91,38 @@ public:
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
-    static void Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &fn);
+    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
+    static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
+                             const JSHandle<JSTaggedValue> &fn);
+};
+
+class TrackInfo : public TaggedObject {
+public:
+    static TrackInfo *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsTrackInfoObject());
+        return static_cast<TrackInfo *>(object);
+    }
+
+    static constexpr size_t CACHED_HCLASS_OFFSET = TaggedObjectSize();
+    ACCESSORS(CachedHClass, CACHED_HCLASS_OFFSET, CACHED_FUNC_OFFSET);
+    ACCESSORS(CachedFunc, CACHED_FUNC_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    // define BitField
+    static constexpr size_t ELEMENTS_KIND_BITS = 8;
+    FIRST_BIT_FIELD(BitField, ElementsKind, ElementsKind, ELEMENTS_KIND_BITS);
+
+    DECL_DUMP()
+
+    DECL_VISIT_OBJECT(CACHED_HCLASS_OFFSET, BIT_FIELD_OFFSET);
 };
 }  // namespace panda::ecmascript
 

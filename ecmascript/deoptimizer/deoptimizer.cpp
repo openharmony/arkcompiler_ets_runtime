@@ -17,7 +17,7 @@
 #include <cmath>
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -413,6 +413,12 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
 void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
 {
+    if (thread_->IsPGOProfilerEnable()) {
+        auto profileTypeInfo = method->GetProfileTypeInfo();
+        if (profileTypeInfo.IsUndefined()) {
+            SlowRuntimeStub::NotifyInlineCache(thread_, method);
+        }
+    }
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
         LOG_COMPILER(INFO) << "Check Type: " << checkType;

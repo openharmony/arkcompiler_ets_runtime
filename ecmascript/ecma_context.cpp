@@ -38,6 +38,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/platform/log.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -100,6 +101,7 @@ bool EcmaContext::Initialize()
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
     SetupRegExpResultCache();
+    SetupRegExpGlobalResult();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
@@ -256,13 +258,10 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     CString entry = entryPoint.data();
-    if (jsPandaFile->IsMergedPF()) {
-        moduleName = entry;
-    }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
@@ -272,13 +271,17 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundlePack()) {
+            moduleName = entry;
+        }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
-        func->SetModule(thread_, module);
+        method->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
-        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(moduleName);
-        func->SetModule(thread_, recordName);
+        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);
+        method->SetModule(thread_, recordName);
     }
     vm_->CheckStartCpuProfiler();
 
@@ -290,9 +293,6 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
-            if (thread_->IsPGOProfilerEnable()) {
-                vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
-            }
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
@@ -319,10 +319,14 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     JSHandle<CjsExports> exports = factory_->NewCjsExports();
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
-    // Cjs's module slot of the function stores the recordName.
-    filename.Update(func->GetModule());
-    CString fullName = ConvertToString(filename.GetTaggedValue());
-    dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
+    if (jsPandaFile->IsBundlePack()) {
+        ModulePathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    } else {
+        filename.Update(func->GetModule());
+        ASSERT(filename->IsString());
+        CString fullName = ConvertToString(filename.GetTaggedValue());
+        dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
+    }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
@@ -570,7 +574,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
 bool EcmaContext::HasPendingJob()
@@ -664,6 +668,11 @@ void EcmaContext::SetupRegExpResultCache()
     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::SetupRegExpGlobalResult()
+{
+    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGloablResultTable(thread_);
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -671,6 +680,7 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     if (moduleManager_) {
         moduleManager_->Iterate(v);

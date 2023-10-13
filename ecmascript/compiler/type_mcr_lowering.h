@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeMCRLowering Process
@@ -95,34 +96,22 @@ namespace panda::ecmascript::kungfu {
 //                                  |      JS_BYTECODE       |
 //                                  +------------------------+
 
-class TypeMCRLowering {
+class TypeMCRLowering : public PassVisitor {
 public:
-    TypeMCRLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
-                 bool enableLog, const std::string& name, bool onHeapCheck)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager),
-          enableLog_(enableLog), methodName_(name), onHeapCheck_(onHeapCheck) {}
+    TypeMCRLowering(Circuit *circuit, RPOVisitor *visitor,
+                    CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk, bool onHeapCheck)
+        : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager), onHeapCheck_(onHeapCheck) {}
 
     ~TypeMCRLowering() = default;
 
-    void RunTypeMCRLowering();
+    GateRef VisitGate(GateRef gate) override;
 
 private:
-    bool IsLogEnabled() const
-    {
-        return enableLog_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
-
     bool IsOnHeap() const
     {
         return onHeapCheck_;
     }
-
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
@@ -145,7 +134,7 @@ private:
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
-    void LowerFlattenStringCheck(GateRef gate, GateRef glue);
+    void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
     void LowerLoadProperty(GateRef gate);
@@ -194,6 +183,9 @@ private:
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerInlineAccessorCheck(GateRef gate);
+    void LowerStringEqual(GateRef gate, GateRef glue);
+    void LowerTypeOfCheck(GateRef gate);
+    void LowerTypeOf(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -229,14 +221,13 @@ private:
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
+    GateRef GetLengthFromString(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
-    bool enableLog_ {false};
-    std::string methodName_;
     bool onHeapCheck_ {false};
 };
 }  // panda::ecmascript::kungfu

@@ -20,6 +20,38 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/waiter_list.h"
 
+// List of functions in Atomics.
+// V(name, func, length, stubIndex)
+// where BuiltinsAtomics::func refers to the native implementation of Atomics[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+// The following functions are not implemented yet:
+//   - Atomics.waitAsync ( typedArray, index, value, timeout )
+#define BUILTIN_ATOMICS_FUNCTIONS(V)                                                         \
+    /* Atomics.add ( typedArray, index, value ) */                                          \
+    V("add", Add, 3, INVALID)                                                               \
+    /* Atomics.and ( typedArray, index, value ) */                                          \
+    V("and", And, 3, INVALID)                                                               \
+    /* Atomics.compareExchange ( typedArray, index, expectedValue, replacementValue ) */    \
+    V("compareExchange", CompareExchange, 4, INVALID)                                       \
+    /* Atomics.exchange ( typedArray, index, value ) */                                     \
+    V("exchange", Exchange, 3, INVALID)                                                     \
+    /* Atomics.isLockFree ( size ) */                                                       \
+    V("isLockFree", IsLockFree, 1, INVALID)                                                 \
+    /* Atomics.load ( typedArray, index ) */                                                \
+    V("load", Load, 2, INVALID)                                                             \
+    /* Atomics.notify ( typedArray, index, count ) */                                       \
+    V("notify", Notify, 3, INVALID)                                                         \
+    /* Atomics.or ( typedArray, index, value ) */                                           \
+    V("or", Or, 3, INVALID)                                                                 \
+    /* Atomics.store ( typedArray, index, value ) */                                        \
+    V("store", Store, 3, INVALID)                                                           \
+    /* Atomics.sub ( typedArray, index, value ) */                                          \
+    V("sub", Sub, 3, INVALID)                                                               \
+    /* Atomics.wait ( typedArray, index, value, timeout ) */                                \
+    V("wait", Wait, 4, INVALID)                                                             \
+    /* Atomics.xor ( typedArray, index, value ) */                                          \
+    V("xor", Xor, 3, INVALID)
+
 namespace panda::ecmascript::builtins {
 enum class WaitResult: uint8_t {OK = 0, NOT_EQ, TIME_OUT};
 
@@ -50,7 +82,20 @@ public:
     // 25.4.13 Atomics.xor ( typedArray, index, value )
     static JSTaggedValue Xor(EcmaRuntimeCallInfo *argv);
 
+    static Span<const base::BuiltinFunctionEntry> GetAtomicsFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(ATOMICS_FUNCTIONS);
+    }
+
 private:
+#define BUILTINS_ATOMICS_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsAtomics::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array ATOMICS_FUNCTIONS  = {
+        BUILTIN_ATOMICS_FUNCTIONS(BUILTINS_ATOMICS_FUNCTION_ENTRY)
+    };
+#undef BUILTINS_ATOMICS_FUNCTION_ENTRY
+
     static uint32_t Signal(JSHandle<JSTaggedValue> &arrayBuffer, const size_t &index, double wakeCount);
     template <typename T>
     static WaitResult DoWait(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
@@ -91,4 +136,4 @@ private:
     static constexpr int ARGS_NUMBER = 2;
 };
 }  // namespace panda::ecmascript::builtins
-#endif  // ECMASCRIPT_BUILTINS_BUILTINS_MATH_H
+#endif  // ECMASCRIPT_BUILTINS_BUILTINS_MATH_H

@@ -45,7 +45,30 @@ public:
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
         // For FA jsvm, merge with existed output file
-        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::MERGE);
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
+        // InitData in appspawn
+        encoder_->InitializeData();
+    }
+
+    void SetBundleName(const std::string &bundleName)
+    {
+        if (encoder_) {
+            encoder_->SetBundleName(bundleName);
+        }
+    }
+
+    void SetRequestAotCallback(const RequestAotCallback &cb)
+    {
+        requestAotCallback_ = cb;
+    }
+
+    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
+    {
+        if (requestAotCallback_ == nullptr) {
+            LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
+            return false;
+        }
+        return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
     }
 
     void Destroy()
@@ -74,6 +97,8 @@ public:
     void Destroy(PGOProfiler *profiler)
     {
         if (profiler != nullptr) {
+            profiler->HandlePGOPreDump();
+            profiler->WaitPGODumpFinish();
             Merge(profiler);
             delete profiler;
         }
@@ -89,11 +114,34 @@ public:
         }
     }
 
-    void SamplePandaFileInfo(uint32_t checksum)
+    void SamplePandaFileInfo(uint32_t checksum, const CString &abcName)
     {
         if (encoder_) {
-            encoder_->SamplePandaFileInfo(checksum);
+            encoder_->SamplePandaFileInfo(checksum, abcName);
         }
+    }
+
+    void SetModuleName(const std::string &moduleName)
+    {
+        if (encoder_) {
+            encoder_->ResetOutPathByModuleName(moduleName);
+        }
+    }
+
+    bool GetPandaFileId(const CString &abcName, ApEntityId &entryId) const
+    {
+        if (encoder_) {
+            return encoder_->GetPandaFileId(abcName, entryId);
+        }
+        return false;
+    }
+
+    bool GetPandaFileDesc(ApEntityId abcId, CString &desc) const
+    {
+        if (encoder_) {
+            return encoder_->GetPandaFileDesc(abcId, desc);
+        }
+        return false;
     }
 
     void SetApGenMode(ApGenMode mode)
@@ -171,6 +219,7 @@ private:
     }
 
     std::unique_ptr<PGOProfilerEncoder> encoder_;
+    RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
 };
 } // namespace panda::ecmascript::pgo

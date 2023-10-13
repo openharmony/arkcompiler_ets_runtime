@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
@@ -1281,6 +1282,36 @@ private:
     void* data_ {nullptr};
 };
 
+/**
+ * An external exception handler.
+ */
+class PUBLIC_API TryCatch {
+public:
+    explicit TryCatch(const EcmaVM *ecmaVm) : ecmaVm_(ecmaVm) {};
+
+    /**
+     * Consumes the exception by default if not rethrow explicitly.
+     */
+    ~TryCatch();
+
+    bool HasCaught() const;
+    void Rethrow();
+    Local<ObjectRef> GetAndClearException();
+
+    NO_COPY_SEMANTIC(TryCatch);
+    NO_MOVE_SEMANTIC(TryCatch);
+
+private:
+    // Disable dynamic allocation
+    void* operator new(size_t size) = delete;
+    void operator delete(void*, size_t) = delete;
+    void* operator new[](size_t size) = delete;
+    void operator delete[](void*, size_t) = delete;
+
+    const EcmaVM *ecmaVm_ {nullptr};
+    bool rethrow_ {false};
+};
+
 class PUBLIC_API JSNApi {
 public:
     struct DebugOption {
@@ -1408,6 +1439,7 @@ public:
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+    static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
 
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);

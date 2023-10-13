@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -153,6 +154,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetIsAllTaggedProp(true);
     SetElementsKind(ElementsKind::GENERIC);
     SetTransitions(thread, JSTaggedValue::Undefined());
+    SetParent(thread, JSTaggedValue::Undefined());
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
@@ -184,6 +186,7 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
     newJsHClass->SetTransitions(thread, JSTaggedValue::Undefined());
+    newJsHClass->SetParent(thread, JSTaggedValue::Undefined());
     newJsHClass->SetProtoChangeDetails(thread, JSTaggedValue::Null());
     newJsHClass->SetEnumCache(thread, JSTaggedValue::Null());
     // reuse Attributes first.
@@ -349,6 +352,20 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
     return newJsHClass;
 }
 
+JSHandle<JSHClass> JSHClass::CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                               const JSHandle<JSTaggedValue> &key,
+                                               const JSHandle<JSTaggedValue> &proto)
+{
+    // 1. new a hclass
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
+    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
+
+    // 2. Add newJsHClass to old jshclass's parent's transitions.
+    AddProtoTransitions(thread, jshclass, newJsHClass, key, proto);
+    // parent is the same as jshclass, already copy
+    return newJsHClass;
+}
+
 JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &proto)
 {
@@ -361,15 +378,7 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
         }
     }
 
-    // 2. new a hclass
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
-
-    // 3. Add newJsHClass to old jshclass's parent's transitions.
-    AddProtoTransitions(thread, jshclass, newJsHClass, key, proto);
-
-    // parent is the same as jshclass, already copy
-    return newJsHClass;
+    return CloneWithAddProto(thread, jshclass, key, proto);
 }
 
 void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
@@ -481,38 +490,48 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
     if (newKind == current) {
         return;
     }
-    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
-        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    auto newKindIter = arrayHClassIndexMap.find(newKind);
+    if (newKindIter != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
         array->SetClass(hclass);
     }
 }
 
-void JSHClass::TransitToElementsKind(
+bool JSHClass::TransitToElementsKind(
     const JSThread *thread, const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &value, ElementsKind kind)
 {
     if (!object->IsJSArray()) {
-        return;
+        return false;
     }
     ElementsKind current = object->GetJSHClass()->GetElementsKind();
     if (Elements::IsGeneric(current)) {
-        return;
+        return false;
     }
     auto newKind = Elements::ToElementsKind(value.GetTaggedValue(), kind);
     // Merge current kind and new kind
     newKind = Elements::MergeElementsKind(current, newKind);
     if (newKind == current) {
-        return;
+        return false;
     }
-    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
-        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    auto newKindIter = arrayHClassIndexMap.find(newKind);
+    if (newKindIter != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
         object->SetClass(hclass);
+        // Update TrackInfo
+        if (!thread->IsPGOProfilerEnable()) {
+            return true;
+        }
+        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, newKind);
+        return true;
     }
+    return false;
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -831,5 +850,34 @@ bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc,
         layout->DumpFieldIndexForProfile(i, desc, kind);
     }
     return true;
+}
+
+uint32_t JSHClass::ComputeHashcode(const JSHClass *hclass)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (hclass->IsDictionaryMode()) {
+        return 0;
+    }
+
+    CString result;
+    LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    int element = static_cast<int>(hclass->NumberOfProps());
+    for (int i = 0; i < element; i++) {
+        auto key = layout->GetKey(i);
+        if (key.IsString()) {
+            result += EcmaStringAccessor(key).ToCString();
+            auto attr = layout->GetAttr(i);
+            result += static_cast<int32_t>(attr.GetTrackType());
+            result += attr.IsAccessor();
+        }
+    }
+
+    uint32_t hash = 0;
+    Span<const char> sp(result.c_str(), result.size());
+    for (auto c : sp) {
+        constexpr size_t SHIFT = 5;
+        hash = (hash << SHIFT) - hash + c;
+    }
+    return hash;
 }
 }  // namespace panda::ecmascript

@@ -43,18 +43,22 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         return object;
     }
     if (Expand(isPromoted)) {
-        if (!isPromoted) {
+        if (!isPromoted && !heap_->NeedStopCollection()) {
             heap_->TryTriggerIncrementalMarking();
             heap_->TryTriggerIdleCollection();
             heap_->TryTriggerConcurrentMarking();
         }
         object = allocator_.Allocate(size);
-    } else if (heap_->GetJSThread()->IsMarking()) {
+    } else if (heap_->GetJSThread()->IsMarking() || !heap_->IsEmptyIdleTask()) {
         // Temporary adjust semi space capacity
         if (heap_->IsFullMark()) {
             overShootSize_ = heap_->GetOldSpace()->GetMaximumCapacity() - heap_->GetOldSpace()->GetInitialCapacity();
         } else {
-            overShootSize_ = heap_->GetEcmaVM()->GetEcmaParamConfiguration().GetSemiSpaceOvershootSize();
+            size_t stepOverShootSize = heap_->GetEcmaVM()->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
+            size_t maxOverShootSize = std::max(initialCapacity_ / 2, stepOverShootSize); // 2: half
+            if (overShootSize_ < maxOverShootSize) {
+                overShootSize_ += stepOverShootSize;
+            }
         }
 
         if (Expand(isPromoted)) {
@@ -71,7 +75,8 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 
 bool LinearSpace::Expand(bool isPromoted)
 {
-    if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_) {
+    if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_ &&
+        !heap_->NeedStopCollection()) {
         return false;
     }
 
@@ -180,13 +185,13 @@ void SemiSpace::Restart()
 
 uintptr_t SemiSpace::AllocateSync(size_t size)
 {
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     return Allocate(size, true);
 }
 
 bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 {
-    os::memory::LockHolder lock(lock_);
+    LockHolder lock(lock_);
     if (committedSize_ + region->GetCapacity() > maximumCapacity_ + overShootSize_) {
         return false;
     }
@@ -219,6 +224,23 @@ void SemiSpace::SetWaterLine()
         LOG_GC(INFO) << "SetWaterLine: No region survival in current gc, current region available size: "
                      << allocator_.Available();
     }
+}
+
+void SemiSpace::SetWaterLineWithoutGC()
+{
+    waterLine_ = allocator_.GetTop();
+    Region *last = GetCurrentRegion();
+    if (last != nullptr) {
+        last->SetGCFlag(RegionGCFlags::HAS_AGE_MARK);
+
+        EnumerateRegions([&last](Region *current) {
+            if (current != last) {
+                current->SetGCFlag(RegionGCFlags::BELOW_AGE_MARK);
+            }
+        });
+        survivalObjectSize_ += allocateAfterLastGC_;
+    }
+    allocateAfterLastGC_ = 0;
 }
 
 size_t SemiSpace::GetHeapObjectSize() const

@@ -15,6 +15,9 @@
 
 #include "ecmascript/mem/heap-inl.h"
 
+#include <chrono>
+#include <thread>
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
@@ -382,6 +385,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         ecmaVm_->GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
     }
     gcType_ = gcType;
+    GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
@@ -410,7 +414,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                 }
             }
             SetMarkType(MarkType::MARK_FULL);
-            if (fullConcurrentMarkRequested) {
+            if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
                 LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
                 oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
                 TriggerConcurrentMarking();
@@ -437,6 +441,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             UNREACHABLE();
             break;
     }
+    GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResume();
 
     // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
     if (shouldThrowOOMError_) {
@@ -726,8 +731,9 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
         oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
     }
-    if (isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
-        GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) {
+    if ((isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
+        GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) &&
+        !NeedStopCollection()) {
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         if (!oldGCRequested_) {
             return true;
@@ -853,8 +859,7 @@ void Heap::TryTriggerIncrementalMarking()
 
     double oldSpaceRemainSize = (oldSpaceAllocToLimitDuration - oldSpaceMarkDuration) * oldSpaceAllocSpeed;
     // mark finished before allocate limit
-    if ((oldSpaceRemainSize > 0 && oldSpaceRemainSize < DEFAULT_REGION_SIZE) ||
-        GetHeapObjectSize() >= globalSpaceAllocLimit_) {
+    if ((oldSpaceRemainSize < DEFAULT_REGION_SIZE) || GetHeapObjectSize() >= globalSpaceAllocLimit_) {
         // The object allocated in incremental marking should lower than limit,
         // otherwise select trigger concurrent mark.
         size_t allocateSize = oldSpaceAllocSpeed * oldSpaceMarkDuration;
@@ -974,6 +979,7 @@ void Heap::PrepareRecordRegionsForReclaim()
 
 void Heap::TriggerConcurrentMarking()
 {
+    ASSERT(idleTask_ != IdleTaskType::INCREMENTAL_MARK);
     if (idleTask_ == IdleTaskType::YOUNG_GC && IsFullMark()) {
         ClearIdleTask();
         DisableNotifyIdle();
@@ -985,7 +991,7 @@ void Heap::TriggerConcurrentMarking()
 
 void Heap::WaitRunningTaskFinished()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     while (runningTaskCount_ > 0) {
         waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
     }
@@ -993,7 +999,7 @@ void Heap::WaitRunningTaskFinished()
 
 void Heap::WaitClearTaskFinished()
 {
-    os::memory::LockHolder holder(waitClearTaskFinishedMutex_);
+    LockHolder holder(waitClearTaskFinishedMutex_);
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
     }
@@ -1023,7 +1029,7 @@ void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 
 void Heap::IncreaseTaskCount()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     runningTaskCount_++;
 }
 
@@ -1043,6 +1049,7 @@ void Heap::ChangeGCParams(bool inBackground)
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
         maxMarkTaskCount_ = 1;
         maxEvacuateTaskCount_ = 1;
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(false);
     } else {
         LOG_GC(INFO) << "app is not inBackground";
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
@@ -1054,6 +1061,7 @@ void Heap::ChangeGCParams(bool inBackground)
         maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
             Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
         maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(true);
     }
 }
 
@@ -1112,15 +1120,83 @@ void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
     }
 }
 
+void Heap::NotifyFinishColdStart(bool isMainThread)
+{
+    {
+        LockHolder holder(finishColdStartMutex_);
+        if (!onStartupEvent_) {
+            return;
+        }
+
+        // set overshoot size to increase gc threashold larger 8MB than current heap size.
+        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
+        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        // overshoot size should be larger than 0.
+        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+        GetNewSpace()->SetWaterLineWithoutGC();
+        onStartupEvent_ = false;
+    }
+
+    if (isMainThread) {
+        markType_ = MarkType::MARK_FULL;
+        TriggerConcurrentMarking();
+    }
+}
+
+void Heap::NotifyFinishColdStartSoon()
+{
+    if (!onStartupEvent_) {
+        return;
+    }
+
+    // post 2s task
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this));
+}
+
+void Heap::NotifyHighSensitive(bool isStart)
+{
+    onHighSensitiveEvent_ = isStart;
+    if (!onHighSensitiveEvent_ && !onStartupEvent_) {
+        // set overshoot size to increase gc threashold larger 8MB than current heap size.
+        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
+        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        // overshoot size should be larger than 0.
+        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+        GetNewSpace()->SetWaterLineWithoutGC();
+
+        TryTriggerIncrementalMarking();
+        TryTriggerIdleCollection();
+        TryTriggerConcurrentMarking();
+    }
+}
+
+bool Heap::NeedStopCollection()
+{
+    if (!InSensitiveStatus()) {
+        return false;
+    }
+
+    if (GetHeapObjectSize() < ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() -
+        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) {
+        return true;
+    }
+
+    GetNewSpace()->SetOverShootSize(
+        GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
+        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+    return false;
+}
+
 bool Heap::CheckCanDistributeTask()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     return runningTaskCount_ < maxMarkTaskCount_;
 }
 
 void Heap::ReduceTaskCount()
 {
-    os::memory::LockHolder holder(waitTaskFinishedMutex_);
+    LockHolder holder(waitTaskFinishedMutex_);
     runningTaskCount_--;
     if (runningTaskCount_ == 0) {
         waitTaskFinishedCV_.SignalAll();
@@ -1164,6 +1240,13 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     heap_->ReclaimRegions(gcType_);
+    return true;
+}
+
+bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    std::this_thread::sleep_for(std::chrono::microseconds(2000000));  // 2000000 means 2s
+    heap_->NotifyFinishColdStart(false);
     return true;
 }
 

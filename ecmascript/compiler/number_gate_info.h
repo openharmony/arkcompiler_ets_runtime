@@ -28,6 +28,7 @@ enum class TypeInfo {
     UINT32,
     FLOAT64,
     TAGGED,
+    CHAR,
 };
 
 class UseInfo {
@@ -104,9 +105,10 @@ public:
     static constexpr int32_t UINT30_MAX = 0x3fffffff;
     static constexpr int32_t TYPED_ARRAY_ONHEAP_MAX = JSTypedArray::MAX_ONHEAP_LENGTH;
     static constexpr int32_t UINT18_MAX = (1 << 18) - 1;
-    static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1, -UINT18_MAX, -TYPED_ARRAY_ONHEAP_MAX,
-        -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1, TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1,
-        TYPED_ARRAY_ONHEAP_MAX * 3, UINT18_MAX, UINT30_MAX, UINT30_MAX + 1, INT32_MAX - 1, INT32_MAX };
+    static const inline std::vector<int32_t> rangeBounds_ = {INT32_MIN, INT32_MIN + 1,
+        -UINT18_MAX, -TYPED_ARRAY_ONHEAP_MAX, -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1,
+        TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1, TYPED_ARRAY_ONHEAP_MAX * 3,
+        UINT18_MAX, UINT30_MAX, UINT30_MAX + 1, INT32_MAX - 1, INT32_MAX };
 
     static RangeInfo NONE()
     {
@@ -186,20 +188,22 @@ public:
 
     int32_t GetMaxMulResult(const RangeInfo &rhs) const
     {
-        return std::max({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_), TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
+        return std::max({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_),
+            TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
     }
 
     int32_t GetMinMulResult(const RangeInfo &rhs) const
     {
-        return std::min({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_), TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
+        return std::min({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_),
+            TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
     }
 
     int32_t TryMul(int32_t lhs, int32_t rhs) const
     {
-        if (MaybeMulOverflow(lhs, rhs)){
+        if (MaybeMulOverflow(lhs, rhs)) {
             return INT32_MAX;
         }
-        if (MaybeMulUnderflow(lhs, rhs)){
+        if (MaybeMulUnderflow(lhs, rhs)) {
             return INT32_MIN;
         }
         return lhs * rhs;

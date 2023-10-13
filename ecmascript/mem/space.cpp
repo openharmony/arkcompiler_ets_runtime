@@ -53,14 +53,14 @@ void Space::Destroy()
     ReclaimRegions();
 }
 
-void Space::ReclaimRegions()
+void Space::ReclaimRegions(size_t cachedSize)
 {
-    EnumerateRegions([this](Region *current) { ClearAndFreeRegion(current); });
+    EnumerateRegions([this, &cachedSize](Region *current) { ClearAndFreeRegion(current, cachedSize); });
     regionList_.Clear();
     committedSize_ = 0;
 }
 
-void Space::ClearAndFreeRegion(Region *region)
+void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 {
     LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
@@ -73,7 +73,7 @@ void Space::ClearAndFreeRegion(Region *region)
         spaceType_ == MemSpaceType::APPSPAWN_SPACE) {
         region->DestroyFreeObjectSets();
     }
-    heapRegionAllocator_->FreeRegion(region);
+    heapRegionAllocator_->FreeRegion(region, cachedSize);
 }
 
 HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,

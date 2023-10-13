@@ -102,16 +102,18 @@ public:
     static constexpr VersionType ELEMENTS_KIND_MINI_VERSION = {0, 0, 0, 8};
     static constexpr VersionType RECORD_POOL_MINI_VERSION = {0, 0, 0, 9};
     static constexpr VersionType WIDE_CLASS_TYPE_MINI_VERSION = {0, 0, 0, 10};
+    static constexpr VersionType PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION = {0, 0, 0, 11};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 10};
-    static constexpr size_t SECTION_SIZE = 5;
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 11};
+    static constexpr size_t SECTION_SIZE = 6;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
     static constexpr size_t RECORD_POOL_SECTION_INDEX = 3;
     static constexpr size_t CLASS_TYPE_POOL_SECTION_INDEX = 4;
+    static constexpr size_t ABC_FILE_POOL_SECTION_INDEX = 5;
 
     PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
@@ -203,6 +205,11 @@ public:
         return GetSectionInfo(CLASS_TYPE_POOL_SECTION_INDEX);
     }
 
+    SectionInfo *GetAbcFilePoolSection() const
+    {
+        return GetSectionInfo(ABC_FILE_POOL_SECTION_INDEX);
+    }
+
     bool SupportType() const
     {
         return CompatibleVerify(TYPE_MINI_VERSION);
@@ -253,6 +260,11 @@ public:
         return CompatibleVerify(WIDE_CLASS_TYPE_MINI_VERSION);
     }
 
+    bool SupportProfileTypeWithAbcId() const
+    {
+        return CompatibleVerify(PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION);
+    }
+
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
@@ -293,7 +305,7 @@ public:
     PGOFileDataInterface() = default;
     virtual ~PGOFileDataInterface() = default;
     virtual uint32_t ProcessToBinary(std::fstream &stream) = 0;
-    virtual uint32_t ParseFromBinary(void **buffer, PGOProfilerHeader *const header) = 0;
+    virtual uint32_t ParseFromBinary(void **buffer, PGOProfilerHeader const *header) = 0;
     virtual bool ProcessToText(std::ofstream &stream) = 0;
     // not support yet
     virtual bool ParseFromText([[maybe_unused]] std::ifstream &stream)
@@ -304,6 +316,44 @@ public:
 private:
     NO_COPY_SEMANTIC(PGOFileDataInterface);
     NO_MOVE_SEMANTIC(PGOFileDataInterface);
+};
+
+class PGOFileSectionInterface : public PGOFileDataInterface {
+public:
+    PGOFileSectionInterface() = default;
+    ~PGOFileSectionInterface() override = default;
+    virtual bool Support(PGOProfilerHeader const *header) const = 0;
+    virtual SectionInfo *GetSection(PGOProfilerHeader const *header) const = 0;
+
+    static bool ParseSectionFromBinary(void *buffer, PGOProfilerHeader const *header, PGOFileSectionInterface &section)
+    {
+        if (section.Support(header)) {
+            SectionInfo *info = section.GetSection(header);
+            if (info == nullptr) {
+                return false;
+            }
+            void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
+            section.ParseFromBinary(&addr, header);
+        }
+        return true;
+    }
+
+    static bool ProcessSectionToBinary(std::fstream &fileStream, PGOProfilerHeader *const header,
+                                       PGOFileSectionInterface &section)
+    {
+        auto *info = section.GetSection(header);
+        if (info == nullptr) {
+            return false;
+        }
+        info->offset_ = static_cast<uint32_t>(fileStream.tellp());
+        info->number_ = section.ProcessToBinary(fileStream);
+        info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
+        return true;
+    }
+
+private:
+    NO_COPY_SEMANTIC(PGOFileSectionInterface);
+    NO_MOVE_SEMANTIC(PGOFileSectionInterface);
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_BASE_INFO_H

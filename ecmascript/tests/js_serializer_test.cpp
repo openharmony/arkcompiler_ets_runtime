@@ -148,6 +148,26 @@ public:
         Destroy();
     }
 
+    void JSPlainObjectTest3(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> objValue = deserializer.Deserialize();
+
+        JSHandle<JSObject> retObj = JSHandle<JSObject>::Cast(objValue);
+        EXPECT_FALSE(retObj.IsEmpty());
+
+        std::vector<JSTaggedValue> keyVector;
+        JSObject::GetAllKeysForSerialization(retObj, keyVector);
+        EXPECT_EQ(keyVector.size(), 2U);  // 2 : test case
+
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("y"));
+        int value = JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue()->GetInt();
+        EXPECT_EQ(value, 10U);  // 10 : test case
+        Destroy();
+    }
+
     void NativeBindingObjectTest1(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -1109,6 +1129,46 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
     t1.join();
     delete serializer;
 };
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject3)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    const uint32_t numOfProps = 2;
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+
+    JSHandle<JSTaggedValue> key0(factory->NewFromASCII("x"));
+    PropertyAttributes attributes0 = PropertyAttributes::Default();
+    attributes0.SetIsInlinedProps(true);
+    attributes0.SetRepresentation(Representation::NONE);
+    attributes0.SetOffset(0);
+    layout->AddKey(thread, 0, key0.GetTaggedValue(), attributes0);
+
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("y"));
+    PropertyAttributes attributes1 = PropertyAttributes::Default();
+    attributes1.SetIsInlinedProps(true);
+    attributes1.SetRepresentation(Representation::NONE);
+    attributes1.SetOffset(1);
+    layout->AddKey(thread, 1, key1.GetTaggedValue(), attributes1);
+
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, numOfProps);
+    hclass->SetLayout(thread, layout);
+    hclass->SetNumberOfProps(numOfProps);
+    hclass->SetTS(true);
+    JSHandle<JSObject> obj = factory->NewJSObject(hclass);
+
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(10));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key1, value1);
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(obj));
+
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSPlainObjectTest3, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+}
 
 static void* detach(void *param1, void *param2, void *hint)
 {

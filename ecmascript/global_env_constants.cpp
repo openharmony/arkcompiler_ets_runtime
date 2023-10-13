@@ -68,6 +68,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
@@ -107,6 +108,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
+    SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
@@ -159,6 +162,10 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
     SetConstant(ConstantIndex::PROTO_CHANGE_DETAILS_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeDetails::SIZE, JSType::PROTOTYPE_INFO));
+    SetConstant(ConstantIndex::MARKER_CELL_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, MarkerCell::SIZE, JSType::MARKER_CELL));
+    SetConstant(ConstantIndex::TRACK_INFO_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, TrackInfo::SIZE, JSType::TRACK_INFO));
     SetConstant(ConstantIndex::PROTOTYPE_HANDLER_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PrototypeHandler::SIZE, JSType::PROTOTYPE_HANDLER));
     SetConstant(ConstantIndex::TRANSITION_HANDLER_CLASS_INDEX,
@@ -235,9 +242,9 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRegExpIterator::SIZE, JSType::JS_REG_EXP_ITERATOR));
     SetConstant(ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSSetIterator::SIZE, JSType::JS_SET_ITERATOR));
+                factory->NewEcmaHClass(hClass, JSSetIterator::SIZE, JSType::JS_SET_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_MAP_ITERATOR_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSMapIterator::SIZE, JSType::JS_MAP_ITERATOR));
+                factory->NewEcmaHClass(hClass, JSMapIterator::SIZE, JSType::JS_MAP_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSArrayIterator::SIZE, JSType::JS_ARRAY_ITERATOR));
     SetConstant(
@@ -600,6 +607,19 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::DOLLAR_STRING_SEVEN_INDEX, factory->NewFromASCIINonMovable("$7"));
     SetConstant(ConstantIndex::DOLLAR_STRING_EIGHT_INDEX, factory->NewFromASCIINonMovable("$8"));
     SetConstant(ConstantIndex::DOLLAR_STRING_NINE_INDEX, factory->NewFromASCIINonMovable("$9"));
+    // for object to string
+    SetConstant(ConstantIndex::UNDEFINED_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Undefined]"));
+    SetConstant(ConstantIndex::NULL_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Null]"));
+    SetConstant(ConstantIndex::OBJECT_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Object]"));
+    SetConstant(ConstantIndex::ARRAY_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Array]"));
+    SetConstant(ConstantIndex::STRING_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object String]"));
+    SetConstant(ConstantIndex::BOOLEAN_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Boolean]"));
+    SetConstant(ConstantIndex::NUMBER_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Number]"));
+    SetConstant(ConstantIndex::ARGUMENTS_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Arguments]"));
+    SetConstant(ConstantIndex::FUNCTION_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Function]"));
+    SetConstant(ConstantIndex::DATE_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Date]"));
+    SetConstant(ConstantIndex::ERROR_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object Error]"));
+    SetConstant(ConstantIndex::REGEXP_TO_STRING_INDEX, factory->NewFromASCIINonMovable("[object RegExp]"));
 
     auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
@@ -395,7 +395,9 @@ public:
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
+    bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
@@ -506,6 +508,8 @@ public:
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
+    void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement);
+    void ReplaceGate(GateRef gate, GateRef replacement);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
     uint32_t GetFirstValue(GateRef gate) const;
@@ -525,6 +529,10 @@ public:
     bool HasIfExceptionUse(GateRef gate) const;
     bool IsIn(GateRef g, GateRef in) const;
     bool IsHeapObjectFromElementsKind(GateRef gate);
+    bool IsConstString(GateRef gate);
+    bool IsSingleCharGate(GateRef gate);
+    uint32_t GetStringIdFromLdaStrGate(GateRef gate);
+    bool IsIfOrSwitchRelated(GateRef gate) const;
 
     GateRef GetCircuitRoot() const
     {

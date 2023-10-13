@@ -68,3 +68,92 @@ print(obj[str]);
 print(obj[str4]);
 print((str === str5).toString());
 print((str4 == str6).toString());
+
+var s0 = String.fromCharCode();
+var s1 = String.fromCharCode(65);
+var s2 = String.fromCharCode(65, 66.678);
+var s3 = String.fromCharCode(0x12014);
+var s4 = String.fromCharCode(true);
+print(s0);
+print(s1);
+print(s2);
+print(s3);
+print(s4);
+
+let name1 = 'testfiles就发(2).png';
+let filename1 = name1.substring(0, 14);
+let kk1 = filename1.toLowerCase();
+print(kk1);
+
+let name2 = 'testfileswodetwwwpng';
+let filename2 = name2.substring(0, 14);
+let kk2 = filename2.toLowerCase();
+print(kk2);
+
+var strA = name2 + name1;
+for (let i = 0; i < 100; i++) {
+strA.toLocaleString();
+}
+print("true");
+
+var a = "";
+var b = a.split("");
+var c = a.split("1");
+print(b.length);
+print(c.length);
+var a1 = "123_352_42342_483297538927943872943_12i2";
+var a2 = "12哈哈3尼352尼42好呀342_4832975389279你们43872943尼12i2";
+var a3 = a2.substring(1);
+var b1 = a1.split();
+var c1 = a1.split("");
+var d1 = a1.split(" ");
+var e1 = a1.split("_");
+var f1 = a1.split("_", 2);
+var g1 = a2.split("尼", 3);
+var r1 = a3.split("尼", 44);
+var k1 = a3.split("尼", 0);
+var k2 = a3.split("4", 5);
+print(b1);
+print(c1);
+print(d1);
+print(e1);
+print(f1);
+print(g1);
+print(r1);
+print(k1.length);
+print(k2);
+try {
+    var sym = Symbol();
+    a2.split(sym, 0);
+} catch (e) {
+    print(e.message);
+}
+
+var test1 = "fun123ctionManualChapter123Tip1_352_42342_483297538927943872943_12i2哈哈哈";
+var test2 = test1.split("_");
+var test3 = test2[0];
+var test4 = "1111fun123ctionManualChapter123Tip1"
+let pos = test4.indexOf(test3);
+print(pos);
+
+Object.defineProperty(Array.prototype, "1", {
+    value:37,
+    writable:false,
+});
+var test5 = "123_wode2222222222222222_fast_哈哈哈";
+var test6 = "123_wode2222222222222222_fast_hhh";
+var test7 = test5.split("_");
+var test8 = test6.split("_");
+print(test7);
+print(test8);
+
+var test9 = "abc"
+var test10 = new Number(4);
+test10[Symbol.split] = RegExp.prototype[Symbol.split];
+print(test9.split(test10));
+var test11 = test1.substring(0, 31);
+var test12 = "1111fun123ctionManualChapter123Tip12222"
+var test13 = test12.split(test11);
+var test14 = test12.lastIndexOf(test11);
+print(test13);
+print(test14);

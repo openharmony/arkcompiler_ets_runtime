@@ -56,7 +56,7 @@ public:
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
-            semiSpaceOvershootSize_ = 2_MB;
+            semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 4_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
@@ -71,7 +71,7 @@ public:
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
-            semiSpaceOvershootSize_ = 2_MB;
+            semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
@@ -86,7 +86,7 @@ public:
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
-            semiSpaceOvershootSize_ = 2_MB;
+            semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
@@ -136,9 +136,9 @@ public:
         return semiSpaceTriggerConcurrentMark_;
     }
 
-    size_t GetSemiSpaceOvershootSize() const
+    size_t GetSemiSpaceStepOvershootSize() const
     {
-        return semiSpaceOvershootSize_;
+        return semiSpaceStepOvershootSize_;
     }
 
     size_t GetOldSpaceOvershootSize() const
@@ -196,7 +196,7 @@ private:
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
-    size_t semiSpaceOvershootSize_ {0};
+    size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceOvershootSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};

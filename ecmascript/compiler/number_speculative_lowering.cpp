@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"
@@ -109,6 +109,22 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    if (acc_.HasStringType(gate)) {
+        VisitStringBinaryOp(gate);
+        return;
+    }
+
+    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ) {
+        if (acc_.HasPrimitiveNumberType(gate)) {
+            VisitNumberBinaryOp(gate);
+        }
+    } else {
+        VisitStrictEqual(gate);
+    }
+}
+
+void NumberSpeculativeLowering::VisitStrictEqual(GateRef gate)
+{
     if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
     } else {
@@ -367,7 +383,7 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        if(GetRange(right).MaybeZero()) {
+        if (GetRange(right).MaybeZero()) {
             builder_.Int32CheckRightIsZero(right);
         }
         result = CalculateInts<Op>(left, right);
@@ -388,7 +404,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsNumberType());
+    ASSERT(type.IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
@@ -408,7 +424,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 
 void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
 {
-    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsNumberType());
+    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.Int32Not(value);
     UpdateRange(result, GetRange(gate));
@@ -435,25 +451,8 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
     TypedJumpOp jumpOp = jumpAcc.GetTypedJumpOp();
     ASSERT((jumpOp == TypedJumpOp::TYPED_JEQZ) || (jumpOp == TypedJumpOp::TYPED_JNEZ));
     GateRef condition = acc_.GetValueIn(gate, 0);
-    uint32_t trueWeight = BranchWeight::ONE_WEIGHT;
-    uint32_t falseWeight = BranchWeight::ONE_WEIGHT;
-    BranchKind kind = jumpAcc.GetBranchKind();
-    switch (kind) {
-        case BranchKind::TRUE_BRANCH:
-            trueWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::FALSE_BRANCH:
-            falseWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::STRONG_TRUE_BRANCH:
-            trueWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        case BranchKind::STRONG_FALSE_BRANCH:
-            falseWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        default:
-            break;
-    }
+    uint32_t trueWeight = jumpAcc.GetTrueWeight();
+    uint32_t falseWeight = jumpAcc.GetFalseWeight();
     if (jumpOp == TypedJumpOp::TYPED_JEQZ) {
         std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);
@@ -629,7 +628,7 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
         }
         case TypedBinOp::TYPED_MUL:
-            if(!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
+            if (!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
                 return builder_.Int32Mul(left, right);
             }
             res = builder_.MulWithOverflow(left, right);
@@ -842,8 +841,12 @@ void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range
 
 RangeInfo NumberSpeculativeLowering::GetRange(GateRef gate) const
 {
-    ASSERT(!rangeInfos_[acc_.GetId(gate)].IsNone());
-    return rangeInfos_[acc_.GetId(gate)];
+    auto id = acc_.GetId(gate);
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
+    ASSERT(!rangeInfos_[id].IsNone());
+    return rangeInfos_[id];
 }
 
 GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)
@@ -851,5 +854,40 @@ GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)
     auto val = builder_.Int32(v);
     UpdateRange(val, RangeInfo(v, v));
     return val;
+}
+
+void NumberSpeculativeLowering::VisitStringBinaryOp(GateRef gate)
+{
+    TypedBinOp Op = acc_.GetTypedBinaryOp(gate);
+    switch (Op) {
+        case TypedBinOp::TYPED_EQ: {
+            VisitStringCompare<TypedBinOp::TYPED_EQ>(gate);
+            break;
+        }
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+template<TypedBinOp Op>
+void NumberSpeculativeLowering::VisitStringCompare(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+
+    GateRef result;
+    switch (Op) {
+        case TypedBinOp::TYPED_EQ:
+            result = builder_.StringEqual(left, right);
+            break;
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    acc_.SetMachineType(gate, MachineType::I1);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript

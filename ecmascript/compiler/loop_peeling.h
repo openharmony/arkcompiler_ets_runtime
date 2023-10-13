@@ -20,7 +20,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/loop_analysis.h"
 
 namespace panda::ecmascript::kungfu {

@@ -137,10 +137,11 @@ struct ModuleInfo {
 class TSModuleTable : public TaggedArray {
 public:
     // Each TSTypeTable occupies three positions
-    static constexpr int ELEMENTS_LENGTH = 3;
+    static constexpr int ELEMENTS_LENGTH = 4;
     static constexpr int MODULE_REQUEST_OFFSET = 1;
     static constexpr int SORT_ID_OFFSET = 2;
     static constexpr int TYPE_TABLE_OFFSET = 3;
+    static constexpr int ABC_ID_OFFSET = 4;
     // Reserve a position which is used to store the number of TSTypeTables and a TSTypeTable storage space
     static constexpr int INITIAL_CAPACITY = ELEMENTS_LENGTH + 1;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
@@ -155,7 +156,9 @@ public:
 
     JSHandle<EcmaString> GetModuleRequestByModuleId(JSThread *thread, int entry) const;
 
-    int GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath) const;
+    JSHandle<EcmaString> GetAbcRequestByModuleId(JSThread *thread, int entry) const;
+
+    int GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath, JSHandle<EcmaString> abcPath) const;
 
     inline int GetNumberOfTSTypeTables() const
     {
@@ -180,6 +183,11 @@ public:
     static int GetSortIdOffset(int entry)
     {
         return entry * ELEMENTS_LENGTH + SORT_ID_OFFSET;
+    }
+
+    static uint32_t GetAbcRequestOffset(int entry)
+    {
+        return entry * ELEMENTS_LENGTH + ABC_ID_OFFSET;
     }
 };
 
@@ -266,6 +274,10 @@ public:
     }
 
     bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
+
+    bool PUBLIC_API IsHotnessFunc(GlobalTSTypeRef gt) const;
+
+    void PUBLIC_API SetHotnessFunc(GlobalTSTypeRef gt, bool isHotness) const;
 
     bool PUBLIC_API GetSuperGateType(kungfu::GateType &gateType) const;
 
@@ -484,7 +496,7 @@ public:
             idGTMap_.emplace(id, gt);
         }
         if (!isImportType && !id.IsPGOType()) {
-            auto value = std::make_pair(recordName, id.GetTypeId());
+            auto value = std::make_tuple(id.GetJSPandaFile()->GetNormalizedFileDesc(), recordName, id.GetTypeId());
             gtLiteralOffsetMap_.emplace(gt, value);
         }
     }
@@ -504,7 +516,7 @@ public:
         return gtLiteralOffsetMap_.find(gt) != gtLiteralOffsetMap_.end();
     }
 
-    inline std::pair<CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
+    inline std::tuple<CString, CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
     {
         return gtLiteralOffsetMap_.at(gt);
     }
@@ -763,6 +775,12 @@ public:
     // for snapshot
     class SnapshotData {
     public:
+        struct Record {
+            uint32_t dataIdx_;
+            uint32_t cpListIdx_;
+            uint32_t constpoolIdx_;
+        };
+
         enum RecordType {
             METHOD = 0,
             LITERAL,
@@ -772,20 +790,54 @@ public:
             RECORD_TYPE_LAST = LITERAL,
         };
 
+        using RecordData = std::vector<Record>;
+
+        static constexpr uint8_t SNAPSHOT_DATA_ITEM_SIZE = 2;
         static constexpr uint8_t SNAPSHOT_CP_LIST_ITEM_SIZE = 2;
 
-        using RecordData = std::vector<std::pair<uint32_t, uint32_t>>;
-
-        SnapshotData() : recordInfo_(RecordType::RECORD_TYPE_NUM, RecordData{}) {}
+        SnapshotData() : curDataIdx_(0), recordInfo_(RecordType::RECORD_TYPE_NUM, RecordData{}) {}
 
         void Iterate(const RootVisitor &v)
         {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&data_)));
             v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotCPList_)));
             for (auto &iter : snapshotVals_) {
                 for (size_t i = 0; i < iter.second.size(); i++) {
                     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second[i])));
                 }
             }
+        }
+
+        uint32_t AddSnapshotConstantPoolToData(JSThread *thread, CString fileName)
+        {
+            JSHandle<EcmaString> nameStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString(fileName.c_str());
+            JSHandle<TaggedArray> dataHandle(thread, data_);
+            dataHandle->Set(thread, curDataIdx_++, nameStr);
+            JSTaggedValue curCpList = GetSnapshotCPList();
+            dataHandle->Set(thread, curDataIdx_, curCpList);
+            dataIdxToFileNameMap_[curDataIdx_] = fileName;
+            uint32_t dataIdx = curDataIdx_++;
+            return dataIdx;
+        }
+
+        CString GetFileNameByDataIdx(uint32_t dataIdx)
+        {
+            auto it = dataIdxToFileNameMap_.find(dataIdx);
+            if (it != dataIdxToFileNameMap_.end()) {
+                return it->second;
+            }
+            LOG_COMPILER(FATAL) << "Can't find snapshot data by index '" << dataIdx << "'";
+            UNREACHABLE();
+        }
+
+        void SetData(JSTaggedValue data)
+        {
+            data_ = data;
+        }
+
+        JSTaggedValue GetData() const
+        {
+            return data_;
         }
 
         void SetSnapshotCPList(JSTaggedValue snapshotCPList)
@@ -803,10 +855,10 @@ public:
             return snapshotVals_[cpID];
         }
 
-        void AddIndexInfoToRecordInfo(RecordType type, std::pair<uint32_t, uint32_t> indexInfo)
+        void AddToRecordInfo(RecordType type, Record record)
         {
             ASSERT(RECORD_TYPE_FIRST <= type && type <= RECORD_TYPE_LAST);
-            recordInfo_[type].emplace_back(indexInfo);
+            recordInfo_[type].emplace_back(record);
         }
 
         const RecordData& GetRecordInfo(RecordType type)
@@ -816,6 +868,12 @@ public:
         }
 
     private:
+        uint32_t curDataIdx_ {0};
+
+        CUnorderedMap<uint32_t, CString> dataIdxToFileNameMap_ {};
+
+        JSTaggedValue data_ {JSTaggedValue::Hole()};
+
         JSTaggedValue snapshotCPList_ {JSTaggedValue::Hole()};
 
         // key: constantpoolnum,  value: store hclass or element which produced from static type info
@@ -835,14 +893,17 @@ public:
         return cmpDriver_;
     }
 
-    JSTaggedValue PUBLIC_API GetSnapshotCPList() const
+    JSTaggedValue PUBLIC_API GetSnapshotData() const
     {
-        return snapshotData_.GetSnapshotCPList();
+        return snapshotData_.GetData();
     }
+
+    void PUBLIC_API SnapshotInit(uint32_t compileFilesCount);
 
     void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector);
 
-    void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
+    void PUBLIC_API ResolveSnapshotConstantPool(
+        const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap);
 
     void AddElementToClassNameMap(const JSPandaFile *jsPandaFile, uint32_t offset, std::string className)
     {
@@ -900,16 +961,6 @@ public:
             return it->second;
         }
         return kungfu::GateType::AnyType();
-    }
-
-    inline void AddToSkipTrackFieldSet(ProfileType type)
-    {
-        skipTrackFieldSet_.insert(type);
-    }
-
-    inline bool IsInSkipTrackFieldSet(ProfileType type)
-    {
-        return skipTrackFieldSet_.find(type) != skipTrackFieldSet_.end();
     }
 
     void PrintNumOfTypes() const;
@@ -1020,16 +1071,18 @@ private:
     // for jsarray
     void TryGetElmsKind(panda_file::File::EntityId id, JSHandle<JSTaggedValue> &ekd);
 
-    void GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
-                                          const CMap<int32_t, JSTaggedValue> &oldCPValues);
+    uint32_t GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
+                                          const CMap<int32_t, JSTaggedValue> &oldCPValues, CString fileName);
 
     void TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc);
 
     void FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
-                                      kungfu::BytecodeInfoCollector *bcInfoCollector);
+                                      kungfu::BytecodeInfoCollector *bcInfoCollector, uint32_t dataIdx);
 
     void AddValueToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
                                              kungfu::BytecodeInfoCollector *bcInfoCollector);
+
+    JSHandle<ConstantPool> GetConstantPoolFromSnapshotData(uint32_t dataIdx, uint32_t cpListIdx);
 
     JSHandle<ConstantPool> GetSnapshotConstantPool(uint32_t cpListIndex);
 
@@ -1042,7 +1095,6 @@ private:
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
     CMap<ProfileType, const kungfu::GateType> ptToGtMap_ {};
-    std::set<ProfileType> skipTrackFieldSet_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     std::unordered_map<TypeLocation, GlobalTSTypeRef, HashTypeLocation> literalGTMap_ {};
@@ -1062,7 +1114,7 @@ private:
     SnapshotData snapshotData_ {};
 
     std::unordered_map<GlobalTypeID, GlobalTSTypeRef, HashGlobalTypeID> idGTMap_ {};
-    std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
+    std::map<GlobalTSTypeRef, std::tuple<CString, CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};

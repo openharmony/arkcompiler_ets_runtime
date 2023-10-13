@@ -36,4 +36,17 @@ print(typeof(arr));
 let obj = {};
 print(typeof(obj));
 
+let n:any = null;
+print(typeof(n));
 
+class A {};
+print(typeof(A));
+
+let a = new A();
+print(typeof(a));
+
+let bigInt = 9007199254740991n;
+print(typeof(bigInt));
+
+function foo() {}
+print(typeof(foo));

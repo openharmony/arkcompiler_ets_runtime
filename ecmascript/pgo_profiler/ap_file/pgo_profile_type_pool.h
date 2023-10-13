@@ -18,180 +18,152 @@
 
 #include <cstdint>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
 #include "ecmascript/common.h"
+#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/mem.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/ap_file/pool_template.h"
+#include "ecmascript/pgo_profiler/pgo_context.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
-class PGOProfileTypePool : public PGOFileDataInterface {
+class PGOProfileTypePool {
 public:
-    class Entry {
+    class Entry : public PGOFileDataInterface {
     public:
         explicit Entry(ProfileType type) : type_(type) {}
+        Entry() = default;
         ApEntityId GetEntryId() const
         {
-            return id_;
+            return entryId_;
         }
 
-        void SetId(ApEntityId id)
+        void SetEntryId(ApEntityId entryId)
         {
-            id_ = id;
+            entryId_ = entryId;
         }
 
-        const ProfileType &GetProfileType() const
+        ProfileType GetProfileType() const
         {
             return type_;
         }
 
+        const ProfileType &GetData() const
+        {
+            return type_;
+        }
+
+        uint32_t ProcessToBinary(std::fstream &stream) override
+        {
+            auto profileType = type_.GetRaw();
+            stream.write(reinterpret_cast<const char *>(&(profileType)), sizeof(ProfileType));
+            return 1;
+        }
+
+        uint32_t ParseFromBinary(void **buffer, [[maybe_unused]] PGOProfilerHeader const *header) override
+        {
+            type_ = base::ReadBuffer<ProfileType>(buffer, sizeof(ProfileType));
+            return 1;
+        }
+
+        bool ProcessToText(std::ofstream &stream) override
+        {
+            stream << type_.GetTypeString();
+            return true;
+        }
+
     private:
-        ApEntityId id_ {};
+        ApEntityId entryId_ {0};
         ProfileType type_;
     };
 
-    enum class ReservedType : uint8_t {
-        NONE_CLASS_TYPE_REF = 0,
-        END
-    };
+    using PoolType = PoolTemplate<Entry, ProfileType>;
+
+    enum class ReservedType : uint8_t { NONE_CLASS_TYPE_REF = 0, END };
     static constexpr uint32_t RESERVED_COUNT = 64;
 
     static_assert(static_cast<uint32_t>(ReservedType::END) < RESERVED_COUNT);
 
-    PGOProfileTypePool() = default;
-    ~PGOProfileTypePool() override
+    static bool IsReserved(const ProfileType &value)
+    {
+        return value.IsNone();
+    }
+
+    static ApEntityId GetReservedId([[maybe_unused]] const ProfileType &value)
+    {
+        ASSERT(value.IsNone());
+        return ApEntityId(static_cast<uint32_t>(ReservedType::NONE_CLASS_TYPE_REF));
+    }
+
+    static bool Support(PGOProfilerHeader const *header)
+    {
+        return header->SupportWideProfileType();
+    }
+
+    static SectionInfo *GetSection(PGOProfilerHeader const *header)
+    {
+        return header->GetProfileTypeSection();
+    }
+
+    PGOProfileTypePool()
+    {
+        pool_ = std::make_shared<PoolType>("ProfileTypePool", RESERVED_COUNT);
+        pool_->SetIsReservedCb(IsReserved);
+        pool_->SetGetReservedIdCb(GetReservedId);
+        pool_->SetGetSectionCb(GetSection);
+        pool_->SetSupportCb(Support);
+    }
+    ~PGOProfileTypePool()
     {
         Clear();
     }
 
-    bool TryAdd(const ProfileType &profileType, ApEntityId &id)
+    bool TryAdd(const ProfileType &profileType, ApEntityId &entryId)
     {
-        for (auto &record : pool_) {
-            if (record.second.GetProfileType() == profileType) {
-                id = record.second.GetEntryId();
-                return true;
-            }
-        }
-
-        id = ApEntityId(IsReserved(profileType) ? GetReservedId(profileType).GetOffset()
-                                                      : RESERVED_COUNT + pool_.size());
-
-        auto result = pool_.emplace(id, profileType);
-        auto &record = result.first->second;
-        record.SetId(id);
-        return true;
+        return pool_->TryAdd(profileType, entryId);
     }
 
-    bool GetRecordId(const ProfileType &profileType, ApEntityId &recordId) const
+    bool GetEntryId(const ProfileType &profileType, ApEntityId &entryId) const
     {
-        for (auto [id, record] : pool_) {
-            if (record.GetProfileType() == profileType) {
-                recordId = id;
-                return true;
-            }
-        }
-        return false;
+        return pool_->GetEntryId(profileType, entryId);
     }
 
-    const Entry *GetRecord(ApEntityId id) const
+    const Entry *GetEntry(ApEntityId entryId) const
     {
-        auto iter = pool_.find(id);
-        if (iter == pool_.end()) {
-            return nullptr;
-        }
-        return &(iter->second);
+        return pool_->GetEntry(entryId);
     }
 
     void Clear()
     {
-        pool_.clear();
+        pool_->Clear();
     }
 
-    void Merge(const PGOProfileTypePool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
+    void Merge(const PGOProfileTypePool &profileTypePool, std::map<ApEntityId, ApEntityId> &idMapping)
     {
-        for (auto [id, record] : recordPool.pool_) {
-            ApEntityId apId;
-            TryAdd(record.GetProfileType(), apId);
-            idMapping.emplace(id, apId);
-        }
+        pool_->Merge(*profileTypePool.pool_, [&](ApEntityId oldEntryId, ApEntityId newEntryId) {
+            idMapping.try_emplace(oldEntryId, newEntryId);
+        });
     }
 
-    uint32_t ProcessToBinary(std::fstream &stream) override
+    std::shared_ptr<PoolType> &GetPool()
     {
-        SectionInfo secInfo;
-        secInfo.number_ = pool_.size();
-        secInfo.offset_ = sizeof(SectionInfo);
-        auto secInfoPos = stream.tellp();
-        stream.seekp(secInfo.offset_, std::ofstream::cur);
-        for (const auto &record : pool_) {
-            stream.write(reinterpret_cast<const char *>(&(record.first)), sizeof(ApEntityId));
-            auto profileType = record.second.GetProfileType().GetRaw();
-            stream.write(reinterpret_cast<const char *>(&(profileType)), sizeof(ProfileType));
-        }
-        secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - secInfoPos;
-        auto tail = stream.tellp();
-        stream.seekp(secInfoPos, std::ofstream::beg);
-        stream.write(reinterpret_cast<const char *>(&(secInfo)), sizeof(SectionInfo));
-        stream.seekp(tail, std::ofstream::beg);
-        return tail - secInfoPos;
-    }
-
-    bool ProcessToText(std::ofstream &stream) override
-    {
-        std::string profilerString;
-        bool isFirst = true;
-        for (auto [id, record] : pool_) {
-            if (isFirst) {
-                profilerString += DumpUtils::NEW_LINE;
-                profilerString += "ProfileTypePool";
-                profilerString += DumpUtils::BLOCK_START;
-                isFirst = false;
-            }
-            profilerString += DumpUtils::NEW_LINE;
-            profilerString += std::to_string(id.GetOffset());
-            profilerString += DumpUtils::ELEMENT_SEPARATOR;
-            profilerString += record.GetProfileType().GetTypeString();
-        }
-        if (!isFirst) {
-            profilerString += (DumpUtils::SPACE + DumpUtils::NEW_LINE);
-            stream << profilerString;
-        }
-        return true;
-    }
-
-    uint32_t ParseFromBinary(void **buffer, [[maybe_unused]] PGOProfilerHeader *const header) override
-    {
-        auto *startBuffer = *buffer;
-        auto secInfo = base::ReadBuffer<SectionInfo>(buffer);
-        for (uint32_t i = 0; i < secInfo.number_; i++) {
-            auto recordId = base::ReadBuffer<ApEntityId>(buffer, sizeof(ApEntityId));
-            auto profileType = base::ReadBuffer<ProfileType>(buffer, sizeof(ProfileType));
-            auto result = pool_.emplace(recordId, profileType);
-            result.first->second.SetId(recordId);
-        }
-        return reinterpret_cast<uintptr_t>(*buffer) - reinterpret_cast<uintptr_t>(startBuffer);
+        return pool_;
     }
 
 private:
     NO_COPY_SEMANTIC(PGOProfileTypePool);
     NO_MOVE_SEMANTIC(PGOProfileTypePool);
 
-    static bool IsReserved(ProfileType type)
-    {
-        return type.IsNone();
-    }
-
-    static ApEntityId GetReservedId([[maybe_unused]] ProfileType type)
-    {
-        ASSERT(type.IsNone());
-        return ApEntityId(static_cast<uint32_t>(ReservedType::NONE_CLASS_TYPE_REF));
-    }
-
-    std::unordered_map<ApEntityId, Entry> pool_;
+    std::shared_ptr<PoolType> pool_;
 };
-} // namespace panda::ecmascript::pgo
+}  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_PROFILE_TYPE_POOL_H

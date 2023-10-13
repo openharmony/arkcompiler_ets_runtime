@@ -42,8 +42,8 @@ using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 
 class SnapshotProcessor final {
 public:
-    explicit SnapshotProcessor(EcmaVM *vm, const CString &fileName = "")
-        : vm_(vm), objXRay_(vm), fileName_(fileName) {}
+    explicit SnapshotProcessor(EcmaVM *vm)
+        : vm_(vm), objXRay_(vm) {}
     ~SnapshotProcessor();
 
     void Initialize();
@@ -58,6 +58,7 @@ public:
     void RelocateSpaceObject(const JSPandaFile *jsPandaFile, Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
     void SerializePandaFileMethod();
+    uintptr_t GetNewObj(size_t objectSize, TaggedObject *objectHeader);
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
     EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
@@ -67,6 +68,8 @@ public:
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
                                         size_t machineCodeObjSize, size_t snapshotObjSize, size_t hugeSpaceObjSize);
     void DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd);
+
+    void AddRootObjectToAOTFileManager(SnapshotType type, const CString &fileName);
 
     void SetProgramSerializeStart()
     {
@@ -143,7 +146,7 @@ private:
     std::unordered_map<size_t, Region *> regionIndexMap_;
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};
-    const CString &fileName_;
+    JSTaggedValue root_ {JSTaggedValue::Hole()};
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);

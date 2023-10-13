@@ -1317,6 +1317,8 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
 
     // Initialize three objects by hc0
     JSHandle<JSHClass> hc0 = CreateTestHClass(thread);
+    JSMutableHandle<JSHClass> hca(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSHClass> hcb(thread, JSTaggedValue::Undefined());
     [[maybe_unused]] JSHandle<JSObject> obj0 = factory->NewJSObject(hc0);  // need it to ensure hc0 not be collected
     JSHandle<JSObject> obj1 = factory->NewJSObject(hc0);
     JSHandle<JSObject> obj2 = factory->NewJSObject(hc0);
@@ -1337,6 +1339,8 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
         EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
         EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), obj1->GetClass());
         EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), obj2->GetClass());
+        hca.Update(JSTaggedValue(obj1->GetClass()));
+        hcb.Update(JSTaggedValue(obj2->GetClass()));
 
         //            / hc1 --> hc3 (obj1)
         // hc0 (obj0)
@@ -1348,9 +1352,8 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     // collect hc1, hc2
     vm->CollectGarbage(TriggerGCType::FULL_GC);
 
-
-    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), nullptr);
-    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), nullptr);
+    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), hca.GetObject<JSHClass>());
+    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), hcb.GetObject<JSHClass>());
 
     JSHandle<JSObject> obj3 = factory->NewJSObject(hc0);
     JSHandle<JSObject> obj4 = factory->NewJSObject(hc0);
@@ -1364,5 +1367,7 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
     EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), obj3->GetClass());
     EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), obj4->GetClass());
+    EXPECT_EQ(obj3->GetClass(), hca.GetObject<JSHClass>());
+    EXPECT_EQ(obj4->GetClass(), hcb.GetObject<JSHClass>());
 }
 }  // namespace panda::test

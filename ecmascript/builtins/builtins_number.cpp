@@ -196,6 +196,12 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     // 1. Let inputString be ToString(string).
     JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if ((radix == base::DECIMAL || radix == 0)) {
+        int32_t elementIndex = 0;
+        if (EcmaStringAccessor(numberString).ToInt(&elementIndex)) {
+            return GetTaggedInt(elementIndex);
+        }
+    }
     CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
 

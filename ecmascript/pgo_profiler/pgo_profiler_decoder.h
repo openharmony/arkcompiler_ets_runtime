@@ -20,6 +20,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/platform/map.h"
 
@@ -38,7 +39,7 @@ public:
     NO_COPY_SEMANTIC(PGOProfilerDecoder);
     NO_MOVE_SEMANTIC(PGOProfilerDecoder);
 
-    bool PUBLIC_API Match(const CString &recordName, PGOMethodId methodId);
+    bool PUBLIC_API Match(const JSPandaFile *jsPandaFile, const CString &recordName, PGOMethodId methodId);
 
     bool PUBLIC_API LoadAndVerify(uint32_t checksum);
     bool PUBLIC_API LoadFull();
@@ -47,6 +48,8 @@ public:
     bool PUBLIC_API SaveAPTextFile(const std::string &outPath);
 
     void Merge(const PGOProfilerDecoder &decoder);
+
+    void SwapAbcIdPool(PGOProfilerDecoder &decoder);
 
     bool InitMergeData();
 
@@ -61,21 +64,21 @@ public:
     }
 
     template <typename Callback>
-    void Update(Callback callback)
+    void Update(const JSPandaFile *jsPandaFile, Callback callback)
     {
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
         }
-        recordSimpleInfos_->Update(callback);
+        recordSimpleInfos_->Update(GetNormalizedFileDesc(jsPandaFile), callback);
     }
 
     template <typename Callback>
-    void Update(const CString &recordName, Callback callback)
+    void Update(const JSPandaFile *jsPandaFile, const CString &recordName, Callback callback)
     {
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
         }
-        recordSimpleInfos_->Update(recordName, callback);
+        recordSimpleInfos_->Update(GetNormalizedFileDesc(jsPandaFile), recordName, callback);
     }
 
     template <typename Callback>
@@ -91,20 +94,22 @@ public:
                 PGOMethodInfo::CalcChecksum(methodName, methodLiteral->GetBytecodeArray(),
                                             MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()));
 
-            return recordSimpleInfos_->GetTypeInfo(recordName, methodName, checksum, callback);
+            return recordSimpleInfos_->GetTypeInfo(GetNormalizedFileDesc(jsPandaFile), recordName, methodName, checksum,
+                                                   callback);
         }
-        recordSimpleInfos_->GetTypeInfo(recordName, methodName, callback);
+        recordSimpleInfos_->GetTypeInfo(GetNormalizedFileDesc(jsPandaFile), recordName, methodName, callback);
     }
 
-    void MatchAndMarkMethod(const CString &recordName, const char *methodName, EntityId methodId)
+    void MatchAndMarkMethod(const JSPandaFile *jsPandaFile, const CString &recordName, const char *methodName,
+                            EntityId methodId)
     {
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
         }
-        recordSimpleInfos_->MatchAndMarkMethod(recordName, methodName, methodId);
+        recordSimpleInfos_->MatchAndMarkMethod(GetNormalizedFileDesc(jsPandaFile), recordName, methodName, methodId);
     }
 
-    void GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+    void GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
 
     bool IsMethodMatchEnabled() const
@@ -139,12 +144,30 @@ public:
         return pandaFileInfos_;
     }
 
+    bool GetAbcNameById(ApEntityId abcId, CString &abcName) const
+    {
+        ASSERT(header_ != nullptr);
+        if (!header_->SupportProfileTypeWithAbcId()) {
+            return false;
+        }
+        ASSERT(abcFilePool_ != nullptr);
+        ASSERT(abcFilePool_->GetPool() != nullptr);
+        const auto *entry = abcFilePool_->GetPool()->GetEntry(abcId);
+        if (entry == nullptr) {
+            LOG_COMPILER(ERROR) << "Can not find abcId in pgo file. abcId: " << abcId;
+            return false;
+        }
+        abcName = entry->GetData();
+        return true;
+    }
+
 private:
     bool Load();
     bool Verify(uint32_t checksum);
 
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
+    CString GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
 
     bool isLoaded_ {false};
     bool isVerifySuccess_ {false};
@@ -152,6 +175,7 @@ private:
     uint32_t hotnessThreshold_ {0};
     PGOProfilerHeader *header_ {nullptr};
     PGOPandaFileInfos pandaFileInfos_;
+    std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;

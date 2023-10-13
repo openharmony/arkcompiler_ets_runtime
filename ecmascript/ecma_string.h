@@ -58,6 +58,7 @@ public:
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
     static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
+    static constexpr uint32_t STRING_LENGTH_SHIFT_COUNT = 2U;
 
     static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
     // In last bit of mix_length we store if this string is compressed or not.
@@ -109,6 +110,8 @@ private:
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static EcmaString *GetSlicedString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+    static EcmaString *GetSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     // require src is LineString
     // not change src data structure
     static inline EcmaString *FastSubUtf8String(const EcmaVM *vm,
@@ -139,14 +142,14 @@ private:
 
     uint32_t GetLength() const
     {
-        return GetMixLength() >> 2U;
+        return GetMixLength() >> STRING_LENGTH_SHIFT_COUNT;
     }
 
     void SetLength(uint32_t length, bool compressed = false)
     {
         ASSERT(length < MAX_STRING_LENGTH);
         // Use 0u for compressed/utf8 expression
-        SetMixLength((length << 2U) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
+        SetMixLength((length << STRING_LENGTH_SHIFT_COUNT) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
     }
 
     inline size_t GetUtf8Length(bool modify = true) const;
@@ -212,11 +215,19 @@ private:
     {
         ASSERT(str1.Size() <= str2.Size());
         size_t size = str1.Size();
-        if (size < SMALL_STRING_SIZE || !std::is_same_v<T, T1>) {
+        if (!std::is_same_v<T, T1>) {
             for (size_t i = 0; i < size; i++) {
-                auto left = static_cast<int32_t>(str1[i]);
-                auto right = static_cast<int32_t>(str2[i]);
+                auto left = static_cast<uint16_t>(str1[i]);
+                auto right = static_cast<uint16_t>(str2[i]);
                 if (left != right) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (size < SMALL_STRING_SIZE) {
+            for (size_t i = 0; i < size; i++) {
+                if (str1[i] != str2[i]) {
                     return false;
                 }
             }
@@ -240,8 +251,8 @@ private:
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
-                                    bool canBeCompress);
+    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+                                       bool canBeCompress);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
@@ -456,6 +467,10 @@ private:
     static bool CanBeCompressed(const EcmaString *string);
 
     bool ToElementIndex(uint32_t *index);
+
+    bool ToInt(int32_t *index);
+
+    bool ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, const uint8_t *data);
 
     bool ToTypedArrayIndex(uint32_t *index);
 
@@ -906,10 +921,10 @@ public:
     }
 
     // get
-    static EcmaString *GetSlicedString(const EcmaVM *vm,
+    static EcmaString *GetSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
     {
-        return EcmaString::GetSlicedString(vm, src, start, length);
+        return EcmaString::GetSubString(vm, src, start, length);
     }
 
     bool IsUtf8() const
@@ -1110,10 +1125,10 @@ public:
 
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
-                                    bool canBeCompress)
+    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+                                       bool canBeCompress)
     {
-        return EcmaString::StringsAreEqualUtf8(str1, utf8Data, utf8Len, canBeCompress);
+        return EcmaString::StringIsEqualUint8Data(str1, dataAddr, dataLen, canBeCompress);
     }
 
     // not change str1 data structure.
@@ -1152,6 +1167,13 @@ public:
     bool ToElementIndex(uint32_t *index)
     {
         return string_->ToElementIndex(index);
+    }
+
+    // not change string data structure.
+    // if string is not flat, this func has low efficiency.
+    bool ToInt(int32_t *index)
+    {
+        return string_->ToInt(index);
     }
 
     // not change string data structure.

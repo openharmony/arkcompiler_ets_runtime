@@ -18,7 +18,7 @@
 namespace panda::ecmascript {
 void TaskQueue::PostTask(std::unique_ptr<Task> task)
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     ASSERT(!terminate_);
     tasks_.push_back(std::move(task));
     cv_.Signal();
@@ -26,7 +26,7 @@ void TaskQueue::PostTask(std::unique_ptr<Task> task)
 
 std::unique_ptr<Task> TaskQueue::PopTask()
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     while (true) {
         if (!tasks_.empty()) {
             std::unique_ptr<Task> task = std::move(tasks_.front());
@@ -43,7 +43,7 @@ std::unique_ptr<Task> TaskQueue::PopTask()
 
 void TaskQueue::TerminateTask(int32_t id, TaskType type)
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     for (auto &task : tasks_) {
         if (id != ALL_TASK_ID && id != task->GetId()) {
             continue;
@@ -57,7 +57,7 @@ void TaskQueue::TerminateTask(int32_t id, TaskType type)
 
 void TaskQueue::Terminate()
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     terminate_ = true;
     cv_.SignalAll();
 }

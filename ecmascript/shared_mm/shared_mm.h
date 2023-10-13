@@ -17,7 +17,7 @@
 #define ECMASCRIPT_SHARED_MEMORY_MANAGER_MANAGER_H
 
 #include "ecmascript/mem/c_containers.h"
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda {
 class EcmaVm;
@@ -41,7 +41,7 @@ private:
     void DecreaseRefSharedMemory(const void *pointer);
     void FreeBuffer(void *mem);
     void *AllocateBuffer(size_t size);
-    os::memory::RecursiveMutex jsSharedMemoryLock_;
+    RecursiveMutex jsSharedMemoryLock_;
     CMap<const uint64_t, int32_t> loadedJSSharedMemory_;
 };
 }  // namespace ecmascript

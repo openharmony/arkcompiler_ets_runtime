@@ -73,6 +73,9 @@ void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
         Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::ARRAY_LITERAL);
     } else if (Bytecodes::IsCallOp(opcode)) {
         Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, 0}, Type::CALL_TARGET);
+    } else if (Bytecodes::IsDefineClassWithBufferOp(opcode)) {
+        auto cpIndex = bcIns.GetId().AsRawValue();
+        Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::CLASS);
     }
 }
 }  // namespace panda::ecmascript

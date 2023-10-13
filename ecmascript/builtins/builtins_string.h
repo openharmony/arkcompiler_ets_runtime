@@ -20,6 +20,101 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_value.h"
 
+// List of functions in String, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsString::func refers to the native implementation of String[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_STRING_FUNCTIONS(V)                             \
+    /* String.fromCharCode ( ...codeUnits ) */                  \
+    V("fromCharCode",  FromCharCode,  1, StringFromCharCode)    \
+    /* String.fromCodePoint ( ...codePoints ) */                \
+    V("fromCodePoint", FromCodePoint, 1, INVALID)               \
+    /* String.raw ( template, ...substitutions ) */             \
+    V("raw",           Raw,           1, INVALID)
+
+// List of functions in String.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsString::func refers to the native implementation of String.prototype[name].
+// The following functions in String.prototype are not implemented yet:
+//   - String.prototype.isWellFormed ( )
+//   - String.prototype.toWellFormed ( )
+#define BUILTIN_STRING_PROTOTYPE_FUNCTIONS(V)                                       \
+    /* String.prototype.at ( index ) */                                             \
+    V("at",                At,                1, INVALID)                           \
+    /* String.prototype.charAt ( pos ) */                                           \
+    V("charAt",            CharAt,            1, StringCharAt)                      \
+    /* String.prototype.charCodeAt ( pos ) */                                       \
+    V("charCodeAt",        CharCodeAt,        1, StringCharCodeAt)                  \
+    /* String.prototype.codePointAt ( pos ) */                                      \
+    V("codePointAt",       CodePointAt,       1, INVALID)                           \
+    /* String.prototype.concat ( ...args ) */                                       \
+    V("concat",            Concat,            1, INVALID)                           \
+    /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \
+    V("endsWith",          EndsWith,          1, INVALID)                           \
+    /* String.prototype.includes ( searchString [ , position ] ) */                 \
+    V("includes",          Includes,          1, INVALID)                           \
+    /* String.prototype.indexOf ( searchString [ , position ] ) */                  \
+    V("indexOf",           IndexOf,           1, StringIndexOf)                     \
+    /* String.prototype.lastIndexOf ( searchString [ , position ] ) */              \
+    V("lastIndexOf",       LastIndexOf,       1, INVALID)                           \
+    /* String.prototype.localeCompare ( that [ , reserved1 [ , reserved2 ] ] ) */   \
+    V("localeCompare",     LocaleCompare,     1, LocaleCompare)                     \
+    /* String.prototype.match ( regexp ) */                                         \
+    V("match",             Match,             1, INVALID)                           \
+    /* String.prototype.matchAll ( regexp ) */                                      \
+    V("matchAll",          MatchAll,          1, INVALID)                           \
+    /* String.prototype.normalize ( [ form ] ) */                                   \
+    V("normalize",         Normalize,         0, INVALID)                           \
+    /* String.prototype.padEnd ( maxLength [ , fillString ] ) */                    \
+    V("padEnd",            PadEnd,            1, INVALID)                           \
+    /* String.prototype.padStart ( maxLength [ , fillString ] ) */                  \
+    V("padStart",          PadStart,          1, INVALID)                           \
+    /* String.prototype.repeat ( count ) */                                         \
+    V("repeat",            Repeat,            1, INVALID)                           \
+    /* String.prototype.replace ( searchValue, replaceValue ) */                    \
+    V("replace",           Replace,           2, INVALID)                           \
+    /* String.prototype.replaceAll ( searchValue, replaceValue ) */                 \
+    V("replaceAll",        ReplaceAll,        2, INVALID)                           \
+    /* String.prototype.search ( regexp ) */                                        \
+    V("search",            Search,            1, INVALID)                           \
+    /* String.prototype.slice ( start, end ) */                                     \
+    V("slice",             Slice,             2, INVALID)                           \
+    /* String.prototype.split ( separator, limit ) */                               \
+    V("split",             Split,             2, INVALID)                           \
+    /* String.prototype.startsWith ( searchString [ , position ] ) */               \
+    V("startsWith",        StartsWith,        1, INVALID)                           \
+    /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
+    /* String.prototype.substr ( start, length ) */                                 \
+    V("substr",            SubStr,            2, INVALID)                           \
+    /* String.prototype.substring ( start, end ) */                                 \
+    V("substring",         Substring,         2, StringSubstring)                   \
+    /* String.prototype.toLocaleLowerCase ( [ reserved1 [ , reserved2 ] ] ) */      \
+    V("toLocaleLowerCase", ToLocaleLowerCase, 0, INVALID)                           \
+    /* String.prototype.toLocaleUpperCase ( [ reserved1 [ , reserved2 ] ] ) */      \
+    V("toLocaleUpperCase", ToLocaleUpperCase, 0, INVALID)                           \
+    /* String.prototype.toLowerCase ( ) */                                          \
+    V("toLowerCase",       ToLowerCase,       0, INVALID)                           \
+    /* String.prototype.toString ( ) */                                             \
+    V("toString",          ToString,          0, INVALID)                           \
+    /* String.prototype.toUpperCase ( ) */                                          \
+    V("toUpperCase",       ToUpperCase,       0, INVALID)                           \
+    /* String.prototype.trim ( ) */                                                 \
+    V("trim",              Trim,              0, INVALID)                           \
+    /* String.prototype.trimEnd ( ) */                                              \
+    V("trimEnd",           TrimEnd,           0, INVALID)                           \
+    /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
+    /* Equivalent to trimStart. For compatibility only. */                          \
+    /* String.prototype.trimLeft ( ) */                                             \
+    V("trimLeft",          TrimLeft,          0, INVALID)                           \
+    /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
+    /* Equivalent to trimEnd. For compatibility only. */                            \
+    /* String.prototype.trimEnd ( ) */                                              \
+    V("trimRight",         TrimRight,         0, INVALID)                           \
+    /* String.prototype.trimStart ( ) */                                            \
+    V("trimStart",         TrimStart,         0, INVALID)                           \
+    /* String.prototype.valueOf ( ) */                                              \
+    V("valueOf",           ValueOf,           0, INVALID)
+
 namespace panda::ecmascript::builtins {
 constexpr int32_t ENCODE_MAX_UTF16 = 0X10FFFF;
 constexpr uint16_t ENCODE_LEAD_LOW = 0xD800;
@@ -127,9 +222,41 @@ public:
 
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
 
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetStringFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(STRING_FUNCTIONS);
+    }
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetStringPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(STRING_PROTOTYPE_FUNCTIONS);
+    }
+
 private:
+#define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsString::method, length, kungfu::BuiltinsStubCSigns::builtinId),
+
+    static constexpr std::array STRING_FUNCTIONS = {
+        BUILTIN_STRING_FUNCTIONS(BUILTIN_STRING_FUNCTION_ENTRY)
+    };
+    static constexpr std::array STRING_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_STRING_PROTOTYPE_FUNCTIONS(BUILTIN_STRING_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_STRING_FUNCTION_ENTRY
+
     static JSTaggedValue Pad(EcmaRuntimeCallInfo *argv, bool isStart);
     static int32_t ConvertDoubleToInt(double d);
+    static JSTaggedValue CreateArrayFromString(JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim);
+    static JSTaggedValue CreateArrayBySplitString(JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
+        uint32_t thisLength, uint32_t seperatorLength, uint32_t lim);
+    static JSTaggedValue CreateArrayThisStringAndSeperatorStringAreNotEmpty(
+        JSThread *thread, EcmaVM *ecmaVm,
+        const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
+        uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
     // 21.1.3.17.1
 };
 }  // namespace panda::ecmascript::builtins

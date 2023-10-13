@@ -18,6 +18,99 @@
 
 #include "ecmascript/base/builtins_base.h"
 
+// List of functions in Array, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsArray::func refers to the native implementation of Array[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_ARRAY_FUNCTIONS(V)                          \
+    /* Array.from ( items [ , mapfn [ , thisArg ] ] ) */    \
+    V("from",    From,    1, INVALID)                       \
+    /* Array.isArray ( arg ) */                             \
+    V("isArray", IsArray, 1, INVALID)                       \
+    /* Array.of ( ...items ) */                             \
+    V("of",      Of,      0, INVALID)
+
+// List of functions in Array.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsArray::func refers to the native implementation of Array.prototype[name].
+#define BUILTIN_ARRAY_PROTOTYPE_FUNCTIONS(V)                                \
+    /* Array.prototype.at ( index ) */                                      \
+    V("at",             At,               1, INVALID)                       \
+    /* Array.prototype.concat ( ...items ) */                               \
+    V("concat",         Concat,           1, ArrayConcat)                   \
+    /* Array.prototype.copyWithin ( target, start [ , end ] ) */            \
+    V("copyWithin",     CopyWithin,       2, INVALID)                       \
+    /* Array.prototype.entries ( ) */                                       \
+    V("entries",        Entries,          0, INVALID)                       \
+    /* Array.prototype.every ( callbackfn [ , thisArg ] ) */                \
+    V("every",          Every,            1, INVALID)                       \
+    /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
+    V("fill",           Fill,             1, INVALID)                       \
+    /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
+    V("filter",         Filter,           1, ArrayFilter)                   \
+    /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
+    V("find",           Find,             1, INVALID)                       \
+    /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
+    V("findIndex",      FindIndex,        1, INVALID)                       \
+    /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
+    V("findLast",       FindLast,         1, INVALID)                       \
+    /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \
+    V("findLastIndex",  FindLastIndex,    1, INVALID)                       \
+    /* Array.prototype.flat ( [ depth ] ) */                                \
+    V("flat",           Flat,             0, INVALID)                       \
+    /* Array.prototype.flatMap ( mapperFunction [ , thisArg ] ) */          \
+    V("flatMap",        FlatMap,          1, INVALID)                       \
+    /* Array.prototype.forEach ( callbackfn [ , thisArg ] ) */              \
+    V("forEach",        ForEach,          1, ArrayForEach)                  \
+    /* Array.prototype.includes ( searchElement [ , fromIndex ] ) */        \
+    V("includes",       Includes,         1, INVALID)                       \
+    /* Array.prototype.indexOf ( searchElement [ , fromIndex ] ) */         \
+    V("indexOf",        IndexOf,          1, ArrayIndexOf)                  \
+    /* Array.prototype.join ( separator ) */                                \
+    V("join",           Join,             1, INVALID)                       \
+    /* Array.prototype.keys ( ) */                                          \
+    V("keys",           Keys,             0, INVALID)                       \
+    /* Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */     \
+    V("lastIndexOf",    LastIndexOf,      1, ArrayLastIndexOf)              \
+    /* Array.prototype.map ( callbackfn [ , thisArg ] ) */                  \
+    V("map",            Map,              1, INVALID)                       \
+    /* Array.prototype.pop ( ) */                                           \
+    V("pop",            Pop,              0, INVALID)                       \
+    /* Array.prototype.push ( ...items ) */                                 \
+    V("push",           Push,             1, ArrayPush)                     \
+    /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
+    V("reduce",         Reduce,           1, INVALID)                       \
+    /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
+    V("reduceRight",    ReduceRight,      1, INVALID)                       \
+    /* Array.prototype.reverse ( ) */                                       \
+    V("reverse",        Reverse,          0, ArrayReverse)                  \
+    /* Array.prototype.shift ( ) */                                         \
+    V("shift",          Shift,            0, INVALID)                       \
+    /* Array.prototype.slice ( start, end ) */                              \
+    V("slice",          Slice,            2, ArraySlice)                    \
+    /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
+    V("some",           Some,             1, INVALID)                       \
+    /* Array.prototype.sort ( comparefn ) */                                \
+    V("sort",           Sort,             1, SORT)                          \
+    /* Array.prototype.splice ( start, deleteCount, ...items ) */           \
+    V("splice",         Splice,           2, INVALID)                       \
+    /* Array.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */  \
+    V("toLocaleString", ToLocaleString,   0, INVALID)                       \
+    /* Array.prototype.toReversed ( ) */                                    \
+    V("toReversed",     ToReversed,       0, INVALID)                       \
+    /* Array.prototype.toSorted ( comparefn ) */                            \
+    V("toSorted",       ToSorted,         1, INVALID)                       \
+    /* Array.prototype.toSpliced ( start, skipCount, ...items ) */          \
+    V("toSpliced",      ToSpliced,        2, INVALID)                       \
+    /* Array.prototype.toString ( ) */                                      \
+    V("toString",       ToString,         0, INVALID)                       \
+    /* Array.prototype.unshift ( ...items ) */                              \
+    V("unshift",        Unshift,          1, INVALID)                       \
+    /* Array.prototype.values ( ) */                                        \
+    V("values",         Values,           0, INVALID)                       \
+    /* Array.prototype.with ( index, value ) */                             \
+    V("with",           With,             2, INVALID)
+
 namespace panda::ecmascript::builtins {
 static constexpr uint8_t INDEX_TWO = 2;
 static constexpr uint8_t INDEX_THREE = 3;
@@ -116,7 +209,30 @@ public:
     // 23.1.3.35 Array.prototype.toSpliced ( start, skipCount, ...items )
     static JSTaggedValue ToSpliced(EcmaRuntimeCallInfo *argv);
 
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetArrayFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(ARRAY_FUNCTIONS);
+    }
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetArrayPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(ARRAY_PROTOTYPE_FUNCTIONS);
+    }
+
 private:
+#define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array ARRAY_FUNCTIONS  = {
+        BUILTIN_ARRAY_FUNCTIONS(BUILTIN_ARRAY_FUNCTION_ENTRY)
+    };
+    static constexpr std::array ARRAY_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_ARRAY_PROTOTYPE_FUNCTIONS(BUILTIN_ARRAY_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_ARRAY_FUNCTION_ENTRY
+
     static JSTaggedValue IndexOfStable(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(

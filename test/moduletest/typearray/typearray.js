@@ -246,3 +246,16 @@ let arr12 = new Uint8Array(256).fill(255);
 print(arr12[0] == 255);
 print(arr12[123] == 255);
 print(arr12[255] == 255);
+
+try {
+    new Uint8Array(2 ** 32 - 1);
+} catch (error) {
+    print(error.name);
+}
+
+
+const v21 = new SharedArrayBuffer(32);
+const v22 = new BigInt64Array(v21);
+Atomics.or(v22, Int16Array, false);
+print(v22);
+print(Atomics.wait(v22, false, true));

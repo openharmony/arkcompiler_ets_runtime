@@ -270,6 +270,20 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 
+void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, bool isConvinced)
+{
+    if (isConvinced) {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStart();
+    } else {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStartSoon();
+    }
+}
+
+void DFXJSNApi::NotifyHighSensitive(EcmaVM *vm, bool isStart)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyHighSensitive(isStart);
+}
+
 bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -364,6 +378,10 @@ void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,
                                         [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     if (vm == nullptr) {
         return;
     }
@@ -400,6 +418,10 @@ void DFXJSNApi::StopCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm)
 void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     if (vm == nullptr) {
         return;
     }
@@ -441,6 +463,10 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
 void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     LOG_ECMA(INFO) << "SetCpuProfilerSamplingInterval, Sampling interval is: " << interval;
     if (vm == nullptr) {
         return;

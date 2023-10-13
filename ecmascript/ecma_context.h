@@ -177,6 +177,18 @@ public:
         return reinterpret_cast<uintptr_t>(&regexpCache_);
     }
 
+    void SetupRegExpGlobalResult();
+
+    JSHandle<JSTaggedValue> GetRegExpGlobalResult() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpGlobal_));
+    }
+
+    void SetRegExpGlobalResult(JSTaggedValue newResult)
+    {
+        regexpGlobal_ = newResult;
+    }
+
     WaiterListNode *GetWaiterListNode()
     {
         return &waiterListNode_;
@@ -435,6 +447,7 @@ private:
     RegExpParserCache *regExpParserCache_ {nullptr};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
+    JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 

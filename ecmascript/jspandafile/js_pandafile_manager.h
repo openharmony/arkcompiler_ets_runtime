@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda {
 namespace ecmascript {
@@ -45,6 +46,8 @@ public:
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename);
 
+    std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename, const CString &desc);
+
     std::shared_ptr<JSPandaFile> OpenJSPandaFileFromBuffer(uint8_t *buffer, size_t size, const CString &filename);
 
     std::shared_ptr<JSPandaFile> NewJSPandaFile(const panda_file::File *pf, const CString &desc);
@@ -59,7 +62,7 @@ public:
     template<typename Callback>
     void EnumerateJSPandaFiles(Callback cb)
     {
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
             if (!cb(item.second.first.get())) {
                 return;
@@ -87,7 +90,7 @@ private:
     };
 
     std::shared_ptr<JSPandaFile> GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
-                                                     std::string_view entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME);
+                                                     std::string_view entryPoint);
     std::shared_ptr<JSPandaFile> GetJSPandaFile(const panda_file::File *pf);
     std::shared_ptr<JSPandaFile> FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     std::shared_ptr<JSPandaFile> FindJSPandaFileUnlocked(const CString &filename);
@@ -97,7 +100,7 @@ private:
     static void *AllocateBuffer(size_t size);
     static void FreeBuffer(void *mem);
 
-    os::memory::RecursiveMutex jsPandaFileLock_;
+    RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was hold by ecma vm list.
     using JSPandaFileVmsPair = std::pair<std::shared_ptr<JSPandaFile>, std::set<const EcmaVM *>>;
     std::unordered_map<const CString, JSPandaFileVmsPair, CStringHash> loadedJSPandaFiles_;

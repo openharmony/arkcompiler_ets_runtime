@@ -26,8 +26,10 @@ function foo1(p) {
   p[2] = 'test';
 }
 
-foo(a);
-foo(b);
-foo(c);
-foo1(d);
+for (let i = 0; i < 1000; i++) {
+  foo(a);
+  foo(b);
+  foo(c);
+  foo1(d);
+}
 c[6] = 1;

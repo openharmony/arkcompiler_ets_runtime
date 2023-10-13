@@ -19,6 +19,30 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in Map.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsMap::func refers to the native implementation of Map.prototype[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_MAP_PROTOTYPE_FUNCTIONS(V)                      \
+    /* Map.prototype.clear ( ) */                               \
+    V("clear",   Clear,   0, MapClear)                          \
+    /* Map.prototype.delete ( key ) */                          \
+    V("delete",  Delete,  1, MapDelete)                         \
+    /* Map.prototype.entries ( ) */                             \
+    V("entries", Entries, 0, MapEntries)                        \
+    /* Map.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
+    V("forEach", ForEach, 1, MapForEach)                        \
+    /* Map.prototype.get ( key ) */                             \
+    V("get",     Get,     1, INVALID)                           \
+    /* Map.prototype.has ( key ) */                             \
+    V("has",     Has,     1, MapHas)                            \
+    /* Map.prototype.keys ( ) */                                \
+    V("keys",    Keys,    0, MapKeys)                           \
+    /* Map.prototype.set ( key, value ) */                      \
+    V("set",     Set,     2, MapSet)                            \
+    /* Map.prototype.values ( ) */                              \
+    V("values",  Values,  0, MapValues)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsMap : public base::BuiltinsBase {
 public:
@@ -51,6 +75,22 @@ public:
     static JSTaggedValue AddEntriesFromIterable(JSThread *thread, const JSHandle<JSObject> &target,
                                                 const JSHandle<JSTaggedValue> &iterable,
                                                 const JSHandle<JSTaggedValue> &adder, ObjectFactory *factory);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetMapPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(MAP_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_MAP_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsMap::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array MAP_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_MAP_PROTOTYPE_FUNCTIONS(BUILTIN_MAP_FUNCTION_ENTRY)
+    };
+
+#undef BUILTIN_MAP_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_MAP_H

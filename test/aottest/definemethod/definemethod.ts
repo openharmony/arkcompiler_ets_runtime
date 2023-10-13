@@ -13,12 +13,23 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function print(str: any): string;
 
 var obj = {
-    get method():string {
-        return "define method";
-    }
-}
+  get method(): string {
+    return "define method";
+  },
+};
 
 print(obj.method);
+
+function f45() {
+  return 0;
+  class C113 {
+    [Symbol.iterator]() {
+      return {
+        next() {},
+      };
+    }
+  }
+}

@@ -176,8 +176,6 @@ public:
 
     Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug);
 
-    void GenerateMethodToEntryIndexMap();
-
     void CompileLatestModuleThenDestroy();
 
     void DestroyCollectedStackMapInfo();
@@ -201,15 +199,18 @@ public:
         return pc2DeoptVec_;
     }
 
+    void SetCurrentCompileFileName(CString fileName)
+    {
+        curCompileFileName_ = fileName.c_str();
+    }
+
 private:
     AnFileInfo aotInfo_;
     std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
     std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
     EcmaVM* vm_;
     CompilationConfig cfg_;
-    // MethodID->EntryIndex
-    std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
-
+    std::string curCompileFileName_;
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);
 

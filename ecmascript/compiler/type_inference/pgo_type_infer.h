@@ -74,7 +74,7 @@ private:
     void InferAccessObjByValue(GateRef gate);
     void InferCreateArray(GateRef gate);
 
-    void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop = JSTaggedValue::Undefined());
+    void UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIdx = INVALID_INDEX);
     void TrySetElementsKind(GateRef gate);
     void TrySetPropKeyKind(GateRef gate, GateRef propKey);
 

@@ -18,6 +18,58 @@
 
 #include "ecmascript/base/builtins_base.h"
 
+// List of constants in Math, excluding '@@' internal properties.
+#define BUILTIN_MATH_CONSTANTS(V)   \
+    V(E)                            \
+    V(LN10)                         \
+    V(LN2)                          \
+    V(LOG10E)                       \
+    V(LOG2E)                        \
+    V(PI)                           \
+    V(SQRT1_2)                      \
+    V(SQRT2)
+
+// List of functions in Math.
+// V(name, func, length, stubIndex)
+// where BuiltinsMath::func refers to the native implementation of Math[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_MATH_FUNCTIONS(V)                                           \
+    V("abs",    Abs,    1, ABS)         /* Math.abs ( x ) */                \
+    V("acos",   Acos,   1, ACOS)        /* Math.acos ( x ) */               \
+    V("acosh",  Acosh,  1, INVALID)     /* Math.acosh ( x ) */              \
+    V("asin",   Asin,   1, INVALID)     /* Math.asin ( x ) */               \
+    V("asinh",  Asinh,  1, INVALID)     /* Math.asinh ( x ) */              \
+    V("atan",   Atan,   1, ATAN)        /* Math.atan ( x ) */               \
+    V("atan2",  Atan2,  2, INVALID)     /* Math.atan2 ( y, x ) */           \
+    V("atanh",  Atanh,  1, INVALID)     /* Math.atanh ( x ) */              \
+    V("cbrt",   Cbrt,   1, INVALID)     /* Math.cbrt ( x ) */               \
+    V("ceil",   Ceil,   1, INVALID)     /* Math.ceil ( x ) */               \
+    V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
+    V("cos",    Cos,    1, COS)         /* Math.cos ( x ) */                \
+    V("cosh",   Cosh,   1, INVALID)     /* Math.cosh ( x ) */               \
+    V("exp",    Exp,    1, INVALID)     /* Math.exp ( x ) */                \
+    V("expm1",  Expm1,  1, INVALID)     /* Math.expm1 ( x ) */              \
+    V("floor",  Floor,  1, FLOOR)       /* Math.floor ( x ) */              \
+    V("fround", Fround, 1, INVALID)     /* Math.fround ( x ) */             \
+    V("hypot",  Hypot,  2, INVALID)     /* Math.hypot ( ...args ) */        \
+    V("imul",   Imul,   2, INVALID)     /* Math.imul ( x, y ) */            \
+    V("log",    Log,    1, INVALID)     /* Math.log ( x ) */                \
+    V("log10",  Log10,  1, INVALID)     /* Math.log10 ( x ) */              \
+    V("log1p",  Log1p,  1, INVALID)     /* Math.log1p ( x ) */              \
+    V("log2",   Log2,   1, INVALID)     /* Math.log2 ( x ) */               \
+    V("max",    Max,    2, INVALID)     /* Math.max ( ...args ) */          \
+    V("min",    Min,    2, INVALID)     /* Math.min ( ...args ) */          \
+    V("pow",    Pow,    2, INVALID)     /* Math.pow ( base, exponent ) */   \
+    V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
+    V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
+    V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \
+    V("sin",    Sin,    1, SIN)         /* Math.sin ( x ) */                \
+    V("sinh",   Sinh,   1, INVALID)     /* Math.sinh ( x ) */               \
+    V("sqrt",   Sqrt,   1, SQRT)        /* Math.sqrt ( x ) */               \
+    V("tan",    Tan,    1, INVALID)     /* Math.tan ( x ) */                \
+    V("tanh",   Tanh,   1, INVALID)     /* Math.tanh ( x ) */               \
+    V("trunc",  Trunc,  1, INVALID)     /* Math.trunc ( x ) */
+
 namespace panda::ecmascript::builtins {
 class BuiltinsMath : public base::BuiltinsBase {
 public:
@@ -107,6 +159,34 @@ public:
     static JSTaggedValue Tanh(EcmaRuntimeCallInfo *argv);
     // 20.2.2.35
     static JSTaggedValue Trunc(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the '@@' internal properties.
+    static Span<const base::BuiltinConstantEntry> GetMathConstants()
+    {
+        return Span<const base::BuiltinConstantEntry>(MATH_CONSTANTS);
+    }
+
+    static Span<const base::BuiltinFunctionEntry> GetMathFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(MATH_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_MATH_CONSTANT_ENTRY(name) \
+    base::BuiltinConstantEntry::Create(#name, JSTaggedValue(BuiltinsMath::name)),
+
+    static inline std::array MATH_CONSTANTS = {
+        BUILTIN_MATH_CONSTANTS(BUILTIN_MATH_CONSTANT_ENTRY)
+    };
+#undef BUILTIN_MATH_CONSTANT_ENTRY
+
+#define BUILTIN_MATH_FUNCTION_ENTRY(name, func, length, builtinId) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsMath::func, length, kungfu::BuiltinsStubCSigns::builtinId),
+
+    static constexpr std::array MATH_FUNCTIONS = {
+        BUILTIN_MATH_FUNCTIONS(BUILTIN_MATH_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_MATH_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_MATH_H

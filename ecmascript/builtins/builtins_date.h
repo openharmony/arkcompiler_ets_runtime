@@ -19,9 +19,114 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_date.h"
 
+// List of functions in Date, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsDate::func refers to the native implementation of Date[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_DATE_FUNCTIONS(V)                                                                   \
+    /* Date.now ( ) */                                                                              \
+    V("now",   Now,   0, INVALID)                                                                   \
+    /* Date.parse ( string ) */                                                                     \
+    V("parse", Parse, 1, INVALID)                                                                   \
+    /* Date.UTC ( year [ , month [ , date [ , hours [ , minutes [ , seconds [ , ms ] ] ] ] ] ] ) */ \
+    V("UTC",   UTC,   ::panda::ecmascript::builtins::BuiltinsDate::UTC_LENGTH, INVALID)
+
+// List of functions in Date.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsDate::func refers to the native implementation of Date.prototype[name].
+#define BUILTIN_DATE_PROTOTYPE_FUNCTIONS(V)                                     \
+    /* Date.prototype.getDate ( ) */                                            \
+    V("getDate",            GetDate,            0, INVALID)                     \
+    /* Date.prototype.getDay ( ) */                                             \
+    V("getDay",             GetDay,             0, INVALID)                     \
+    /* Date.prototype.getFullYear ( ) */                                        \
+    V("getFullYear",        GetFullYear,        0, INVALID)                     \
+    /* Date.prototype.getHours ( ) */                                           \
+    V("getHours",           GetHours,           0, INVALID)                     \
+    /* Date.prototype.getMilliseconds ( ) */                                    \
+    V("getMilliseconds",    GetMilliseconds,    0, INVALID)                     \
+    /* Date.prototype.getMinutes ( ) */                                         \
+    V("getMinutes",         GetMinutes,         0, INVALID)                     \
+    /* Date.prototype.getMonth ( ) */                                           \
+    V("getMonth",           GetMonth,           0, INVALID)                     \
+    /* Date.prototype.getSeconds ( ) */                                         \
+    V("getSeconds",         GetSeconds,         0, INVALID)                     \
+    /* Date.prototype.getTime ( ) */                                            \
+    V("getTime",            GetTime,            0, INVALID)                     \
+    /* Date.prototype.getTimezoneOffset ( ) */                                  \
+    V("getTimezoneOffset",  GetTimezoneOffset,  0, INVALID)                     \
+    /* Date.prototype.getUTCDate ( ) */                                         \
+    V("getUTCDate",         GetUTCDate,         0, INVALID)                     \
+    /* Date.prototype.getUTCDay ( ) */                                          \
+    V("getUTCDay",          GetUTCDay,          0, INVALID)                     \
+    /* Date.prototype.getUTCFullYear ( ) */                                     \
+    V("getUTCFullYear",     GetUTCFullYear,     0, INVALID)                     \
+    /* Date.prototype.getUTCHours ( ) */                                        \
+    V("getUTCHours",        GetUTCHours,        0, INVALID)                     \
+    /* Date.prototype.getUTCMilliseconds ( ) */                                 \
+    V("getUTCMilliseconds", GetUTCMilliseconds, 0, INVALID)                     \
+    /* Date.prototype.getUTCMinutes ( ) */                                      \
+    V("getUTCMinutes",      GetUTCMinutes,      0, INVALID)                     \
+    /* Date.prototype.getUTCMonth ( ) */                                        \
+    V("getUTCMonth",        GetUTCMonth,        0, INVALID)                     \
+    /* Date.prototype.getUTCSeconds ( ) */                                      \
+    V("getUTCSeconds",      GetUTCSeconds,      0, INVALID)                     \
+    /* Date.prototype.setDate ( date ) */                                       \
+    V("setDate",            SetDate,            1, INVALID)                     \
+    /* Date.prototype.setFullYear ( year [ , month [ , date ] ] ) */            \
+    V("setFullYear",        SetFullYear,        3, INVALID)                     \
+    /* Date.prototype.setHours ( hour [ , min [ , sec [ , ms ] ] ] ) */         \
+    V("setHours",           SetHours,           4, INVALID)                     \
+    /* Date.prototype.setMilliseconds ( ms ) */                                 \
+    V("setMilliseconds",    SetMilliseconds,    1, INVALID)                     \
+    /* Date.prototype.setMinutes ( min [ , sec [ , ms ] ] ) */                  \
+    V("setMinutes",         SetMinutes,         3, INVALID)                     \
+    /* Date.prototype.setMonth ( month [ , date ] ) */                          \
+    V("setMonth",           SetMonth,           2, INVALID)                     \
+    /* Date.prototype.setSeconds ( sec [ , ms ] ) */                            \
+    V("setSeconds",         SetSeconds,         2, INVALID)                     \
+    /* Date.prototype.setTime ( time ) */                                       \
+    V("setTime",            SetTime,            1, INVALID)                     \
+    /* Date.prototype.setUTCDate ( date ) */                                    \
+    V("setUTCDate",         SetUTCDate,         1, INVALID)                     \
+    /* Date.prototype.setUTCFullYear ( year [ , month [ , date ] ] ) */         \
+    V("setUTCFullYear",     SetUTCFullYear,     3, INVALID)                     \
+    /* Date.prototype.setUTCHours ( hour [ , min [ , sec [ , ms ] ] ] ) */      \
+    V("setUTCHours",        SetUTCHours,        4, INVALID)                     \
+    /* Date.prototype.setUTCMilliseconds ( ms ) */                              \
+    V("setUTCMilliseconds", SetUTCMilliseconds, 1, INVALID)                     \
+    /* Date.prototype.setUTCMinutes ( min [ , sec [ , ms ] ] ) */               \
+    V("setUTCMinutes",      SetUTCMinutes,      3, INVALID)                     \
+    /* Date.prototype.setUTCMonth ( month [ , date ] ) */                       \
+    V("setUTCMonth",        SetUTCMonth,        2, INVALID)                     \
+    /* Date.prototype.setUTCSeconds ( sec [ , ms ] ) */                         \
+    V("setUTCSeconds",      SetUTCSeconds,      2, INVALID)                     \
+    /* Date.prototype.toDateString ( ) */                                       \
+    V("toDateString",       ToDateString,       0, INVALID)                     \
+    /* Date.prototype.toISOString ( ) */                                        \
+    V("toISOString",        ToISOString,        0, INVALID)                     \
+    /* Date.prototype.toJSON ( key ) */                                         \
+    V("toJSON",             ToJSON,             1, INVALID)                     \
+    /* Date.prototype.toLocaleDateString ( [ reserved1 [ , reserved2 ] ] ) */   \
+    V("toLocaleDateString", ToLocaleDateString, 0, INVALID)                     \
+    /* Date.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
+    V("toLocaleString",     ToLocaleString,     0, INVALID)                     \
+    /* Date.prototype.toLocaleTimeString ( [ reserved1 [ , reserved2 ] ] ) */   \
+    V("toLocaleTimeString", ToLocaleTimeString, 0, INVALID)                     \
+    /* Date.prototype.toString ( ) */                                           \
+    V("toString",           ToString,           0, INVALID)                     \
+    /* Date.prototype.toTimeString ( ) */                                       \
+    V("toTimeString",       ToTimeString,       0, INVALID)                     \
+    /* Date.prototype.toUTCString ( ) */                                        \
+    V("toUTCString",        ToUTCString,        0, INVALID)                     \
+    /* Date.prototype.valueOf ( ) */                                            \
+    V("valueOf",            ValueOf,            0, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsDate : public base::BuiltinsBase {
 public:
+    static constexpr int UTC_LENGTH = 7;
+
     // 20.4.2 The Date Constructor
     static JSTaggedValue DateConstructor(EcmaRuntimeCallInfo *argv);
 
@@ -165,7 +270,30 @@ public:
     // 20.4.4.45 Date.prototype [ @@toPrimitive ]
     static JSTaggedValue ToPrimitive(EcmaRuntimeCallInfo *argv);
 
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetDateFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(DATE_FUNCTIONS);
+    }
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetDatePrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(DATE_PROTOTYPE_FUNCTIONS);
+    }
+
 private:
+#define BUILTIN_DATE_FUNCTION_ENTRY(name, func, length, builtinId) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsDate::func, length, kungfu::BuiltinsStubCSigns::builtinId),
+
+    static constexpr std::array DATE_FUNCTIONS = {
+        BUILTIN_DATE_FUNCTIONS(BUILTIN_DATE_FUNCTION_ENTRY)
+    };
+    static constexpr std::array DATE_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_DATE_PROTOTYPE_FUNCTIONS(BUILTIN_DATE_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_DATE_FUNCTION_ENTRY
+
     // definition for set data code.
     static constexpr uint32_t CODE_SET_DATE = 0x32;
     static constexpr uint32_t CODE_SET_MILLISECONDS = 0x76;

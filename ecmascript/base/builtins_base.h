@@ -30,6 +30,96 @@
 namespace panda::ecmascript {
 class JSArray;
 namespace base {
+class BuiltinConstantEntry {
+public:
+    constexpr BuiltinConstantEntry(std::string_view name, JSTaggedValue value) :
+        name_(name), rawTaggedValue_(value.GetRawData()) {}
+
+    static constexpr BuiltinConstantEntry Create(std::string_view name, JSTaggedValue value)
+    {
+        return BuiltinConstantEntry(name, value);
+    }
+
+    constexpr std::string_view GetName() const
+    {
+        return name_;
+    }
+
+    constexpr JSTaggedValue GetTaggedValue() const
+    {
+        return JSTaggedValue(rawTaggedValue_);
+    }
+
+private:
+    std::string_view name_;
+    JSTaggedType rawTaggedValue_;
+};
+
+class BuiltinFunctionEntry {
+public:
+    static constexpr int LENGTH_BITS_SIZE = 8;
+    static constexpr int BUILTIN_ID_BITS_SIZE = 8;
+    // Assures the bits are enough to represent all builtin stubs.
+    static_assert(kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS <= (1u << BUILTIN_ID_BITS_SIZE));
+
+    using LengthBits = panda::BitField<int, 0, LENGTH_BITS_SIZE>;
+    using BuiltinIdBits = LengthBits::NextField<kungfu::BuiltinsStubCSigns::ID, BUILTIN_ID_BITS_SIZE>;
+    using IsConstructorBit = BuiltinIdBits::NextFlag;
+    using IsAccessorBit = IsConstructorBit::NextFlag;
+
+    template <class... BitFieldArgs>
+    static constexpr BuiltinFunctionEntry Create(std::string_view name, EcmaEntrypoint entrypoint,
+                                                 int length, kungfu::BuiltinsStubCSigns::ID builtinId)
+    {
+        static_assert((std::is_same_v<typename BitFieldArgs::ValueType, bool> && ...),
+                      "Only 1-bit fields are available in BitFieldArgs");
+        uint64_t bitfield = 0;
+        bitfield |= LengthBits::Encode(length);
+        bitfield |= BuiltinIdBits::Encode(builtinId);
+        // Traverses BitFieldArgs (IsConstructorBit, IsAccessorBit, etc.)
+        ((bitfield |= BitFieldArgs::Encode(true)), ...);
+        return BuiltinFunctionEntry(name, entrypoint, bitfield);
+    }
+
+    constexpr std::string_view GetName() const
+    {
+        return name_;
+    }
+
+    constexpr EcmaEntrypoint GetEntrypoint() const
+    {
+        return entrypoint_;
+    }
+
+    constexpr int GetLength() const
+    {
+        return LengthBits::Decode(bitfield_);
+    }
+
+    constexpr kungfu::BuiltinsStubCSigns::ID GetBuiltinStubId() const
+    {
+        return BuiltinIdBits::Decode(bitfield_);
+    }
+
+    constexpr bool IsConstructor() const
+    {
+        return IsConstructorBit::Decode(bitfield_);
+    }
+
+    constexpr bool IsAccessor() const
+    {
+        return IsAccessorBit::Decode(bitfield_);
+    }
+
+private:
+    std::string_view name_;
+    EcmaEntrypoint entrypoint_;
+    uint64_t bitfield_;
+
+    constexpr BuiltinFunctionEntry(std::string_view name, EcmaEntrypoint entrypoint, uint64_t bitfield) :
+        name_(name), entrypoint_(entrypoint), bitfield_(bitfield) {}
+};
+
 class BuiltinsBase {
 public:
     enum ArgsPosition : uint32_t { FIRST = 0, SECOND, THIRD, FOURTH, FIFTH };

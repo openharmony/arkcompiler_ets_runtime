@@ -17,7 +17,7 @@
 #define ECMASCRIPT_REGEXP_REGEXP_EXECUTOR_H
 
 #include "ecmascript/regexp/regexp_parser.h"
-#include "ecmascript/mem/chunk.h"
+#include "ecmascript/mem/regexp_cached_chunk.h"
 #include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
@@ -56,7 +56,7 @@ public:
         bool isSuccess_ = false;
     };
 
-    explicit RegExpExecutor(Chunk *chunk) : chunk_(chunk)
+    explicit RegExpExecutor(RegExpCachedChunk *chunk) : chunk_(chunk)
     {
         ASSERT(chunk_ != nullptr);
     };
@@ -726,7 +726,7 @@ private:
     uint32_t stateStackSize_ = 0;
     uint32_t stateSize_ = 0;
     uint8_t *stateStack_ = nullptr;
-    Chunk *chunk_ = nullptr;
+    RegExpCachedChunk *chunk_ = nullptr;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_REGEXP_REGEXP_EXECUTOR_H

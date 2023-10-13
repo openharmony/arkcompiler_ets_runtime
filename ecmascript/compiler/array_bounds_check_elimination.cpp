@@ -22,7 +22,7 @@ void ArrayBoundsCheckElimination::Run()
     indexCheckInfo_.resize(circuit_->GetMaxGateId() + 1, nullptr);
     graphLinearizer_.SetScheduleJSOpcode();
     graphLinearizer_.LinearizeGraph();
-    
+
     CalcBounds(graphLinearizer_.GetEntryRegion(), nullptr);
 
     if (IsLogEnabled()) {
@@ -150,7 +150,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::AndOp(Bound *bo
             bound->upperGate_ = b->upperGate_;
         }
     }
-    
+
     return bound;
 }
 
@@ -176,7 +176,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::OrOp(Bound *bou
 
 ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoConstant(GateRef gate)
 {
-    int constValue = acc_.GetConstantValue(gate);
+    int constValue = static_cast<int>(acc_.GetConstantValue(gate));
     return new Bound(constValue, Circuit::NullGate(), constValue, Circuit::NullGate());
 }
 
@@ -189,9 +189,9 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
         if (op == TypedBinOp::TYPED_AND && (acc_.IsConstant(x) || acc_.IsConstant(y))) {
             int constValue = 0;
             if (acc_.IsConstant(x)) {
-                constValue = acc_.GetConstantValue(x);
+                constValue = static_cast<int>(acc_.GetConstantValue(x));
             } else {
-                constValue = acc_.GetConstantValue(y);
+                constValue = static_cast<int>(acc_.GetConstantValue(y));
             }
             if (constValue >= 0) {
                 return new Bound(0, Circuit::NullGate(), constValue, Circuit::NullGate());
@@ -202,7 +202,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
                 return new Bound(0, Circuit::NullGate(), -1, y);
             } else if (xBound->HasLower() && xBound->Lower() >= 0 && acc_.IsConstant(y)
                         && acc_.GetConstantValue(y) != 0) {
-                int constValue = acc_.GetConstantValue(y);
+                int constValue = static_cast<int>(acc_.GetConstantValue(y));
                 if (constValue != INT_MIN) {
                     return new Bound(0, Circuit::NullGate(), abs(constValue) - 1, Circuit::NullGate());
                 } else {
@@ -219,7 +219,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
             }
 
             // Add, Constant now in x
-            int constValue = acc_.GetConstantValue(x);
+            int constValue = static_cast<int>(acc_.GetConstantValue(x));
             if (op == TypedBinOp::TYPED_SUB) {
                 constValue = -constValue;
             }
@@ -351,7 +351,7 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
     constValue = 0;
     instrValue = gate;
     if (acc_.IsConstant(gate)) {
-        constValue = acc_.GetConstantValue(gate);
+        constValue = static_cast<int>(acc_.GetConstantValue(gate));
         instrValue = Circuit::NullGate();
     } else {
         while (acc_.GetOpCode(gate) == OpCode::TYPED_BINARY_OP) {
@@ -363,10 +363,10 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
                 || (op == TypedBinOp::TYPED_SUB && acc_.IsConstant(y))) {
                 int value = 0;
                 if (acc_.IsConstant(x)) {
-                    value = acc_.GetConstantValue(x);
+                    value = static_cast<int>(acc_.GetConstantValue(x));
                     other = y;
                 } else {
-                    value = acc_.GetConstantValue(y);
+                    value = static_cast<int>(acc_.GetConstantValue(y));
                     other = x;
                 }
 
@@ -379,7 +379,7 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
                 }
 
                 if (acc_.IsConstant(other)) {
-                    base += value + acc_.GetConstantValue(other);
+                    base += value + static_cast<int>(acc_.GetConstantValue(other));
                     constValue = base;
                     instrValue = Circuit::NullGate();
                     break ;
@@ -500,7 +500,7 @@ bool ArrayBoundsCheckElimination::InArrayBound(Bound *bound, GateRef length, Gat
     if (!bound || array == Circuit::NullGate()) {
         return false;
     }
-    
+
     if (bound->Lower() >= 0 && bound->LowerGate() == Circuit::NullGate() &&
        bound->Upper() < 0 && bound->UpperGate() != Circuit::NullGate()) {
         if (length != Circuit::NullGate() && bound->UpperGate() == length) {
@@ -508,7 +508,6 @@ bool ArrayBoundsCheckElimination::InArrayBound(Bound *bound, GateRef length, Gat
         }
     }
 
-    // TODO: Solve Multidimensional array. To fix a[i][j] case, maybe LOAD_ELEMENT are not the same one.
     return false;
 }
 
@@ -516,8 +515,8 @@ void ArrayBoundsCheckElimination::RemoveIndexCheck(GateRef gate)
 {
     ASSERT(acc_.GetDependCount(gate) == 1);
     ASSERT(acc_.GetStateCount(gate) == 1);
-    ASSERT(acc_.GetInValueCount(gate) == 2);
-    
+    ASSERT(acc_.GetInValueCount(gate) == 2); // 2: ValueCount
+
     GateRef depend = acc_.GetDep(gate);
     GateRef state = acc_.GetState(gate);
     GateRef value = acc_.GetValueIn(gate, 1); // Index
@@ -546,9 +545,6 @@ bool ArrayBoundsCheckElimination::LoopInvariant(GateRegion *loopHeader, GateRef 
         return true;
     }
     auto gateRegion = graphLinearizer_.GateToRegion(gate);
-    if (!gateRegion) {
-        return true;
-    }
     GateRegion* g = loopHeader->GetDominator();
     while (g != nullptr) {
         if (g == gateRegion) {
@@ -583,16 +579,16 @@ GateRef ArrayBoundsCheckElimination::PredicateAdd(GateRef left, int32_t leftCons
 }
 
 GateRef ArrayBoundsCheckElimination::PredicateAddCmpWithConst(GateRef left, int32_t leftConst,
-                                                                TypedBinOp cond, int32_t right)
+                                                              TypedBinOp cond, int32_t right)
 {
     GateRef constGate = builder_.Int32(right);
     return PredicateAdd(left, leftConst, cond, constGate);
 }
 
 void ArrayBoundsCheckElimination::LoopInvariantMotionForIndexCheck(GateRef array, GateRef length,
-                                                                    GateRef lowerGate, int lower,
-                                                                    GateRef upperGate, int upper,
-                                                                    bool isTypedArray)
+                                                                   GateRef lowerGate, int lower,
+                                                                   GateRef upperGate, int upper,
+                                                                   bool isTypedArray)
 {
     // lower > 0
     if (lowerGate != Circuit::NullGate()) {
@@ -674,7 +670,7 @@ void ArrayBoundsCheckElimination::ProcessIndexCheck(GateRegion *loopHeader, Gate
         GateRef stateIn = insertAfter;
         GateRef dependIn = insertAfter;
         acc_.GetStateInAndDependIn(insertAfter, stateIn, dependIn);
-        
+
         if (!CheckLoop(array, indexBound->LowerGate(), indexBound->Lower(),
                        indexBound->UpperGate(), indexBound->Upper())) {
             return;
@@ -690,7 +686,7 @@ void ArrayBoundsCheckElimination::ProcessIndexCheck(GateRegion *loopHeader, Gate
 void ArrayBoundsCheckElimination::ProcessIf(IntegerStack &pushed, GateRegion *parent, OpCode cond)
 {
     auto& gateLists = parent->GetGates();
-    for (int i = gateLists.size() - 1; i >= 0; i--) { // Found the last BinaryOp
+    for (int i = static_cast<int>(gateLists.size()) - 1; i >= 0; i--) { // Found the last BinaryOp
         GateRef gate = gateLists[i];
         if (gate == Circuit::NullGate()) continue;
         OpCode opGate = acc_.GetOpCode(gate);
@@ -710,10 +706,10 @@ void ArrayBoundsCheckElimination::ProcessIf(IntegerStack &pushed, GateRegion *pa
             case TypedBinOp::TYPED_EQ:
             case TypedBinOp::TYPED_NOTEQ:
                 if (cond == OpCode::IF_TRUE) {
-                    op = GateMetaData::GetRevCompareOp(op);
+                    op = TypedBinaryMetaData::GetRevCompareOp(op);
                 }
                 AddIfCondition(pushed, x, y, op);
-                AddIfCondition(pushed, y, x, GateMetaData::GetSwapCompareOp(op));
+                AddIfCondition(pushed, y, x, TypedBinaryMetaData::GetSwapCompareOp(op));
                 break;
             default:
                 break;
@@ -770,7 +766,7 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
                 continue;
             }
             if (acc_.IsConstant(index)) {
-                int constValue = acc_.GetConstantValue(index);
+                int constValue = static_cast<int>(acc_.GetConstantValue(index));
                 if (constValue >= 0 && constValue <= maxConstant) {
                     RemoveIndexCheck(indexCheck);
                 } else if (constValue >= 0 && constValue > maxConstant) {
@@ -808,13 +804,13 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
             // max in [-index, a.length - index)
             // min >= INT_MIN + max
             bool rangeCond = (info->max_ < 0 || info->max_ + INT_MIN <= info->min_);
-            if (info->list_.size() > 2 && rangeCond) {
+            if (info->list_.size() > 2 && rangeCond) { // 2: size
                 GateRef insertAfter = info->list_.front();
                 GateRef length = acc_.GetValueIn(insertAfter, 0);
                 ASSERT(length != Circuit::NullGate());
 
                 Environment env(insertAfter, circuit_, &builder_);
-            
+
                 // Calculate lower bound
                 GateRef lowerCompare = index;
                 if (info->min_ > 0) {
@@ -830,7 +826,7 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
                                                     GateType::AnyType(), PGOSampleType::NoneType(),
                                                     TypedBinOp::TYPED_SUB);
                 }
-                
+
                 PredicateCmpWithConst(lowerCompare, TypedBinOp::TYPED_GREATEREQ, 0);
 
                 // Calculate upper bound
@@ -893,7 +889,7 @@ void ArrayBoundsCheckElimination::CalcBounds(GateRegion *block, GateRegion *loop
             ProcessIf(pushed, parent, op);
         }
     }
-    
+
     GateLists indexChecked(chunk_);
     GateLists arrays(chunk_);
 
@@ -925,7 +921,7 @@ void ArrayBoundsCheckElimination::CalcBounds(GateRegion *block, GateRegion *loop
     }
 
     InBlockMotion(indexChecked, arrays);
-    
+
     auto& dominatedRegions_ = block->GetDominatedRegions();
     for (size_t i = 0; i < dominatedRegions_.size(); i++) {
         GateRegion *nex = dominatedRegions_[i];

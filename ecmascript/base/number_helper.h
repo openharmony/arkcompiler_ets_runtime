@@ -66,6 +66,12 @@ static constexpr size_t INT16_BITS = 16;
 static constexpr size_t INT8_BITS = 8;
 static constexpr size_t JS_DTOA_BUF_SIZE = 128;
 
+// Max number of hexadecimal digits to display an integer
+static constexpr size_t INT64_HEX_DIGITS = INT64_BITS / 4;
+static constexpr size_t INT32_HEX_DIGITS = INT32_BITS / 4;
+static constexpr size_t INT16_HEX_DIGITS = INT16_BITS / 4;
+static constexpr size_t INT8_HEX_DIGITS = INT8_BITS / 4;
+
 // help defines for random
 static constexpr int RIGHT12 = 12;
 static constexpr int SECONDS_TO_SUBTLE = 1000000;
@@ -115,7 +121,6 @@ public:
 private:
     static char Carry(char current, int radix);
     static double Strtod(const char *str, int exponent, uint8_t radix);
-    static CString DecimalsToString(double *numberInteger, double fraction, int radix, double delta);
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
     static void GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size);
     static int GetMinmumDigits(double d, int *decpt, char *buf);

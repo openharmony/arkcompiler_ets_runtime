@@ -74,7 +74,7 @@ void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
     auto space = heap_->GetSpaceWithType(type);
     space->AsyncSweep(isMain);
 
-    os::memory::LockHolder holder(mutexs_[type]);
+    LockHolder holder(mutexs_[type]);
     if (--remainingTaskNum_[type] == 0) {
         cvs_[type].SignalAll();
     }
@@ -87,7 +87,7 @@ void ConcurrentSweeper::WaitAllTaskFinished()
     }
     for (int i = startSpaceType_; i < FREE_LIST_NUM; i++) {
         if (remainingTaskNum_[i] > 0) {
-            os::memory::LockHolder holder(mutexs_[i]);
+            LockHolder holder(mutexs_[i]);
             while (remainingTaskNum_[i] > 0) {
                 cvs_[i].Wait(&mutexs_[i]);
             }
@@ -123,11 +123,11 @@ void ConcurrentSweeper::WaitingTaskFinish(MemSpaceType type)
 {
     if (remainingTaskNum_[type] > 0) {
         {
-            os::memory::LockHolder holder(mutexs_[type]);
+            LockHolder holder(mutexs_[type]);
             remainingTaskNum_[type]++;
         }
         AsyncSweepSpace(type, true);
-        os::memory::LockHolder holder(mutexs_[type]);
+        LockHolder holder(mutexs_[type]);
         while (remainingTaskNum_[type] > 0) {
             cvs_[type].Wait(&mutexs_[type]);
         }

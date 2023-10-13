@@ -68,6 +68,7 @@ public:
     void SetOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC);
     void SetWaterLine();
+    void SetWaterLineWithoutGC();
 
     uintptr_t GetWaterLine() const
     {
@@ -85,7 +86,7 @@ public:
 
 private:
     static constexpr int GROWING_FACTOR = 2;
-    os::memory::Mutex lock_;
+    Mutex lock_;
     size_t minimumCapacity_;
 };
 

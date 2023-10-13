@@ -162,13 +162,70 @@ void Circuit::PrintAllGatesWithBytecode() const
     std::vector<GateRef> gateList;
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        if (GetOpCode(gate) == OpCode::JS_BYTECODE) {
-            const Gate *gatePtr = LoadGatePtrConst(gate);
-            auto opcode = gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
-            std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
-            LoadGatePtrConst(gate)->PrintByteCode(bytecodeStr);
-        } else {
-            LoadGatePtrConst(gate)->Print();
+        auto opcode = GetOpCode(gate);
+        switch (opcode) {
+            case OpCode::JS_BYTECODE: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto bytecode = gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
+                std::string bytecodeStr = GetEcmaOpcodeStr(bytecode);
+                gatePtr->PrintGateWithAdditionOp(bytecodeStr);
+                break;
+            }
+            case OpCode::TYPED_BINARY_OP: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = gatePtr->GetTypedBinaryMetaData()->GetTypedBinaryOp();
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::TYPED_UNARY_OP: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue()).GetTypedUnOp();
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::TYPED_CONDITION_JUMP: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = TypedJumpAccessor(gatePtr->GetOneParameterMetaData()->GetValue()).GetTypedJumpOp();
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::LOAD_ELEMENT: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = static_cast<TypedLoadOp>(gatePtr->GetOneParameterMetaData()->GetValue());
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::STORE_ELEMENT: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = static_cast<TypedStoreOp>(gatePtr->GetOneParameterMetaData()->GetValue());
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::TYPED_CALLTARGETCHECK_OP: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                auto typedOp = gatePtr->GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+                std::string typedOpStr = GateMetaData::Str(typedOp);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            case OpCode::CONVERT:
+            case OpCode::CHECK_AND_CONVERT: {
+                const Gate *gatePtr = LoadGatePtrConst(gate);
+                ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+                auto srcType = accessor.GetSrcType();
+                auto dstType = accessor.GetDstType();
+                std::string typedOpStr = GateMetaData::Str(srcType) + "_TO_" + GateMetaData::Str(dstType);
+                gatePtr->PrintGateWithAdditionOp(typedOpStr);
+                break;
+            }
+            default:
+                LoadGatePtrConst(gate)->Print();
+                break;
         }
     }
 }
@@ -450,7 +507,7 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
 {
     auto search = constantCache_.find({machineType, value, type});
     if (search != constantCache_.end()) {
-        return constantCache_.at({machineType, value, type});
+        return search->second;
     }
     auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
     constantCache_[{machineType, value, type}] = gate;
@@ -465,7 +522,7 @@ void Circuit::ClearConstantCache(MachineType machineType, uint64_t value, GateTy
     }
 }
 
-GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
+GateRef Circuit::GetConstantStringGate(MachineType machineType, std::string_view str,
                                        GateType type)
 {
     auto gate = NewGate(metaBuilder_.ConstString(str), machineType, type);

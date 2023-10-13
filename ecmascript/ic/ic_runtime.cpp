@@ -41,12 +41,12 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         key = JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> handlerValue;
-    JSHandle<JSHClass> hclass(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass());
+    JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
     if (op.IsElement()) {
         if (!op.IsFound() && hclass->IsDictionaryElement()) {
             return;
         }
-        handlerValue = LoadHandler::LoadElement(thread_);
+        handlerValue = LoadHandler::LoadElement(thread_, op);
     } else {
         if (!op.IsFound()) {
             JSTaggedValue proto = hclass->GetPrototype();
@@ -58,8 +58,8 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         } else if (!op.IsOnPrototype()) {
             handlerValue = LoadHandler::LoadProperty(thread_, op);
         } else {
-            // do not support global prototype ic
-            if (IsGlobalLoadIC(GetICKind())) {
+            // do not support global prototype ic or primitive string
+            if (IsGlobalLoadIC(GetICKind()) || receiver->IsString()) {
                 return;
             }
             handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
@@ -79,6 +79,16 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     }
 }
 
+void ICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
+{
+    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+        return;
+    }
+    JSHandle<JSTaggedValue> handlerValue = LoadHandler::LoadStringElement(thread_);
+    JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
+    icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+}
+
 void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                    JSHandle<JSTaggedValue> receiver)
 {
@@ -95,7 +105,6 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
         JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
         handlerValue = StoreTSHandler::StoreAOT(thread_, op, hclass);
     } else if (op.IsTransition()) {
-        ASSERT(!op.IsElement());
         if (op.IsOnPrototype()) {
             JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
             handlerValue = TransWithProtoHandler::StoreTransition(thread_, op, hclass);
@@ -145,9 +154,51 @@ void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
 #endif
 }
 
+JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+{
+    if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
+        icAccessor_.SetAsMega();
+        JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
+    }
+
+    ObjectOperator op(GetThread(), receiver, key);
+    auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
+
+    if (receiver->IsString()) {
+         // do not cache element
+        if (!op.IsFastMode()) {
+            icAccessor_.SetAsMega();
+            return result.GetTaggedValue();
+        }
+        UpdateLoadStringHandler(receiver);
+    } else {
+        if (op.GetValue().IsInternalAccessor()) {
+            op = ObjectOperator(GetThread(), receiver, key);
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        // ic-switch
+        if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+            icAccessor_.SetAsMega();
+            return result.GetTaggedValue();
+        }
+        TraceIC(receiver, key);
+        // do not cache element
+        if (!op.IsFastMode()) {
+            icAccessor_.SetAsMega();
+            return result.GetTaggedValue();
+        }
+
+        UpdateLoadHandler(op, key, receiver);
+    }
+
+    return result.GetTaggedValue();
+}
+
 JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
-    if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
+    if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
         icAccessor_.SetAsMega();
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -215,6 +266,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return JSTaggedValue::Undefined();
         }
     }
+    UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
 
     ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
@@ -239,7 +291,6 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (success) {
-        UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         UpdateStoreHandler(op, key, receiver);
         return JSTaggedValue::Undefined();
     }

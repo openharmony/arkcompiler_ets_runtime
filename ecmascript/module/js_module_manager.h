@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/napi/jsnapi_helper.h"
+#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 class ModuleManager {
@@ -29,8 +30,10 @@ public:
 
     JSTaggedValue GetModuleValueInner(int32_t index);
     JSTaggedValue GetModuleValueInner(int32_t index, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleValueInner(int32_t index, JSHandle<JSTaggedValue> currentModule);
     JSTaggedValue GetModuleValueOutter(int32_t index);
     JSTaggedValue GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleValueOutter(int32_t index, JSHandle<JSTaggedValue> currentModule);
     void StoreModuleValue(int32_t index, JSTaggedValue value);
     void StoreModuleValue(int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleNamespace(int32_t index);
@@ -61,17 +64,17 @@ public:
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
         const CString &recordName, bool excuteFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
-    JSTaggedValue GetExportObject(const CString &file, const CString &key);
-    JSTaggedValue GetExportObjectFromBuffer(const CString &file, const CString &key);
+
     JSTaggedValue GetCurrentModule();
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
+    void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
 
-    bool GetCurrentMode() const
+    bool GetExecuteMode() const
     {
         return isExecuteBuffer_;
     }
@@ -79,6 +82,9 @@ public:
     {
         isExecuteBuffer_ = mode;
     }
+
+    static CString GetRecordName(JSTaggedValue module);
+    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);

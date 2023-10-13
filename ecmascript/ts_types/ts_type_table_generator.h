@@ -33,7 +33,7 @@ public:
                                                    const CString &recordName,
                                                    uint32_t moduleId);
 
-    uint32_t TryGetModuleId(const CString &recordName) const;
+    uint32_t TryGetModuleId(const CString &abcName, const CString &recordName) const;
 
     uint32_t TryGetLocalId(const JSHandle<TSTypeTable> &table) const;
 
@@ -49,9 +49,10 @@ private:
         return table->GetNumberOfTSTypeTables();
     }
 
-    JSHandle<TSTypeTable> AddTypeTable(const JSHandle<EcmaString> &recordNameStr, uint32_t numTypes = 0);
+    JSHandle<TSTypeTable> AddTypeTable(const JSHandle<EcmaString> &abcNameStr,
+                                       const JSHandle<EcmaString> &recordNameStr, uint32_t numTypes = 0);
 
-    void GenerateBuiltinsTypeTable();
+    void GenerateBuiltinsTypeTable(JSHandle<EcmaString> defaultTypeAbcName);
 
     void InitRuntimeTypeTable();
 
@@ -64,5 +65,5 @@ private:
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
 };
-}  // panda::ecmascript
+} // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_TABLE_GENERATOR_H

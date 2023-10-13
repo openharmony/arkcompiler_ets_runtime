@@ -1072,6 +1072,7 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
         auto lastRegion = space->GetCurrentRegion();
         space->EnumerateRegions([&writer, lastRegion, alignedRegionObjSize](Region *current) {
             if (current != lastRegion) {
+                ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(ToUintPtr(current)), DEFAULT_REGION_SIZE);
                 // fixme: Except for the last region of a space,
                 // currently the snapshot feature assumes that every serialized region must have fixed size.
                 // The original region size plus the aligned region object size should not exceed DEFAULT_REGION_SIZE.
@@ -1425,13 +1426,22 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(static_cast<JSTaggedType>(rootObjectAddr));
             if (!isRootObjRelocate_ && item.IsTaggedArray()) {
-                vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->AddConstantPool(fileName_, item);
+                root_ = item;
                 isRootObjRelocate_ = true;
             }
             break;
         }
         default:
             break;
+    }
+}
+
+void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const CString &fileName)
+{
+    if (type == SnapshotType::AI) {
+        ASSERT(!root_.IsHole());
+        AOTFileManager *aotFileManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        aotFileManager->ParseDeserializedData(fileName, root_);
     }
 }
 
@@ -1792,6 +1802,27 @@ void SnapshotProcessor::SerializePandaFileMethod()
     }
 }
 
+uintptr_t SnapshotProcessor::GetNewObj(size_t objectSize, TaggedObject *objectHeader)
+{
+    if (builtinsSerialize_) {
+        return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
+    }
+    auto region = Region::ObjectAddressToRange(objectHeader);
+    if (region->InYoungOrOldSpace()) {
+        return AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
+    }
+    if (region->InMachineCodeSpace()) {
+        return AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
+    }
+    if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
+        return AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
+    }
+    if (region->InHugeObjectSpace()) {
+        return AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
+    }
+    return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
+}
+
 EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                                 std::unordered_map<uint64_t, ObjectEncode> *data)
 {
@@ -1831,24 +1862,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     if (objectSize == 0) {
         LOG_ECMA_MEM(FATAL) << "It is a zero object. Not Support.";
     }
-    uintptr_t newObj = 0;
-    if (builtinsSerialize_) {
-        newObj = AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
-    } else {
-        auto region = Region::ObjectAddressToRange(objectHeader);
-        if (region->InYoungOrOldSpace()) {
-            newObj = AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
-        } else if (region->InMachineCodeSpace()) {
-            newObj = AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
-        } else if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
-            newObj = AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
-        } else if (region->InHugeObjectSpace()) {
-            newObj = AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
-        } else {
-            newObj = AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
-        }
-    }
-
+    uintptr_t newObj = GetNewObj(objectSize, objectHeader);
     if (newObj == 0) {
         LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OOM";
     }

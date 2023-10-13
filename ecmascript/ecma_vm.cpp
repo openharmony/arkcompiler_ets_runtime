@@ -109,7 +109,9 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
     vm->Initialize();
-    JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    if (JsStackInfo::loader == nullptr) {
+        JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
@@ -143,6 +145,9 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
+#ifdef ENABLE_POSTFORK_FORCEEXPAND
+    heap_->NotifyPostFork();
+#endif
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
@@ -230,7 +235,10 @@ EcmaVM::~EcmaVM()
 {
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    DFXJSNApi::StopCpuProfilerForFile(this);
+    if (thread_->isProfiling_) {
+        DFXJSNApi::StopCpuProfilerForFile(this);
+        DFXJSNApi::StopCpuProfilerForInfo(this);
+    }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     DeleteHeapProfile();
@@ -262,6 +270,10 @@ EcmaVM::~EcmaVM()
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
+    }
+
+    if (JsStackInfo::loader == GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()) {
+        JsStackInfo::loader = nullptr;
     }
 
     if (heap_ != nullptr) {
@@ -419,16 +431,17 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         }
     }
     thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
+    GetPGOProfiler()->ProcessReferences(visitor);
 }
 
-void EcmaVM::PushToNativePointerList(JSNativePointer *array)
+void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
 {
-    nativePointerList_.emplace_back(array);
+    nativePointerList_.emplace_back(pointer);
 }
 
-void EcmaVM::RemoveFromNativePointerList(JSNativePointer *array)
+void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
 {
-    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), array);
+    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         object->Destroy();
@@ -479,6 +492,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
+    pgoProfiler_->Iterate(v);
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -619,11 +633,11 @@ void EcmaVM::DumpCallTimeInfo()
     }
 }
 
-void EcmaVM::WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
+void EcmaVM::WorkersetInfo(EcmaVM *workerVm)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
-    if (thread != nullptr && hostVm != nullptr) {
+    if (thread != nullptr) {
         auto tid = thread->GetThreadId();
         if (tid != 0) {
             workerList_.emplace(tid, workerVm);
@@ -633,7 +647,7 @@ void EcmaVM::WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
 
 EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     EcmaVM *workerVm = nullptr;
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
@@ -644,11 +658,11 @@ EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
     return workerVm;
 }
 
-bool EcmaVM::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+bool EcmaVM::DeleteWorker(EcmaVM *workerVm)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
-    if (hostVm != nullptr && thread != nullptr) {
+    if (thread != nullptr) {
         auto tid = thread->GetThreadId();
         if (tid == 0) {
             return false;
@@ -665,7 +679,7 @@ bool EcmaVM::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 
 bool EcmaVM::SuspendWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
         if (iter != workerList_.end()) {
@@ -677,21 +691,12 @@ bool EcmaVM::SuspendWorkerVm(uint32_t tid)
 
 void EcmaVM::ResumeWorkerVm(uint32_t tid)
 {
-    os::memory::LockHolder lock(mutex_);
+    LockHolder lock(mutex_);
     if (!workerList_.empty()) {
         auto iter = workerList_.find(tid);
         if (iter != workerList_.end()) {
             DFXJSNApi::ResumeVM(iter->second);
         }
     }
-}
-
-bool EcmaVM::RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
-{
-    if (requestAotCallback_ == nullptr) {
-        LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
-        return false;
-    }
-    return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
 }
 }  // namespace panda::ecmascript

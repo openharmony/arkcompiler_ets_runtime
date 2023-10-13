@@ -65,7 +65,7 @@ void ParallelEvacuator::EvacuateSpace()
             AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
         });
     if (heap_->IsParallelGCEnabled()) {
-        os::memory::LockHolder holder(mutex_);
+        LockHolder holder(mutex_);
         parallel_ = CalculateEvacuationThreadNum();
         for (int i = 0; i < parallel_; i++) {
             Taskpool::GetCurrentTaskpool()->PostTask(
@@ -86,7 +86,7 @@ bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, bool isMain)
     }
     allocator->Finalize();
     if (!isMain) {
-        os::memory::LockHolder holder(mutex_);
+        LockHolder holder(mutex_);
         if (--parallel_ <= 0) {
             condition_.SignalAll();
         }
@@ -214,7 +214,7 @@ void ParallelEvacuator::UpdateReference()
                         << "old space region count:" << oldRegionCount;
 
     if (heap_->IsParallelGCEnabled()) {
-        os::memory::LockHolder holder(mutex_);
+        LockHolder holder(mutex_);
         parallel_ = CalculateUpdateThreadNum();
         for (int i = 0; i < parallel_; i++) {
             Taskpool::GetCurrentTaskpool()->PostTask(
@@ -410,7 +410,7 @@ void ParallelEvacuator::WaitFinished()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), WaitUpdateFinished);
     if (parallel_ > 0) {
-        os::memory::LockHolder holder(mutex_);
+        LockHolder holder(mutex_);
         while (parallel_ > 0) {
             condition_.Wait(&mutex_);
         }
@@ -425,7 +425,7 @@ bool ParallelEvacuator::ProcessWorkloads(bool isMain)
         region = GetWorkloadSafe();
     }
     if (!isMain) {
-        os::memory::LockHolder holder(mutex_);
+        LockHolder holder(mutex_);
         if (--parallel_ <= 0) {
             condition_.SignalAll();
         }

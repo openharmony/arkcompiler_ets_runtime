@@ -23,13 +23,11 @@ CMap<ElementsKind, ConstantIndex> Elements::InitializeHClassMap()
     CMap<ElementsKind, ConstantIndex> result;
     result.emplace(ElementsKind::NONE, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
     result.emplace(ElementsKind::INT, ConstantIndex::ELEMENT_INT_HCLASS_INDEX);
-    result.emplace(ElementsKind::DOUBLE, ConstantIndex::ELEMENT_DOUBLE_HCLASS_INDEX);
     result.emplace(ElementsKind::NUMBER, ConstantIndex::ELEMENT_NUMBER_HCLASS_INDEX);
     result.emplace(ElementsKind::STRING, ConstantIndex::ELEMENT_STRING_HCLASS_INDEX);
     result.emplace(ElementsKind::OBJECT, ConstantIndex::ELEMENT_OBJECT_HCLASS_INDEX);
     result.emplace(ElementsKind::TAGGED, ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
     result.emplace(ElementsKind::HOLE_INT, ConstantIndex::ELEMENT_HOLE_INT_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_DOUBLE, ConstantIndex::ELEMENT_HOLE_DOUBLE_HCLASS_INDEX);
     result.emplace(ElementsKind::HOLE_NUMBER, ConstantIndex::ELEMENT_HOLE_NUMBER_HCLASS_INDEX);
     result.emplace(ElementsKind::HOLE_STRING, ConstantIndex::ELEMENT_HOLE_STRING_HCLASS_INDEX);
     result.emplace(ElementsKind::HOLE_OBJECT, ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX);
@@ -47,9 +45,14 @@ bool Elements::IsInt(ElementsKind kind)
     return kind == ElementsKind::INT;
 }
 
-bool Elements::IsDouble(ElementsKind kind)
+bool Elements::IsNumber(ElementsKind kind)
 {
-    return kind == ElementsKind::DOUBLE;
+    return kind == ElementsKind::NUMBER;
+}
+
+bool Elements::IsTagged(ElementsKind kind)
+{
+    return kind == ElementsKind::TAGGED;
 }
 
 bool Elements::IsObject(ElementsKind kind)
@@ -77,12 +80,10 @@ ElementsKind Elements::FixElementsKind(ElementsKind oldKind)
     switch (result) {
         case ElementsKind::NONE:
         case ElementsKind::INT:
-        case ElementsKind::DOUBLE:
         case ElementsKind::NUMBER:
         case ElementsKind::STRING:
         case ElementsKind::OBJECT:
         case ElementsKind::HOLE_INT:
-        case ElementsKind::HOLE_DOUBLE:
         case ElementsKind::HOLE_NUMBER:
         case ElementsKind::HOLE_STRING:
         case ElementsKind::HOLE_OBJECT:
@@ -104,7 +105,7 @@ ElementsKind Elements::ToElementsKind(JSTaggedValue value, ElementsKind kind)
     if (value.IsInt()) {
         valueKind = ElementsKind::INT;
     } else if (value.IsDouble()) {
-        valueKind = ElementsKind::DOUBLE;
+        valueKind = ElementsKind::NUMBER;
     } else if (value.IsString()) {
         valueKind = ElementsKind::STRING;
     } else if (value.IsHeapObject()) {

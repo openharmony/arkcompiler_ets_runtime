@@ -21,12 +21,13 @@
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/property_detector.h"
 
 namespace panda::ecmascript {
 class JSThread;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GLOBAL_ENV_FIELDS(V)                                                                        \
+#define GLOBAL_ENV_COMMON_FIELDS(V)                                                                 \
     /* Function */                                                                                  \
     V(JSTaggedValue, ObjectFunction, OBJECT_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, ObjectFunctionClass, OBJECT_FUNCTION_CLASS_INDEX)                              \
@@ -77,6 +78,9 @@ class JSThread;
     V(JSTaggedValue, DisplayNamesFunction, DISPLAY_NAMES_FUNCTION_INDEX)                            \
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, RegExpPrototype, REGEXP_PROTOTYPE_INDEX)                                       \
+    V(JSTaggedValue, RegExpPrototypeClass, REGEXP_PROTOTYPE_CLASS_INDEX)                            \
     V(JSTaggedValue, BuiltinsSetFunction, BUILTINS_SET_FUNCTION_INDEX)                              \
     V(JSTaggedValue, SetPrototype, SET_PROTOTYPE_INDEX)                                             \
     V(JSTaggedValue, BuiltinsMapFunction, BUILTINS_MAP_FUNCTION_INDEX)                              \
@@ -112,10 +116,8 @@ class JSThread;
     V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
-    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
     V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                           \
-    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
@@ -200,6 +202,16 @@ class JSThread;
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
     V(JSTaggedValue, JsonObjectHclassCache, JSON_OBJECT_HCLASS_CACHE)
 
+// Maintain the same order with DETECTOR_SYMBOL_LIST
+#define GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                                                        \
+    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
+    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
+
+#define GLOBAL_ENV_FIELDS(V)                                \
+    GLOBAL_ENV_COMMON_FIELDS(V)                             \
+    GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                    \
+    GLOBAL_ENV_DETECTOR_FIELDS(V)                           \
+
 class GlobalEnv : public TaggedObject {
 public:
     JSTaggedValue GetGlobalObject() const
@@ -244,6 +256,23 @@ public:
 #undef GLOBAL_ENV_SLOT
         FINAL_INDEX
     };
+
+    static constexpr uint8_t FIRST_DETECTOR_SYMBOL_INDEX = Field::REPLACE_SYMBOL_INDEX;
+    static constexpr uint8_t LAST_DETECTOR_SYMBOL_INDEX = Field::SPLIT_SYMBOL_INDEX;
+
+    static inline uintptr_t GetFirstDetectorSymbolAddr(const GlobalEnv *env)
+    {
+        constexpr size_t offset = HEADER_SIZE + FIRST_DETECTOR_SYMBOL_INDEX * JSTaggedValue::TaggedTypeSize();
+        uintptr_t addr = reinterpret_cast<uintptr_t>(env) + offset;
+        return *reinterpret_cast<uintptr_t *>(addr);
+    }
+
+    static uintptr_t GetLastDetectorSymbolAddr(const GlobalEnv *env)
+    {
+        constexpr size_t offset = HEADER_SIZE + LAST_DETECTOR_SYMBOL_INDEX * JSTaggedValue::TaggedTypeSize();
+        uintptr_t addr = reinterpret_cast<uintptr_t>(env) + offset;
+        return *reinterpret_cast<uintptr_t *>(addr);
+    }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_FIELD_ACCESSORS(type, name, index)                                                   \

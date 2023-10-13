@@ -15,6 +15,7 @@
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
+#include "gtest/gtest.h"
 #include "libpandabase/utils/utf.h"
 #include "libpandafile/class_data_accessor-inl.h"
 
@@ -307,5 +308,39 @@ HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
     EXPECT_TRUE(!recordInfo.IsParsedConstpoolOfCurrentVM(instance));
     recordInfo.SetParsedConstpoolVM(instance);
     EXPECT_TRUE(pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME).IsParsedConstpoolOfCurrentVM(instance));
+}
+
+HWTEST_F_L0(JSPandaFileTest, NormalizedFileDescTest)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    CString fileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), "entry/ets/modules.abc");
+
+    fileName = "/data/storage/el1/bundle/entry/ets/widgets.abc";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), "entry/ets/widgets.abc");
+
+    fileName = "/data/app/el1/bundle/public/com.xx.xx/entry.hsp/entry/ets/modules.abc";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), "entry/ets/modules.abc");
+
+    fileName = "/data/app/el1/bundle/public/com.xx.xx/entry.hap/entry/ets/widgets.abc";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), "entry/ets/widgets.abc");
+
+    fileName = "/system/app/Camera/Camera.hap/entry1/ets/modules.abc";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), "entry1/ets/modules.abc");
+
+    fileName = "test.pa";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), fileName);
+
+    fileName = "libapp.ability.AbilityStage.z.so/app.ability.AbilityStage.js";
+    pf = CreateJSPandaFile(source, fileName);
+    EXPECT_EQ(pf->GetNormalizedFileDesc(), fileName);
 }
 }  // namespace panda::test

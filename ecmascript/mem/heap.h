@@ -224,6 +224,17 @@ public:
         return memController_;
     }
 
+    bool InSensitiveStatus() const
+    {
+        return onHighSensitiveEvent_ || onStartupEvent_;
+    }
+
+    void NotifyPostFork()
+    {
+        LockHolder holder(finishColdStartMutex_);
+        onStartupEvent_ = true;
+    }
+
     /*
      * For object allocations.
      */
@@ -405,6 +416,19 @@ public:
 
     void ClearIdleTask();
 
+    bool IsEmptyIdleTask() const
+    {
+        return idleTask_ == IdleTaskType::NO_TASK;
+    }
+
+    void NotifyFinishColdStart(bool isMainThread = true);
+
+    void NotifyFinishColdStartSoon();
+
+    void NotifyHighSensitive(bool isStart);
+
+    bool NeedStopCollection();
+
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void StartHeapTracking()
     {
@@ -542,6 +566,7 @@ public:
             ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
         }
     }
+
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -557,7 +582,7 @@ private:
     void WaitClearTaskFinished();
     void InvokeWeakNodeNativeFinalizeCallback();
     inline void ReclaimRegions(TriggerGCType gcType);
-
+    inline size_t CalculateCommittedCacheSize();
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -585,6 +610,19 @@ private:
     private:
         Heap *heap_;
         TriggerGCType gcType_;
+    };
+
+    class FinishColdStartTask : public Task {
+    public:
+        FinishColdStartTask(int32_t id, Heap *heap)
+            : Task(id), heap_(heap) {}
+        ~FinishColdStartTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(FinishColdStartTask);
+        NO_MOVE_SEMANTIC(FinishColdStartTask);
+    private:
+        Heap *heap_;
     };
 
     EcmaVM *ecmaVm_ {nullptr};
@@ -676,15 +714,16 @@ private:
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
 
     bool clearTaskFinished_ {true};
-    os::memory::Mutex waitClearTaskFinishedMutex_;
-    os::memory::ConditionVariable waitClearTaskFinishedCV_;
+    Mutex waitClearTaskFinishedMutex_;
+    ConditionVariable waitClearTaskFinishedCV_;
     uint32_t runningTaskCount_ {0};
     // parallel marker task number.
     uint32_t maxMarkTaskCount_ {0};
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
-    os::memory::Mutex waitTaskFinishedMutex_;
-    os::memory::ConditionVariable waitTaskFinishedCV_;
+    Mutex finishColdStartMutex_;
+    Mutex waitTaskFinishedMutex_;
+    ConditionVariable waitTaskFinishedCV_;
 
     /*
      * The memory controller providing memory statistics (by allocations and coleections),
@@ -700,6 +739,8 @@ private:
     bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
+    bool onHighSensitiveEvent_ {false};
+    bool onStartupEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};

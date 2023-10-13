@@ -272,6 +272,34 @@ bool GateAccessor::HasNumberType(GateRef gate) const
     return false;
 }
 
+bool GateAccessor::HasStringType(GateRef gate) const
+{
+    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
+    if (leftType.IsStringType() && rightType.IsStringType()) {
+        return true;
+    }
+    return false;
+}
+
+// Include number, undefined, null and boolean type.
+bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
@@ -286,7 +314,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
+           GetOpCode(gate) == OpCode::TYPE_OF);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -503,7 +533,7 @@ ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
-        return gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+        return Elements::FixElementsKind(gatePtr->GetJSBytecodeMetaData()->GetElementsKind());
     }
     return ElementsKind::GENERIC;
 }
@@ -837,6 +867,11 @@ bool GateAccessor::IsGeneralState(GateRef gate) const
     return GetMetaData(gate)->IsGeneralState();
 }
 
+bool GateAccessor::IsIfOrSwitchRelated(GateRef gate) const
+{
+    return GetMetaData(gate)->IsIfOrSwitchRelated();
+}
+
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -1021,7 +1056,7 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
     // delete old gate
     DeleteGate(hirGate);
     if (ifException != Circuit::NullGate()) {
-        GraphEditor::RemoveDeadState(circuit_, ifException);
+        ReplaceGate(ifException, circuit_->DeadGate());
     }
 }
 
@@ -1258,6 +1293,42 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
     DeleteGate(gate);
 }
 
+void GateAccessor::ReplaceGate(GateRef gate, GateRef replacement)
+{
+    GateRef depend = Circuit::NullGate();
+    if (GetDependCount(gate) > 0) {
+        ASSERT(GetDependCount(gate) == 1); // 1: one dep
+        depend = GetDep(gate);
+    }
+    GateRef state = Circuit::NullGate();
+    if (GetStateCount(gate) > 0) {
+        ASSERT(GetStateCount(gate) == 1);  // 1: one state
+        state = GetState(gate);
+    }
+    return ReplaceGate(gate, StateDepend {state, depend}, replacement);
+}
+
+void GateAccessor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
+{
+    ASSERT(gate != replacement);
+    auto state = stateDepend.State();
+    auto depend = stateDepend.Depend();
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            ASSERT(state != Circuit::NullGate());
+            it = ReplaceIn(it, state);
+        } else if (IsDependIn(it)) {
+            ASSERT(depend != Circuit::NullGate());
+            it = ReplaceIn(it, depend);
+        } else {
+            it = ReplaceIn(it, replacement);
+        }
+    }
+    DeleteGate(gate);
+}
+
+
 // When Insert newGate, all the stateIn from state and dependIn from depend can be replaced to newGate
 void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate)
 {
@@ -1281,10 +1352,6 @@ void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef n
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         if (IsDependIn(useIt) && (*useIt != newGate)) {
             ASSERT(newGate != Circuit::NullGate());
-            if (!IsState(*useIt)) {
-                useIt++;
-                continue;
-            }
             useIt = ReplaceIn(useIt, newGate);
         } else {
             useIt++;
@@ -1475,6 +1542,11 @@ bool GateAccessor::IsNop(GateRef g) const
     return GetMetaData(g)->IsNop();
 }
 
+bool GateAccessor::IsDead(GateRef gate) const
+{
+    return GetMetaData(gate)->IsDead();
+}
+
 bool GateAccessor::IsRoot(GateRef g) const
 {
     return GetMetaData(g)->IsRoot();
@@ -1547,6 +1619,32 @@ bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
     return false;
 }
 
+bool GateAccessor::IsConstString(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = GetByteCodeOpcode(gate);
+        return ecmaOpcode == EcmaOpcode::LDA_STR_ID16;
+    }
+    return false;
+}
+
+bool GateAccessor::IsSingleCharGate(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::LOAD_ELEMENT) {
+        return GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
+    }
+    return false;
+}
+
+uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
+{
+    ASSERT(GetByteCodeOpcode(gate) == EcmaOpcode::LDA_STR_ID16);
+    GateRef stringId = GetValueIn(gate, 0);
+    return GetConstantValue(stringId);
+}
+
 bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
 {
     if (IsStateIn(useIt)) {
@@ -1554,7 +1652,7 @@ bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
     }
     if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
-        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt));
+        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt)); // 2 means the Index
     }
     return false;
 }

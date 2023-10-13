@@ -416,8 +416,7 @@ public:
     // key:constantpool index, value:ItemData
     using Item = std::unordered_map<uint64_t, ItemData>;
 
-    ConstantPoolInfo(JSPandaFile* jsPandaFile) :
-        items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
+    ConstantPoolInfo(JSPandaFile* jsPandaFile) : items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
 
     Item& GetCPItem(ItemType type)
     {
@@ -524,8 +523,11 @@ public:
         auto &item = cpInfo_.GetCPItem(type);
         for (auto &iter : item) {
             ConstantPoolInfo::ItemData &data = iter.second;
-            data.recordName = &methodOffsetToRecordName_[data.outerMethodOffset];
-            cb(data);
+            auto recordNameIter = methodOffsetToRecordName_.find(data.outerMethodOffset);
+            if (recordNameIter != methodOffsetToRecordName_.end()) {
+                data.recordName = &recordNameIter->second;
+                cb(data);
+            }
         }
     }
 

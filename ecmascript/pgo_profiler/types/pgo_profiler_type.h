@@ -21,6 +21,7 @@
 #include <variant>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "libpandabase/utils/bit_field.h"
 #include "macros.h"
@@ -58,6 +59,11 @@ private:
 template <typename PGOProfileType>
 class PGOSampleTemplate : public PGOType {
 public:
+    static constexpr int WEIGHT_BITS = 11;
+    static constexpr int WEIGHT_START_BIT = 10;
+    static constexpr int WEIGHT_TRUE_START_BIT = WEIGHT_START_BIT + WEIGHT_BITS;
+    static constexpr int WEIGHT_MASK = (1 << WEIGHT_BITS) - 1;
+
     enum class Type : uint32_t {
         NONE = 0x0ULL,
         INT = 0x1ULL,                        // 00000001
@@ -73,14 +79,7 @@ public:
         BIG_INT = 0x1ULL << 7,
         HEAP_OBJECT = 0x1ULL << 8,
         HEAP_OR_UNDEFINED_OR_NULL = HEAP_OBJECT | UNDEFINED_OR_NULL,
-        ANY = 0x3FFULL,
-        BRANCH_START = 0x1ULL << 10,
-        LIKELY = 0x2ULL << 10,
-        UNLIKELY = 0x3ULL << 10,
-        STRONG_LIKELY = 0x4ULL << 10,
-        STRONG_UNLIKELY = 0x5ULL << 10,
-        NORMAL_BRANCH = 0x6ULL << 10,
-        BRANCH_END = 0x7ULL << 10,  // leave higher bits for branch type or count
+        ANY = (0x1ULL << WEIGHT_START_BIT) - 1,
     };
 
     PGOSampleTemplate() : type_(Type::NONE) {};
@@ -98,10 +97,10 @@ public:
         return PGOSampleTemplate(static_cast<PGOSampleTemplate::Type>(from.GetType()));
     }
 
-    static PGOSampleTemplate CreateProfileType(int32_t profileType,
+    static PGOSampleTemplate CreateProfileType(ApEntityId recordId, int32_t profileType,
                                                typename ProfileType::Kind kind = ProfileType::Kind::ClassId)
     {
-        return PGOSampleTemplate(PGOProfileType(profileType, kind));
+        return PGOSampleTemplate(PGOProfileType(recordId, profileType, kind));
     }
 
     static PGOSampleTemplate NoneType()
@@ -169,45 +168,9 @@ public:
         return static_cast<int32_t>(Type::SPECIAL);
     }
 
-    static int32_t Likely()
-    {
-        return static_cast<int32_t>(Type::LIKELY);
-    }
-
-    static int32_t Unlikely()
-    {
-        return static_cast<int32_t>(Type::UNLIKELY);
-    }
-
-    static int32_t StrongLikely()
-    {
-        return static_cast<int32_t>(Type::STRONG_LIKELY);
-    }
-
-    static int32_t StrongUnLikely()
-    {
-        return static_cast<int32_t>(Type::STRONG_UNLIKELY);
-    }
-
-    static int32_t NormalBranch()
-    {
-        return static_cast<int32_t>(Type::NORMAL_BRANCH);
-    }
-
-    static int32_t BranchEndRev()
-    {
-        return static_cast<int32_t>(UINT32_MAX & static_cast<uint32_t>(Type::BRANCH_END));
-    }
-
     static int32_t CombineType(int32_t curType, int32_t newType)
     {
         return static_cast<int32_t>(static_cast<uint32_t>(curType) | static_cast<uint32_t>(newType));
-    }
-
-    bool IsBranchType() const
-    {
-        auto type = std::get<Type>(type_);
-        return (type >= Type::BRANCH_START) && (type <= Type::BRANCH_END);
     }
 
     static PGOSampleTemplate NoneProfileType()
@@ -218,13 +181,10 @@ public:
     PGOSampleTemplate CombineType(PGOSampleTemplate type)
     {
         if (type_.index() == 0) {
-            if (type.IsBranchType()) {
-                // clear branch type bit before update branch type
-                type_ = Type(static_cast<uint32_t>(std::get<Type>(type_)) &
-                             (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
-            }
+            auto oldType = static_cast<uint32_t>(std::get<Type>(type_));
+            oldType = oldType & static_cast<uint32_t>(AnyType());
             type_ =
-                Type(static_cast<uint32_t>(std::get<Type>(type_)) | static_cast<uint32_t>(std::get<Type>(type.type_)));
+                Type(oldType | static_cast<uint32_t>(std::get<Type>(type.type_)));
         } else {
             this->SetType(type);
         }
@@ -238,7 +198,7 @@ public:
         uint32_t newMethodId = type.GetProfileType().GetId();
         // If we have recorded a valid method if before, invalidate it.
         if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
-            type_ = PGOProfileType(0);
+            type_ = ProfileType::PROFILE_TYPE_NONE;
         }
         return *this;
     }
@@ -271,13 +231,14 @@ public:
     Type GetPrimitiveType() const
     {
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
-        return static_cast<Type>(type & (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
+        return Type(type & static_cast<uint32_t>(AnyType()));
     }
 
-    Type GetBranchType() const
+    uint32_t GetWeight() const
     {
+        ASSERT(type_.index() == 0);
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
-        return static_cast<Type>(type & static_cast<uint32_t>(Type::BRANCH_END));
+        return type >> WEIGHT_START_BIT;
     }
 
     bool IsAny() const
@@ -303,26 +264,6 @@ public:
     bool IsDouble() const
     {
         return type_.index() == 0 && GetPrimitiveType() == Type::DOUBLE;
-    }
-
-    bool IsLikely() const
-    {
-        return type_.index() == 0 && GetBranchType() == Type::LIKELY;
-    }
-
-    bool IsUnLikely() const
-    {
-        return type_.index() == 0 && GetBranchType() == Type::UNLIKELY;
-    }
-
-    bool IsStrongLikely() const
-    {
-        return type_.index() == 0 && GetBranchType() == Type::STRONG_LIKELY;
-    }
-
-    bool IsStrongUnLikely() const
-    {
-        return type_.index() == 0 && GetBranchType() == Type::STRONG_UNLIKELY;
     }
 
     bool IsNumber() const

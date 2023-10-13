@@ -45,4 +45,4 @@ private:
     ChunkVector<Edge> workList_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_GRAPH_VISITOR_H
+#endif  // ECMASCRIPT_COMPILER_GRAPH_EDITOR_H

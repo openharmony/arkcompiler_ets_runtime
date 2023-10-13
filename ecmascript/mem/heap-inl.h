@@ -337,12 +337,15 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ResetAliveObject();
         region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
     });
+    size_t cachedSize = inactiveSemiSpace_->GetInitialCapacity();
     if (gcType == TriggerGCType::FULL_GC) {
         compressSpace_->Reset();
+        cachedSize = 0;
     } else if (gcType == TriggerGCType::OLD_GC) {
         oldSpace_->ReclaimCSet();
     }
-    inactiveSemiSpace_->ReclaimRegions();
+
+    inactiveSemiSpace_->ReclaimRegions(cachedSize);
 
     sweeper_->WaitAllTaskFinished();
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
@@ -350,7 +353,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ClearCrossRegionRSet();
     });
     if (!clearTaskFinished_) {
-        os::memory::LockHolder holder(waitClearTaskFinishedMutex_);
+        LockHolder holder(waitClearTaskFinishedMutex_);
         clearTaskFinished_ = true;
         waitClearTaskFinishedCV_.SignalAll();
     }

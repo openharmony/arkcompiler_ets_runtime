@@ -178,7 +178,7 @@ WorkNode *WorkManager::AllocateWorkNode()
     do {
         begin = atomicField->load(std::memory_order_acquire);
         if (begin + totalSize >= spaceEnd_) {
-            os::memory::LockHolder lock(mtx_);
+            LockHolder lock(mtx_);
             begin = atomicField->load(std::memory_order_acquire);
             if (begin + totalSize >= spaceEnd_) {
                 agedSpaces_.emplace_back(workSpace_);

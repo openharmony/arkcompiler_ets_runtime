@@ -43,9 +43,13 @@ using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
 
 void AOTFileManager::Iterate(const RootVisitor &v)
 {
-    for (auto &iter : desCPs_) {
-        for (auto &curCP : iter.second) {
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second.at(curCP.first))));
+    for (auto &iter : aiDatum_) {
+        auto &aiData = iter.second;
+        for (auto &eachFileData : aiData) {
+            auto &cpMap = eachFileData.second;
+            for (auto &eachCpPair : cpMap) {
+                v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
+            }
         }
     }
 }
@@ -91,9 +95,9 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
         return false;
     }
 
-    auto iter = desCPs_.find(anFileInfoIndex);
+    auto iter = aiDatum_ .find(anFileInfoIndex);
     // already loaded
-    if (iter != desCPs_.end()) {
+    if (iter != aiDatum_ .end()) {
         return false;
     }
 
@@ -330,21 +334,31 @@ bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_
     return true;
 }
 
-void AOTFileManager::AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList)
+void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTaggedValue deserializedData)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     std::string baseName = JSFilePath::GetFileName(snapshotFileName.c_str());
     uint32_t anFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(baseName + FILE_EXTENSION_AN);
 
-    desCPs_.insert({anFileInfoIndex, CMap<int32_t, JSTaggedValue> {}});
-    CMap<int32_t, JSTaggedValue> &cpMap = desCPs_[anFileInfoIndex];
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<TaggedArray> aiData(thread, deserializedData);
+    uint32_t aiDataLen = aiData->GetLength();
+    ASSERT(aiDataLen % TSManager::SnapshotData::SNAPSHOT_DATA_ITEM_SIZE == 0);
+    aiDatum_ .insert({anFileInfoIndex, CMap<CString, CMap<int32_t, JSTaggedValue>>{}});
+    FileNameToMultiConstantPoolMap &fileNameToMulCpMap = aiDatum_ .at(anFileInfoIndex);
 
-    JSHandle<TaggedArray> cpList(vm_->GetJSThread(), deserializedCPList);
-    uint32_t len = cpList->GetLength();
-    for (uint32_t pos = 0; pos < len; pos += DESERI_CP_ITEM_SIZE) {
-        int32_t constantPoolID = cpList->Get(pos).GetInt();
-        JSTaggedValue cp = cpList->Get(pos + 1);
-        cpMap.insert({constantPoolID, cp});
+    for (uint32_t i = 0; i < aiDataLen; i += TSManager::SnapshotData::SNAPSHOT_DATA_ITEM_SIZE) {
+        CString fileNameStr = EcmaStringAccessor(aiData->Get(i)).ToCString();
+        JSHandle<TaggedArray> cpList(thread, aiData->Get(i + 1));
+        uint32_t cpLen = cpList->GetLength();
+        ASSERT(cpLen % TSManager::SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE == 0);
+        fileNameToMulCpMap.insert({fileNameStr, CMap<int32_t, JSTaggedValue>{}});
+        MultiConstantPoolMap &cpMap = fileNameToMulCpMap.at(fileNameStr);
+        for (uint32_t pos = 0; pos < cpLen; pos += TSManager::SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE) {
+            int32_t constantPoolID = cpList->Get(pos).GetInt();
+            JSTaggedValue cp = cpList->Get(pos + 1);
+            cpMap.insert({constantPoolID, cp});
+        }
     }
 }
 
@@ -352,12 +366,23 @@ JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPand
 {
     // The deserialization of the 'ai' data used by the multi-work
     // is not implemented yet, so there may be a case where
-    // desCPs_ is empty, in which case the Hole will be returned
-    if (desCPs_.empty()) {
+    // aiDatum_  is empty, in which case the Hole will be returned
+    if (aiDatum_ .empty()) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
     }
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    CMap<int32_t, JSTaggedValue> &cpMap = desCPs_.at(anFileInfoIndex);
+    auto aiDatumIter = aiDatum_ .find(anFileInfoIndex);
+    if (aiDatumIter == aiDatum_ .end()) {
+        LOG_COMPILER(FATAL) << "can not find aiData by anFileInfoIndex " << anFileInfoIndex;
+        UNREACHABLE();
+    }
+    const auto &fileNameToMulCpMap = aiDatumIter->second;
+    auto cpMapIter = fileNameToMulCpMap.find(jsPandaFile->GetNormalizedFileDesc());
+    if (cpMapIter == fileNameToMulCpMap.end()) {
+        LOG_COMPILER(FATAL) << "can not find constpools by fileName " << jsPandaFile->GetNormalizedFileDesc().c_str();
+        UNREACHABLE();
+    }
+    const CMap<int32_t, JSTaggedValue> &cpMap = cpMapIter->second;
     auto iter = cpMap.find(cpID);
     if (iter == cpMap.end()) {
         LOG_COMPILER(FATAL) << "can not find deserialized constantpool in anFileInfo, constantPoolID is " << cpID;

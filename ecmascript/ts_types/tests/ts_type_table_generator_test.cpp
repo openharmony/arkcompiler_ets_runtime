@@ -56,15 +56,16 @@ public:
 
 HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetModuleId)
 {
-    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
+    const auto *abcName = TSTypeTable::DEFAULT_TYPE_VIRTUAL_NAME;
+    auto *tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeTableGenerator tableGenerator(tsManager);
-    uint32_t primitiveTableId = tableGenerator.TryGetModuleId(TSTypeTable::PRIMITIVE_TABLE_NAME);
-    uint32_t builtinTableId = tableGenerator.TryGetModuleId(TSTypeTable::BUILTINS_TABLE_NAME);
-    uint32_t inferTableId = tableGenerator.TryGetModuleId(TSTypeTable::INFER_TABLE_NAME);
-    uint32_t runtimeTableId = tableGenerator.TryGetModuleId(TSTypeTable::RUNTIME_TABLE_NAME);
-    uint32_t genericsTableId = tableGenerator.TryGetModuleId(TSTypeTable::GENERICS_TABLE_NAME);
-    uint32_t firstUserModuleId = tableGenerator.TryGetModuleId("test");
+    uint32_t primitiveTableId = tableGenerator.TryGetModuleId(abcName, TSTypeTable::PRIMITIVE_TABLE_NAME);
+    uint32_t builtinTableId = tableGenerator.TryGetModuleId(abcName, TSTypeTable::BUILTINS_TABLE_NAME);
+    uint32_t inferTableId = tableGenerator.TryGetModuleId(abcName, TSTypeTable::INFER_TABLE_NAME);
+    uint32_t runtimeTableId = tableGenerator.TryGetModuleId(abcName, TSTypeTable::RUNTIME_TABLE_NAME);
+    uint32_t genericsTableId = tableGenerator.TryGetModuleId(abcName, TSTypeTable::GENERICS_TABLE_NAME);
+    uint32_t firstUserModuleId = tableGenerator.TryGetModuleId(abcName, "test");
     EXPECT_EQ(primitiveTableId, static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE));
     EXPECT_EQ(builtinTableId, static_cast<uint32_t>(ModuleTableIdx::BUILTIN));
     EXPECT_EQ(inferTableId, static_cast<uint32_t>(ModuleTableIdx::INFERRED));

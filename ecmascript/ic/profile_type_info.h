@@ -83,19 +83,84 @@ static inline bool IsGlobalIC(ICKind kind)
 
 std::string ICKindToString(ICKind kind);
 
+/*                  ProfileTypeInfo
+ *      +--------------------------------+----
+ *      |            cache               |
+ *      |            .....               |
+ *      +--------------------------------+----
+ *      |    low 32bits(PeriodCount)     |
+ *      |    hight 32bits(Reserved)      |
+ *      +--------------------------------+
+ */
 class ProfileTypeInfo : public TaggedArray {
 public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
+    static constexpr size_t BIT_FIELD_INDEX = 1;
+    static constexpr size_t RESERVED_LENGTH = BIT_FIELD_INDEX;
+    static constexpr size_t INITIAL_PEROID_INDEX = 0;
+    static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
+    static constexpr size_t DUMP_PEROID_INDEX = 2;
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsTaggedArray());
         return static_cast<ProfileTypeInfo *>(object);
     }
-};
 
+    static size_t ComputeSize(uint32_t cacheSize)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_LENGTH);
+    }
+
+    inline uint32_t GetCacheLength() const
+    {
+        return GetLength() - RESERVED_LENGTH;
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
+    {
+        ASSERT(initValue.IsSpecial());
+        SetLength(capacity + RESERVED_LENGTH);
+        SetExtraLength(extraLength);
+        for (uint32_t i = 0; i < capacity; i++) {
+            size_t offset = JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+        }
+        SetPeriodIndex(INITIAL_PEROID_INDEX);
+    }
+
+    void SetPreDumpPeriodIndex()
+    {
+        SetPeriodIndex(PRE_DUMP_PEROID_INDEX);
+    }
+
+    bool IsProfileTypeInfoPreDumped() const
+    {
+        return GetPeroidIndex() == PRE_DUMP_PEROID_INDEX;
+    }
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
+
+    DECL_DUMP()
+
+private:
+    uint32_t GetPeroidIndex() const
+    {
+        return Barriers::GetValue<uint32_t>(GetData(), GetBitfieldOffset());
+    }
+
+    void SetPeriodIndex(uint32_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetBitfieldOffset(), count);
+    }
+
+    inline size_t GetBitfieldOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - BIT_FIELD_INDEX);
+    }
+};
 
 class ProfileTypeAccessor {
 public:

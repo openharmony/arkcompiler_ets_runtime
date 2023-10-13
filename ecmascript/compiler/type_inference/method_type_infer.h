@@ -39,7 +39,7 @@ public:
                     PassContext *ctx, size_t methodId, bool enableLog,
                     const std::string &name, const CString &recordName,
                     MethodInfo *methodInfo, const MethodLiteral *methodLiteral,
-                    bool enableGlobalTypeInfer);
+                    bool enableGlobalTypeInfer, bool hasType);
     ~MethodTypeInfer() = default;
 
     NO_COPY_SEMANTIC(MethodTypeInfer);
@@ -188,6 +188,7 @@ private:
     std::queue<GateRef> pendingQueue_ {};
     bool needUpdateForLoopPhi_ {true};
     bool enableGlobalTypeInfer_ {false};
+    bool hasType_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_METHOD_TYPE_INFER_H

@@ -25,7 +25,7 @@
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/log_wrapper.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 // Regular region with length of DEFAULT_REGION_SIZE(256kb)
@@ -36,10 +36,14 @@ public:
 
     void Finalize()
     {
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         for (auto &it : memMapVector_) {
             PageUnmap(it);
         }
+        for (auto &it : regularMapCommitted_) {
+            PageUnmap(it);
+        }
+        regularMapCommitted_.clear();
         memMapVector_.clear();
         memMapCache_.clear();
     }
@@ -50,7 +54,7 @@ public:
     MemMap GetMemFromCache([[maybe_unused]] size_t size)
     {
         ASSERT(size == REGULAR_MMAP_SIZE);
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         if (!memMapCache_.empty()) {
             MemMap mem = memMapCache_.front();
             memMapCache_.pop_front();
@@ -59,16 +63,48 @@ public:
         return MemMap();
     }
 
+    MemMap GetRegularMemFromCommitted([[maybe_unused]] size_t size)
+    {
+        ASSERT(size == REGULAR_MMAP_SIZE);
+        LockHolder lock(lock_);
+        if (!regularMapCommitted_.empty()) {
+            MemMap mem = regularMapCommitted_.back();
+            regularMapCommitted_.pop_back();
+            return mem;
+        }
+        return MemMap();
+    }
+
+    bool IsRegularCommittedFull(size_t cachedSize) {
+        LockHolder lock(lock_);
+        size_t size = regularMapCommitted_.size();
+        return size > (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
+    }
+
+    int ShouldFreeMore(size_t cachedSize) {
+        LockHolder lock(lock_);
+        int result = regularMapCommitted_.size();
+        return result - static_cast<int>(cachedSize / REGULAR_MMAP_SIZE);
+    }
+
+    void AddMemToCommittedCache(void *mem, size_t size)
+    {
+        ASSERT(size == REGULAR_MMAP_SIZE);
+        LockHolder lock(lock_);
+        regularMapCommitted_.emplace_back(mem, size);
+    }
+
+
     void AddMemToCache(void *mem, size_t size)
     {
         ASSERT(size == REGULAR_MMAP_SIZE);
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         memMapCache_.emplace_back(mem, size);
     }
 
     MemMap SplitMemFromCache(MemMap memMap)
     {
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         auto remainderMem = reinterpret_cast<uintptr_t>(memMap.GetMem()) + REGULAR_MMAP_SIZE;
         size_t remainderSize = AlignDown(memMap.GetSize() - REGULAR_MMAP_SIZE, REGULAR_MMAP_SIZE);
         size_t count = remainderSize / REGULAR_MMAP_SIZE;
@@ -81,14 +117,15 @@ public:
 
     void InsertMemMap(MemMap memMap)
     {
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         memMapVector_.emplace_back(memMap);
     }
 
 private:
     static constexpr size_t REGULAR_MMAP_SIZE = 256_KB;
-    os::memory::Mutex lock_;
+    Mutex lock_;
     std::deque<MemMap> memMapCache_;
+    std::vector<MemMap> regularMapCommitted_;
     std::vector<MemMap> memMapVector_;
 };
 
@@ -146,7 +183,7 @@ public:
             LOG_GC(ERROR) << "Freelist pool oom: overflow(" << freeListPoolSize_ << ")";
             return MemMap();
         }
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         auto iterate = freeList_.lower_bound(size);
         if (iterate == freeList_.end()) {
             MergeList();
@@ -176,7 +213,7 @@ public:
 
     void AddMemToList(MemMap memMap)
     {
-        os::memory::LockHolder lock(lock_);
+        LockHolder lock(lock_);
         auto search = freeSet_.find(reinterpret_cast<uintptr_t>(memMap.GetMem()));
         if (UNLIKELY(search != freeSet_.end())) {
             freeSetPoolSize_ -= memMap.GetSize();
@@ -189,7 +226,7 @@ public:
     }
 
 private:
-    os::memory::Mutex lock_;
+    Mutex lock_;
     MemMap memMap_;
     std::multimap<size_t, MemMap> freeList_;
     std::set<uintptr_t> freeSet_;
@@ -250,13 +287,13 @@ public:
 
     MemMap Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode);
 
-    void Free(void *mem, size_t size, bool isRegular);
+    void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 
 private:
     static constexpr size_t REGULAR_REGION_MMAP_SIZE = 4_MB;
 
     void AdapterSuitablePoolCapacity();
-
+    void Free(void *mem, size_t size, bool isRegular);
     MemMapPool memMapPool_;
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};

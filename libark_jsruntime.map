@@ -52,6 +52,7 @@
       panda::WeakMapRef::*;
       panda::WeakSetRef::*;
 
+      panda::TryCatch::*;
       panda::JSNApi::*;
       panda::DFXJSNApi::*;
       panda::ecmascript::tooling::DebuggerApi::*;
@@ -80,6 +81,13 @@
       panda::os::unix::memory::*;
       panda::ecmascript::JSHClass::*;
       panda::ecmascript::EcmaHandleScope::*;
+      panda::ecmascript::Mutex::*;
+      panda::ecmascript::RecursiveMutex::*;
+      panda::ecmascript::RWLock::*;
+      panda::ecmascript::ConditionVariable::*;
+      panda::ecmascript::LockHolder::*;
+      panda::ecmascript::ReadLockHolder::*;
+      panda::ecmascript::WriteLockHolder::*;
     };
     extern "C" {
       get_ark_js_heap_crash_info;

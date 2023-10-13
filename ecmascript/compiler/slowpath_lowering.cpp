@@ -14,8 +14,8 @@
  */
 
 #include "ecmascript/compiler/slowpath_lowering.h"
-#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
@@ -1816,27 +1816,13 @@ void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate)
 {
     const int id = RTSTUB_ID(OptCreateObjectWithExcludedKeys);
     // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef numKeys = acc_.GetValueIn(gate, 0);
-    GateRef obj = acc_.GetValueIn(gate, 1);
-    GateRef firstArgRegIdx = acc_.GetValueIn(gate, 2);
-    GateRef depGate = acc_.GetDep(gate);
-    acc_.SetDep(gate, acc_.GetDep(depGate));
-    builder_.SetDepend(acc_.GetDep(depGate));
-
+    ASSERT(acc_.GetNumValueIn(gate) >= 2);
+    size_t numIn = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args;
-    size_t numIn = acc_.GetNumValueIn(depGate);
-    GateRef length = builder_.Int32(numIn);
-    GateRef taggedLength = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(length));
-    args.emplace_back(builder_.ToTaggedInt(numKeys));
-    args.emplace_back(obj);
-    args.emplace_back(builder_.ToTaggedInt(firstArgRegIdx));
-    args.emplace_back(taggedLength);
     for (size_t idx = 0; idx < numIn; idx++) {
-        GateRef tmpGate = acc_.GetValueIn(depGate, idx);
+        GateRef tmpGate = acc_.GetValueIn(gate, idx);
         args.emplace_back(tmpGate);
     }
-    acc_.DeleteGate(depGate);
     GateRef newGate = LowerCallRuntime(gate, id, args);
     ReplaceHirWithValue(gate, newGate);
 }
@@ -2454,7 +2440,6 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     builder_.Bind(&isNotException);
     {
         builder_.SetLexicalEnvToFunction(glue_, result, lexicalEnv);
-        builder_.SetModuleToFunction(glue_, result, module);
         LowerCallRuntime(gate, RTSTUB_ID(SetClassConstructorLength),
             { result, builder_.ToTaggedInt(length) }, true);
         successControl.SetState(builder_.GetState());
@@ -2487,7 +2472,6 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
-        builder_.SetModuleToFunction(glue_, result, builder_.GetModuleFromFunction(jsFunc));
         builder_.SetHomeObjectToFunction(glue_, result, builder_.GetHomeObjectFromFunction(jsFunc));
         builder_.Jump(&successExit);
     }
@@ -2765,7 +2749,6 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
         GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
-        builder_.SetModuleToFunction(glue_, result, builder_.GetModuleFromFunction(jsFunc));
         builder_.Jump(&successExit);
     }
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)

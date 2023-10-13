@@ -79,7 +79,7 @@ struct HashGlobalTypeID {
 class TypeLocation {
 public:
     explicit TypeLocation(const JSPandaFile *jsPandaFile, uint32_t methodOffset,
-                            int32_t bcIdx)
+                          int32_t bcIdx)
         : jsPandaFile_(jsPandaFile), methodOffset_(methodOffset), bcIdx_(bcIdx) {}
 
     bool operator==(const TypeLocation &loc) const

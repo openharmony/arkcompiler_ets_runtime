@@ -21,7 +21,10 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/debugger/js_pt_location.h"
 
-namespace panda::ecmascript::tooling {
+namespace panda::ecmascript {
+class Method;
+
+namespace tooling {
 struct JSPtStepRange {
     uint32_t startBcOffset {0};
     uint32_t endBcOffset {0};
@@ -139,6 +142,7 @@ public:
     NO_COPY_SEMANTIC(JSDebugInterface);
     NO_MOVE_SEMANTIC(JSDebugInterface);
 };
-}  // namespace panda::ecmascript::tooling
+}  // namespace tooling
+}  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_DEBUGGER_JS_DEBUG_INTERFACE_H

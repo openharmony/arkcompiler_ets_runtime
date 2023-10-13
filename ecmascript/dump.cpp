@@ -25,6 +25,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -97,6 +98,7 @@
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/machine_code.h"
@@ -146,6 +148,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TaggedDictionary";
         case JSType::CONSTANT_POOL:
             return "ConstantPool";
+        case JSType::PROFILE_TYPE_INFO:
+            return "ProfileTypeInfo";
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
         case JSType::LINE_STRING:
@@ -347,6 +351,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSGeneratorContext";
         case JSType::PROTO_CHANGE_MARKER:
             return "ProtoChangeMarker";
+        case JSType::MARKER_CELL:
+            return "MarkerCell";
         case JSType::PROTOTYPE_INFO:
             return "PrototypeInfo";
         case JSType::PROGRAM:
@@ -652,6 +658,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), os);
+            break;
+        case JSType::PROFILE_TYPE_INFO:
+            ProfileTypeInfo::Cast(obj)->Dump(os);
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->Dump(os);
@@ -961,8 +970,14 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::PROTOTYPE_INFO:
             ProtoChangeDetails::Cast(obj)->Dump(os);
             break;
+        case JSType::TRACK_INFO:
+            TrackInfo::Cast(obj)->Dump(os);
+            break;
         case JSType::PROTO_CHANGE_MARKER:
             ProtoChangeMarker::Cast(obj)->Dump(os);
+            break;
+        case JSType::MARKER_CELL:
+            MarkerCell::Cast(obj)->Dump(os);
             break;
         case JSType::PROGRAM:
             Program::Cast(obj)->Dump(os);
@@ -1510,6 +1525,21 @@ void ConstantPool::Dump(std::ostream &os) const
     DumpArrayClass(this, os);
 }
 
+void ProfileTypeInfo::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetCacheLength();
+    os << " <ProfileTypeInfo[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(os);
+            os << "\n";
+        }
+    }
+}
+
 void VTable::Dump(std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1544,9 +1574,6 @@ void JSFunction::Dump(std::ostream &os) const
     os << "\n";
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
-    os << "\n";
-    os << " - Module: ";
-    GetModule().Dump(os);
     os << "\n";
     os << " - Method: ";
     GetMethod().Dump(os);
@@ -3145,12 +3172,22 @@ void ProtoChangeMarker::Dump(std::ostream &os) const
     os << " - HasChanged: " << GetHasChanged() << "\n";
 }
 
+void MarkerCell::Dump(std::ostream &os) const
+{
+    os << " - IsDetectorInvalid: " << GetIsDetectorInvalid() << "\n";
+}
+
 void ProtoChangeDetails::Dump(std::ostream &os) const
 {
     os << " - ChangeListener: ";
     GetChangeListener().Dump(os);
     os << " \t- RegisterIndex: " << GetRegisterIndex();
     os << "\n";
+}
+
+void TrackInfo::Dump(std::ostream &os) const
+{
+    os << " - ElementsKind: " << static_cast<uint32_t>(GetElementsKind()) << "\n";
 }
 
 void MachineCode::Dump(std::ostream &os) const
@@ -3647,6 +3684,9 @@ void Method::Dump(std::ostream &os) const
     os << " - ProfileTypeInfo: ";
     GetProfileTypeInfo().Dump(os);
     os << "\n";
+    os << " - Module: ";
+    GetModule().Dump(os);
+    os << "\n";
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - CodeEntryOrLiteral: " << std::hex << GetCodeEntryOrLiteral() << "\n";
@@ -3702,9 +3742,10 @@ static void DumpConstantPoolClass(const ConstantPool *arr, std::vector<Reference
     }
 }
 
-static void DumpStringClass(const EcmaString *str, std::vector<Reference> &vec)
+static void DumpStringClass([[maybe_unused]] const EcmaString *str, [[maybe_unused]] std::vector<Reference> &vec)
 {
-    vec.emplace_back(CString("string"), JSTaggedValue(str));
+    // Before EcmaString dump self node, it need not show, so delete.
+    // If some properties need be shown, add here.
 }
 
 static void DumpClass(TaggedObject *obj, std::vector<Reference> &vec)
@@ -3735,6 +3776,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::VTABLE:
             VTable::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::PROFILE_TYPE_INFO:
+            ProfileTypeInfo::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
@@ -4118,8 +4162,14 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             case JSType::PROTO_CHANGE_MARKER:
                 ProtoChangeMarker::Cast(obj)->DumpForSnapshot(vec);
                 return;
+            case JSType::MARKER_CELL:
+                MarkerCell::Cast(obj)->DumpForSnapshot(vec);
+                return;
             case JSType::PROTOTYPE_INFO:
                 ProtoChangeDetails::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::TRACK_INFO:
+                TrackInfo::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::PROGRAM:
                 Program::Cast(obj)->DumpForSnapshot(vec);
@@ -4432,6 +4482,7 @@ void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
     vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
+    vec.emplace_back(CString("Module"), GetModule());
 }
 
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -4447,6 +4498,18 @@ void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
 void VTable::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpArrayClass(this, vec);
+}
+
+void ProfileTypeInfo::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetCacheLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
 }
 
 void COWTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5284,6 +5347,11 @@ void ProtoChangeMarker::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Promise"), JSTaggedValue(GetHasChanged()));
 }
 
+void MarkerCell::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("IsDetectorInvalid"), JSTaggedValue(GetIsDetectorInvalid()));
+}
+
 void ProtoChangeDetails::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ChangeListener"), GetChangeListener());
@@ -5293,6 +5361,11 @@ void ProtoChangeDetails::DumpForSnapshot(std::vector<Reference> &vec) const
 void MachineCode::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("InstructionSizeInBytes"), JSTaggedValue(GetInstructionSizeInBytes()));
+}
+
+void TrackInfo::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back("ElementsKind", JSTaggedValue(static_cast<uint32_t>(GetElementsKind())));
 }
 
 void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const

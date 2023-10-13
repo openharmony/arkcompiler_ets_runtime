@@ -433,15 +433,14 @@ public:
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
     }
 
-    ElementsKind GetElementsKind(GateRef gate) const
+    std::vector<ElementsKind> LoadElementsKinds(GateRef gate) const
     {
-        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
+        return typeRecorder_.LoadElementsKinds(GetPcOffsetByGate(gate));
     }
 
     ElementsKind GetArrayElementsKind(GateRef gate) const
     {
-        auto type = typeRecorder_.GetType(GetBcIndexByGate(gate));
-        auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
+        auto pgoType = typeRecorder_.GetOrUpdatePGOType(gateAcc_.TryGetPcOffset(gate));
         return typeRecorder_.GetElementsKind(pgoType);
     }
 

@@ -32,10 +32,14 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_CONSTRUCTOR_STUB_LIST(V)
 
 #define BUILTINS_METHOD_STUB_LIST(V)                \
-    V(CharCodeAt)                                   \
-    V(IndexOf)                                      \
-    V(Substring)                                    \
-    V(CharAt)                                       \
+    V(StringCharCodeAt)                             \
+    V(StringIndexOf)                                \
+    V(StringSubstring)                              \
+    V(StringCharAt)                                 \
+    V(StringFromCharCode)                           \
+    V(ObjectToString)                               \
+    V(ObjectCreate)                                 \
+    V(ObjectAssign)                                 \
     V(VectorForEach)                                \
     V(VectorReplaceAllElements)                     \
     V(StackForEach)                                 \
@@ -58,6 +62,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayLastIndexOf)                             \
     V(ArraySlice)                                   \
     V(ArrayReverse)                                 \
+    V(ArrayPush)                                    \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \

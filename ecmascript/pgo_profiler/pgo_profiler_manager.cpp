@@ -84,6 +84,7 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
         }
         if (isFirstFile) {
             firstApFileName = fileName;
+            merger.SwapAbcIdPool(decoder);
         } else {
             if (!merger.GetPandaFileInfos().VerifyChecksum(decoder.GetPandaFileInfos(), firstApFileName, fileName)) {
                 continue;

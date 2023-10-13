@@ -23,6 +23,7 @@
         "deps": {
             "components": [
               "faultloggerd",
+              "frame_aware_sched",
               "hitrace",
               "hilog",
               "runtime_core",
@@ -37,6 +38,7 @@
         },
         "build": {
             "sub_component": [
+                "//arkcompiler/ets_runtime:app_aot_white_list",
                 "//arkcompiler/ets_runtime:ark_js_packages"
             ],
             "inner_kits": [

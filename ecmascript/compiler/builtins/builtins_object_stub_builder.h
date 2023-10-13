@@ -22,11 +22,34 @@ class BuiltinsObjectStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsObjectStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
+    BuiltinsObjectStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue, GateRef numArgs)
+        : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsObjectStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsObjectStubBuilder);
     void GenerateCircuit() override {}
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
+    void ToString(Variable *result, Label *exit, Label *slowPath);
+    void Create(Variable *result, Label *exit, Label *slowPath);
+    void Assign(Variable *result, Label *exit, Label *slowPath);
+    GateRef CloneObjectLiteral(GateRef glue, GateRef objLiteral);
+    GateRef CloneProperties(GateRef glue, GateRef old);
+
+private:
+    GateRef OrdinaryNewJSObjectCreate(GateRef proto);
+    GateRef TransProtoWithoutLayout(GateRef hClass, GateRef proto);
+    void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void NameDictionaryAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source,
+        GateRef properties);
+    void SlowAssign(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void FastAssign(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void AssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void Assign(Variable *res, Label *nextIt, Label *funcExit, GateRef toAssign, GateRef source);
+
+    GateRef glue_;
+    GateRef thisValue_;
+    GateRef numArgs_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_OBJECT_STUB_BUILDER_H

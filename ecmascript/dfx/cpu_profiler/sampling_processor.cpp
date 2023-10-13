@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 
 #include <csignal>
-#include <pthread.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -29,57 +28,55 @@
 namespace panda::ecmascript {
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
-SamplingProcessor::SamplingProcessor(int32_t id, SamplesRecord *generator, int interval) : Task(id)
-{
-    generator_ = generator;
-    interval_ = static_cast<uint32_t>(interval);
-    pid_ = pthread_self();
-}
 SamplingProcessor::~SamplingProcessor() {}
 
-bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
+void *SamplingProcessor::Run(void *arg)
 {
+    RunParams params = *reinterpret_cast<RunParams *>(arg);
+    SamplesRecord *generator = params.generatorParam;
+    uint32_t interval = params.intervalParam;
+    pthread_t pid = params.pidParam;
     pthread_t tid = pthread_self();
     pthread_setname_np(tid, "SamplingThread");
     uint64_t startTime = GetMicrosecondsTimeStamp();
     uint64_t endTime = startTime;
-    generator_->SetThreadStartTime(startTime);
-    while (generator_->GetIsStart()) {
-        if (pthread_kill(pid_, SIGPROF) != 0) {
+    generator->SetThreadStartTime(startTime);
+    while (generator->GetIsStart()) {
+        if (pthread_kill(pid, SIGPROF) != 0) {
             LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
-            return false;
+            return nullptr;
         }
-        if (generator_->SemWait(0) != 0) {
+        if (generator->SemWait(0) != 0) {
             LOG_ECMA(ERROR) << "sem_[0] wait failed";
-            return false;
+            return nullptr;
         }
         startTime = GetMicrosecondsTimeStamp();
-        int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(startTime - endTime);
+        int64_t ts = static_cast<int64_t>(interval) - static_cast<int64_t>(startTime - endTime);
         endTime = startTime;
         if (ts > 0) {
             usleep(ts);
             endTime = GetMicrosecondsTimeStamp();
         }
-        if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
+        if (generator->GetMethodNodeCount() + generator->GetframeStackLength() >= MAX_NODE_COUNT) {
             break;
         }
-        if (generator_->samplesQueue_->IsEmpty()) {
+        if (generator->samplesQueue_->IsEmpty()) {
             uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-            generator_->AddEmptyStackSample(sampleTimeStamp);
+            generator->AddEmptyStackSample(sampleTimeStamp);
         } else {
-            while (!generator_->samplesQueue_->IsEmpty()) {
-                FrameStackAndInfo *frame = generator_->samplesQueue_->PopFrame();
-                generator_->AddSample(frame);
+            while (!generator->samplesQueue_->IsEmpty()) {
+                FrameStackAndInfo *frame = generator->samplesQueue_->PopFrame();
+                generator->AddSample(frame);
             }
         }
     }
-    generator_->SetThreadStopTime();
+    generator->SetThreadStopTime();
     pthread_setname_np(tid, "GC_WorkerThread");
-    if (generator_->SemPost(1) != 0) {
+    if (generator->SemPost(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] post failed";
-        return false;
+        return nullptr;
     }
-    return true;
+    return nullptr;
 }
 
 uint64_t SamplingProcessor::GetMicrosecondsTimeStamp()

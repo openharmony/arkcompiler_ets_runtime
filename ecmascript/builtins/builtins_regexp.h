@@ -26,19 +26,6 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsRegExp : public base::BuiltinsBase {
 public:
-    enum RegExpGlobalArrayIndex {
-        DUMP_HEAD,
-        DOLLAR_ONE,
-        DOLLAR_TWO,
-        DOLLAR_THREE,
-        DOLLAR_FOUR,
-        DOLLAR_FIVE,
-        DOLLAR_SIX,
-        DOLLAR_SEVEN,
-        DOLLAR_EIGHT,
-        DOLLAR_NINE
-    };
-
     // 21.2.3.1 RegExp ( pattern, flags )
     static JSTaggedValue RegExpConstructor(EcmaRuntimeCallInfo *argv);
 
@@ -89,10 +76,32 @@ public:
     // 22.2.6.6 get RegExp.prototype.hasIndices
     static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
+    static JSTaggedValue ReplaceInternal(JSThread *thread,
+                                         JSHandle<JSTaggedValue> thisObj,
+                                         JSHandle<JSTaggedValue> string,
+                                         JSHandle<JSTaggedValue> inputReplaceValue);
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define SET_GET_CAPTURE(index)                                                                                \
+    static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
+    static bool SetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj,                            \
+                                 const JSHandle<JSTaggedValue> &value, bool mayThrow);
+
+    SET_GET_CAPTURE(1)
+    SET_GET_CAPTURE(2)
+    SET_GET_CAPTURE(3)
+    SET_GET_CAPTURE(4)
+    SET_GET_CAPTURE(5)
+    SET_GET_CAPTURE(6)
+    SET_GET_CAPTURE(7)
+    SET_GET_CAPTURE(8)
+    SET_GET_CAPTURE(9)
+#undef SET_GET_CAPTURE
+
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
+    static constexpr uint32_t LAST_INDEX_OFFSET = 0;
 
     static RegExpExecutor::MatchResult Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                                const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
@@ -108,8 +117,6 @@ private:
 
     static uint32_t UpdateExpressionFlags(JSThread *thread, const CString &checkStr);
 
-    static JSHandle<JSTaggedValue> GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index);
-
     // 21.2.3.2.2 Runtime Semantics: RegExpInitialize ( obj, pattern, flags )
     static JSTaggedValue RegExpInitialize(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &pattern, const JSHandle<JSTaggedValue> &flags);
@@ -118,6 +125,11 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
+                                        const JSHandle<JSTaggedValue> &inputString, bool useCache);
+    static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
+                                               const JSHandle<JSTaggedValue> &inputStr, bool useCache);
+    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> &regexp);
     // 22.2.7.8 MakeMatchIndicesIndexPairArray ( S, indices, groupNames, hasGroups )
     static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
@@ -130,7 +142,9 @@ public:
         REPLACE_TYPE,
         SPLIT_TYPE,
         MATCH_TYPE,
-        EXEC_TYPE
+        EXEC_TYPE,
+        INTERMEDIATE_REPLACE_TYPE,
+        TEST_TYPE
     };
     static RegExpExecResultCache *Cast(TaggedObject *object)
     {
@@ -141,21 +155,22 @@ public:
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &patten,
                                    const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
                                    CacheType type, const JSHandle<JSTaggedValue> &regexp,
-                                   JSTaggedValue extend = JSTaggedValue::Undefined());
+                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined());
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                  const JSHandle<JSTaggedValue> &patten, const JSHandle<JSTaggedValue> &flags,
                                  const JSHandle<JSTaggedValue> &input, const JSHandle<JSTaggedValue> &resultArray,
-                                 CacheType type, uint32_t lastIndex, JSTaggedValue extend = JSTaggedValue::Undefined());
+                                 CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
+                                 JSTaggedValue extend = JSTaggedValue::Undefined());
 
     static void GrowRegexpCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache);
 
     void ClearEntry(JSThread *thread, int entry);
     void SetEntry(JSThread *thread, int entry, JSTaggedValue &patten, JSTaggedValue &flags, JSTaggedValue &input,
-                  JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
+                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
-               JSTaggedValue &extend);
+               JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend);
     inline void SetHitCount(JSThread *thread, int hitCount)
     {
         Set(thread, CACHE_HIT_COUNT_INDEX, JSTaggedValue(hitCount));
@@ -237,14 +252,44 @@ private:
     static constexpr int PATTERN_INDEX = 0;
     static constexpr int FLAG_INDEX = 1;
     static constexpr int INPUT_STRING_INDEX = 2;
-    static constexpr int LAST_INDEX_INDEX = 3;
-    static constexpr int RESULT_REPLACE_INDEX = 4;
-    static constexpr int RESULT_SPLIT_INDEX = 5;
-    static constexpr int RESULT_MATCH_INDEX = 6;
-    static constexpr int RESULT_EXEC_INDEX = 7;
+    static constexpr int LAST_INDEX_INPUT_INDEX = 3;
+    static constexpr int LAST_INDEX_INDEX = 4;
+    static constexpr int RESULT_REPLACE_INDEX = 5;
+    static constexpr int RESULT_SPLIT_INDEX = 6;
+    static constexpr int RESULT_MATCH_INDEX = 7;
+    static constexpr int RESULT_EXEC_INDEX = 8;
+    static constexpr int RESULT_INTERMEDIATE_REPLACE_INDEX = 9;
+    static constexpr int RESULT_TEST_INDEX = 10;
     // Extend index used for saving an additional parameter to judge cached
-    static constexpr int EXTEND_INDEX = 8;
-    static constexpr int ENTRY_SIZE = 9;
+    static constexpr int EXTEND_INDEX = 11;
+    static constexpr int ENTRY_SIZE = 12;
 };
+
+class RegExpGlobalResult : public TaggedArray {
+public:
+    static RegExpGlobalResult *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<RegExpGlobalResult *>(object);
+    }
+    static JSTaggedValue CreateGloablResultTable(JSThread *thread);
+
+    void SetCapture(JSThread *thread, int index, JSTaggedValue value)
+    {
+        ASSERT(CAPTURE_START_INDEX + index - 1 < GLOBAL_TABLE_SIZE);
+        Set(thread, CAPTURE_START_INDEX + index - 1, value);
+    }
+
+    template <int N>
+    JSTaggedValue GetCapture()
+    {
+        return Get(CAPTURE_START_INDEX + N - 1);
+    }
+
+private:
+    static constexpr int GLOBAL_TABLE_SIZE = 9;
+    static constexpr int DOLLAR_NUMBER = 9;
+    static constexpr int CAPTURE_START_INDEX = 0;
+};
+
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_H

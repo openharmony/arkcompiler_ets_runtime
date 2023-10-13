@@ -18,8 +18,10 @@
 
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_editor.h"
@@ -38,6 +40,7 @@
 #include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/ts_hcr_opt_pass.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
@@ -243,7 +246,7 @@ public:
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
-                                        enableLog);
+                                        enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
         if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
             InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
@@ -296,6 +299,16 @@ public:
         if (!success) {
             data->MarkAsTypeAbort();
         }
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
+        TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
+                                  data->GetMethodName());
+        
+        visitor.AddPass(&optimization);
+        visitor.AddPass(&deadCodeElimination);
+        visitor.VisitGraph();
+        visitor.PrintLog("TSHCROptPass");
         return true;
     }
 };
@@ -313,6 +326,11 @@ public:
         NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
             data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
         lowering.RunNTypeHCRLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&deadCodeElimination);
+        visitor.VisitGraph();
         return true;
     }
 };
@@ -327,9 +345,14 @@ public:
         }
         TimeScope timescope("TypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TypeMCRLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
-                                 enableLog, data->GetMethodName(), data->GetPassOptions()->EnableOptOnHeapCheck());
-        lowering.RunTypeMCRLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        TypeMCRLowering lowering(data->GetCircuit(), &visitor,
+                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
+                                 data->GetPassOptions()->EnableOptOnHeapCheck());
+        visitor.AddPass(&lowering);
+        visitor.VisitGraph();
+        visitor.PrintLog("TypeMCRLowering");
         return true;
     }
 };
@@ -344,9 +367,13 @@ public:
         }
         TimeScope timescope("NTypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeMCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
-                                  data->GetRecordName(), enableLog, data->GetMethodName());
-        lowering.RunNTypeMCRLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        NTypeMCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
+                                  data->GetRecordName(), &chunk);
+        visitor.AddPass(&lowering);
+        visitor.VisitGraph();
+        visitor.PrintLog("NTypeMCRLowering");
         return true;
     }
 };
@@ -361,8 +388,12 @@ public:
         }
         TimeScope timescope("LCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        LCRLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), enableLog, data->GetMethodName());
-        lowering.Run();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        LCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
+        visitor.AddPass(&lowering);
+        visitor.VisitGraph();
+        visitor.PrintLog("LCRLowering");
         return true;
     }
 };
@@ -437,6 +468,7 @@ public:
         TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         bool onHeapCheck = data->GetPassOptions()->EnableOptOnHeapCheck();
         NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, onHeapCheck).Run();
         return true;
@@ -489,10 +521,15 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableEarlyElimination()) {
             return false;
         }
-        TimeScope timescope("EarlyEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("EarlyEliminationPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
         Chunk chunk(data->GetNativeAreaAllocator());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&earlyElimination);
+        visitor.VisitGraph();
+        visitor.PrintLog("early elimination");
         return true;
     }
 };
@@ -522,10 +559,15 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableLaterElimination()) {
             return false;
         }
-        TimeScope timescope("LaterEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("LaterEliminationPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
         Chunk chunk(data->GetNativeAreaAllocator());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        LaterElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        LaterElimination laterElimination(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&laterElimination);
+        visitor.VisitGraph();
+        visitor.PrintLog("later elimination");
         return true;
     }
 };
@@ -541,7 +583,11 @@ public:
         TimeScope timescope("ValueNumberingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        ValueNumbering(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        ValueNumbering valueNumbering(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&valueNumbering);
+        visitor.VisitGraph();
+        visitor.PrintLog("value numbering");
         return true;
     }
 };
@@ -565,10 +611,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("StateSplitLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("StateSplitLinearizerPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        StateSplitLinearizer(data->GetCircuit(), data->GetCompilerConfig(),
+        StateSplitLinearizer(data->GetCircuit(), nullptr, data->GetCompilerConfig(),
             enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
@@ -581,7 +628,8 @@ public:
         TimeScope timescope("GraphLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
+        bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
+        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm).Run(data->GetCfg());
         return true;
     }
 };

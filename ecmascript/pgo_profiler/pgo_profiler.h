@@ -20,11 +20,22 @@
 #include <memory>
 
 #include "ecmascript/common.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/taskpool/task.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 
-namespace panda::ecmascript::pgo {
+namespace panda::ecmascript {
+class ProfileTypeInfo;
+class JSFunction;
+
+namespace pgo {
 class PGORecordDetailInfos;
 
 enum class SampleMode : uint8_t {
@@ -37,38 +48,195 @@ public:
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
-    void ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_t pcOffset = -1,
-                     SampleMode mode = SampleMode::CALL_MODE, int32_t incCount = 1);
-    void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
-    void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId);
-    void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
-    void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
-    void ProfileObjIndex(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object);
+    static ProfileType GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId);
+    static ProfileType GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId);
+    void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
+    void ProfileDefineClass(JSTaggedType ctor);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
         saveTimestamp_ = timestamp;
     }
 
-    int32_t InsertLiteralId(JSTaggedType hclass, int32_t traceId);
+    void PGOPreDump(JSTaggedType func);
+    void PGODump(JSTaggedType func);
+
+    void WaitPGODumpPause();
+    void WaitPGODumpResume();
+    void WaitPGODumpFinish();
+
+    void HandlePGOPreDump();
+    void HandlePGODump();
+
     void ProcessReferences(const WeakRootVisitor &visitor);
+    void Iterate(const RootVisitor &visitor);
+
+    void UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKind);
+    ProfileType InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId);
+    ProfileType InsertTraceId(JSTaggedType hclass, ProfileType traceType);
 
 private:
-    static constexpr uint32_t MERGED_EVERY_COUNT = 20;
-    static constexpr auto MERGED_MIN_INTERVAL = std::chrono::milliseconds(15);
+    static constexpr uint32_t MERGED_EVERY_COUNT = 50;
+    static constexpr uint32_t MS_PRE_SECOND = 1000;
+    enum class BCType : uint8_t {
+        STORE,
+        LOAD,
+    };
 
-    PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable);
+    enum class State : uint8_t {
+        STOP,
+        PAUSE,
+        START,
+    };
+
+    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value);
+    bool PausePGODump();
+
+    void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
+                      ProfileTypeInfo *profileTypeInfo, BCType type);
+    void DumpICByValue(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                       uint32_t slotId, ProfileTypeInfo *profileTypeInfo, BCType type);
+
+    void DumpICByNameWithPoly(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                              JSTaggedValue cacheValue, BCType type);
+    void DumpICByValueWithPoly(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                               JSTaggedValue cacheValue, BCType type);
+
+    void DumpICByNameWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                 JSHClass *hclass, JSTaggedValue secondValue, BCType type);
+    void DumpICByValueWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  JSHClass *hclass, JSTaggedValue secondValue, BCType type);
+
+    void DumpOpType(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
+                    ProfileTypeInfo *profileTypeInfo);
+    void DumpDefineClass(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+    void DumpCreateObject(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo, int32_t traceId);
+    void DumpCall(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
+                  ProfileTypeInfo *profileTypeInfo);
+
+    void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                       JSHClass *hclass, PGOObjKind kind);
+    bool AddObjectInfoByTraceId(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                JSHClass *hclass, ProfileType::Kind classKind, PGOObjKind kind);
+
+    JSTaggedValue PopFromProfileQueue();
+
+    class PGOProfilerTask : public Task {
+    public:
+        explicit PGOProfilerTask(PGOProfiler *profiler, int32_t id) : Task(id), profiler_(profiler) {};
+        virtual ~PGOProfilerTask() override = default;
+
+        bool Run([[maybe_unused]] uint32_t threadIndex) override
+        {
+            profiler_->HandlePGODump();
+            return true;
+        }
+
+        NO_COPY_SEMANTIC(PGOProfilerTask);
+        NO_MOVE_SEMANTIC(PGOProfilerTask);
+    private:
+        PGOProfiler *profiler_;
+    };
+
+    class WorkList;
+    class WorkNode {
+    public:
+        WorkNode(JSTaggedType value) : value_(value) {}
+        void SetPrev(WorkNode *prev)
+        {
+            prev_ = prev;
+        }
+
+        void SetNext(WorkNode *next)
+        {
+            next_ = next;
+        }
+
+        void SetValue(JSTaggedType value)
+        {
+            value_ = value;
+        }
+
+        void SetWorkList(WorkList *workList)
+        {
+            workList_ = workList;
+        }
+
+        WorkNode *GetPrev() const
+        {
+            return prev_;
+        }
+
+        WorkNode *GetNext() const
+        {
+            return next_;
+        }
+
+        JSTaggedType GetValue() const
+        {
+            return value_;
+        }
+
+        uintptr_t GetValueAddr() const
+        {
+            return reinterpret_cast<uintptr_t>(&value_);
+        }
+
+        WorkList *GetWorkList() const
+        {
+            return workList_;
+        }
+
+    private:
+        WorkList *workList_ { nullptr };
+        WorkNode *prev_ { nullptr };
+        WorkNode *next_ { nullptr };
+        JSTaggedType value_ { JSTaggedValue::Undefined().GetRawData() };
+    };
+
+    class WorkList {
+    public:
+        using Callback = std::function<void(WorkNode *node)>;
+        bool IsEmpty() const
+        {
+            return first_ == nullptr;
+        }
+        void PushBack(WorkNode *node);
+        WorkNode *PopFront();
+        void Remove(WorkNode *node);
+        void Iterate(Callback callback) const;
+    private:
+        WorkNode *first_ { nullptr };
+        WorkNode *last_ { nullptr };
+    };
+
+    PGOProfiler(EcmaVM *vm, bool isEnable);
 
     virtual ~PGOProfiler();
 
+    static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
+    ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
+    ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
+    ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
+                                     const CString &recordName);
+
     void Reset(bool isEnable);
 
-    bool isEnable_ {false};
-    uint32_t methodCount_ {0};
+    EcmaVM *vm_ { nullptr };
+    bool isEnable_ { false };
+    State state_ { State::STOP };
+    uint32_t methodCount_ { 0 };
     std::chrono::system_clock::time_point saveTimestamp_;
-    CMap<JSTaggedType, int32_t> traceIds_;
+    Mutex mutex_;
+    ConditionVariable condition_;
+    WorkList dumpWorkList_;
+    WorkList preDumpWorkList_;
+    CMap<JSTaggedType, ProfileType> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };
-} // namespace panda::ecmascript::pgo
+} // namespace pgo
+} // namespace panda::ecmascript
 #endif // ECMASCRIPT_PGO_PROFILER_H

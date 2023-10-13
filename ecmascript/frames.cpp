@@ -103,7 +103,7 @@ JSTaggedValue FrameIterator::GetFunction() const
             return JSTaggedValue::Undefined();
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
             UNREACHABLE();
         }
     }
@@ -388,7 +388,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             break;
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
         }
     }
     return 0;
@@ -402,6 +402,7 @@ std::map<uint32_t, uint32_t> FrameIterator::GetInlinedMethodInfo()
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             CollectMethodOffsetInfo(inlineMethodInfos);
+            break;
         }
         default: {
             break;
@@ -467,7 +468,7 @@ uintptr_t FrameIterator::GetPrevFrame() const
             break;
         }
         default: {
-            LOG_FULL(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
         }
     }
     return end;

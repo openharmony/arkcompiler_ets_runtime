@@ -19,6 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/property_attributes.h"
 
+#include "ecmascript/ecma_string.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
@@ -59,6 +60,10 @@ public:
     static void FastAdd(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
                         const JSHandle<JSTaggedValue> &value, const PropertyAttributes &attr);
 
+    void UpdateDetector();
+    static void UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    static bool IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key);
+
     NO_COPY_SEMANTIC(ObjectOperator);
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(ObjectOperator);
     ~ObjectOperator() = default;
@@ -88,6 +93,24 @@ public:
     inline bool IsElement() const
     {
         return key_.IsEmpty();
+    }
+
+    inline bool GetThroughElement() const
+    {
+        uint32_t len = EcmaStringAccessor(holder_->GetTaggedObject()).GetLength();
+        bool flag = elementIndex_ < len;
+        return key_.IsEmpty() && flag;
+    }
+
+    inline bool GetStringLength() const
+    {
+        JSTaggedValue lenKey = thread_->GlobalConstants()->GetLengthString();
+        if (GetKey()->IsUndefined() || !GetKey()->IsString()) {
+            return false;
+        }
+        EcmaString *proKey = EcmaString::Cast(GetKey()->GetTaggedObject());
+        return receiver_->IsString() && EcmaStringAccessor::StringsAreEqual(proKey,
+            EcmaString::Cast(lenKey.GetTaggedObject()));
     }
 
     inline bool IsOnPrototype() const

@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/type_inference/pgo_type_infer_helper.h"
+
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -119,10 +121,6 @@ void PGOTypeInferHelper::CollectGateType(CollectedType &types, GateType tsType, 
     for (uint32_t i = 0; i < pgoTypes.GetCount(); i++) {
         ProfileType profileType = pgoTypes.GetObjectInfo(i).GetProfileType();
         GateType pgoType = tsManager_->GetGateTypeByPt(profileType);
-        if (pgoType.IsAnyType()) {
-            tsManager_->AddToSkipTrackFieldSet(profileType);
-            continue;
-        }
         if (tsManager_->IsClassTypeKind(pgoType) && !pgoTypes.GetObjectInfo(i).InConstructor()) {
             pgoType = GateType(tsManager_->CreateClassInstanceType(pgoType));
         }
@@ -132,7 +130,9 @@ void PGOTypeInferHelper::CollectGateType(CollectedType &types, GateType tsType, 
 
 ChunkSet<GateType> PGOTypeInferHelper::GetInferTypes(Chunk *chunk, CollectedType &types, JSTaggedValue prop)
 {
-    UpdateType(types, prop);
+    if (!prop.IsUndefined()) {
+        UpdateType(types, prop);
+    }
     ChunkSet<GateType> inferTypes(chunk);
     for (auto &strategy : strategies_) {
         strategy->Merge(inferTypes, types, tsManager_);

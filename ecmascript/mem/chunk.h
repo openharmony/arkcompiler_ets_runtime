@@ -29,6 +29,7 @@ public:
     static constexpr size_t MEM_ALIGN = 8U;
 
     explicit Chunk(NativeAreaAllocator *allocator);
+    Chunk() = default;
     ~Chunk()
     {
         ReleaseMemory();
@@ -84,17 +85,19 @@ public:
         // do nothing
     }
 
+protected:
+    uintptr_t ptr_ {0};
+    uintptr_t end_ {0};
+
+    Area *currentArea_ {nullptr};
+    NativeAreaAllocator *allocator_ {nullptr};
+
 private:
     uintptr_t Expand(size_t size);
     Area *NewArea(size_t size);
     void ReleaseMemory();
 
-    uintptr_t ptr_ {0};
-    uintptr_t end_ {0};
-
-    Area *currentArea_ {nullptr};
     EcmaList<Area> areaList_ {};
-    NativeAreaAllocator *allocator_ {nullptr};
 };
 
 class PUBLIC_API ChunkObject {

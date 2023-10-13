@@ -166,6 +166,7 @@ class StoreTSHandler;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
+class MarkerCell;
 class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
@@ -272,6 +273,8 @@ public:
 
     inline LexicalEnv *InlineNewLexicalEnv(int numSlots);
 
+    JSHandle<JSSymbol> NewEmptySymbol();
+
     JSHandle<JSSymbol> NewJSSymbol();
 
     JSHandle<JSSymbol> NewPrivateSymbol();
@@ -284,13 +287,13 @@ public:
 
     JSHandle<JSSymbol> NewSymbolWithTable(const JSHandle<JSTaggedValue> &name);
 
-    JSHandle<JSSymbol> NewPrivateNameSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewPrivateNameSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewWellKnownSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewWellKnownSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewPublicSymbolWithChar(const char *description);
+    JSHandle<JSSymbol> NewPublicSymbolWithChar(std::string_view description);
 
-    JSHandle<JSSymbol> NewSymbolWithTableWithChar(const char *description);
+    JSHandle<JSSymbol> NewSymbolWithTableWithChar(std::string_view description);
 
     JSHandle<AccessorData> NewAccessorData();
     JSHandle<AccessorData> NewInternalAccessor(void *setter, void *getter);
@@ -356,6 +359,8 @@ public:
     JSHandle<ProtoChangeMarker> NewProtoChangeMarker();
 
     JSHandle<ProtoChangeDetails> NewProtoChangeDetails();
+
+    JSHandle<MarkerCell> NewMarkerCell();
     JSHandle<BigInt> NewBigInt(uint32_t length);
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
@@ -483,7 +488,8 @@ public:
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-        JSHandle<ConstantPool> constpool, uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+                               JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
+                               uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -512,9 +518,9 @@ public:
     JSHandle<TSNamespaceType> NewTSNamespaceType();
 
     // ----------------------------------- new string ----------------------------------------
-    JSHandle<EcmaString> NewFromASCII(const CString &data);
-    JSHandle<EcmaString> NewFromUtf8(const CString &data);
-    JSHandle<EcmaString> NewFromUtf16(const CS16tring &data);
+    JSHandle<EcmaString> NewFromASCII(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 
@@ -547,6 +553,10 @@ public:
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
                                      bool isOptimized = false, bool canFastCall = false);
+
+    // used for creating jshclass in Builtins, Function, Class_Linker
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
+                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);
@@ -652,9 +662,6 @@ private:
 
     void NewObjectHook() const;
 
-    // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
-                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 
@@ -666,7 +673,7 @@ private:
     JSHandle<JSObject> NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used to create nonmovable utf8 string at global constants
-    JSHandle<EcmaString> NewFromASCIINonMovable(const CString &data);
+    JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
 
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);

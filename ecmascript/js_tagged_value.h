@@ -674,6 +674,8 @@ public:
     bool IsPropertyBox() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;
+    bool IsMarkerCell() const;
+    bool IsTrackInfoObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
     bool IsTSType() const;

@@ -18,6 +18,107 @@
 
 #include "ecmascript/base/builtins_base.h"
 
+// All types of %TypedArray%.
+// V(Type, TYPE, bytesPerElement) where JSType::JS_##TYPE is the type index.
+#define BUILTIN_TYPED_ARRAY_TYPES(V)                \
+    V(Int8Array,         INT8_ARRAY,          1)    \
+    V(Uint8Array,        UINT8_ARRAY,         1)    \
+    V(Uint8ClampedArray, UINT8_CLAMPED_ARRAY, 1)    \
+    V(Int16Array,        INT16_ARRAY,         2)    \
+    V(Uint16Array,       UINT16_ARRAY,        2)    \
+    V(Int32Array,        INT32_ARRAY,         4)    \
+    V(Uint32Array,       UINT32_ARRAY,        4)    \
+    V(Float32Array,      FLOAT32_ARRAY,       4)    \
+    V(Float64Array,      FLOAT64_ARRAY,       8)    \
+    V(BigInt64Array,     BIGINT64_ARRAY,      8)    \
+    V(BigUint64Array,    BIGUINT64_ARRAY,     8)
+
+// List of functions in %TypedArray%, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsTypedArray::func refers to the native implementation of %TypedArray%[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_TYPED_ARRAY_FUNCTIONS(V)                            \
+    /* %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] ) */    \
+    V("from", From, 1, INVALID)                                     \
+    /* %TypedArray%.of ( ...items ) */                              \
+    V("of",   Of,   0, INVALID)
+
+// List of get accessors in %TypedArray%.prototype, excluding the '@@' properties.
+// V(name, func, stubIndex)
+// where BuiltinsTypedArray::func refers to the native implementation.
+#define BUILTIN_TYPED_ARRAY_PROTOTYPE_GETTERS(V)                                            \
+    V("buffer",     GetBuffer,     INVALID) /* get %TypedArray%.prototype.buffer */         \
+    V("byteLength", GetByteLength, INVALID) /* get %TypedArray%.prototype.byteLength */     \
+    V("byteOffset", GetByteOffset, INVALID) /* get %TypedArray%.prototype.byteOffset */     \
+    V("length",     GetLength,     INVALID) /* get %TypedArray%.prototype.length */
+
+// List of functions in %TypedArray%.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsTypedArray::func refers to the native implementation of %TypedArray%.prototype[name].
+// The following functions are not included:
+//   - %TypedArray%.prototype.toString ( ), which is strictly equal to Array.prototype.toString
+#define BUILTIN_TYPED_ARRAY_PROTOTYPE_FUNCTIONS(V)                                      \
+    /* %TypedArray%.prototype.at ( index ) */                                           \
+    V("at",             At,             1, INVALID)                                     \
+    /* %TypedArray%.prototype.copyWithin ( target, start [ , end ] ) */                 \
+    V("copyWithin",     CopyWithin,     2, INVALID)                                     \
+    /* %TypedArray%.prototype.entries ( ) */                                            \
+    V("entries",        Entries,        0, INVALID)                                     \
+    /* %TypedArray%.prototype.every ( callbackfn [ , thisArg ] ) */                     \
+    V("every",          Every,          1, INVALID)                                     \
+    /* %TypedArray%.prototype.fill ( value [ , start [ , end ] ] ) */                   \
+    V("fill",           Fill,           1, INVALID)                                     \
+    /* %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] ) */                    \
+    V("filter",         Filter,         1, INVALID)                                     \
+    /* %TypedArray%.prototype.find ( predicate [ , thisArg ] ) */                       \
+    V("find",           Find,           1, INVALID)                                     \
+    /* %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] ) */                  \
+    V("findIndex",      FindIndex,      1, INVALID)                                     \
+    /* %TypedArray%.prototype.findLast ( predicate [ , thisArg ] ) */                   \
+    V("findLast",       FindLast,       1, INVALID)                                     \
+    /* %TypedArray%.prototype.findLastIndex ( predicate [ , thisArg ] ) */              \
+    V("findLastIndex",  FindLastIndex,  1, INVALID)                                     \
+    /* %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] ) */                   \
+    V("forEach",        ForEach,        1, INVALID)                                     \
+    /* %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] ) */             \
+    V("includes",       Includes,       1, INVALID)                                     \
+    /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
+    V("indexOf",        IndexOf,        1, INVALID)                                     \
+    /* %TypedArray%.prototype.join ( separator ) */                                     \
+    V("join",           Join,           1, INVALID)                                     \
+    /* %TypedArray%.prototype.keys ( ) */                                               \
+    V("keys",           Keys,           0, INVALID)                                     \
+    /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
+    V("lastIndexOf",    LastIndexOf,    1, INVALID)                                     \
+    /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
+    V("map",            Map,            1, INVALID)                                     \
+    /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
+    V("reduce",         Reduce,         1, INVALID)                                     \
+    /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
+    V("reduceRight",    ReduceRight,    1, INVALID)                                     \
+    /* %TypedArray%.prototype.reverse ( ) */                                            \
+    V("reverse",        Reverse,        0, INVALID)                                     \
+    /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
+    V("set",            Set,            1, INVALID)                                     \
+    /* %TypedArray%.prototype.slice ( start, end ) */                                   \
+    V("slice",          Slice,          2, INVALID)                                     \
+    /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
+    V("some",           Some,           1, INVALID)                                     \
+    /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
+    V("sort",           Sort,           1, INVALID)                                     \
+    /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
+    V("subarray",       Subarray,       2, INVALID)                                     \
+    /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
+    V("toLocaleString", ToLocaleString, 0, INVALID)                                     \
+    /* %TypedArray%.prototype.toReversed ( ) */                                         \
+    V("toReversed",     ToReversed,     0, INVALID)                                     \
+    /* %TypedArray%.prototype.toSorted ( comparefn ) */                                 \
+    V("toSorted",       ToSorted,       1, INVALID)                                     \
+    /* %TypedArray%.prototype.values ( ) */                                             \
+    V("values",         Values,         0, INVALID)                                     \
+    /* %TypedArray%.prototype.with ( index, value ) */                                  \
+    V("with",           With,           2, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsTypedArray : public base::BuiltinsBase {
 public:
@@ -120,6 +221,43 @@ public:
     // 23.2.3.36
     static JSTaggedValue With(EcmaRuntimeCallInfo *argv);
     static const uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
+
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetTypedArrayFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(TYPED_ARRAY_FUNCTIONS);
+    }
+
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetTypedArrayPrototypeAccessors()
+    {
+        return Span<const base::BuiltinFunctionEntry>(TYPED_ARRAY_PROTOTYPE_ACCESSORS);
+    }
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetTypedArrayPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(TYPED_ARRAY_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsTypedArray::func, length, kungfu::BuiltinsStubCSigns::id),
+#define BUILTIN_TYPED_ARRAY_ACCESSOR_ENTRY(name, func, id)                          \
+    base::BuiltinFunctionEntry::Create<base::BuiltinFunctionEntry::IsAccessorBit>(  \
+        name, BuiltinsTypedArray::func, 0, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array TYPED_ARRAY_FUNCTIONS = {
+        BUILTIN_TYPED_ARRAY_FUNCTIONS(BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY)
+    };
+    static constexpr std::array TYPED_ARRAY_PROTOTYPE_ACCESSORS = {
+        BUILTIN_TYPED_ARRAY_PROTOTYPE_GETTERS(BUILTIN_TYPED_ARRAY_ACCESSOR_ENTRY)
+    };
+    static constexpr std::array TYPED_ARRAY_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_TYPED_ARRAY_PROTOTYPE_FUNCTIONS(BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY
+#undef BUILTIN_TYPED_ARRAY_ACCESSOR_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 

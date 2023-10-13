@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ecmascript/compiler/lcr_circuit_builder.h"
+#include "ecmascript/compiler/common_stubs.h"
+
+namespace panda::ecmascript::kungfu {
+
+GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment)
+{
+    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue(), comment);
+}
+
+MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
+{
+    return type.GetMachineType();
+}
+
+GateRef CircuitBuilder::Sqrt(GateRef param)
+{
+    return GetCircuit()->NewGate(circuit_->Sqrt(), MachineType::F64, {param}, GateType::DoubleType());
+}
+
+GateRef CircuitBuilder::AddWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->AddWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::SubWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->SubWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::MulWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->MulWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::ExtractValue(MachineType mt, GateRef pointer, GateRef index)
+{
+    ASSERT(acc_.GetOpCode(index) == OpCode::CONSTANT);
+    ASSERT(acc_.GetMachineType(index) == MachineType::I32);
+    return GetCircuit()->NewGate(circuit_->ExtractValue(), mt, {pointer, index}, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::ReadSp()
+{
+    return circuit_->NewGate(circuit_->ReadSp(), MachineType::I64, GateType::NJSValue());
+}
+
+MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
+{
+    switch (type) {
+        case ValueType::BOOL:
+            return MachineType::I1;
+        case ValueType::INT32:
+            return MachineType::I32;
+        case ValueType::FLOAT64:
+            return MachineType::F64;
+        case ValueType::TAGGED_BOOLEAN:
+        case ValueType::TAGGED_INT:
+        case ValueType::TAGGED_DOUBLE:
+        case ValueType::TAGGED_NUMBER:
+            return MachineType::I64;
+        default:
+            return MachineType::NOVALUE;
+    }
+}
+
+GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
+                                         GateRef left, GateRef right, GateType gateType, const char* comment)
+{
+    auto circuit = GetCircuit();
+    if (gateType == GateType::Empty()) {
+        gateType = acc_.GetGateType(left);
+    }
+    return circuit->NewGate(meta, machineType, { left, right }, gateType, comment);
+}
+
+GateRef CircuitBuilder::Alloca(size_t size)
+{
+    return GetCircuit()->NewGate(circuit_->Alloca(size), MachineType::ARCH, GateType::NJSValue());
+}
+
+void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef ptr = PtrAdd(base, offset);
+    GateRef result = GetCircuit()->NewGate(circuit_->Store(),
+        MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
+    label->SetDepend(result);
+}
+
+// memory
+void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+{
+    StoreWithNoBarrier(type, base, offset, value);
+    if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
+        Label entry(env_);
+        SubCfgEntry(&entry);
+        Label exit(env_);
+        Label isHeapObject(env_);
+        Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
+        Bind(&isHeapObject);
+        {
+            CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
+            Jump(&exit);
+        }
+        Bind(&exit);
+        SubCfgExit();
+    }
+}
+
+// memory
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef val = PtrAdd(base, offset);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend)
+{
+    GateRef val = PtrAdd(base, offset);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
+    return result;
+}
+}

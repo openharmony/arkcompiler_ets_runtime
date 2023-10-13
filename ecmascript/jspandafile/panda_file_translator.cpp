@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
@@ -59,7 +60,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             auto methodId = mda.GetMethodId();
             CString name = reinterpret_cast<const char *>(jsPandaFile->GetStringData(mda.GetNameId()).data);
             auto methodOffset = methodId.GetOffset();
-            if (!jsPandaFile->IsMergedPF()) {
+            if (jsPandaFile->IsBundlePack()) {
                 if (!isUpdateMainMethodIndex && name == methodName) {
                     jsPandaFile->UpdateMainMethodIndex(methodOffset);
                     isUpdateMainMethodIndex = true;
@@ -88,7 +89,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                 const uint8_t *insns = codeDataAccessor.GetInstructions();
                 if (translatedCode.find(insns) == translatedCode.end()) {
                     translatedCode.insert(insns);
-                    if (!jsPandaFile->IsMergedPF()) {
+                    if (jsPandaFile->IsBundlePack()) {
                         TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral);
                     } else {
                         TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, recordName);
@@ -119,7 +120,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
             constpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
         }
 
-        if (jsPandaFile->IsMergedPF()) {
+        if (!jsPandaFile->IsBundlePack()) {
             ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
         }
     }
@@ -144,7 +145,10 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
         JSHandle<Method> method = factory->NewMethod(mainMethodLiteral);
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
-
+        // Main function is created profileTypeInfo by default.
+        if (thread->IsPGOProfilerEnable()) {
+            SlowRuntimeStub::NotifyInlineCache(thread, method.GetObject<Method>());
+        }
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
         method->SetConstantPool(thread, constpool);
     }

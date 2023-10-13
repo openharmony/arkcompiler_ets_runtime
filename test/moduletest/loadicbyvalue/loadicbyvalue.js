@@ -44,3 +44,39 @@ for (let i = 0; i < 20; i ++) {
 const v3 = new Uint8Array(128);
 v3[arr];
 print("test successful !!!");
+
+var obj1 = {
+    0: 0,
+    2147483647: 1,
+    2147483648: 2,
+    4294967295: 3,
+    4294967296: 4,
+}
+
+for (let item in obj1) {
+    print(item + " " + obj1[item]);
+}
+// test ic
+var lineStr = "方舟ArK TypeScript RuntimekTS运行时（ARK TypeScript Runtime）K TypeScript Runtime是OppeScript RK TypeScripK TypeScript Runtimet Runtimeuntime）是OpeK TypeScript RuntimenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配enHarmonypeScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配上ArkTS应用使用peScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配的运行时。包含ArkTS/JS对象的分配器以及垃圾回收器（GC）、符合ECMAScript规范的标准库、用于运行ARK前端组件生成的方舟字节码（ARK Bytecode简称abc）的解释器、用于加速的内联缓存、静态类型编译器、运行时的C++/C函数接口（NAPI）等模块.";
+var str = "方舟ArkTS运行时（ARK TypeScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配器以及垃圾回收器（GC）、符合ECMAScript规范的标准库、用于运行ARK前端组件生成的方舟字节码（ARK Bytecode简称abc）的解释器、用于加速的内联缓存、静态类型编译器、运行时的C++/C函数接口（NAPI）等模块.";
+str += str;
+str += str;
+str += str;
+var c;
+var l;
+var strC;
+for (let i = 0;i < 100;i++){
+  strC = str.split("C");
+  c = str[i];
+  l = str.length;
+  strC = lineStr.split("C");
+  c = lineStr[i];
+  l = lineStr.length;
+}
+var strObj = new String("方舟ArkTS运行时（ARK TypeScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配器以及垃圾回收器（GC）、符合ECMAScript规范的标准库、用于运行ARK前端组件生成的方舟字节码（ARK Bytecode简称abc）的解释器、用于加速的内联缓存、静态类型编译器、运行时的C++/C函数接口（NAPI）等模块.");
+for (let i = 0;i < 100;i++){
+    strC = strObj.split("C");
+    c = strObj[i];
+    l = strObj.length;
+  }
+print("ic load success");

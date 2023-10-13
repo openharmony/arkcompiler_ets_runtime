@@ -613,6 +613,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
 {
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     if (!propertiesArr->IsDictionaryMode()) {
+        bool hasChangedToDictionaryMode = false;
         JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
         if (!enumCache.IsNull()) {
@@ -652,25 +653,50 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
         for (int i = 0; i < end; i++) {
             LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
             JSTaggedValue key = layoutInfo->GetKey(i);
-            if (key.IsString() && layoutInfo->GetAttr(i).IsEnumerable()) {
-                handleKey_.Update(key);
-                JSTaggedValue value;
-                int index = JSHClass::FindPropertyEntry(thread_, *jsHclass, key);
-                PropertyAttributes attr(layoutInfo->GetAttr(index));
-                ASSERT(static_cast<int>(attr.GetOffset()) == index);
-                value = attr.IsInlinedProps()
-                        ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
-                        : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
-                if (attr.IsInlinedProps() && value.IsHole()) {
-                    continue;
+            if (!hasChangedToDictionaryMode) {
+                if (key.IsString() && layoutInfo->GetAttr(i).IsEnumerable()) {
+                    handleKey_.Update(key);
+                    JSTaggedValue value;
+                    int index = JSHClass::FindPropertyEntry(thread_, *jsHclass, key);
+                    PropertyAttributes attr(layoutInfo->GetAttr(index));
+                    ASSERT(static_cast<int>(attr.GetOffset()) == index);
+                    value = attr.IsInlinedProps()
+                            ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
+                            : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
+                    if (attr.IsInlinedProps() && value.IsHole()) {
+                        continue;
+                    }
+                    if (UNLIKELY(value.IsAccessor())) {
+                        value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
+                            JSHandle<JSTaggedValue>(obj));
+                        if (obj->GetProperties().IsDictionary()) {
+                            hasChangedToDictionaryMode = true;
+                            propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
+                        }
+                    }
+                    handleValue_.Update(value);
+                    hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
-                if (UNLIKELY(value.IsAccessor())) {
-                    value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
-                                                 JSHandle<JSTaggedValue>(obj));
-                }
-                handleValue_.Update(value);
-                hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+            } else {
+                    JSHandle<NameDictionary> nameDic(propertiesArr);
+                    int index = nameDic->FindEntry(key);
+                    if (!key.IsString()) {
+                        continue;
+                    }
+                    PropertyAttributes attr = nameDic->GetAttributes(index);
+                    if (!attr.IsEnumerable()) {
+                        continue;
+                    }
+                    JSTaggedValue value = nameDic->GetValue(index);
+                    handleKey_.Update(key);
+                    if (UNLIKELY(value.IsAccessor())) {
+                        value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
+                                                    JSHandle<JSTaggedValue>(obj));
+                    }
+                    handleValue_.Update(value);
+                    hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
         return hasContent;

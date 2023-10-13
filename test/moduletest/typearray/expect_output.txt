@@ -37,3 +37,6 @@ RangeError: The newByteLength is out of range.
 true
 true
 true
+RangeError
+0,0,0,0
+not-equal

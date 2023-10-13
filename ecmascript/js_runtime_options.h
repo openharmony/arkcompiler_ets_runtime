@@ -124,6 +124,7 @@ enum CommandValues {
     OPTION_HELP,
     OPTION_COMPILER_PGO_PROFILER_PATH,
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_OPTIONS,
     OPTION_PRINT_EXECUTE_TIME,
@@ -140,7 +141,9 @@ enum CommandValues {
     OPTION_COMPILER_OPT_ON_HEAP_CHECK,
     OPTION_COMPILER_PKG_INFO,
     OPTION_COMPILER_EXTERNAL_PKG_INFO,
+    OPTION_COMPILER_ENABLE_EXTERNAL_PKG,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
+    OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -211,6 +214,16 @@ public:
     const std::string &GetCompilerExternalPkgJsonInfo() const
     {
         return compilerExternalPkgInfo_;
+    }
+
+    void SetCompilerEnableExternalPkg(bool compilerEnableExternalPkg)
+    {
+        compilerEnableExternalPkg_ = compilerEnableExternalPkg;
+    }
+
+    bool GetCompilerEnableExternalPkg() const
+    {
+        return compilerEnableExternalPkg_;
     }
 
     bool WasStubFileSet() const
@@ -904,6 +917,16 @@ public:
         pgoHotnessThreshold_ = threshold;
     }
 
+    uint32_t GetPGOSaveMinInterval() const
+    {
+        return pgoSaveMinInterval_;
+    }
+
+    void SetPGOSaveMinInterval(uint32_t value)
+    {
+        pgoSaveMinInterval_ = value;
+    }
+
     std::string GetPGOProfilerPath() const
     {
         return pgoProfilerPath_;
@@ -1203,6 +1226,16 @@ public:
         return enableOptLoopPeeling_;
     }
 
+    void SetEnableOptLoopInvariantCodeMotion(bool value)
+    {
+        enableOptLoopInvariantCodeMotion_ = value;
+    }
+
+    bool IsEnableOptLoopInvariantCodeMotion() const
+    {
+        return enableOptLoopInvariantCodeMotion_;
+    }
+
     void SetEnableOptOnHeapCheck(bool value)
     {
         enableOptOnHeapCheck_ = value;
@@ -1235,6 +1268,7 @@ private:
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
+    bool compilerEnableExternalPkg_ {false};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();
@@ -1293,6 +1327,7 @@ private:
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
+    uint32_t pgoSaveMinInterval_ {30};
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
     bool stressDeopt_ {false};
@@ -1311,6 +1346,7 @@ private:
     bool fastAOTCompileMode_ {false};
     bool enableOptLoopPeeling_ {true};
     bool enableOptOnHeapCheck_ {true};
+    bool enableOptLoopInvariantCodeMotion_ {false};
 };
 }  // namespace panda::ecmascript
 

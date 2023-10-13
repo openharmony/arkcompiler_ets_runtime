@@ -202,6 +202,7 @@ struct Reference;
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        PROFILE_TYPE_INFO, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         COW_TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -220,6 +221,8 @@ struct Reference;
         STORE_TS_HANDLER,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROPERTY_BOX, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */  \
         PROTO_CHANGE_MARKER, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
+        MARKER_CELL, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TRACK_INFO,  /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_INFO,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TEMPLATE_MAP,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROGRAM,       /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -364,11 +367,14 @@ public:
                                               const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                       const JSHandle<JSTaggedValue> &proto);
+    static JSHandle<JSHClass> CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                const JSHandle<JSTaggedValue> &key,
+                                                const JSHandle<JSTaggedValue> &proto);
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
     static void TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
     static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array);
-    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
+    static bool TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
         const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -565,6 +571,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
             case JSType::CONSTANT_POOL:
+            case JSType::PROFILE_TYPE_INFO:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
@@ -1136,6 +1143,16 @@ public:
         return GetObjectType() == JSType::PROTO_CHANGE_MARKER;
     }
 
+    inline bool IsMarkerCell() const
+    {
+        return GetObjectType() == JSType::MARKER_CELL;
+    }
+
+    inline bool IsTrackInfoObject() const
+    {
+        return GetObjectType() == JSType::TRACK_INFO;
+    }
+
     inline bool IsProtoChangeDetails() const
     {
         return GetObjectType() == JSType::PROTOTYPE_INFO;
@@ -1661,6 +1678,10 @@ public:
         return IsAllTaggedPropBit::Decode(bits);
     }
 
+    inline static JSHClass *FindRootHClass(JSHClass *hclass);
+    inline static void UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
+                                        const JSHandle<JSHClass> &child);
+
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
     static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
@@ -1670,7 +1691,8 @@ public:
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
     ACCESSORS(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET);
-    ACCESSORS(Transitions, TRANSTIONS_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
+    ACCESSORS(Transitions, TRANSTIONS_OFFSET, PARENT_OFFSET);
+    ACCESSORS(Parent, PARENT_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
     ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, SUPERS_OFFSET);
@@ -1694,8 +1716,10 @@ public:
 
     static CString DumpJSType(JSType type);
     static bool DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjKind kind);
+    static uint32_t ComputeHashcode(const JSHClass *hclass);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
+    inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
 private:
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
@@ -1706,8 +1730,6 @@ private:
     static inline void AddProtoTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                            const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                            const JSHandle<JSTaggedValue> &proto);
-
-    inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

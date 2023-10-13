@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,97 +14,10 @@
  */
 
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/gate_meta_data_builder.h"
 
 namespace panda::ecmascript::kungfu {
-std::string MachineTypeToStr(MachineType machineType)
-{
-    switch (machineType) {
-        case NOVALUE:
-            return "NOVALUE";
-        case ANYVALUE:
-            return "ANYVALUE";
-        case I1:
-            return "I1";
-        case I8:
-            return "I8";
-        case I16:
-            return "I16";
-        case I32:
-            return "I32";
-        case I64:
-            return "I64";
-        case F32:
-            return "F32";
-        case F64:
-            return "F64";
-        default:
-            return "???";
-    }
-}
-
-std::string GateMetaData::TypedBinOpToStr(TypedBinOp typedBinOp) const
-{
-    switch (typedBinOp) {
-        case TypedBinOp::TYPED_ADD: {
-            return "Add";
-        }
-        case TypedBinOp::TYPED_SUB: {
-            return "Sub";
-        }
-        case TypedBinOp::TYPED_MUL: {
-            return "Mul";
-        }
-        case TypedBinOp::TYPED_LESS: {
-            return "Less";
-        }
-        case TypedBinOp::TYPED_LESSEQ: {
-            return "LessOrEqual";
-        }
-        case TypedBinOp::TYPED_GREATER: {
-            return "Greater";
-        }
-        case TypedBinOp::TYPED_GREATEREQ: {
-            return "GreaterOrEqual";
-        }
-        case TypedBinOp::TYPED_EQ: {
-            return "Equal";
-        }
-        case TypedBinOp::TYPED_NOTEQ: {
-            return "NotEqual";
-        }
-        case TypedBinOp::TYPED_STRICTEQ: {
-            return "StrictEqual";
-        }
-        case TypedBinOp::TYPED_SHL: {
-            return "Shl";
-        }
-        case TypedBinOp::TYPED_SHR: {
-            return "Shr";
-        }
-        case TypedBinOp::TYPED_ASHR: {
-            return "Ashr";
-        }
-        case TypedBinOp::TYPED_AND: {
-            return "And";
-        }
-        case TypedBinOp::TYPED_OR: {
-            return "Or";
-        }
-        case TypedBinOp::TYPED_XOR: {
-            return "Xor";
-        }
-        case TypedBinOp::TYPED_DIV: {
-            return "Div";
-        }
-        case TypedBinOp::TYPED_EXP: {
-            return "Exp";
-        }
-        default:
-            return "Unknown";
-    }
-}
 
 std::string GateMetaData::Str(OpCode opcode)
 {
@@ -258,6 +171,21 @@ bool GateMetaData::IsControlCase() const
     }
 }
 
+bool GateMetaData::IsIfOrSwitchRelated() const
+{
+    switch (opcode_) {
+        case OpCode::IF_TRUE:
+        case OpCode::IF_FALSE:
+        case OpCode::SWITCH_CASE:
+        case OpCode::DEFAULT_CASE:
+        case OpCode::IF_SUCCESS:
+        case OpCode::IF_EXCEPTION:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool GateMetaData::IsLoopHead() const
 {
     return (opcode_ == OpCode::LOOP_BEGIN);
@@ -268,6 +196,11 @@ bool GateMetaData::IsNop() const
     return (opcode_ == OpCode::NOP || opcode_ == OpCode::DEAD);
 }
 
+bool GateMetaData::IsDead() const
+{
+    return opcode_ == OpCode::DEAD;
+}
+
 bool GateMetaData::IsConstant() const
 {
     return (opcode_ == OpCode::CONSTANT);
@@ -276,27 +209,6 @@ bool GateMetaData::IsConstant() const
 bool GateMetaData::IsDependSelector() const
 {
     return (opcode_ == OpCode::DEPEND_SELECTOR);
-}
-
-bool GateMetaData::IsTypedOperator() const
-{
-    return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT) ||
-        (opcode_ == OpCode::TYPED_UNARY_OP);
-}
-
-bool GateMetaData::IsCheckWithTwoIns() const
-{
-    return (opcode_ == OpCode::OBJECT_TYPE_CHECK) ||
-           (opcode_ == OpCode::INDEX_CHECK) ||
-           (opcode_ == OpCode::TYPED_CALL_CHECK);
-}
-
-bool GateMetaData::IsCheckWithOneIn() const
-{
-    return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
-           (opcode_ == OpCode::HEAP_OBJECT_CHECK) ||
-           (opcode_ == OpCode::STABLE_ARRAY_CHECK) ||
-           (opcode_ == OpCode::TYPED_ARRAY_CHECK);
 }
 
 GateMetaBuilder::GateMetaBuilder(Chunk* chunk)

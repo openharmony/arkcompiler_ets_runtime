@@ -15,8 +15,11 @@
 
 #include "ecmascript/taskpool/runner.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 #include "libpandabase/os/thread.h"
+#ifdef ENABLE_QOS
+#include "qos.h"
+#endif
 
 namespace panda::ecmascript {
 Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)
@@ -35,7 +38,7 @@ Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)
 void Runner::TerminateTask(int32_t id, TaskType type)
 {
     taskQueue_.TerminateTask(id, type);
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     for (uint32_t i = 0; i < runningTask_.size(); i++) {
         if (runningTask_[i] != nullptr) {
             if (id != ALL_TASK_ID && id != runningTask_[i]->GetId()) {
@@ -54,7 +57,7 @@ void Runner::TerminateThread()
     TerminateTask(ALL_TASK_ID, TaskType::ALL);
     taskQueue_.Terminate();
 
-    os::memory::LockHolder holder(mtxPool_);
+    LockHolder holder(mtxPool_);
     uint32_t threadNum = threadPool_.size();
     for (uint32_t i = 0; i < threadNum; i++) {
         threadPool_.at(i)->join();
@@ -62,9 +65,30 @@ void Runner::TerminateThread()
     threadPool_.clear();
 }
 
+void Runner::SetQosPriority([[maybe_unused]] bool isForeground)
+{
+#ifdef ENABLE_QOS
+    if (isForeground) {
+        for (uint32_t threadId : gcThreadId_) {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::qos_user_initiated, threadId);
+        }
+    } else {
+        for (uint32_t threadId : gcThreadId_) {
+            OHOS::QOS::ResetQosForOtherThread(threadId);
+        }
+    }
+#endif
+}
+
+void Runner::RecordThreadId()
+{
+    LockHolder holder(mtx_);
+    gcThreadId_.emplace_back(os::thread::GetCurrentThreadId());
+}
+
 void Runner::SetRunTask(uint32_t threadId, Task *task)
 {
-    os::memory::LockHolder holder(mtx_);
+    LockHolder holder(mtx_);
     runningTask_[threadId] = task;
 }
 
@@ -72,6 +96,7 @@ void Runner::Run(uint32_t threadId)
 {
     os::thread::native_handle_type thread = os::thread::GetNativeHandle();
     os::thread::SetThreadName(thread, "GC_WorkerThread");
+    RecordThreadId();
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
         SetRunTask(threadId, task.get());
         task->Run(threadId);

@@ -274,6 +274,20 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     proxy1.trimToCurrentLength()
     map.set("test vector trimToCurrentLength:", proxy1.getCapacity() === 5)
+
+    let v = new FastVector();
+    for (let i = 0; i < 10; i++) {
+        v.add(i);
+    }
+    v.replaceAllElements((value, key, t) => {
+        if (key == 8) {
+            t.clear();
+            t.trimToCurrentLength();
+            return 0;
+        }
+        return value;
+    }, v);
+    map.set("test vector replaceAllElements redefine:", v.length == 0);
     
     flag = undefined;
     function elements(value, key, map) {

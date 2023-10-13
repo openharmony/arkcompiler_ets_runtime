@@ -28,7 +28,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
-os::memory::Mutex CpuProfiler::synchronizationMutex_;
+Mutex CpuProfiler::synchronizationMutex_;
 CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, const EcmaVM *>();
 CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interval_(interval)
 {
@@ -71,7 +71,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
 
@@ -84,8 +84,11 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
+    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+        LOG_ECMA(ERROR) << "pthread_create fail!";
+        return;
+    }
 }
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
@@ -130,7 +133,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     }
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
     outToFile_ = true;
@@ -144,8 +147,11 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
+    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+        LOG_ECMA(ERROR) << "pthread_create fail!";
+        return;
+    }
 }
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
@@ -382,7 +388,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     CpuProfiler *profiler = nullptr;
     JSThread *thread = nullptr;
     {
-        os::memory::LockHolder lock(synchronizationMutex_);
+        LockHolder lock(synchronizationMutex_);
         pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
         const EcmaVM *vm = profilerMap_[tid];
         if (vm == nullptr) {

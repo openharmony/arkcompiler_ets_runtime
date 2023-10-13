@@ -185,8 +185,8 @@ public:
         return icEnabled_;
     }
 
-    void PushToNativePointerList(JSNativePointer *array);
-    void RemoveFromNativePointerList(JSNativePointer *array);
+    void PushToNativePointerList(JSNativePointer *pointer);
+    void RemoveFromNativePointerList(JSNativePointer *pointer);
     void PushToDeregisterModuleList(CString module);
     void RemoveFromDeregisterModuleList(CString module);
     bool ContainInDeregisterModuleList(CString module);
@@ -272,13 +272,6 @@ public:
         return resolveBufferCallback_;
     }
 
-    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const;
-
-    void SetRequestAotCallback(const RequestAotCallback &cb)
-    {
-        requestAotCallback_ = cb;
-    }
-
     void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
     {
         unloadNativeModuleCallback_ = cb;
@@ -297,11 +290,11 @@ public:
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
-    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm);
+    void WorkersetInfo(EcmaVM *workerVm);
 
     EcmaVM *GetWorkerVm(uint32_t tid);
 
-    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    bool DeleteWorker(EcmaVM *workerVm);
 
     bool SuspendWorkerVm(uint32_t tid);
 
@@ -311,7 +304,7 @@ public:
     void EnumerateWorkerVm(Callback cb)
     {
         // since there is a lock, so cannot mark function const
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         for (const auto &item : workerList_) {
             cb(item.second);
         }
@@ -330,6 +323,34 @@ public:
     void SetIsBundlePack(bool value)
     {
         isBundlePack_ = value;
+    }
+
+    void SetMockModuleList(const std::map<std::string, std::string> &list)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            mockModuleList_.emplace(it->first.c_str(), it->second.c_str());
+        }
+    }
+
+    inline bool IsMockModule(const CString &moduleStr) const
+    {
+        if (mockModuleList_.empty()) {
+            return false;
+        }
+        auto it = mockModuleList_.find(moduleStr);
+        if (it == mockModuleList_.end()) {
+            return false;
+        }
+        return true;
+    }
+
+    inline CString GetMockModule(const CString &module) const
+    {
+        auto it = mockModuleList_.find(module);
+        if (it == mockModuleList_.end()) {
+            LOG_ECMA(FATAL) << " Get Mock Module failed";
+        }
+        return it->second;
     }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -490,7 +511,8 @@ private:
     CString bundleName_;
     CString moduleName_;
     CList<CString> deregisterModuleList_;
-    // Registered Callbacks
+    CMap<CString, CString> mockModuleList_;
+
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     void *loop_ {nullptr};
@@ -500,9 +522,6 @@ private:
 
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
-
-    // trigger local aot
-    RequestAotCallback requestAotCallback_ {nullptr};
 
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};
@@ -537,7 +556,7 @@ private:
     friend class JSPandaFileExecutor;
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace ecmascript
 }  // namespace panda

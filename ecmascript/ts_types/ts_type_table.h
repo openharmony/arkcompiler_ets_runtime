@@ -26,6 +26,7 @@ public:
     static constexpr size_t INCREASE_CAPACITY_RATE = 2;
     static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
     static constexpr const char* BUILTINS_TABLE_NAME = "lib_ark_builtins.d";
+    static constexpr const char* DEFAULT_TYPE_VIRTUAL_NAME = "default_type_virtual_name";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
     static constexpr const char* RUNTIME_TABLE_NAME = "runtimeTypes";
     static constexpr const char* GENERICS_TABLE_NAME = "genericsTypes";

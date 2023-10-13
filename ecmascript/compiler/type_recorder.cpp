@@ -90,7 +90,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, GlobalTSTypeRef gt)
 {
     int32_t bcIdx = loc.GetBcIdx();
-    if (bcIdx < 0) {
+    if (bcIdx < 0 || bcIdx >= static_cast<int32_t>(pcOffsets_.size())) {
         return;
     }
 
@@ -178,6 +178,10 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
             if (funcGT.IsDefault()) {
                 return;
             }
+            // Target method was not compiled by AOT.
+            if (!decoder_->Match(jsPandaFile, recordName, pgo::PGOMethodId(callTargetMethodOffset))) {
+                tsManager->SetHotnessFunc(funcGT, false);
+            }
             GateType callTargetType = GateType(funcGT);
             bcOffsetCallTargetGtMap_.emplace(bcIdx, callTargetType);
             return;
@@ -194,8 +198,31 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
             return;
         }
         CollectLiteralGT(tsManager, loc, gt);
-        GateType gateType = GateType(gt);
-        bcOffsetGtMap_.emplace(bcIdx, gateType);
+    });
+}
+
+void TypeRecorder::BindPgoTypeToGateType(const JSPandaFile *jsPandaFile, TSManager *tsManager,
+                                         const MethodLiteral *methodLiteral) const
+{
+    uint32_t methodOffset = methodLiteral->GetMethodId().GetOffset();
+    PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
+    bcInfo->IterateInfoAndType(methodOffset, [this, methodOffset, &jsPandaFile, tsManager]
+        (const PGOBCInfo::Type, const uint32_t bcIdx, const uint32_t bcOffset, const uint32_t) {
+        auto it = bcOffsetPGOOpTypeMap_.find(bcOffset);
+        if (it == bcOffsetPGOOpTypeMap_.end()) {
+            return;
+        }
+        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
+        if (!tsManager->GetLiteralGT(loc).IsDefault()) {
+            GlobalTSTypeRef gt = tsManager->GetLiteralGT(loc);
+            PGOHClassLayoutDesc *desc;
+            if (decoder_->GetHClassLayoutDesc(it->second, &desc)) {
+                GateType gateType(gt);
+                tsManager->InsertPtToGtMap(desc->GetProfileType(), gateType);
+                TSHClassGenerator generator(tsManager);
+                generator.UpdateTSHClassFromPGO(gateType, *desc, enableOptTrackField_);
+            }
+        }
     });
 }
 
@@ -285,7 +312,7 @@ ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
     return ElementsKind::GENERIC;
 }
 
-PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
+PGOSampleType TypeRecorder::GetOrUpdatePGOType(int32_t offset) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
         const auto iter = bcOffsetPGOOpTypeMap_.at(offset);
@@ -294,8 +321,6 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
             if (!decoder_->GetHClassLayoutDesc(iter, &desc)) {
                 return PGOSampleType::NoneProfileType();
             }
-            TSHClassGenerator generator(tsManager);
-            generator.UpdateTSHClassFromPGO(type, *desc, enableOptTrackField_);
         }
         return iter;
     }
@@ -319,26 +344,37 @@ PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
     return PGORWOpType();
 }
 
-ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
+std::vector<ElementsKind> TypeRecorder::LoadElementsKinds(int32_t offset) const
 {
+    std::vector<ElementsKind> elementsKinds;
     if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
-        return ElementsKind::GENERIC;
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
     }
 
     PGORWOpType rwType = bcOffsetPGORwTypeMap_.at(offset);
-    PGOObjectInfo info = rwType.GetObjectInfo(0);
-    if (info.IsNone()) {
-        return ElementsKind::GENERIC;
+    if (rwType.GetCount() == 0) {
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
+    }
+    for (uint32_t i = 0; i < rwType.GetCount(); i++) {
+        PGOObjectInfo info = rwType.GetObjectInfo(i);
+        auto profileType = info.GetProfileType();
+        if (profileType.IsElementType()) {
+            elementsKinds.emplace_back(ElementsKind(profileType.GetId()));
+            continue;
+        }
+        PGOSampleType type(profileType);
+        PGOHClassLayoutDesc *desc;
+        if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
+            elementsKinds.emplace_back(ElementsKind::GENERIC);
+            continue;
+        }
+        auto elementsKind = desc->GetElementsKind();
+        elementsKinds.emplace_back(elementsKind);
     }
 
-    PGOSampleType type(info.GetProfileType());
-    PGOHClassLayoutDesc *desc;
-    if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
-        return ElementsKind::GENERIC;
-    }
-
-    auto elementsKind = desc->GetElementsKind();
-    return elementsKind;
+    return elementsKinds;
 }
 
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const

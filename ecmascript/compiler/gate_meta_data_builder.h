@@ -19,6 +19,11 @@
 #include <string>
 
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/share_opcodes.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
+#include "ecmascript/compiler/hcr_gate_meta_data.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -162,7 +167,7 @@ public:
         return meta;
     }
 
-    const GateMetaData* ConstString(const std::string &str)
+    const GateMetaData* ConstString(std::string_view str)
     {
         return new (chunk_) StringMetaData(chunk_, str);
     }

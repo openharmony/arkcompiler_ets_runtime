@@ -41,6 +41,43 @@ namespace panda::ecmascript {
         return JSTaggedValue::Hole();                 \
     }
 
+JSTaggedValue ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+{
+    [[maybe_unused]] DisallowGarbageCollection noGc;
+    if (!receiver.IsHeapObject() ||
+        !(receiver.GetTaggedObject()->GetClass()->GetObjectType() == JSType::JS_OBJECT)) {
+        return JSTaggedValue::Hole();
+    }
+    if (!key.IsString() || !EcmaStringAccessor(key).IsInternString()) {
+        return JSTaggedValue::Hole();
+    }
+
+    auto *hclass = receiver.GetTaggedObject()->GetClass();
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
+
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        if (entry != -1) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            ASSERT(static_cast<int>(attr.GetOffset()) == entry);
+            auto value = JSObject::Cast(receiver)->GetProperty(hclass, attr);
+            return value;
+        }
+    } else {
+        TaggedArray *array = TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject());
+        ASSERT(array->IsDictionaryMode());
+        NameDictionary *dict = NameDictionary::Cast(array);
+        int entry = dict->FindEntry(key);
+        if (entry != -1) {
+            auto value = dict->GetValue(entry);
+            return value;
+        }
+    }
+    // not found
+    return JSTaggedValue::Hole();
+}
+
 template<bool UseOwn>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
@@ -73,9 +110,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 PropertyAttributes attr(layoutInfo->GetAttr(entry));
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 auto value = JSObject::Cast(holder)->GetProperty(hclass, attr);
-                if (value.IsPropertyBox()) {
-                    return PropertyBox::Cast(value.GetTaggedObject())->GetValue();
-                }
                 if (UNLIKELY(attr.IsAccessor())) {
                     return CallGetter(thread, receiver, holder, value);
                 }
@@ -286,6 +320,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
         auto *hclass = holder.GetTaggedObject()->GetClass();
         JSType jsType = hclass->GetObjectType();
         if (IsSpecialIndexedObj(jsType)) {
+            if (jsType == JSType::JS_TYPED_ARRAY) {
+                return JSTaggedValue::Hole();
+            }
             if (IsFastTypeArray(jsType)) {
                 CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
                 return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, jsType);
@@ -368,15 +405,20 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         return SetPropertyByIndex<UseOwn>(thread, receiver, index, value);
     }
     if (!key.IsNumber()) {
-        if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
-            // update string stable
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
-            JSHandle<JSTaggedValue> valueHandler(thread, value);
-            key = JSTaggedValue(thread->GetEcmaVM()->GetFactory()->InternString(JSHandle<JSTaggedValue>(thread, key)));
-            // Maybe moved by GC
-            receiver = receiverHandler.GetTaggedValue();
-            value = valueHandler.GetTaggedValue();
+        if (key.IsString()) {
+            if (!EcmaStringAccessor(key).IsInternString()) {
+                // update string stable
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
+                JSHandle<JSTaggedValue> valueHandler(thread, value);
+                key = JSTaggedValue(
+                    thread->GetEcmaVM()->GetFactory()->InternString(JSHandle<JSTaggedValue>(thread, key)));
+                // Maybe moved by GC
+                receiver = receiverHandler.GetTaggedValue();
+                value = valueHandler.GetTaggedValue();
+            }
+        } else {
+            ObjectOperator::UpdateDetector(thread, receiver, key);
         }
         return ObjectFastOperator::SetPropertyByName<UseOwn>(thread, receiver, key, value);
     }
@@ -437,12 +479,11 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
     return result;
 }
 
-template<bool UseHole>  // UseHole is only for Array::Sort() which requires Hole order
 JSTaggedValue ObjectFastOperator::FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByIndex);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByIndex(thread, receiver, index);
-    if (result.IsHole() && !UseHole) {
+    if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread,
             JSHandle<JSTaggedValue>(thread, receiver), index).GetValue().GetTaggedValue();
     }

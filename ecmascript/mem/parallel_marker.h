@@ -96,7 +96,8 @@ public:
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
     template <typename Callback>
-    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
+    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                               bool needBarrier, Callback callback);
     inline void MarkValue(uint32_t threadId, ObjectSlot &slot, Region *rootRegion, bool needBarrier);
     inline void MarkObject(uint32_t threadId, TaggedObject *object) override;
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
@@ -181,7 +182,7 @@ protected:
 
 private:
     bool isAppSpawn_ {false};
-    os::memory::Mutex mutex_;
+    Mutex mutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_H

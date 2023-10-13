@@ -24,6 +24,7 @@
 #include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/property_detector-inl.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
@@ -316,6 +317,14 @@ JSTaggedValue BuiltinsArkTools::IsPrototype(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
     return JSTaggedValue(objHclass->IsPrototype());
+}
+
+JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
 JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *info)

@@ -129,7 +129,7 @@ public:
     PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
                 bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
                 bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
-                bool enableOptOnHeapCheck)
+                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion, bool enableCollectLiteralInfo)
         : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
           enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
@@ -140,24 +140,28 @@ public:
           enableOptPGOType_(enableOptPGOType),
           enableOptTrackField_(enableOptTrackField),
           enableOptLoopPeeling_(enableOptLoopPeeling),
-          enableOptOnHeapCheck_(enableOptOnHeapCheck)
+          enableOptOnHeapCheck_(enableOptOnHeapCheck),
+          enableOptLoopInvariantCodeMotion_(enableOptLoopInvariantCodeMotion),
+          enableCollectLiteralInfo_(enableCollectLiteralInfo)
         {
         }
 
-#define OPTION_LIST(V)           \
-    V(ArrayBoundsCheckElimination, true) \
-    V(TypeLowering, true)        \
-    V(EarlyElimination, true)    \
-    V(LaterElimination, true)    \
-    V(ValueNumbering, false)     \
-    V(TypeInfer, false)          \
-    V(OptInlining, false)        \
-    V(OptNoGCCall, false)        \
-    V(OptPGOType, false)         \
-    V(NoCheck, false)            \
-    V(OptTrackField, false)      \
-    V(OptLoopPeeling, false)     \
-    V(OptOnHeapCheck, false)
+#define OPTION_LIST(V)                      \
+    V(ArrayBoundsCheckElimination, true)    \
+    V(TypeLowering, true)                   \
+    V(EarlyElimination, true)               \
+    V(LaterElimination, true)               \
+    V(ValueNumbering, false)                \
+    V(TypeInfer, false)                     \
+    V(OptInlining, false)                   \
+    V(OptNoGCCall, false)                   \
+    V(OptPGOType, false)                    \
+    V(NoCheck, false)                       \
+    V(OptTrackField, false)                 \
+    V(OptLoopPeeling, false)                \
+    V(OptOnHeapCheck, false)                \
+    V(OptLoopInvariantCodeMotion, false)    \
+    V(CollectLiteralInfo, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \
@@ -176,13 +180,12 @@ private:                              \
 
 class PassManager {
 public:
-    PassManager(EcmaVM* vm, std::string &entry, std::string &triple, size_t optLevel, size_t relocMode,
-                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
-                const std::string &profIn, uint32_t hotnessThreshold, PassOptions *passOptions)
+    explicit PassManager(EcmaVM* vm, std::string &entry, std::string &triple, size_t optLevel, size_t relocMode,
+        CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerDecoder_(profIn, hotnessThreshold), passOptions_(passOptions) {};
-    PassManager() = default;
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {};
     ~PassManager() = default;
 
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
@@ -191,8 +194,6 @@ private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
     void ProcessConstantPool(BytecodeInfoCollector *collector);
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
-    void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
-    bool ShouldCollect() const;
 
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};
@@ -203,7 +204,7 @@ private:
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     size_t maxMethodsInModule_ {0};
-    PGOProfilerDecoder profilerDecoder_;
+    PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
 };
 }

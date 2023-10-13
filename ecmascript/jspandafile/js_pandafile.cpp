@@ -20,20 +20,23 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
+namespace {
+const CString OHOS_PKG_ABC_PATH_ROOT = "/ets/";  // abc file always under /ets/ dir in HAP/HSP
+}  // namespace
 bool JSPandaFile::loadedFirstPandaFile = false;
 JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     : pf_(pf), desc_(descriptor)
 {
     ASSERT(pf_ != nullptr);
-    CheckIsMergedPF();
-    if (!IsMergedPF()) {
+    CheckIsBundlePack();
+    if (isBundlePack_) {
         InitializeUnMergedPF();
     } else {
         InitializeMergedPF();
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
-    if (!loadedFirstPandaFile && IsMergedPF()) {
+    if (!loadedFirstPandaFile && !isBundlePack_) {
         // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
         // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
         isFirstPandafile_ = true;
@@ -41,7 +44,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     }
 }
 
-void JSPandaFile::CheckIsMergedPF()
+void JSPandaFile::CheckIsBundlePack()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     for (const uint32_t index : classIndexes) {
@@ -55,10 +58,10 @@ void JSPandaFile::CheckIsMergedPF()
             panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
-                isMergedPF_ = true;
+                isBundlePack_ = false;
             }
         });
-        if (isMergedPF_) {
+        if (!isBundlePack_) {
             return;
         }
     }
@@ -108,7 +111,7 @@ uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offse
                                               const CUnorderedMap<uint32_t, uint64_t> *constpoolMap)
 {
     CUnorderedMap<uint32_t, uint64_t> *map = nullptr;
-    if (constpoolMap != nullptr && IsMergedPF()) {
+    if (constpoolMap != nullptr && !IsBundlePack()) {
         map = const_cast<CUnorderedMap<uint32_t, uint64_t> *>(constpoolMap);
     } else {
         map = &constpoolMap_;
@@ -213,7 +216,7 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 
 bool JSPandaFile::IsFirstMergedAbc() const
 {
-    if (isFirstPandafile_ && IsMergedPF()) {
+    if (isFirstPandafile_ && !IsBundlePack()) {
         return true;
     }
     return false;
@@ -221,7 +224,7 @@ bool JSPandaFile::IsFirstMergedAbc() const
 
 bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const
 {
-    if (!IsMergedPF()) {
+    if (IsBundlePack()) {
         recordInfo = jsRecordInfo_.begin()->second;
         return true;
     }
@@ -337,5 +340,33 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
             UNREACHABLE();
     }
     return kind;
+}
+
+/*
+ handle desc like:
+ case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
+ case2: /data/storage/el1/bundle/entry/ets/widgets.abc -> entry/ets/widgets.abc
+ case3: /data/app/el1/bundle/public/com.xx.xx/entry/ets/modules.abc -> entry/ets/modules.abc
+ case4: /data/app/el1/bundle/public/com.xx.xx/entry/ets/widgets.abc -> entry/ets/widgets.abc
+*/
+CString JSPandaFile::GetNormalizedFileDesc(const CString &desc)
+{
+    auto etsTokenPos = desc.rfind(OHOS_PKG_ABC_PATH_ROOT);
+    if (etsTokenPos == std::string::npos) {
+        // file not in OHOS package.
+        return desc;
+    }
+    auto ohosModulePos = desc.rfind('/', etsTokenPos - 1);
+    if (ohosModulePos == std::string::npos) {
+        LOG_ECMA(ERROR) << "Get abcPath from desc failed. desc: " << desc;
+        return desc;
+    }
+    // substring likes {ohosModuleName}/ets/modules.abc or {ohosModuleName}/ets/widgets.abc
+    return desc.substr(ohosModulePos + 1);
+}
+
+CString JSPandaFile::GetNormalizedFileDesc() const
+{
+    return GetNormalizedFileDesc(desc_);
 }
 }  // namespace panda::ecmascript

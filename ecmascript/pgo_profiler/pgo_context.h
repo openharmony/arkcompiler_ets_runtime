@@ -25,7 +25,7 @@
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
-class PGORecordPool;
+class PGOAbcFilePool;
 class PGOProfileTypePool;
 class PGOProfilerHeader;
 
@@ -33,7 +33,6 @@ class PGOContext {
 public:
     PGOContext() = default;
     virtual ~PGOContext() = default;
-    virtual std::shared_ptr<PGORecordPool> GetRecordPool() const = 0;
     virtual std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const = 0;
     virtual uint32_t GetHotnessThreshold() const = 0;
     virtual PGOProfilerHeader *GetHeader() const = 0;

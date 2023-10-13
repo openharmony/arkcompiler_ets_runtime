@@ -22,6 +22,7 @@
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
@@ -358,6 +359,9 @@ public:
             case JSType::CONSTANT_POOL:
                 ConstantPool::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::PROFILE_TYPE_INFO:
+                ProfileTypeInfo::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(object)->VisitRangeSlot(visitor);
                 break;
@@ -387,6 +391,11 @@ public:
                 PropertyBox::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::PROTO_CHANGE_MARKER:
+                break;
+            case JSType::MARKER_CELL:
+                break;
+            case JSType::TRACK_INFO:
+                TrackInfo::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::PROTOTYPE_INFO:
                 ProtoChangeDetails::Cast(object)->VisitRangeSlot(visitor);

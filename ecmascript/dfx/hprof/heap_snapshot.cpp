@@ -230,8 +230,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
         entryMap_.InsertEntry(node);
     } else {
         LOG_DEBUGGER(WARN) << "Untracked object moves from " << address << " to " << forwardAddress;
-        int32_t sequenceId = -1;
-        GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
+        GenerateNode(JSTaggedValue(forwardAddress), size, false);
     }
 }
 
@@ -247,6 +246,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
+        case JSType::PROFILE_TYPE_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), "ProfileTypeInfo[");
         case JSType::TAGGED_DICTIONARY:
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
         case JSType::AOT_LITERAL_INFO:
@@ -548,6 +549,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("StoreTSHandler");
             case JSType::PROTO_CHANGE_MARKER:
                 return GetString("ProtoChangeMarker");
+            case JSType::MARKER_CELL:
+                return GetString("MarkerCell");
             case JSType::PROTOTYPE_INFO:
                 return GetString("ProtoChangeDetails");
             case JSType::TEMPLATE_MAP:
@@ -953,30 +956,6 @@ void HeapSnapshot::FillEdges()
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
-        }
-        iter++;
-    }
-    FillPrimitiveEdge(count, iter);
-}
-
-void HeapSnapshot::FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter)
-{
-    size_t lengthExtend = nodes_.size();
-    while (++count < lengthExtend) {
-        ASSERT(*iter != nullptr);
-        if ((*iter)->GetType() == NodeType::JS_PRIMITIVE_REF) {
-            JSTaggedValue jsFrom(reinterpret_cast<TaggedObject *>((*iter)->GetAddress()));
-            CString valueName;
-            if (jsFrom.IsInt()) {
-                valueName.append(ToCString(jsFrom.GetInt()));
-            } else if (jsFrom.IsDouble()) {
-                valueName.append(FloatToCString(jsFrom.GetDouble()));
-            } else {
-                valueName.append("NaN");
-            }
-            Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, (*iter), (*iter), GetString(valueName));
-            InsertEdgeUnique(edge);
-            (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
         }
         iter++;
     }

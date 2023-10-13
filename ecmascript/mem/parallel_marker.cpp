@@ -66,13 +66,16 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsFullMark();
-    auto visitor = [this, threadId, isFullMark](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                VisitObjectArea area) {
+    auto cb = [&](ObjectSlot s, Region *rootRegion,bool needBarrier) {
+        MarkValue(threadId, s, rootRegion, needBarrier);
+    };
+    auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                    VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end,
-                [&](ObjectSlot slot) { MarkValue(threadId, slot, rootRegion, needBarrier); })) {
+            auto hclass = root->SynchronizedGetClass();
+            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
             }
         }
@@ -98,14 +101,17 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsFullMark();
     uint32_t visitAddrNum = 0;
-    auto visitor = [this, threadId, isFullMark, &visitAddrNum](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                VisitObjectArea area) {
+    auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
+        MarkValue(threadId, s, rootRegion, needBarrier);
+    };
+    auto visitor = [this, threadId, isFullMark, &visitAddrNum, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                                   VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end,
-                [&](ObjectSlot slot) { MarkValue(threadId, slot, rootRegion, needBarrier); })) {
+            auto hclass = root->SynchronizedGetClass();
+            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
             }
         }
@@ -146,10 +152,12 @@ void SemiGCMarker::Initialize()
 void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    auto visitor = [this, threadId](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                    VisitObjectArea area) {
+    auto cb = [&](ObjectSlot s, TaggedObject *root) { MarkValue(threadId, root, s); };
+    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                        VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { MarkValue(threadId, root, slot); })) {
+            auto hclass = root->SynchronizedGetClass();
+            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, cb)) {
                 return;
             }
         }
@@ -172,10 +180,12 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    auto visitor = [this, threadId](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+    auto cb = [&](ObjectSlot s, [[maybe_unused]] TaggedObject *root) { MarkValue(threadId, s); };
+    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                        VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { MarkValue(threadId, slot); })) {
+            auto hclass = root->SynchronizedGetClass();
+            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, cb)) {
                 return;
             }
         }

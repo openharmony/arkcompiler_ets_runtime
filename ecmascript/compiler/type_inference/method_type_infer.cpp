@@ -22,11 +22,11 @@ namespace panda::ecmascript::kungfu {
 MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, size_t methodId,
                                  bool enableLog, const std::string &name, const CString &recordName,
                                  MethodInfo *methodInfo, const MethodLiteral *methodLiteral,
-                                 bool enableGlobalTypeInfer)
+                                 bool enableGlobalTypeInfer, bool hasType)
     : builder_(builder), circuit_(circuit), gateAccessor_(circuit), tsManager_(ctx->GetTSManager()), ctx_(ctx),
       lexEnvManager_(ctx->GetLexEnvManager()), methodId_(methodId), enableLog_(enableLog), methodName_(name),
       recordName_(recordName), methodInfo_(methodInfo), methodLiteral_(methodLiteral),
-      inQueue_(circuit_->GetGateCount(), true), enableGlobalTypeInfer_(enableGlobalTypeInfer)
+      inQueue_(circuit_->GetGateCount(), true), enableGlobalTypeInfer_(enableGlobalTypeInfer), hasType_(hasType)
 {
     if (enableGlobalTypeInfer_ && methodInfo->IsNamespace()) {
         uint32_t methodOffset = methodLiteral_->GetMethodId().GetOffset();
@@ -525,7 +525,10 @@ bool MethodTypeInfer::InferSub2(GateRef gate)
     if ((firInType.IsIntType() && secInType.IsIntType())) {
         return UpdateType(gate, GateType::IntType());
     }
-    return UpdateType(gate, GateType::NumberType());
+    if (firInType.IsNumberType() && secInType.IsNumberType()) {
+        return UpdateType(gate, GateType::NumberType());
+    }
+    return UpdateType(gate, GateType::AnyType());
 }
 
 /*
@@ -622,7 +625,10 @@ bool MethodTypeInfer::InferIncDec(GateRef gate)
     if (firInType.IsIntType()) {
         return UpdateType(gate, GateType::IntType());
     }
-    return UpdateType(gate, GateType::NumberType());
+    if (firInType.IsNumberType()) {
+        return UpdateType(gate, GateType::NumberType());
+    }
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool MethodTypeInfer::InferToNumberic(GateRef gate)
@@ -685,6 +691,9 @@ bool MethodTypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
         // 2: number of value inputs
         ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
         inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    }
+    if (!hasType_ && inValueType.IsUndefinedType()) {
+        inValueType = GateType::AnyType();
     }
     if (stringIdToGateType_.find(stringId) != stringIdToGateType_.end()) {
         stringIdToGateType_[stringId] = inValueType;
@@ -1040,6 +1049,9 @@ bool MethodTypeInfer::InferLdLexVarDyn(GateRef gate)
     auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
+    if (!hasType_ && type.IsUndefinedType()) {
+        type = GateType::AnyType();
+    }
     return UpdateType(gate, type);
 }
 
@@ -1122,7 +1134,7 @@ bool MethodTypeInfer::InferLdExternalModuleVar(GateRef gate)
             return UpdateType(gate, GateType::AnyType());
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        resolvedRecord = SourceTextModule::GetRecordName(binding->GetModule());
+        resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
         resolvedIndex = static_cast<uint32_t>(binding->GetIndex());
         if (tsManager_->HasExportGT(jsPandaFile, resolvedRecord, resolvedIndex)) {
             return UpdateType(gate, tsManager_->GetGTFromModuleMap(jsPandaFile, resolvedRecord, resolvedIndex));

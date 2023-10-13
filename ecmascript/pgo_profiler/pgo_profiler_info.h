@@ -21,6 +21,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <string.h>
 
 #include "ecmascript/common.h"
@@ -37,6 +38,7 @@
 #include "ecmascript/pgo_profiler/ap_file/pgo_record_pool.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 #include "macros.h"
@@ -153,9 +155,9 @@ public:
         return true;
     }
 
-    void IncreaseCount(int32_t inc)
+    void IncreaseCount()
     {
-        count_ += static_cast<uint32_t>(inc);
+        count_++;
     }
 
     void ClearCount()
@@ -274,7 +276,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
+    bool AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
@@ -282,8 +284,8 @@ public:
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, PGOContext &context, void **buffer);
-    bool ProcessToBinary(PGOContext &context, ApEntityId recordId, const SaveTask *task, std::fstream &fileStream,
-        PGOProfilerHeader *const header) const;
+    bool ProcessToBinary(PGOContext &context, ProfileTypeRef recordProfileRef, const SaveTask *task,
+                         std::fstream &fileStream, PGOProfilerHeader *const header) const;
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
     void ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const;
@@ -454,16 +456,20 @@ public:
     ~PGORecordDetailInfos() override;
 
     void Clear();
+    void InitSections();
 
     // If it is a new method, return true.
-    bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
-    bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
-    bool AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
-    bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
-    bool AddDefine(
-        const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    bool AddMethod(ProfileType recordProfileType, Method *jsMethod, SampleMode mode);
+    bool AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddObjectInfo(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
+    bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type,
+                   PGOSampleType superType);
     bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
+    bool UpdateElementsKind(PGOSampleType type, ElementsKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);
+
+    void UpdateLayout();
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
@@ -471,15 +477,16 @@ public:
     bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
-    const CMap<ApEntityId, PGOMethodInfoMap *> &GetRecordInfos() const
+    const CMap<ProfileType, PGOMethodInfoMap *> &GetRecordInfos() const
     {
         return recordInfos_;
     }
 
-    std::shared_ptr<PGORecordPool> GetRecordPool() const override
+    std::shared_ptr<PGORecordPool> GetRecordPool() const
     {
         return recordPool_;
     }
+
     std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const override
     {
         return profileTypePool_;
@@ -505,16 +512,17 @@ public:
     NO_MOVE_SEMANTIC(PGORecordDetailInfos);
 
 private:
-    PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
+    PGOMethodInfoMap *GetMethodInfoMap(ProfileType recordProfileType);
     bool ParseFromBinaryForLayout(void **buffer);
     bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream);
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
-    CMap<ApEntityId, PGOMethodInfoMap *> recordInfos_;
+    CMap<ProfileType, PGOMethodInfoMap *> recordInfos_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
-    PGOProfilerHeader *header_;
+    PGOProfilerHeader *header_ {nullptr};
+    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
 };
@@ -527,12 +535,18 @@ public:
 
     void Clear();
 
-    bool Match(const CString &recordName, EntityId methodId);
+    void InitSections();
+
+    bool Match(const CString &abcNormalizedDesc, const CString &recordName, EntityId methodId);
 
     template <typename Callback>
-    void Update(Callback callback)
+    void Update(const CString &abcNormalizedDesc, Callback callback)
     {
-        for (auto iter = methodIds_.begin(); iter != methodIds_.end(); iter++) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        for (auto iter = abcMethodIds->second.begin(); iter != abcMethodIds->second.end(); iter++) {
             auto recordName = iter->first;
             auto methodIds = iter->second;
             methodIds->Update(recordName, callback);
@@ -540,35 +554,49 @@ public:
     }
 
     template <typename Callback>
-    void Update(const CString &recordName, Callback callback)
+    void Update(const CString &abcNormalizedDesc, const CString &recordName, Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->Update(recordName, callback);
         } else {
-            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
-            if (methodIds->Update(recordName, callback)) {
-                methodIds_.emplace(recordName, methodIds);
+            PGOMethodIdSet *methodIdSet = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
+            if (methodIdSet->Update(recordName, callback)) {
+                abcMethodIds->second.emplace(recordName, methodIdSet);
             } else {
-                nativeAreaAllocator_.Delete(methodIds);
+                nativeAreaAllocator_.Delete(methodIdSet);
             }
         }
     }
 
     template <typename Callback>
-    void GetTypeInfo(const CString &recordName, const char *methodName, Callback callback)
+    void GetTypeInfo(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                     Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->GetTypeInfo(methodName, callback);
         }
     }
 
     template <typename Callback>
-    void GetTypeInfo(const CString &recordName, const char *methodName, uint32_t checksum, Callback callback)
+    void GetTypeInfo(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                     uint32_t checksum, Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->GetTypeInfo(methodName, checksum, callback);
         }
     }
@@ -583,31 +611,36 @@ public:
         return false;
     }
 
-    void MatchAndMarkMethod(const CString &recordName, const char *methodName, EntityId methodId)
+    void MatchAndMarkMethod(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                            EntityId methodId)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             return iter->second->MatchAndMarkMethod(methodName, methodId);
         }
     }
 
-    void GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+    void GetMismatchResult(const CString &abcNormalizedDesc, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
     {
-        for (const auto &methodId : methodIds_) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        for (const auto &methodId : abcMethodIds->second) {
             methodId.second->GetMismatchResult(methodId.first, totalMethodCount, mismatchMethodCount,
                                                mismatchMethodSet);
         }
     }
 
-    void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
+    void ParseFromBinary(void *buffer, PGOProfilerHeader *const header, std::shared_ptr<PGOAbcFilePool> &abcFilePool);
 
     void Merge(const PGORecordSimpleInfos &simpleInfos);
 
-    std::shared_ptr<PGORecordPool> GetRecordPool() const override
-    {
-        return recordPool_;
-    }
     std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const override
     {
         return profileTypePool_;
@@ -638,8 +671,9 @@ private:
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
-    CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
-    PGOProfilerHeader *header_;
+    CUnorderedMap<CString, CUnorderedMap<CString, PGOMethodIdSet *>> methodIds_;
+    PGOProfilerHeader *header_ {nullptr};
+    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;

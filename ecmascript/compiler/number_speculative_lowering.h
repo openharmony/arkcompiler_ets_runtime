@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -37,6 +37,7 @@ private:
     void VisitGate(GateRef gate);
     void VisitTypedBinaryOp(GateRef gate);
     void VisitNumberBinaryOp(GateRef gate);
+    void VisitStringBinaryOp(GateRef gate);
     void VisitTypedUnaryOp(GateRef gate);
     void VisitNumberNot(GateRef gate);
     void VisitTypedConditionJump(GateRef gate);
@@ -67,6 +68,10 @@ private:
     void VisitNumberMod(GateRef gate);
     void VisitBooleanJump(GateRef gate);
     void VisitIsTrueOrFalse(GateRef gate, bool flag);
+    void VisitStrictEqual(GateRef gate);
+
+    template<TypedBinOp Op>
+    void VisitStringCompare(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
@@ -84,6 +89,8 @@ private:
     GateRef MonocularInt(GateRef gate);
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
+
+    GateRef VisitStringEqual(GateRef left, GateRef right);
 
     TypeInfo GetOutputType(GateRef gate) const
     {

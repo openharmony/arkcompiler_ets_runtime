@@ -160,7 +160,7 @@ void CompilationDriver::FetchPGOMismatchResult()
     uint32_t totalMethodCount = 0;
     uint32_t mismatchMethodCount = 0;
     std::set<std::pair<std::string, CString>> mismatchMethodSet {};
-    pfDecoder_.GetMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+    pfDecoder_.GetMismatchResult(jsPandaFile_, totalMethodCount, mismatchMethodCount, mismatchMethodSet);
     log_->SetPGOMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
 }
 
@@ -177,7 +177,7 @@ void CompilationDriver::UpdatePGO()
             SearchForCompilation(recordName, oldIds, newMethodIds, mainMethodOffset, false);
             return newMethodIds;
         };
-    pfDecoder_.Update(dfs);
+    pfDecoder_.Update(jsPandaFile_, dfs);
     FetchPGOMismatchResult();
 }
 
@@ -194,7 +194,7 @@ bool CompilationDriver::FilterMethod(const CString &recordName, const MethodLite
                                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const
 {
     if (methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize() ||
-        !pfDecoder_.Match(recordName, methodLiteral->GetMethodId())) {
+        !pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral->GetMethodId())) {
         return true;
     }
 

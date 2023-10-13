@@ -112,10 +112,12 @@ JSThread::~JSThread()
         delete item;
     }
     contexts_.clear();
+    GetNativeAreaAllocator()->FreeArea(regExpCache_);
 
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
+    regExpCache_ = nullptr;
     if (vmThreadControl_ != nullptr) {
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
@@ -424,7 +426,7 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
     if (isSwitch) {
         Address curAddress;
-#define SWITCH_PGO_STUB_ENTRY(fromName, toName)                                                             \
+#define SWITCH_PGO_STUB_ENTRY(fromName, toName, ...)                                                        \
         curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
         SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
@@ -665,11 +667,14 @@ const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 
 bool JSThread::IsAllContextsInitialized() const
 {
-    for (auto item : contexts_) {
-        if (!item->IsInitialized()) {
-            return false;
-        }
+    return contexts_.back()->IsInitialized();
+}
+
+Area *JSThread::GetOrCreateRegExpCache()
+{
+    if (regExpCache_ == nullptr) {
+        regExpCache_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
     }
-    return true;
+    return regExpCache_;
 }
 }  // namespace panda::ecmascript

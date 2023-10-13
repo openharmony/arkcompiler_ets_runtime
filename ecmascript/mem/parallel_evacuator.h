@@ -28,7 +28,7 @@
 #include "ecmascript/mem/tlab_allocator.h"
 #include "ecmascript/taskpool/task.h"
 
-#include "libpandabase/os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class ParallelEvacuator {
@@ -162,8 +162,8 @@ private:
     uintptr_t waterLine_ = 0;
     std::vector<std::unique_ptr<Workload>> workloads_;
     std::atomic_int parallel_ = 0;
-    os::memory::Mutex mutex_;
-    os::memory::ConditionVariable condition_;
+    Mutex mutex_;
+    ConditionVariable condition_;
     std::atomic<size_t> promotedSize_ = 0;
 };
 }  // namespace panda::ecmascript

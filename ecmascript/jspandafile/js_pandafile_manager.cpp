@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
@@ -37,7 +36,7 @@ JSPandaFileManager *JSPandaFileManager::GetInstance()
 
 JSPandaFileManager::~JSPandaFileManager()
 {
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     extractors_.clear();
     oldJSPandaFiles_.clear();
     loadedJSPandaFiles_.clear();
@@ -47,7 +46,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     std::string_view entryPoint, bool needUpdate)
 {
     {
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         std::shared_ptr<JSPandaFile> jsPandaFile;
         if (needUpdate) {
             auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
@@ -66,12 +65,17 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    bool mode = thread->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
-    if (!vm->IsBundlePack() && mode) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
             LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
+#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+            if (vm->EnableReportModuleResolvingFailure()) {
+                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+            }
+#endif
             return nullptr;
         }
         uint8_t *data = nullptr;
@@ -85,7 +89,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_ECMA(ERROR) << "Hsp secure memory check failed, please execute in secure memory.";
             return nullptr;
         }
+#if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
+        pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
+#else
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
+#endif
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
@@ -113,7 +121,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         return nullptr;
     }
     {
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         std::shared_ptr<JSPandaFile> jsPandaFile;
         if (needUpdate) {
             auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
@@ -157,7 +165,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
         return nullptr;
     }
     {
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         std::shared_ptr<JSPandaFile> jsPandaFile;
         if (needUpdate) {
             auto pf = panda_file::OpenPandaFileFromSecureMemory(buffer, size);
@@ -218,7 +226,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileWithChecksum(con
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindMergedJSPandaFile()
 {
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     for (const auto &iter : loadedJSPandaFiles_) {
         const std::shared_ptr<JSPandaFile> &jsPandafile = iter.second.first;
         if (jsPandafile->IsFirstMergedAbc()) {
@@ -242,13 +250,13 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileUnlocked(const C
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFile(const CString &filename)
 {
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     return FindJSPandaFileUnlocked(filename);
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::GetJSPandaFile(const panda_file::File *pf)
 {
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     for (const auto &iter : loadedJSPandaFiles_) {
         const std::shared_ptr<JSPandaFile> &jsPandafile = iter.second.first;
         if (jsPandafile->GetPandaFile() == pf) {
@@ -261,7 +269,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GetJSPandaFile(const panda_file
 void JSPandaFileManager::AddJSPandaFileVm(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile)
 {
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     if (loadedJSPandaFiles_.find(filename) != loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "add failed, file already exist: " << filename;
         UNREACHABLE();
@@ -293,7 +301,7 @@ void JSPandaFileManager::RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile
         return;
     }
 
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     auto iterOld = oldJSPandaFiles_.begin();
     while (iterOld != oldJSPandaFiles_.end()) {
         if (iterOld->first.get() == jsPandaFile) {
@@ -337,13 +345,18 @@ void JSPandaFileManager::ObsoleteLoadedJSPandaFile(const CString &filename)
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFile(const CString &filename)
 {
+    return OpenJSPandaFile(filename, filename);
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFile(const CString &filename, const CString &desc)
+{
     auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
     }
 
-    return NewJSPandaFile(pf.release(), filename);
+    return NewJSPandaFile(pf.release(), desc);
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8_t *buffer,
@@ -362,7 +375,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8
 std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(pf, desc);
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum());
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum(),
+                                                           jsPandaFile->GetJSPandaFileDesc());
     return jsPandaFile;
 }
 
@@ -370,7 +384,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
 {
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
 
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
@@ -392,7 +406,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractorAndExtract(const JSPanda
 {
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
 
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
@@ -415,7 +429,7 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
 {
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
 
-    os::memory::LockHolder lock(jsPandaFileLock_);
+    LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
@@ -436,15 +450,15 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     return extractor;
 }
 
-std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread,
-    const panda_file::File *pf, const CString &desc, std::string_view entryPoint)
+std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
+                                                                     const CString &desc, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
 
     CString methodName = entryPoint.data();
-    if (!newJsPandaFile->IsMergedPF()) {
+    if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         auto pos = entryPoint.find_last_of("::");
         if (pos != std::string_view::npos) {
@@ -458,7 +472,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 
     {
         // For worker, JSPandaFile may be created by another vm.
-        os::memory::LockHolder lock(jsPandaFileLock_);
+        LockHolder lock(jsPandaFileLock_);
         std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(desc);
         if (jsPandaFile != nullptr) {
             InsertJSPandaFileVmUnlocked(vm, jsPandaFile);
