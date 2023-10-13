@@ -112,6 +112,17 @@ public:
         return Span<const base::BuiltinFunctionEntry>(DATA_VIEW_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 5 : 5 more inline properties in DataView.prototype:
+        //   (1) DataView.prototype.constructor
+        //   (2) DataView.prototype [ @@toStringTag ]
+        //   (3) get buffer
+        //   (4) get byteLength
+        //   (5) get byteOffset
+        return GetDataViewPrototypeFunctions().Size() + 5;
+    }
+
 private:
 #define BUILTIN_DATA_VIEW_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsDataView::func, length, kungfu::BuiltinsStubCSigns::id),

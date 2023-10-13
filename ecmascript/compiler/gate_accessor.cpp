@@ -197,6 +197,13 @@ ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
     return ObjectTypeAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+BuiltinPrototypeHClassAccessor GateAccessor::GetBuiltinHClassAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return BuiltinPrototypeHClassAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 bool GateAccessor::TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const
 {
     switch (kind) {

@@ -405,6 +405,7 @@ public:
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
+    BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;

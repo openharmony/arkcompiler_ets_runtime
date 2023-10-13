@@ -1134,9 +1134,9 @@ std::string TSManager::GetBuiltinsName(uint32_t index) const
             return "Float32Array";
         case BuiltinTypeId::FLOAT64_ARRAY:
             return "Float64Array";
-        case BuiltinTypeId::BIG_INT64_ARRAY:
+        case BuiltinTypeId::BIGINT64_ARRAY:
             return "BigInt64Array";
-        case BuiltinTypeId::BIG_UINT64_ARRAY:
+        case BuiltinTypeId::BIGUINT64_ARRAY:
             return "BigUint64Array";
         case BuiltinTypeId::SHARED_ARRAY_BUFFER:
             return "SharedArrayBuffer";

@@ -553,6 +553,9 @@ public:
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
                                      bool isOptimized = false, bool canFastCall = false);
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+                                     const JSHandle<JSTaggedValue> &prototype,
+                                     bool isOptimized = false, bool canFastCall = false);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
@@ -706,7 +709,8 @@ private:
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
-    JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto);
+    JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
+                                                  uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);

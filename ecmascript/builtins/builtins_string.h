@@ -234,6 +234,15 @@ public:
         return Span<const base::BuiltinFunctionEntry>(STRING_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 3 : 3 more inline properties in String.prototype:
+        //   (1) String.prototype.constructor
+        //   (2) String.prototype [ @@iterator ]
+        //   (3) get length
+        return GetStringPrototypeFunctions().Size() + 3;
+    }
+
 private:
 #define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsString::method, length, kungfu::BuiltinsStubCSigns::builtinId),

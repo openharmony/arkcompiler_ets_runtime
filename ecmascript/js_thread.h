@@ -20,13 +20,11 @@
 #include <sstream>
 
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/common_stubs.h"
-#include "ecmascript/compiler/interpreter_stub.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/js_thread_hclass_entries.h"
+#include "ecmascript/js_thread_stub_entries.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -59,130 +57,6 @@ enum class BCStubStatus: uint8_t {
 };
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
-
-struct BCStubEntries {
-    static constexpr size_t EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT =
-        kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS;
-    // The number of bytecodes.
-    static constexpr size_t BC_HANDLER_COUNT = kungfu::BytecodeStubCSigns::LAST_VALID_OPCODE + 1;
-    static constexpr size_t COUNT = kungfu::BytecodeStubCSigns::NUM_OF_STUBS;
-    static_assert(EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT <= COUNT);
-    Address stubEntries_[COUNT] = {0};
-
-    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
-    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
-
-    void Set(size_t index, Address addr)
-    {
-        ASSERT(index < COUNT);
-        stubEntries_[index] = addr;
-    }
-
-    Address* GetAddr()
-    {
-        return reinterpret_cast<Address*>(stubEntries_);
-    }
-
-    Address Get(size_t index) const
-    {
-        ASSERT(index < COUNT);
-        return stubEntries_[index];
-    }
-};
-STATIC_ASSERT_EQ_ARCH(sizeof(BCStubEntries), BCStubEntries::SizeArch32, BCStubEntries::SizeArch64);
-
-struct RTStubEntries {
-    static constexpr size_t COUNT = kungfu::RuntimeStubCSigns::NUM_OF_STUBS;
-    Address stubEntries_[COUNT];
-
-    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
-    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
-
-    void Set(size_t index, Address addr)
-    {
-        ASSERT(index < COUNT);
-        stubEntries_[index] = addr;
-    }
-
-    Address Get(size_t index) const
-    {
-        ASSERT(index < COUNT);
-        return stubEntries_[index];
-    }
-};
-STATIC_ASSERT_EQ_ARCH(sizeof(RTStubEntries), RTStubEntries::SizeArch32, RTStubEntries::SizeArch64);
-
-struct COStubEntries {
-    static constexpr size_t COUNT = kungfu::CommonStubCSigns::NUM_OF_STUBS;
-    Address stubEntries_[COUNT];
-
-    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
-    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
-
-    void Set(size_t index, Address addr)
-    {
-        ASSERT(index < COUNT);
-        stubEntries_[index] = addr;
-    }
-
-    Address Get(size_t index) const
-    {
-        ASSERT(index < COUNT);
-        return stubEntries_[index];
-    }
-};
-
-struct BCDebuggerStubEntries {
-    static constexpr size_t EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT =
-        kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS;
-    static constexpr size_t COUNT = kungfu::BytecodeStubCSigns::LAST_VALID_OPCODE + 1;
-    Address stubEntries_[COUNT];
-
-    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
-    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
-
-    void Set(size_t index, Address addr)
-    {
-        ASSERT(index < COUNT);
-        stubEntries_[index] = addr;
-    }
-
-    Address Get(size_t index) const
-    {
-        ASSERT(index < COUNT);
-        return stubEntries_[index];
-    }
-
-    void SetNonexistentBCHandlerStubEntries(Address addr)
-    {
-        for (size_t i = EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i < COUNT; i++) {
-            if (stubEntries_[i] == 0) {
-                stubEntries_[i] = addr;
-            }
-        }
-    }
-};
-
-struct BuiltinStubEntries {
-    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS;
-    Address stubEntries_[COUNT];
-
-    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
-    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
-
-    void Set(size_t index, Address addr)
-    {
-        ASSERT(index < COUNT);
-        stubEntries_[index] = addr;
-    }
-
-    Address Get(size_t index) const
-    {
-        ASSERT(index < COUNT);
-        return stubEntries_[index];
-    }
-};
-STATIC_ASSERT_EQ_ARCH(sizeof(COStubEntries), COStubEntries::SizeArch32, COStubEntries::SizeArch64);
 
 class JSThread {
 public:
@@ -337,6 +211,21 @@ public:
     }
 
     void ResetGuardians();
+
+    void SetInitialBuiltinHClass(BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *prototypeHClass);
+
+    JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
+
+    JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
+
+    static size_t GetBuiltinHClassOffset(BuiltinTypeId, bool isArch32);
+
+    static size_t GetBuiltinPrototypeHClassOffset(BuiltinTypeId, bool isArch32);
+
+    const BuiltinHClassEntries &GetBuiltinHClassEntries() const
+    {
+        return glueData_.builtinHClassEntries_;
+    }
 
     JSTaggedValue GetCurrentLexenv() const;
 
@@ -742,6 +631,7 @@ public:
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
+                                                 BuiltinHClassEntries,
                                                  BCDebuggerStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
@@ -768,6 +658,7 @@ public:
             RTStubEntriesIndex,
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
+            BuiltinHClassEntriesIndex,
             BCDebuggerStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
@@ -855,6 +746,21 @@ public:
             return GetOffset<static_cast<size_t>(Index::BuiltinsStubEntriesIndex)>(isArch32);
         }
 
+        static size_t GetBuiltinHClassEntriesOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BuiltinHClassEntriesIndex)>(isArch32);
+        }
+
+        static size_t GetBuiltinHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetBuiltinHClassOffset(type);
+        }
+
+        static size_t GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetPrototypeHClassOffset(type);
+        }
+
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);
@@ -917,6 +823,7 @@ public:
         alignas(EAS) RTStubEntries rtStubEntries_;
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
+        alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
