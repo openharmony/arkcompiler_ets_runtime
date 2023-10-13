@@ -2404,6 +2404,7 @@ JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     JSHandle<JSTaggedValue> func(info->GetFunction());
     if (!func->IsHeapObject()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is nullptr", JSTaggedValue::Exception());
     }
 
