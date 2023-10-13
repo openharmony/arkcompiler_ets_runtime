@@ -309,7 +309,7 @@ public:
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
                     bool hasMethod = false;
                     size_t propertiesLen = properties->GetLength();
-                    for (size_t i = 0; i < propertiesLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {  // 2: Each literal buffer has a pair of key-value.
+                    for (size_t i = 0; i < propertiesLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {
                         key.Update(properties->Get(i));
                         if (key->IsHole()) {
                             break;
@@ -320,7 +320,7 @@ public:
                         }
                     }
                     size_t elementsLen = elements->GetLength();
-                    for (size_t i = 0; i < elementsLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {  // 2: Each literal buffer has a pair of key-value.
+                    for (size_t i = 0; i < elementsLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {
                         key.Update(elements->Get(i));
                         if (key->IsHole()) {
                             break;
