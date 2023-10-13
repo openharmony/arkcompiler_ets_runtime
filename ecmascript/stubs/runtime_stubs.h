@@ -176,6 +176,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ThrowConstAssignment)               \
     V(GetTemplateObject)                  \
     V(GetNextPropName)                    \
+    V(GetNextPropNameSlowpath)            \
     V(ThrowIfNotObject)                   \
     V(IterNext)                           \
     V(CloseIterator)                      \
@@ -221,6 +222,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdModuleVar)                        \
     V(Throw)                              \
     V(GetPropIterator)                    \
+    V(GetPropIteratorSlowpath)            \
+    V(PrimitiveStringCreate)              \
     V(AsyncFunctionEnter)                 \
     V(GetIterator)                        \
     V(GetAsyncIterator)                   \

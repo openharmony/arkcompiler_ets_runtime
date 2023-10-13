@@ -350,7 +350,9 @@ public:
     // Copy on write array is allocated in nonmovable space by default.
     JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
-    JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj);
+    JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
+                                                 const JSHandle<JSTaggedValue> keys,
+                                                 const JSHandle<JSTaggedValue> cachedHclass);
 
     JSHandle<ByteArray> NewByteArray(uint32_t length, uint32_t size);
 
@@ -370,6 +372,7 @@ public:
     JSHandle<TaggedArray> CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
                                     JSTaggedValue initVal = JSTaggedValue::Hole(),
                                     MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<TaggedArray> CopyFromEnumCache(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSObject> &obj);

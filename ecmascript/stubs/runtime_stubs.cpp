@@ -42,6 +42,7 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
@@ -631,6 +632,15 @@ DEF_RUNTIME_STUBS(GetNextPropName)
     RUNTIME_STUBS_HEADER(GetNextPropName);
     JSHandle<JSTaggedValue> iter = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeGetNextPropName(thread, iter).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetNextPropNameSlowpath)
+{
+    RUNTIME_STUBS_HEADER(GetNextPropNameSlowpath);
+    JSHandle<JSTaggedValue> iter = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    ASSERT(iter->IsForinIterator());
+    JSTaggedValue res = JSForInIterator::NextInternalSlowpath(thread, JSHandle<JSForInIterator>::Cast(iter));
+    return res.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(IterNext)
@@ -1333,6 +1343,21 @@ DEF_RUNTIME_STUBS(GetPropIterator)
     RUNTIME_STUBS_HEADER(GetPropIterator);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeGetPropIterator(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetPropIteratorSlowpath)
+{
+    RUNTIME_STUBS_HEADER(GetPropIteratorSlowpath);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSObject::LoadEnumerateProperties(thread, value).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(PrimitiveStringCreate)
+{
+    RUNTIME_STUBS_HEADER(PrimitiveStringCreate);
+    JSHandle<JSTaggedValue> str = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = thread->GlobalConstants()->GetHandledUndefined();
+    return JSPrimitiveRef::StringCreate(thread, str, newTarget).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(AsyncFunctionEnter)

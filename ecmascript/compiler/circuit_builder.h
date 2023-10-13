@@ -235,7 +235,7 @@ public:
     GateRef GetModuleFromFunction(GateRef function);
     GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetExpectedNumOfArgs(GateRef method);
-    inline GateRef GetGlobalConstantString(ConstantIndex index); // shareir
+    inline GateRef GetGlobalConstantOffset(ConstantIndex index); // shareir
 
     // Set
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
@@ -535,6 +535,7 @@ public:
     inline GateRef TaggedIsString(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
+    inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);

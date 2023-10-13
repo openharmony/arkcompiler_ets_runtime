@@ -28,6 +28,7 @@
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
@@ -3402,14 +3403,14 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
 
     GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-    GateRef undefinedIndex = GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX);
+    GateRef undefinedIndex = GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX);
     GateRef gConstUndefinedStr = Load(VariableType::JS_POINTER(), gConstAddr, undefinedIndex);
     DEFVARIABLE(result, VariableType::JS_POINTER(), gConstUndefinedStr);
     Label objIsTrue(env);
     Label objNotTrue(env);
     Label defaultLabel(env);
     GateRef gConstBooleanStr = Load(VariableType::JS_POINTER(), gConstAddr,
-        GetGlobalConstantString(ConstantIndex::BOOLEAN_STRING_INDEX));
+        GetGlobalConstantOffset(ConstantIndex::BOOLEAN_STRING_INDEX));
     Branch(TaggedIsTrue(obj), &objIsTrue, &objNotTrue);
     Bind(&objIsTrue);
     {
@@ -3434,7 +3435,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             Bind(&objIsNull);
             {
                 result = Load(VariableType::JS_POINTER(), gConstAddr,
-                    GetGlobalConstantString(ConstantIndex::OBJECT_STRING_INDEX));
+                    GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                 Jump(&exit);
             }
             Bind(&objNotNull);
@@ -3445,7 +3446,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                 Bind(&objIsUndefined);
                 {
                     result = Load(VariableType::JS_POINTER(), gConstAddr,
-                        GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX));
+                        GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX));
                     Jump(&exit);
                 }
                 Bind(&objNotUndefined);
@@ -3466,7 +3467,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             Bind(&objIsString);
             {
                 result = Load(VariableType::JS_POINTER(), gConstAddr,
-                    GetGlobalConstantString(ConstantIndex::STRING_STRING_INDEX));
+                    GetGlobalConstantOffset(ConstantIndex::STRING_STRING_INDEX));
                 Jump(&exit);
             }
             Bind(&objNotString);
@@ -3477,7 +3478,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                 Bind(&objIsSymbol);
                 {
                     result = Load(VariableType::JS_POINTER(), gConstAddr,
-                        GetGlobalConstantString(ConstantIndex::SYMBOL_STRING_INDEX));
+                        GetGlobalConstantOffset(ConstantIndex::SYMBOL_STRING_INDEX));
                     Jump(&exit);
                 }
                 Bind(&objNotSymbol);
@@ -3488,7 +3489,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     Bind(&objIsCallable);
                     {
                         result = Load(VariableType::JS_POINTER(), gConstAddr,
-                            GetGlobalConstantString(ConstantIndex::FUNCTION_STRING_INDEX));
+                            GetGlobalConstantOffset(ConstantIndex::FUNCTION_STRING_INDEX));
                         Jump(&exit);
                     }
                     Bind(&objNotCallable);
@@ -3499,13 +3500,13 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                         Bind(&objIsBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
-                                GetGlobalConstantString(ConstantIndex::BIGINT_STRING_INDEX));
+                                GetGlobalConstantOffset(ConstantIndex::BIGINT_STRING_INDEX));
                             Jump(&exit);
                         }
                         Bind(&objNotBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
-                                GetGlobalConstantString(ConstantIndex::OBJECT_STRING_INDEX));
+                                GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                             Jump(&exit);
                         }
                     }
@@ -3520,7 +3521,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             Bind(&objIsNum);
             {
                 result = Load(VariableType::JS_POINTER(), gConstAddr,
-                    GetGlobalConstantString(ConstantIndex::NUMBER_STRING_INDEX));
+                    GetGlobalConstantOffset(ConstantIndex::NUMBER_STRING_INDEX));
                 Jump(&exit);
             }
             Bind(&objNotNum);
@@ -5238,6 +5239,490 @@ GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef i
         Jump(&exit);
     }
 
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(static_cast<int32_t>(EnumCacheKind::NONE)));
+
+    Label enumCacheIsArray(env);
+    Label isEmptyArray(env);
+    Label notEmptyArray(env);
+
+    Branch(TaggedIsUndefinedOrNull(enumCache), &exit, &enumCacheIsArray);
+    Bind(&enumCacheIsArray);
+    GateRef emptyArray = GetEmptyArray(glue);
+    Branch(Int64Equal(enumCache, emptyArray), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        result = Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE));
+        Jump(&exit);
+    }
+    Bind(&notEmptyArray);
+    {
+        GateRef taggedKind = GetValueFromTaggedArray(enumCache, Int32(EnumCache::ENUM_CACHE_KIND_OFFSET));
+        result = TaggedGetInt(taggedKind);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+
+    Label isSameHclass(env);
+    Label isSimpleEnumCache(env);
+    Label notSimpleEnumCache(env);
+    Label prototypeIsEcmaObj(env);
+    Label isProtoChangeMarker(env);
+    Label protoNotChanged(env);
+
+    GateRef hclass = LoadHClass(receiver);
+    Branch(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
+    Bind(&isSameHclass);
+    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
+           &isSimpleEnumCache, &notSimpleEnumCache);
+    Bind(&isSimpleEnumCache);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&notSimpleEnumCache);
+    GateRef prototype = GetPrototypeFromHClass(hclass);
+    Branch(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
+    Bind(&prototypeIsEcmaObj);
+    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(hclass);
+    Branch(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
+    Bind(&isProtoChangeMarker);
+    Branch(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
+    Bind(&protoNotChanged);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::NeedCheckProperty(GateRef receiver)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label isJSObject(env);
+    Label hasNoDeleteProperty(env);
+
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    DEFVARIABLE(current, VariableType::JS_ANY(), receiver);
+
+    Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    {
+        Branch(IsJSObject(*current), &isJSObject, &exit);
+        Bind(&isJSObject);
+        GateRef hclass = LoadHClass(*current);
+        Branch(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
+        Bind(&hasNoDeleteProperty);
+        current = GetPrototypeFromHClass(hclass);
+        Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    Label notFinish(env);
+    Label notEnumCacheValid(env);
+    Label fastGetKey(env);
+    Label slowpath(env);
+
+    GateRef index = GetIndexFromForInIterator(iter);
+    GateRef length = GetLengthFromForInIterator(iter);
+    Branch(Int32GreaterThanOrEqual(index, length), &exit, &notFinish);
+    Bind(&notFinish);
+    GateRef keys = GetKeysFromForInIterator(iter);
+    GateRef receiver = GetObjectFromForInIterator(iter);
+    GateRef cachedHclass = GetCachedHclassFromForInIterator(iter);
+    GateRef kind = GetEnumCacheKind(glue, keys);
+    Branch(IsEnumCacheValid(receiver, cachedHclass, kind), &fastGetKey, &notEnumCacheValid);
+    Bind(&notEnumCacheValid);
+    Branch(NeedCheckProperty(receiver), &slowpath, &fastGetKey);
+    Bind(&fastGetKey);
+    {
+        result = GetValueFromTaggedArray(keys, index);
+        IncreaseInteratorIndex(glue, iter, index);
+        Jump(&exit);
+    }
+    Bind(&slowpath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetNextPropNameSlowpath), { iter });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetFunctionPrototype(GateRef glue, size_t index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    Label isHeapObject(env);
+    Label isJSHclass(env);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    result = protoOrHclass;
+    Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    Branch(IsJSHClass(protoOrHclass), &isJSHclass, &exit);
+    Bind(&isJSHclass);
+    {
+        result = GetPrototypeFromHClass(protoOrHclass);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToPrototypeOrObj(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), obj);
+
+    Label isNumber(env);
+    Label notNumber(env);
+    Label isBoolean(env);
+    Label notBoolean(env);
+    Label isString(env);
+    Label notString(env);
+    Label isSymbol(env);
+    Label notSymbol(env);
+    Label isBigInt(env);
+    Branch(TaggedIsNumber(obj), &isNumber, &notNumber);
+    Bind(&isNumber);
+    {
+        result = GetFunctionPrototype(glue, GlobalEnv::NUMBER_FUNCTION_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notNumber);
+    Branch(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
+    Bind(&isBoolean);
+    {
+        result = GetFunctionPrototype(glue, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notBoolean);
+    Branch(TaggedIsString(obj), &isString, &notString);
+    Bind(&isString);
+    {
+        result = GetFunctionPrototype(glue, GlobalEnv::STRING_FUNCTION_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notString);
+    Branch(TaggedIsSymbol(obj), &isSymbol, &notSymbol);
+    Bind(&isSymbol);
+    {
+        result = GetFunctionPrototype(glue, GlobalEnv::SYMBOL_FUNCTION_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notSymbol);
+    Branch(TaggedIsBigInt(obj), &isBigInt, &exit);
+    Bind(&isBigInt);
+    {
+        result = GetFunctionPrototype(glue, GlobalEnv::BIGINT_FUNCTION_INDEX);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsSpecialKeysObject(GateRef obj)
+{
+    return BoolOr(BoolOr(IsTypedArray(obj), IsModuleNamespace(obj)), ObjIsSpecialContainer(obj));
+}
+
+GateRef StubBuilder::IsSlowKeysObject(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = BoolOr(BoolOr(IsJSGlobalObject(obj), IsJsProxy(obj)), IsSpecialKeysObject(obj));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetNumberOfElements(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(numOfElements, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label isJSPrimitiveRef(env);
+    Label isPrimitiveString(env);
+    Label notPrimitiveString(env);
+    Label isDictMode(env);
+    Label notDictMode(env);
+
+    Branch(IsJSPrimitiveRef(obj), &isJSPrimitiveRef, &notPrimitiveString);
+    Bind(&isJSPrimitiveRef);
+    GateRef value = Load(VariableType::JS_ANY(), obj, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
+    Branch(TaggedIsString(value), &isPrimitiveString, &notPrimitiveString);
+    Bind(&isPrimitiveString);
+    {
+        numOfElements = GetLengthFromString(value);
+        Jump(&notPrimitiveString);
+    }
+    Bind(&notPrimitiveString);
+    GateRef elements = GetElementsArray(obj);
+    Branch(IsDictionaryMode(elements), &isDictMode, &notDictMode);
+    Bind(&notDictMode);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label iLessLength(env);
+        Label notHole(env);
+        GateRef elementsLen = GetLengthOfTaggedArray(elements);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Branch(Int32UnsignedLessThan(*i, elementsLen), &iLessLength, &exit);
+            Bind(&iLessLength);
+            {
+                GateRef element = GetValueFromTaggedArray(elements, *i);
+                Branch(TaggedIsHole(element), &loopEnd, &notHole);
+                Bind(&notHole);
+                numOfElements = Int32Add(*numOfElements, Int32(1));
+                Jump(&loopEnd);
+            }
+            Bind(&loopEnd);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&loopHead);
+        }
+    }
+    Bind(&isDictMode);
+    {
+        GateRef entryCount = TaggedGetInt(
+            GetValueFromTaggedArray(elements, Int32(TaggedHashTable<NumberDictionary>::NUMBER_OF_ENTRIES_INDEX)));
+        numOfElements = Int32Add(*numOfElements, entryCount);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *numOfElements;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    DEFVARIABLE(current, VariableType::JS_ANY(), Undefined());
+
+    Label receiverHasNoElements(env);
+
+    GateRef numOfElements = GetNumberOfElements(obj);
+    Branch(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
+    Bind(&receiverHasNoElements);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        Label currentHasNoElements(env);
+        Label enumCacheIsUndefined(env);
+        current = GetPrototypeFromHClass(LoadHClass(obj));
+        Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+        LoopBegin(&loopHead);
+        {
+            GateRef numOfCurrentElements = GetNumberOfElements(*current);
+            Branch(Int32GreaterThan(numOfCurrentElements, Int32(0)), &exit, &currentHasNoElements);
+            Bind(&currentHasNoElements);
+            GateRef hclass = LoadHClass(*current);
+            GateRef protoEnumCache = GetEnumCacheFromHClass(hclass);
+            Branch(TaggedIsUndefined(protoEnumCache), &enumCacheIsUndefined, &exit);
+            Bind(&enumCacheIsUndefined);
+            current = GetPrototypeFromHClass(hclass);
+            Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&afterLoop);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    DEFVARIABLE(current, VariableType::JS_ANY(), Undefined());
+
+    Label receiverHasNoElements(env);
+    Label prototypeIsEcmaObj(env);
+    Label isProtoChangeMarker(env);
+    Label protoNotChanged(env);
+
+    GateRef numOfElements = GetNumberOfElements(obj);
+    Branch(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
+    Bind(&receiverHasNoElements);
+    GateRef prototype = GetPrototypeFromHClass(LoadHClass(obj));
+    Branch(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
+    Bind(&prototypeIsEcmaObj);
+    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
+    Branch(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
+    Bind(&isProtoChangeMarker);
+    Branch(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
+    Bind(&protoNotChanged);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        Label currentHasNoElements(env);
+        current = prototype;
+        Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+        LoopBegin(&loopHead);
+        {
+            GateRef numOfCurrentElements = GetNumberOfElements(*current);
+            Branch(Int32GreaterThan(numOfCurrentElements, Int32(0)), &exit, &currentHasNoElements);
+            Bind(&currentHasNoElements);
+            current = GetPrototypeFromHClass(LoadHClass(*current));
+            Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&afterLoop);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    Label notSlowKeys(env);
+    Label notDictionaryMode(env);
+    Label checkSimpleEnumCache(env);
+    Label notSimpleEnumCache(env);
+    Label checkEnumCacheWithProtoChainInfo(env);
+    Label enumCacheValid(env);
+
+    Branch(IsSlowKeysObject(obj), &exit, &notSlowKeys);
+    Bind(&notSlowKeys);
+    GateRef hclass = LoadHClass(obj);
+    Branch(IsDictionaryModeByHClass(hclass), &exit, &notDictionaryMode);
+    Bind(&notDictionaryMode);
+    GateRef enumCache = GetEnumCacheFromHClass(hclass);
+    GateRef kind = GetEnumCacheKind(glue, enumCache);
+    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
+           &checkSimpleEnumCache, &notSimpleEnumCache);
+    Bind(&checkSimpleEnumCache);
+    {
+        Branch(IsSimpleEnumCacheValid(obj), &enumCacheValid, &exit);
+    }
+    Bind(&notSimpleEnumCache);
+    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::PROTOCHAIN))),
+           &checkEnumCacheWithProtoChainInfo, &exit);
+    Bind(&checkEnumCacheWithProtoChainInfo);
+    {
+        Branch(IsEnumCacheWithProtoChainInfoValid(obj), &enumCacheValid, &exit);
+    }
+    Bind(&enumCacheValid);
+    {
+        result = enumCache;
+        Jump(&exit);
+    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

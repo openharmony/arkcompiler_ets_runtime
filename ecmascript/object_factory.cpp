@@ -663,16 +663,20 @@ JSHandle<JSArray> ObjectFactory::NewJSArray()
     return JSHandle<JSArray>(NewJSObjectByConstructor(function));
 }
 
-JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj)
+JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
+                                                            const JSHandle<JSTaggedValue> keys,
+                                                            const JSHandle<JSTaggedValue> cachedHclass)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> hclass(env->GetForinIteratorClass());
 
     JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(hclass));
     it->SetObject(thread_, obj);
-    it->SetVisitedObjs(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
-    it->SetRemainingKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
-    it->ClearBitField();
+    it->SetCachedHclass(thread_, cachedHclass);
+    it->SetKeys(thread_, keys);
+    it->SetIndex(EnumCache::ENUM_CACHE_HEADER_SIZE);
+    uint32_t enumLength = JSHandle<TaggedArray>::Cast(keys)->GetLength();
+    it->SetLength(enumLength);
     return it;
 }
 
@@ -2444,6 +2448,25 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
         newArray->Set(thread_, i, value);
     }
 
+    return newArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::CopyFromEnumCache(const JSHandle<TaggedArray> &old)
+{
+    NewObjectHook();
+    uint32_t oldLength = old->GetLength();
+    uint32_t newLength = oldLength - EnumCache::ENUM_CACHE_HEADER_SIZE;
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(newLength);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    for (uint32_t i = 0; i < newLength; i++) {
+        JSTaggedValue value = old->Get(i + EnumCache::ENUM_CACHE_HEADER_SIZE);
+        newArray->Set(thread_, i, value);
+    }
     return newArray;
 }
 

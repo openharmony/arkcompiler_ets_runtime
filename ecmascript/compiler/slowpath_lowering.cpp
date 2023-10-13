@@ -1269,10 +1269,10 @@ void SlowPathLowering::LowerGreaterEq(GateRef gate)
 
 void SlowPathLowering::LowerGetPropIterator(GateRef gate)
 {
-    const int id = RTSTUB_ID(GetPropIterator);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0)});
+    GateRef object = {acc_.GetValueIn(gate, 0)};
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::Getpropiterator, {glue_, object});
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -1793,11 +1793,10 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 
 void SlowPathLowering::LowerGetNextPropName(GateRef gate)
 {
-    const int id = RTSTUB_ID(GetNextPropName);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef iter = acc_.GetValueIn(gate, 0);
-    GateRef newGate = LowerCallRuntime(gate, id, { iter });
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::Getnextpropname, {glue_, iter});
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -2498,14 +2497,14 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
 
     GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(builder_.GetCompilationConfig()->Is32Bit())));
-    GateRef undefinedIndex = builder_.GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX);
+    GateRef undefinedIndex = builder_.GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX);
     GateRef gConstUndefinedStr = builder_.Load(VariableType::JS_POINTER(), gConstAddr, undefinedIndex);
     DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), gConstUndefinedStr);
     Label objIsTrue(&builder_);
     Label objNotTrue(&builder_);
     Label defaultLabel(&builder_);
     GateRef gConstBooleanStr = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-        builder_.GetGlobalConstantString(ConstantIndex::BOOLEAN_STRING_INDEX));
+        builder_.GetGlobalConstantOffset(ConstantIndex::BOOLEAN_STRING_INDEX));
     builder_.Branch(builder_.TaggedIsTrue(obj), &objIsTrue, &objNotTrue);
     builder_.Bind(&objIsTrue);
     {
@@ -2530,7 +2529,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
             builder_.Bind(&objIsNull);
             {
                 result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                    builder_.GetGlobalConstantString(ConstantIndex::OBJECT_STRING_INDEX));
+                    builder_.GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                 builder_.Jump(&exit);
             }
             builder_.Bind(&objNotNull);
@@ -2541,7 +2540,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
                 builder_.Bind(&objIsUndefined);
                 {
                     result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                        builder_.GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX));
+                        builder_.GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX));
                     builder_.Jump(&exit);
                 }
                 builder_.Bind(&objNotUndefined);
@@ -2562,7 +2561,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
             builder_.Bind(&objIsString);
             {
                 result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                    builder_.GetGlobalConstantString(ConstantIndex::STRING_STRING_INDEX));
+                    builder_.GetGlobalConstantOffset(ConstantIndex::STRING_STRING_INDEX));
                 builder_.Jump(&exit);
             }
             builder_.Bind(&objNotString);
@@ -2573,7 +2572,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
                 builder_.Bind(&objIsSymbol);
                 {
                     result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                        builder_.GetGlobalConstantString(ConstantIndex::SYMBOL_STRING_INDEX));
+                        builder_.GetGlobalConstantOffset(ConstantIndex::SYMBOL_STRING_INDEX));
                     builder_.Jump(&exit);
                 }
                 builder_.Bind(&objNotSymbol);
@@ -2584,7 +2583,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
                     builder_.Bind(&objIsCallable);
                     {
                         result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                            builder_.GetGlobalConstantString(ConstantIndex::FUNCTION_STRING_INDEX));
+                            builder_.GetGlobalConstantOffset(ConstantIndex::FUNCTION_STRING_INDEX));
                         builder_.Jump(&exit);
                     }
                     builder_.Bind(&objNotCallable);
@@ -2595,13 +2594,13 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
                         builder_.Bind(&objIsBigInt);
                         {
                             result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                                builder_.GetGlobalConstantString(ConstantIndex::BIGINT_STRING_INDEX));
+                                builder_.GetGlobalConstantOffset(ConstantIndex::BIGINT_STRING_INDEX));
                             builder_.Jump(&exit);
                         }
                         builder_.Bind(&objNotBigInt);
                         {
                             result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                                builder_.GetGlobalConstantString(ConstantIndex::OBJECT_STRING_INDEX));
+                                builder_.GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                             builder_.Jump(&exit);
                         }
                     }
@@ -2616,7 +2615,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
             builder_.Bind(&objIsNum);
             {
                 result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,
-                    builder_.GetGlobalConstantString(ConstantIndex::NUMBER_STRING_INDEX));
+                    builder_.GetGlobalConstantOffset(ConstantIndex::NUMBER_STRING_INDEX));
                 builder_.Jump(&exit);
             }
             builder_.Bind(&objNotNum);

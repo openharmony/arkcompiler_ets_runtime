@@ -293,7 +293,7 @@
 }
 
 /*
-*  FastTypeOf(); GetGlobalConstantString(); TaggedIsTrue(); TaggedIsFalse(); TaggedIsNull(); IsString(); IsSymbol(); IsCallable();
+*  FastTypeOf(); GetGlobalConstantOffset(); TaggedIsTrue(); TaggedIsFalse(); TaggedIsNull(); IsString(); IsSymbol(); IsCallable();
 *  TaggedObjectIsBigInt();  Int32Mul(); Int64Mul();
 */
                       /**************HandleTypeofImm8****************/

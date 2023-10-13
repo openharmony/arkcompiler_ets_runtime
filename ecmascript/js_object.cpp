@@ -21,6 +21,7 @@
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
@@ -29,6 +30,7 @@
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/property_accessor.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -300,12 +302,6 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
     }
 
     if (!array->IsDictionaryMode()) {
-        JSHClass *hclass = obj->GetJSHClass();
-        // To maintain TS inherit info, not change hclass, just set hole.
-        if (hclass->HasTSSubtyping() && !hclass->IsPrototype()) {
-            obj->SetPropertyInlinedProps(thread, index, JSTaggedValue::Hole());
-            return;
-        }
         JSHandle<NameDictionary> dictHandle(TransitionToDictionary(thread, obj));
         int entry = dictHandle->FindEntry(key.GetTaggedValue());
         ASSERT(entry != -1);
@@ -384,14 +380,14 @@ void JSObject::GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::ve
     }
 }
 
-JSHandle<TaggedArray> JSObject::GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,
                                                uint32_t numOfKeys, uint32_t *keys)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (obj->IsJSGlobalObject()) {
         JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
         GlobalDictionary *dict = GlobalDictionary::Cast(obj->GetProperties().GetTaggedObject());
-        dict->GetEnumAllKeys(thread, offset, *keyArray, keys);
+        dict->GetEnumAllKeys(thread, 0, *keyArray, keys);
         return keyArray;
     }
 
@@ -399,34 +395,34 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(const JSThread *thread, const JSH
     if (!array->IsDictionaryMode()) {
         JSHClass *jsHclass = obj->GetJSHClass();
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
-        if (!enumCache.IsNull()) {
+        if (JSObject::GetEnumCacheKind(thread, enumCache) == EnumCacheKind::ONLY_OWN_KEYS) {
             JSHandle<TaggedArray> cacheArray = JSHandle<TaggedArray>(thread, enumCache);
-            *keys = cacheArray->GetLength();
-            JSHandle<TaggedArray> keyArray = factory->CopyArray(cacheArray, *keys, *keys);
+            JSHandle<TaggedArray> keyArray = factory->CopyFromEnumCache(cacheArray);
+            *keys = keyArray->GetLength();
             return keyArray;
         }
-        JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
-        int end = static_cast<int>(jsHclass->NumberOfProps());
-        if (end > 0) {
+
+        if (numOfKeys > 0) {
+            int end = static_cast<int>(jsHclass->NumberOfProps());
+            JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys + EnumCache::ENUM_CACHE_HEADER_SIZE);
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, offset, *keyArray, keys, obj);
-            if (*keys == keyArray->GetLength()) {
-                jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
-                JSHandle<TaggedArray> newkeyArray = factory->CopyArray(keyArray, *keys, *keys);
-                return newkeyArray;
-            }
+                ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
+            JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
+            jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            JSHandle<TaggedArray> newkeyArray = factory->CopyFromEnumCache(keyArray);
+            return newkeyArray;
         }
-        return keyArray;
+        return factory->EmptyArray();
     }
 
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
     NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
-    dict->GetAllEnumKeys(thread, offset, *keyArray, keys);
+    dict->GetAllEnumKeys(thread, 0, keyArray, keys);
     return keyArray;
 }
 
-void JSObject::GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
-                              const JSHandle<TaggedArray> &keyArray)
+uint32_t JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                  const JSHandle<TaggedArray> &keyArray)
 {
     TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
     uint32_t keys = 0;
@@ -435,18 +431,19 @@ void JSObject::GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &
         int end = static_cast<int>(jsHclass->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, offset, *keyArray, &keys, obj);
+                ->GetAllEnumKeys(thread, end, offset, keyArray, &keys, obj);
         }
-        return;
+        return keys;
     }
     if (obj->IsJSGlobalObject()) {
         GlobalDictionary *dict = GlobalDictionary::Cast(obj->GetProperties().GetTaggedObject());
         dict->GetEnumAllKeys(thread, offset, *keyArray, &keys);
-        return;
+        return keys;
     }
 
     NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
-    dict->GetAllEnumKeys(thread, offset, *keyArray, &keys);
+    dict->GetAllEnumKeys(thread, offset, keyArray, &keys);
+    return keys;
 }
 
 void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -537,34 +534,49 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> elementArray = factory->NewTaggedArray(numOfElements);
-    uint32_t elementIndex = 0;
+    CollectEnumElementsAlongProtoChain(thread, obj, offset, elementArray, keys);
+    return elementArray;
+}
+
+void JSObject::CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                                  JSHandle<TaggedArray> elementArray, uint32_t *keys,
+                                                  int32_t lastLength)
+{
+    uint32_t elementIndex = static_cast<uint32_t>(offset);
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
 
     if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
-        elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength();
-        *keys += elementIndex;
-        elementIndex += static_cast<uint32_t>(offset);
-        for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
+        uint32_t strLen = JSPrimitiveRef::Cast(*obj)->GetStringLength();
+        for (uint32_t i = 0; i < strLen; ++i) {
             keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
-            elementArray->Set(thread, i, keyHandle);
+            elementArray->Set(thread, elementIndex, keyHandle);
+            elementIndex++;
         }
+        *keys += strLen;
     }
 
     JSHandle<TaggedArray> arr(thread, obj->GetElements());
     if (!arr->IsDictionaryMode()) {
+        JSHandle<TaggedQueue> emptyQueue = thread->GetEcmaVM()->GetFactory()->GetEmptyTaggedQueue();
         uint32_t elementsLen = arr->GetLength();
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!arr->Get(i).IsHole()) {
-                keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
-                elementArray->Set(thread, elementIndex++, keyHandle);
+            if (arr->Get(i).IsHole()) {
+                continue;
             }
+            keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
+            bool isDuplicated = IsDepulicateKeys(thread, elementArray, lastLength, emptyQueue, keyHandle);
+            if (isDuplicated) {
+                continue;
+            }
+            elementArray->Set(thread, elementIndex, keyHandle);
+            elementIndex++;
         }
         *keys += (elementIndex - preElementIndex);
     } else {
-        NumberDictionary::GetAllEnumKeys(thread, JSHandle<NumberDictionary>(arr), elementIndex, elementArray, keys);
+        NumberDictionary::GetAllEnumKeys(
+            thread, JSHandle<NumberDictionary>(arr), elementIndex, elementArray, keys, lastLength);
     }
-    return elementArray;
 }
 
 void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -592,6 +604,27 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
         uint32_t keys = 0;
         NumberDictionary::GetAllEnumKeys(thread, JSHandle<NumberDictionary>(elements), elementIndex, keyArray, &keys);
     }
+}
+
+std::pair<uint32_t, uint32_t> JSObject::GetNumberOfEnumKeys() const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TaggedArray *array = TaggedArray::Cast(GetProperties().GetTaggedObject());
+    if (!array->IsDictionaryMode()) {
+        int end = static_cast<int>(GetJSHClass()->NumberOfProps());
+        if (end > 0) {
+            LayoutInfo *layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
+            return layout->GetNumOfEnumKeys(end, this);
+        }
+        return std::make_pair(0, 0);
+    }
+    if (IsJSGlobalObject()) {
+        GlobalDictionary *dict = GlobalDictionary::Cast(array);
+        return dict->GetNumOfEnumKeys();
+    }
+
+    NameDictionary *dict = NameDictionary::Cast(GetProperties().GetTaggedObject());
+    return dict->GetNumOfEnumKeys();
 }
 
 uint32_t JSObject::GetNumberOfKeys()
@@ -1337,6 +1370,38 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
     return retArray;
 }
 
+void JSObject::CollectEnumKeysAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj,
+                                              JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                                              JSHandle<TaggedQueue> shadowQueue, int32_t lastLength)
+{
+    ASSERT(!obj->IsJSGlobalObject());
+
+    TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!array->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        int end = static_cast<int>(jsHclass->NumberOfProps());
+        if (end > 0) {
+            LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
+                ->GetAllEnumKeys(thread, end, *keys, keyArray, keys, shadowQueue, obj, lastLength);
+        }
+        return;
+    }
+    NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
+    dict->GetAllEnumKeys(thread, *keys, keyArray, keys, shadowQueue, lastLength);
+}
+
+void JSObject::AppendOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj,
+                                         JSHandle<TaggedArray> keyArray, uint32_t *keys,
+                                         JSHandle<TaggedQueue> shadowQueue)
+{
+    int32_t lastLength = *keys;
+    uint32_t numOfElements = obj->GetNumberOfElements();
+    if (numOfElements > 0) {
+        CollectEnumElementsAlongProtoChain(thread, obj, *keys, keyArray, keys, lastLength);
+    }
+    CollectEnumKeysAlongProtoChain(thread, obj, keyArray, keys, shadowQueue, lastLength);
+}
+
 JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
     uint32_t numOfElements = obj->GetNumberOfElements();
@@ -2059,13 +2124,95 @@ void PropertyDescriptor::CompletePropertyDescriptor(const JSThread *thread, Prop
     }
 }
 
+// static
+// When receiver has no elements and there is no enum cache and elements on receiver's prototype chain,
+// the enum cache is a simple enum cache.
+// When receiver and receiver's prototype chain have no elements, and the prototype is not modified,
+// the enum cache is a enum cache with protochain
+bool JSObject::IsSimpleEnumCacheValid(JSTaggedValue receiver)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements();
+    if (numOfElements > 0) {
+        return false;
+    }
+
+    JSTaggedValue current = JSObject::GetPrototype(receiver);
+    while (current.IsHeapObject()) {
+        JSObject *currentObj = JSObject::Cast(current.GetTaggedObject());
+        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements();
+        if (numOfCurrentElements > 0) {
+            return false;
+        }
+        JSHClass *hclass = currentObj->GetJSHClass();
+        JSTaggedValue protoEnumCache = hclass->GetEnumCache();
+        if (!protoEnumCache.IsUndefined()) {
+            return false;
+        }
+        current = JSObject::GetPrototype(current);
+    }
+    return true;
+}
+
+bool JSObject::IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    // check elements of receiver
+    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements();
+    if (numOfElements > 0) {
+        return false;
+    }
+    // check protochain keys
+    JSTaggedValue proto = JSObject::GetPrototype(receiver);
+    if (!proto.IsECMAObject()) {
+        return false;
+    }
+    JSTaggedValue protoChangeMarker = proto.GetTaggedObject()->GetClass()->GetProtoChangeMarker();
+    if (!protoChangeMarker.IsProtoChangeMarker()) {
+        return false;
+    }
+    if (ProtoChangeMarker::Cast(protoChangeMarker.GetTaggedObject())->GetHasChanged()) {
+        return false;
+    }
+    // check protochain elements
+    JSTaggedValue current = proto;
+    while (current.IsHeapObject()) {
+        JSObject *currentObj = JSObject::Cast(current.GetTaggedObject());
+        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements();
+        if (numOfCurrentElements > 0) {
+            return false;
+        }
+        current = JSObject::GetPrototype(current);
+    }
+    return true;
+}
+
+JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
+{
+    if (obj.IsSlowKeysObject() || obj.GetTaggedObject()->GetClass()->IsDictionaryMode()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSTaggedValue enumCache = obj.GetTaggedObject()->GetClass()->GetEnumCache();
+    EnumCacheKind kind = JSObject::GetEnumCacheKind(thread, enumCache);
+    bool isEnumCacheValid = false;
+    switch (kind) {
+        case EnumCacheKind::SIMPLE:
+            isEnumCacheValid = IsSimpleEnumCacheValid(obj);
+            break;
+        case EnumCacheKind::PROTOCHAIN:
+            isEnumCacheValid = IsEnumCacheWithProtoChainInfoValid(obj);
+        default:
+            break;
+    }
+    if (!isEnumCacheValid) {
+        return JSTaggedValue::Undefined();
+    }
+    return enumCache;
+}
+
 // 13.7.5.15 EnumerateObjectProperties ( O )
 JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
-    // 1. Return an Iterator object (25.1.1.2) whose next method iterates over all the String-valued keys of
-    // enumerable properties of O. The Iterator object must inherit from %IteratorPrototype% (25.1.2). The
-    // mechanics and order of enumerating the properties is not specified but must conform to the rules specified
-    // below.
     JSHandle<JSTaggedValue> object;
     if (obj->IsString()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -2074,7 +2221,37 @@ JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, 
         object = JSTaggedValue::ToPrototypeOrObj(thread, obj);
     }
 
-    return thread->GetEcmaVM()->GetFactory()->NewJSForinIterator(object);
+    JSMutableHandle<JSTaggedValue> keys(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> cachedHclass(thread, JSTaggedValue::Undefined());
+    if (object->IsNull() || object->IsUndefined()) {
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        keys.Update(factory->EmptyArray());
+        return factory->NewJSForinIterator(undefined, keys, cachedHclass);
+    }
+    keys.Update(TryGetEnumCache(thread, object.GetTaggedValue()));
+    if (!keys->IsUndefined()) {
+        cachedHclass.Update(JSTaggedValue(JSHandle<JSObject>::Cast(object)->GetJSHClass()));
+        return thread->GetEcmaVM()->GetFactory()->NewJSForinIterator(object, keys, cachedHclass);
+    }
+    return LoadEnumerateProperties(thread, object);
+}
+
+JSHandle<JSForInIterator> JSObject::LoadEnumerateProperties(JSThread *thread, const JSHandle<JSTaggedValue> &object)
+{
+    PropertyAccessor accessor(thread, object);
+    JSHandle<JSTaggedValue> fastKeys = accessor.GetKeysFast();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSForInIterator, thread);
+    JSMutableHandle<JSTaggedValue> keys(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> cachedHclass(thread, JSTaggedValue::Undefined());
+    if (fastKeys->IsUndefined()) {
+        keys.Update(accessor.GetKeysSlow());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSForInIterator, thread);
+    } else {
+        keys.Update(fastKeys);
+        cachedHclass.Update(accessor.GetCachedHclass());
+    }
+    return thread->GetEcmaVM()->GetFactory()->NewJSForinIterator(object, keys, cachedHclass);
 }
 
 void JSObject::DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,

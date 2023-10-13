@@ -573,6 +573,9 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
     if (str1 == str2) {
         return true;
     }
+    if (str1->IsInternString() && str2->IsInternString()) {
+        return false;
+    }
     uint32_t str1Len = str1->GetLength();
     if (str1Len != str2->GetLength()) {
         return false;

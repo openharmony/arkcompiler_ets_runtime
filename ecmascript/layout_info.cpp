@@ -69,7 +69,7 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
     for (int i = 0; i < end; i++) {
         JSTaggedValue key = GetKey(i);
         if (key.IsString()) {
-            if (IsUninitializedProperty(object, i)) {
+            if (IsUninitializedProperty(*object, i)) {
                 continue;
             }
             keyArray->Set(thread, enumKeys + offset, key);
@@ -99,7 +99,7 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
     for (uint32_t i = 0; i < numberOfProps; i++) {
         JSTaggedValue key = GetKey(static_cast<int>(i));
         if (key.IsString() && !(filter & NATIVE_KEY_SKIP_STRINGS)) {
-            if (IsUninitializedProperty(object, i)) {
+            if (IsUninitializedProperty(*object, i)) {
                 continue;
             }
             PropertyAttributes attr = GetAttr(static_cast<int>(i));
@@ -140,29 +140,81 @@ void LayoutInfo::GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> 
     }
 }
 
-void LayoutInfo::GetAllEnumKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
+std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end, const JSObject *object) const
+{
+    ASSERT(end <= NumberOfElements());
+    uint32_t enumKeys = 0;
+    uint32_t shadowKeys = 0;
+    for (int i = 0; i < end; i++) {
+        JSTaggedValue key = GetKey(i);
+        if (!key.IsString()) {
+            continue;
+        }
+        if (IsUninitializedProperty(object, i)) {
+            continue;
+        }
+        if (GetAttr(i).IsEnumerable()) {
+            enumKeys++;
+        } else {
+            shadowKeys++;
+        }
+    }
+    return std::make_pair(enumKeys, shadowKeys);
+}
+
+void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray,
+                                uint32_t *keys, JSHandle<TaggedQueue> shadowQueue, const JSHandle<JSObject> object,
+                                int32_t lastLength)
+{
+    ASSERT(end <= NumberOfElements());
+    ASSERT_PRINT(offset <= static_cast<int>(keyArray->GetLength()),
+                 "keyArray capacity is not enough for dictionary");
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    int enumKeys = 0;
+    for (int i = 0; i < end; i++) {
+        keyHandle.Update(GetKey(i));
+        if (!keyHandle->IsString()) {
+            continue;
+        }
+        if (IsUninitializedProperty(*object, i)) {
+            continue;
+        }
+        if (GetAttr(i).IsEnumerable()) {
+            bool isDuplicated = JSObject::IsDepulicateKeys(thread, keyArray, lastLength, shadowQueue, keyHandle);
+            if (isDuplicated) {
+                continue;
+            }
+            keyArray->Set(thread, enumKeys + offset, keyHandle);
+            enumKeys++;
+        } else {
+            TaggedQueue::PushFixedQueue(thread, shadowQueue, keyHandle);
+        }
+    }
+    *keys += enumKeys;
+}
+
+void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray,
                                 uint32_t *keys, const JSHandle<JSObject> object)
 {
     ASSERT(end <= NumberOfElements());
-    ASSERT_PRINT(offset + end <= static_cast<int>(keyArray->GetLength()),
+    ASSERT_PRINT(offset <= static_cast<int>(keyArray->GetLength()),
                  "keyArray capacity is not enough for dictionary");
-
-    DISALLOW_GARBAGE_COLLECTION;
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     int enumKeys = 0;
     for (int i = 0; i < end; i++) {
-        JSTaggedValue key = GetKey(i);
-        if (key.IsString() && GetAttr(i).IsEnumerable()) {
-            if (IsUninitializedProperty(object, i)) {
+        keyHandle.Update(GetKey(i));
+        if (keyHandle->IsString() && GetAttr(i).IsEnumerable()) {
+            if (IsUninitializedProperty(*object, i)) {
                 continue;
             }
-            keyArray->Set(thread, enumKeys + offset, key);
+            keyArray->Set(thread, enumKeys + offset, keyHandle);
             enumKeys++;
         }
     }
     *keys += enumKeys;
 }
 
-bool LayoutInfo::IsUninitializedProperty(const JSHandle<JSObject> object, uint32_t index)
+bool LayoutInfo::IsUninitializedProperty(const JSObject *object, uint32_t index) const
 {
     PropertyAttributes attr = GetAttr(index);
     if (!attr.IsInlinedProps()) {

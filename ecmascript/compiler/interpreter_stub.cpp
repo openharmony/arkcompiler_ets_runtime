@@ -443,7 +443,8 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
 DECLARE_ASM_HANDLER(HandleGetpropiterator)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetPropIterator), { *varAcc });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.EnumerateObjectProperties(glue, *varAcc);
     CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(GETPROPITERATOR));
 }
 
@@ -1147,7 +1148,7 @@ DECLARE_ASM_HANDLER(HandleGetnextpropnameV8)
 {
     GateRef v0 = ReadInst8_0(pc);
     GateRef iter = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(GetNextPropName), { iter });
+    GateRef result = NextInternal(glue, iter);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETNEXTPROPNAME_V8));
 }
 

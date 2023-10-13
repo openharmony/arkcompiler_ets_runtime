@@ -1294,6 +1294,16 @@ inline bool JSTaggedValue::IsJSGlobalObject() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSGlobalObject();
 }
 
+inline bool JSTaggedValue::IsSpecialKeysObject() const
+{
+    return IsTypedArray() || IsModuleNamespace() || IsSpecialContainer();
+}
+
+inline bool JSTaggedValue::IsSlowKeysObject() const
+{
+    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject();
+}
+
 inline bool JSTaggedValue::IsMachineCodeObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsMachineCodeObject();

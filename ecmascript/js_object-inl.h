@@ -23,6 +23,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 inline void ECMAObject::SetCallable(bool flag)
@@ -452,16 +453,77 @@ inline uint32_t JSObject::SetValuesOrEntries(JSThread *thread, const JSHandle<Ta
     return index;
 }
 
+inline void JSObject::SetEnumCacheKind(JSThread *thread, TaggedArray *array, EnumCacheKind kind)
+{
+    array->Set(thread, EnumCache::ENUM_CACHE_KIND_OFFSET, JSTaggedValue(static_cast<uint8_t>(kind)));
+}
+
+inline EnumCacheKind JSObject::GetEnumCacheKind(JSThread *thread, TaggedArray *array)
+{
+    return static_cast<EnumCacheKind>(array->Get(thread, EnumCache::ENUM_CACHE_KIND_OFFSET).GetInt());
+}
+
+inline EnumCacheKind JSObject::GetEnumCacheKind(JSThread *thread, JSTaggedValue enumCache)
+{
+    if (enumCache.IsUndefinedOrNull()) {
+        return EnumCacheKind::NONE;
+    }
+    JSTaggedValue emptyArray = thread->GlobalConstants()->GetEmptyArray();
+    if (enumCache == emptyArray) {
+        return EnumCacheKind::SIMPLE;
+    }
+    TaggedArray *array = TaggedArray::Cast(enumCache.GetTaggedObject());
+    return JSObject::GetEnumCacheKind(thread, array);
+}
+
+inline JSTaggedValue JSObject::GetPrototype(JSTaggedValue obj)
+{
+    JSHClass *hclass = obj.GetTaggedObject()->GetClass();
+    return hclass->GetPrototype();
+}
+
+inline bool JSObject::IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
+                                       JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key)
+{
+    if (lastLength < 0) {
+        return false;
+    }
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    for (int32_t i = EnumCache::ENUM_CACHE_HEADER_SIZE; i < lastLength; i++) {
+        value.Update(keys->Get(i));
+        bool has = JSTaggedValue::Equal(thread, value, key);
+        if (has) {
+            return true;
+        }
+    }
+
+    uint32_t shadowSize = shadowQueue->Size();
+    for (uint32_t i = 0; i < shadowSize; i++) {
+        value.Update(shadowQueue->Get(i));
+        bool has = JSTaggedValue::Equal(thread, value, key);
+        if (has) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline void JSObject::ClearHasDeleteProperty(JSHandle<JSTaggedValue> object)
+{
+    object->GetTaggedObject()->GetClass()->SetHasDeleteProperty(false);
+}
+
 inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnEnumerableNamesInFastMode(
     JSThread *thread, const JSHandle<JSObject> &obj, uint32_t *copyLengthOfKeys, uint32_t *copyLengthOfElements)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint32_t numOfKeys = obj->GetNumberOfKeys();
+    std::pair<uint32_t, uint32_t> numOfKeys = obj->GetNumberOfEnumKeys();
+    uint32_t numOfEnumKeys = numOfKeys.first;
     uint32_t numOfElements = obj->GetNumberOfElements();
     JSHandle<TaggedArray> elementArray = numOfElements > 0 ? JSObject::GetEnumElementKeys(
         thread, obj, 0, numOfElements, copyLengthOfElements) : factory->EmptyArray();
-    JSHandle<TaggedArray> keyArray = numOfKeys > 0 ? JSObject::GetAllEnumKeys(
-        thread, obj, 0, numOfKeys, copyLengthOfKeys) : factory->EmptyArray();
+    JSHandle<TaggedArray> keyArray = numOfEnumKeys > 0 ? JSObject::GetAllEnumKeys(
+        thread, obj, numOfEnumKeys, copyLengthOfKeys) : factory->EmptyArray();
     return std::make_pair(keyArray, elementArray);
 }
 
