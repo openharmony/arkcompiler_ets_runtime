@@ -101,12 +101,30 @@ host_unittest_action("LoopOptimizationTest") {
   ]
 }
 
+host_unittest_action("GlobalValueNumberingTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "global_value_numbering_test.cpp",
+    "meta_data_equal_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
 group("host_unittest") {
   testonly = true
 
   # deps file
   deps = [
     ":AssemblerTestAction",
+    ":GlobalValueNumberingTestAction",
     ":LoopOptimizationTestAction",
     ":TypedArrayLoweringTestAction",
   ]

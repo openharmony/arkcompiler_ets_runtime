@@ -1544,6 +1544,14 @@ bool GateAccessor::MetaDataEqu(GateRef g1, GateRef g2) const
     return GetMetaData(g1) == GetMetaData(g2);
 }
 
+bool GateAccessor::MetaDataValueEqu(GateRef g1, GateRef g2) const
+{
+    const GateMetaData *g1Meta = GetMetaData(g1);
+    const GateMetaData *g2Meta = GetMetaData(g2);
+
+    return g1Meta->equal(*g2Meta);
+}
+
 bool GateAccessor::IsNop(GateRef g) const
 {
     return GetMetaData(g)->IsNop();

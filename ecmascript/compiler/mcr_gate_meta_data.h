@@ -173,6 +173,18 @@ public:
         SetKind(GateMetaData::Kind::TYPED_CALL);
     }
 
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!OneParameterMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const TypedCallMetaData *>(&other);
+        if (noGC_ == cast_other->noGC_) {
+            return true;
+        }
+        return false;
+    }
+
     static const TypedCallMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::TYPED_CALL);
@@ -194,6 +206,19 @@ public:
         checkOp_(checkOp)
     {
         SetKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
+    }
+
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!OneParameterMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other =
+            static_cast<const TypedCallTargetCheckMetaData *>(&other);
+        if (checkOp_ == cast_other->checkOp_) {
+            return true;
+        }
+        return false;
     }
 
     static const TypedCallTargetCheckMetaData* Cast(const GateMetaData* meta)
@@ -219,6 +244,18 @@ public:
         SetKind(GateMetaData::Kind::TYPED_BINARY_OP);
     }
 
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!OneParameterMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const TypedBinaryMetaData *>(&other);
+        if (binOp_ == cast_other->binOp_ && type_ == cast_other->type_) {
+            return true;
+        }
+        return false;
+    }
+    
     static const TypedBinaryMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::TYPED_BINARY_OP);

@@ -24,29 +24,37 @@
 namespace panda::ecmascript::kungfu {
 class ValueNumbering : public PassVisitor {
 public:
-    ValueNumbering(Circuit *circuit, RPOVisitor *visitor, Chunk* chunk)
-        : PassVisitor(circuit, chunk, visitor), entries_(chunk) {}
+    ValueNumbering(Circuit *circuit, RPOVisitor *visitor, Chunk* chunk, bool useNewGVN, bool enableLog)
+        : PassVisitor(circuit, chunk, visitor), entries_(nullptr), useNewGVN_(useNewGVN),
+          enableLog_(enableLog) {}
 
     ~ValueNumbering() = default;
 
     GateRef VisitGate(GateRef gate) override;
     bool CheckReplacement(GateRef lhs, GateRef rhs);
-private:
-    size_t HashCode(GateRef gate);
-    GateRef GetEntry(size_t hash)
+    int GetoptimizedGateCount()
     {
-        ASSERT(hash < entries_.size());
-        return entries_[hash];
+        return optimizedGateCount;
     }
+
+private:
+    void Grow();
+    void EnsureCapacity();
+    void InitEntries(size_t initSize);
+    size_t HashCode(GateRef gate);
     void SetEntry(size_t hash, GateRef gate)
     {
-        ASSERT(hash < entries_.size());
-        entries_[hash] = gate;
+        entries_[hash & (entriesLength_ - 1)] = gate;
     }
     static const uint32_t CACHE_LENGTH_BIT = 8;
     static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
-
-    ChunkVector<GateRef> entries_;
+    const uint8_t LOAD_FACTOR_THRESHOLD = 4;
+    uint32_t entriesLength_ = (1U << CACHE_LENGTH_BIT);
+    uint32_t entriesSize_ = 0;
+    GateRef* entries_;
+    bool useNewGVN_;
+    int optimizedGateCount = 0;
+    bool enableLog_ = false;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_VALUE_NUMBERING_H

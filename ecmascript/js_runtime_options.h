@@ -98,6 +98,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
     OPTION_COMPILER_TRACE_INLINE,
+    OPTION_COMPILER_TRACE_VALUE_NUMBERING,
     OPTION_COMPILER_MAX_INLINE_BYTECODES,
     OPTION_COMPILER_DEOPT_THRESHOLD,
     OPTION_COMPILER_STRESS_DEOPT,
@@ -117,6 +118,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_EARLY_ELIMINATION,
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
+    OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
@@ -992,6 +994,16 @@ public:
         return enableValueNumbering_;
     }
 
+    void SetEnableNewValueNumbering(bool value)
+    {
+        enableNewValueNumbering_ = value;
+    }
+
+    bool IsEnableNewValueNumbering() const
+    {
+        return enableNewValueNumbering_;
+    }
+
     void SetEnableOptInlining(bool value)
     {
         enableOptInlining_ = value;
@@ -1125,6 +1137,16 @@ public:
     bool GetTraceInline() const
     {
         return traceInline_;
+    }
+
+    void SetTraceValueNumbering(bool value)
+    {
+        traceValueNumbering_ = value;
+    }
+
+    bool GetTraceValueNumbering() const
+    {
+        return traceValueNumbering_;
     }
 
     void SetMaxInlineBytecodes(size_t value)
@@ -1316,6 +1338,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
+    bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
@@ -1337,6 +1360,7 @@ private:
     std::string compilerSelectMethods_ {""};
     std::string compilerSkipMethods_ {""};
     bool traceInline_ {false};
+    bool traceValueNumbering_{false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
     std::string hapPath_ {""};
