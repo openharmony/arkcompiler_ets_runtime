@@ -1784,6 +1784,8 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     Label exit(env);
     Label indexLessZero(env);
     Label indexNotLessZero(env);
+    Label handlerInfoIsTypedArray(env);
+    Label handerInfoNotTypedArray(env);
     Label handerInfoIsJSArray(env);
     Label handerInfoNotJSArray(env);
     Label isJsCOWArray(env);
@@ -1824,6 +1826,16 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
         Bind(&handlerIsInt);
         {
             GateRef handlerInfo = GetInt32OfTInt(*varHandler);
+            Branch(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArray, &handerInfoNotTypedArray);
+            Bind(&handlerInfoIsTypedArray);
+            {
+                GateRef hclass = LoadHClass(receiver);
+                GateRef jsType = GetObjectType(hclass);
+                TypedArrayStubBuilder typedArrayBuilder(this);
+                result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
+                Jump(&exit);
+            }
+            Bind(&handerInfoNotTypedArray);
             Branch(HandlerBaseIsJSArray(handlerInfo), &handerInfoIsJSArray, &handerInfoNotJSArray);
             Bind(&handerInfoIsJSArray);
             {

@@ -1457,6 +1457,15 @@ inline GateRef StubBuilder::IsStringLength(GateRef attr)
         Int32(HandlerBase::HandlerKind::STRING_LENGTH));
 }
 
+inline GateRef StubBuilder::IsTypedArrayElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::TYPED_ARRAY));
+}
+
 inline GateRef StubBuilder::IsNonExist(GateRef attr)
 {
     return Int32Equal(

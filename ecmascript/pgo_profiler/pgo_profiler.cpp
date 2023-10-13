@@ -660,7 +660,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
             PGOObjKind kind = PGOObjKind::LOCAL;
-            if (HandlerBase::IsJSArray(handlerInfo)) {
+            if (HandlerBase::IsJSArray(handlerInfo) || HandlerBase::IsTypedArrayElement(handlerInfo)) {
                 kind = PGOObjKind::ELEMENT;
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, kind);
@@ -670,7 +670,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     if (secondValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
         PGOObjKind kind = PGOObjKind::LOCAL;
-        if (HandlerBase::IsJSArray(handlerInfo)) {
+        if (HandlerBase::IsJSArray(handlerInfo) || HandlerBase::IsTypedArrayElement(handlerInfo)) {
             kind = PGOObjKind::ELEMENT;
         }
         AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, kind);

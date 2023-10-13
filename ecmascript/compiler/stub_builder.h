@@ -333,6 +333,7 @@ public:
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
     GateRef IsStringLength(GateRef attr);
+    GateRef IsTypedArrayElement(GateRef attr);
     GateRef IsNonExist(GateRef attr);
     GateRef IsJSAPIVector(GateRef attr);
     GateRef IsJSAPIStack(GateRef obj);

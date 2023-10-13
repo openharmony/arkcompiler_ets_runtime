@@ -78,6 +78,88 @@ GateRef TypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
     return ret;
 }
 
+GateRef TypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label indexIsvalid(env);
+    Label indexNotLessZero(env);
+    Branch(Int64LessThan(index, Int64(0)), &exit, &indexNotLessZero);
+    Bind(&indexNotLessZero);
+    {
+        GateRef arrLen = GetArrayLength(array);
+        Branch(Int64GreaterThanOrEqual(index, ZExtInt32ToInt64(arrLen)), &exit, &indexIsvalid);
+        Bind(&indexIsvalid);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label notDetached(env);
+    Label indexIsvalid(env);
+    GateRef buffer = GetViewedArrayBuffer(array);
+    Branch(IsDetachedBuffer(buffer), &exit, &notDetached);
+    Bind(&notDetached);
+    {
+        GateRef index = TryToElementsIndex(glue, key);
+        Branch(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
+        Bind(&indexIsvalid);
+        {
+            GateRef offset = GetByteOffset(array);
+            result = GetValueFromBuffer(buffer, TruncInt64ToInt32(index), offset, jsType);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef TypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value,
+                                                      GateRef jsType)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label notDetached(env);
+    Label indexIsvalid(env);
+    GateRef buffer = GetViewedArrayBuffer(array);
+    Branch(IsDetachedBuffer(buffer), &exit, &notDetached);
+    Bind(&notDetached);
+    {
+        Branch(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
+        Bind(&indexIsvalid);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+                { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType) });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef array, GateRef index, GateRef jsType)
 {
     auto env = GetEnvironment();

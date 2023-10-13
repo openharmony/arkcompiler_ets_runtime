@@ -32,7 +32,8 @@
 ].forEach(function(ctor, i) {
     if (testTypeArray1(ctor) && testTypeArray2(ctor) &&
         testTypeArray3(ctor) && testTypeArray4(ctor) &&
-        testTypeArray6(ctor) && testTypeArray7(ctor)) {
+        testTypeArray6(ctor) && testTypeArray7(ctor) &&
+        testTypeArrayIC(ctor)) {
         print(ctor.name + " test success !!!")
     } else {
         print(ctor.name + " test fail !!!")
@@ -158,6 +159,26 @@ function testTypeArray7(ctor) {
     let obj = new ctor(test);
     for (var i = 0; i < 10; i++) {
         result.push(obj[i] == i);
+    }
+    for (let i = 0; i < result.length; i++) {
+        if (!result[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function testTypeArrayIC(ctor) {
+    let result = []
+    let obj = new ctor(100);
+    for (var i = 0; i < 100; i++) {
+        obj[i] = i;
+    }
+    for (var i = 0; i < 100; i++) {
+        result.push(obj[i] == i);
+    }
+    for (var i = 0; i < 100; i++) {
+        result.push(obj.at(i) == i);
     }
     for (let i = 0; i < result.length; i++) {
         if (!result[i]) {
