@@ -66,7 +66,16 @@ for (let v316:number = 0; v316 < 5; v316++) {
     f230();
 }
 
-// case7: stackmapNum % 2
+// case7: extendClassType check
+const v1455:{} = ("boolean")[Symbol.iterator];
+try {
+    class C1723 extends v1455 {
+        [a1718];
+        static [v1705] = a1719;
+    }
+} catch (e) {}
+
+// case8: stackmapNum % 2
 let v39:any = 129 || C3;
 Math.sign("12");
 v39++;
