@@ -380,6 +380,8 @@ public:
 
     size_t GetArrayBufferSize() const;
 
+    size_t GetHeapLimitSize() const;
+
     uint32_t GetMaxMarkTaskCount() const
     {
         return maxMarkTaskCount_;
