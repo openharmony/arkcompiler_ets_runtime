@@ -495,7 +495,9 @@ void TSTypeParser::SetSuperClassType(const JSHandle<TSClassType> &classType,
         classType->SetHasLinked(true);
     } else {
         auto extensionGT = CreateGT(jsPandaFile, recordName, extendsTypeId);
-        classType->SetExtensionGT(extensionGT);
+        if (tsManager_->IsClassTypeKind(extensionGT)){
+            classType->SetExtensionGT(extensionGT);
+        }
         if (extensionGT.IsDefault()) {
             classType->SetHasLinked(true);
         }
