@@ -46,8 +46,6 @@ public:
     {
         // For FA jsvm, merge with existed output file
         encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
-        // InitData in appspawn
-        encoder_->InitializeData();
     }
 
     void SetBundleName(const std::string &bundleName)

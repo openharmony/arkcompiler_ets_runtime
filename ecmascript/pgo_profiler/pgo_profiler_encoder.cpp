@@ -36,14 +36,15 @@ static const std::string PROFILE_FILE_NAME = "/modules" + AP_SUFFIX;
 static const std::string RUNTIME_AP_PREFIX = "/rt_";
 void PGOProfilerEncoder::Destroy()
 {
-    if (!isInitialized_) {
+    pandaFileInfos_->Clear();
+    abcFilePool_->Clear();
+    if (!isProfilingInitialized_) {
         return;
     }
     PGOProfilerHeader::Destroy(&header_);
-    pandaFileInfos_.reset();
     globalRecordInfos_->Clear();
     globalRecordInfos_.reset();
-    isInitialized_ = false;
+    isProfilingInitialized_ = false;
 }
 
 bool PGOProfilerEncoder::ResetOutPathByModuleName(const std::string &moduleName)
@@ -72,24 +73,19 @@ bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
 
 bool PGOProfilerEncoder::InitializeData()
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         if (!ResetOutPath(PROFILE_FILE_NAME)) {
             return false;
         }
         PGOProfilerHeader::Build(&header_, PGOProfilerHeader::LastSize());
-        pandaFileInfos_ = std::make_unique<PGOPandaFileInfos>();
-        abcFilePool_ = std::make_unique<PGOAbcFilePool>();
         globalRecordInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
-        isInitialized_ = true;
+        isProfilingInitialized_ = true;
     }
     return true;
 }
 
 void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &abcName)
 {
-    if (!isInitialized_) {
-        return;
-    }
     WriteLockHolder lock(rwLock_);
     pandaFileInfos_->Sample(checksum);
     ApEntityId entryId(0);
@@ -98,7 +94,7 @@ void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &a
 
 bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entryId)
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return false;
     }
     ReadLockHolder lock(rwLock_);
@@ -107,7 +103,7 @@ bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entr
 
 bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return false;
     }
     os::memory::ReadLockHolder lock(rwLock_);
@@ -121,7 +117,7 @@ bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
 
 void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return;
     }
     LockHolder lock(mutex_);
@@ -147,7 +143,7 @@ bool PGOProfilerEncoder::VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFi
 
 bool PGOProfilerEncoder::Save()
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return false;
     }
     LockHolder lock(mutex_);
@@ -213,7 +209,7 @@ void PGOProfilerEncoder::RequestAot()
 bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return false;
     }
     return SaveAndRename(task);
@@ -246,7 +242,7 @@ void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
 
 void PGOProfilerEncoder::TerminateSaveTask()
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return;
     }
     Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
@@ -254,7 +250,7 @@ void PGOProfilerEncoder::TerminateSaveTask()
 
 void PGOProfilerEncoder::PostSaveTask()
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return;
     }
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
@@ -275,7 +271,7 @@ void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
 
 bool PGOProfilerEncoder::LoadAPTextFile(const std::string &inPath)
 {
-    if (!isInitialized_) {
+    if (!isProfilingInitialized_) {
         return false;
     }
     std::string realPath;
