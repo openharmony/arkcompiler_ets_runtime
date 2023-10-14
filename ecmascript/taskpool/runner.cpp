@@ -70,7 +70,7 @@ void Runner::SetQosPriority([[maybe_unused]] bool isForeground)
 #ifdef ENABLE_QOS
     if (isForeground) {
         for (uint32_t threadId : gcThreadId_) {
-            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::qos_user_initiated, threadId);
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, threadId);
         }
     } else {
         for (uint32_t threadId : gcThreadId_) {
