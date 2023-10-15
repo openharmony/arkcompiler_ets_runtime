@@ -75,4 +75,9 @@ try {
     }
 } catch (e) {}
 
+// case8: stackmapNum % 2
+let v39:any = 129 || C3;
+Math.sign("12");
+v39++;
+
 print("compiler success");
