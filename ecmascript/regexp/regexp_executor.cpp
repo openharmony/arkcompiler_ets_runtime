@@ -277,7 +277,7 @@ void RegExpExecutor::GetResult(JSThread *thread)
         } else {
             // undefined
             matchResult->SetStartOfCaptureIndex(thread, i, JSTaggedValue(0));
-            matchResult->SetEndOfCaptureIndex(thread, i, JSTaggedValue(-1)); 
+            matchResult->SetEndOfCaptureIndex(thread, i, JSTaggedValue(-1));
         }
     }
     uint32_t endIndex = currentPtr_ - input_;

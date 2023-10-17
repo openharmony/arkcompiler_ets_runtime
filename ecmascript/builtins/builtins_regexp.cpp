@@ -723,7 +723,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
         bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
         FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
         if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
-           inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
+            inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
         }
         const uint8_t *strBuffer;
         if (isUtf16) {
@@ -1641,7 +1641,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
     FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
     if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
-       inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
+        inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
     }
     const uint8_t *strBuffer;
     if (isUtf16) {
@@ -1880,7 +1880,7 @@ JSTaggedValue BuiltinsRegExp::RegExpExecForTestFast(JSThread *thread, JSHandle<J
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
     FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
     if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
-       inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
+        inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
     }
     const uint8_t *strBuffer;
     if (isUtf16) {
@@ -2453,7 +2453,7 @@ JSTaggedValue RegExpGlobalResult::CreateGlobalResultTable(JSThread *thread)
     // initialize match info
     table->SetTotalCaptureCounts(thread, JSTaggedValue(0));
     table->SetInputString(thread, emptyString);
-    for (uint32_t i = 0; i < INITIAL_CAPTURE_INDICES / 2; i++) {
+    for (uint32_t i = 0; i < INITIAL_CAPTURE_INDICES / 2; i++) { // 2: capture pair
         table->SetStartOfCaptureIndex(thread, i, JSTaggedValue(0));
         table->SetEndOfCaptureIndex(thread, i, JSTaggedValue(0));
     }
