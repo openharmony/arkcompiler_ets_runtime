@@ -78,7 +78,7 @@ function testTypeArray2(ctor) {
     }
     let child = Object.create(obj);
     for (let i = 0; i < 5; i++) {
-        result.push(child[i] == undefined);
+        result.push(child[i] == i);
     }
     for (let i = 0; i < result.length; i++) {
         if (!result[i]) {

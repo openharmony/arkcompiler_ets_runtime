@@ -2355,8 +2355,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&notLessThanLength);
                 {
-                    result = Hole();
-                    Jump(&exit);
+                    Jump(&loopExit);
                 }
             }
             Bind(&isDictionaryElement);
