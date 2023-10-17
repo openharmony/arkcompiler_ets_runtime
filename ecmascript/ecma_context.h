@@ -157,6 +157,7 @@ public:
         hostPromiseRejectionTracker_ = cb;
     }
     void SetupRegExpResultCache();
+    void SetupNumberToStringResultCache();
     JSHandle<JSTaggedValue> GetRegExpCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
@@ -202,6 +203,15 @@ public:
     bool GetAllowAtomicWait() const
     {
         return AllowAtomicWait_;
+    }
+    JSHandle<JSTaggedValue> GetNumberToStringResultCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&numberToStringResultCache_));
+    }
+
+    void SetNumberToStringResultCache(JSTaggedValue newCache)
+    {
+        numberToStringResultCache_ = newCache;
     }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
@@ -445,6 +455,7 @@ private:
 
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
+    JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
