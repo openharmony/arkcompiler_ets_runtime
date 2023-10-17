@@ -16,6 +16,7 @@
 #include "ecmascript/regexp/regexp_executor.h"
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/regexp/regexp_opcode.h"
@@ -23,7 +24,7 @@
 
 namespace panda::ecmascript {
 using RegExpState = RegExpExecutor::RegExpState;
-using MatchResult = RegExpExecutor::MatchResult;
+using RegExpGlobalResult = builtins::RegExpGlobalResult;
 bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t length, uint8_t *buf, bool isWideChar)
 {
     DynChunk buffer(buf, chunk_);
@@ -248,53 +249,42 @@ void RegExpExecutor::DumpResult(std::ostream &out) const
     }
 }
 
-MatchResult RegExpExecutor::GetResult(const JSThread *thread, bool isSuccess) const
+void RegExpExecutor::GetResult(JSThread *thread)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    MatchResult result;
-    std::vector<std::pair<bool, Capture>> captures;
-    result.isSuccess_ = isSuccess;
-    if (isSuccess) {
-        for (uint32_t i = 0; i < nCapture_; i++) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            CaptureState *captureState = &captureResultList_[i];
-            if (i == 0) {
-                result.index_ = captureState->captureStart - input_;
-                if (isWideChar_) {
-                    result.index_ /= WIDE_CHAR_SIZE;
-                }
-            }
-            int32_t len = captureState->captureEnd - captureState->captureStart;
-            std::pair<bool, Capture> pair;
-            if ((captureState->captureStart != nullptr && captureState->captureEnd != nullptr) && (len >= 0)) {
-                pair.first = false;
-                Capture capture;
-                if (isWideChar_) {
-                    pair.second.startIndex = (captureState->captureStart - input_) / WIDE_CHAR_SIZE;
-                    pair.second.endIndex = (captureState->captureEnd - input_) / WIDE_CHAR_SIZE;
-                    // create utf-16 string
-                    pair.second.capturedValue = factory->NewFromUtf16(
-                        reinterpret_cast<const uint16_t *>(captureState->captureStart), len / 2);
-                } else {
-                    // create utf-8 string
-                    pair.second.capturedValue =
-                        factory->NewFromUtf8(reinterpret_cast<const uint8_t *>(captureState->captureStart), len);
-                    pair.second.startIndex = captureState->captureStart - input_;
-                    pair.second.endIndex = captureState->captureEnd - input_;
-                }
+    JSHandle<RegExpGlobalResult> matchResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    matchResult->SetTotalCaptureCounts(thread, JSTaggedValue(nCapture_));
+    uint32_t firstIndex = RegExpGlobalResult::FIRST_CAPTURE_INDEX;
+    uint32_t availableCaptureSlot = matchResult->GetLength() - firstIndex;
+    uint32_t requiredLength =  nCapture_ * 2;
+    if (requiredLength > availableCaptureSlot) {
+        matchResult = RegExpGlobalResult::GrowCapturesCapacity(thread, matchResult, requiredLength + firstIndex);
+    }
+    for (uint32_t i = 0; i < nCapture_; i++) {
+        CaptureState *captureState = &captureResultList_[i];
+        int32_t len = captureState->captureEnd - captureState->captureStart;
+        if ((captureState->captureStart != nullptr && captureState->captureEnd != nullptr) && (len >= 0)) {
+            if (isWideChar_) {
+                matchResult->SetStartOfCaptureIndex(thread, i, JSTaggedValue(
+                    static_cast<int32_t>((captureState->captureStart - input_) / WIDE_CHAR_SIZE)));
+                matchResult->SetEndOfCaptureIndex(thread, i, JSTaggedValue(
+                    static_cast<int32_t>((captureState->captureEnd - input_) / WIDE_CHAR_SIZE)));
             } else {
-                // undefined
-                pair.first = true;
+                matchResult->SetStartOfCaptureIndex(thread, i, JSTaggedValue(
+                    static_cast<int32_t>(captureState->captureStart - input_)));
+                matchResult->SetEndOfCaptureIndex(thread, i, JSTaggedValue(
+                    static_cast<int32_t>(captureState->captureEnd - input_)));
             }
-            captures.emplace_back(pair);
-        }
-        result.captures_ = captures;
-        result.endIndex_ = currentPtr_ - input_;
-        if (isWideChar_) {
-            result.endIndex_ /= WIDE_CHAR_SIZE;
+        } else {
+            // undefined
+            matchResult->SetStartOfCaptureIndex(thread, i, JSTaggedValue(0));
+            matchResult->SetEndOfCaptureIndex(thread, i, JSTaggedValue(-1)); 
         }
     }
-    return result;
+    uint32_t endIndex = currentPtr_ - input_;
+    if (isWideChar_) {
+        endIndex /= WIDE_CHAR_SIZE;
+    }
+    matchResult->SetEndIndex(thread, JSTaggedValue(endIndex));
 }
 
 void RegExpExecutor::PushRegExpState(StateType type, uint32_t pc)

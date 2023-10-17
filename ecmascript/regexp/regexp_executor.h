@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_REGEXP_REGEXP_EXECUTOR_H
 #define ECMASCRIPT_REGEXP_REGEXP_EXECUTOR_H
 
+#include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/mem/regexp_cached_chunk.h"
 #include "ecmascript/js_handle.h"
@@ -40,20 +41,6 @@ public:
         uint32_t currentStack_ = 0;
         const uint8_t *currentPtr_ = nullptr;
         __extension__ CaptureState *captureResultList_[0];  // NOLINT(modernize-avoid-c-arrays)
-    };
-
-    struct Capture {
-        uint32_t startIndex = 0;
-        uint32_t endIndex = 0;
-        JSHandle<EcmaString> capturedValue;
-    };
-
-    struct MatchResult {
-        uint32_t endIndex_ = 0;
-        uint32_t index_ = 0;
-        // first value is true if result is undefined
-        std::vector<std::pair<bool, Capture>> captures_;
-        bool isSuccess_ = false;
     };
 
     explicit RegExpExecutor(RegExpCachedChunk *chunk) : chunk_(chunk)
@@ -650,7 +637,7 @@ public:
 
     void DumpResult(std::ostream &out) const;
 
-    MatchResult GetResult(const JSThread *thread, bool isSuccess) const;
+    void GetResult(JSThread *thread);
 
     void PushRegExpState(StateType type, uint32_t pc);
 

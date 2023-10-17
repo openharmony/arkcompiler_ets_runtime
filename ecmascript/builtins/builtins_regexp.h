@@ -103,8 +103,8 @@ private:
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
     static constexpr uint32_t LAST_INDEX_OFFSET = 0;
 
-    static RegExpExecutor::MatchResult Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                               const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
+    static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
 
     static bool GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                  const uint8_t mask);
@@ -271,7 +271,7 @@ public:
     {
         return reinterpret_cast<RegExpGlobalResult *>(object);
     }
-    static JSTaggedValue CreateGloablResultTable(JSThread *thread);
+    static JSTaggedValue CreateGlobalResultTable(JSThread *thread);
 
     void SetCapture(JSThread *thread, int index, JSTaggedValue value)
     {
@@ -279,17 +279,101 @@ public:
         Set(thread, CAPTURE_START_INDEX + index - 1, value);
     }
 
-    template <int N>
-    JSTaggedValue GetCapture()
+    void ResetDollar(JSThread *thread)
     {
-        return Get(CAPTURE_START_INDEX + N - 1);
+        for (uint32_t i = 0; i < DOLLAR_NUMBER; i++) {
+            Set(thread, CAPTURE_START_INDEX + i, JSTaggedValue::Hole());
+        }
     }
 
+    template <int N>
+    static JSTaggedValue GetCapture(JSThread *thread)
+    {
+        JSHandle<builtins::RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+        JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
+        int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
+        if (res.IsHole() && (N < captureNum)) {
+            uint32_t startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
+            uint32_t endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
+            uint32_t len = endIndex - startIndex;
+            if (len < 0) {
+                res = JSTaggedValue::Undefined();
+            } else {
+                res = JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
+                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())), startIndex, len));
+            }
+            globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
+        } else if (res.IsHole()) {
+            res = thread->GetEcmaVM()->GetFactory()->GetEmptyString().GetTaggedValue();
+            globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
+        }
+        return res;
+    }
+
+    void SetTotalCaptureCounts(JSThread *thread, JSTaggedValue counts)
+    {
+        Set(thread, TOTAL_CAPTURE_COUNTS_INDEX, counts);
+    }
+
+    JSTaggedValue GetTotalCaptureCounts()
+    {
+        return Get(TOTAL_CAPTURE_COUNTS_INDEX);
+    }
+
+    void SetEndIndex(JSThread *thread, JSTaggedValue endIndex)
+    {
+        Set(thread, END_INDEX, endIndex);
+    }
+
+    JSTaggedValue GetEndIndex()
+    {
+        return Get(END_INDEX);
+    }
+
+    void SetInputString(JSThread *thread, JSTaggedValue string)
+    {
+        Set(thread, INPUT_STRING_INDEX, string);
+    }
+
+    JSTaggedValue GetInputString()
+    {
+        return Get(INPUT_STRING_INDEX);
+    }
+
+    void SetStartOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
+    {
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2, value);
+    }
+
+    void SetEndOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
+    {
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2 + 1, value);
+    }
+
+    JSTaggedValue GetStartOfCaptureIndex(uint32_t index)
+    {
+        return Get(FIRST_CAPTURE_INDEX + index * 2);
+    }
+
+    JSTaggedValue GetEndOfCaptureIndex(uint32_t index)
+    {
+        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1);
+    }
+
+    static JSHandle<RegExpGlobalResult> GrowCapturesCapacity(JSThread *thread,
+        JSHandle<RegExpGlobalResult>result, uint32_t length);
+
+    static constexpr int FIRST_CAPTURE_INDEX = 12;  // capture index starts here
+
 private:
-    static constexpr int GLOBAL_TABLE_SIZE = 9;
+    static constexpr int GLOBAL_TABLE_SIZE = 12; // initial length
     static constexpr int DOLLAR_NUMBER = 9;
     static constexpr int CAPTURE_START_INDEX = 0;
-};
 
+    static constexpr int TOTAL_CAPTURE_COUNTS_INDEX = 9;  // save total capture size
+    static constexpr int INPUT_STRING_INDEX = 10; // save input string
+    static constexpr int END_INDEX = 11; // save last index
+    static constexpr int INITIAL_CAPTURE_INDICES = 18;  // length: pairs of capture start index and end index
+};
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_H
