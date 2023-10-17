@@ -1941,7 +1941,7 @@ JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 {
     ASSERT((flags & 0x80) == 0);  // 0x80: first bit of flags must be 0
     BUILTINS_API_TRACE(thread, RegExp, FlagsBitsToString);
-    uint8_t *flagsStr = new uint8_t[7];  // 7: maximum 6 flags + '\0'
+    uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
     size_t flagsLen = 0;
     if (flags & RegExpParser::FLAG_HASINDICES) {
         flagsStr[flagsLen] = 'd';
