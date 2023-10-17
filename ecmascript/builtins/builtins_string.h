@@ -72,7 +72,7 @@
     /* String.prototype.repeat ( count ) */                                         \
     V("repeat",            Repeat,            1, INVALID)                           \
     /* String.prototype.replace ( searchValue, replaceValue ) */                    \
-    V("replace",           Replace,           2, INVALID)                           \
+    V("replace",           Replace,           2, StringReplace)                     \
     /* String.prototype.replaceAll ( searchValue, replaceValue ) */                 \
     V("replaceAll",        ReplaceAll,        2, INVALID)                           \
     /* String.prototype.search ( regexp ) */                                        \

@@ -35,12 +35,15 @@ public:
     void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,
         const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf8String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf16String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
+    GateRef GetSubstitution(GateRef glue, GateRef searchString, GateRef thisString,
+        GateRef pos, GateRef replaceString);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
     void CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
     void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);

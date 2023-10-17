@@ -224,6 +224,21 @@ DEF_RUNTIME_STUBS(CopyArray)
     return factory->CopyArray(array, length.GetInt(), capacity.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(RTSubstitution)
+{
+    RUNTIME_STUBS_HEADER(RTSubstitution);
+    JSHandle<EcmaString> matched = GetHArg<EcmaString>(argv, argc, 0);     // 0: means the zeroth parameter
+    JSHandle<EcmaString> srcString = GetHArg<EcmaString>(argv, argc, 1);   // 1: means the first parameter
+    int position = GetArg(argv, argc, 2).GetInt();                         // 2: means the second parameter
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> captureList = factory->EmptyArray();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSHandle<EcmaString> replacement = GetHArg<EcmaString>(argv, argc, 3); // 3: means the third parameter
+    JSTaggedValue result = builtins::BuiltinsString::GetSubstitution(thread, matched, srcString, position,
+        captureList, undefined, replacement);
+    return result.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NameDictPutIfAbsent)
 {
     RUNTIME_STUBS_HEADER(NameDictPutIfAbsent);

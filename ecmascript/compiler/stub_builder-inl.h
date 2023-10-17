@@ -1342,6 +1342,12 @@ inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
     return ret;
 }
 
+inline GateRef StubBuilder::IsJSRegExp(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_REG_EXP)));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);

@@ -533,6 +533,104 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
     return ret;
 }
 
+void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+
+    Label objNotUndefinedAndNull(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label tagsDefined(env);
+        Label searchIsHeapObj(env);
+        Label replaceIsHeapObj(env);
+
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        Branch(Int64Equal(IntPtr(2), numArgs), &tagsDefined, slowPath); // 2: number of parameters. search & replace Tag
+        Bind(&tagsDefined);
+        {
+            Label next(env);
+
+            GateRef searchTag = GetCallArg0(numArgs);
+            Branch(TaggedIsHeapObject(searchTag), &searchIsHeapObj, slowPath);
+            Bind(&searchIsHeapObj);
+            GateRef replaceTag = GetCallArg1(numArgs);
+            Branch(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
+            Bind(&replaceIsHeapObj);
+            Branch(BoolOr(IsJSRegExp(searchTag), IsEcmaObject(searchTag)), slowPath, &next);
+            Bind(&next);
+            {
+                Label allAreStrings(env);
+                GateRef thisIsString = IsString(thisValue);
+                GateRef searchIsString = IsString(searchTag);
+                GateRef replaceIsString = IsString(replaceTag);
+                Branch(BoolAnd(BoolAnd(thisIsString, searchIsString), replaceIsString), &allAreStrings, slowPath);
+                Bind(&allAreStrings);
+                {
+                    Label replaceTagNotCallable(env);
+
+                    GateRef replaceTagIsCallable = IsCallable(replaceTag);
+
+                    Branch(replaceTagIsCallable, slowPath, &replaceTagNotCallable);
+                    Bind(&replaceTagNotCallable);
+                    {
+                        Label thisFlattenFastPath(env);
+                        Label searchFlattenFastPath(env);
+                        Label noReplace(env);
+                        Label nextProcess(env);
+
+                        FlatStringStubBuilder thisFlat(this);
+                        thisFlat.FlattenString(glue, thisValue, &thisFlattenFastPath);
+                        Bind(&thisFlattenFastPath);
+                        StringInfoGateRef thisStringInfoGate(&thisFlat);
+                        FlatStringStubBuilder searchFlat(this);
+                        searchFlat.FlattenString(glue, searchTag, &searchFlattenFastPath);
+                        Bind(&searchFlattenFastPath);
+                        StringInfoGateRef searchStringInfoGate(&searchFlat);
+                        GateRef pos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, Int32(-1));
+                        Branch(Int32Equal(pos, Int32(-1)), &noReplace, &nextProcess);
+                        Bind(&noReplace);
+                        {
+                            res->WriteVariable(thisValue);
+                            Jump(exit);
+                        }
+                        Bind(&nextProcess);
+                        {
+                            Label functionalReplaceFalse(env);
+
+                            Branch(replaceTagIsCallable, slowPath, &functionalReplaceFalse);
+                            Bind(&functionalReplaceFalse);
+                            {
+                                Label replHandleIsString(env);
+
+                                GateRef replHandle = GetSubstitution(glue, searchTag, thisValue, pos, replaceTag);
+                                Branch(IsString(replHandle), &replHandleIsString, slowPath);
+                                Bind(&replHandleIsString);
+                                {
+                                    GateRef tailPos = Int32Add(pos, searchStringInfoGate.GetLength());
+                                    GateRef prefixString = FastSubString(glue, thisValue, Int32(0),
+                                        pos, thisStringInfoGate);
+                                    GateRef thisLen = thisStringInfoGate.GetLength();
+                                    GateRef suffixString = FastSubString(glue, thisValue, tailPos,
+                                        Int32Sub(thisLen, tailPos), thisStringInfoGate);
+                                    GateRef tempStr = StringConcat(glue, prefixString, replHandle);
+                                    GateRef resultStr = StringConcat(glue, tempStr, suffixString);
+                                    res->WriteVariable(resultStr);
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)
 {
     auto env = GetEnvironment();
@@ -919,6 +1017,50 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from
             CopyChars(glue, dst, source1, len, IntPtr(sizeof(uint16_t)), VariableType::INT16());
             Jump(&exit);
         }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::GetSubstitution(GateRef glue, GateRef searchString, GateRef thisString,
+    GateRef pos, GateRef replaceString)
+{
+    auto env = GetEnvironment();
+
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label dollarFlattenFastPath(env);
+    Label replaceFlattenFastPath(env);
+    Label notFound(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    GateRef dollarString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::DOLLAR_INDEX);
+    FlatStringStubBuilder dollarFlat(this);
+    dollarFlat.FlattenString(glue, dollarString, &dollarFlattenFastPath);
+    Bind(&dollarFlattenFastPath);
+    StringInfoGateRef dollarStringInfoGate(&dollarFlat);
+    FlatStringStubBuilder replaceFlat(this);
+    replaceFlat.FlattenString(glue, replaceString, &replaceFlattenFastPath);
+    Bind(&replaceFlattenFastPath);
+    StringInfoGateRef replaceStringInfoGate(&replaceFlat);
+    GateRef nextDollarIndex = StringIndexOf(replaceStringInfoGate, dollarStringInfoGate, Int32(-1));
+    Branch(Int32LessThan(nextDollarIndex, Int32(0)), &notFound, &slowPath);
+    Bind(&notFound);
+    {
+        result = replaceString;
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(RTSubstitution),
+            {searchString, thisString, IntToTaggedInt(pos), replaceString});
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
