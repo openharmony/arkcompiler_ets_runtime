@@ -45,3 +45,6 @@ var result2 = "bπb".match(/(π)/du).indices;
 print(result2[0]);
 print(result2[1]);
 print(result2.groups);
+
+var regexpFlags = new RegExp("", "dgimsuy").flags;
+print(regexpFlags);
