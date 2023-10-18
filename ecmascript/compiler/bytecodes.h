@@ -72,7 +72,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 13;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 14;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
