@@ -673,6 +673,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                             hasChangedToDictionaryMode = true;
                             propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
                         }
+                        jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
@@ -685,7 +686,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                         continue;
                     }
                     PropertyAttributes attr = nameDic->GetAttributes(index);
-                    if (!attr.IsEnumerable()) {
+                    if (!attr.IsEnumerable() || index < 0) {
                         continue;
                     }
                     JSTaggedValue value = nameDic->GetValue(index);
@@ -693,6 +694,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                     JSHandle<JSTaggedValue>(obj));
+                        jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
