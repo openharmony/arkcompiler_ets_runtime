@@ -50,6 +50,7 @@ enum BytecodeFlags : uint32_t {
     READ_NEWTARGET = 1 << 10,
     READ_ARGC = 1 << 11,
     NO_GC = 1 << 12,
+    DEBUGGER_STMT = 1 << 13,
 };
 
 enum BytecodeKind : uint32_t {
@@ -219,6 +220,11 @@ public:
     bool IsCall() const
     {
         return GetKind() == BytecodeKind::CALL_BC;
+    }
+
+    bool IsDebuggerStmt() const
+    {
+        return HasFlag(BytecodeFlags::DEBUGGER_STMT);
     }
 
 private:
@@ -704,6 +710,11 @@ public:
     bool IsCall() const
     {
         return metaData_.IsCall();
+    }
+
+    bool IsDebuggerStmt() const
+    {
+        return metaData_.IsDebuggerStmt();
     }
 
     inline EcmaOpcode GetOpcode() const

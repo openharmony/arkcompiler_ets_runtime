@@ -275,6 +275,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             kind = BytecodeKind::RESUME;
             break;
         case EcmaOpcode::DEBUGGER:
+            flags |= BytecodeFlags::DEBUGGER_STMT;
+            break;
         case EcmaOpcode::NOP:
             kind = BytecodeKind::DISCARDED;
             flags |= BytecodeFlags::NO_SIDE_EFFECTS;
