@@ -26,13 +26,18 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
-    enum ApGenMode { OVERWRITE };
+    enum ApGenMode { OVERWRITE, MERGE };
 
     PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold, ApGenMode mode)
         : outDir_(outDir), hotnessThreshold_(hotnessThreshold), mode_(mode)
     {
         pandaFileInfos_ = std::make_unique<PGOPandaFileInfos>();
         abcFilePool_ = std::make_shared<PGOAbcFilePool>();
+    }
+
+    ~PGOProfilerEncoder()
+    {
+        Destroy();
     }
 
     NO_COPY_SEMANTIC(PGOProfilerEncoder);
@@ -62,6 +67,10 @@ public:
     void Merge(const PGOProfilerEncoder &encoder);
     bool VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                                 const std::string &incoming) const;
+    std::shared_ptr<PGOAbcFilePool> GetAbcFilePool() const
+    {
+        return abcFilePool_;
+    }
     void TerminateSaveTask();
     void PostSaveTask();
     void SetApGenMode(ApGenMode mode)
@@ -79,6 +88,8 @@ private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
     bool SaveAndRename(const SaveTask *task = nullptr);
+    void MergeWithExistProfile(PGOProfilerEncoder &runtimeEncoder, PGOProfilerDecoder &decoder,
+                               const SaveTask *task = nullptr);
     void RequestAot();
     bool ResetOutPath(const std::string& profileFileName);
 
