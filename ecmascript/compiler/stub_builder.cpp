@@ -4957,8 +4957,14 @@ GateRef StubBuilder::FastIntDiv(GateRef left, GateRef right, Label *bailout, Pro
     GateRef intRight = GetInt32OfTInt(right);
     Label exit(env);
     Label rightIsNotZero(env);
+    Label leftIsIntMin(env);
+    Label leftAndRightIsNotBoundary(env);
     Branch(Int32Equal(intRight, Int32(0)), bailout, &rightIsNotZero);
     Bind(&rightIsNotZero);
+    Branch(Int32Equal(intLeft, Int32(INT_MIN)), &leftIsIntMin, &leftAndRightIsNotBoundary);
+    Bind(&leftIsIntMin);
+    Branch(Int32Equal(intRight, Int32(-1)), bailout, &leftAndRightIsNotBoundary);
+    Bind(&leftAndRightIsNotBoundary);
     {
         Label leftIsZero(env);
         Label leftIsNotZero(env);
