@@ -66,3 +66,13 @@ for (let index = 0; index <= 30; index++) {
     foo();
 }
 print("test success")
+
+// Test instanceof when hasInstance is modified uncallable
+var instanceObj = {
+    [Symbol.hasInstance]: 1.1
+}
+try {
+    print({} instanceof instanceObj);
+} catch (e) {
+    print("CallbackFn is not callable");
+}

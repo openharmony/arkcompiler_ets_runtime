@@ -3669,6 +3669,9 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
     {
         Label valueIsCallable(env);
         Label valueNotCallable(env);
+        Label valueIsHeapObject(env);
+        Branch(TaggedIsHeapObject(value), &valueIsHeapObject, &valueNotCallable);
+        Bind(&valueIsHeapObject);
         Branch(IsCallable(value), &valueIsCallable, &valueNotCallable);
         Bind(&valueNotCallable);
         {
