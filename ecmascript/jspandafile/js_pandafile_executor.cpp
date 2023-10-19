@@ -224,10 +224,16 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 
-    QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
-    quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
+    Expected<JSTaggedValue, bool> result;
 
-    Expected<JSTaggedValue, bool> result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
+    if (context->GetStageOfHotReload() < 0) {
+        result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, excuteFromJob);
+    } else {
+        QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
+        quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
+
+        result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
+    }
     return result;
 }
 

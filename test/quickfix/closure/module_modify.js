@@ -13,26 +13,4 @@
  * limitations under the License.
  */
 
-var e2 = -10
-
-function A1() {
-    var a0 = 2
-    var a1 = 3
-    var a2 = 4
-    function B1() {
-        var b0 = 12
-        var b1 = 13
-        var b2 = 14
-        function C1() {
-            print("patch: " + e2)
-            print("patch: " + a0)
-            print("patch: " + a1)
-            print("patch: " + a2)
-            print("patch: " + b0)
-            print("patch: " + b1)
-            print("patch: " + b2)
-        }
-        C1()
-    }
-    B1()
-}
+export var nop = undefined

@@ -115,17 +115,22 @@ int Main(const int argc, const char **argv)
 
         arg_list_t entryList = base::StringHelper::SplitString(entry, ":");
         uint32_t size = entryList.size();
-        if (size != 2) { // 2: two entries
-            std::cout << "Must include 2 entries and with ':' to spilt" << std::endl;
+        uint32_t entryNum = 2; // 2: two entries, excluding coldpatch testcases.
+        if (size < entryNum) { // 2: two entries
+            std::cout << "Must include 2 entries at least and with ':' to spilt" << std::endl;
             JSNApi::DestroyJSVM(vm);
             return -1;
         }
 
-        auto res = JSNApi::Execute(vm, baseFileName, entryList[0]);
-        if (!res) {
-            std::cout << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
-            JSNApi::DestroyJSVM(vm);
-            return -1;
+        bool res = false;
+        if (size == entryNum) {
+            res = JSNApi::Execute(vm, baseFileName, entryList[0]);
+            if (!res) {
+                std::cout << "Cannot execute panda file '" << baseFileName <<
+                    "' with entry '" << entry << "'" << std::endl;
+                JSNApi::DestroyJSVM(vm);
+                return -1;
+            }
         }
         JSNApi::EnableUserUncaughtErrorHandler(vm);
 
@@ -141,8 +146,9 @@ int Main(const int argc, const char **argv)
             }
             std::cout << "QuickFix load patch success" << std::endl;
 
-            // cold patch
-            res = JSNApi::Execute(vm, baseFileName, entryList[1]); // 1: second entrypoint, for cold patch.
+            if (size > entryNum) {
+                res = JSNApi::Execute(vm, baseFileName, entryList[0]);
+            }
 
             res = JSNApi::Execute(vm, testLoadFileName, TEST_ENTRY_POINT);
             if (!res) {
@@ -151,28 +157,30 @@ int Main(const int argc, const char **argv)
                 break;
             }
 
-            std::cout << "QuickFix start check exception" << std::endl;
-            Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm);
-            res = JSNApi::IsQuickFixCausedException(vm, exception, patchFileName);
-            if (res) {
-                std::cout << "QuickFix have exception." << std::endl;
-            } else {
-                std::cout << "QuickFix have no exception" << std::endl;
-            }
+            if (size == entryNum) {
+                std::cout << "QuickFix start check exception" << std::endl;
+                Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm);
+                res = JSNApi::IsQuickFixCausedException(vm, exception, patchFileName);
+                if (res) {
+                    std::cout << "QuickFix have exception" << std::endl;
+                } else {
+                    std::cout << "QuickFix have no exception" << std::endl;
+                }
 
-            std::cout << "QuickFix start unload patch" << std::endl;
-            result = JSNApi::UnloadPatch(vm, patchFileName);
-            if (result != PatchErrorCode::SUCCESS) {
-                std::cout << "UnloadPatch failed!" << std::endl;
-                break;
-            }
-            std::cout << "QuickFix unload patch success" << std::endl;
+                std::cout << "QuickFix start unload patch" << std::endl;
+                result = JSNApi::UnloadPatch(vm, patchFileName);
+                if (result != PatchErrorCode::SUCCESS) {
+                    std::cout << "UnloadPatch failed!" << std::endl;
+                    break;
+                }
+                std::cout << "QuickFix unload patch success" << std::endl;
 
-            res = JSNApi::Execute(vm, testUnloadFileName, RETEST_ENTRY_POINT);
-            if (!res) {
-                std::cout << "Cannot execute panda file '" << testUnloadFileName
+                res = JSNApi::Execute(vm, testUnloadFileName, RETEST_ENTRY_POINT);
+                if (!res) {
+                    std::cout << "Cannot execute panda file '" << testUnloadFileName
                         << "' with entry '" << entry << "'" << std::endl;
-                break;
+                    break;
+                }
             }
         }
         std::cout << "QuickFix Execute end" << std::endl;
