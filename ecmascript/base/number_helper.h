@@ -128,6 +128,8 @@ class RandomGenerator {
 public:
     static void InitRandom();
     static double NextDouble();
+    static int32_t GenerateIdentityHash();
+    static int32_t Next(int bits);
 
 private:
     static uint64_t XorShift64(uint64_t *pVal);
