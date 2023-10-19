@@ -656,7 +656,8 @@ public:
                                                  base::AlignedBool,
                                                  base::AlignedBool,
                                                  base::AlignedUint32,
-                                                 JSTaggedValue> {
+                                                 JSTaggedValue,
+                                                 base::AlignedPointer> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -685,6 +686,7 @@ public:
             IsFrameDroppedIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
+            CurrentContextIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -829,6 +831,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
         }
 
+        static size_t GetCurrentContextOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -856,6 +863,7 @@ public:
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint32_t propertiesGrowStep_ {PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
+        alignas(EAS) EcmaContext *currentContext_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -864,7 +872,7 @@ public:
 
     EcmaContext *GetCurrentEcmaContext() const
     {
-        return currentContext_;
+        return glueData_.currentContext_;
     }
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
 
@@ -888,7 +896,7 @@ private:
     }
     void SetCurrentEcmaContext(EcmaContext *context)
     {
-        currentContext_ = context;
+        glueData_.currentContext_ = context;
     }
 
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
@@ -945,7 +953,6 @@ private:
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 
     CVector<EcmaContext *> contexts_;
-    EcmaContext *currentContext_ {nullptr};
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;

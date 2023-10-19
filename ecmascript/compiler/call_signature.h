@@ -427,6 +427,7 @@ private:
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(DoubleToLength)                       \
+    V(ComputeHashcode)                      \
     V(FloatMod)                             \
     V(FloatSqrt)                            \
     V(FloatCos)                             \

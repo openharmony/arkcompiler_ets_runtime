@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
@@ -123,52 +124,273 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
     Label exit(env);
     Label notExceedUpper(env);
     Label exceedUpper(env);
-    Label afterExceedCon(env);
     // 9 : Builtins Object properties number is nine
     Branch(Int32LessThanOrEqual(propsNum, Int32(9)), &notExceedUpper, &exceedUpper);
+    Bind(&notExceedUpper);
     {
-        Bind(&notExceedUpper);
-            Label loopHead(env);
-            Label loopEnd(env);
-            Label afterLoop(env);
-            Jump(&loopHead);
-            LoopBegin(&loopHead);
-            {
-                Label propsNumIsZero(env);
-                Label propsNumNotZero(env);
-                Branch(Int32Equal(propsNum, Int32(0)), &propsNumIsZero, &propsNumNotZero);
-                Bind(&propsNumIsZero);
-                Jump(&afterLoop);
-                Bind(&propsNumNotZero);
-                GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
-                GateRef keyInProperty = Load(VariableType::JS_ANY(),
-                                             elementAddr,
-                                             PtrMul(ZExtInt32ToPtr(*i),
-                                                    IntPtr(sizeof(panda::ecmascript::Properties))));
-                Label equal(env);
-                Label notEqual(env);
-                Label afterEqualCon(env);
-                Branch(Equal(keyInProperty, key), &equal, &notEqual);
-                Bind(&equal);
-                result = *i;
-                Jump(&exit);
-                Bind(&notEqual);
-                Jump(&afterEqualCon);
-                Bind(&afterEqualCon);
-                i = Int32Add(*i, Int32(1));
-                Branch(Int32UnsignedLessThan(*i, propsNum), &loopEnd, &afterLoop);
-                Bind(&loopEnd);
-                LoopEnd(&loopHead);
-            }
-            Bind(&afterLoop);
-            result = Int32(-1);
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label propsNumIsZero(env);
+            Label propsNumNotZero(env);
+            Branch(Int32Equal(propsNum, Int32(0)), &propsNumIsZero, &propsNumNotZero);
+            Bind(&propsNumIsZero);
+            Jump(&afterLoop);
+            Bind(&propsNumNotZero);
+            GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
+            GateRef keyInProperty = Load(VariableType::JS_ANY(), elementAddr,
+                                         PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(panda::ecmascript::Properties))));
+            Label equal(env);
+            Label notEqual(env);
+            Label afterEqualCon(env);
+            Branch(Equal(keyInProperty, key), &equal, &notEqual);
+            Bind(&equal);
+            result = *i;
             Jump(&exit);
-        Bind(&exceedUpper);
-        Jump(&afterExceedCon);
+            Bind(&notEqual);
+            Jump(&afterEqualCon);
+            Bind(&afterEqualCon);
+            i = Int32Add(*i, Int32(1));
+            Branch(Int32UnsignedLessThan(*i, propsNum), &loopEnd, &afterLoop);
+            Bind(&loopEnd);
+            LoopEnd(&loopHead);
+        }
+        Bind(&afterLoop);
+        result = Int32(-1);
+        Jump(&exit);
     }
-    Bind(&afterExceedCon);
-    result = CallNGCRuntime(glue, RTSTUB_ID(FindElementWithCache), { glue, hclass, key, propsNum });
-    Jump(&exit);
+    Bind(&exceedUpper);
+    Label find(env);
+    Label notFind(env);
+    GateRef cache = GetPropertiesCache(glue);
+    GateRef index = GetIndexFromPropertiesCache(glue, cache, hclass, key);
+    Branch(Int32Equal(index, Int32(PropertiesCache::NOT_FOUND)), &notFind, &find);
+    Bind(&notFind);
+    {
+        result = BinarySearch(glue, layoutInfo, key, propsNum);
+        SetToPropertiesCache(glue, cache, hclass, key, *result);
+        Jump(&exit);
+    }
+    Bind(&find);
+    {
+        result = index;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(PropertiesCache::NOT_FOUND));
+
+    Label exit(env);
+    Label find(env);
+    GateRef hash = HashFromHclassAndKey(glue, cls, key);
+    GateRef prop =
+        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
+    GateRef propHclass =
+        Load(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()));
+    GateRef propKey = Load(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()));
+    GateRef hclassIsEqual = IntPtrEqual(cls, propHclass);
+    GateRef keyIsEqual = IntPtrEqual(key, propKey);
+    Branch(BoolAnd(hclassIsEqual, keyIsEqual), &find, &exit);
+    Bind(&find);
+    {
+        result = Load(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(low, VariableType::INT32(), Int32(0));
+    Label exit(env);
+    GateRef elements = GetExtractLengthOfTaggedArray(layoutInfo);
+    DEFVARIABLE(high, VariableType::INT32(), Int32Sub(elements, Int32(1)));
+    DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(mid, VariableType::INT32(), Int32(-1));
+
+    GateRef keyHash = GetKeyHashCode(glue, key);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label midGreaterKey(env);
+    Label midnotGreaterKey(env);
+    Label midLessKey(env);
+    Label midEqualKey(env);
+    Label next(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32LessThanOrEqual(*low, *high), &next, &exit);
+        Bind(&next);
+        mid = Int32Add(*low, Int32Div(Int32Sub(*high, *low), Int32(2)));  // 2: half
+        GateRef midKey = GetSortedKey(layoutInfo, *mid);
+        GateRef midHash = GetKeyHashCode(glue, midKey);
+        Branch(Int32UnsignedGreaterThan(midHash, keyHash), &midGreaterKey, &midnotGreaterKey);
+        Bind(&midGreaterKey);
+        {
+            high = Int32Sub(*mid, Int32(1));
+            Jump(&loopEnd);
+        }
+        Bind(&midnotGreaterKey);
+        {
+            Branch(Int32UnsignedLessThan(midHash, keyHash), &midLessKey, &midEqualKey);
+            Bind(&midLessKey);
+            {
+                low = Int32Add(*mid, Int32(1));
+                Jump(&loopEnd);
+            }
+            Bind(&midEqualKey);
+            {
+                Label retIndex(env);
+                Label nextLoop(env);
+                DEFVARIABLE(sortIndex, VariableType::INT32(), GetSortedIndex(layoutInfo, *mid));
+                DEFVARIABLE(currentKey, VariableType::JS_ANY(), midKey);
+                Branch(IntPtrEqual(midKey, key), &retIndex, &nextLoop);
+                Bind(&retIndex);
+                {
+                    Label retSortIndex(env);
+                    Branch(Int32LessThan(*sortIndex, propsNum), &retSortIndex, &exit);
+                    Bind(&retSortIndex);
+                    {
+                        result = *sortIndex;
+                        Jump(&exit);
+                    }
+                }
+                Bind(&nextLoop);
+                {
+                    DEFVARIABLE(midLeft, VariableType::INT32(), *mid);
+                    DEFVARIABLE(midRight, VariableType::INT32(), *mid);
+                    Label loopHead1(env);
+                    Label loopEnd1(env);
+                    Label afterLoop1(env);
+                    Label nextCount(env);
+                    Jump(&loopHead1);
+                    LoopBegin(&loopHead1);
+                    {
+                        Branch(Int32GreaterThanOrEqual(Int32Sub(*midLeft, Int32(1)), Int32(0)),
+                            &nextCount, &afterLoop1);
+                        Bind(&nextCount);
+                        {
+                            Label hashEqual(env);
+                            midLeft = Int32Sub(*midLeft, Int32(1));
+                            sortIndex = GetSortedIndex(layoutInfo, *midLeft);
+                            currentKey = GetKey(layoutInfo, *sortIndex);
+                            Branch(Int32Equal(GetKeyHashCode(glue, *currentKey), keyHash), &hashEqual, &afterLoop1);
+                            Bind(&hashEqual);
+                            {
+                                Label retIndex1(env);
+                                Branch(IntPtrEqual(*currentKey, key), &retIndex1, &loopEnd1);
+                                Bind(&retIndex1);
+                                {
+                                    Label retSortIndex(env);
+                                    Branch(Int32LessThan(*sortIndex, propsNum), &retSortIndex, &exit);
+                                    Bind(&retSortIndex);
+                                    {
+                                        result = *sortIndex;
+                                        Jump(&exit);
+                                    }
+                                }
+                            }
+                        }
+                        Bind(&loopEnd1);
+                        {
+                            LoopEnd(&loopHead1);
+                        }
+                    }
+                    Bind(&afterLoop1);
+                    {
+                        Label loopHead2(env);
+                        Label loopEnd2(env);
+                        Label nextCount1(env);
+                        Jump(&loopHead2);
+                        LoopBegin(&loopHead2);
+                        {
+                            Branch(Int32LessThan(Int32Add(*midRight, Int32(1)), elements), &nextCount1, &exit);
+                            Bind(&nextCount1);
+                            {
+                                Label hashEqual(env);
+                                midRight = Int32Add(*midRight, Int32(1));
+                                sortIndex = GetSortedIndex(layoutInfo, *midRight);
+                                currentKey = GetKey(layoutInfo, *sortIndex);
+                                Branch(Int32Equal(GetKeyHashCode(glue, *currentKey), keyHash), &hashEqual, &exit);
+                                Bind(&hashEqual);
+                                {
+                                    Label retIndex2(env);
+                                    Branch(IntPtrEqual(*currentKey, key), &retIndex2, &loopEnd2);
+                                    Bind(&retIndex2);
+                                    {
+                                        Label retSortIndex(env);
+                                        Branch(Int32LessThan(*sortIndex, propsNum), &retSortIndex, &exit);
+                                        Bind(&retSortIndex);
+                                        {
+                                            result = *sortIndex;
+                                            Jump(&exit);
+                                        }
+                                    }
+                                }
+                            }
+                            Bind(&loopEnd2);
+                            {
+                                LoopEnd(&loopHead2);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Bind(&loopEnd);
+    {
+        LoopEnd(&loopHead);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetKeyHashCode(GateRef glue, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
+
+    Label exit(env);
+    Label isString(env);
+    Label isSymblo(env);
+    Branch(TaggedIsString(key), &isString, &isSymblo);
+    Bind(&isString);
+    {
+        result = GetHashcodeFromString(glue, key);
+        Jump(&exit);
+    }
+    Bind(&isSymblo);
+    {
+        result = GetInt32OfTInt(Load(VariableType::INT64(), key,
+            IntPtr(JSSymbol::HASHFIELD_OFFSET)));
+        Jump(&exit);
+    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -5806,7 +6028,7 @@ GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = GetInt32OfTInt(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), { value }));
+        hashcode = CallNGCRuntime(glue, RTSTUB_ID(ComputeHashcode), { value });
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
