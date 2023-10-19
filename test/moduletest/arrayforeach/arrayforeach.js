@@ -44,3 +44,9 @@ array4.forEach((item, index) => {
     func(item, index);
 });
 print("test arrayforeach success!!!");
+
+try {
+    [].forEach(1.1);
+} catch (e) {
+    print("CallbackFn is not callable")
+}

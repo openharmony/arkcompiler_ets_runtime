@@ -71,6 +71,9 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Bind(&thisIsEmpty);
     {
         Label isCallable(env);
+        Label isHeapObject(env);
+        Branch(TaggedIsHeapObject(GetCallArg0(numArgs)), &isHeapObject, slowPath);
+        Bind(&isHeapObject);
         Branch(IsCallable(GetCallArg0(numArgs)), &isCallable, slowPath);
         // Creates an empty array on fast path
         Bind(&isCallable);
@@ -86,6 +89,7 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
 {
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
+    Label isHeapObject(env);
     // Fast path if all the conditions below are satisfied:
     // (1) this is an empty array with constructor not reset (see ArraySpeciesCreate for details);
     // (2) callbackFn is callable (otherwise a TypeError shall be thrown in the slow path)
@@ -94,6 +98,8 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     // Do nothing on fast path
+    Branch(TaggedIsHeapObject(GetCallArg0(numArgs)), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Branch(IsCallable(GetCallArg0(numArgs)), exit, slowPath);
 }
 
