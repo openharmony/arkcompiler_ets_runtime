@@ -57,3 +57,12 @@ let o = {
     "f8":1,
 }
 print(JSON.stringify(o))
+let o2 = {
+    get g() {
+        delete this.f1;
+        return 8;    
+    },
+    "f1":1,
+    "f2":1,
+}
+print(JSON.stringify(o2))
