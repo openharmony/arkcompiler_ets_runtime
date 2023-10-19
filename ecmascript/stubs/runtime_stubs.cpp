@@ -271,7 +271,8 @@ DEF_RUNTIME_STUBS(PropertiesSetValue)
         properties = factory->NewTaggedArray(JSObject::MIN_PROPERTIES_LENGTH);
     } else {
         uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
-        uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(capacity, maxNonInlinedFastPropsCapacity);
+        uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(thread, capacity,
+            maxNonInlinedFastPropsCapacity);
         properties = factory->CopyArray(arrayHandle, capacity, newLen);
     }
     properties->Set(thread, index, valueHandle);

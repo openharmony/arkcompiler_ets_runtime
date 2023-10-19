@@ -190,6 +190,7 @@ public:
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
+    static constexpr int PROPERTIES_GROW_SIZE = 4;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
@@ -729,6 +730,16 @@ public:
         return ++globalNumberCount_;
     }
 
+    void SetPropertiesGrowStep(uint32_t step)
+    {
+        glueData_.propertiesGrowStep_ = step;
+    }
+
+    uint32_t GetPropertiesGrowStep() const
+    {
+        return glueData_.propertiesGrowStep_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -754,6 +765,7 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
+                                                 base::AlignedUint32,
                                                  JSTaggedValue> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -780,6 +792,7 @@ public:
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
             IsFrameDroppedIndex,
+            PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
             NumOfMembers
         };
@@ -900,6 +913,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
         }
 
+        static size_t GetPropertiesGrowStepOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::PropertiesGrowStepIndex)>(isArch32);
+        }
+
         static size_t GetEntryFrameDroppedStateOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
@@ -929,6 +947,7 @@ public:
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
+        alignas(EAS) uint32_t propertiesGrowStep_ {PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);

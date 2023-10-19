@@ -467,7 +467,8 @@ public:
     GateRef IsInternalString(GateRef string);
     GateRef IsDigit(GateRef ch);
     GateRef StringToElementIndex(GateRef glue, GateRef string);
-    GateRef ComputeNonInlinedFastPropsCapacity(GateRef oldLength, GateRef maxNonInlinedFastPropsCapacity);
+    GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
+                                               GateRef maxNonInlinedFastPropsCapacity);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     void TransitionForRepChange(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void TransitToElementsKind(GateRef glue, GateRef receiver, GateRef value, GateRef kind);

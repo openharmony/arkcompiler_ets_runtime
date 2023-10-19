@@ -360,11 +360,22 @@ public:
     }
 };
 
+class JSObjectResizingStrategy {
+public:
+    JSObjectResizingStrategy() = default;
+    virtual ~JSObjectResizingStrategy() = default;
+    virtual void UpdateGrowStep(JSThread *thread, uint32_t step) = 0;
+};
+
+class ThrouputJSObjectResizingStrategy : public JSObjectResizingStrategy {
+public:
+    virtual void UpdateGrowStep(JSThread *thread, uint32_t step) override;
+};
+
 class JSObject : public ECMAObject {
 public:
     static constexpr int MIN_ELEMENTS_LENGTH = 3;
     static constexpr int MIN_PROPERTIES_LENGTH = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
-    static constexpr int PROPERTIES_GROW_SIZE = 4;
     static constexpr int FAST_ELEMENTS_FACTOR = 3;
     static constexpr int MIN_GAP = 256;
     static constexpr int MAX_GAP = 1_KB;
@@ -665,7 +676,8 @@ private:
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
-    static uint32_t ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity, uint32_t maxNonInlinedFastPropsCapacity);
+    static uint32_t ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
+                                                       uint32_t maxNonInlinedFastPropsCapacity);
 
     static JSTaggedValue ShouldGetValueFromBox(ObjectOperator *op);
     static std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> GetOwnEnumerableNamesInFastMode(

@@ -85,6 +85,7 @@ class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
 class EcmaStringTable;
+class JSObjectResizingStrategy;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
@@ -466,6 +467,11 @@ public:
         return isProfiling_;
     }
 
+    JSObjectResizingStrategy *GetJSObjectResizingStrategy()
+    {
+        return strategy_;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -533,6 +539,7 @@ private:
     CpuProfiler *profiler_ {nullptr};
 #endif
     FunctionCallTimer *callTimer_ {nullptr};
+    JSObjectResizingStrategy *strategy_ {nullptr};
 
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
