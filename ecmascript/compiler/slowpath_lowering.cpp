@@ -189,7 +189,18 @@ void SlowPathLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool 
  */
 void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef value)
 {
-    acc_.ReplaceHirDirectly(hirGate, builder_.GetStateDepend(), value);
+    auto condition = builder_.HasPendingException(glue_);
+    GateRef state = builder_.GetState();
+    GateRef depend = builder_.GetDepend();
+    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
 
 void SlowPathLowering::Lower(GateRef gate)

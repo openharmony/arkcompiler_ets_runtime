@@ -905,9 +905,16 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         depend = gate;
 
         if (!bb.catchs.empty()) {
+            auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {gate});
+            auto ifException = circuit_->NewGate(circuit_->IfException(), {gate, gate});
             auto &bbNext = bb.catchs.at(0);
-            SetBlockPred(bb, *bbNext, gate, gate);
+            SetBlockPred(bb, *bbNext, ifException, ifException);
             bbNext->expandedPreds.push_back({bb.id, iterator.Index(), true});
+            auto constant = circuit_->GetConstantGate(MachineType::I64,
+                                                      JSTaggedValue::VALUE_EXCEPTION,
+                                                      GateType::TaggedValue());
+            circuit_->NewGate(circuit_->Return(),
+                { ifSuccess, depend, constant, circuit_->GetReturnRoot() });
         } else {
             auto constant = circuit_->GetConstantGate(MachineType::I64,
                                                       JSTaggedValue::VALUE_EXCEPTION,
