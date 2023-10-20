@@ -537,14 +537,17 @@ void StubBuilder::JSObjectSetProperty(
     return;
 }
 
-GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef oldLength, GateRef maxNonInlinedFastPropsCapacity)
+GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
+                                                        GateRef maxNonInlinedFastPropsCapacity)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-    GateRef newL = Int32Add(oldLength, Int32(JSObject::PROPERTIES_GROW_SIZE));
+    GateRef propertiesStep = Load(VariableType::INT32(), glue,
+        IntPtr(JSThread::GlueData::GetPropertiesGrowStepOffset(env->Is32Bit())));
+    GateRef newL = Int32Add(oldLength, propertiesStep);
     Label reachMax(env);
     Label notReachMax(env);
     Branch(Int32GreaterThan(newL, maxNonInlinedFastPropsCapacity), &reachMax, &notReachMax);
@@ -885,7 +888,8 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         Jump(&afterDictChangeCon);
                     }
                     Bind(&afterDictChangeCon);
-                    GateRef capacity = ComputeNonInlinedFastPropsCapacity(*length, maxNonInlinedFastPropsCapacity);
+                    GateRef capacity = ComputeNonInlinedFastPropsCapacity(glue, *length,
+                        maxNonInlinedFastPropsCapacity);
                     array = CallRuntime(glue, RTSTUB_ID(CopyArray),
                         { *array, IntToTaggedInt(*length), IntToTaggedInt(capacity) });
                     SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, *array);

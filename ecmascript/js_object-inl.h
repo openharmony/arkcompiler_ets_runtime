@@ -367,10 +367,10 @@ inline uint32_t JSObject::ComputeElementCapacityHighGrowth(uint32_t oldCapacity)
     return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
 }
 
-inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity,
+inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
                                                              uint32_t maxNonInlinedFastPropsCapacity)
 {
-    uint32_t newCapacity = static_cast<uint32_t>(oldCapacity + PROPERTIES_GROW_SIZE);
+    uint32_t newCapacity = oldCapacity + thread->GetPropertiesGrowStep();
     return newCapacity > maxNonInlinedFastPropsCapacity ? maxNonInlinedFastPropsCapacity : newCapacity;
 }
 

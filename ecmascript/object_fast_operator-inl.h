@@ -566,7 +566,8 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
                 return attr;
             }
             // Grow properties array size
-            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(length, maxNonInlinedFastPropsCapacity);
+            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(thread, length,
+                maxNonInlinedFastPropsCapacity);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             array.Update(factory->CopyArray(array, length, capacity).GetTaggedValue());
             objHandle->SetProperties(thread, array.GetTaggedValue());

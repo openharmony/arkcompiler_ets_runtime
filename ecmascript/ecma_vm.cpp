@@ -226,7 +226,7 @@ bool EcmaVM::Initialize()
     }
 
     callTimer_ = new FunctionCallTimer();
-
+    strategy_ = new ThrouputJSObjectResizingStrategy();
     initialized_ = true;
     return true;
 }
@@ -310,6 +310,11 @@ EcmaVM::~EcmaVM()
     if (callTimer_ != nullptr) {
         delete callTimer_;
         callTimer_ = nullptr;
+    }
+
+    if (strategy_ != nullptr) {
+        delete strategy_;
+        strategy_ = nullptr;
     }
 
     if (thread_ != nullptr) {
