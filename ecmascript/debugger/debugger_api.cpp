@@ -269,17 +269,6 @@ void DebuggerApi::RemoveAllBreakpoints(JSDebugger *debugger)
 {
     return debugger->RemoveAllBreakpoints();
 }
-
-void DebuggerApi::SetSingleStepStatusOnDebugger(JSDebugger *debugger, bool status)
-{
-    return debugger->SetSingleStepStatus(status);
-}
-
-bool DebuggerApi::GetSingleStepStatusOnDebugger(JSDebugger *debugger)
-{
-    return debugger->GetSingleStepStatus();
-}
-
 // ScopeInfo
 Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
                                              int32_t level, uint32_t slot)
