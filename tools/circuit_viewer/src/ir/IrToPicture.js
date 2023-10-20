@@ -98,9 +98,15 @@ class IrToPicture {
       if (type == 0) {//仅控制流
         if (this.nodeType(ir) != "control") continue;
       }
-      let name = ir.id + "," + ir.op;
+      let name;
       if (XTools.CONFIG.OpTypeJsBytecode.indexOf(ir.op) >= 0) {
         name = ir.id + "," + ir.bytecode;
+      }
+      else if (ir.typedop) {
+        name = ir.id + "," + ir.typedop;
+      }
+      else {
+        name = ir.id + "," + ir.op;
       }
       nodes[ir.id] = {
         type: this.nodeType(ir),
