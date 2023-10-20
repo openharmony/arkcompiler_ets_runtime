@@ -2206,6 +2206,7 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
             break;
         case EnumCacheKind::PROTOCHAIN:
             isEnumCacheValid = IsEnumCacheWithProtoChainInfoValid(obj);
+            break;
         default:
             break;
     }

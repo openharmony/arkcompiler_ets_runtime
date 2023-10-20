@@ -109,10 +109,11 @@ public:
             CVector<panda_file::File::EntityId> methodIds;
             panda_file::ClassDataAccessor cda(pandaFile, id);
             CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
-            // the recordName for testcases is empty
+            // Check record name in stage mode
             if (!jsPandaFile_->IsBundlePack()) {
+                // the recordName for testcases is empty
                 if (!debugRecordName.empty()) {
-                    auto iter = debugRecordName.find(std::string(recordName));
+                    auto iter = debugRecordName.find(std::string(recordName.c_str()));
                     if (iter == debugRecordName.end()) {
                         continue;
                     }

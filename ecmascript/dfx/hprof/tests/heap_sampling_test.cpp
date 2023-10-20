@@ -94,7 +94,7 @@ HWTEST_F_L0(HeapSamplingTest, ImplementSampling)
     int stackDepth = 128; // default depth
     std::unique_ptr<HeapSampling> heapSampling = std::make_unique<HeapSampling>(instance,
         const_cast<Heap *>(instance->GetHeap()), samplingInterval, stackDepth);
-    int size = 1 << 15; // default size
+    size_t size = 1U << 15U; // default size
     Address addr = 0;
     heapSampling->ImplementSampling(addr, size);
     const SamplingInfo *result = heapSampling->GetAllocationProfile();

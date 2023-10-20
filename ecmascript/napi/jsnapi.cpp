@@ -443,6 +443,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
+        LOG_ECMA(ERROR) << "[StartDebugger] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
 
@@ -451,7 +452,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle.Value(), "StartDebug");
     if (!sym) {
-        LOG_ECMA(ERROR) << sym.Error().ToString();
+        LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
