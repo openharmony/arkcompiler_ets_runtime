@@ -82,8 +82,8 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
     EXPECT_TRUE(patchFile != nullptr);
     EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile.get()) == baseFile.get());
 
-    [[maybe_unused]] auto *patchExtractor = hotReloadManager->GetPatchExtractor(sourceFile);
-    EXPECT_TRUE(patchExtractor != nullptr);
+    [[maybe_unused]] auto patchExtractors = hotReloadManager->GetPatchExtractors(sourceFile);
+    EXPECT_TRUE(!patchExtractors.empty());
 
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(ecmaVm);
     result = JSNApi::IsQuickFixCausedException(ecmaVm, exception, patchFileName);
@@ -92,6 +92,6 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
     res = JSNApi::UnloadPatch(ecmaVm, patchFileName);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
     EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile.get()) != baseFile.get());
-    EXPECT_TRUE(hotReloadManager->GetPatchExtractor(sourceFile) == nullptr);
+    EXPECT_TRUE(hotReloadManager->GetPatchExtractors(sourceFile).empty());
 }
 }  // namespace panda::test

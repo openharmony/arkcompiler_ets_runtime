@@ -52,11 +52,12 @@ const JSPandaFile *HotReloadManager::GetBaseJSPandaFile(const JSPandaFile *jsPan
     return iter->second;
 }
 
-DebugInfoExtractor *HotReloadManager::GetPatchExtractor(const std::string &url) const
+std::vector<DebugInfoExtractor *> HotReloadManager::GetPatchExtractors(const std::string &url) const
 {
+    std::vector<DebugInfoExtractor *> extractors;
     auto iter = patchExtractors_.find(url);
     if (iter == patchExtractors_.end()) {
-        return nullptr;
+        return extractors;
     }
     return iter->second;
 }
@@ -78,7 +79,7 @@ void HotReloadManager::ExtractPatch(const JSPandaFile *jsPandaFile)
             continue;
         }
         notificationMgr->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), recordName);
-        patchExtractors_[url] = patchExtractor;
+        patchExtractors_[url].emplace_back(patchExtractor);
     }
 }
 }  // namespace panda::ecmascript::tooling
