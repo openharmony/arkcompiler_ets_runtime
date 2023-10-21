@@ -164,7 +164,8 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
 void JSHClass::InitTSInheritInfo(const JSThread *thread)
 {
     // Supers and Level are used to record the relationship between TSHClass.
-    if (IsECMAObject()) {
+    if (ShouldSetDefaultSupers()) {
+        ASSERT(thread->GlobalConstants()->GetDefaultSupers().IsTaggedArray());
         SetSupers(thread, thread->GlobalConstants()->GetDefaultSupers());
     } else {
         SetSupers(thread, JSTaggedValue::Undefined());

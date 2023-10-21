@@ -540,6 +540,11 @@ public:
         return (JSType::ECMA_OBJECT_FIRST <= jsType && jsType <= JSType::ECMA_OBJECT_LAST);
     }
 
+    inline bool ShouldSetDefaultSupers() const
+    {
+        return IsECMAObject() || IsStringOrSymbol();
+    }
+
     inline bool IsRealm() const
     {
         return GetObjectType() == JSType::JS_REALM;
