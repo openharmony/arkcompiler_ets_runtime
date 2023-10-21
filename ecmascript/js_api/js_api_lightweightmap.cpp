@@ -475,6 +475,10 @@ int32_t JSAPILightWeightMap::Hash(JSTaggedValue key)
         int32_t hash = key.GetInt();
         return hash;
     }
+    if (key.IsBigInt()) {
+        uint32_t keyValue = BigInt::Cast(key.GetTaggedObject())->GetDigit(0);
+        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+    }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
 }
