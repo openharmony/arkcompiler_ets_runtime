@@ -110,10 +110,12 @@ public:
             panda_file::ClassDataAccessor cda(pandaFile, id);
             CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
             // the recordName for testcases is empty
-            if (!debugRecordName.empty()) {
-                auto iter = debugRecordName.find(std::string(recordName));
-                if (iter == debugRecordName.end()) {
-                    continue;
+            if (!jsPandaFile_->IsBundlePack()) {
+                if (!debugRecordName.empty()) {
+                    auto iter = debugRecordName.find(std::string(recordName));
+                    if (iter == debugRecordName.end()) {
+                        continue;
+                    }
                 }
             }
             cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
