@@ -39,12 +39,13 @@ public:
 
     GateType GetType(const int32_t offset) const;
     ElementsKind GetElementsKind(PGOSampleType type) const;
-    PGOSampleType GetOrUpdatePGOType(int32_t offset) const;
+    PGOSampleType GetPGOHclassLayoutInfo(int32_t offset) const;
     PGORWOpType GetRwOpType(int32_t offset) const;
     std::vector<ElementsKind> LoadElementsKinds(int32_t offset) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
     GateType GetCallTargetType(int32_t offset) const;
+    PGOSampleType GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) const;
     void BindPgoTypeToGateType(const JSPandaFile *jsPandaFile, TSManager *tsManager,
                                const MethodLiteral *methodLiteral) const;
 

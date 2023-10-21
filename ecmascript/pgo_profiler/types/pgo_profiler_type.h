@@ -194,10 +194,13 @@ public:
     PGOSampleTemplate CombineCallTargetType(PGOSampleTemplate type)
     {
         ASSERT(type_.index() == 1);
+        ProfileType::Kind oldKind = GetProfileType().GetKind();
+        ProfileType::Kind newKind = type.GetProfileType().GetKind();
         uint32_t oldMethodId = GetProfileType().GetId();
         uint32_t newMethodId = type.GetProfileType().GetId();
         // If we have recorded a valid method if before, invalidate it.
-        if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
+        if ((oldMethodId != 0) &&
+            ((oldKind != newKind) || (oldMethodId != newMethodId))) {
             type_ = ProfileType::PROFILE_TYPE_NONE;
         }
         return *this;

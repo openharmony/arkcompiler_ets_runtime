@@ -427,6 +427,16 @@ public:
         return enableStackSourceFile_;
     }
 
+    void SetEnableLazyBuiltins(bool value)
+    {
+        enableLazyBuiltins_ = value;
+    }
+
+    bool GetEnableLazyBuiltins() const
+    {
+        return enableLazyBuiltins_;
+    }
+
     static constexpr size_t GetGlueDataOffset()
     {
         return MEMBER_OFFSET(JSThread, glueData_);
@@ -877,6 +887,7 @@ public:
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
+    bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCache();
 
 private:
@@ -933,6 +944,7 @@ private:
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
+    bool enableLazyBuiltins_ {false};
 
     // CpuProfiler
     bool isProfiling_ {false};

@@ -25,6 +25,10 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_map.h"
+#include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_set_iterator.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 
@@ -934,6 +938,40 @@ void GetnextpropnameStubBuilder::GenerateCircuit()
     GateRef iter = TaggedArgument(1);
     GateRef result = NextInternal(glue, iter);
     Return(result);
+}
+
+void CreateJSSetIteratorStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
+    newBuilder.CreateJSCollectionIterator<JSSetIterator, JSSet>(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
+void CreateJSMapIteratorStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY_AND_VALUE));
+    newBuilder.CreateJSCollectionIterator<JSMapIterator, JSMap>(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

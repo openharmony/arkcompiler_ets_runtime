@@ -327,6 +327,41 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> kind = GetCallArg(info, 0);
+    if (!kind->IsString()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> mapString = factory->NewFromUtf8("Map");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
+        return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> setString = factory->NewFromUtf8("Set");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
+        return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> stringString = factory->NewFromUtf8("String");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
+        return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> arrayString = factory->NewFromUtf8("Array");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
+        return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8("TypedArray");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
+        return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     ClockScope scope;

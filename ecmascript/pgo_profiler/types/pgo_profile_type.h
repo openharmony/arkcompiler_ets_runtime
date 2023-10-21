@@ -41,6 +41,8 @@ public:
         ElementId,
         BuiltinsId,
         LegacyKind = BuiltinsId,
+        MethodId,           // method offset of js function
+        NativeFunctionId,   // function index of registered function
         LocalRecordId,
         ModuleRecordId,
         TotalKinds,
@@ -95,6 +97,16 @@ public:
     bool IsElementType() const
     {
         return GetKind() == Kind::ElementId;
+    }
+
+    bool IsMethodId() const
+    {
+        return GetKind() == Kind::MethodId;
+    }
+
+    bool IsNativeFunctionId() const
+    {
+        return GetKind() == Kind::NativeFunctionId;
     }
 
     uint32_t GetId() const

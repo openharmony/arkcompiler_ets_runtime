@@ -139,6 +139,7 @@ private:
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
     void LowerTypedTypeOf(GateRef gate);
+    void LowerGetIterator(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
@@ -168,6 +169,7 @@ private:
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                               BuiltinsStubCSigns::ID id, bool isThrow);
     BuiltinsStubCSigns::ID GetBuiltinId(BuiltinTypeId id, GateRef func);
+    bool TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj);
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);

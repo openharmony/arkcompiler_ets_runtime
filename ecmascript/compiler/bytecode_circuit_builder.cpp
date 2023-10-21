@@ -1302,7 +1302,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
                     ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
                     auto oldType = gateAcc_.GetGateType(ans);
                     if (!type.IsAnyType() && oldType.IsAnyType()) {
-                        typeRecorder_.GetOrUpdatePGOType(gateAcc_.TryGetPcOffset(ans));
+                        typeRecorder_.GetPGOHclassLayoutInfo(gateAcc_.TryGetPcOffset(ans));
                         gateAcc_.SetGateType(ans, type);
                     }
                     break;
@@ -1429,14 +1429,16 @@ void BytecodeCircuitBuilder::BuildCircuit()
 
             auto type = typeRecorder_.GetType(bcIndex);
             gateAcc_.SetGateType(gate, type);
-            auto pgoType = typeRecorder_.GetOrUpdatePGOType(gateAcc_.TryGetPcOffset(gate));
-            gateAcc_.TrySetPGOType(gate, pgoType);
+            uint32_t pcOffset = gateAcc_.TryGetPcOffset(gate);
+            EcmaOpcode opcode = bytecodeInfo.GetOpcode();
+            auto pgoTypeInfo = typeRecorder_.GetPGOTypeInfo(pcOffset, opcode);
+            gateAcc_.TrySetPGOType(gate, pgoTypeInfo);
 
             auto valueCount = gateAcc_.GetInValueCount(gate);
             [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
             [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();
             // RETURNUNDEFINED has value input, but not from acc
-            ASSERT(numValueInputs == valueCount || bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED);
+            ASSERT(numValueInputs == valueCount || opcode == EcmaOpcode::RETURNUNDEFINED);
             ASSERT(numValueOutputs <= 1 + (bytecodeInfo.EnvOut() ? 1 : 0));
             auto valueStarts = gateAcc_.GetInValueStarts(gate);
             for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
@@ -1455,7 +1457,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
                     GateRef defAcc = ResolveDef(bb, bcIndex, 0, true);
-                    if (!Bytecodes::IsCallOp(bytecodeInfo.GetOpcode())) {
+                    if (!Bytecodes::IsCallOp(opcode)) {
                         gateAcc_.NewIn(gate, inIdx, defAcc);
                         continue;
                     }

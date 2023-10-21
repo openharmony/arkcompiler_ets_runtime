@@ -116,6 +116,13 @@ namespace panda::ecmascript {
     V(Copyrestargs)                 \
     V(Trystobjprop)                 \
     V(GetTemplateObject)            \
+    V(CreateStringIterator)         \
+    V(NewJSArrayIterator)           \
+    V(NewJSTypedArrayIterator)      \
+    V(MapIteratorNext)              \
+    V(SetIteratorNext)              \
+    V(StringIteratorNext)           \
+    V(ArrayIteratorNext)            \
     V(GetIterator)                  \
     V(GetAsyncIterator)             \
     V(ThrowIfNotObject)             \

@@ -455,6 +455,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::CONSTRUCT:
+        case OpCode::TYPED_CALL_NATIVE:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());

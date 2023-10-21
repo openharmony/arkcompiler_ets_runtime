@@ -216,7 +216,7 @@ GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver,
     GateRef iter = NewJSObject(glue, hclass);
     // init JSForinIterator
     SetObjectOfForInIterator(glue, iter, receiver);
-    SetCachedHclassOFForInIterator(glue, iter, cachedHclass);
+    SetCachedHclassOfForInIterator(glue, iter, cachedHclass);
     SetKeysOfForInIterator(glue, iter, keys);
     SetIndexOfForInIterator(glue, iter, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
     GateRef length = GetLengthOfTaggedArray(keys);

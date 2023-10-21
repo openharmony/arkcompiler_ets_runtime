@@ -29,14 +29,18 @@ JSTaggedValue JSMapIterator::Next(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.Let O be the this value
-    JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
+    JSHandle<JSTaggedValue> thisObj(BuiltinsBase::GetThis(argv));
+    return NextInternal(thread, thisObj);
+}
 
+JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj)
+{
     // 3.If O does not have all of the internal slots of a Map Iterator Instance (23.1.5.3), throw a TypeError
     // exception.
-    if (!input->IsJSMapIterator()) {
+    if (!thisObj->IsJSMapIterator()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a map iterator", JSTaggedValue::Exception());
     }
-    JSHandle<JSMapIterator> iter(input);
+    JSHandle<JSMapIterator> iter(thisObj);
     iter->Update(thread);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 4.Let m be O.[[IteratedMap]].

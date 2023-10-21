@@ -66,7 +66,9 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotString,                      NOTSTRING)                    \
     V(InconsistentType,               INCONSISTENTTYPE)             \
     V(NotNull,                        NOTNULL)                      \
-    V(BuiltinPrototypeHClassMismatch, BUILTINPROTOHCLASSMISMATCH)
+    V(BuiltinPrototypeHClassMismatch, BUILTINPROTOHCLASSMISMATCH)   \
+    V(IteratorFunctionDisMactch,      ITERATORFUNCTIONDISMATCH)     \
+    V(NativeCallTargetDisMatch,       NATIVECALLTARGETDISMATCH)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

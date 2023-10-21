@@ -24,7 +24,7 @@
 #include "ecmascript/vtable.h"
 #include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
-
+using PGONativeFunctionId = panda::ecmascript::pgo::DumpUtils::PGONativeFunctionId;
 GateRef TypeMCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
@@ -132,6 +132,18 @@ GateRef TypeMCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::TYPE_OF:
             LowerTypeOf(gate, glue);
+            break;
+        case OpCode::ITERATOR_FUNCTION_CHECK:
+            LowerIteratorFunctionCheck(gate, glue);
+            break;
+        case OpCode::GET_FIXED_ITERATOR:
+            LowerGetFixedIterator(gate, glue);
+            break;
+        case OpCode::NATIVE_CALLTARGET_CHECK:
+            LowerNativeCallTargetCheck(gate);
+            break;
+        case OpCode::TYPED_CALL_NATIVE:
+            LowerTypedCallNative(gate, glue);
             break;
         default:
             break;
@@ -1678,6 +1690,142 @@ void TypeMCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
     }
 
     GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, builder_.GetGlobalConstantOffset(index));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeMCRLowering::LowerIteratorFunctionCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef iterKind = acc_.GetValueIn(gate, 1);
+    PGONativeFunctionId iterKindValue = static_cast<PGONativeFunctionId>(acc_.GetConstantValue(iterKind));
+    GateRef check = Circuit::NullGate();
+    switch (iterKindValue) {
+        case PGONativeFunctionId::MAP_PROTO_ITERATOR: {
+            check = builder_.BoolAnd(builder_.TaggedIsJSMap(obj), builder_.IsMapIteratorDetectorValid(glue));
+            break;
+        }
+        case PGONativeFunctionId::SET_PROTO_ITERATOR: {
+            check = builder_.BoolAnd(builder_.TaggedIsJSSet(obj), builder_.IsSetIteratorDetectorValid(glue));
+            break;
+        }
+        case PGONativeFunctionId::STRING_PROTO_ITERATOR: {
+            check = builder_.BoolAnd(builder_.TaggedIsString(obj), builder_.IsStringIteratorDetectorValid(glue));
+            break;
+        }
+        case PGONativeFunctionId::ARRAY_PROTO_ITERATOR: {
+            check = builder_.BoolAnd(builder_.TaggedIsJSArray(obj), builder_.IsArrayIteratorDetectorValid(glue));
+            break;
+        }
+        case PGONativeFunctionId::TYPED_ARRAY_PROTO_ITERATOR: {
+            check =
+                builder_.BoolAnd(builder_.TaggedIsTypedArray(obj), builder_.IsTypedArrayIteratorDetectorValid(glue));
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+    builder_.DeoptCheck(check, frameState, DeoptType::ITERATORFUNCTIONDISMATCH);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerGetFixedIterator(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef iterKind = acc_.GetValueIn(gate, 1);
+    PGONativeFunctionId iterKindValue = static_cast<PGONativeFunctionId>(acc_.GetConstantValue(iterKind));
+    GateRef result = Circuit::NullGate();
+    switch (iterKindValue) {
+        case PGONativeFunctionId::MAP_PROTO_ITERATOR: {
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSMapIterator, { glue, obj });
+            break;
+        }
+        case PGONativeFunctionId::SET_PROTO_ITERATOR: {
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSSetIterator, { glue, obj });
+            break;
+        }
+        case PGONativeFunctionId::STRING_PROTO_ITERATOR: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(CreateStringIterator), { obj }, true);
+            break;
+        }
+        case PGONativeFunctionId::ARRAY_PROTO_ITERATOR: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSArrayIterator), { obj }, true);
+            break;
+        }
+        case PGONativeFunctionId::TYPED_ARRAY_PROTO_ITERATOR: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSTypedArrayIterator), { obj }, true);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeMCRLowering::LowerNativeCallTargetCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef func = acc_.GetValueIn(gate, 0);
+    GateRef funcId = acc_.GetValueIn(gate, 1);
+    PGONativeFunctionId funcIdValue = static_cast<PGONativeFunctionId>(acc_.GetConstantValue(funcId));
+    size_t index = 0;
+    switch (funcIdValue) {
+        case PGONativeFunctionId::MAP_ITERATOR_PROTO_NEXT: {
+            index = GlobalEnv::MAP_ITERATOR_PROTO_NEXT_INDEX;
+            break;
+        }
+        case PGONativeFunctionId::SET_ITERATOR_PROTO_NEXT: {
+            index = GlobalEnv::SET_ITERATOR_PROTO_NEXT_INDEX;
+            break;
+        }
+        case PGONativeFunctionId::STRING_ITERATOR_PROTO_NEXT: {
+            index = GlobalEnv::STRING_ITERATOR_PROTO_NEXT_INDEX;
+            break;
+        }
+        case PGONativeFunctionId::ARRAY_ITERATOR_PROTO_NEXT: {
+            index = GlobalEnv::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef expectFunc = builder_.GetGlobalEnvObj(globalEnv, index);
+    GateRef check = builder_.Equal(func, expectFunc, "check calltarget");
+    builder_.DeoptCheck(check, frameState, DeoptType::NATIVECALLTARGETDISMATCH);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerTypedCallNative(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef funcId = acc_.GetValueIn(gate, 1);
+    PGONativeFunctionId funcIdValue = static_cast<PGONativeFunctionId>(acc_.GetConstantValue(funcId));
+    GateRef result = Circuit::NullGate();
+    switch (funcIdValue) {
+        case PGONativeFunctionId::MAP_ITERATOR_PROTO_NEXT: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(MapIteratorNext), { thisObj }, true);
+            break;
+        }
+        case PGONativeFunctionId::SET_ITERATOR_PROTO_NEXT: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SetIteratorNext), { thisObj }, true);
+            break;
+        }
+        case PGONativeFunctionId::STRING_ITERATOR_PROTO_NEXT: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(StringIteratorNext), { thisObj }, true);
+            break;
+        }
+        case PGONativeFunctionId::ARRAY_ITERATOR_PROTO_NEXT: {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArrayIteratorNext), { thisObj }, true);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript::kungfu
