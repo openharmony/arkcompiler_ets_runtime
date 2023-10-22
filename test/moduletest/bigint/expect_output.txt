@@ -21,3 +21,5 @@ RangeError
 RangeError
 SyntaxError
 0
+map val:4 key :9007199254740991
+hmap val:4 key :9007199254740991

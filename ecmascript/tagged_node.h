@@ -70,7 +70,10 @@ public:
             }
             return hash;
         }
-
+        if (key.IsBigInt()) {
+            uint32_t keyValue = BigInt::Cast(key.GetTaggedObject())->GetDigit(0);
+            return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+        }
         // Int, Double, Special and HeapObject(except symbol and string)
         uint64_t keyValue = key.GetRawData();
         return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));

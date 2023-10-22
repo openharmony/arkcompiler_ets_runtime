@@ -70,3 +70,26 @@ v49--;
 const v52 = (v49 >> v49).constructor;
 const t48 = v52.__defineSetter__;
 print(v52(v35));
+
+let map = new Map();
+let a = BigInt(9007199254740991);
+let b = BigInt(0x1fffffffffffff);
+let c = BigInt(0b11111111111111111111111111111111111111111111111111111);
+let d = BigInt(9007199254740991);
+map.set(a, '1');
+map.set(b, '2');
+map.set(c, '3');
+map.set(d, '4');
+map.forEach((val,key)=>{
+    print("map val:" + val, "key :" + key);
+})
+
+var HashMap = ArkPrivate.Load(ArkPrivate.HashMap);
+let hmap = new HashMap();
+hmap.set(a, '1');
+hmap.set(b, '2');
+hmap.set(c, '3');
+hmap.set(d, '4');
+hmap.forEach((val,key)=>{
+    print("hmap val:" + val, "key :" + key);
+})
