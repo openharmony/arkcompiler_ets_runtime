@@ -24,6 +24,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/waiter_list.h"
 #include "global_handle_collection.h"
@@ -425,11 +426,11 @@ public:
         cachedPatchModules_.clear();
     }
 
-    int32_t GetStageOfHotReload() const
+    StageOfHotReload GetStageOfHotReload() const
     {
         return stageOfHotReload_;
     }
-    void SetStageOfHotReload(int32_t stageOfHotReload)
+    void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
     {
         stageOfHotReload_ = stageOfHotReload;
     }
@@ -490,7 +491,7 @@ private:
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
-    int32_t stageOfHotReload_ = 0;
+    StageOfHotReload stageOfHotReload_ = StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD;
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};

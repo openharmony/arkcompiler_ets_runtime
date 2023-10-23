@@ -74,7 +74,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 {
     LOG_ECMA(DEBUG) << "execute main begin";
     EcmaContext *context = thread->GetCurrentEcmaContext();
-    context->SetStageOfHotReload(BEGIN_EXECUTE_PATCHMAIN);
+    context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
 
     const auto &replacedRecordNames = patchInfo.replacedRecordNames;
 
@@ -104,9 +104,9 @@ void PatchLoader::ExecuteFuncOrPatchMain(
     }
 
     if (loadPatch) {
-        context->SetStageOfHotReload(LOAD_END_EXECUTE_PATCHMAIN);
+        context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
     } else {
-        context->SetStageOfHotReload(UNLOAD_END_EXECUTE_PATCHMAIN);
+        context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
     LOG_ECMA(DEBUG) << "execute main end";
 }

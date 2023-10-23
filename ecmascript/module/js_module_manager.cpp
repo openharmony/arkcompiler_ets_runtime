@@ -115,8 +115,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
-        int32_t InterceptGetModuleValue = 1; // 1: for Interceptint get module var
-        if (context->GetStageOfHotReload() == InterceptGetModuleValue) {
+        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
                 context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
             if (!resolvedModuleOfHotReload->IsHole()) {

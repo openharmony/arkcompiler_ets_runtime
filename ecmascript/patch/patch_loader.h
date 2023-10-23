@@ -20,7 +20,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
@@ -58,6 +57,14 @@ struct PatchInfo {
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
 };
+
+enum class StageOfHotReload : int32_t {
+    BEGIN_EXECUTE_PATCHMAIN = -1, // -1: For intercepting Evaluate()
+    INITIALIZE_STAGE_OF_HOTRELOAD, // 0 : initialize stageOfHotreload_ in ecma_context.h
+    LOAD_END_EXECUTE_PATCHMAIN, // 1: for Interceptint get module var
+    UNLOAD_END_EXECUTE_PATCHMAIN // 2 :for execute abc normally
+};
+
 class PatchLoader {
 public:
     PatchLoader() = default;
@@ -90,10 +97,6 @@ private:
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
-
-    static constexpr int32_t BEGIN_EXECUTE_PATCHMAIN = -1; // -1: For intercepting Evaluate()
-    static constexpr int32_t LOAD_END_EXECUTE_PATCHMAIN = 1; // 1 :For intercepting get module value
-    static constexpr int32_t UNLOAD_END_EXECUTE_PATCHMAIN = 2; // 2 :for execute abc normally
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H
