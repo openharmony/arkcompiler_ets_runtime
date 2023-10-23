@@ -66,7 +66,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsFullMark();
-    auto cb = [&](ObjectSlot s, Region *rootRegion,bool needBarrier) {
+    auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);
     };
     auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,

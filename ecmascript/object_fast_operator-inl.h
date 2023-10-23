@@ -268,7 +268,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 return JSTaggedValue::Hole();
             }
             if (IsFastTypeArray(jsType)) {
-                return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, jsType);
+                return JSTypedArray::FastGetPropertyByIndex(thread, holder, index, jsType);
             }
             if (IsSpecialContainer(jsType)) {
                 return GetContainerProperty(thread, holder, index, jsType);
@@ -284,8 +284,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 if (!value.IsHole()) {
                     return value;
                 }
-            } else {
-                return JSTaggedValue::Hole();
             }
         } else {
             NumberDictionary *dict = NumberDictionary::Cast(elements);
