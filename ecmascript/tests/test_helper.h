@@ -117,8 +117,6 @@ public:
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
         scope = new EcmaHandleScope(thread);
-        auto globalEnv = instance->GetGlobalEnv();
-        methodFunction_ = instance->GetFactory()->NewJSFunction(globalEnv);
     }
 
     static inline void DestroyEcmaVMWithScope(EcmaVM *instance, EcmaHandleScope *scope)
@@ -126,13 +124,8 @@ public:
         delete scope;
         scope = nullptr;
         instance->SetEnableForceGC(false);
-        auto thread = instance->GetJSThread();
-        thread->ClearException();
         JSNApi::DestroyJSVM(instance);
     }
-
-private:
-    inline static ecmascript::JSHandle<ecmascript::JSFunction> methodFunction_;
 };
 }  // namespace panda::test
 #endif  // ECMASCRIPT_TESTS_TEST_HELPER_H
