@@ -107,6 +107,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "lcr_circuit_builder.cpp",
     "lcr_gate_meta_data.cpp",
     "lcr_lowering.cpp",
+    "lexical_env_specialization.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "loop_analysis.cpp",
