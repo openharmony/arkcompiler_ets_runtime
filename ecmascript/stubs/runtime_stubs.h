@@ -127,6 +127,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
+    V(ComputeHashcode)                    \
     V(JSHClassFindProtoTransitions)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
@@ -137,7 +138,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
-    V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
@@ -409,6 +409,7 @@ public:
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
+    static uint32_t ComputeHashcode(JSTaggedType ecmaString);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

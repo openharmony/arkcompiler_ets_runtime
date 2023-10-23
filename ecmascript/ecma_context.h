@@ -470,6 +470,7 @@ private:
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
+    PropertiesCache *propertiesCache_ {nullptr};
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
 
@@ -538,7 +539,6 @@ private:
     JSTaggedType *frameBase_ {nullptr};
     uint64_t stackStart_ {0};
     uint64_t stackLimit_ {0};
-    PropertiesCache *propertiesCache_ {nullptr};
     GlobalEnvConstants globalConst_;
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
