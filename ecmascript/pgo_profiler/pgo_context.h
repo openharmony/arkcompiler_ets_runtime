@@ -37,6 +37,7 @@ public:
     virtual uint32_t GetHotnessThreshold() const = 0;
     virtual PGOProfilerHeader *GetHeader() const = 0;
     virtual bool SupportElementsKind() const = 0;
+    virtual bool SupportElementsTrackInfo() const = 0;
 
 private:
     NO_COPY_SEMANTIC(PGOContext);

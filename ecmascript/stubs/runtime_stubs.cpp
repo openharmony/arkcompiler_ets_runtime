@@ -410,7 +410,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
             return JSTaggedValue::Hole().GetRawData();
         }
         auto trackInfoVal = array->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, kind);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
 }

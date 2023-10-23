@@ -938,6 +938,49 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
     unlink("ark-profiler20/modules.ap");
     rmdir("ark-profiler20/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
+{
+    mkdir("ark-profiler21/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "array_size_test";
+    ExecuteAndLoadJSPandaFile("ark-profiler21/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler21/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = pf_->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
+        decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                if (sampleType.IsProfileType()) {
+                    PGOHClassLayoutDesc *desc;
+                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                        return;
+                    }
+                    if (std::string(methodName) == "foo") {
+                        ASSERT_EQ(desc->GetArrayLength(), 4);
+                    } else if (std::string(methodName) == "foo1") {
+                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                    } else if (std::string(methodName) == "foo2") {
+                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                    }
+                }
+            }
+        };
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
+                            callback);
+    }
+    unlink("ark-profiler21/modules.ap");
+    rmdir("ark-profiler21/");
+}
 #endif
 
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -1083,8 +1126,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOHClassLayoutDescInnerLegacyCheckForWideClassType
     auto elementsKind = ElementsKind::HOLE_NUMBER;
     PGOHClassLayoutDesc desc;
     desc.SetElementsKind(elementsKind);
+    ElementsTrackInfo trackInfo;
     size_t size = PGOHClassLayoutDescInnerRef::CaculateSize(desc);
-    PGOHClassLayoutDescInnerRef layoutLegacy(size, sampleTypeLegacyClass, superSampleTypeLegacyClass, elementsKind);
+    PGOHClassLayoutDescInnerRef layoutLegacy(size, sampleTypeLegacyClass, superSampleTypeLegacyClass, elementsKind,
+                                             trackInfo);
 
     PGOHClassLayoutDesc descRecover = layoutLegacy.Convert(context);
 

@@ -445,7 +445,8 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     }
 }
 
-GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc)
+GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc,
+                                           RegionSpaceFlag spaceFlag, GateRef arraySize)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -463,6 +464,9 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
     Store(VariableType::JS_POINTER(), glue, *result, cachedHClassOffset, cachedHClass);
     GateRef cachedFuncOffset = IntPtr(TrackInfo::CACHED_FUNC_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, cachedFuncOffset, cachedFunc);
+    GateRef arrayLengthOffset = IntPtr(TrackInfo::ARRAY_LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, *result, arrayLengthOffset, arraySize);
+    SetSpaceFlagToTrackInfo(glue, *result, Int32(spaceFlag));
     auto elementsKind = GetElementsKindFromHClass(cachedHClass);
     SetElementsKindToTrackInfo(glue, *result, elementsKind);
     auto ret = *result;
@@ -669,7 +673,14 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
     Bind(&uninitialized);
     {
         auto hclass = LoadArrayHClassSlowPath(glue, jsFunc, pc, arrayLiteral, callback);
-        ret = NewTrackInfo(glue, hclass, jsFunc);
+        // emptyarray
+        if (arrayLiteral == Circuit::NullGate()) {
+            ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, Int32(0));
+        } else {
+            GateRef arrayLength = GetArrayLength(arrayLiteral);
+            ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, arrayLength);
+        }
+        
         SetValueToTaggedArray(VariableType::JS_POINTER(), glue, profileTypeInfo, slotId, *ret);
         callback.TryPreDump();
         Jump(&exit);

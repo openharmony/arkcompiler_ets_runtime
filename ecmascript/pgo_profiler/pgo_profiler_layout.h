@@ -21,6 +21,7 @@
 
 #include "ecmascript/elements.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
@@ -108,6 +109,18 @@ private:
 using PropertyDesc = std::pair<CString, PGOHandler>;
 using LayoutDesc = CVector<PropertyDesc>;
 
+struct ElementsTrackInfo {
+    std::string ToString() const
+    {
+        std::stringstream stream;
+            stream << "(size: " << arrayLength_ << ", " << ToSpaceTypeName(spaceFlag_) << ")";
+        return stream.str();
+    }
+
+    uint32_t arrayLength_ { 0 };
+    RegionSpaceFlag spaceFlag_ { RegionSpaceFlag::UNINITIALIZED };
+};
+
 class PGOHClassLayoutDesc {
 public:
     PGOHClassLayoutDesc() {};
@@ -153,9 +166,34 @@ public:
         return kind_;
     }
 
+    ElementsTrackInfo GetElementsTrackInfo() const
+    {
+        return elementTrackInfo_;
+    }
+
     void SetElementsKind(ElementsKind kind)
     {
         kind_ = kind;
+    }
+
+    uint32_t GetArrayLength() const
+    {
+        return elementTrackInfo_.arrayLength_;
+    }
+
+    void UpdateArrayLength(uint32_t size)
+    {
+        elementTrackInfo_.arrayLength_ = size;
+    }
+
+    RegionSpaceFlag GetSpaceFlag() const
+    {
+        return elementTrackInfo_.spaceFlag_;
+    }
+
+    void UpdateSpaceFlag(RegionSpaceFlag spaceFlag)
+    {
+        elementTrackInfo_.spaceFlag_ = spaceFlag;
     }
 
     bool FindProperty(const CString &key, PropertyDesc &desc) const
@@ -201,6 +239,7 @@ private:
 
     ProfileType type_;
     ProfileType superType_;
+    ElementsTrackInfo elementTrackInfo_;
     ElementsKind kind_;
     LayoutDesc layoutDesc_;
     LayoutDesc ptLayoutDesc_;
@@ -210,10 +249,12 @@ private:
 template <typename SampleType>
 class PGOHClassLayoutTemplate {
 public:
-    PGOHClassLayoutTemplate(size_t size, SampleType type, SampleType superType, ElementsKind kind)
+    PGOHClassLayoutTemplate(size_t size, SampleType type, SampleType superType, ElementsKind kind,
+        ElementsTrackInfo &trackInfo)
         : size_(size), type_(type), superType_(superType)
     {
         SetElementsKind(kind);
+        SetElementsTrackInfo(trackInfo);
     }
 
     static size_t CaculateSize(const PGOHClassLayoutDesc &desc)
@@ -240,6 +281,7 @@ public:
                 size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
             }
         }
+        size += sizeof(ElementsTrackInfo);
         size += sizeof(ElementsKind);
         return size;
     }
@@ -250,6 +292,9 @@ public:
         if (!desc.GetSuperProfileType().IsNone()) {
             text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
             text += desc.GetSuperProfileType().GetTypeString();
+        }
+        if (desc.GetArrayLength() > 0 && desc.GetSpaceFlag() != RegionSpaceFlag::UNINITIALIZED) {
+            text += desc.GetElementsTrackInfo().ToString();
         }
         if (!Elements::IsNone(desc.GetElementsKind())) {
             text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
@@ -378,6 +423,11 @@ public:
         if (context.SupportElementsKind()) {
             desc.SetElementsKind(GetElementsKind());
         }
+        if (context.SupportElementsTrackInfo()) {
+            auto trackInfo = GetElementsTrackInfo();
+            desc.UpdateArrayLength(trackInfo->arrayLength_);
+            desc.UpdateSpaceFlag(trackInfo->spaceFlag_);
+        }
         return desc;
     }
 
@@ -430,6 +480,18 @@ private:
     const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
     {
         return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+    }
+
+    void SetElementsTrackInfo(ElementsTrackInfo trackInfo)
+    {
+        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo) - sizeof(ElementsKind);
+        *reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset) = trackInfo;
+    }
+
+    ElementsTrackInfo* GetElementsTrackInfo()
+    {
+        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo) - sizeof(ElementsKind);
+        return reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset);
     }
 
     void SetElementsKind(ElementsKind kind)

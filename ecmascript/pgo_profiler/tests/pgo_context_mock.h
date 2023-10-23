@@ -57,6 +57,12 @@ public:
         return header_->SupportElementsKind();
     }
 
+    bool SupportElementsTrackInfo() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsTrackInfo();
+    }
+
 private:
     NO_COPY_SEMANTIC(PGOContextMock);
     NO_MOVE_SEMANTIC(PGOContextMock);

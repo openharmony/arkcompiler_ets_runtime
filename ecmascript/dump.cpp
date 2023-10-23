@@ -3189,6 +3189,8 @@ void ProtoChangeDetails::Dump(std::ostream &os) const
 void TrackInfo::Dump(std::ostream &os) const
 {
     os << " - ElementsKind: " << static_cast<uint32_t>(GetElementsKind()) << "\n";
+    os << " - ArrayLength: " << static_cast<uint32_t>(GetArrayLength()) << "\n";
+    os << " - SpaceFlag: " << static_cast<uint32_t>(GetSpaceFlag()) << "\n";
 }
 
 void MachineCode::Dump(std::ostream &os) const

@@ -647,13 +647,16 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
     return true;
 }
 
-bool PGORecordDetailInfos::UpdateElementsKind(PGOSampleType type, ElementsKind kind)
+bool PGORecordDetailInfos::UpdateElements(PGOSampleType type, ElementsKind kind, uint32_t size,
+                                          RegionSpaceFlag spaceFlag)
 {
     PGOHClassLayoutDesc descInfo(type.GetProfileType());
     auto iter = moduleLayoutDescInfos_.find(descInfo);
     if (iter != moduleLayoutDescInfos_.end()) {
         auto &oldDescInfo = const_cast<PGOHClassLayoutDesc &>(*iter);
         oldDescInfo.UpdateElementKind(kind);
+        oldDescInfo.UpdateArrayLength(size);
+        oldDescInfo.UpdateSpaceFlag(spaceFlag);
     } else {
         LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
@@ -806,6 +809,7 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
         }
         auto profileType = PGOSampleType(typeInfo.GetProfileType());
         auto elementsKind = typeInfo.GetElementsKind();
+        auto trackInfo = typeInfo.GetElementsTrackInfo();
         size_t size = PGOHClassLayoutDescInnerRef::CaculateSize(typeInfo);
         if (size == 0) {
             continue;
@@ -815,7 +819,7 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
         PGOSampleTypeRef classRef = PGOSampleTypeRef::ConvertFrom(*this, profileType);
         PGOSampleTypeRef superRef = PGOSampleTypeRef::ConvertFrom(*this, superType);
         void *addr = allocator->Allocate(size);
-        auto descInfos = new (addr) PGOHClassLayoutDescInnerRef(size, classRef, superRef, elementsKind);
+        auto descInfos = new (addr) PGOHClassLayoutDescInnerRef(size, classRef, superRef, elementsKind, trackInfo);
         descInfos->Merge(typeInfo);
         stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);

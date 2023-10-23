@@ -466,7 +466,7 @@ public:
     bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type,
                    PGOSampleType superType);
     bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
-    bool UpdateElementsKind(PGOSampleType type, ElementsKind kind);
+    bool UpdateElements(PGOSampleType type, ElementsKind kind, uint32_t size, RegionSpaceFlag spaceFlag);
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void UpdateLayout();
@@ -506,6 +506,12 @@ public:
     {
         ASSERT(header_ != nullptr);
         return header_->SupportElementsKind();
+    }
+
+    bool SupportElementsTrackInfo() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsTrackInfo();
     }
 
     NO_COPY_SEMANTIC(PGORecordDetailInfos);
@@ -660,6 +666,12 @@ public:
     {
         ASSERT(header_ != nullptr);
         return header_->SupportElementsKind();
+    }
+
+    bool SupportElementsTrackInfo() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsTrackInfo();
     }
 
     NO_COPY_SEMANTIC(PGORecordSimpleInfos);
