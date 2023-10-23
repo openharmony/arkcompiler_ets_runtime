@@ -1297,16 +1297,6 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
     return JSFunction::Invoke(info, searchTag);
 }
 
-int32_t ConvertAndClampRelativeIndex(int32_t index, int32_t length) {
-    int32_t relativeIndex = index >= 0 ? index : index + length;
-    if (relativeIndex < 0) {
-        return 0;
-    } else if (relativeIndex > length) {
-        return length;
-    }
-    return relativeIndex;
-}
-
 // 21.1.3.16
 JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
 {
@@ -1314,37 +1304,39 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, Slice);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto ecmaVm = thread->GetEcmaVM();
 
-    // 1. Let O be ? RequireObjectCoercible(this value).
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 2. Let S be ? ToString(O).
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 3. Let len be the number of elements in S.
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
-    // 4. Convert {start} to a relative index.
     JSHandle<JSTaggedValue> startTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t start = ConvertAndClampRelativeIndex(ConvertDoubleToInt(startVal.GetNumber()), thisLen);
-    // 5. If end is undefined, let intEnd be len;
-    //     else Convert {end} to a relative index.
+    int32_t start = ConvertDoubleToInt(startVal.GetNumber());
+    int32_t end = 0;
     JSHandle<JSTaggedValue> endTag = BuiltinsString::GetCallArg(argv, 1);
-    int32_t end = thisLen;
-    if (!endTag->IsUndefined()) {
+    if (endTag->IsUndefined()) {
+        end = thisLen;
+    } else {
         JSTaggedNumber endVal = JSTaggedValue::ToInteger(thread, endTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        end = ConvertAndClampRelativeIndex(ConvertDoubleToInt(endVal.GetNumber()), thisLen);
+        end = ConvertDoubleToInt(endVal.GetNumber());
     }
-
-    int32_t sliceLen = end - start;
-    if (sliceLen <= 0) {
-        return JSTaggedValue(EcmaStringAccessor::CreateEmptyString(ecmaVm));
+    int32_t from = 0;
+    int32_t to = 0;
+    if (start < 0) {
+        from = std::max(start + thisLen, 0);
+    } else {
+        from = std::min(start, thisLen);
     }
-
-    return JSTaggedValue(EcmaStringAccessor::FastSubString(ecmaVm, thisHandle, start, sliceLen));
+    if (end < 0) {
+        to = std::max(end + thisLen, 0);
+    } else {
+        to = std::min(end, thisLen);
+    }
+    int32_t len = std::max(to - from, 0);
+    return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisHandle, from, len));
 }
 
 // 21.1.3.17
