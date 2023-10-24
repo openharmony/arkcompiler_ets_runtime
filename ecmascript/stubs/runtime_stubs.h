@@ -142,6 +142,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
     V(CopyArray)                          \
+    V(RTSubstitution)                    \
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \

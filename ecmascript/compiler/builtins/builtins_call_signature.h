@@ -35,6 +35,7 @@ namespace panda::ecmascript::kungfu {
     V(StringCharCodeAt)                             \
     V(StringIndexOf)                                \
     V(StringSubstring)                              \
+    V(StringReplace)                                \
     V(StringCharAt)                                 \
     V(StringFromCharCode)                           \
     V(ObjectToString)                               \
