@@ -203,10 +203,9 @@ JSTaggedValue RuntimeStubs::RuntimeGetTemplateObject(JSThread *thread, const JSH
 JSTaggedValue RuntimeStubs::RuntimeGetNextPropName(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
 {
     ASSERT(iter->IsForinIterator());
-    std::pair<JSTaggedValue, bool> res =
-        JSForInIterator::NextInternal(thread, JSHandle<JSForInIterator>::Cast(iter));
+    JSTaggedValue res = JSForInIterator::NextInternal(thread, JSHandle<JSForInIterator>::Cast(iter));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return res.first;
+    return res;
 }
 
 JSTaggedValue RuntimeStubs::RuntimeIterNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
@@ -862,6 +861,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                   lexenv, ihclass, chclass);
     }
 
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread); 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return cls.GetTaggedValue();

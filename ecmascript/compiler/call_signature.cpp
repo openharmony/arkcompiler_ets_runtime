@@ -1748,6 +1748,20 @@ DEF_CALL_SIGNATURE(DoubleToLength)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ComputeHashcode)
+{
+    // 1 : 1 input parameters
+    CallSignature index("ComputeHashcode", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::JS_ANY(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters
@@ -2044,6 +2058,36 @@ DEF_CALL_SIGNATURE(CreateStringBySingleCharCode)
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::INT32(),           // charcode
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(Getpropiterator)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("Getpropiterator", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // object
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(Getnextpropname)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("Getnextpropname", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // iter
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

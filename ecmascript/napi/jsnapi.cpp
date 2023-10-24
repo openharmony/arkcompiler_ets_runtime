@@ -443,6 +443,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
+        LOG_ECMA(ERROR) << "[StartDebugger] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
 
@@ -451,7 +452,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle.Value(), "StartDebug");
     if (!sym) {
-        LOG_ECMA(ERROR) << sym.Error().ToString();
+        LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
@@ -654,6 +655,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", aot: " << jsOption.GetEnableAOT()
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     vm->ResetPGOProfiler();
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
@@ -855,11 +857,10 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     vm->SetResolveBufferCallback(cb);
 }
 
-void JSNApi::SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
-                    const std::string &moduleName,
-                    int32_t triggerMode)> &cb)
+void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t
+    (const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)> &cb)
 {
-    vm->SetRequestAotCallback(cb);
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetRequestAotCallback(cb);
 }
 
 void JSNApi::SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb)
@@ -2993,6 +2994,16 @@ Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> booleanObj(thread, JSTaggedValue(obj->ToBoolean()));
     return JSNApiHelper::ToLocal<BooleanRef>(booleanObj);
+}
+
+Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    JSHandle<JSTaggedValue> bigIntObj(thread, JSTaggedValue::ToBigInt(thread, obj));
+    return JSNApiHelper::ToLocal<BigIntRef>(bigIntObj);
 }
 
 Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)

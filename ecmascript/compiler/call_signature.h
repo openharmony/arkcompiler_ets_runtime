@@ -427,6 +427,7 @@ private:
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(DoubleToLength)                       \
+    V(ComputeHashcode)                      \
     V(FloatMod)                             \
     V(FloatSqrt)                            \
     V(FloatCos)                             \
@@ -464,6 +465,8 @@ private:
     V(GetSingleCharCodeByIndex)             \
     V(CreateStringBySingleCharCode)         \
     V(FastStringEqual)                      \
+    V(Getpropiterator)                      \
+    V(Getnextpropname)                      \
     V(JSHClassFindProtoTransitions)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

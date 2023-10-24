@@ -24,17 +24,17 @@
 namespace panda::ecmascript {
 inline const JSTaggedValue *GlobalEnvConstants::BeginSlot() const
 {
-    return &constants_[static_cast<int>(ConstantIndex::CONSTATNT_BEGIN)];
+    return &constants_[static_cast<int>(ConstantIndex::CONSTANT_BEGIN)];
 }
 
 inline const JSTaggedValue *GlobalEnvConstants::EndSlot() const
 {
-    return &constants_[static_cast<int>(ConstantIndex::CONSTATNT_END)];
+    return &constants_[static_cast<int>(ConstantIndex::CONSTANT_END)];
 }
 
 inline void GlobalEnvConstants::SetConstant(ConstantIndex index, JSTaggedValue value)
 {
-    DASSERT_PRINT(index >= ConstantIndex::CONSTATNT_BEGIN && index < ConstantIndex::CONSTATNT_END,
+    DASSERT_PRINT(index >= ConstantIndex::CONSTANT_BEGIN && index < ConstantIndex::CONSTANT_END,
                   "Root Index out of bound");
     constants_[static_cast<int>(index)] = value;
 }
@@ -42,7 +42,7 @@ inline void GlobalEnvConstants::SetConstant(ConstantIndex index, JSTaggedValue v
 template<typename T>
 inline void GlobalEnvConstants::SetConstant(ConstantIndex index, JSHandle<T> value)
 {
-    DASSERT_PRINT(index >= ConstantIndex::CONSTATNT_BEGIN && index < ConstantIndex::CONSTATNT_END,
+    DASSERT_PRINT(index >= ConstantIndex::CONSTANT_BEGIN && index < ConstantIndex::CONSTANT_END,
                   "Root Index out of bound");
     constants_[static_cast<int>(index)] = value.GetTaggedValue();
 }
@@ -54,7 +54,7 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
 
 // clang-format off
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_GET_IMPL(Type, Name, Index, Desc)                               \
+#define DECL_GET_IMPL_COMMON(Type, Name, Index)                              \
     inline const Type GlobalEnvConstants::Get##Name() const                  \
     {                                                                        \
         return constants_[static_cast<int>(ConstantIndex::Index)];           \
@@ -70,12 +70,18 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
             * static_cast<int>(ConstantIndex::Index);                        \
     }
 
-    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CACHES(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
-#undef DECL_GET_IMPL
+#define DECL_GET_IMPL_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_IMPL_COMMON(Type, Name, Index)
+    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)   // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)             // NOLINT(readability-const-return-type)
+
+#define DECL_GET_IMPL_STRING(Name, Index, Token) DECL_GET_IMPL_COMMON(JSTaggedValue, Name, Index)
+    GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
+#undef DECL_GET_IMPL_STRING
+
+#undef DECL_GET_IMPL_COMMON
 // clang-format on
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H

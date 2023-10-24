@@ -21,6 +21,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <string.h>
 
 #include "ecmascript/common.h"
@@ -536,12 +537,16 @@ public:
 
     void InitSections();
 
-    bool Match(const CString &recordName, EntityId methodId);
+    bool Match(const CString &abcNormalizedDesc, const CString &recordName, EntityId methodId);
 
     template <typename Callback>
-    void Update(Callback callback)
+    void Update(const CString &abcNormalizedDesc, Callback callback)
     {
-        for (auto iter = methodIds_.begin(); iter != methodIds_.end(); iter++) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        for (auto iter = abcMethodIds->second.begin(); iter != abcMethodIds->second.end(); iter++) {
             auto recordName = iter->first;
             auto methodIds = iter->second;
             methodIds->Update(recordName, callback);
@@ -549,35 +554,49 @@ public:
     }
 
     template <typename Callback>
-    void Update(const CString &recordName, Callback callback)
+    void Update(const CString &abcNormalizedDesc, const CString &recordName, Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->Update(recordName, callback);
         } else {
-            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
-            if (methodIds->Update(recordName, callback)) {
-                methodIds_.emplace(recordName, methodIds);
+            PGOMethodIdSet *methodIdSet = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
+            if (methodIdSet->Update(recordName, callback)) {
+                abcMethodIds->second.emplace(recordName, methodIdSet);
             } else {
-                nativeAreaAllocator_.Delete(methodIds);
+                nativeAreaAllocator_.Delete(methodIdSet);
             }
         }
     }
 
     template <typename Callback>
-    void GetTypeInfo(const CString &recordName, const char *methodName, Callback callback)
+    void GetTypeInfo(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                     Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->GetTypeInfo(methodName, callback);
         }
     }
 
     template <typename Callback>
-    void GetTypeInfo(const CString &recordName, const char *methodName, uint32_t checksum, Callback callback)
+    void GetTypeInfo(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                     uint32_t checksum, Callback callback)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             iter->second->GetTypeInfo(methodName, checksum, callback);
         }
     }
@@ -592,24 +611,33 @@ public:
         return false;
     }
 
-    void MatchAndMarkMethod(const CString &recordName, const char *methodName, EntityId methodId)
+    void MatchAndMarkMethod(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,
+                            EntityId methodId)
     {
-        auto iter = methodIds_.find(recordName);
-        if (iter != methodIds_.end()) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        auto iter = abcMethodIds->second.find(recordName);
+        if (iter != abcMethodIds->second.end()) {
             return iter->second->MatchAndMarkMethod(methodName, methodId);
         }
     }
 
-    void GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+    void GetMismatchResult(const CString &abcNormalizedDesc, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
     {
-        for (const auto &methodId : methodIds_) {
+        auto abcMethodIds = methodIds_.find(abcNormalizedDesc);
+        if (abcMethodIds == methodIds_.end()) {
+            return;
+        }
+        for (const auto &methodId : abcMethodIds->second) {
             methodId.second->GetMismatchResult(methodId.first, totalMethodCount, mismatchMethodCount,
                                                mismatchMethodSet);
         }
     }
 
-    void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
+    void ParseFromBinary(void *buffer, PGOProfilerHeader *const header, std::shared_ptr<PGOAbcFilePool> &abcFilePool);
 
     void Merge(const PGORecordSimpleInfos &simpleInfos);
 
@@ -643,7 +671,7 @@ private:
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
-    CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
+    CUnorderedMap<CString, CUnorderedMap<CString, PGOMethodIdSet *>> methodIds_;
     PGOProfilerHeader *header_ {nullptr};
     std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;

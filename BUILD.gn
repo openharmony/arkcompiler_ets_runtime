@@ -752,6 +752,7 @@ ecma_source = [
   "ecmascript/pgo_profiler/pgo_utils.cpp",
   "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.cpp",
   "ecmascript/pgo_profiler/types/pgo_profile_type.cpp",
+  "ecmascript/property_accessor.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm_stackmap_parser.cpp",
@@ -979,7 +980,7 @@ ohos_source_set("libark_jsruntime_set") {
   if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
     if (!is_cross_platform_build) {
       defines += [ "ENABLE_QOS" ]
-      external_deps += [ "frame_aware_sched:qos_manager" ]
+      external_deps += [ "qos_manager:qos" ]
     }
   }
 
@@ -1069,7 +1070,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
     if (!is_cross_platform_build) {
       defines += [ "ENABLE_QOS" ]
-      external_deps += [ "frame_aware_sched:qos_manager" ]
+      external_deps += [ "qos_manager:qos" ]
     }
   }
 
@@ -1218,4 +1219,13 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
   subsystem_name = "test"
+}
+
+ohos_prebuilt_etc("app_aot_white_list") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_aot_white_list.conf"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }

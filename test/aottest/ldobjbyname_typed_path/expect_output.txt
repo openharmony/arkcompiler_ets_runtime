@@ -1,0 +1,60 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Testing Array literal:
+  - get length:  3
+  - Array.prototype.reverse:      9,8,7
+  - Array.prototype.shift:        9
+Testing new Array():
+  - get length:  6
+  - Array.prototype.slice:        11,12,13
+  - Array.prototype.includes:     true
+Testing DataView:
+  - DataView.prototype.getInt32:    0
+  - DataView.prototype.getFloat32:  0
+Testing Date:
+  - Date.prototype.setFullYear:   1664156730000
+  - Date.prototype.toDateString:  Mon Sep 26 2022
+Testing Map:
+  - get size:  3
+  - Map.prototype.has:  false
+  - Map.prototype.get:  1
+Testing Set:
+  - get size:  3
+  - Set.prototype.has:  false
+Testing string literal:
+  - get length:  21
+  - String.prototype.charAt:      a
+  - String.prototype.substring:   string literal
+Testing new String():
+  - get length:  22
+  - String.prototype.indexOf:     7
+  - String.prototype.startsWith:  true
+Testing Int16Array:
+  - get length:  3
+  - Int16Array.prototype.indexOf:  2
+  - Int16Array.prototype.join:     1 - 2 - 3
+Testing BigUint64Array:
+  - get length:  3
+  - BigUint64Array.prototype.includes:     false
+  - BigUint64Array.prototype.lastIndexOf:  0
+Testing object literal with prototype changed (via obj.__proto__):
+  - obj.substring:  obj.substring
+Testing Array with prototype changed (via arr.__proto__):
+  - arr.substring:  arr.substring
+Testing with Array.prototype.pop changed to another function:
+  - Array.prototype.pop:  Array.prototype.pop changed to another function.
+Testing with Array.prototype.pop changed to a string:
+  - Array.prototype.pop:  Array.prototype.pop changed to a string.
+Testing with Array.prototype.pop changed to a getter:
+  - Array.prototype.pop:  Array.prototype.pop changed to a getter.

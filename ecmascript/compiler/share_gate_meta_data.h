@@ -19,15 +19,14 @@
 #include <string>
 
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/type.h"
+#include "ecmascript/elements.h"
+#include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
-
-#include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "libpandabase/macros.h"
-
-#include "ecmascript/compiler/share_opcodes.h"
 
 namespace panda::ecmascript::kungfu {
 using GateRef = int32_t;
@@ -40,33 +39,34 @@ enum class TypedLoadOp : uint8_t;
 enum class TypedStoreOp : uint8_t;
 enum class TypedCallTargetCheckOp : uint8_t;
 
-#define GATE_META_DATA_DEOPT_REASON(V)        \
-    V(NotInt, NOTINT)                         \
-    V(NotDouble, NOTDOUBLE)                   \
-    V(NotNumber, NOTNUMBER)                   \
-    V(NotBool, NOTBOOL)                       \
-    V(NotHeapObject, NOTHEAPOBJECT)           \
-    V(NotStableArray, NOTSARRAY)              \
-    V(NotArray, NOTARRAY)                     \
-    V(NotOnHeap, NOTONHEAP)                   \
-    V(InconsistentHClass, INCONSISTENTHCLASS) \
-    V(NotNewObj, NOTNEWOBJ)                   \
-    V(NotLegalIndex, NOTLEGALIDX)             \
-    V(NotIncOverflow, NOTINCOV)               \
-    V(NotDecOverflow, NOTDECOV)               \
-    V(NotNegativeOverflow, NOTNEGOV)          \
-    V(NotCallTarget, NOTCALLTGT)              \
-    V(NotJSCallTarget, NOTJSCALLTGT)          \
-    V(CowArray, COWARRAY)                     \
-    V(DivideZero, DIVZERO)                    \
-    V(InlineFail, INLINEFAIL)                 \
-    V(NotJSFastCallTarget, NOTJSFASTCALLTGT)  \
-    V(LexVarIsHole, LEXVARISHOLE)             \
-    V(ModZero, MODZERO)                       \
-    V(Int32Overflow, INT32OVERFLOW)           \
-    V(NotString, NOTSTRING)                   \
-    V(InconsistentType, INCONSISTENTTYPE)     \
-    V(NotNull, NOTNULL)
+#define GATE_META_DATA_DEOPT_REASON(V)                              \
+    V(NotInt,                         NOTINT)                       \
+    V(NotDouble,                      NOTDOUBLE)                    \
+    V(NotNumber,                      NOTNUMBER)                    \
+    V(NotBool,                        NOTBOOL)                      \
+    V(NotHeapObject,                  NOTHEAPOBJECT)                \
+    V(NotStableArray,                 NOTSARRAY)                    \
+    V(NotArray,                       NOTARRAY)                     \
+    V(NotOnHeap,                      NOTONHEAP)                    \
+    V(InconsistentHClass,             INCONSISTENTHCLASS)           \
+    V(NotNewObj,                      NOTNEWOBJ)                    \
+    V(NotLegalIndex,                  NOTLEGALIDX)                  \
+    V(NotIncOverflow,                 NOTINCOV)                     \
+    V(NotDecOverflow,                 NOTDECOV)                     \
+    V(NotNegativeOverflow,            NOTNEGOV)                     \
+    V(NotCallTarget,                  NOTCALLTGT)                   \
+    V(NotJSCallTarget,                NOTJSCALLTGT)                 \
+    V(CowArray,                       COWARRAY)                     \
+    V(DivideZero,                     DIVZERO)                      \
+    V(InlineFail,                     INLINEFAIL)                   \
+    V(NotJSFastCallTarget,            NOTJSFASTCALLTGT)             \
+    V(LexVarIsHole,                   LEXVARISHOLE)                 \
+    V(ModZero,                        MODZERO)                      \
+    V(Int32Overflow,                  INT32OVERFLOW)                \
+    V(NotString,                      NOTSTRING)                    \
+    V(InconsistentType,               INCONSISTENTTYPE)             \
+    V(NotNull,                        NOTNULL)                      \
+    V(BuiltinPrototypeHClassMismatch, BUILTINPROTOHCLASSMISMATCH)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -106,6 +106,15 @@ public:
         uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn)
         : opcode_(opcode), flags_(flags),
         statesIn_(statesIn), dependsIn_(dependsIn), valuesIn_(valuesIn) {}
+
+    virtual bool equal(const GateMetaData &other) const
+    {
+        if (opcode_ == other.opcode_ && kind_ == other.kind_ && flags_ == other.flags_ &&
+            statesIn_ == other.statesIn_ && dependsIn_ == other.dependsIn_ && valuesIn_ == other.valuesIn_) {
+            return true;
+        }
+        return false;
+    }
 
     size_t GetStateCount() const
     {
@@ -282,6 +291,18 @@ public:
         SetKind(GateMetaData::Kind::IMMUTABLE_BOOL);
     }
 
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const BoolMetaData *>(&other);
+        if (value_ == cast_other->value_) {
+            return true;
+        }
+        return false;
+    }
+
     static const BoolMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::IMMUTABLE_BOOL);
@@ -304,6 +325,18 @@ public:
         : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), value_(value)
     {
         SetKind(GateMetaData::Kind::IMMUTABLE_ONE_PARAMETER);
+    }
+
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const OneParameterMetaData *>(&other);
+        if (value_ == cast_other->value_) {
+            return true;
+        }
+        return false;
     }
 
     static const OneParameterMetaData* Cast(const GateMetaData* meta)
@@ -340,6 +373,22 @@ public:
             LOG_COMPILER(FATAL) << "StringMetaData strcpy_s failed";
         }
         SetKind(GateMetaData::Kind::MUTABLE_STRING);
+    }
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const StringMetaData *>(&other);
+        if (stringData_.size() != cast_other->GetString().size()) {
+            return false;
+        }
+
+        if (strncmp(stringData_.data(), cast_other->GetString().data(), stringData_.size()) != 0) {
+            return false;
+        }
+
+        return true;
     }
 
     const ChunkVector<char> &GetString() const
@@ -471,7 +520,8 @@ public:
         CREATE = 0,
         LOAD_ELEMENT,
         STORE_ELEMENT,
-        LOAD_LENGTH
+        LOAD_LENGTH,
+        CALL_BUILTIN_METHOD
     };
 
     static constexpr int BITS_SIZE = 8;
@@ -551,6 +601,29 @@ private:
     using IsHeapObjectBit = TypeBits::NextField<bool, IS_HEAP_OBJECT_BIT_SIZE>;
 
     uint64_t bitField_;
+};
+
+class BuiltinPrototypeHClassAccessor {
+public:
+    explicit BuiltinPrototypeHClassAccessor(uint64_t value): type_(value) {}
+    // Only valid indices accepted
+    explicit BuiltinPrototypeHClassAccessor(BuiltinTypeId type): type_(static_cast<uint64_t>(type))
+    {
+        ASSERT(BuiltinHClassEntries::GetEntryIndex(type) < BuiltinHClassEntries::N_ENTRIES);
+    }
+
+    BuiltinTypeId GetBuiltinTypeId() const
+    {
+        return static_cast<BuiltinTypeId>(type_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return type_;
+    }
+
+private:
+    uint64_t type_;
 };
 } // namespace panda::ecmascript::kungfu
 

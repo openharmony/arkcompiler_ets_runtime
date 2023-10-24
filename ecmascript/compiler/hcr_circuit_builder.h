@@ -125,6 +125,23 @@ GateRef CircuitBuilder::LoadHClass(GateRef object)
     return Load(VariableType::JS_POINTER(), object, offset);
 }
 
+GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef object)
+{
+    return LoadConstOffset(VariableType::JS_POINTER(), object, TaggedObject::HCLASS_OFFSET);
+}
+
+GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
+{
+    return LoadConstOffset(VariableType::JS_POINTER(), hclass, JSHClass::PROTOTYPE_OFFSET);
+}
+
+GateRef CircuitBuilder::LoadPrototypeHClass(GateRef object)
+{
+    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectPrototype = LoadPrototype(objectHClass);
+    return LoadHClass(objectPrototype);
+}
+
 GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     // NOTE: check for special case of string and TAGGED_ARRAY

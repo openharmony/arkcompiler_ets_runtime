@@ -78,9 +78,9 @@ class LogParser {
   }
   isStart(l) {
     //========= After bytecode2circuit lowering [func_main_0@484@arkcompiler/ets_runtime/sd_test/ttabs.abc] ========
-    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.]+)\] *=+/g
+    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.-]+)\] *=+/g
     //========= After inlining [OthreMath@test@arkcompiler/ets_runtime/sd_test/test.abc] Caller method [func_main_0@641@arkcompiler/ets_runtime/sd_test/test.abc]====================[0m
-    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
+    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.-]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
 
     if (l[11] != '=') {
       return;

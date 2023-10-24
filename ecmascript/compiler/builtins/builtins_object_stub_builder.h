@@ -31,10 +31,21 @@ public:
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     void ToString(Variable *result, Label *exit, Label *slowPath);
     void Create(Variable *result, Label *exit, Label *slowPath);
+    void Assign(Variable *result, Label *exit, Label *slowPath);
+    GateRef CloneObjectLiteral(GateRef glue, GateRef objLiteral);
+    GateRef CloneProperties(GateRef glue, GateRef old);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);
     GateRef TransProtoWithoutLayout(GateRef hClass, GateRef proto);
+    void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void NameDictionaryAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source,
+        GateRef properties);
+    void SlowAssign(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void FastAssign(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void AssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
+    void Assign(Variable *res, Label *nextIt, Label *funcExit, GateRef toAssign, GateRef source);
 
     GateRef glue_;
     GateRef thisValue_;

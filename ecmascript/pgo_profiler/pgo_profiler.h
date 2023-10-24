@@ -52,7 +52,8 @@ public:
 
     virtual ~PGOProfiler();
 
-    static ProfileType GetRecordProfileType(ApEntityId abcId, ApEntityId recordId);
+    static ProfileType GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId);
+    static ProfileType GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId);
     void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
 
@@ -220,9 +221,10 @@ private:
     };
 
     static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
-    ApEntityId GetRecordId(const CString &recordName);
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
+    ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
+                                     const CString &recordName);
 
     void Reset(bool isEnable);
 

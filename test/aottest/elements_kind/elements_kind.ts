@@ -48,3 +48,23 @@ function testObject() {
 
 testObject();
 
+class OrderedCollection {
+    elms: number[];
+    constructor() {
+      this.elms = [];
+    }
+    add(elm: number):void {
+      this.elms.push(elm);
+    }
+    
+    at(index: number):number{
+      return this.elms[index];
+    }
+}
+
+let constraints: OrderedCollection = new OrderedCollection();
+constraints.add(0);
+constraints.add(1);
+constraints.add(2);
+print(constraints.at(0));
+

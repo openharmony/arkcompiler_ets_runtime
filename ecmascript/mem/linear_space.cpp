@@ -270,6 +270,10 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         }
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
+        if (newCapacity == maximumCapacity_) {
+            heap_->GetEcmaVM()->GetJSObjectResizingStrategy()->UpdateGrowStep(heap_->GetJSThread(),
+                JSThread::PROPERTIES_GROW_SIZE * 2);
+        }
         return true;
     } else if (curObjectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
         if (initialCapacity_ <= minimumCapacity_) {
@@ -281,6 +285,8 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         }
         size_t newCapacity = initialCapacity_ / GROWING_FACTOR;
         SetInitialCapacity(std::max(newCapacity, minimumCapacity_));
+        heap_->GetEcmaVM()->GetJSObjectResizingStrategy()->UpdateGrowStep(heap_->GetJSThread(),
+            JSThread::PROPERTIES_GROW_SIZE);
         return true;
     }
     return false;

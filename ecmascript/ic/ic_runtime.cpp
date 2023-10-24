@@ -89,6 +89,16 @@ void ICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
     icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
 }
 
+void ICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
+{
+    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+        return;
+    }
+    JSHandle<JSTaggedValue> handlerValue = LoadHandler::LoadTypedArrayElement(thread_);
+    JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
+    icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+}
+
 void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                    JSHandle<JSTaggedValue> receiver)
 {
@@ -162,7 +172,9 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
     }
-
+    if (receiver->IsTypedArray()) {
+        return LoadTypedArrayValueMiss(receiver, key);
+    }
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
 
@@ -243,6 +255,45 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     return result.GetTaggedValue();
 }
 
+JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+{
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(GetThread(), key);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+    JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(GetThread(), propKey);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+    if (!numericIndex.IsUndefined()) {
+        if (!JSTypedArray::IsValidIntegerIndex(receiver, numericIndex) || !GetThread()->GetEcmaVM()->ICEnabled()) {
+            icAccessor_.SetAsMega();
+            return JSTaggedValue::GetProperty(GetThread(), receiver, propKey).GetValue().GetTaggedValue();
+        }
+        UpdateTypedArrayHandler(receiver);
+        JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
+        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
+        return JSTypedArray::FastGetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index, type);
+    } else {
+        ObjectOperator op(GetThread(), receiver, key);
+        auto result = JSHandle<JSTaggedValue>(GetThread(), JSObject::GetProperty(GetThread(), &op));
+        if (op.GetValue().IsInternalAccessor()) {
+            op = ObjectOperator(GetThread(), receiver, key);
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        // ic-switch
+        if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+            icAccessor_.SetAsMega();
+            return result.GetTaggedValue();
+        }
+        TraceIC(receiver, key);
+        // do not cache element
+        if (!op.IsFastMode()) {
+            icAccessor_.SetAsMega();
+            return result.GetTaggedValue();
+        }
+        UpdateLoadHandler(op, key, receiver);
+        return result.GetTaggedValue();
+    }
+}
+
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                         JSHandle<JSTaggedValue> value)
 {
@@ -250,6 +301,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         icAccessor_.SetAsMega();
         bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+    }
+    if (receiver->IsTypedArray()) {
+        return StoreTypedArrayValueMiss(receiver, key, value);
     }
 
     ICKind kind = GetICKind();
@@ -295,5 +349,49 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return JSTaggedValue::Undefined();
     }
     return JSTaggedValue::Exception();
+}
+
+JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                                       JSHandle<JSTaggedValue> value)
+{
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(GetThread(), key);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+    JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(GetThread(), propKey);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+    if (!numericIndex.IsUndefined()) {
+        if (!JSTypedArray::IsValidIntegerIndex(receiver, numericIndex) || value->IsECMAObject() ||
+            !GetThread()->GetEcmaVM()->ICEnabled()) {
+            icAccessor_.SetAsMega();
+            bool success = JSTaggedValue::SetProperty(GetThread(), receiver, propKey, value, true);
+            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+        }
+        UpdateTypedArrayHandler(receiver);
+        JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
+        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
+        return JSTypedArray::FastSetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index,
+                                                    value.GetTaggedValue(), type);
+    } else {
+        UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
+        ObjectOperator op(GetThread(), receiver, key);
+        bool success = JSObject::SetProperty(&op, value, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        // ic-switch
+        if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+            icAccessor_.SetAsMega();
+            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+        }
+        TraceIC(receiver, key);
+        // do not cache element
+        if (!op.IsFastMode()) {
+            icAccessor_.SetAsMega();
+            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+        }
+        if (success) {
+            UpdateStoreHandler(op, key, receiver);
+            return JSTaggedValue::Undefined();
+        }
+        return JSTaggedValue::Exception();
+    }
 }
 }  // namespace panda::ecmascript

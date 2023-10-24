@@ -46,6 +46,29 @@ public:
     {
         // For FA jsvm, merge with existed output file
         encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
+        // InitData in appspawn
+        encoder_->InitializeData();
+    }
+
+    void SetBundleName(const std::string &bundleName)
+    {
+        if (encoder_) {
+            encoder_->SetBundleName(bundleName);
+        }
+    }
+
+    void SetRequestAotCallback(const RequestAotCallback &cb)
+    {
+        requestAotCallback_ = cb;
+    }
+
+    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
+    {
+        if (requestAotCallback_ == nullptr) {
+            LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
+            return false;
+        }
+        return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
     }
 
     void Destroy()
@@ -118,6 +141,14 @@ public:
     {
         if (encoder_) {
             return encoder_->GetPandaFileId(abcName, entryId);
+        }
+        return false;
+    }
+
+    bool GetPandaFileDesc(ApEntityId abcId, CString &desc) const
+    {
+        if (encoder_) {
+            return encoder_->GetPandaFileDesc(abcId, desc);
         }
         return false;
     }
@@ -206,6 +237,7 @@ private:
     }
 
     std::unique_ptr<PGOProfilerEncoder> encoder_;
+    RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
     os::memory::Mutex mutex_;
     std::set<std::shared_ptr<PGOProfiler>> profilers_;

@@ -1871,14 +1871,15 @@ void JSForInIterator::Dump(std::ostream &os) const
 {
     os << " - Object : ";
     GetObject().DumpTaggedValue(os);
+    os << " - CachedHclass : ";
+    GetCachedHclass().DumpTaggedValue(os);
     os << "\n";
-    os << " - WasVisited : " << GetWasVisited();
+    os << " - Keys : ";
+    GetKeys().DumpTaggedValue(os);
     os << "\n";
-    os << " - VisitedObjs : ";
-    GetVisitedObjs().DumpTaggedValue(os);
+    os << " - Index : " << GetIndex();
     os << "\n";
-    os << " - RemainingKeys : ";
-    GetRemainingKeys().DumpTaggedValue(os);
+    os << " - Length : " << GetLength();
     os << "\n";
     JSObject::Dump(os);
 }
@@ -4557,9 +4558,10 @@ void JSMap::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSForInIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Object"), GetObject());
-    vec.emplace_back(CString("WasVisited"), JSTaggedValue(GetWasVisited()));
-    vec.emplace_back(CString("VisitedObjs"), GetVisitedObjs());
-    vec.emplace_back(CString("RemainingKeys"), GetRemainingKeys());
+    vec.emplace_back(CString("CachedHclass"), GetCachedHclass());
+    vec.emplace_back(CString("Keys"), GetKeys());
+    vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
     JSObject::DumpForSnapshot(vec);
 }
 

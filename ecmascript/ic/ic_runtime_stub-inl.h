@@ -115,6 +115,8 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByValue(JSThread *thread, JSTag
         if (firstValue.GetWeakReferentUnChecked() == hclass) {
             if (HandlerBase::IsElement(secondValue.GetInt())) {
                 return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+            } else if (HandlerBase::IsTypedArrayElement(secondValue.GetInt())) {
+                return LoadTypedArrayElement(thread, receiver, key);
             }
             ASSERT(HandlerBase::IsStringElement(secondValue.GetInt()));
             return LoadStringElement(thread, receiver, key);
@@ -310,7 +312,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
             } else {
                 auto arrayHandle = JSHandle<TaggedArray>(thread, array);
                 uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
-                uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(capacity,
+                uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(thread, capacity,
                                                                                maxNonInlinedFastPropsCapacity);
                 properties = factory->CopyArray(arrayHandle, capacity, newLen);
             }
@@ -443,6 +445,8 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
             return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+        } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
+            return LoadTypedArrayElement(thread, receiver, key);
         }
         ASSERT(HandlerBase::IsStringElement(handlerInfo));
         return LoadStringElement(thread, receiver, key);
@@ -488,6 +492,22 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadStringElement(JSThread *thread, JSTa
     return value.GetTaggedValue();
 }
 
+ARK_INLINE JSTaggedValue ICRuntimeStub::LoadTypedArrayElement(JSThread *thread, JSTaggedValue receiver,
+                                                              JSTaggedValue key)
+{
+    auto index = TryToElementsIndex(key);
+    if (index < 0) {
+        return JSTaggedValue::Hole();
+    }
+    auto typedarrayObj = JSTypedArray::Cast(receiver.GetTaggedObject());
+    uint32_t arrLen = typedarrayObj->GetArrayLength();
+    if (index >= arrLen) {
+        return JSTaggedValue::Hole();
+    }
+    JSType type = typedarrayObj->GetJSHClass()->GetObjectType();
+    return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, type);
+}
+
 JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, JSTaggedValue key,
                                           JSTaggedValue value, JSTaggedValue handler)
 {
@@ -501,7 +521,9 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<JSObject> receiverHandle(thread, receiver);
-        if (HandlerBase::IsJSArray(handlerInfo)) {
+        if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
+            return StoreTypedArrayElement(thread, JSTaggedValue::Cast(receiver), key, value);
+        } else if (HandlerBase::IsJSArray(handlerInfo)) {
             JSTaggedValue receiveValue = receiverHandle.GetTaggedValue();
             if (receiveValue.IsJSCOWArray()) {
                 // Copy on write array.
@@ -539,6 +561,22 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         return StoreElement(thread, receiver, key, value, handlerInfo);
     }
     return JSTaggedValue::Undefined();
+}
+
+ARK_INLINE JSTaggedValue ICRuntimeStub::StoreTypedArrayElement(JSThread *thread, JSTaggedValue receiver,
+                                                               JSTaggedValue key, JSTaggedValue value)
+{
+    auto index = TryToElementsIndex(key);
+    if (index < 0) {
+        return JSTaggedValue::Hole();
+    }
+    auto typedarrayObj = JSTypedArray::Cast(receiver.GetTaggedObject());
+    uint32_t arrLen = typedarrayObj->GetArrayLength();
+    if (index >= arrLen) {
+        return JSTaggedValue::Hole();
+    }
+    JSType type = typedarrayObj->GetJSHClass()->GetObjectType();
+    return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, type);
 }
 
 ARK_INLINE int64_t ICRuntimeStub::TryToElementsIndex(JSTaggedValue key)

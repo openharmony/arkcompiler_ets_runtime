@@ -226,7 +226,7 @@ bool EcmaVM::Initialize()
     }
 
     callTimer_ = new FunctionCallTimer();
-
+    strategy_ = new ThrouputJSObjectResizingStrategy();
     initialized_ = true;
     return true;
 }
@@ -310,6 +310,11 @@ EcmaVM::~EcmaVM()
     if (callTimer_ != nullptr) {
         delete callTimer_;
         callTimer_ = nullptr;
+    }
+
+    if (strategy_ != nullptr) {
+        delete strategy_;
+        strategy_ = nullptr;
     }
 
     if (thread_ != nullptr) {
@@ -698,14 +703,5 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
             DFXJSNApi::ResumeVM(iter->second);
         }
     }
-}
-
-bool EcmaVM::RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
-{
-    if (requestAotCallback_ == nullptr) {
-        LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
-        return false;
-    }
-    return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
 }
 }  // namespace panda::ecmascript

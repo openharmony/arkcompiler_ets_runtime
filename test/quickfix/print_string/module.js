@@ -13,7 +13,4 @@
  * limitations under the License.
  */
 
-function f() {
-    print("base f")
-}
-globalThis.f = f;
+export var nop = undefined

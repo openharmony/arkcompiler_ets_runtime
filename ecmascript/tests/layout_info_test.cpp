@@ -189,7 +189,7 @@ HWTEST_F_L0(LayoutInfoTest, GetAllEnumKeys)
         layoutInfoHandle->AddKey(thread, i, elementsKey.GetTaggedValue(), defaultAttr);
     }
     uint32_t keys = 0;
-    layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, *keyArray, &keys, objectHandle); // 0: offset
+    layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys, objectHandle); // 0: offset
     EXPECT_EQ(keyArray->Get(0), key3.GetTaggedValue());
     EXPECT_EQ(keys, 1U);
 }

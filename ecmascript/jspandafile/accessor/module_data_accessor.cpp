@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, EntityId moduleDataId)

@@ -26,6 +26,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/waiter_list.h"
+#include "global_handle_collection.h"
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -403,6 +404,36 @@ public:
         return &globalConst_;
     }
 
+    void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
+    {
+        cachedPatchModules_.emplace(recordName, moduleRecord);
+    }
+    JSHandle<JSTaggedValue> FindPatchModule(const CString &recordName) const
+    {
+        auto iter = cachedPatchModules_.find(recordName);
+        if (iter != cachedPatchModules_.end()) {
+            return iter->second;
+        }
+        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole());
+    }
+    void ClearPatchModules()
+    {
+        GlobalHandleCollection gloalHandleCollection(thread_);
+        for (auto &item : cachedPatchModules_) {
+            gloalHandleCollection.Dispose(item.second);
+        }
+        cachedPatchModules_.clear();
+    }
+
+    int32_t GetStageOfHotReload() const
+    {
+        return stageOfHotReload_;
+    }
+    void SetStageOfHotReload(int32_t stageOfHotReload)
+    {
+        stageOfHotReload_ = stageOfHotReload;
+    }
+
     bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
     bool JoinStackPush(JSHandle<JSTaggedValue> receiver);
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
@@ -431,10 +462,15 @@ private:
                                           CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob);
+    Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+        std::string_view entryPoint, JSHandle<JSFunction> &func);
     bool LoadAOTFiles(const std::string &aotFileName);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
+    PropertiesCache *propertiesCache_ {nullptr};
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
 
@@ -452,6 +488,10 @@ private:
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
+
+    // for HotReload of module.
+    CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
+    int32_t stageOfHotReload_ = 0;
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
@@ -499,7 +539,6 @@ private:
     JSTaggedType *frameBase_ {nullptr};
     uint64_t stackStart_ {0};
     uint64_t stackLimit_ {0};
-    PropertiesCache *propertiesCache_ {nullptr};
     GlobalEnvConstants globalConst_;
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;

@@ -15,6 +15,7 @@ group("object_test") {
   testonly = true
 
   test_list = [
+    "object_assign",
     "object_hasOwnProperty",
     "object_toString",
   ]

@@ -190,7 +190,6 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead, uin
     LLVMStackMapType::OffsetType offsetType;
     uint32_t offset = callsiteHead.stackmapOffset;
     uint16_t stackmapNum = callsiteHead.stackmapNum;
-    ASSERT(stackmapNum % 2 == 0); // 2:base and derive
     for (uint32_t j = 0; j < stackmapNum; j++) {
         auto [regOffset, regOffsetSize, is_full] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + offset);

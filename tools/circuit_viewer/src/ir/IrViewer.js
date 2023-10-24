@@ -866,15 +866,18 @@ class IrViewer {
             this.selectPoint_ = [];
             for (let i in nodes) {
               let n = nodes[i];
+              let searchName;
               if (XTools.CONFIG.OpTypeJsBytecode.indexOf(n.ir.op) >= 0) {
-                if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
-                  this.searchInput.result.push(i);
-                }
+                searchName = n.ir.bytecode;
+              }
+              else if (n.ir.typedop) {
+                searchName = n.ir.typedop;
               }
               else {
-                if (n.ir.id == v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {
-                  this.searchInput.result.push(i);
-                }
+                searchName = n.ir.op;
+              }
+              if (n.ir.id == v || searchName.indexOf(v) >= 0 || (isRegExp(v) && searchName.match(v))) {
+                this.searchInput.result.push(i);
               }
             }
             if (this.searchInput.result.length > 0) {

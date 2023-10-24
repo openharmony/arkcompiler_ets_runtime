@@ -158,7 +158,6 @@ public:
             result.first->second.SetEntryId(entryId);
             result.first->second.ParseFromBinary(buffer, header);
         }
-        LOG_ECMA(DEBUG) << "ParseFromBinary. name: " << poolName_ << ", count: " << secInfo.number_;
         return 1;
     }
 

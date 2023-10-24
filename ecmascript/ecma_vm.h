@@ -85,6 +85,7 @@ class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
 class EcmaStringTable;
+class JSObjectResizingStrategy;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
@@ -270,13 +271,6 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
-    }
-
-    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const;
-
-    void SetRequestAotCallback(const RequestAotCallback &cb)
-    {
-        requestAotCallback_ = cb;
     }
 
     void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
@@ -473,6 +467,11 @@ public:
         return isProfiling_;
     }
 
+    JSObjectResizingStrategy *GetJSObjectResizingStrategy()
+    {
+        return strategy_;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -530,9 +529,6 @@ private:
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
 
-    // trigger local aot
-    RequestAotCallback requestAotCallback_ {nullptr};
-
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};
     void *concurrentData_ {nullptr};
@@ -543,6 +539,7 @@ private:
     CpuProfiler *profiler_ {nullptr};
 #endif
     FunctionCallTimer *callTimer_ {nullptr};
+    JSObjectResizingStrategy *strategy_ {nullptr};
 
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];

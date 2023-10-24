@@ -164,6 +164,26 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef objType = GetObjectType(LoadHClass(obj));
+        result = Equal(objType, Int32(static_cast<int32_t>(JSType::PROTO_CHANGE_MARKER)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 inline GateRef CircuitBuilder::IsOptimizedAndNotFastCall(GateRef obj)
 {
     GateRef hClass = LoadHClass(obj);

@@ -26,6 +26,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 
@@ -563,15 +564,72 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isAOTLiteralInfo(env_);
-            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Label notAotLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &notAotLiteralInfo);
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
                     { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
+            Bind(&notAotLiteralInfo);
+            {
+                result = GetValueFromTaggedArray(cacheValue, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
+                Jump(&exit);
+            }
         } else {
             Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
+                                                   ConstPoolType type)
+{
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    return GetObjectInfoFromConstPool(glue, hirGate, constPool, module, index, type);
+}
+
+GateRef CircuitBuilder::GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
+                                                   GateRef index, ConstPoolType type)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label cacheMiss(env_);
+    Label cache(env_);
+
+    auto cacheValue = GetValueFromTaggedArray(constPool, index);
+    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
+    Bind(&cacheMiss);
+    {
+        if (type == ConstPoolType::OBJECT_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralInfoFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+        } else {
+            UNREACHABLE();
+        }
+        Jump(&exit);
+    }
+    Bind(&cache);
+    {
+        if (type == ConstPoolType::OBJECT_LITERAL) {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralInfoFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                Jump(&exit);
+            }
+        } else {
+            UNREACHABLE();
         }
     }
     Bind(&exit);

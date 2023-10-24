@@ -20,3 +20,4 @@
 1_2
 test arrayforeach success!!!
 test arrayforeach success!!!
+CallbackFn is not callable

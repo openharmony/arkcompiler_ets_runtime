@@ -346,3 +346,10 @@ try {
     handleUnexpectedErrorCaught(e);
 }
 print("======== End: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========");
+
+// Test Array.prototype.filter when callbackFn is not callable
+try {
+    [].filter(1);
+} catch (e) {
+    print("CallbackFn is not callable");
+}

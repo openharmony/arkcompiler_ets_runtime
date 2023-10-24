@@ -32,8 +32,8 @@ class JSArray;
 namespace base {
 class BuiltinConstantEntry {
 public:
-    constexpr BuiltinConstantEntry(std::string_view name, JSTaggedValue value) :
-        name_(name), rawTaggedValue_(value.GetRawData()) {}
+    constexpr BuiltinConstantEntry(std::string_view name, JSTaggedValue value)
+        : name_(name), rawTaggedValue_(value.GetRawData()) {}
 
     static constexpr BuiltinConstantEntry Create(std::string_view name, JSTaggedValue value)
     {
@@ -116,8 +116,8 @@ private:
     EcmaEntrypoint entrypoint_;
     uint64_t bitfield_;
 
-    constexpr BuiltinFunctionEntry(std::string_view name, EcmaEntrypoint entrypoint, uint64_t bitfield) :
-        name_(name), entrypoint_(entrypoint), bitfield_(bitfield) {}
+    constexpr BuiltinFunctionEntry(std::string_view name, EcmaEntrypoint entrypoint, uint64_t bitfield)
+        : name_(name), entrypoint_(entrypoint), bitfield_(bitfield) {}
 };
 
 class BuiltinsBase {

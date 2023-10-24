@@ -42,6 +42,7 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
@@ -57,6 +58,7 @@
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/builtins/builtins_object.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "macros.h"
 #ifdef ARK_SUPPORT_INTL
@@ -147,14 +149,6 @@ DEF_RUNTIME_STUBS(GetHash32)
     int key = argKey.GetInt();
     auto pkey = reinterpret_cast<uint8_t *>(&key);
     uint32_t result = panda::GetHash32(pkey, len.GetInt());
-    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(ComputeHashcode)
-{
-    JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
@@ -270,7 +264,8 @@ DEF_RUNTIME_STUBS(PropertiesSetValue)
         properties = factory->NewTaggedArray(JSObject::MIN_PROPERTIES_LENGTH);
     } else {
         uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
-        uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(capacity, maxNonInlinedFastPropsCapacity);
+        uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(thread, capacity,
+            maxNonInlinedFastPropsCapacity);
         properties = factory->CopyArray(arrayHandle, capacity, newLen);
     }
     properties->Set(thread, index, valueHandle);
@@ -632,6 +627,15 @@ DEF_RUNTIME_STUBS(GetNextPropName)
     return RuntimeGetNextPropName(thread, iter).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetNextPropNameSlowpath)
+{
+    RUNTIME_STUBS_HEADER(GetNextPropNameSlowpath);
+    JSHandle<JSTaggedValue> iter = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    ASSERT(iter->IsForinIterator());
+    JSTaggedValue res = JSForInIterator::NextInternalSlowpath(thread, JSHandle<JSForInIterator>::Cast(iter));
+    return res.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(IterNext)
 {
     RUNTIME_STUBS_HEADER(IterNext);
@@ -877,6 +881,16 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetObjectLiteralInfoFromCache)
+{
+    RUNTIME_STUBS_HEADER(GetObjectLiteralInfoFromCache);
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return ConstantPool::GetLiteralInfoFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
@@ -1322,6 +1336,21 @@ DEF_RUNTIME_STUBS(GetPropIterator)
     RUNTIME_STUBS_HEADER(GetPropIterator);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeGetPropIterator(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetPropIteratorSlowpath)
+{
+    RUNTIME_STUBS_HEADER(GetPropIteratorSlowpath);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSObject::LoadEnumerateProperties(thread, value).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(PrimitiveStringCreate)
+{
+    RUNTIME_STUBS_HEADER(PrimitiveStringCreate);
+    JSHandle<JSTaggedValue> str = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = thread->GlobalConstants()->GetHandledUndefined();
+    return JSPrimitiveRef::StringCreate(thread, str, newTarget).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(AsyncFunctionEnter)
@@ -2368,6 +2397,7 @@ JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     JSHandle<JSTaggedValue> func(info->GetFunction());
     if (!func->IsHeapObject()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is nullptr", JSTaggedValue::Exception());
     }
 
@@ -2608,6 +2638,13 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
     callTimer->StopCount(method);
 }
 
+uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
+{
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
+    return result;
+}
+
 DEF_RUNTIME_STUBS(FastStringify)
 {
     RUNTIME_STUBS_HEADER(FastStringify);
@@ -2636,6 +2673,14 @@ DEF_RUNTIME_STUBS(LinkedHashSetComputeCapacity)
     RUNTIME_STUBS_HEADER(LinkedHashSetComputeCapacity);
     JSTaggedValue value = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue(LinkedHashSet::ComputeCapacity(value.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ObjectSlowAssign)
+{
+    RUNTIME_STUBS_HEADER(ObjectSlowAssign);
+    JSHandle<JSObject> toAssign = GetHArg<JSObject>(argv, argc, 0);            // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> source = GetHArg<JSTaggedValue>(argv, argc, 1);    // 1: means the first parameter
+    return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

@@ -40,6 +40,20 @@ public:
         SetKind(GateMetaData::Kind::JSBYTECODE);
     }
 
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const JSBytecodeMetaData *>(&other);
+        if (opcode_ == cast_other->opcode_ &&
+            pcOffset_ == cast_other->pcOffset_ && type_ == cast_other->type_ &&
+            elementsKinds_ == cast_other->elementsKinds_) {
+            return true;
+        }
+        return false;
+    }
+
     static const JSBytecodeMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::JSBYTECODE);

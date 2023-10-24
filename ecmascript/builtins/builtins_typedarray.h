@@ -240,6 +240,17 @@ public:
         return Span<const base::BuiltinFunctionEntry>(TYPED_ARRAY_PROTOTYPE_FUNCTIONS);
     }
 
+    static size_t GetNumPrototypeInlinedProperties()
+    {
+        // 4 : 4 more inline properties in %TypedArray%.prototype for the following functions/accessors:
+        //   (1) %TypedArray%.prototype.constructor
+        //   (2) %TypedArray%.prototype.toString, which is strictly equal to Array.prototype.toString
+        //   (3) %TypedArray%.prototype[@@iterator]
+        //   (4) %TypedArray%.prototype[@@toStringTag]
+        return GetTypedArrayPrototypeFunctions().Size() +
+               GetTypedArrayPrototypeAccessors().Size() + 4;
+    }
+
 private:
 #define BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsTypedArray::func, length, kungfu::BuiltinsStubCSigns::id),

@@ -16,20 +16,32 @@ declare interface ArkTools {
     timeInUs(arg:any):number
 }
 
-function testToString() {
-    let theDog = new Dog("Gabby", "Lab");
-    let res;
+function testDefineProperty() {
     let start = ArkTools.timeInUs();
-    for (let i = 0; i < 1_000_000; i++) {
-        res = theDog.toString();
+    for (let i = 0; i < 100_000; i++) {
+        const o = {};
+        Object.defineProperty(o, "a", {
+            value: 1,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+            value: "static",
+        });
+        Object.defineProperty(o, "b", {
+            value: 2,
+            writable: true,
+            enumerable: true,
+            configurable: true,
+        });
+        Object.defineProperty(o, "c", {
+            value: 3,
+            writable: false,
+        });
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000
-    print(res);
-    print("Object ToString:\t" + String(time) + "\tms");
+    print("Object DefineProperty:\t"+String(time)+"\tms");
 }
-
-testToString();
 
 function testHasOwnProperty() {
     const example = {};
@@ -43,4 +55,63 @@ function testHasOwnProperty() {
     print("Object HasOwnProperty:\t"+String(time)+"\tms");
 }
 
+function testAssign() {
+    let o1 = { a: 1 };
+    let o2 = { b: 2 };
+    let o3 = { c: 3 };
+    let res;
+    let start = ArkTools.timeInUs();
+    for (let i = 0; i < 1_000_000; i++) {
+        res = Object.assign(o1, o2, o3);
+    }
+    let end = ArkTools.timeInUs();
+    let time = (end - start) / 1000
+    print(res);
+    print("Object Assign:\t"+String(time)+"\tms");
+}
+
+function testCreate() {
+    const person = {
+      isHuman: false,
+      printIntroduction: function () {
+      },
+    };
+    let res;
+    let start = ArkTools.timeInUs();
+    for (let i = 0; i < 1_000_000; i++) {
+        res = Object.create(person);
+    }
+    let end = ArkTools.timeInUs();
+    let time = (end - start) / 1000
+    print(res);
+    print("Object Create:\t"+String(time)+"\tms");
+}
+
+class Dog {
+  constructor(name, breed, color, sex) {
+    this.name = name;
+    this.breed = breed;
+    this.color = color;
+    this.sex = sex;
+  }
+}
+
+function testToString() {
+    let theDog = new Dog("Gabby", "Lab", "chocolate", "female");
+    let res;
+    let start = ArkTools.timeInUs();
+    for (let i = 0; i < 1_000_000; i++) {
+        res = theDog.toString();
+    }
+    let end = ArkTools.timeInUs();
+    let time = (end - start) / 1000
+    print(res);
+    print("Object ToString:\t"+String(time)+"\tms");
+}
+
+testDefineProperty();
 testHasOwnProperty();
+testAssign();
+testCreate();
+testToString();
+

@@ -49,6 +49,8 @@ public:
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
+    GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
+    GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);

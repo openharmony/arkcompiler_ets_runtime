@@ -391,11 +391,19 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
                                                 bool isOptimized, bool canFastCall)
 {
+    const int inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    return NewEcmaHClass(size, inlinedProps, type, prototype, isOptimized, canFastCall);
+}
+
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+                                                const JSHandle<JSTaggedValue> &prototype,
+                                                bool isOptimized, bool canFastCall)
+{
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
-    newClass->Initialize(thread_, size, type, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS, isOptimized, canFastCall);
+    newClass->Initialize(thread_, size, type, inlinedProps, isOptimized, canFastCall);
     JSHandle<JSHClass> hclass(thread_, newClass);
     hclass->SetPrototype(thread_, prototype.GetTaggedValue());
     return hclass;
@@ -655,16 +663,20 @@ JSHandle<JSArray> ObjectFactory::NewJSArray()
     return JSHandle<JSArray>(NewJSObjectByConstructor(function));
 }
 
-JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj)
+JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
+                                                            const JSHandle<JSTaggedValue> keys,
+                                                            const JSHandle<JSTaggedValue> cachedHclass)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> hclass(env->GetForinIteratorClass());
 
     JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(hclass));
     it->SetObject(thread_, obj);
-    it->SetVisitedObjs(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
-    it->SetRemainingKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
-    it->ClearBitField();
+    it->SetCachedHclass(thread_, cachedHclass);
+    it->SetKeys(thread_, keys);
+    it->SetIndex(EnumCache::ENUM_CACHE_HEADER_SIZE);
+    uint32_t enumLength = JSHandle<TaggedArray>::Cast(keys)->GetLength();
+    it->SetLength(enumLength);
     return it;
 }
 
@@ -691,10 +703,10 @@ JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedV
     return regexpClass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto)
+JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, JSType::JS_ARRAY, proto);
+    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, inlinedProps, JSType::JS_ARRAY, proto);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSArray::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
@@ -1631,7 +1643,9 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method = NewMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
     }
-    method->SetModule(thread_, module);
+    if (method->GetModule().IsUndefined()) {
+        method->SetModule(thread_, module);
+    }
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
@@ -2436,6 +2450,25 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
         newArray->Set(thread_, i, value);
     }
 
+    return newArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::CopyFromEnumCache(const JSHandle<TaggedArray> &old)
+{
+    NewObjectHook();
+    uint32_t oldLength = old->GetLength();
+    uint32_t newLength = oldLength - EnumCache::ENUM_CACHE_HEADER_SIZE;
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(newLength);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    for (uint32_t i = 0; i < newLength; i++) {
+        JSTaggedValue value = old->Get(i + EnumCache::ENUM_CACHE_HEADER_SIZE);
+        newArray->Set(thread_, i, value);
+    }
     return newArray;
 }
 

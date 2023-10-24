@@ -144,15 +144,36 @@ EcmaString *EcmaString::GetSlicedString(const EcmaVM *vm,
     const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
 {
     ASSERT((start + length) <= src->GetLength());
-    if (start == 0 && length == src->GetLength()) {
-        return *src;
-    }
     JSHandle<SlicedString> slicedString(vm->GetJSThread(), CreateSlicedString(vm));
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
     slicedString->SetLength(length, srcFlat.GetString()->IsUtf8());
     slicedString->SetParent(vm->GetJSThread(), JSTaggedValue(srcFlat.GetString()));
     slicedString->SetStartIndex(start + srcFlat.GetStartIndex());
     return *slicedString;
+}
+
+/* static */
+EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
+    const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+{
+    ASSERT((start + length) <= src->GetLength());
+    if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
+        if (start == 0 && length == src->GetLength()) {
+            return *src;
+        }
+        if (src->IsUtf16()) {
+            FlatStringInfo srcFlat = FlattenAllString(vm, src);
+            bool canBeCompressed = CanBeCompressed(srcFlat.GetDataUtf16() + start, length);
+            if (canBeCompressed) {
+                JSHandle<EcmaString> string(vm->GetJSThread(), CreateLineString(vm, length, canBeCompressed));
+                srcFlat = FlattenAllString(vm, src);
+                CopyChars(string->GetDataUtf8Writable(), srcFlat.GetDataUtf16() + start, length);
+                return *string;
+            }
+        }
+        return GetSlicedString(vm, src, start, length);
+    }
+    return FastSubString(vm, src, start, length);
 }
 
 void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
@@ -551,6 +572,9 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
 {
     if (str1 == str2) {
         return true;
+    }
+    if (str1->IsInternString() && str2->IsInternString()) {
+        return false;
     }
     uint32_t str1Len = str1->GetLength();
     if (str1Len != str2->GetLength()) {

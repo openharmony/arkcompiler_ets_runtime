@@ -39,6 +39,11 @@ public:
 
     void PUBLIC_API Destroy();
 
+    void SetBundleName(const std::string &bundleName)
+    {
+        bundleName_ = bundleName;
+    }
+
     bool IsInitialized() const
     {
         return isInitialized_;
@@ -46,6 +51,7 @@ public:
 
     void SamplePandaFileInfo(uint32_t checksum, const CString &abcName);
     bool GetPandaFileId(const CString &abcName, ApEntityId &entryId);
+    bool GetPandaFileDesc(ApEntityId abcId, CString &desc);
     void Merge(const PGORecordDetailInfos &recordInfos);
     void Merge(const PGOPandaFileInfos &pandaFileInfos);
     void Merge(const PGOProfilerEncoder &encoder);
@@ -68,6 +74,7 @@ private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
     bool SaveAndRename(const SaveTask *task = nullptr);
+    void RequestAot();
     bool ResetOutPath(const std::string& profileFileName);
 
     bool isInitialized_ {false};
@@ -81,6 +88,7 @@ private:
     Mutex mutex_;
     RWLock rwLock_;
     std::string moduleName_;
+    std::string bundleName_;
     ApGenMode mode_ {OVERWRITE};
     friend SaveTask;
 };

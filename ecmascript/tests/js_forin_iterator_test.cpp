@@ -73,21 +73,17 @@ HWTEST_F_L0(JSForinIteratorTest, Create)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(son), key2, key1Value);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(son), key3, key1Value);
 
-    JSHandle<JSForInIterator> it = thread->GetEcmaVM()->GetFactory()->NewJSForinIterator(JSHandle<JSTaggedValue>(son));
-    std::pair<JSTaggedValue, bool> n1 = JSForInIterator::NextInternal(thread, it);
-    EXPECT_EQ(n1.first, key1.GetTaggedValue());
-    EXPECT_FALSE(n1.second);
+    JSHandle<JSForInIterator> it = JSObject::EnumerateObjectProperties(thread, JSHandle<JSTaggedValue>(son));
+    JSTaggedValue n1 = JSForInIterator::NextInternal(thread, it);
+    EXPECT_EQ(n1, key1.GetTaggedValue());
 
-    std::pair<JSTaggedValue, bool> n2 = JSForInIterator::NextInternal(thread, it);
-    EXPECT_EQ(n2.first, key2.GetTaggedValue());
-    EXPECT_FALSE(n2.second);
+    JSTaggedValue n2 = JSForInIterator::NextInternal(thread, it);
+    EXPECT_EQ(n2, key2.GetTaggedValue());
 
-    std::pair<JSTaggedValue, bool> n3 = JSForInIterator::NextInternal(thread, it);
-    EXPECT_EQ(n3.first, key3.GetTaggedValue());
-    EXPECT_FALSE(n3.second);
+    JSTaggedValue n3 = JSForInIterator::NextInternal(thread, it);
+    EXPECT_EQ(n3, key3.GetTaggedValue());
 
-    std::pair<JSTaggedValue, bool> n4 = JSForInIterator::NextInternal(thread, it);
-    EXPECT_EQ(n4.first, JSTaggedValue::Undefined());
-    EXPECT_TRUE(n4.second);
+    JSTaggedValue n4 = JSForInIterator::NextInternal(thread, it);
+    EXPECT_EQ(n4, JSTaggedValue::Undefined());
 }
 }  // namespace panda::test

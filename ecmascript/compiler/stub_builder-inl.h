@@ -30,6 +30,7 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
@@ -1004,6 +1005,16 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET));
+}
+
+inline void StubBuilder::SetExtractLengthOfTaggedArray(GateRef glue, GateRef array, GateRef extraLength)
+{
+    return Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), extraLength);
+}
+
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSHClass), TaggedIsHeapObject(obj));
@@ -1089,8 +1100,21 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-    auto isHeapObject = TaggedIsHeapObject(obj);
-    return env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env);
+    Label exit(env);
+    GateRef isHeapObject = TaggedIsHeapObject(obj);
+    Branch(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
@@ -1180,6 +1204,32 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
+inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
+}
+
+inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MODULE_NAMESPACE)));
+}
+
+inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return BoolAnd(
+            Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
+}
+
+inline GateRef StubBuilder::IsJSPrimitiveRef(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PRIMITIVE_REF)));
 }
 
 inline GateRef StubBuilder::IsJsArray(GateRef obj)
@@ -1324,6 +1374,15 @@ inline GateRef StubBuilder::IsAccessor(GateRef attr)
         Int32(0));
 }
 
+inline GateRef StubBuilder::IsEnumerable(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(Int32LSR(attr,
+            Int32(PropertyAttributes::EnumerableField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::EnumerableField::SIZE) - 1)),
+        Int32(0));
+}
+
 inline GateRef StubBuilder::IsInlinedProperty(GateRef attr)
 {
     return Int32NotEqual(
@@ -1389,6 +1448,86 @@ inline GateRef StubBuilder::HclassIsPropertyBox(GateRef hClass)
         Int32(static_cast<int32_t>(JSType::PROPERTY_BOX)));
 }
 
+inline GateRef StubBuilder::TaggedIsProtoChangeMarker(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsProtoChangeMarker(obj);
+}
+
+inline GateRef StubBuilder::GetEmptyArray(GateRef glue)
+{
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    GateRef offset = GetGlobalConstantOffset(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    return Load(VariableType::JS_ANY(), gConstAddr, offset);
+}
+
+inline GateRef StubBuilder::GetLengthFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetIndexFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetKeysFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetObjectFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline GateRef StubBuilder::GetCachedHclassFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+inline void StubBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, length);
+}
+
+inline void StubBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, index);
+}
+
+inline void StubBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, keys);
+}
+
+inline void StubBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, object);
+}
+
+inline void StubBuilder::SetCachedHclassOFForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
+}
+
+inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef newIndex = Int32Add(index, Int32(1));
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, newIndex);
+}
+
 inline GateRef StubBuilder::IsField(GateRef attr)
 {
     return Int32Equal(
@@ -1423,6 +1562,15 @@ inline GateRef StubBuilder::IsStringLength(GateRef attr)
             Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::STRING_LENGTH));
+}
+
+inline GateRef StubBuilder::IsTypedArrayElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::TYPED_ARRAY));
 }
 
 inline GateRef StubBuilder::IsNonExist(GateRef attr)
@@ -1541,6 +1689,13 @@ inline GateRef StubBuilder::PropAttrGetOffset(GateRef attr)
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
 }
 
+inline GateRef StubBuilder::GetSortedIndex(GateRef attr)
+{
+    return Int32And(
+        Int32LSR(attr, Int32(PropertyAttributes::SortedIndexField::START_BIT)),
+        Int32((1LLU << PropertyAttributes::SortedIndexField::SIZE) - 1));
+}
+
 // SetDictionaryOrder func in property_attribute.h
 inline GateRef StubBuilder::SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value)
 {
@@ -1556,6 +1711,18 @@ inline GateRef StubBuilder::GetPrototypeFromHClass(GateRef hClass)
 {
     GateRef protoOffset = IntPtr(JSHClass::PROTOTYPE_OFFSET);
     return Load(VariableType::JS_ANY(), hClass, protoOffset);
+}
+
+inline GateRef StubBuilder::GetEnumCacheFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
+inline GateRef StubBuilder::GetProtoChangeMarkerFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
 }
 
 inline GateRef StubBuilder::GetLayoutFromHClass(GateRef hClass)
@@ -1713,6 +1880,15 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::NumberOfPropsBits::START_BIT)),
         Int32((1LLU << JSHClass::NumberOfPropsBits::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::HasDeleteProperty(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::HasDeletePropertyBit::START_BIT)),
+                 Int32((1LLU << JSHClass::HasDeletePropertyBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline GateRef StubBuilder::IsTSHClass(GateRef hClass)
@@ -2067,7 +2243,7 @@ inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
     return Int64Mul(Int64(sizeof(JSTaggedValue)), index);
 }
 
-inline GateRef StubBuilder::GetGlobalConstantString(ConstantIndex index)
+inline GateRef StubBuilder::GetGlobalConstantOffset(ConstantIndex index)
 {
     if (env_->Is32Bit()) {
         return Int32Mul(Int32(sizeof(JSTaggedValue)), Int32(static_cast<int>(index)));
@@ -2611,6 +2787,68 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
 inline GateRef StubBuilder::RemoveTaggedWeakTag(GateRef weak)
 {
     return Int64ToTaggedPtr(IntPtrAnd(ChangeTaggedPointerToInt64(weak), IntPtr(~JSTaggedValue::TAG_WEAK)));
+}
+
+inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
+{
+    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
+    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
+    return Load(VariableType::NATIVE_POINTER(), currentContext, IntPtr(0));
+}
+
+inline GateRef StubBuilder::GetSortedKey(GateRef layoutInfo, GateRef index)
+{
+    GateRef fixedIdx = GetSortedIndex(layoutInfo, index);
+    return GetKey(layoutInfo, fixedIdx);
+}
+
+inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
+{
+    return GetSortedIndex(GetAttr(layoutInfo, index));
+}
+
+inline GateRef StubBuilder::GetAttrIndex(GateRef index)
+{
+    return Int32Add(Int32LSL(index, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)), Int32(LayoutInfo::ATTR_INDEX_OFFSET));
+}
+
+inline GateRef StubBuilder::GetKeyIndex(GateRef index)
+{
+    return Int32LSL(index, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2));
+}
+
+inline GateRef StubBuilder::GetAttr(GateRef layoutInfo, GateRef index)
+{
+    GateRef fixedIdx = GetAttrIndex(index);
+    return GetInt32OfTInt(GetValueFromTaggedArray(layoutInfo, fixedIdx));
+}
+
+inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
+{
+    GateRef fixedIdx = GetKeyIndex(index);
+    return GetValueFromTaggedArray(layoutInfo, fixedIdx);
+}
+
+inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
+{
+    GateRef hash = HashFromHclassAndKey(glue, cls, key);
+    GateRef prop =
+        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
+    StoreWithNoBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
+    StoreWithNoBarrier(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()), key);
+    StoreWithNoBarrier(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()), result);
+}
+
+inline void StubBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
+{
+    env_->GetBuilder()->StoreWithNoBarrier(type, base, offset, value);
+}
+
+inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
+{
+    GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
+    GateRef keyHash = GetKeyHashCode(glue, key);
+    return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -31,7 +31,9 @@ public:
         DICTIONARY,
         STRING,
         STRING_LENGTH,
+        TYPED_ARRAY,
         NON_EXIST,
+        TOTAL_KINDS,
     };
 
     using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;
@@ -42,6 +44,8 @@ public:
     using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+
+    static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
@@ -84,6 +88,11 @@ public:
     static inline bool IsStringElement(uint32_t handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
+    }
+
+    static inline bool IsTypedArrayElement(uint32_t handler)
+    {
+        return GetKind(handler) == HandlerKind::TYPED_ARRAY;
     }
 
     static inline bool IsDictionary(uint32_t handler)
@@ -184,6 +193,13 @@ public:
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+    }
+
+    static inline JSHandle<JSTaggedValue> LoadTypedArrayElement(const JSThread *thread)
+    {
+        uint32_t handler = 0;
+        KindBit::Set<uint32_t>(HandlerKind::TYPED_ARRAY, &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 };

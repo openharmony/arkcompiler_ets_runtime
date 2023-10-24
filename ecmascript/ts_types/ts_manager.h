@@ -20,9 +20,10 @@
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/ts_types/builtin_type_id.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/global_type_info.h"
+#include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
 using ProfileType = pgo::ProfileType;
@@ -30,88 +31,6 @@ enum class PropertyType : uint8_t {
     NORMAL = 0,
     STATIC,
     OTHERS,
-};
-
-/* Since AOT allows loading lib_ark_builtins.d.ts optionally, the localId of the GlobalTSTypeRef
- * (abbreviated as GT) of one builtin object will be different in different cases.
- *
- * In case where AOT does not load lib_ark_builtins.d.ts, builtin objects will be assigned localIds
- * according to the following enum order. For example, the GT of FUNCTION will be (1, 21), where 1
- * is the index of builtin TSTypeTable. Note that in this case, it is prohibited to get TSType from
- * builtin TSTypeTable.
- *
- * In case where AOT has loaded lib_ark_builtins.d.ts, builtin objects will be assigned localIds in
- * the order in which they appear in bytecodes. To identify types of builtin objects, the following
- * enum is required as a parameter to the TSManager::GetBuiltinOffset to help to get the GT of some
- * builtin object.
- */
-enum class BuiltinTypeId : uint8_t {  // keep the same with enum BuiltinType in ets_frontend
-    NUM_INDEX_IN_SUMMARY = 0,
-    BUILTIN_OFFSET = 20,
-    FUNCTION,
-    RANGE_ERROR,
-    ERROR,
-    OBJECT,
-    SYNTAX_ERROR,
-    TYPE_ERROR,
-    REFERENCE_ERROR,
-    URI_ERROR,
-    SYMBOL,
-    EVAL_ERROR,
-    NUMBER,
-    PARSE_FLOAT,
-    DATE,
-    BOOLEAN,
-    BIG_INT,
-    PARSE_INT,
-    WEAK_MAP,
-    REG_EXP,
-    SET,
-    MAP,
-    WEAK_REF,
-    WEAK_SET,
-    FINALIZATION_REGISTRY,
-    ARRAY,
-    UINT8_CLAMPED_ARRAY,
-    UINT8_ARRAY,
-    TYPED_ARRAY,
-    INT8_ARRAY,
-    UINT16_ARRAY,
-    UINT32_ARRAY,
-    INT16_ARRAY,
-    INT32_ARRAY,
-    FLOAT32_ARRAY,
-    FLOAT64_ARRAY,
-    BIG_INT64_ARRAY,
-    BIG_UINT64_ARRAY,
-    SHARED_ARRAY_BUFFER,
-    DATA_VIEW,
-    STRING,
-    ARRAY_BUFFER,
-    EVAL,
-    IS_FINITE,
-    ARK_PRIVATE,
-    PRINT,
-    DECODE_URI,
-    DECODE_URI_COMPONENT,
-    IS_NAN,
-    ENCODE_URI,
-    JS_NAN,
-    GLOBAL_THIS,
-    ENCODE_URI_COMPONENT,
-    JS_INFINITY,
-    MATH,
-    JSON,
-    ATOMICS,
-    UNDEFINED,
-    REFLECT,
-    PROMISE,
-    PROXY,
-    GENERATOR_FUNCTION,
-    INTL,
-    NUM_OF_BUILTIN_TYPES = INTL - BUILTIN_OFFSET,
-    TYPED_ARRAY_FIRST = UINT8_CLAMPED_ARRAY,
-    TYPED_ARRAY_LAST = BIG_UINT64_ARRAY,
 };
 
 struct ModuleInfo {
@@ -496,7 +415,7 @@ public:
             idGTMap_.emplace(id, gt);
         }
         if (!isImportType && !id.IsPGOType()) {
-            auto value = std::make_pair(recordName, id.GetTypeId());
+            auto value = std::make_tuple(id.GetJSPandaFile()->GetNormalizedFileDesc(), recordName, id.GetTypeId());
             gtLiteralOffsetMap_.emplace(gt, value);
         }
     }
@@ -516,7 +435,7 @@ public:
         return gtLiteralOffsetMap_.find(gt) != gtLiteralOffsetMap_.end();
     }
 
-    inline std::pair<CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
+    inline std::tuple<CString, CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
     {
         return gtLiteralOffsetMap_.at(gt);
     }
@@ -1114,7 +1033,7 @@ private:
     SnapshotData snapshotData_ {};
 
     std::unordered_map<GlobalTypeID, GlobalTSTypeRef, HashGlobalTypeID> idGTMap_ {};
-    std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
+    std::map<GlobalTSTypeRef, std::tuple<CString, CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};

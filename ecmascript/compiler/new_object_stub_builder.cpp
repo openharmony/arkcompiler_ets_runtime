@@ -207,6 +207,80 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass)
+{
+    auto env = GetEnvironment();
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FOR_IN_ITERATOR_CLASS_INDEX);
+    GateRef iter = NewJSObject(glue, hclass);
+    // init JSForinIterator
+    SetObjectOfForInIterator(glue, iter, receiver);
+    SetCachedHclassOFForInIterator(glue, iter, cachedHclass);
+    SetKeysOfForInIterator(glue, iter, keys);
+    SetIndexOfForInIterator(glue, iter, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
+    GateRef length = GetLengthOfTaggedArray(keys);
+    SetLengthOfForInIterator(glue, iter, length);
+    return iter;
+}
+
+GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(object, VariableType::JS_ANY(), Undefined());
+
+    Label isString(env);
+    Label isNotString(env);
+    Label afterObjectTransform(env);
+    Label slowpath(env);
+    Label empty(env);
+    Label tryGetEnumCache(env);
+    Label cacheHit(env);
+
+    Branch(TaggedIsString(obj), &isString, &isNotString);
+    Bind(&isString);
+    {
+        object = CallRuntime(glue, RTSTUB_ID(PrimitiveStringCreate), { obj });;
+        Jump(&afterObjectTransform);
+    }
+    Bind(&isNotString);
+    {
+        object = ToPrototypeOrObj(glue, obj);
+        Jump(&afterObjectTransform);
+    }
+    Bind(&afterObjectTransform);
+    Branch(TaggedIsUndefinedOrNull(*object), &empty, &tryGetEnumCache);
+    Bind(&tryGetEnumCache);
+    GateRef enumCache = TryGetEnumCache(glue, *object);
+    Branch(TaggedIsUndefined(enumCache), &slowpath, &cacheHit);
+    Bind(&cacheHit);
+    {
+        GateRef hclass = LoadHClass(obj);
+        result = NewJSForinIterator(glue, *object, enumCache, hclass);
+        Jump(&exit);
+    }
+    Bind(&empty);
+    {
+        GateRef emptyArray = GetEmptyArray(glue);
+        result = NewJSForinIterator(glue, Undefined(), emptyArray, Undefined());
+        Jump(&exit);
+    }
+
+    Bind(&slowpath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetPropIteratorSlowpath), { *object });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     GateRef sp, GateRef startIdx, GateRef numArgs)
 {

@@ -38,6 +38,7 @@ public:
 
     void UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
     void UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver);
+    void UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver);
     void UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
 
     JSThread *GetThread() const
@@ -74,6 +75,7 @@ public:
 
     JSTaggedValue LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
     JSTaggedValue LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+    JSTaggedValue LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 
 class StoreICRuntime : public ICRuntime {
@@ -87,6 +89,8 @@ public:
 
     JSTaggedValue StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                  JSHandle<JSTaggedValue> value);
+    JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                           JSHandle<JSTaggedValue> value);
 };
 }  // namespace panda::ecmascript
 

@@ -187,6 +187,20 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
+GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    BuiltinPrototypeHClassAccessor accessor(type);
+    GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinPrototypeHClassCheck(accessor.ToValue()),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -908,8 +922,8 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = GetInt32OfTInt(
-            CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate()));
+        hashcode =
+            CallNGCRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate());
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }

@@ -298,6 +298,35 @@ enum class JSType : uint8_t {
     JSTYPE_DECL,
 };
 
+// EnumCache:
+// +-----------------+----------------------+
+// |      value      |     status           |
+// +-----------------+----------------------+
+// |      null       |    uninitialized     |
+// ------------------------------------------
+// |    undefined    | a fast path to check |
+// |                 | simple enum cache    |
+// ------------------------------------------
+// |   empty array   |  enum keys is empty  |
+// ------------------------------------------
+// | non-empty array |  non-empty enum keys |
+// +----------------------------------------+
+// structure of non-empty array of EnumCache:
+// 0: an int value indicating enum cache kind
+// 1-n: enum keys
+namespace EnumCache {
+static constexpr uint32_t ENUM_CACHE_HEADER_SIZE = 1;
+static constexpr uint32_t ENUM_CACHE_KIND_OFFSET = 0;
+enum class EnumCacheKind : uint8_t {
+    NONE = 0,
+    SIMPLE,        // simple enum cache(used in for-in)
+                   // make sure EnumCache is empty array only for SIMPLE
+    PROTOCHAIN,    // enum cache with prototype chain info(used in for-in)
+    ONLY_OWN_KEYS  // enum cache with only own enum keys(used in Json.stringify and Object.keys)
+};
+
+}  // namespace EnumCache
+
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
@@ -625,7 +654,7 @@ public:
 
     inline bool HasOrdinaryGet() const
     {
-        return (IsTypedArray() || IsSpecialContainer() || IsModuleNamespace());
+        return (IsSpecialContainer() || IsModuleNamespace() || IsJSBigInt64Array() || IsJSBigUint64Array());
     }
 
     inline bool IsJSTypedArray() const

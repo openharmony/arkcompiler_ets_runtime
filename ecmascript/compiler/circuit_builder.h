@@ -220,6 +220,10 @@ public:
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
+    GateRef GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc,
+                                       GateRef index, ConstPoolType type);
+    GateRef GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool,
+                                       GateRef module, GateRef index, ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
     GateRef GetGlobalEnv();
     GateRef GetGlobalEnvObj(GateRef env, size_t index);
@@ -231,7 +235,7 @@ public:
     GateRef GetModuleFromFunction(GateRef function);
     GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetExpectedNumOfArgs(GateRef method);
-    inline GateRef GetGlobalConstantString(ConstantIndex index); // shareir
+    inline GateRef GetGlobalConstantOffset(ConstantIndex index); // shareir
 
     // Set
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
@@ -375,6 +379,9 @@ public:
     inline GateRef HasConstructorByHClass(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
     inline GateRef LoadHClass(GateRef object);
+    inline GateRef LoadHClassByConstOffset(GateRef object);
+    inline GateRef LoadPrototype(GateRef hclass);
+    inline GateRef LoadPrototypeHClass(GateRef object);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type);
 
@@ -390,6 +397,7 @@ public:
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
+    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
@@ -527,6 +535,7 @@ public:
     inline GateRef TaggedIsString(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
+    inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);

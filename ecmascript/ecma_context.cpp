@@ -244,20 +244,9 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
     return res;
 }
 
-Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-                                                                std::string_view entryPoint, bool excuteFromJob)
+Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+    std::string_view entryPoint, JSHandle<JSFunction> &func)
 {
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
-    if (program.IsEmpty()) {
-        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
-        return Unexpected(false);
-    }
-    // for debugger
-    vm_->GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
-        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
-
-    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -303,8 +292,52 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+                                                                std::string_view entryPoint, bool excuteFromJob)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
+    if (program.IsEmpty()) {
+        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
+        return Unexpected(false);
+    }
+    // for debugger
+    vm_->GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
+        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+
     // print exception information
     if (!excuteFromJob && thread_->HasPendingException()) {
+        HandleUncaughtException(thread_->GetException());
+    }
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+
+    JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
+    // avoid GC problems.
+    GlobalHandleCollection gloalHandleCollection(thread_);
+    JSHandle<JSTaggedValue> moduleRecordHandle =
+        gloalHandleCollection.NewHandle<JSTaggedValue>(finalModuleRecord->GetRawData());
+    CString recordName = entryPoint.data();
+    AddPatchModule(recordName, moduleRecordHandle);
+
+    // print exception information
+    if (!excuteFromJob && thread_->HasPendingException() &&
+        Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
         HandleUncaughtException(thread_->GetException());
     }
     return result;
@@ -670,7 +703,7 @@ void EcmaContext::SetupRegExpResultCache()
 
 void EcmaContext::SetupRegExpGlobalResult()
 {
-    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGloablResultTable(thread_);
+    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGlobalResultTable(thread_);
 }
 
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)

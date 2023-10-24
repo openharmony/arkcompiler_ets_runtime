@@ -26,6 +26,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/js_generator_object.h"
@@ -1531,7 +1532,8 @@ HWTEST_F_L0(JSNApiTests, AotTrigger)
             trigger = triggerMode;
             return 100;
         });
-    ASSERT_FALSE(vm_->RequestAot("com.test.test", "requestAot", RequestAotMode::RE_COMPILE_ON_IDLE));
+    ASSERT_FALSE(ecmascript::pgo::PGOProfilerManager::GetInstance()->RequestAot("com.test.test", "requestAot",
+                                                                                RequestAotMode::RE_COMPILE_ON_IDLE));
     ASSERT_EQ(bundle, "com.test.test");
     ASSERT_EQ(module, "requestAot");
     ASSERT_EQ(trigger, 0);

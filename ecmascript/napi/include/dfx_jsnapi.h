@@ -53,9 +53,10 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, const std::string &path, bool isVmMode = true,
                                  bool isPrivate = false, bool captureNumericValue = false);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
-                                 bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false);
+                                 bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
+                                 bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                                 bool captureNumericValue = false);
+                                 bool captureNumericValue = false, bool isFullGC = true);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
@@ -71,6 +72,8 @@ public:
     static size_t GetArrayBufferSize(const EcmaVM *vm);
     static size_t GetHeapTotalSize(const EcmaVM *vm);
     static size_t GetHeapUsedSize(const EcmaVM *vm);
+    static size_t GetHeapLimitSize(const EcmaVM *vm);
+    static void GetHeapPrepare(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
     static void NotifyIdleTime(const EcmaVM *vm, int idleMicroSec);

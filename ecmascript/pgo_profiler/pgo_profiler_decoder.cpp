@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
@@ -49,7 +50,7 @@ bool PGOProfilerDecoder::Load()
     if (header_->SupportProfileTypeWithAbcId()) {
         PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePool_->GetPool());
     }
-    recordSimpleInfos_->ParseFromBinary(addr, header_);
+    recordSimpleInfos_->ParseFromBinary(addr, header_, abcFilePool_);
     UnLoadAPBinaryFile();
 
     isLoaded_ = true;
@@ -192,7 +193,7 @@ void PGOProfilerDecoder::Clear()
     }
 }
 
-bool PGOProfilerDecoder::Match(const CString &recordName, PGOMethodId methodId)
+bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &recordName, PGOMethodId methodId)
 {
     if (!isLoaded_) {
         return true;
@@ -200,7 +201,7 @@ bool PGOProfilerDecoder::Match(const CString &recordName, PGOMethodId methodId)
     if (!isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->Match(recordName, EntityId(methodId));
+    return recordSimpleInfos_->Match(GetNormalizedFileDesc(jsPandaFile), recordName, EntityId(methodId));
 }
 
 bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
@@ -211,13 +212,24 @@ bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClas
     return recordSimpleInfos_->GetHClassLayoutDesc(profileType, desc);
 }
 
-void PGOProfilerDecoder::GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+void PGOProfilerDecoder::GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount,
+                                           uint32_t &mismatchMethodCount,
                                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
 {
     if (!isLoaded_ || !isVerifySuccess_) {
         return;
     }
-    return recordSimpleInfos_->GetMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+    return recordSimpleInfos_->GetMismatchResult(GetNormalizedFileDesc(jsPandaFile), totalMethodCount,
+                                                 mismatchMethodCount, mismatchMethodSet);
+}
+
+CString PGOProfilerDecoder::GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const
+{
+    ASSERT(jsPandaFile != nullptr);
+    if (header_->SupportProfileTypeWithAbcId()) {
+        return jsPandaFile->GetNormalizedFileDesc();
+    }
+    return "";
 }
 
 bool PGOProfilerDecoder::InitMergeData()

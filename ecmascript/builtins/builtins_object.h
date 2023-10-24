@@ -29,7 +29,7 @@
 //  - Object.getOwnPropertyDescriptors ( O )
 #define BUILTIN_OBJECT_FUNCTIONS(V)                                                 \
     /* Object.assign ( target, ...sources ) */                                      \
-    V("assign",                   Assign,                   2, INVALID)             \
+    V("assign",                   Assign,                   2, ObjectAssign)        \
     /* Object.create ( O, Properties ) */                                           \
     V("create",                   Create,                   2, ObjectCreate)        \
     /* Object.defineProperties ( O, Properties ) */                                 \
@@ -175,6 +175,8 @@ public:
         return Span<const base::BuiltinFunctionEntry>(OBJECT_PROTOTYPE_FUNCTIONS);
     }
 
+    static JSTaggedValue AssignTaggedValue(JSThread *thread, const JSHandle<JSTaggedValue> &source,
+                                           const JSHandle<JSObject> &toAssign);
 private:
 #define BUILTIN_OBJECT_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsObject::func, length, kungfu::BuiltinsStubCSigns::id),

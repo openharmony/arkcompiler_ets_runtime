@@ -179,7 +179,7 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
                 return;
             }
             // Target method was not compiled by AOT.
-            if (!decoder_->Match(recordName, pgo::PGOMethodId(callTargetMethodOffset))) {
+            if (!decoder_->Match(jsPandaFile, recordName, pgo::PGOMethodId(callTargetMethodOffset))) {
                 tsManager->SetHotnessFunc(funcGT, false);
             }
             GateType callTargetType = GateType(funcGT);
@@ -372,6 +372,13 @@ std::vector<ElementsKind> TypeRecorder::LoadElementsKinds(int32_t offset) const
         }
         auto elementsKind = desc->GetElementsKind();
         elementsKinds.emplace_back(elementsKind);
+    }
+
+    // fiterate ElementsKind::None
+    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
+        if (elementsKinds[i] == ElementsKind::NONE) {
+            elementsKinds[i] = ElementsKind::GENERIC;
+        }
     }
 
     return elementsKinds;

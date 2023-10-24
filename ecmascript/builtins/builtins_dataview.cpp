@@ -360,11 +360,18 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
     if (!view->IsDataView()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "view is not dataview", JSTaggedValue::Exception());
     }
-    // 3. Let numberIndex be ToNumber(requestIndex).
-    JSTaggedNumber numberIndex = JSTaggedValue::ToNumber(thread, requestIndex);
-    // 5. ReturnIfAbrupt(getIndex).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t indexInt = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
+
+    int32_t indexInt = 0;
+    if (requestIndex->IsInt()) {
+        // fast get index if requestIndex is int
+        indexInt = requestIndex->GetInt();
+    } else {
+        // 3. Let numberIndex be ToNumber(requestIndex).
+        JSTaggedNumber numberIndex = JSTaggedValue::ToNumber(thread, requestIndex);
+        // 5. ReturnIfAbrupt(getIndex).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        indexInt = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
+    }
     // 6. If numberIndex ≠ getIndex or getIndex < 0, throw a RangeError exception.
     if (indexInt < 0) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
@@ -415,17 +422,26 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
     if (!view->IsDataView()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "view is not dataview", JSTaggedValue::Exception());
     }
-    // 3. Let numberIndex be ToNumber(requestIndex).
-    JSTaggedNumber numberIndex = JSTaggedValue::ToIndex(thread, requestIndex);
-    // 5. ReturnIfAbrupt(getIndex).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int64_t index = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
+    int64_t index = 0;
+    if (requestIndex->IsInt()) {
+        // fast get index if requestIndex is int
+        index = requestIndex->GetInt();
+    } else {
+        // 3. Let numberIndex be ToNumber(requestIndex).
+        JSTaggedNumber numberIndex = JSTaggedValue::ToIndex(thread, requestIndex);
+        // 5. ReturnIfAbrupt(getIndex).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        index = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
+    }
     // 6. If numberIndex ≠ getIndex or getIndex < 0, throw a RangeError exception.
     if (index < 0) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
     }
-    JSHandle<JSTaggedValue> numValueHandle = JSTaggedValue::ToNumeric(thread, value);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSMutableHandle<JSTaggedValue> numValueHandle = JSMutableHandle<JSTaggedValue>(thread, value);
+    if (!value->IsNumber()) {
+        numValueHandle.Update(JSTaggedValue::ToNumeric(thread, value));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
     // 7. Let isLittleEndian be ToBoolean(isLittleEndian).
     bool isLittleEndian = false;
     if (littleEndian->IsUndefined()) {

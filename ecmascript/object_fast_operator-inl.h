@@ -268,7 +268,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 return JSTaggedValue::Hole();
             }
             if (IsFastTypeArray(jsType)) {
-                return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, jsType);
+                return JSTypedArray::FastGetPropertyByIndex(thread, holder, index, jsType);
             }
             if (IsSpecialContainer(jsType)) {
                 return GetContainerProperty(thread, holder, index, jsType);
@@ -284,8 +284,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 if (!value.IsHole()) {
                     return value;
                 }
-            } else {
-                return JSTaggedValue::Hole();
             }
         } else {
             NumberDictionary *dict = NumberDictionary::Cast(elements);
@@ -566,7 +564,8 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
                 return attr;
             }
             // Grow properties array size
-            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(length, maxNonInlinedFastPropsCapacity);
+            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(thread, length,
+                maxNonInlinedFastPropsCapacity);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             array.Update(factory->CopyArray(array, length, capacity).GetTaggedValue());
             objHandle->SetProperties(thread, array.GetTaggedValue());

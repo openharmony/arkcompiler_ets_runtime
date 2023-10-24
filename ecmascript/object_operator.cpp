@@ -798,6 +798,14 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
     }
     {
         DISALLOW_GARBAGE_COLLECTION;
+        if (obj->IsTypedArray()) {
+            JSTaggedValue val = JSTypedArray::FastElementGet(thread_,
+                JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
+            if (!val.IsHole()) {
+                SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), true);
+            }
+            return;
+        }
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
         if (elements->GetLength() == 0) {
             return;  // Empty Array

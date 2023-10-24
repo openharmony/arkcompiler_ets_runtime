@@ -13,20 +13,4 @@
  * limitations under the License.
  */
 
-var e2 = -1
-
-function A1() {
-    var a1 = 1
-    function B1() {
-        var b1 = 11
-        function C1() {
-            print("base: " + e2)
-            print("base: " + a1)
-            print("base: " + b1)
-        }
-        C1()
-    }
-    B1()
-}
-
-globalThis.A1 = A1
+export var nop = undefined
