@@ -26,6 +26,7 @@
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/platform/file.h"
 #include "gtest/gtest.h"
 
 #include "assembler/assembly-emitter.h"
@@ -139,6 +140,7 @@ protected:
         JSNApi::DestroyJSVM(vm_);
     }
 
+    static constexpr uint32_t DECODER_THRESHOLD = 2;
     EcmaVM *vm_ = nullptr;
     std::shared_ptr<JSPandaFile> pf_;
 };
@@ -166,7 +168,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
     JSNApi::DestroyJSVM(vm_);
     // Loader
-    PGOProfilerDecoder loader("ark-profiler/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -210,7 +212,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler1/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler1/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -259,7 +261,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler2/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler2/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
     CString expectRecordName1 = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -308,10 +310,11 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler3/modules.ap", 2);
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_FALSE(FileExist("ark-profiler3/modules.ap"));
+    PGOProfilerDecoder loader("ark-profiler3/modules.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
-    ASSERT_FALSE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
+    ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler3/");
 }
 
@@ -358,7 +361,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     method->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("", 2);
+    PGOProfilerDecoder loader("", DECODER_THRESHOLD);
     // path is empty()
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
     // path size greater than PATH_MAX
@@ -409,13 +412,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler5/profiler", 2);
+    PGOProfilerDecoder loader("ark-profiler5/profiler", DECODER_THRESHOLD);
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 
-    PGOProfilerDecoder loader1("ark-profiler5/modules.ap", 2);
+    PGOProfilerDecoder loader1("ark-profiler5/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader1.LoadAndVerify(checksum));
     ASSERT_TRUE(!loader1.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
@@ -452,7 +455,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     method->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler8/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler8/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -497,7 +500,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler9/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler9/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
 #else
@@ -588,7 +591,7 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
                                                                 ApGenMode::OVERWRITE));
 
-    PGOProfilerDecoder loader("ark-profiler10/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
     ASSERT_TRUE(loader.LoadAndVerify(413775942));
 
     unlink("ark-profiler10/modules.ap");
@@ -624,10 +627,11 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler12/modules.ap", 2);
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_FALSE(FileExist("ark-profiler12/modules.ap"));
+    PGOProfilerDecoder loader("ark-profiler12/modules.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
-    ASSERT_FALSE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
+    ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler12/");
 }
 
@@ -958,7 +962,7 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
     fWriter.close();
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler17/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler17/modules.ap", DECODER_THRESHOLD);
     ASSERT_FALSE(loader.LoadAndVerify(checksum));
     unlink("ark-profiler17/modules.ap");
     rmdir("ark-profiler17/");
