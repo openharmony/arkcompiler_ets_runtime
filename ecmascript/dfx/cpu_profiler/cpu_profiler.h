@@ -87,6 +87,7 @@ public:
 
     void StartCpuProfilerForInfo();
     std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
+    uint64_t GetProfileInfoBufferSize() const;
     void StartCpuProfilerForFile(const std::string &fileName);
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);

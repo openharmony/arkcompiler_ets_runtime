@@ -470,6 +470,23 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
 #endif
 }
 
+uint64_t DFXJSNApi::GetProfileInfoBufferSize([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (vm == nullptr) {
+        return 0;
+    }
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return 0;
+    }
+    return profiler->GetProfileInfoBufferSize();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    return 0;
+#endif
+}
+
 void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
