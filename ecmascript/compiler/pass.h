@@ -48,6 +48,7 @@
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/type_hcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
+#include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/js_runtime_options.h"
 
@@ -625,6 +626,27 @@ public:
         visitor.AddPass(&valueNumbering);
         visitor.VisitGraph();
         visitor.PrintLog("value numbering");
+        return true;
+    }
+};
+
+class InstructionCombinePass {
+public:
+    bool Run(PassData *data)
+    {
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        if (runtimeOption.IsEnableInstrcutionCombine()) {
+            TimeScope timescope("InstructionCombinePass", data->GetMethodName(), data->GetMethodOffset(),
+                                data->GetLog());
+            Chunk chunk(data->GetNativeAreaAllocator());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            InstructionCombine instructionCombine(data->GetCircuit(), &visitor, &chunk,
+                                                  runtimeOption.GetTraceInstructionCombine());
+            visitor.AddPass(&instructionCombine);
+            visitor.VisitGraph();
+            visitor.PrintLog("Instruction Combine");
+        }
         return true;
     }
 };

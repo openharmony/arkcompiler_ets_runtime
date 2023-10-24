@@ -102,6 +102,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "hcr_circuit_builder.cpp",
     "hcr_gate_meta_data.cpp",
     "ic_stub_builder.cpp",
+    "instruction_combine.cpp",
     "interpreter_stub.cpp",
     "later_elimination.cpp",
     "lcr_circuit_builder.cpp",

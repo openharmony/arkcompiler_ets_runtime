@@ -26,12 +26,12 @@ namespace panda::ecmascript::kungfu {
 // constant
 GateRef CircuitBuilder::True()
 {
-    return TruncInt32ToInt1(Int32(1));
+    return Boolean(true);
 }
 
 GateRef CircuitBuilder::False()
 {
-    return TruncInt32ToInt1(Int32(0));
+    return Boolean(false);
 }
 
 GateRef CircuitBuilder::Undefined()
