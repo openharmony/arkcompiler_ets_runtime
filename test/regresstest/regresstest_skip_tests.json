@@ -1,0 +1,36 @@
+[
+    {
+        "reason": "Not support eval()",
+        "files": [
+        ]
+    },
+    {
+        "reason": "not support d8",
+        "files": [
+        ]
+    },
+    {
+        "reason": "not support async_hooks",
+        "files": [
+        ]
+    },
+    {
+        "reason": "not support Worker",
+        "files": [
+        ]
+    },
+    {
+        "reason": "Not support WebAssembly",
+        "files": [
+        ]
+    },
+    {
+      "reason": "Not a use case file",
+      "files": [
+        ".gitignore",
+        "LICENSE",
+        "README.en.md",
+        "README.md"
+	    ]
+    }
+]

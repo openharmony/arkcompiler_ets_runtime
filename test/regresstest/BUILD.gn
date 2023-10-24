@@ -1,0 +1,39 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../test_helper.gni")
+
+action("ark_regress_test") {
+  _host_test_target_ = ":ark_regress_test(${host_toolchain})"
+  _root_out_dir_ = get_label_info(_host_test_target_, "root_out_dir")
+  ark_js_runtime_dir = rebase_path("${_root_out_dir_}/arkcompiler/ets_runtime")
+  icu_dir = rebase_path("${_root_out_dir_}/thirdparty/icu")
+  llvm_lib_dir = rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
+  zlib_dir = rebase_path("${_root_out_dir_}/thirdparty/zlib")
+  ld_library_path =
+      "${ark_js_runtime_dir}:${icu_dir}:${llvm_lib_dir}:${zlib_dir}"
+  script = "$js_root/test/regresstest/run_regress_test.py"
+  _target_out_dir_ = "$target_out_dir"
+  args = [
+    "--ark-tool",
+    rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+    "--ark-frontend-binary",
+    rebase_path(_root_out_dir_) + "/arkcompiler/ets_frontend/es2abc",
+    "--LD_LIBRARY_PATH",
+    ld_library_path,
+    "--out-dir",
+    rebase_path(_target_out_dir_),
+  ]
+  inputs = []
+  outputs = [ "$target_out_dir/regresstest/" ]
+}

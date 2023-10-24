@@ -40,6 +40,20 @@
     V("removeAOTFlag",                RemoveAOTFlag,                1, INVALID)         \
     V("timeInUs",                     TimeInUs,                     0, INVALID)
 
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                            \
+    V("prepareFunctionForOptimization",  PrepareFunctionForOptimization,  1, INVALID)     \
+    V("optimizeFunctionOnNextCall",      OptimizeFunctionOnNextCall,      1, INVALID)     \
+    V("optimizeMaglevOnNextCall",        OptimizeMaglevOnNextCall,        1, INVALID)     \
+    V("deoptimizeFunction",              DeoptimizeFunction,              1, INVALID)     \
+    V("optimizeOsr",                     OptimizeOsr,                     1, INVALID)     \
+    V("neverOptimizeFunction",           NeverOptimizeFunction,           1, INVALID)     \
+    V("heapObjectVerify",                HeapObjectVerify,                1, INVALID)     \
+    V("disableOptimizationFinalization", DisableOptimizationFinalization, 0, INVALID)     \
+    V("deoptimizeNow",                   DeoptimizeNow,                   0, INVALID)     \
+    V("deoptimize_now",                  DeoptimizeNow,                   0, INVALID)     \
+    V("waitForBackgroundOptimization",   WaitForBackgroundOptimization,   0, INVALID)     \
+    V("gc",                              Gc,                              0, INVALID)
+
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
     V("startCpuProf", StartCpuProfiler, 0, INVALID)     \
@@ -50,7 +64,8 @@
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
-    BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)
+    BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
@@ -97,6 +112,28 @@ public:
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PrepareFunctionForOptimization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeFunctionOnNextCall(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeMaglevOnNextCall(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DeoptimizeFunction(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeOsr(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue NeverOptimizeFunction(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HeapObjectVerify(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DisableOptimizationFinalization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DeoptimizeNow(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue WaitForBackgroundOptimization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue Gc(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {
