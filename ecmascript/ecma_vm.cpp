@@ -236,8 +236,11 @@ EcmaVM::~EcmaVM()
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread_->isProfiling_) {
-        DFXJSNApi::StopCpuProfilerForFile(this);
-        DFXJSNApi::StopCpuProfilerForInfo(this);
+        if (profiler_->GetOutToFile()) {
+            DFXJSNApi::StopCpuProfilerForFile(this);
+        } else {
+            DFXJSNApi::StopCpuProfilerForInfo(this);
+        }
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

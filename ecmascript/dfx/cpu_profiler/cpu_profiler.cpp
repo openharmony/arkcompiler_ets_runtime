@@ -563,4 +563,9 @@ bool CpuProfiler::GetBuildNapiStack()
 {
     return isBuildNapiStack_.load();
 }
+
+bool CpuProfiler::GetOutToFile()
+{
+    return outToFile_;
+}
 } // namespace panda::ecmascript
