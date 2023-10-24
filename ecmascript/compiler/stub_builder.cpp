@@ -2265,11 +2265,12 @@ inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements
     Store(VariableType::INT64(), glue, elements, dataOffset, IntToTaggedInt(attr));
 }
 
+template<typename DictionaryT>
 inline void StubBuilder::UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value)
 {
-    GateRef arrayIndex = Int32Add(Int32(NameDictionary::TABLE_HEADER_SIZE),
-        Int32Mul(index, Int32(NameDictionary::ENTRY_SIZE)));
-    GateRef valueIndex = Int32Add(arrayIndex, Int32(NameDictionary::ENTRY_VALUE_INDEX));
+    GateRef arrayIndex = Int32Add(Int32(DictionaryT::TABLE_HEADER_SIZE),
+        Int32Mul(index, Int32(DictionaryT::ENTRY_SIZE)));
+    GateRef valueIndex = Int32Add(arrayIndex, Int32(DictionaryT::ENTRY_VALUE_INDEX));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, valueIndex, value);
 }
 
@@ -2791,7 +2792,8 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn,
+    ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2902,6 +2904,55 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&isDictionaryElement);
         {
+            GateRef entryA = FindElementFromNumberDictionary(glue, elements, index);
+            Label negtiveOne(env);
+            Label notNegtiveOne(env);
+            Branch(Int32NotEqual(entryA, Int32(-1)), &notNegtiveOne, &negtiveOne);
+            Bind(&notNegtiveOne);
+            {
+                GateRef attr = GetAttributesFromDictionary<NumberDictionary>(elements, entryA);
+                Label isWritandConfig(env);
+                Label notWritandConfig(env);
+                Branch(BoolAnd(IsWritable(attr), IsConfigable(attr)), &isWritandConfig, &notWritandConfig);
+                Bind(&isWritandConfig);
+                {
+                    Label isAccessor(env);
+                    Label notAccessor(env);
+                    Branch(IsAccessor(attr), &isAccessor, &notAccessor);
+                    Bind(&isAccessor);
+                    {
+                        GateRef accessor = GetValueFromDictionary<NumberDictionary>(elements, entryA);
+                        Label shouldCall(env);
+                        Branch(ShouldCallSetter(receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
+                        Bind(&shouldCall);
+                        {
+                            returnValue = CallSetterHelper(glue, receiver, accessor, value, callback);
+                            Jump(&exit);
+                        }
+                    }
+                    Bind(&notAccessor);
+                    {
+                        Label holdEqualsRecv(env);
+                        if (useOwn) {
+                            Branch(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
+                        } else {
+                            Branch(Equal(*holder, receiver), &holdEqualsRecv, &afterLoop);
+                        }
+                        Bind(&holdEqualsRecv);
+                        {
+                            UpdateValueInDict<NumberDictionary>(glue, elements, entryA, value);
+                            returnValue = Undefined();
+                            Jump(&exit);
+                        }
+                    }
+                }
+                Bind(&notWritandConfig);
+                {
+                    returnValue = Hole();
+                    Jump(&exit);
+                }
+            }
+            Bind(&negtiveOne);
             returnValue = Hole();
             Jump(&exit);
         }
@@ -3181,7 +3232,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
-                            UpdateValueInDict(glue, array, entry1, value);
+                            UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
                             Jump(&exit);
                         }

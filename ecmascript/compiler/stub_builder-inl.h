@@ -1328,6 +1328,15 @@ inline GateRef StubBuilder::IsWritable(GateRef attr)
         Int32(0));
 }
 
+inline GateRef StubBuilder::IsConfigable(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(
+            Int32LSR(attr, Int32(PropertyAttributes::ConfigurableField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::ConfigurableField::SIZE) - 1)),
+        Int32(0));
+}
+
 inline GateRef StubBuilder::IsAccessor(GateRef attr)
 {
     return Int32NotEqual(

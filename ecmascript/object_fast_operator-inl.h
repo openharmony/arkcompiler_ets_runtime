@@ -352,6 +352,25 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 }
             }
         } else {
+            NumberDictionary *dict = NumberDictionary::Cast(elements);
+            int entry = dict->FindEntry(JSTaggedValue(static_cast<int>(index)));
+            if (entry != -1) {
+                auto attr = dict->GetAttributes(entry);
+                if (UNLIKELY(!attr.IsWritable() || !attr.IsConfigurable())) {
+                    return JSTaggedValue::Hole();
+                }
+                if (UNLIKELY(holder != receiver)) {
+                    break;
+                }
+                if (UNLIKELY(attr.IsAccessor())) {
+                    auto accessor = dict->GetValue(entry);
+                    if (ShouldCallSetter(receiver, holder, accessor, attr)) {
+                        return CallSetter(thread, receiver, value, accessor);
+                    }
+                }
+                dict->UpdateValue(thread, entry, value);
+                return JSTaggedValue::Undefined();
+            }
             return JSTaggedValue::Hole();
         }
         if (UseOwn) {
