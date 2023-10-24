@@ -35,7 +35,7 @@ public:
 
     static constexpr uint32_t DEFAULT_CAPACITY = 4;
     static constexpr uint32_t DEFAULT_GROW_SIZE = 4;
-    static JSHandle<WeakVector> Create(const JSThread *thread, uint32_t capacity = DEFAULT_CAPACITY);
+    static JSHandle<WeakVector> Create(const JSThread *thread, uint32_t capacity = DEFAULT_CAPACITY, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static JSHandle<WeakVector> Grow(const JSThread *thread, const JSHandle<WeakVector> &old, uint32_t newCapacity);
     static JSHandle<WeakVector> Append(const JSThread *thread, const JSHandle<WeakVector> &vec,
                                        const JSHandle<JSTaggedValue> &value, ElementType type = ElementType::NORMAL);

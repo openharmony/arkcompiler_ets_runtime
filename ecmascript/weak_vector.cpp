@@ -18,12 +18,17 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
-JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacity)
+JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacity, MemSpaceType type)
 {
     ASSERT(capacity < MAX_VECTOR_INDEX);
 
     uint32_t length = VectorToArrayIndex(capacity);
-    JSHandle<WeakVector> vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length));
+    JSHandle<WeakVector> vector;
+    if (type == MemSpaceType::NON_MOVABLE) {
+        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Hole(), true));
+    } else {
+        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length));
+    }
 
     vector->SetEnd(thread, 0);
     return vector;

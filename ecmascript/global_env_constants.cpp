@@ -90,6 +90,11 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     SetConstant(ConstantIndex::HCLASS_CLASS_INDEX, JSTaggedValue(hClass));
+    // To reverse the order, the hclass of string needs to load default supers
+    SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
+    SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
+                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_ONE_FIELD_CLASS_INDEX,
@@ -102,8 +107,6 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::CONSTANT_STRING_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_STRING));
     SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
-    SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
@@ -302,8 +305,6 @@ void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
-    SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
-                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY));
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
 }

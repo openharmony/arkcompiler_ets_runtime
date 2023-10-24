@@ -74,6 +74,7 @@ group("ark_aot_ts_test") {
     "createobjectwithexcludedkeys",
     "createregexpwithliteral",
     "dec",
+    "default_supers",
     "defineasyncfunc",
     "defineclasswithbuffer",
     "defineclass",
