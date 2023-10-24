@@ -226,7 +226,7 @@ bool EcmaVM::Initialize()
     }
 
     callTimer_ = new FunctionCallTimer();
-    strategy_ = new ThrouputJSObjectResizingStrategy();
+    strategy_ = new ThroughputJSObjectResizingStrategy();
     initialized_ = true;
     return true;
 }

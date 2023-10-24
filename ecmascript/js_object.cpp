@@ -60,9 +60,10 @@ PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
     }
 }
 
-void ThrouputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32_t step)
+void ThroughputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32_t step)
 {
-    thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSThread::PROPERTIES_GROW_SIZE * 2), step));
+    thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2),
+                                  step));
 }
 
 Method *ECMAObject::GetCallTarget() const

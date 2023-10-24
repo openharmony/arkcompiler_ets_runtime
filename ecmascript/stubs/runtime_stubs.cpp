@@ -280,7 +280,7 @@ DEF_RUNTIME_STUBS(PropertiesSetValue)
     } else {
         uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
         uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(thread, capacity,
-            maxNonInlinedFastPropsCapacity);
+                                                                       maxNonInlinedFastPropsCapacity);
         properties = factory->CopyArray(arrayHandle, capacity, newLen);
     }
     properties->Set(thread, index, valueHandle);

@@ -363,18 +363,6 @@ public:
     }
 };
 
-class JSObjectResizingStrategy {
-public:
-    JSObjectResizingStrategy() = default;
-    virtual ~JSObjectResizingStrategy() = default;
-    virtual void UpdateGrowStep(JSThread *thread, uint32_t step) = 0;
-};
-
-class ThrouputJSObjectResizingStrategy : public JSObjectResizingStrategy {
-public:
-    virtual void UpdateGrowStep(JSThread *thread, uint32_t step) override;
-};
-
 class JSObject : public ECMAObject {
 public:
     static constexpr int MIN_ELEMENTS_LENGTH = 3;

@@ -25,6 +25,7 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -64,7 +65,6 @@ public:
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
-    static constexpr int PROPERTIES_GROW_SIZE = 4;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
@@ -861,7 +861,7 @@ public:
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
-        alignas(EAS) uint32_t propertiesGrowStep_ {PROPERTIES_GROW_SIZE};
+        alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
     };
