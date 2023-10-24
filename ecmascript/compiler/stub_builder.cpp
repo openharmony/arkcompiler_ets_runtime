@@ -5438,13 +5438,6 @@ GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpo
                                                       ConstPoolType::OBJECT_LITERAL);
 }
 
-GateRef StubBuilder::GetObjectLiteralInfoFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
-{
-    GateRef hirGate = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectInfoFromConstPool(glue, hirGate, constpool, module, index,
-                                                          ConstPoolType::OBJECT_LITERAL);
-}
-
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();

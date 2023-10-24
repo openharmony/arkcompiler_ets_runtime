@@ -32,6 +32,7 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
+
 namespace panda {
 namespace ecmascript {
 class JSThread;
@@ -73,10 +74,6 @@ class ConstantPool : public TaggedArray {
 public:
     static constexpr size_t JS_PANDA_FILE_INDEX = 1; // not need gc
     static constexpr size_t INDEX_HEADER_INDEX = 2; // not need gc
-    static constexpr size_t OBJECT_LITERAL_INFO_OBJECT_INDEX = 0;
-    static constexpr size_t OBJECT_LITERAL_INFO_HAS_METHOD_INDEX = 1;
-    static constexpr size_t KEY_VALUE_PAIR_VALUE_OFFSET = 1;
-    static constexpr size_t KEY_VALUE_PAIR_SIZE = 2;
     static constexpr size_t CONSTANT_INDEX_INFO_INDEX = 3;
     static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX; // divide the gc area
 
@@ -271,14 +268,14 @@ public:
     }
 
     template <ConstPoolType type>
-    static JSTaggedValue GetLiteralInfoFromCache(JSThread *thread, JSTaggedValue constpool,
-                                                 uint32_t index, CString entry)
+    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
     {
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->GetObjectFromCache(index);
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
+
         // For AOT
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         JSHandle<AOTLiteralInfo> entryIndexes(thread, JSTaggedValue::Undefined());
@@ -307,28 +304,13 @@ public:
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties, ihcVal);
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
-                    bool hasMethod = false;
-                    size_t propertiesLen = properties->GetLength();
-                    for (size_t i = 0; i < propertiesLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {
-                        key.Update(properties->Get(i));
-                        if (key->IsHole()) {
-                            break;
-                        }
-                        valueHandle.Update(properties->Get(i + ConstantPool::KEY_VALUE_PAIR_VALUE_OFFSET));
-                        if (key->IsJSFunction() || valueHandle->IsJSFunction()) {
-                            hasMethod = true;
-                        }
-                    }
                     size_t elementsLen = elements->GetLength();
-                    for (size_t i = 0; i < elementsLen; i += ConstantPool::KEY_VALUE_PAIR_SIZE) {
+                    for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer has a pair of key-value.
                         key.Update(elements->Get(i));
                         if (key->IsHole()) {
                             break;
                         }
-                        valueHandle.Update(elements->Get(i + ConstantPool::KEY_VALUE_PAIR_VALUE_OFFSET));
-                        if (key->IsJSFunction() || valueHandle->IsJSFunction()) {
-                            hasMethod = true;
-                        }
+                        valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
@@ -338,13 +320,7 @@ public:
                         thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), abcId,
                                                                                    id.GetOffset());
                     }
-                    JSHandle<TaggedArray> fixedArray =
-                        thread->GetEcmaVM()->GetFactory()->NewTaggedArray(2);   // 2: object + hasMethod
-                    // new fixed array
-                    fixedArray->Set(thread, ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX, obj);
-                    fixedArray->Set(thread, ConstantPool::OBJECT_LITERAL_INFO_HAS_METHOD_INDEX,
-                                    hasMethod ? JSTaggedValue::True() : JSTaggedValue::False());
-                    val = fixedArray.GetTaggedValue();
+                    val = obj.GetTaggedValue();
                     break;
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
@@ -365,16 +341,7 @@ public:
             }
             constpoolHandle->SetObjectToCache(thread, index, val);
         }
-        return val;
-    }
 
-    template <ConstPoolType type>
-    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
-    {
-        auto val = GetLiteralInfoFromCache<type>(thread, constpool, index, entry);
-        if (type == ConstPoolType::OBJECT_LITERAL) {
-            return JSHandle<TaggedArray>(thread, val)->Get(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX);
-        }
         return val;
     }
 
@@ -391,14 +358,6 @@ public:
     {
         CString entry = ModuleManager::GetRecordName(module);
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
-    }
-
-    template <ConstPoolType type>
-    static JSTaggedValue GetLiteralInfoFromCache(JSThread *thread, JSTaggedValue constpool,
-                                             uint32_t index, JSTaggedValue module)
-    {
-        CString entry = ModuleManager::GetRecordName(module);
-        return GetLiteralInfoFromCache<type>(thread, constpool, index, entry);
     }
 
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)

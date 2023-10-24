@@ -305,7 +305,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetMethodFromCache)                 \
     V(GetArrayLiteralFromCache)           \
     V(GetObjectLiteralFromCache)          \
-    V(GetObjectLiteralInfoFromCache)      \
     V(GetStringFromCache)                 \
     V(OptLdSuperByValue)                  \
     V(OptStSuperByValue)                  \

@@ -290,7 +290,6 @@ public:
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetExtractLengthOfTaggedArray(GateRef array);
-    void SetExtractLengthOfTaggedArray(GateRef glue, GateRef array, GateRef extraLength);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
@@ -603,7 +602,6 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
-    GateRef GetObjectLiteralInfoFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
