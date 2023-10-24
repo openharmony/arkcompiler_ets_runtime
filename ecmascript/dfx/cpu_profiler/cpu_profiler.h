@@ -93,6 +93,7 @@ public:
     void RecordCallNapiInfo(const std::string &methodAddr);
     void SetBuildNapiStack(bool flag);
     bool GetBuildNapiStack();
+    bool GetOutToFile();
     explicit CpuProfiler(const EcmaVM *vm, const int interval = CPUPROFILER_DEFAULT_INTERVAL);
     virtual ~CpuProfiler();
 
