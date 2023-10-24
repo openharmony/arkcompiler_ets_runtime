@@ -282,7 +282,8 @@ private:
                                               kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
-                               const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length);
+                               const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length,
+                               kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID);
 
     template<int type = JSSymbol::SYMBOL_DEFAULT_TYPE>
     void SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,

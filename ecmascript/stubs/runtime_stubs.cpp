@@ -2441,6 +2441,18 @@ JSTaggedValue RuntimeStubs::JSHClassFindProtoTransitions(JSHClass *cls, JSTagged
     return JSTaggedValue(cls->FindProtoTransitions(key, proto));
 }
 
+JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
+    if (base::NumberHelper::IsEmptyString(str.begin(), str.end())) {
+        return base::BuiltinsBase::GetTaggedDouble(base::NAN_VALUE);
+    }
+    double result = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0, base::IGNORE_TRAILING);
+    return base::BuiltinsBase::GetTaggedDouble(result);
+}
+
 double RuntimeStubs::TimeClip(double time)
 {
     return JSDate::TimeClip(time);

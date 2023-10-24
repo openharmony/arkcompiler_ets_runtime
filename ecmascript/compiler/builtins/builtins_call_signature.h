@@ -78,10 +78,12 @@ namespace panda::ecmascript::kungfu {
     V(MapForEach)                                   \
     V(MapSet)                                       \
     V(MapDelete)                                    \
-    V(MapHas)
+    V(MapHas)                                       \
+    V(NumberParseFloat)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
+    V(NumberConstructor)                            \
     V(DateConstructor)                              \
     V(ArrayConstructor)
 

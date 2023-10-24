@@ -44,7 +44,7 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsNumber::func refers to the native implementation of Number[name].
 #define BUILTIN_NUMBER_GLOBAL_FUNCTIONS(V)                                              \
-    V("parseFloat", ParseFloat, 1, INVALID) /* Number.parseFloat ( string ) */          \
+    V("parseFloat", ParseFloat, 1, NumberParseFloat) /* Number.parseFloat ( string ) */ \
     V("parseInt",   ParseInt,   2, INVALID) /* Number.parseInt ( string, radix ) */
 
 #define BUILTIN_NUMBER_FUNCTIONS(V)         \
