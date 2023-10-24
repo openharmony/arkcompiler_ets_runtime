@@ -32,8 +32,6 @@ public:
     void ToString(Variable *result, Label *exit, Label *slowPath);
     void Create(Variable *result, Label *exit, Label *slowPath);
     void Assign(Variable *result, Label *exit, Label *slowPath);
-    GateRef CloneObjectLiteral(GateRef glue, GateRef objLiteral);
-    GateRef CloneProperties(GateRef glue, GateRef old);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);

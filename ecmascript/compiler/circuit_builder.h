@@ -220,10 +220,6 @@ public:
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
-    GateRef GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc,
-                                       GateRef index, ConstPoolType type);
-    GateRef GetObjectInfoFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool,
-                                       GateRef module, GateRef index, ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
     GateRef GetGlobalEnv();
     GateRef GetGlobalEnvObj(GateRef env, size_t index);
