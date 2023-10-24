@@ -120,6 +120,7 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
     if (signo != PGO_SAVING_SIGNAL) {
         return;
     }
-    PGOProfilerManager::GetInstance()->AsynSave();
+
+    PGOProfilerManager::GetInstance()->ForceSave();
 }
 } // namespace panda::ecmascript::pgo

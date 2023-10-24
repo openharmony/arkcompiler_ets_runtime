@@ -409,7 +409,7 @@ public:
     }
 #endif
 
-    PGOProfiler *GetPGOProfiler() const
+    std::shared_ptr<PGOProfiler> GetPGOProfiler() const
     {
         return pgoProfiler_;
     }
@@ -549,7 +549,7 @@ private:
     QuickFixManager *quickFixManager_ {nullptr};
 
     // PGO Profiler
-    PGOProfiler *pgoProfiler_ {nullptr};
+    std::shared_ptr<PGOProfiler> pgoProfiler_ {nullptr};
     // c++ call js
     size_t callDepth_ {0};
 
