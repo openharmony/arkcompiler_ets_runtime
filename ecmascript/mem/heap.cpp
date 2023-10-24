@@ -1129,8 +1129,10 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         }
 
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
-        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        int64_t semiRemainSize =
+            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
+        int64_t overshootSize =
+            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
@@ -1159,8 +1161,10 @@ void Heap::NotifyHighSensitive(bool isStart)
     onHighSensitiveEvent_ = isStart;
     if (!onHighSensitiveEvent_ && !onStartupEvent_) {
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
-        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        int64_t semiRemainSize =
+            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
+        int64_t overshootSize =
+            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
