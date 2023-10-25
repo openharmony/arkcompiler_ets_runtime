@@ -295,8 +295,8 @@ public:
         JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
         int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
         if (res.IsHole() && (N < captureNum)) {
-            uint32_t startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
-            uint32_t endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
+            uint32_t startIndex = static_cast<uint32_t>(globalTable->GetStartOfCaptureIndex(N).GetInt());
+            uint32_t endIndex = static_cast<uint32_t>(globalTable->GetEndOfCaptureIndex(N).GetInt());
             uint32_t len = endIndex - startIndex;
             if (len < 0) {
                 res = JSTaggedValue::Undefined();

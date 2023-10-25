@@ -83,7 +83,7 @@ public:
 
     int ShouldFreeMore(size_t cachedSize) {
         LockHolder lock(lock_);
-        int result = regularMapCommitted_.size();
+        int result = static_cast<int>(regularMapCommitted_.size());
         return result - static_cast<int>(cachedSize / REGULAR_MMAP_SIZE);
     }
 

@@ -205,9 +205,9 @@ public:
         return loopDepth_;
     }
 
-    void SetInnerLoopIndex(size_t innerLoopIndex)
+    void SetInnerLoopIndex(int innerLoopIndex)
     {
-        innerLoopIndex_ = static_cast<int>(innerLoopIndex);
+        innerLoopIndex_ = innerLoopIndex;
     }
 
     int GetInnerLoopIndex()
