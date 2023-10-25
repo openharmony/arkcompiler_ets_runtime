@@ -119,9 +119,9 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             data.AbortCompilation();
             return;
         }
-        pipeline.RunPass<TSHCRLoweringPass>();
+        pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
-        pipeline.RunPass<NTypeHCRLoweringPass>();
+        pipeline.RunPass<NTypeBytecodeLoweringPass>();
         if (data.IsTypeAbort()) {
             data.AbortCompilation();
             return;
@@ -132,8 +132,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
-        pipeline.RunPass<NTypeMCRLoweringPass>();
-        pipeline.RunPass<TypeMCRLoweringPass>();
+        pipeline.RunPass<NTypeHCRLoweringPass>();
+        pipeline.RunPass<TypeHCRLoweringPass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();

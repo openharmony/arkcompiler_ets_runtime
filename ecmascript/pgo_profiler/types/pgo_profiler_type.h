@@ -220,6 +220,50 @@ public:
         }
     }
 
+    std::string ToString() const
+    {
+        if (type_.index() == 0) {
+            auto type = std::get<Type>(type_);
+            switch (type) {
+                case Type::NONE:
+                    return "none";
+                case Type::INT:
+                    return "int";
+                case Type::INT_OVERFLOW:
+                    return "int_overflow";
+                case Type::DOUBLE:
+                    return "double";
+                case Type::NUMBER:
+                    return "number";
+                case Type::NUMBER1:
+                    return "number1";
+                case Type::BOOLEAN:
+                    return "boolean";
+                case Type::UNDEFINED_OR_NULL:
+                    return "undefined_or_null";
+                case Type::SPECIAL:
+                    return "special";
+                case Type::BOOLEAN_OR_SPECIAL:
+                    return "boolean_or_special";
+                case Type::STRING:
+                    return "string";
+                case Type::BIG_INT:
+                    return "big_int";
+                case Type::HEAP_OBJECT:
+                    return "heap_object";
+                case Type::HEAP_OR_UNDEFINED_OR_NULL:
+                    return "heap_or_undefined_or_null";
+                case Type::ANY:
+                    return "any";
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
+            }
+        }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+
     bool IsProfileType() const
     {
         return type_.index() == 1;

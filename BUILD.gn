@@ -182,7 +182,10 @@ group("ark_runtime_host_unittest") {
   deps = []
   if (host_os != "mac") {
     # js unittest
-    deps += [ ":ark_unittest" ]
+    deps += [
+      ":ark_unittest",
+      "$js_root/test/typeinfer:ark_pgotypeinfer_test",
+    ]
 
     # js bytecode test
     deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
