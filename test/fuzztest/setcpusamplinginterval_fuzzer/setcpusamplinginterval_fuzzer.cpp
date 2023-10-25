@@ -44,6 +44,7 @@ namespace OHOS {
             key = 1024; // 1024 : 1M in size
         }
         DFXJSNApi::SetCpuSamplingInterval(vm, key);
+        DFXJSNApi::StopCpuProfilerForFile(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }
