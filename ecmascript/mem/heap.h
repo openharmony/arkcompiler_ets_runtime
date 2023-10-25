@@ -300,6 +300,7 @@ public:
     void TryTriggerConcurrentMarking();
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
+    bool CheckCanTriggerConcurrentMarking();
 
     void TryTriggerIdleCollection();
     void TryTriggerIncrementalMarking();

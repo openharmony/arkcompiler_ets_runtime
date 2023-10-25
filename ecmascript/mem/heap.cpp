@@ -870,6 +870,13 @@ void Heap::TryTriggerIncrementalMarking()
     }
 }
 
+bool Heap::CheckCanTriggerConcurrentMarking()
+{
+    return concurrentMarker_->IsEnabled() && thread_->IsReadyToMark() &&
+        !incrementalMarker_->IsTriggeredIncrementalMark() &&
+        (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
+}
+
 void Heap::TryTriggerConcurrentMarking()
 {
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
@@ -880,9 +887,7 @@ void Heap::TryTriggerConcurrentMarking()
     // young mark may not result in the new space reaching its limit, young mark can be triggered.
     // If it spends much time in full mark, the compress full GC will be requested when the spaces reach the limit.
     // If the global space is larger than half max heap size, we will turn to use full mark and trigger partial GC.
-    if (!concurrentMarker_->IsEnabled() || !thread_->IsReadyToMark() ||
-        incrementalMarker_->IsTriggeredIncrementalMark() ||
-        !(idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC)) {
+    if (!CheckCanTriggerConcurrentMarking()) {
         return;
     }
     if (fullMarkRequested_) {
@@ -1137,7 +1142,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         onStartupEvent_ = false;
     }
 
-    if (isMainThread) {
+    if (isMainThread && CheckCanTriggerConcurrentMarking()) {
         markType_ = MarkType::MARK_FULL;
         TriggerConcurrentMarking();
     }
