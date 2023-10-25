@@ -341,3 +341,17 @@ print(reg2.test("fooooooo"));
 
 RegExp.prototype.test = protoTest
 print(reg2.test("fooooooo"));
+
+// Same hash in cached result, but different flags.
+var regexp1 = /a*/gs;
+var regexp2 = /a*/g;
+regexp2.lastIndex = 8;
+print(regexp1.exec('aaa'));
+print(regexp2.exec('aaa'));
+
+// Same hash in cached result, and same flags, but different lastIndex.
+var regexp3 = /a*/g;
+var regexp4 = /a*/g;
+regexp4.lastIndex = 1;
+print(regexp3.exec('aaabab'));
+print(regexp4.exec('aaabaa'));

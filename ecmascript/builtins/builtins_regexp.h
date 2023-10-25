@@ -155,13 +155,15 @@ public:
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &patten,
                                    const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
                                    CacheType type, const JSHandle<JSTaggedValue> &regexp,
-                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined());
+                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                   bool isIntermediateResult = false);
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                  const JSHandle<JSTaggedValue> &patten, const JSHandle<JSTaggedValue> &flags,
                                  const JSHandle<JSTaggedValue> &input, const JSHandle<JSTaggedValue> &resultArray,
                                  CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
-                                 JSTaggedValue extend = JSTaggedValue::Undefined());
+                                 JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                 bool isIntermediateResult = false);
 
     static void GrowRegexpCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache);
 
