@@ -226,7 +226,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
 
     Expected<JSTaggedValue, bool> result;
 
-    if (context->GetStageOfHotReload() < 0) {
+    if (context->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
         result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, excuteFromJob);
     } else {
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
