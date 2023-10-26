@@ -82,6 +82,9 @@ v39++;
 
 // case9: this branch is unreachable
 let v:number = [];
-print(Math.atan2(--v));
+print(Math.abs(--v));
+print(v);
+let u:number[] = [];
+print(--u);
 
 print("compiler success");
