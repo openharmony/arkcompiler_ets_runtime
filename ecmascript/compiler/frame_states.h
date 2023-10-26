@@ -48,6 +48,11 @@ public:
         liveout_.ClearBit(index);
     }
 
+    bool TestBit(size_t index) const
+    {
+        return liveout_.TestBit(index);
+    }
+
     GateRef ValuesAt(size_t index) const
     {
         ASSERT(index < values_.size());
@@ -118,6 +123,7 @@ private:
     bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc, size_t diff);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
+    void MergeFromCatchBB(size_t curBC, size_t curId, size_t bbId);
     size_t LoopExitCount(BytecodeRegion *bb, BytecodeRegion *bbNext);
     GateRef TryGetLoopExitValue(GateRef value, size_t diff, size_t reg);
     FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
@@ -169,8 +175,10 @@ private:
     void SaveBBBeginStateInfo(size_t bbId);
     FrameStateInfo *GetFrameInfoBefore(BytecodeRegion &bb, uint32_t bcId);
     FrameStateInfo *GetFrameInfoAfter(uint32_t bcId);
-    GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
-    GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
+    GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb,
+                          size_t bcId, GateRef gate, bool useBCId);
+    GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb,
+                            size_t bcId, GateRef phi, bool useBCId);
     void BuildFrameState(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
     void BuildStateSplitAfter(size_t index, BytecodeRegion& bb);
     void BuildStateSplitBefore(BytecodeRegion& bb, size_t index);

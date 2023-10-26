@@ -173,10 +173,11 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc, size_t diff)
     return changed;
 }
 
-GateRef FrameStateBuilder::GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate)
+GateRef FrameStateBuilder::GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb,
+                                         size_t bcId, GateRef gate, bool useBCId)
 {
     if (gateAcc_.GetOpCode(gate) == OpCode::VALUE_SELECTOR) {
-        return GetPhiComponent(bb, predBb, gate);
+        return GetPhiComponent(bb, predBb, bcId, gate, useBCId);
     }
     return gate;
 }
@@ -233,7 +234,8 @@ GateRef FrameStateBuilder::GetPredStateGateBetweenBB(BytecodeRegion *bb, Bytecod
     return Circuit::NullGate();
 }
 
-GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi)
+GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb,
+                                           size_t bcId, GateRef phi, bool useBCId)
 {
     ASSERT(gateAcc_.GetOpCode(phi) == OpCode::VALUE_SELECTOR);
 
@@ -274,8 +276,14 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
     ASSERT(gateAcc_.GetNumValueIn(phi) == bb->numOfStatePreds);
     // The phi input nodes need to be traversed in reverse order, because there is a bb with multiple def points
     for (size_t i = bb->numOfStatePreds - 1; i >= 0; --i) {
-        auto predId = std::get<0>(bb->expandedPreds.at(i));
-        if (predId == predBb->id) {
+        size_t predId;
+        if (useBCId) {
+            predId = std::get<1>(bb->expandedPreds.at(i));
+        } else {
+            predId = std::get<0>(bb->expandedPreds.at(i));
+        }
+        size_t curId = useBCId ? bcId : predBb->id;
+        if (predId == curId) {
             return gateAcc_.GetValueIn(phi, i);
         }
     }
@@ -294,7 +302,7 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
         auto phi = bb->valueSelectorAccGate;
         auto value = predLiveout->ValuesAt(accumulatorIndex_);
         if (value == phi) {
-            auto target = GetPreBBInput(bb, predBb, phi);
+            auto target = GetPreBBInput(bb, predBb, 0, phi, false);
             if (target != Circuit::NullGate()) {
                 auto diff = LoopExitCount(predBb, bb);
                 target = TryGetLoopExitValue(target, diff, accumulatorIndex_);
@@ -307,7 +315,7 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
         auto gate = it.second;
         auto value = predLiveout->ValuesAt(reg);
         if (value == gate) {
-            auto target = GetPreBBInput(bb, predBb, gate);
+            auto target = GetPreBBInput(bb, predBb, 0, gate, false);
             if (target == Circuit::NullGate()) {
                 continue;
             }
@@ -317,6 +325,43 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
         }
     }
     return changed;
+}
+
+void FrameStateBuilder::MergeFromCatchBB(size_t curBC, size_t curId, size_t bbId)
+{
+    bool accumulatorIsLive = liveOutResult_->TestBit(accumulatorIndex_);
+    auto liveout = GetBBBeginStateInfo(bbId);
+    liveOutResult_->MergeLiveout(liveout);
+    auto &bb = builder_->GetBasicBlockById(bbId);
+    auto &predBb = builder_->GetBasicBlockById(curId);
+    for (size_t i = 0; i < numVregs_; i++) {
+        auto predValue = liveout->ValuesAt(i);
+        auto value = liveOutResult_->ValuesAt(i);
+        if (value == Circuit::NullGate() && predValue != Circuit::NullGate()) {
+            predValue = TryGetLoopExitValue(predValue, LoopExitCount(&predBb, &bb), i);
+            liveOutResult_->SetValuesAt(i, predValue);
+        }
+    }
+    // accumulatorIndex_ is exeception object
+    if (!accumulatorIsLive) {
+        liveOutResult_->ClearBit(accumulatorIndex_);
+        UpdateAccumulator(Circuit::NullGate());
+    }
+    
+    for (auto &it : bb.vregToValueGate) {
+        auto reg = it.first;
+        auto gate = it.second;
+        auto value = liveOutResult_->ValuesAt(reg);
+        if (value == gate) {
+            auto target = GetPreBBInput(&bb, &predBb, curBC, gate, true);
+            if (target == Circuit::NullGate()) {
+                continue;
+            }
+            auto diff = LoopExitCount(&predBb, &bb);
+            target = TryGetLoopExitValue(target, diff, reg);
+            liveOutResult_->SetValuesAt(reg, target);
+        }
+    }
 }
 
 bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
@@ -332,6 +377,10 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
     liveOutResult_->CopyFrom(liveout);
     while (true) {
         auto &bytecodeInfo = iterator.GetBytecodeInfo();
+        if (!bb.catchs.empty() && !bytecodeInfo.NoThrow()) {
+            ASSERT(bb.catchs.size() == 1); // 1: one catch
+            MergeFromCatchBB(iterator.Index(), bbId, bb.catchs.at(0)->id);
+        }
         ComputeLiveOutBC(iterator.Index(), bytecodeInfo, bbId);
         --iterator;
         if (iterator.Done()) {
@@ -359,16 +408,6 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
     if (!bb.trys.empty()) {
         // clear GET_EXCEPTION gate if this is a catch block
         UpdateAccumulator(Circuit::NullGate());
-        for (auto bbPred : bb.trys) {
-            if (bbPred->isDead) {
-                continue;
-            }
-            if (defPhi) {
-                changed |= MergeIntoPredBB(&bb, bbPred);
-            } else {
-                changed |= MergeIntoPredBC(bbPred->end, LoopExitCount(bbPred, &bb));
-            }
-        }
     }
 
     return changed;
