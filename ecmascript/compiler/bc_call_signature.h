@@ -451,6 +451,8 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX_IMM16(HandleNewobjrangeImm16Imm8V8, V)       \
     APPEND_SUFFIX_IMM16(HandleWideNewobjrangePrefImm16V8, V)   \
     APPEND_SUFFIX(HandleInstanceofImm8V8, V)                   \
+    APPEND_SUFFIX(HandleGetiteratorImm8, V)                    \
+    APPEND_SUFFIX_IMM16(HandleGetiteratorImm16, V)             \
     APPEND_SUFFIX(HandleTryldglobalbynameImm8Id16, V)          \
     APPEND_SUFFIX_IMM16(HandleTryldglobalbynameImm16Id16, V)   \
     APPEND_SUFFIX(HandleTrystglobalbynameImm8Id16, V)          \

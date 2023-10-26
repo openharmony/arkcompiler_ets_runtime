@@ -1807,8 +1807,40 @@ void SlowPathLowering::LowerGetNextPropName(GateRef gate)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef iter = acc_.GetValueIn(gate, 0);
-    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::Getnextpropname, {glue_, iter});
-    ReplaceHirWithValue(gate, newGate);
+
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    Label notFinish(&builder_);
+    Label notEnumCacheValid(&builder_);
+    Label fastGetKey(&builder_);
+    Label slowpath(&builder_);
+    Label exit(&builder_);
+
+    GateRef index = builder_.GetIndexFromForInIterator(iter);
+    GateRef length = builder_.GetLengthFromForInIterator(iter);
+    builder_.Branch(builder_.Int32GreaterThanOrEqual(index, length), &exit, &notFinish);
+    builder_.Bind(&notFinish);
+    GateRef keys = builder_.GetKeysFromForInIterator(iter);
+    GateRef receiver = builder_.GetObjectFromForInIterator(iter);
+    GateRef cachedHclass = builder_.GetCachedHclassFromForInIterator(iter);
+    GateRef kind = builder_.GetEnumCacheKind(glue_, keys);
+    builder_.Branch(builder_.IsEnumCacheValid(receiver, cachedHclass, kind), &fastGetKey, &notEnumCacheValid);
+    builder_.Bind(&notEnumCacheValid);
+    builder_.Branch(builder_.NeedCheckProperty(receiver), &slowpath, &fastGetKey);
+    builder_.Bind(&fastGetKey);
+    {
+        result = builder_.GetValueFromTaggedArray(keys, index);
+        builder_.IncreaseInteratorIndex(glue_, iter, index);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&slowpath);
+    {
+        result = LowerCallRuntime(gate, RTSTUB_ID(GetNextPropNameSlowpath), { iter }, true);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    ReplaceHirWithValue(gate, *result);
 }
 
 void SlowPathLowering::LowerCopyDataProperties(GateRef gate)

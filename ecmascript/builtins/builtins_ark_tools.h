@@ -23,22 +23,23 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsArkTools::func refers to the native implementation of ArkTools[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
-#define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                           \
-    V("compareHClass",                CompareHClass,                2, INVALID)         \
-    V("dumpHClass",                   DumpHClass,                   1, INVALID)         \
-    V("excutePendingJob",             ExcutePendingJob,             0, INVALID)         \
-    V("forceFullGC",                  ForceFullGC,                  0, INVALID)         \
-    V("getHClass",                    GetHClass,                    1, INVALID)         \
-    V("getLexicalEnv",                GetLexicalEnv,                1, INVALID)         \
-    V("hasTSSubtyping",               HasTSSubtyping,               1, INVALID)         \
-    V("hiddenStackSourceFile",        HiddenStackSourceFile,        0, INVALID)         \
-    V("isNotHoleProperty",            IsNotHoleProperty,            2, INVALID)         \
-    V("isPrototype",                  IsPrototype,                  1, INVALID)         \
-    V("isRegExpReplaceDetectorValid", IsRegExpReplaceDetectorValid, 0, INVALID)         \
-    V("isTSHClass",                   IsTSHClass,                   1, INVALID)         \
-    V("print",                        ObjectDump,                   0, INVALID)         \
-    V("removeAOTFlag",                RemoveAOTFlag,                1, INVALID)         \
-    V("timeInUs",                     TimeInUs,                     0, INVALID)
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                             \
+    V("compareHClass",                 CompareHClass,                 2, INVALID)         \
+    V("dumpHClass",                    DumpHClass,                    1, INVALID)         \
+    V("excutePendingJob",              ExcutePendingJob,              0, INVALID)         \
+    V("forceFullGC",                   ForceFullGC,                   0, INVALID)         \
+    V("getHClass",                     GetHClass,                     1, INVALID)         \
+    V("getLexicalEnv",                 GetLexicalEnv,                 1, INVALID)         \
+    V("hasTSSubtyping",                HasTSSubtyping,                1, INVALID)         \
+    V("hiddenStackSourceFile",         HiddenStackSourceFile,         0, INVALID)         \
+    V("isNotHoleProperty",             IsNotHoleProperty,             2, INVALID)         \
+    V("isPrototype",                   IsPrototype,                   1, INVALID)         \
+    V("isRegExpReplaceDetectorValid",  IsRegExpReplaceDetectorValid,  0, INVALID)         \
+    V("isSymbolIteratorDetectorValid", IsSymbolIteratorDetectorValid, 1, INVALID)         \
+    V("isTSHClass",                    IsTSHClass,                    1, INVALID)         \
+    V("print",                         ObjectDump,                    0, INVALID)         \
+    V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
+    V("timeInUs",                      TimeInUs,                      0, INVALID)
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -95,6 +96,8 @@ public:
     static JSTaggedValue IsPrototype(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
 

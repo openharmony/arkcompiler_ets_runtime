@@ -1250,6 +1250,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
     obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
     return true;
 }
 

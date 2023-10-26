@@ -25,9 +25,14 @@ namespace ecmascript {
 class GlobalEnv;
 class PropertyDetector {
 public:
-#define GLOBAL_ENV_DETECTOR_FIELDS(V)                                       \
-    V(JSTaggedValue, RegExpReplaceDetector, REGEXP_REPLACE_DETECTOR_INDEX)  \
-    V(JSTaggedValue, RegExpSplitDetector, REGEXP_SPLIT_DETECTOR_INDEX)
+#define GLOBAL_ENV_DETECTOR_FIELDS(V)                                                   \
+    V(JSTaggedValue, RegExpReplaceDetector, REGEXP_REPLACE_DETECTOR_INDEX)              \
+    V(JSTaggedValue, RegExpSplitDetector, REGEXP_SPLIT_DETECTOR_INDEX)                  \
+    V(JSTaggedValue, MapIteratorDetector, MAP_ITERATOR_DETECTOR_INDEX)                  \
+    V(JSTaggedValue, SetIteratorDetector, SET_ITERATOR_DETECTOR_INDEX)                  \
+    V(JSTaggedValue, StringIteratorDetector, STRING_ITERATOR_DETECTOR_INDEX)            \
+    V(JSTaggedValue, ArrayIteratorDetector, ARRAY_ITERATOR_DETECTOR_INDEX)              \
+    V(JSTaggedValue, TypedArrayIteratorDetector, TYPED_ARRAY_ITERATOR_DETECTOR_INDEX)
 
 #define DECLARE_DETECTOR(type, name, index)                        \
     static inline bool Is##name##Valid(JSHandle<GlobalEnv> env);   \
@@ -35,9 +40,10 @@ public:
     GLOBAL_ENV_DETECTOR_FIELDS(DECLARE_DETECTOR)
 #undef DECLARE_DETECTOR
 
-#define DETECTOR_SYMBOL_LIST(V)                    \
-    V(ReplaceSymbol, "Symbol.replace", replace)  \
-    V(SplitSymbol,   "Symbol.split",   split  )
+#define DETECTOR_SYMBOL_LIST(V)                      \
+    V(ReplaceSymbol,  "Symbol.replace",   replace )  \
+    V(SplitSymbol,    "Symbol.split",     split   )  \
+    V(IteratorSymbol, "Symbol.iterator",  iterator)
 };
 
 }  // namespace ecmascript

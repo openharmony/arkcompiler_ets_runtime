@@ -386,6 +386,25 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     return callGate;
 }
 
+GateRef CircuitBuilder::TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> args = { currentControl, currentDepend, thisObj, funcId };
+    uint64_t bitfield = args.size() - 2;  // 2: skip control and depend
+    AppendFrameArgs(args, hirGate);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallNative(bitfield, pcOffset),
+        MachineType::I64, args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize)
 {
     auto currentLabel = env_->GetCurrentLabel();

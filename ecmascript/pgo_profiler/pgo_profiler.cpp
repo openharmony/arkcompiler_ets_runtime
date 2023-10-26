@@ -490,6 +490,16 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpCreateObject(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, traceId);
                 break;
             }
+            case EcmaOpcode::GETITERATOR_IMM8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::GETITERATOR_IMM16: {
+                uint16_t slotId = READ_INST_16_0();
+                DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             default:
                 break;
@@ -862,9 +872,27 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
     if (!slotValue.IsInt()) {
         return;
     }
-    auto calleeMethodId = slotValue.GetInt();
+    int calleeMethodId = slotValue.GetInt();
+    ProfileType::Kind kind = (calleeMethodId < 0) ? ProfileType::Kind::NativeFunctionId : ProfileType::Kind::MethodId;
+    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(calleeMethodId), kind);
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
+}
 
-    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, calleeMethodId);
+void PGOProfiler::DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+{
+    if (vm_->GetJSThread()->GetEnableLazyBuiltins()) {
+        return;
+    }
+    JSTaggedValue value = profileTypeInfo->Get(slotId);
+    if (!value.IsInt()) {
+        return;
+    }
+    int iterKind = value.GetInt();
+    ASSERT(iterKind <= 0);
+    ProfileType::Kind pgoKind = ProfileType::Kind::NativeFunctionId;
+    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(iterKind), pgoKind);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }

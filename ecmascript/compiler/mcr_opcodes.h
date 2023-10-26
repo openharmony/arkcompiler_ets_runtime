@@ -26,6 +26,9 @@ namespace panda::ecmascript::kungfu {
     V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
     V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
+    V(IteratorFunctionCheck, ITERATOR_FUNCTION_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                 \
+    V(GetFixedIterator, GET_FIXED_ITERATOR, GateFlags::NONE_FLAG, 1, 1, 2)                           \
+    V(NativeCallTargetCheck, NATIVE_CALLTARGET_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                 \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \

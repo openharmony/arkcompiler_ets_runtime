@@ -25,6 +25,7 @@ public:
     CAST_CHECK(JSArrayIterator, IsJSArrayIterator);
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj);
 
     static constexpr size_t ITERATED_ARRAY_OFFSET = JSObject::SIZE;
     ACCESSORS(IteratedArray, ITERATED_ARRAY_OFFSET, NEXT_INDEX_OFFSET)

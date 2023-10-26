@@ -1095,21 +1095,7 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label heapObj(env);
-    Label exit(env);
-    GateRef isHeapObject = TaggedIsHeapObject(obj);
-    Branch(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    result = env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->IsEcmaObject(obj);
 }
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
@@ -1425,10 +1411,7 @@ inline GateRef StubBuilder::GetStoreTSHandlerHandlerInfo(GateRef object)
 
 inline GateRef StubBuilder::GetHasChanged(GateRef object)
 {
-    GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), object, bitfieldOffset);
-    GateRef mask = Int32(1LLU << (ProtoChangeMarker::HAS_CHANGED_BITS - 1));
-    return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
+    return env_->GetBuilder()->GetHasChanged(object);
 }
 
 inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hClass)
@@ -1456,77 +1439,62 @@ inline GateRef StubBuilder::TaggedIsProtoChangeMarker(GateRef obj)
 
 inline GateRef StubBuilder::GetEmptyArray(GateRef glue)
 {
-    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-    GateRef offset = GetGlobalConstantOffset(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    return Load(VariableType::JS_ANY(), gConstAddr, offset);
+    return env_->GetBuilder()->GetEmptyArray(glue);
 }
 
 inline GateRef StubBuilder::GetLengthFromForInIterator(GateRef iter)
 {
-    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
-    return Load(VariableType::INT32(), iter, offset);
+    return env_->GetBuilder()->GetLengthFromForInIterator(iter);
 }
 
 inline GateRef StubBuilder::GetIndexFromForInIterator(GateRef iter)
 {
-    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
-    return Load(VariableType::INT32(), iter, offset);
+    return env_->GetBuilder()->GetIndexFromForInIterator(iter);
 }
 
 inline GateRef StubBuilder::GetKeysFromForInIterator(GateRef iter)
 {
-    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
-    return Load(VariableType::JS_ANY(), iter, offset);
+    return env_->GetBuilder()->GetKeysFromForInIterator(iter);
 }
 
 inline GateRef StubBuilder::GetObjectFromForInIterator(GateRef iter)
 {
-    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
-    return Load(VariableType::JS_ANY(), iter, offset);
+    return env_->GetBuilder()->GetObjectFromForInIterator(iter);
 }
 
 inline GateRef StubBuilder::GetCachedHclassFromForInIterator(GateRef iter)
 {
-    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
-    return Load(VariableType::JS_ANY(), iter, offset);
+    return env_->GetBuilder()->GetCachedHclassFromForInIterator(iter);
 }
 
 inline void StubBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
 {
-    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, iter, offset, length);
+    env_->GetBuilder()->SetLengthOfForInIterator(glue, iter, length);
 }
 
 inline void StubBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index)
 {
-    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
-    Store(VariableType::INT32(), glue, iter, offset, index);
+    env_->GetBuilder()->SetIndexOfForInIterator(glue, iter, index);
 }
 
 inline void StubBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
 {
-    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
-    Store(VariableType::JS_ANY(), glue, iter, offset, keys);
+    env_->GetBuilder()->SetKeysOfForInIterator(glue, iter, keys);
 }
 
 inline void StubBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object)
 {
-    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
-    Store(VariableType::JS_ANY(), glue, iter, offset, object);
+    env_->GetBuilder()->SetObjectOfForInIterator(glue, iter, object);
 }
 
-inline void StubBuilder::SetCachedHclassOFForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+inline void StubBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
 {
-    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
-    Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
+    env_->GetBuilder()->SetCachedHclassOfForInIterator(glue, iter, hclass);
 }
 
 inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
 {
-    GateRef newIndex = Int32Add(index, Int32(1));
-    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
-    Store(VariableType::INT32(), glue, iter, offset, newIndex);
+    env_->GetBuilder()->IncreaseInteratorIndex(glue, iter, index);
 }
 
 inline GateRef StubBuilder::IsField(GateRef attr)
@@ -1710,20 +1678,17 @@ inline GateRef StubBuilder::SetDictionaryOrderFieldInPropAttr(GateRef attr, Gate
 
 inline GateRef StubBuilder::GetPrototypeFromHClass(GateRef hClass)
 {
-    GateRef protoOffset = IntPtr(JSHClass::PROTOTYPE_OFFSET);
-    return Load(VariableType::JS_ANY(), hClass, protoOffset);
+    return env_->GetBuilder()->GetPrototypeFromHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetEnumCacheFromHClass(GateRef hClass)
 {
-    GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
-    return Load(VariableType::JS_ANY(), hClass, offset);
+    return env_->GetBuilder()->GetEnumCacheFromHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetProtoChangeMarkerFromHClass(GateRef hClass)
 {
-    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-    return Load(VariableType::JS_ANY(), hClass, offset);
+    return env_->GetBuilder()->GetProtoChangeMarkerFromHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetLayoutFromHClass(GateRef hClass)
@@ -1885,11 +1850,7 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
 
 inline GateRef StubBuilder::HasDeleteProperty(GateRef hClass)
 {
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::HasDeletePropertyBit::START_BIT)),
-                 Int32((1LLU << JSHClass::HasDeletePropertyBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->HasDeleteProperty(hClass);
 }
 
 inline GateRef StubBuilder::IsTSHClass(GateRef hClass)

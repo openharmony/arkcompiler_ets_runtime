@@ -632,7 +632,7 @@ public:
     void SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index);
     void SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys);
     void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
-    void SetCachedHclassOFForInIterator(GateRef glue, GateRef iter, GateRef hclass);
+    void SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
     void IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index);
     GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
     GateRef GetEmptyArray(GateRef glue);
@@ -677,6 +677,7 @@ public:
     GateRef CallGetterHelper(
         GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
+    GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
                            ProfileOperation callback = ProfileOperation());
@@ -733,6 +734,7 @@ private:
                          const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
+    bool IsCallModeSupportPGO(JSCallMode mode);
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
