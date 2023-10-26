@@ -31,9 +31,6 @@
 #include "os/mutex.h"
 
 namespace panda::ecmascript::pgo {
-static const std::string AP_SUFFIX = ".ap";
-static const std::string PROFILE_FILE_NAME = "/modules" + AP_SUFFIX;
-static const std::string RUNTIME_AP_PREFIX = "/rt_";
 void PGOProfilerEncoder::Destroy()
 {
     pandaFileInfos_->Clear();
@@ -55,7 +52,7 @@ bool PGOProfilerEncoder::ResetOutPathByModuleName(const std::string &moduleName)
         return false;
     }
     moduleName_ = moduleName;
-    return ResetOutPath(RUNTIME_AP_PREFIX + moduleName_ + AP_SUFFIX);
+    return ResetOutPath(ApNameUtils::GetRuntimeApName(moduleName_));
 }
 
 bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
@@ -64,8 +61,9 @@ bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
         return false;
     }
 
-    if (realOutPath_.compare(realOutPath_.length() - AP_SUFFIX.length(), AP_SUFFIX.length(), AP_SUFFIX)) {
-        realOutPath_ += profileFileName;
+    auto suffixLength = ApNameUtils::AP_SUFFIX.length();
+    if (realOutPath_.compare(realOutPath_.length() - suffixLength, suffixLength, ApNameUtils::AP_SUFFIX)) {
+        realOutPath_ += "/" + profileFileName;
     }
     LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
     return true;
@@ -74,7 +72,7 @@ bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
 bool PGOProfilerEncoder::InitializeData()
 {
     if (!isProfilingInitialized_) {
-        if (!ResetOutPath(PROFILE_FILE_NAME)) {
+        if (!ResetOutPath(ApNameUtils::DEFAULT_AP_NAME)) {
             return false;
         }
         PGOProfilerHeader::Build(&header_, PGOProfilerHeader::LastSize());

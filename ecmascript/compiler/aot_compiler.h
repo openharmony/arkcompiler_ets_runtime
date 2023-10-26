@@ -15,12 +15,11 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_COMPILER_H
 #define ECMASCRIPT_COMPILER_AOT_COMPILER_H
 
-#include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript::kungfu {
-namespace {
+class OhosPkgArgs;
 using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
 
 struct AbcFileInfo {
@@ -63,10 +62,15 @@ struct CompilationOptions {
 
 class CompilationPreprocessor {
 public:
-    CompilationPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::map<std::string, OhosPkgArgs> &pkgsArgs,
+    CompilationPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions,
+                            std::map<std::string, std::shared_ptr<OhosPkgArgs>> &pkgsArgs,
                             PGOProfilerDecoder &profilerDecoder, arg_list_t &pandaFileNames)
-        : vm_(vm), runtimeOptions_(runtimeOptions), pkgsArgs_(pkgsArgs),
-          profilerDecoder_(profilerDecoder), pandaFileNames_(pandaFileNames) {};
+        : vm_(vm),
+          runtimeOptions_(runtimeOptions),
+          pkgsArgs_(pkgsArgs),
+          profilerDecoder_(profilerDecoder),
+          pandaFileNames_(pandaFileNames) {};
+
     ~CompilationPreprocessor() = default;
 
     bool HandleTargetCompilerMode(CompilationOptions &cOptions);
@@ -77,7 +81,7 @@ public:
 
     void SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log);
 
-    void GenerateAbcFileInfos();
+    bool GenerateAbcFileInfos();
 
     void GenerateGlobalTypes(const CompilationOptions &cOptions);
 
@@ -95,8 +99,6 @@ public:
     }
 
 private:
-    bool HandleOhosPkgArgs();
-
     void HandleTargetModeInfo(CompilationOptions &cOptions);
 
     std::shared_ptr<JSPandaFile> CreateAndVerifyJSPandaFile(const std::string &fileName);
@@ -105,11 +107,11 @@ private:
 
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;
-    std::map<std::string, OhosPkgArgs> &pkgsArgs_;
+    std::map<std::string, std::shared_ptr<OhosPkgArgs>> &pkgsArgs_;
     PGOProfilerDecoder &profilerDecoder_;
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
+    friend class OhosPkgArgs;
 };
-}
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_AOT_COMPILER_H
