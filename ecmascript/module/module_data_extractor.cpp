@@ -162,9 +162,9 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
         LOG_FULL(ERROR) << msg;
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), JSTaggedValue::Exception());
     }
-    CString value = jsPandaFile->GetJsonStringId(recordInfo);
-    JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
-    info->SetCallArg(arg0.GetTaggedValue());
+    StringData sd = jsPandaFile->GetStringData(EntityId(recordInfo.jsonStringId));
+    JSTaggedValue value(thread->GetEcmaVM()->GetFactory()->GetRawStringFromStringTable(sd));
+    info->SetCallArg(value);
     return BuiltinsJson::Parse(info);
 }
 }  // namespace panda::ecmascript

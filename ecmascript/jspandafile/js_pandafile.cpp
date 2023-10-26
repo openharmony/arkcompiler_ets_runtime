@@ -236,12 +236,6 @@ bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo 
     return false;
 }
 
-CString JSPandaFile::GetJsonStringId(const JSRecordInfo &jsRecordInfo) const
-{
-    StringData sd = GetStringData(EntityId(jsRecordInfo.jsonStringId));
-    return utf::Mutf8AsCString(sd.data);
-}
-
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
 {
     CString entryPoint = GetNpmEntries(recordName);
