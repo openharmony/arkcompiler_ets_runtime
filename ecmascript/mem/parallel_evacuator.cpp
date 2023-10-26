@@ -53,6 +53,25 @@ void ParallelEvacuator::Evacuate()
     Finalize();
 }
 
+void ParallelEvacuator::UpdateTrackInfo()
+{
+    for (uint32_t i = 0; i <= MAX_TASKPOOL_THREAD_NUM; i++) {
+        auto &trackInfoSet = ArrayTrackInfoSet(i);
+        for (auto &each : trackInfoSet) {
+            auto trackInfoVal = JSTaggedValue(each);
+            if (!trackInfoVal.IsHeapObject() || !trackInfoVal.IsWeak()) {
+                continue;
+            }
+            auto trackInfo = trackInfoVal.GetWeakReferentUnChecked();
+            trackInfo = UpdateAddressAfterEvacation(trackInfo);
+            if (trackInfo) {
+                heap_->GetEcmaVM()->GetPGOProfiler()->UpdateTrackSpaceFlag(trackInfo, RegionSpaceFlag::IN_OLD_SPACE);
+            }
+        }
+        trackInfoSet.clear();
+    }
+}
+
 void ParallelEvacuator::EvacuateSpace()
 {
     TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
@@ -73,15 +92,19 @@ void ParallelEvacuator::EvacuateSpace()
         }
     }
 
-    EvacuateSpace(allocator_, true);
+    EvacuateSpace(allocator_, 0, true);
     WaitFinished();
+    if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
+        UpdateTrackInfo();
+    }
 }
 
-bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, bool isMain)
+bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, bool isMain)
 {
     std::unique_ptr<Workload> region = GetWorkloadSafe();
+    auto &arrayTrackInfoSet = ArrayTrackInfoSet(threadIndex);
     while (region != nullptr) {
-        EvacuateRegion(allocator, region->GetRegion());
+        EvacuateRegion(allocator, region->GetRegion(), arrayTrackInfoSet);
         region = GetWorkloadSafe();
     }
     allocator->Finalize();
@@ -94,18 +117,20 @@ bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, bool isMain)
     return true;
 }
 
-void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
+void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
+                                       std::unordered_set<JSTaggedType> &trackSet)
 {
     bool isInOldGen = region->InOldSpace();
     bool isBelowAgeMark = region->BelowAgeMark();
+    bool pgoEnabled = heap_->GetJSThread()->IsPGOProfilerEnable();
     size_t promotedSize = 0;
     if (!isBelowAgeMark && !isInOldGen && IsWholeRegionEvacuate(region)) {
         if (heap_->MoveYoungRegionSync(region)) {
             return;
         }
     }
-    region->IterateAllMarkedBits([this, &region, &isInOldGen, &isBelowAgeMark,
-                                  &promotedSize, &allocator](void *mem) {
+    region->IterateAllMarkedBits([this, &region, &isInOldGen, &isBelowAgeMark, &pgoEnabled,
+                                  &promotedSize, &allocator, &trackSet](void *mem) {
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
@@ -135,6 +160,12 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
         heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
+        if (pgoEnabled) {
+            if (actualPromoted && klass->IsJSArray()) {
+                auto trackInfo = JSArray::Cast(header)->GetTrackInfo();
+                trackSet.emplace(trackInfo.GetRawData());
+            }
+        }
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
         VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
@@ -444,9 +475,9 @@ ParallelEvacuator::EvacuationTask::~EvacuationTask()
     delete allocator_;
 }
 
-bool ParallelEvacuator::EvacuationTask::Run([[maybe_unused]] uint32_t threadIndex)
+bool ParallelEvacuator::EvacuationTask::Run(uint32_t threadIndex)
 {
-    return evacuator_->EvacuateSpace(allocator_);
+    return evacuator_->EvacuateSpace(allocator_, threadIndex);
 }
 
 bool ParallelEvacuator::UpdateReferenceTask::Run([[maybe_unused]] uint32_t threadIndex)

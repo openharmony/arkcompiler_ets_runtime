@@ -77,7 +77,7 @@ void PGOProfiler::ProfileDefineClass(JSTaggedType ctor)
     }
 }
 
-void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKind)
+void PGOProfiler::UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind)
 {
     if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
@@ -95,6 +95,39 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKi
         auto constantId = thread->GetArrayHClassIndexMap().at(mixKind);
         auto hclass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
         trackInfo->SetCachedHClass(vm_->GetJSThread(), hclass);
+        UpdateTrackInfo(JSTaggedValue(trackInfo));
+    }
+}
+
+void PGOProfiler::UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize)
+{
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        auto trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        uint32_t oldSize = trackInfo->GetArrayLength();
+        if (oldSize >= newSize) {
+            return;
+        }
+        trackInfo->SetArrayLength(newSize);
+        UpdateTrackInfo(JSTaggedValue(trackInfo));
+    }
+}
+
+void PGOProfiler::UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag)
+{
+    if (!object->GetClass()->IsTrackInfoObject()) {
+        return;
+    }
+    auto trackInfo = TrackInfo::Cast(object);
+    RegionSpaceFlag oldFlag = trackInfo->GetSpaceFlag();
+    if (oldFlag == RegionSpaceFlag::IN_YOUNG_SPACE) {
+        trackInfo->SetSpaceFlag(spaceFlag);
+    }
+}
+
+void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
+{
+    if (trackInfoVal.IsHeapObject()) {
+        auto trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         auto func = trackInfo->GetCachedFunc();
         if (!func.IsJSFunction()) {
             return;
@@ -861,7 +894,8 @@ void PGOProfiler::DumpCreateObject(ApEntityId abcId, const CString &recordName, 
             recordInfos_->AddLayout(currentType, JSTaggedType(hclass), kind);
         }
         auto elementsKind = trackInfo->GetElementsKind();
-        recordInfos_->UpdateElementsKind(currentType, elementsKind);
+        recordInfos_->UpdateElements(currentType, elementsKind, trackInfo->GetArrayLength(),
+                                     trackInfo->GetSpaceFlag());
     }
 }
 

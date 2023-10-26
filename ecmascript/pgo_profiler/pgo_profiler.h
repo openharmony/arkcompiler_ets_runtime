@@ -25,6 +25,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
@@ -75,7 +76,10 @@ public:
     void ProcessReferences(const WeakRootVisitor &visitor);
     void Iterate(const RootVisitor &visitor);
 
-    void UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKind);
+    void UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize);
+    void UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag);
+    void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
+    void UpdateTrackInfo(JSTaggedValue trackInfoVal);
     ProfileType InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId);
     ProfileType InsertTraceId(JSTaggedType hclass, ProfileType traceType);
 

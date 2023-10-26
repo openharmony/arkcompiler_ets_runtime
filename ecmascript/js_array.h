@@ -113,12 +113,15 @@ public:
     static constexpr size_t CACHED_HCLASS_OFFSET = TaggedObjectSize();
     ACCESSORS(CachedHClass, CACHED_HCLASS_OFFSET, CACHED_FUNC_OFFSET);
     ACCESSORS(CachedFunc, CACHED_FUNC_OFFSET, BIT_FIELD_OFFSET);
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, ARRAY_LENGTH_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(ArrayLength, uint32_t, ARRAY_LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     // define BitField
     static constexpr size_t ELEMENTS_KIND_BITS = 8;
+    static constexpr size_t SPACE_FALG_BITS = 8;
     FIRST_BIT_FIELD(BitField, ElementsKind, ElementsKind, ELEMENTS_KIND_BITS);
+    NEXT_BIT_FIELD(BitField, SpaceFlag, RegionSpaceFlag, SPACE_FALG_BITS, ElementsKind);
 
     DECL_DUMP()
 

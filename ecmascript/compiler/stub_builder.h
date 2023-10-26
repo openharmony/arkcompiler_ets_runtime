@@ -433,6 +433,7 @@ public:
     GateRef IsTSHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     void SetElementsKindToTrackInfo(GateRef glue, GateRef trackInfo, GateRef elementsKind);
+    void SetSpaceFlagToTrackInfo(GateRef glue, GateRef trackInfo, GateRef spaceFlag);
     GateRef GetElementsKindFromHClass(GateRef hClass);
     GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);

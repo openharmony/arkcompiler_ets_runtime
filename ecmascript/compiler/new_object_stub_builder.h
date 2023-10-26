@@ -61,7 +61,8 @@ public:
     void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            GateRef trackInfo, bool isEmptyArray);
-    GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc);
+    GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc, RegionSpaceFlag spaceFlag,
+                         GateRef arraySize);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);

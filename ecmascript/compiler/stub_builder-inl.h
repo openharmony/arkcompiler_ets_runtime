@@ -1894,6 +1894,16 @@ inline void StubBuilder::SetElementsKindToTrackInfo(GateRef glue, GateRef trackI
     Store(VariableType::INT32(), glue, trackInfo, IntPtr(TrackInfo::BIT_FIELD_OFFSET), newBitfield);
 }
 
+inline void StubBuilder::SetSpaceFlagToTrackInfo(GateRef glue, GateRef trackInfo, GateRef spaceFlag)
+{
+    GateRef bitfield = Load(VariableType::INT32(), trackInfo, IntPtr(TrackInfo::BIT_FIELD_OFFSET));
+    GateRef oldWithMask = Int32And(bitfield,
+        Int32(~static_cast<uint32_t>(TrackInfo::SpaceFlagBits::Mask())));
+    GateRef newValue = Int32LSL(spaceFlag, Int32(TrackInfo::SpaceFlagBits::START_BIT));
+    GateRef newBitfield = Int32Or(oldWithMask, newValue);
+    Store(VariableType::INT32(), glue, trackInfo, IntPtr(TrackInfo::BIT_FIELD_OFFSET), newBitfield);
+}
+
 inline GateRef StubBuilder::GetElementsKindFromHClass(GateRef hClass)
 {
     return env_->GetBuilder()->GetElementsKindByHClass(hClass);
