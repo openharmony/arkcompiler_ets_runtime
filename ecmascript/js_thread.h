@@ -882,6 +882,7 @@ public:
     }
 
     bool EraseContext(EcmaContext *context);
+    void ClearPropertiesCache();
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
