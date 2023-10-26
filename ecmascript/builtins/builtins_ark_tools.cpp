@@ -367,4 +367,80 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
 }
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter PrepareFunctionForOptimization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeFunctionOnNextCall()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeMaglevOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeMaglevOnNextCall()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DeoptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DeoptimizeFunction()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeOsr([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeOsr()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::NeverOptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter NeverOptimizeFunction()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::HeapObjectVerify([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HeapObjectVerify()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DisableOptimizationFinalization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DisableOptimizationFinalization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DeoptimizeNow([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DeoptimizeNow()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::WaitForBackgroundOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter WaitForBackgroundOptimization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter Gc()";
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript::builtins

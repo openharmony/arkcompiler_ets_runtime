@@ -22,6 +22,7 @@ declare_args() {
   # If true, use icu to implement Intl APIs.
   # If false, use @ohos.intl APIs to implement Intl APIs.
   enable_ark_intl = true
+  run_regress_test = false
 }
 
 if (!ark_standalone_build) {

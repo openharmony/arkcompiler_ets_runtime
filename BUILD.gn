@@ -189,6 +189,9 @@ group("ark_runtime_host_unittest") {
 
     # quickfix test
     deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
+    if (!ark_standalone_build && run_regress_test) {
+      deps += [ "$js_root/test/regresstest:ark_regress_test" ]
+    }
 
     # ts aot test and asm test
     if (!run_with_asan) {
