@@ -105,7 +105,7 @@ public:
         uint32_t startIndex = regExpGlobalResult->GetStartOfCaptureIndex(index).GetInt();
         uint32_t len = regExpGlobalResult->GetEndOfCaptureIndex(index).GetInt() - startIndex;
         return JSHandle<EcmaString>(thread, EcmaStringAccessor::FastSubString(
-                   thread->GetEcmaVM(), inputStr, startIndex, len));
+            thread->GetEcmaVM(), inputStr, startIndex, len));
     }
 
 protected:
