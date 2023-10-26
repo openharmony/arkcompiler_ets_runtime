@@ -104,6 +104,11 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
         return false;
     }
+    // if debugger stmt is met by single stepping, disable debugger
+    // stmt to prevent pausing on this line twice
+    if (singleStepOnDebuggerStmt_) {
+        return false;
+    }
     auto breakpointAtDebugger = FindBreakpoint(method, bcOffset);
     // if a breakpoint is set on the same line as debugger stmt,
     // the debugger stmt is ineffective
