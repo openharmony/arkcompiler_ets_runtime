@@ -45,9 +45,9 @@ private:
     void AssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void Assign(Variable *res, Label *nextIt, Label *funcExit, GateRef toAssign, GateRef source);
 
-    GateRef glue_;
-    GateRef thisValue_;
-    GateRef numArgs_;
+    GateRef glue_ {Circuit::NullGate()};
+    GateRef thisValue_ {Circuit::NullGate()};
+    GateRef numArgs_ {Circuit::NullGate()};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_OBJECT_STUB_BUILDER_H

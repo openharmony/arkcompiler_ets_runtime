@@ -49,12 +49,12 @@ class XSelect {
 
     this.pm2f_.fillRect(x, y, w, h, this.backgroundColor_);
     let name = '...';
-    if (this.default_.indexOf('\\') != -1) {
+    if (this.default_.indexOf('\\') !== -1) {
       let list = this.default_.split('\\');
       if (list.length > model) {
         for (let i = list.length - model; i < list.length; i++) {
           name += list[i];
-          if (i != list.length - 1) {
+          if (i !== list.length - 1) {
             name += '\\';
           }
         }
@@ -74,17 +74,17 @@ class XSelect {
         this.backgroundColor_
       );
       for (let i in this.list_) {
-        if (i == this.tmpSelect_) {
+        if (i === this.tmpSelect_) {
           this.pm2f_.fillRect(x, y + h + i * 20, w, 20, this.backgroundColor_ + 0x303030);
         }
-        
+
         let name1 = '...';
-        if (this.list_[i].indexOf('\\') != -1) {
+        if (this.list_[i].indexOf('\\') !== -1) {
           let list = this.list_[i].split('\\');
           if (list.length > model) {
             for (let k = list.length - model; k < list.length; k++) {
               name1 += list[k];
-              if (k != list.length - 1) {
+              if (k !== list.length - 1) {
                 name1 += '\\';
               }
             }
@@ -127,9 +127,9 @@ class XSelect {
           break;
         }
         if (this.tmpSelect_ >= 0 && this.tmpSelect_ <= this.list_.length) {
-          if (this.default_ != this.list_[this.tmpSelect_]) {
+          if (this.default_ !== this.list_[this.tmpSelect_]) {
             this.default_ = this.list_[this.tmpSelect_];
-            if (this.selectCallback != null) {
+            if (this.selectCallback !== null) {
               this.selectCallback(this.default_);
             }
           }

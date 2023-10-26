@@ -337,8 +337,7 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
 }
 
 /*
- handle desc like:
- case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
+ handle desc like: case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
  case2: /data/storage/el1/bundle/entry/ets/widgets.abc -> entry/ets/widgets.abc
  case3: /data/app/el1/bundle/public/com.xx.xx/entry/ets/modules.abc -> entry/ets/modules.abc
  case4: /data/app/el1/bundle/public/com.xx.xx/entry/ets/widgets.abc -> entry/ets/widgets.abc

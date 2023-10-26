@@ -344,22 +344,22 @@ public:
 
     void SetStartOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
-        Set(thread, FIRST_CAPTURE_INDEX + index * 2, value);
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2, value); // 2 : double
     }
 
     void SetEndOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
-        Set(thread, FIRST_CAPTURE_INDEX + index * 2 + 1, value);
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2 + 1, value); // 2 : double
     }
 
     JSTaggedValue GetStartOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2);
+        return Get(FIRST_CAPTURE_INDEX + index * 2); // 2 : double
     }
 
     JSTaggedValue GetEndOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1);
+        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1); // 2 : double
     }
 
     static JSHandle<RegExpGlobalResult> GrowCapturesCapacity(JSThread *thread,

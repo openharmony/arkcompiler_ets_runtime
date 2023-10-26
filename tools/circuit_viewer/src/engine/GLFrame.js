@@ -153,7 +153,7 @@ function keyDown(e) {
   GLFrame.pinstance_.callbackKey(1, ret);
   if (!CanvasInput.FOCUS) {
   }
-  if (ret == 'ctrl+z' || ret == 'ctrl+f' || ret == 'Enter') {
+  if (ret === 'ctrl+z' || ret === 'ctrl+f' || ret === 'Enter') {
     e.preventDefault();
   }
 }
@@ -185,16 +185,16 @@ export class GLFrame {
     cvs.addEventListener('mousedown', mouseDown);
     cvs.addEventListener('mousemove', mouseMove);
     cvs.addEventListener('mouseup', mouseUp);
-    cvs.addEventListener("mousewheel", mouseWheel);
+    cvs.addEventListener('mousewheel', mouseWheel);
 
-    cvs.addEventListener("drop", (e) => {
+    cvs.addEventListener('drop', (e) => {
       e.preventDefault();
       GLFrame.gi().callbackDropfile(e.dataTransfer.files, e.offsetX, e.offsetY);
     });
-    cvs.addEventListener("dragover", (e) => {
+    cvs.addEventListener('dragover', (e) => {
       e.preventDefault();
     });
-    cvs.addEventListener("dragenter", (e) => {
+    cvs.addEventListener('dragenter', (e) => {
       e.preventDefault();
     });
     cvs.focus();
@@ -209,7 +209,7 @@ export class GLFrame {
     window.requestAnimationFrame(mainLoop);
   }
   callbackKey(type, code) {
-    if (this.pCallbackKey != null) {
+    if (this.pCallbackKey !== null) {
       this.pCallbackKey(type, code);
     }
   }
@@ -217,7 +217,7 @@ export class GLFrame {
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    if (this.pCallbackDraw != null) {
+    if (this.pCallbackDraw !== null) {
       this.pCallbackDraw();
     }
   }
@@ -225,14 +225,14 @@ export class GLFrame {
   callbackProctouch(msg, x, y) {
     XTools.MOUSE_POS.x = x;
     XTools.MOUSE_POS.y = y;
-    if (this.pCallbackTouch != null) {
+    if (this.pCallbackTouch !== null) {
       x = (x * Scr.logicw) / Scr.width;
       y = (y * Scr.logich) / Scr.height;
       this.pCallbackTouch(msg, x, y);
     }
   }
   callbackDropfile(files, x, y) {
-    if (this.pCallbackDropfile != null) {
+    if (this.pCallbackDropfile !== null) {
       this.pCallbackDropfile(files, x, y);
     }
   }

@@ -400,7 +400,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
 
 #define DUMP_FOR_HANDLE(dumpHandle)                                                     \
     do {                                                                                \
-        JSTaggedValue dumpValue = dumpHandle.GetTaggedValue();                          \
+        JSTaggedValue dumpValue = (dumpHandle).GetTaggedValue();                         \
         dumpValue.Dump(os);                                                             \
         dumpValue.DumpForSnapshot(snapshotVector);                                      \
         /* Testing runtime stubs: */                                                    \

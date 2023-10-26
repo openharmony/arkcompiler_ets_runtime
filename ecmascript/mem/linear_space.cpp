@@ -273,7 +273,7 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         if (newCapacity == maximumCapacity_) {
             heap_->GetEcmaVM()->GetJSObjectResizingStrategy()->UpdateGrowStep(
                 heap_->GetJSThread(),
-                JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2
+                JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2 // 2: double
             );
         }
         return true;
