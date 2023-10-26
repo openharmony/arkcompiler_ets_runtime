@@ -66,3 +66,21 @@ let o2 = {
     "f2":1,
 }
 print(JSON.stringify(o2))
+var handler2 = {
+    get:function(target,name) {
+        delete parent2.c;
+        return name.toUpperCase();
+    },
+}
+var proxy2 = new Proxy({},handler2);
+var parent2 = {a:proxy2,c:"remove"};
+print(JSON.stringify(parent2))
+
+var obj={
+    get 1() {
+        delete this['2'];
+    },
+    2:2,
+    3:3,
+}
+print(JSON.stringify(obj))
