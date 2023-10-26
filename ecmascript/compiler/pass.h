@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/dead_code_elimination.h"
+#include "ecmascript/compiler/constant_folding.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_editor.h"
@@ -472,6 +473,27 @@ public:
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         bool onHeapCheck = data->GetPassOptions()->EnableOptOnHeapCheck();
         NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, onHeapCheck).Run();
+        return true;
+    }
+};
+
+class ConstantFoldingPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableOptConstantFolding()) {
+            return false;
+        }
+        TimeScope timescope("ConstantFoldingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        ConstantFolding constantFolding(data->GetCircuit(), &visitor, data->GetCompilerConfig(), enableLog,
+                                        data->GetMethodName(), &chunk);
+        visitor.AddPass(&constantFolding);
+        visitor.VisitGraph();
+        constantFolding.Print();
         return true;
     }
 };

@@ -89,6 +89,7 @@ private:
 class RangeInfo {
 public:
     RangeInfo() {}
+    RangeInfo(int32_t value) : min_(value), max_(value) {}
     RangeInfo(int32_t min, int32_t max)
     {
         if (min == max) {
@@ -130,6 +131,11 @@ public:
         return max_;
     }
 
+    RangeInfo operator~() const
+    {
+        return RangeInfo(~ max_, ~ min_);
+    }
+
     RangeInfo Union(const RangeInfo &rhs) const
     {
         return RangeInfo(std::min(min_, rhs.min_), std::max(max_, rhs.max_));
@@ -168,6 +174,9 @@ public:
         ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);
         RangeInfo result = RangeInfo(0, 0);
         int32_t nmax = std::max(std::abs(rhs.min_), std::abs(rhs.max_));
+        if (nmax == 0) {
+            return ANY();
+        }
         if (max_ > 0) result = result.Union(RangeInfo(0, nmax - 1));
         if (min_ < 0) result = result.Union(RangeInfo(-nmax + 1, 0));
         return result;
