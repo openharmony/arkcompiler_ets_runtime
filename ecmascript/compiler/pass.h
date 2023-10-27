@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/lcr_lowering.h"
+#include "ecmascript/compiler/lexical_env_specialization.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
@@ -413,6 +414,16 @@ public:
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
+        if (!passOptions->EnableLexenvSpecialization()) {
+            return false;
+        }
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
+        visitor.AddPass(&lexicalEnvSpecialization);
+        visitor.VisitGraph();
+        visitor.PrintLog("lexicalEnvSpecialization");
+        lexicalEnvSpecialization.PrintSpecializeId();
         return true;
     }
 };

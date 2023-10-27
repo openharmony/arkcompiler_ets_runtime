@@ -19,12 +19,14 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/later_elimination.h"
+#include "ecmascript/compiler/lexical_env_specialization.h"
 #include "ecmascript/compiler/range_guard.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
 class LaterElimination;
 class RangeGuard;
+class LexicalEnvSpecialization;
 class DependChains : public ChunkObject {
 public:
     DependChains(Chunk* chunk) : chunk_(chunk) {}
@@ -41,6 +43,11 @@ public:
     uint32_t FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRef input);
     uint32_t FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef input);
     GateRef LookupNode(LaterElimination* elimination, GateRef gate);
+    GateRef LookupStLexvarNode(LexicalEnvSpecialization* lexicalEnvSpecialization, GateRef gate);
+    GateRef GetHeadGate()
+    {
+        return head_->gate;
+    }
 private:
     struct Node {
         Node(GateRef gate, Node* next) : gate(gate), next(next) {}
