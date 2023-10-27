@@ -650,17 +650,6 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, Execute);
     if (thread->IsAsmInterpreter()) {
-        // check stack overflow before re-enter asm interpreter
-        if (UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
-            LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
-                            << " limit:" << thread->GetStackLimit();
-            if (LIKELY(!thread->HasPendingException())) {
-                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-                JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
-                thread->SetException(error.GetTaggedValue());
-            }
-            return thread->GetException();
-        }
         return InterpreterAssembly::Execute(info);
     }
 #ifndef EXCLUDE_C_INTERPRETER
