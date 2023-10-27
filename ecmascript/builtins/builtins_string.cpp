@@ -1488,7 +1488,10 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
     }
     uint32_t posArrLength = posArray.size();
     arrayLength = lim > posArrLength ? posArrLength + 1 : posArrLength;
-    JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(arrayLength)));
+    JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    JSHandle<TaggedArray> newElements = ecmaVm->GetFactory()->NewTaggedArray(arrayLength);
+    resultArray->SetElements(thread, newElements);
+    JSHandle<JSArray>(resultArray)->SetArrayLength(thread, arrayLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     index = 0;
     for (uint32_t i = 0; i < posArrLength; i++) {
