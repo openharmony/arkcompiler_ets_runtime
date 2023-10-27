@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,16 +14,19 @@
  */
 
 /*
- * @tc.name:builtins
- * @tc.desc:test builtins
+ * @tc.name:storeicbyname
+ * @tc.desc:test storeicbyname
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI7UTOA
  */
-let result = Number.parseInt("16947500000");
-print("builtins number start");
-print("parseInt result = " + result);
 
-var s = (2.2250738585072e-308).toString(36)
-print(s)
-
-print("builtins number end");
+var r = /./;
+var coercibleValue = {
+    length: 1,
+    groups: {length : 1.1},
+};
+r.exec = function() {
+    return coercibleValue;
+};
+let a = r[Symbol.replace]('', '[$<length>]');
+print(a)

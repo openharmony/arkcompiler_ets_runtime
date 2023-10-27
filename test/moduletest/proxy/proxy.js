@@ -39,3 +39,13 @@ let obj = new Proxy(EmployeeEntity,{});
 let arr = [obj];
 let set = new Set(arr);
 print(set.has(obj));
+
+function Target() {}
+var handler1 = {
+    construct: function(t, args) {
+        return new t(args[0], args[1]);
+    }
+};
+var P = new Proxy(Target, handler1);
+new P(1, 1.1);
+print(JSON.stringify(P));
