@@ -3698,8 +3698,12 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
     vm->SetIsBundlePack(hostVM->IsBundlePack());
-    vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager()->SetExecuteMode(
-        hostVM->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode());
+
+    ecmascript::ModuleManager *vmModuleManager =
+        vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *hostVMModuleManager =
+        hostVM->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+    vmModuleManager->SetExecuteMode(hostVMModuleManager->GetExecuteMode());
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
 }
 

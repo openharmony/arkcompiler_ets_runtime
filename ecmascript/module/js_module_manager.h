@@ -73,7 +73,7 @@ public:
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
 
-    bool GetCurrentMode() const
+    bool GetExecuteMode() const
     {
         return isExecuteBuffer_;
     }

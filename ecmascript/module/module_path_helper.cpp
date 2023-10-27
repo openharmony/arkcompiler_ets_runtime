@@ -174,18 +174,22 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         }
 #else
         CVector<CString> currentVec;
-        StringHelper::SplitString(recordName, currentVec, 0, SEGMENTS_LIMIT_TWO);
+        StringHelper::SplitString(moduleRequestName, currentVec, 0, SEGMENTS_LIMIT_TWO);
         if (currentVec.size() < SEGMENTS_LIMIT_TWO) {
             LOG_ECMA(INFO) << "SplitString filed, please check recordName";
             return CString();
         }
         CString currentModuleName = currentVec[1];
         PathHelper::DeleteNamespace(currentModuleName);
-        if (bundleName != vm->GetBundleName() || moduleName != currentModuleName) {
+        if (bundleName != vm->GetBundleName()) {
             entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
             if (vm->EnableReportModuleResolvingFailure()) {
-                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+                CString msg = "[ArkRuntime Log] Cannot preview this HSP module as " \
+                    "it is imported from outside the current application.";
+                LOG_NO_TAG(ERROR) << msg;
             }
+        } else if (currentModuleName != vm->GetModuleName()) {
+            baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
         }
 #endif
     } else {
