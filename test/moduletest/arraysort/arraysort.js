@@ -176,3 +176,40 @@ child4.sort((a, b) => {
 });
 print(child4.hasOwnProperty('2'));
 print(JSON.stringify(child4));
+
+var test1 = [-321, 65, 0, -3215, 653, 650, -3210, -2147483648, 2147483647];
+print(test1.sort());
+
+
+var arr4 = new Array(5);
+arr4[0] = 93;
+arr4[1] = 930;
+arr4[2] = -45;
+arr4[3] = 44;
+arr4[4] = 0;
+print(arr4.sort(function(a, b){
+    a--;
+    b--;
+    return b-a;
+}));
+
+var arr5 = [3, 1, 4];
+arr5.sort((a, b) => {
+    if (a == 1 || b == 1) {
+        arr5[0] = 6;
+    }
+    return a - b;
+});
+print(arr5);
+
+Object.defineProperty(Array.prototype, "tt", {
+    value:37,
+    writable:false,
+});
+
+var arr = new Array(5);
+arr[0] = 93;
+arr[2] = -45;
+arr[3] = "djs";
+arr[4] = 0;
+print(arr.sort());
