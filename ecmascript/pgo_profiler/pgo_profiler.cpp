@@ -327,7 +327,7 @@ JSTaggedValue PGOProfiler::PopFromProfileQueue()
 bool PGOProfiler::PausePGODump()
 {
     if (state_ == State::PAUSE) {
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         if (state_ == State::PAUSE) {
             condition_.SignalAll();
             return true;
