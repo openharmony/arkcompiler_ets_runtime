@@ -125,8 +125,6 @@ public:
                                                  std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
                                                      std::string_view entryPoint);
-    static void SetSingleStepStatus(JSDebugger *debugger, bool status);
-    static bool GetSingleStepStatus(JSDebugger *debugger);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);

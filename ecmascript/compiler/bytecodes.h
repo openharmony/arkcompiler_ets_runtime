@@ -50,7 +50,6 @@ enum BytecodeFlags : uint32_t {
     READ_NEWTARGET = 1 << 10,
     READ_ARGC = 1 << 11,
     NO_GC = 1 << 12,
-    DEBUGGER_STMT = 1 << 13,
 };
 
 enum BytecodeKind : uint32_t {
@@ -72,7 +71,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 14;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 13;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -220,11 +219,6 @@ public:
     bool IsCall() const
     {
         return GetKind() == BytecodeKind::CALL_BC;
-    }
-
-    bool HasDebuggerStmt() const
-    {
-        return HasFlag(BytecodeFlags::DEBUGGER_STMT);
     }
 
 private:
@@ -710,11 +704,6 @@ public:
     bool IsCall() const
     {
         return metaData_.IsCall();
-    }
-
-    bool HasDebuggerStmt() const
-    {
-        return metaData_.HasDebuggerStmt();
     }
 
     inline EcmaOpcode GetOpcode() const

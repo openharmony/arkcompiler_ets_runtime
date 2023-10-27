@@ -89,9 +89,26 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr || !breakpoint.has_value()) {
         return false;
     }
-    if (!IsBreakpointCondSatisfied(breakpoint)) {
-        return false;
+
+    JSThread *thread = ecmaVm_->GetJSThread();
+    auto condFuncRef = breakpoint.value().GetConditionFunction();
+    if (condFuncRef->IsFunction()) {
+        LOG_DEBUGGER(INFO) << "HandleBreakpoint: begin evaluate condition";
+        auto handlerPtr = std::make_shared<FrameHandler>(ecmaVm_->GetJSThread());
+        auto res = DebuggerApi::EvaluateViaFuncCall(const_cast<EcmaVM *>(ecmaVm_),
+            condFuncRef.ToLocal(ecmaVm_), handlerPtr);
+        if (thread->HasPendingException()) {
+            LOG_DEBUGGER(ERROR) << "HandleBreakpoint: has pending exception";
+            thread->ClearException();
+            return false;
+        }
+        bool isMeet = res->ToBoolean(ecmaVm_)->Value();
+        if (!isMeet) {
+            LOG_DEBUGGER(ERROR) << "HandleBreakpoint: condition not meet";
+            return false;
+        }
     }
+
     JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
         breakpoint.value().GetSourceFile()};
 
@@ -104,17 +121,7 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
         return false;
     }
-    // if debugger stmt is met by single stepping, disable debugger
-    // stmt to prevent pausing on this line twice
-    if (singleStepOnDebuggerStmt_) {
-        return false;
-    }
-    auto breakpointAtDebugger = FindBreakpoint(method, bcOffset);
-    // if a breakpoint is set on the same line as debugger stmt,
-    // the debugger stmt is ineffective
-    if (breakpointAtDebugger.has_value()) {
-        return false;
-    }
+
     JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
     hooks_->DebuggerStmt(location);
 
@@ -198,32 +205,6 @@ void JSDebugger::DumpBreakpoints()
     for (const auto &bp : breakpoints_) {
         LOG_DEBUGGER(DEBUG) << bp.ToString();
     }
-}
-
-bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const
-{
-    if (!breakpoint.has_value()) {
-        return false;
-    }
-    JSThread *thread = ecmaVm_->GetJSThread();
-    auto condFuncRef = breakpoint.value().GetConditionFunction();
-    if (condFuncRef->IsFunction()) {
-        LOG_DEBUGGER(INFO) << "BreakpointCondition: evaluating condition";
-        auto handlerPtr = std::make_shared<FrameHandler>(ecmaVm_->GetJSThread());
-        auto evalResult = DebuggerApi::EvaluateViaFuncCall(const_cast<EcmaVM *>(ecmaVm_),
-            condFuncRef.ToLocal(ecmaVm_), handlerPtr);
-        if (thread->HasPendingException()) {
-            LOG_DEBUGGER(ERROR) << "BreakpointCondition: has pending exception";
-            thread->ClearException();
-            return false;
-        }
-        bool satisfied = evalResult->ToBoolean(ecmaVm_)->Value();
-        if (!satisfied) {
-            LOG_DEBUGGER(INFO) << "BreakpointCondition: condition not meet";
-            return false;
-        }
-    }
-    return true;
 }
 
 void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)

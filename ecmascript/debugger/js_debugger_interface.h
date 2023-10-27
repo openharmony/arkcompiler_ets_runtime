@@ -42,9 +42,7 @@ enum PauseReason {
     OTHER,
     PROMISEREJECTION,
     XHR,
-    BREAK_ON_START,
-    STEP, // single step
-    DEBUGGERSTMT // debugger stmt
+    BREAK_ON_START
 };
 
 class PtHooks {
