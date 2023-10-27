@@ -36,6 +36,7 @@ public:
     void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void Trim(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,
@@ -55,6 +56,8 @@ public:
     GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
     GateRef StringConcat(GateRef glue, GateRef leftString, GateRef rightString);
+    GateRef EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode);
+    GateRef EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate, GateRef trimMode, bool isUtf8);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
 private:
