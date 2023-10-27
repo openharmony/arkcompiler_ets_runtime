@@ -257,7 +257,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
             noGC = false;
         }
-        if (!debuggerStmt && bytecodes_.GetBytecodeMetaData(curPc).IsDebuggerStmt()) {
+        if (!debuggerStmt && bytecodes_.GetBytecodeMetaData(curPc).HasDebuggerStmt()) {
             debuggerStmt = true;
         }
         curPc = bcIns.GetAddress();
@@ -269,7 +269,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     bytecodeInfo_.SetMethodOffsetToFastCallInfo(methodOffset, canFastCall, noGC);
     method->SetIsFastCall(canFastCall);
     method->SetNoGCBit(noGC);
-    method->SetIsDebuggerStmtBit(debuggerStmt);
+    method->SetHasDebuggerStmtBit(debuggerStmt);
 }
 
 void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,

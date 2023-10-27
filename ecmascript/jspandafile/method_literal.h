@@ -217,7 +217,7 @@ public:
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
     using IsNoGCBit = FunctionKindBits::NextFlag; // offset 12
-    using IsDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 13
+    using HasDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 13
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -265,14 +265,14 @@ public:
         return IsNoGCBit::Decode(extraLiteralInfo_);
     }
 
-    void SetIsDebuggerStmtBit(bool isDebuggerStmt)
+    void SetHasDebuggerStmtBit(bool isDebuggerStmt)
     {
-        extraLiteralInfo_ = IsDebuggerStmtBit::Update(extraLiteralInfo_, isDebuggerStmt);
+        extraLiteralInfo_ = HasDebuggerStmtBit::Update(extraLiteralInfo_, isDebuggerStmt);
     }
 
-    bool IsDebuggerStmt() const
+    bool HasDebuggerStmt() const
     {
-        return IsDebuggerStmtBit::Decode(extraLiteralInfo_);
+        return HasDebuggerStmtBit::Decode(extraLiteralInfo_);
     }
 
     FunctionKind GetFunctionKind() const

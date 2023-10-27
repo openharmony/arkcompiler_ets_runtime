@@ -222,7 +222,7 @@ public:
         return GetKind() == BytecodeKind::CALL_BC;
     }
 
-    bool IsDebuggerStmt() const
+    bool HasDebuggerStmt() const
     {
         return HasFlag(BytecodeFlags::DEBUGGER_STMT);
     }
@@ -712,9 +712,9 @@ public:
         return metaData_.IsCall();
     }
 
-    bool IsDebuggerStmt() const
+    bool HasDebuggerStmt() const
     {
-        return metaData_.IsDebuggerStmt();
+        return metaData_.HasDebuggerStmt();
     }
 
     inline EcmaOpcode GetOpcode() const
