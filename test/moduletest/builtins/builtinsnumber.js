@@ -36,4 +36,7 @@ try {
 var s = (2.2250738585072e-308).toString(36)
 print(s)
 
+print(Number.parseInt("4294967294"))
+print(Number.parseInt("2147483648"))
+
 print("builtins number end");
