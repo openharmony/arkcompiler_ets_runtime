@@ -78,6 +78,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
     "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
+    "--compiler-opt-constant-folding:      Enable constant folding. Default: 'true'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
@@ -151,6 +152,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
+    "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -182,6 +184,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
+        {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
         {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
@@ -238,6 +241,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
+        {"compiler-enable-lexenv-specialization", required_argument, nullptr,
+            OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -769,6 +774,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 SetFastAOTCompileMode(argBool);
                 break;
+            case OPTION_COMPILER_OPT_CONSTANT_FOLDING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptConstantFolding(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_OPT_LOOP_PEELING:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -795,6 +808,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerEnableExternalPkg(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableLexenvSpecialization(argBool);
                 } else {
                     return false;
                 }

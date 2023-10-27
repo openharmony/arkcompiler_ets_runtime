@@ -214,6 +214,63 @@ void ObjectOperator::FastAdd(JSThread *thread, const JSTaggedValue &receiver, co
     op.AddPropertyInternal(value);
 }
 
+// static
+void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver)
+{
+    // skip env prepare
+    if (!thread->IsReadyToUpdateDetector()) {
+        return;
+    }
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (receiver.IsJSRegExp()) {
+        if (PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+            PropertyDetector::InvalidateRegExpReplaceDetector(env);
+        }
+        if (PropertyDetector::IsRegExpSplitDetectorValid(env)) {
+            PropertyDetector::InvalidateRegExpSplitDetector(env);
+        }
+        return;
+    }
+    if (receiver.IsJSMap() && PropertyDetector::IsMapIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateMapIteratorDetector(env);
+        return;
+    }
+    if (receiver.IsJSSet() && PropertyDetector::IsSetIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateSetIteratorDetector(env);
+        return;
+    }
+    if (receiver.IsJSPrimitiveRef() &&
+        JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString() &&
+        PropertyDetector::IsStringIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateStringIteratorDetector(env);
+        return;
+    }
+    if (receiver.IsJSArray() && PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateArrayIteratorDetector(env);
+        return;
+    }
+    if (receiver.IsTypedArray() && PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+        return;
+    }
+    if (receiver.GetTaggedObject()->GetClass()->IsPrototype() &&
+        (receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint8ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint8ClampedArrayFunctionPrototype() ||
+         receiver == env->GetTaggedInt16ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint16ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedInt32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedFloat32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) &&
+         PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+        return;
+    }
+}
+
 void ObjectOperator::UpdateDetector()
 {
     if (IsElement()) {
@@ -226,7 +283,7 @@ void ObjectOperator::UpdateDetector()
 void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     // skip env prepare
-    if (!thread->IsAllContextsInitialized()) {
+    if (!thread->IsReadyToUpdateDetector()) {
         return;
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -249,6 +306,46 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
                 return;
             }
             PropertyDetector::InvalidateRegExpSplitDetector(env);
+        }
+    } else if (key == env->GetTaggedIteratorSymbol()) {
+        if (receiver.IsJSMap() || receiver == env->GetTaggedMapPrototype()) {
+            if (!PropertyDetector::IsMapIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateMapIteratorDetector(env);
+        } else if (receiver.IsJSSet() || receiver == env->GetTaggedSetPrototype()) {
+            if (!PropertyDetector::IsSetIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateSetIteratorDetector(env);
+        } else if ((receiver.IsJSPrimitiveRef() && JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString()) ||
+                   receiver == env->GetTaggedStringPrototype()) {
+            if (!PropertyDetector::IsStringIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateStringIteratorDetector(env);
+        } else if (receiver.IsJSArray() || receiver == env->GetTaggedArrayPrototype()) {
+            if (!PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateArrayIteratorDetector(env);
+        } else if (receiver.IsTypedArray() ||
+                   receiver == env->GetTaggedArrayPrototype() ||
+                   receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint8ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint8ClampedArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedInt16ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint16ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedInt32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedFloat32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) {
+            if (!PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
         }
     }
 }

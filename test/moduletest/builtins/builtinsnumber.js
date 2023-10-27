@@ -33,4 +33,7 @@ try {
     print(e);
 };
 
+var s = (2.2250738585072e-308).toString(36)
+print(s)
+
 print("builtins number end");

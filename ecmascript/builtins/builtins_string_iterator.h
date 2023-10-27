@@ -23,6 +23,7 @@ class BuiltinsStringIterator : public base::BuiltinsBase {
 public:
     // 21.1.5.2.1
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_STRING_ITERATOR_H

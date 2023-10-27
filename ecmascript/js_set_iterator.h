@@ -28,6 +28,7 @@ public:
                                                      IterationKind kind);
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj);
 
     void Update(const JSThread *thread);
 

@@ -495,14 +495,14 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
 DECLARE_ASM_HANDLER(HandleGetiteratorImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
+    GateRef res = GetIterator(glue, *varAcc, callback);
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetiteratorImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
+    GateRef res = GetIterator(glue, *varAcc, callback);
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM16));
 }
 

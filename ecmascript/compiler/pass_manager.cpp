@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/pass_manager.h"
-
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/compiler/pass.h"
@@ -134,6 +133,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<ConstantFoldingPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<ValueNumberingPass>();

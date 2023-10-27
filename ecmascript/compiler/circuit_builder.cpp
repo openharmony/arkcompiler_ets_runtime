@@ -24,6 +24,8 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/proto_change_details.h"
+#include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/mem/region.h"
@@ -510,6 +512,134 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     GateRef constPool = GetConstPoolFromFunction(jsFunc);
     GateRef module = GetModuleFromFunction(jsFunc);
     return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
+}
+
+GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
+{
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    GateRef offset = GetGlobalConstantOffset(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    return Load(VariableType::JS_ANY(), gConstAddr, offset);
+}
+
+GateRef CircuitBuilder::GetPrototypeFromHClass(GateRef hClass)
+{
+    GateRef protoOffset = IntPtr(JSHClass::PROTOTYPE_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, protoOffset);
+}
+
+GateRef CircuitBuilder::GetEnumCacheFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
+GateRef CircuitBuilder::GetProtoChangeMarkerFromHClass(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
+GateRef CircuitBuilder::GetLengthFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+GateRef CircuitBuilder::GetIndexFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
+GateRef CircuitBuilder::GetKeysFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+GateRef CircuitBuilder::GetObjectFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+GateRef CircuitBuilder::GetCachedHclassFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    return Load(VariableType::JS_ANY(), iter, offset);
+}
+
+void CircuitBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
+{
+    GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, length);
+}
+
+void CircuitBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, index);
+}
+
+void CircuitBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
+{
+    GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, keys);
+}
+
+void CircuitBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object)
+{
+    GateRef offset = IntPtr(JSForInIterator::OBJECT_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, object);
+}
+
+void CircuitBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
+}
+
+void CircuitBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
+{
+    GateRef newIndex = Int32Add(index, Int32(1));
+    GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, newIndex);
+}
+
+GateRef CircuitBuilder::GetHasChanged(GateRef object)
+{
+    GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), object, bitfieldOffset);
+    GateRef mask = Int32(1LLU << (ProtoChangeMarker::HAS_CHANGED_BITS - 1));
+    return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
+}
+
+GateRef CircuitBuilder::HasDeleteProperty(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::HasDeletePropertyBit::START_BIT)),
+                 Int32((1LLU << JSHClass::HasDeletePropertyBit::SIZE) - 1)),
+        Int32(0));
+}
+
+GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
+{
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = TaggedIsHeapObject(obj);
+    Branch(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    result = LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,

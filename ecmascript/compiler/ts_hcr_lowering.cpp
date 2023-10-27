@@ -17,11 +17,12 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/enum_conversion.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
+using PGONativeFunctionId = pgo::DumpUtils::PGONativeFunctionId;
 bool TSHCRLowering::RunTSHCRLowering()
 {
     std::vector<GateRef> gateList;
@@ -318,6 +319,10 @@ void TSHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::TYPEOF_IMM8:
         case EcmaOpcode::TYPEOF_IMM16:
             LowerTypedTypeOf(gate);
+            break;
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
+            LowerGetIterator(gate);
             break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
@@ -1201,6 +1206,28 @@ void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::
     }
 }
 
+bool TSHCRLowering::TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj)
+{
+    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.IsNone()) {
+        return false;
+    }
+    ASSERT(sampleType.GetProfileType().IsNativeFunctionId());
+    int funcIdValue = (-1) * sampleType.GetProfileType().GetId();
+    PGONativeFunctionId funcId = static_cast<PGONativeFunctionId>(funcIdValue);
+    if (funcId == PGONativeFunctionId::INVALID) {
+        return false;
+    }
+    AddProfiling(gate);
+    GateRef funcIdGate = builder_.Int32(funcIdValue);
+    if (!Uncheck()) {
+        builder_.NativeCallTargetCheck(func, funcIdGate);
+    }
+    GateRef result = builder_.TypedCallNative(gate, thisObj, funcIdGate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    return true;
+}
+
 BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
@@ -1449,12 +1476,15 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef func = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::ARRAY, func);
     if (id == BuiltinsStubCSigns::ID::SORT) {
         AddProfiling(gate);
-        GateRef thisObj = acc_.GetValueIn(gate, 0);
         SpeculateCallBuiltin(gate, func, { thisObj }, id, true);
+        return;
+    }
+    if (TrySpeculateCallThis0Native(gate, func, thisObj)) {
         return;
     }
     if (!CanOptimizeAsFastCall(func)) {
@@ -1658,5 +1688,29 @@ void TSHCRLowering::LowerTypedTypeOf(GateRef gate)
     }
     GateRef result = builder_.TypedTypeOf(valueType);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TSHCRLowering::LowerGetIterator(GateRef gate)
+{
+    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.IsNone()) {
+        return;
+    }
+    ASSERT(sampleType.GetProfileType().IsNativeFunctionId());
+    int iterKindValue = (-1) * sampleType.GetProfileType().GetId();
+    PGONativeFunctionId iterKind = static_cast<PGONativeFunctionId>(iterKindValue);
+    if (iterKind == PGONativeFunctionId::INVALID) {
+        return;
+    }
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef iterKindGate = builder_.Int32(iterKindValue);
+    AddProfiling(gate);
+    if (!Uncheck()) {
+        builder_.IteratorFunctionCheck(obj, iterKindGate);
+    }
+    GateRef result = builder_.GetFixedIterator(obj, iterKindGate);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }
 }  // namespace panda::ecmascript

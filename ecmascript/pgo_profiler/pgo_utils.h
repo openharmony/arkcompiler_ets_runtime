@@ -40,6 +40,35 @@ public:
     static const std::string VERSION_HEADER;
     static const std::string PANDA_FILE_INFO_HEADER;
     static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS;
+
+    enum class PGONativeFunctionId : int8_t {
+        // iterator function
+        MAP_PROTO_ITERATOR = -9,  // 9: number of registered functions
+        SET_PROTO_ITERATOR,
+        STRING_PROTO_ITERATOR,
+        ARRAY_PROTO_ITERATOR,
+        TYPED_ARRAY_PROTO_ITERATOR,
+        // next function
+        MAP_ITERATOR_PROTO_NEXT,
+        SET_ITERATOR_PROTO_NEXT,
+        STRING_ITERATOR_PROTO_NEXT,
+        ARRAY_ITERATOR_PROTO_NEXT,
+        LAST,
+        INVALID = 0,  // keep the same with method offset 0 to reuse calltarget offset field in pgo
+    };
+    static_assert(PGONativeFunctionId::LAST == PGONativeFunctionId::INVALID);
 };
-} // namespace panda::ecmascript::pgo
+
+class ApNameUtils {
+public:
+    static const std::string AP_SUFFIX;
+    static const std::string RUNTIME_AP_PREFIX;
+    static const std::string DEFAULT_AP_NAME;
+    static std::string GetRuntimeApName(const std::string &ohosModuleName);
+    static std::string GetOhosPkgApName(const std::string &ohosModuleName);
+
+private:
+    static std::string GetBriefApName(const std::string &ohosModuleName);
+};
+}  // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H

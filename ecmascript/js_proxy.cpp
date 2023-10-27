@@ -609,6 +609,17 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
 bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key,
                           const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver, bool mayThrow)
 {
+    // check stack overflow because infinite recursion may occur
+    if (thread->IsAsmInterpreter() && UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
+                        << " limit:" << thread->GetStackLimit();
+        if (LIKELY(!thread->HasPendingException())) {
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
+            thread->SetException(error.GetTaggedValue());
+        }
+        return false;
+    }
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));

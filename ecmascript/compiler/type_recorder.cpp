@@ -162,7 +162,11 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
 
         EcmaOpcode ecmaOpcode = bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
         if (jsPandaFile->HasTSTypes(recordName) && Bytecodes::IsCallOp(ecmaOpcode)) {
-            uint32_t callTargetMethodOffset = it->second.GetProfileType().GetId();
+            auto profile = it->second.GetProfileType();
+            if (!profile.IsMethodId()) {
+                return;
+            }
+            uint32_t callTargetMethodOffset = profile.GetId();
             if (callTargetMethodOffset == 0) {
                 return;
             }
@@ -312,7 +316,7 @@ ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
     return ElementsKind::GENERIC;
 }
 
-PGOSampleType TypeRecorder::GetOrUpdatePGOType(int32_t offset) const
+PGOSampleType TypeRecorder::GetPGOHclassLayoutInfo(int32_t offset) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
         const auto iter = bcOffsetPGOOpTypeMap_.at(offset);
@@ -326,6 +330,39 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(int32_t offset) const
     }
 
     return PGOSampleType::NoneType();
+}
+
+PGOSampleType TypeRecorder::GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) const
+{
+    if (bcOffsetPGOOpTypeMap_.find(offset) == bcOffsetPGOOpTypeMap_.end()) {
+        return PGOSampleType::NoneType();
+    }
+    switch (opcode) {
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
+            const auto sampleType = bcOffsetPGOOpTypeMap_.at(offset);
+            ASSERT(sampleType.IsProfileType());
+            if (!sampleType.GetProfileType().IsNativeFunctionId()) {
+                return PGOSampleType::NoneType();
+            }
+            return sampleType;
+        }
+        default:
+            break;
+    }
+    return GetPGOHclassLayoutInfo(offset);
 }
 
 GateType TypeRecorder::GetCallTargetType(int32_t offset) const

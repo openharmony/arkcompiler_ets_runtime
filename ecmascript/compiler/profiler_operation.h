@@ -24,6 +24,7 @@
 namespace panda::ecmascript::kungfu {
 enum class OperationType : uint8_t {
     CALL,
+    NATIVE_CALL,
     OPERATION_TYPE,
     DEFINE_CLASS,
     CREATE_OBJECT,
@@ -31,6 +32,7 @@ enum class OperationType : uint8_t {
     FALSE_BRANCH,
     TRY_DUMP,
     TRY_PREDUMP,
+    ITERATOR_FUNC_KIND
 };
 
 using SlotIDFormat = BytecodeInstruction::Format;
@@ -54,6 +56,13 @@ public:
     {
         if (callback_) {
             callback_({ func }, OperationType::CALL);
+        }
+    }
+
+    inline void ProfileNativeCall(GateRef func) const
+    {
+        if (callback_) {
+            callback_({ func }, OperationType::NATIVE_CALL);
         }
     }
 
@@ -105,6 +114,13 @@ public:
     {
         if (callback_) {
             callback_({}, isTrue ? OperationType::TRUE_BRANCH : OperationType::FALSE_BRANCH);
+        }
+    }
+
+    inline void ProfileGetIterator(GateRef iterator) const
+    {
+        if (callback_) {
+            callback_({ iterator }, OperationType::ITERATOR_FUNC_KIND);
         }
     }
 

@@ -30,15 +30,19 @@ JSTaggedValue JSArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.Let O be the this value.
-    JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
+    JSHandle<JSTaggedValue> thisObj(BuiltinsBase::GetThis(argv));
+    return NextInternal(thread, thisObj);
+}
 
+JSTaggedValue JSArrayIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj)
+{
     // 2.If Type(O) is not Object, throw a TypeError exception.
     // 3.If O does not have all of the internal slots of an TaggedArray Iterator Instance (22.1.5.3), throw a TypeError
     // exception.
-    if (!input->IsJSArrayIterator()) {
+    if (!thisObj->IsJSArrayIterator()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an array iterator", JSTaggedValue::Exception());
     }
-    JSHandle<JSArrayIterator> iter(input);
+    JSHandle<JSArrayIterator> iter(thisObj);
     // 4.Let a be O.[[IteratedArrayLike]].
     JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());

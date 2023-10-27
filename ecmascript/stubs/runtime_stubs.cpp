@@ -22,6 +22,8 @@
 #include "ecmascript/base/fast_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
@@ -39,11 +41,15 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
+#include "ecmascript/js_set_iterator.h"
+#include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -425,7 +431,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
             return JSTaggedValue::Hole().GetRawData();
         }
         auto trackInfoVal = array->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, kind);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
 }
@@ -633,6 +639,60 @@ DEF_RUNTIME_STUBS(GetTemplateObject)
     RUNTIME_STUBS_HEADER(GetTemplateObject);
     JSHandle<JSTaggedValue> literal = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeGetTemplateObject(thread, literal).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CreateStringIterator)
+{
+    RUNTIME_STUBS_HEADER(CreateStringIterator);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSStringIterator::CreateStringIterator(thread, JSHandle<EcmaString>(obj)).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewJSArrayIterator)
+{
+    RUNTIME_STUBS_HEADER(NewJSArrayIterator);
+    JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewJSArrayIterator(obj, IterationKind::VALUE).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewJSTypedArrayIterator)
+{
+    RUNTIME_STUBS_HEADER(NewJSArrayIterator);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    base::TypedArrayHelper::ValidateTypedArray(thread, obj);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArrayIterator> iter(factory->NewJSArrayIterator(JSHandle<JSObject>(obj), IterationKind::VALUE));
+    return iter.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(MapIteratorNext)
+{
+    RUNTIME_STUBS_HEADER(MapIteratorNext);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSMapIterator::NextInternal(thread, thisObj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SetIteratorNext)
+{
+    RUNTIME_STUBS_HEADER(SetIteratorNext);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSSetIterator::NextInternal(thread, thisObj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(StringIteratorNext)
+{
+    RUNTIME_STUBS_HEADER(StringIteratorNext);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return builtins::BuiltinsStringIterator::NextInternal(thread, thisObj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ArrayIteratorNext)
+{
+    RUNTIME_STUBS_HEADER(ArrayIteratorNext);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSArrayIterator::NextInternal(thread, thisObj).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetNextPropName)

@@ -658,6 +658,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
             return builder_.ConvertUInt32ToBool(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToBool(gate);
+        case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsBooleanType()) {
                 return builder_.CheckTaggedBooleanAndConvertToBool(gate);
@@ -831,6 +832,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
         case TypeInfo::FLOAT64:
             result = builder_.ConvertFloat64ToInt32(gate);
             break;
+        case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsIntType()) {
                 result = builder_.CheckTaggedIntAndConvertToInt32(gate);
@@ -883,6 +885,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
             break;
         case TypeInfo::FLOAT64:
             return gate;
+        case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsIntType()) {
                 result = builder_.CheckTaggedIntAndConvertToFloat64(gate);
@@ -922,6 +925,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
+        case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             ASSERT(gateType.IsNumberType() || gateType.IsBooleanType());
             builder_.TryPrimitiveTypeCheck(gateType, gate);

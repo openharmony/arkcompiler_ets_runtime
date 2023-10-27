@@ -32,6 +32,11 @@ JSTaggedValue BuiltinsStringIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
+    return NextInternal(thread, thisValue);
+}
+
+JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue)
+{
     // 2. If Type(O) is not Object, throw a TypeError exception.
     // 3. If O does not have all of the internal slots of an String Iterator Instance (21.1.5.3),
     // throw a TypeError exception.

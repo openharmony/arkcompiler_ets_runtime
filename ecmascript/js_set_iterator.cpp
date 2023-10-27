@@ -30,14 +30,18 @@ JSTaggedValue JSSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1.If Type(O) is not Object, throw a TypeError exception.
-    JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
+    JSHandle<JSTaggedValue> thisObj(BuiltinsBase::GetThis(argv));
+    return NextInternal(thread, thisObj);
+}
 
+JSTaggedValue JSSetIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedValue> thisObj)
+{
     // 3.If O does not have all of the internal slots of a Set Iterator Instance (23.2.5.3), throw a TypeError
     // exception.
-    if (!input->IsJSSetIterator()) {
+    if (!thisObj->IsJSSetIterator()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a set iterator", JSTaggedValue::Exception());
     }
-    JSHandle<JSSetIterator> iter(input);
+    JSHandle<JSSetIterator> iter(thisObj);
     iter->Update(thread);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 4.Let s be O.[[IteratedSet]].

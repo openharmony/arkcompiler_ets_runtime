@@ -98,6 +98,7 @@ bool EcmaContext::Initialize()
     globalEnv_ = globalEnv.GetTaggedValue();
     Builtins builtins;
     bool builtinsLazyEnabled = vm_->GetJSOptions().IsWorker() && vm_->GetJSOptions().GetEnableBuiltinsLazy();
+    thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
     SetupRegExpResultCache();

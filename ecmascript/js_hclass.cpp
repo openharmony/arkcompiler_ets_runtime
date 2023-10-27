@@ -529,7 +529,7 @@ bool JSHClass::TransitToElementsKind(
             return true;
         }
         auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, newKind);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
         return true;
     }
     return false;

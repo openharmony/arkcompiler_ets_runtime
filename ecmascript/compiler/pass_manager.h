@@ -129,7 +129,8 @@ public:
     PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
                 bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
                 bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
-                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion, bool enableCollectLiteralInfo)
+                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion, bool enableCollectLiteralInfo,
+                bool enableOptConstantFolding, bool enableLexenvSpecialization)
         : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
           enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
@@ -142,7 +143,9 @@ public:
           enableOptLoopPeeling_(enableOptLoopPeeling),
           enableOptOnHeapCheck_(enableOptOnHeapCheck),
           enableOptLoopInvariantCodeMotion_(enableOptLoopInvariantCodeMotion),
-          enableCollectLiteralInfo_(enableCollectLiteralInfo)
+          enableCollectLiteralInfo_(enableCollectLiteralInfo),
+          enableOptConstantFolding_(enableOptConstantFolding),
+          enableLexenvSpecialization_(enableLexenvSpecialization)
         {
         }
 
@@ -161,7 +164,9 @@ public:
     V(OptLoopPeeling, false)                \
     V(OptOnHeapCheck, false)                \
     V(OptLoopInvariantCodeMotion, false)    \
-    V(CollectLiteralInfo, false)
+    V(CollectLiteralInfo, false)            \
+    V(OptConstantFolding, true)             \
+    V(LexenvSpecialization, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

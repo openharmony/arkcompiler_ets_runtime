@@ -77,7 +77,7 @@ void PGOProfiler::ProfileDefineClass(JSTaggedType ctor)
     }
 }
 
-void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKind)
+void PGOProfiler::UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind)
 {
     if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
@@ -95,6 +95,39 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal, ElementsKind newKi
         auto constantId = thread->GetArrayHClassIndexMap().at(mixKind);
         auto hclass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
         trackInfo->SetCachedHClass(vm_->GetJSThread(), hclass);
+        UpdateTrackInfo(JSTaggedValue(trackInfo));
+    }
+}
+
+void PGOProfiler::UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize)
+{
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        auto trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        uint32_t oldSize = trackInfo->GetArrayLength();
+        if (oldSize >= newSize) {
+            return;
+        }
+        trackInfo->SetArrayLength(newSize);
+        UpdateTrackInfo(JSTaggedValue(trackInfo));
+    }
+}
+
+void PGOProfiler::UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag)
+{
+    if (!object->GetClass()->IsTrackInfoObject()) {
+        return;
+    }
+    auto trackInfo = TrackInfo::Cast(object);
+    RegionSpaceFlag oldFlag = trackInfo->GetSpaceFlag();
+    if (oldFlag == RegionSpaceFlag::IN_YOUNG_SPACE) {
+        trackInfo->SetSpaceFlag(spaceFlag);
+    }
+}
+
+void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
+{
+    if (trackInfoVal.IsHeapObject()) {
+        auto trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         auto func = trackInfo->GetCachedFunc();
         if (!func.IsJSFunction()) {
             return;
@@ -490,6 +523,16 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpCreateObject(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, traceId);
                 break;
             }
+            case EcmaOpcode::GETITERATOR_IMM8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::GETITERATOR_IMM16: {
+                uint16_t slotId = READ_INST_16_0();
+                DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             default:
                 break;
@@ -851,7 +894,8 @@ void PGOProfiler::DumpCreateObject(ApEntityId abcId, const CString &recordName, 
             recordInfos_->AddLayout(currentType, JSTaggedType(hclass), kind);
         }
         auto elementsKind = trackInfo->GetElementsKind();
-        recordInfos_->UpdateElementsKind(currentType, elementsKind);
+        recordInfos_->UpdateElements(currentType, elementsKind, trackInfo->GetArrayLength(),
+                                     trackInfo->GetSpaceFlag());
     }
 }
 
@@ -862,9 +906,27 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
     if (!slotValue.IsInt()) {
         return;
     }
-    auto calleeMethodId = slotValue.GetInt();
+    int calleeMethodId = slotValue.GetInt();
+    ProfileType::Kind kind = (calleeMethodId < 0) ? ProfileType::Kind::NativeFunctionId : ProfileType::Kind::MethodId;
+    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(calleeMethodId), kind);
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
+}
 
-    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, calleeMethodId);
+void PGOProfiler::DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+{
+    if (vm_->GetJSThread()->GetEnableLazyBuiltins()) {
+        return;
+    }
+    JSTaggedValue value = profileTypeInfo->Get(slotId);
+    if (!value.IsInt()) {
+        return;
+    }
+    int iterKind = value.GetInt();
+    ASSERT(iterKind <= 0);
+    ProfileType::Kind pgoKind = ProfileType::Kind::NativeFunctionId;
+    PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(iterKind), pgoKind);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }

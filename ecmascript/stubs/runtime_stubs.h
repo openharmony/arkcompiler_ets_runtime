@@ -176,6 +176,13 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CreateGeneratorObj)                 \
     V(ThrowConstAssignment)               \
     V(GetTemplateObject)                  \
+    V(CreateStringIterator)               \
+    V(NewJSArrayIterator)                 \
+    V(NewJSTypedArrayIterator)            \
+    V(MapIteratorNext)                    \
+    V(SetIteratorNext)                    \
+    V(StringIteratorNext)                 \
+    V(ArrayIteratorNext)                  \
     V(GetNextPropName)                    \
     V(GetNextPropNameSlowpath)            \
     V(ThrowIfNotObject)                   \

@@ -722,8 +722,8 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
                 GateRef startTag = GetCallArg0(numArgs);
                 Branch(TaggedIsInt(startTag), &startTagIsInt, slowPath);
                 Bind(&startTagIsInt);
-                start = ConvertAndClampRelativeIndex(GetInt32OfTInt(startTag), thisLen);
                 GateRef thisLen = GetLengthFromString(thisValue);
+                start = ConvertAndClampRelativeIndex(GetInt32OfTInt(startTag), thisLen);
                 Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagUndefined, &endTagDefined);
                 Bind(&endTagUndefined);
                 {

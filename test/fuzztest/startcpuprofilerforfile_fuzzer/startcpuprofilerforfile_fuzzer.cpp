@@ -32,6 +32,7 @@ namespace OHOS {
         }
         std::string fileName(data, data + size);
         DFXJSNApi::StartCpuProfilerForFile(vm, fileName);
+        DFXJSNApi::StopCpuProfilerForFile(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }

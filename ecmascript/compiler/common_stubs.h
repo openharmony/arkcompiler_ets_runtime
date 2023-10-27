@@ -80,6 +80,8 @@ namespace panda::ecmascript::kungfu {
     V(CreateStringBySingleCharCode)   \
     V(Getpropiterator)                \
     V(Getnextpropname)                \
+    V(CreateJSSetIterator)            \
+    V(CreateJSMapIterator)            \
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)
 

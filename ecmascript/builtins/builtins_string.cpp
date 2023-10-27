@@ -1215,7 +1215,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                     continueFromIndex = pos + 1;
                     break;
                 }
-                JSHandle<EcmaString> captureName(capture);
+                JSHandle<EcmaString> captureName = JSTaggedValue::ToString(thread, capture);
                 stringBuilder += EcmaStringAccessor(captureName).ToU16String();
                 if (EcmaStringAccessor(captureName).IsUtf16()) {
                     canBeCompress = false;
@@ -1483,7 +1483,7 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
         if (arrayLength == lim) {
             break;
         }
-        index = pos + seperatorLength;
+        index = pos + static_cast<int32_t>(seperatorLength);
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, seperatorString, index);
     }
     uint32_t posArrLength = posArray.size();
@@ -1498,7 +1498,7 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
         // Perform CreateDataProperty(A, "0", S), CreateDataProperty's fast path
         JSObject::CreateDataProperty(thread, resultArray, i, elementTag);
         ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
-        index = pos + seperatorLength;
+        index = pos + static_cast<int32_t>(seperatorLength);
     }
     if (lim > posArrLength) {
         EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, thisLength - index);

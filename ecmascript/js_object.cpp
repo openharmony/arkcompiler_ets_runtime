@@ -95,6 +95,10 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
     JSHandle<TaggedArray> newElements = factory->CopyArray(oldElements, oldLength, newCapacity);
 
     obj->SetElements(thread, newElements);
+    if (thread->IsPGOProfilerEnable() && obj->IsJSArray()) {
+        auto trackInfo = JSHandle<JSArray>(obj)->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackArrayLength(trackInfo, capacity);
+    }
     return newElements;
 }
 
@@ -1250,6 +1254,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
     obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
     return true;
 }
 

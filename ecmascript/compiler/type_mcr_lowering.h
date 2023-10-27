@@ -187,6 +187,10 @@ private:
     void LowerStringEqual(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
+    void LowerIteratorFunctionCheck(GateRef gate, GateRef glue);
+    void LowerGetFixedIterator(GateRef gate, GateRef glue);
+    void LowerNativeCallTargetCheck(GateRef gate);
+    void LowerTypedCallNative(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

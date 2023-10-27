@@ -3936,8 +3936,7 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     }
     Bind(&slowpath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
-                             { Undefined(), obj, key, Int64ToTaggedPtr(Int32(0)) });
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByName), { Undefined(), obj, key, IntToTaggedInt(Int32(0)) });
         Jump(&exit);
     }
     Bind(&exit);
@@ -4013,7 +4012,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue), { obj, *keyVar, value, Int64ToTaggedPtr(Int32(0)) });
+        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue), { obj, *keyVar, value, IntToTaggedInt(Int32(0)) });
         Jump(&exit);
     }
     Bind(&exit);
@@ -5474,120 +5473,17 @@ GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef i
 
 GateRef StubBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
 {
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(static_cast<int32_t>(EnumCacheKind::NONE)));
-
-    Label enumCacheIsArray(env);
-    Label isEmptyArray(env);
-    Label notEmptyArray(env);
-
-    Branch(TaggedIsUndefinedOrNull(enumCache), &exit, &enumCacheIsArray);
-    Bind(&enumCacheIsArray);
-    GateRef emptyArray = GetEmptyArray(glue);
-    Branch(Int64Equal(enumCache, emptyArray), &isEmptyArray, &notEmptyArray);
-    Bind(&isEmptyArray);
-    {
-        result = Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE));
-        Jump(&exit);
-    }
-    Bind(&notEmptyArray);
-    {
-        GateRef taggedKind = GetValueFromTaggedArray(enumCache, Int32(EnumCache::ENUM_CACHE_KIND_OFFSET));
-        result = TaggedGetInt(taggedKind);
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->GetEnumCacheKind(glue, enumCache);
 }
 
 GateRef StubBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind)
 {
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-
-    Label isSameHclass(env);
-    Label isSimpleEnumCache(env);
-    Label notSimpleEnumCache(env);
-    Label prototypeIsEcmaObj(env);
-    Label isProtoChangeMarker(env);
-    Label protoNotChanged(env);
-
-    GateRef hclass = LoadHClass(receiver);
-    Branch(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
-    Bind(&isSameHclass);
-    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
-           &isSimpleEnumCache, &notSimpleEnumCache);
-    Bind(&isSimpleEnumCache);
-    {
-        result = True();
-        Jump(&exit);
-    }
-    Bind(&notSimpleEnumCache);
-    GateRef prototype = GetPrototypeFromHClass(hclass);
-    Branch(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
-    Bind(&prototypeIsEcmaObj);
-    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(hclass);
-    Branch(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
-    Bind(&isProtoChangeMarker);
-    Branch(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
-    Bind(&protoNotChanged);
-    {
-        result = True();
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->IsEnumCacheValid(receiver, cachedHclass, kind);
 }
 
 GateRef StubBuilder::NeedCheckProperty(GateRef receiver)
 {
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label afterLoop(env);
-    Label isJSObject(env);
-    Label hasNoDeleteProperty(env);
-
-    DEFVARIABLE(result, VariableType::BOOL(), True());
-    DEFVARIABLE(current, VariableType::JS_ANY(), receiver);
-
-    Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
-    LoopBegin(&loopHead);
-    {
-        Branch(IsJSObject(*current), &isJSObject, &exit);
-        Bind(&isJSObject);
-        GateRef hclass = LoadHClass(*current);
-        Branch(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
-        Bind(&hasNoDeleteProperty);
-        current = GetPrototypeFromHClass(hclass);
-        Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
-    }
-    Bind(&loopEnd);
-    LoopEnd(&loopHead);
-    Bind(&afterLoop);
-    {
-        result = False();
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->NeedCheckProperty(receiver);
 }
 
 GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
@@ -6079,6 +5975,83 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
     return ret;
 }
 
+GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Label isHeapObject(env);
+    Label objIsCallable(env);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
+    result = FastGetPropertyByName(glue, obj, iteratorKey, ProfileOperation());
+    Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+    Bind(&isPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noPendingException);
+    callback.ProfileGetIterator(*result);
+    Branch(TaggedIsHeapObject(*result), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    Branch(IsCallable(*result), &objIsCallable, &exit);
+    Bind(&objIsCallable);
+    {
+        result = JSCallDispatch(glue, *result, Int32(0), 0, Circuit::NullGate(),
+                                JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
+{
+    switch (mode) {
+        case JSCallMode::CALL_ARG0:
+        case JSCallMode::CALL_ARG1:
+        case JSCallMode::CALL_ARG2:
+        case JSCallMode::CALL_ARG3:
+        case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+            return true;
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::CALL_ENTRY:
+        case JSCallMode::CALL_FROM_AOT:
+        case JSCallMode::CALL_GENERATOR:
+        case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+            return false;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
                                     ProfileOperation callback)
@@ -6126,6 +6099,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // 3. call native
     Bind(&methodIsNative);
     {
+        if (IsCallModeSupportPGO(mode)) {
+            callback.ProfileNativeCall(func);
+        }
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
@@ -6231,7 +6207,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // 4. call nonNative
     Bind(&methodNotNative);
 
-    if (mode != JSCallMode::CALL_GETTER && mode != JSCallMode::CALL_SETTER) {
+    if (IsCallModeSupportPGO(mode)) {
         callback.ProfileCall(func);
     }
     Label funcIsClassConstructor(env);

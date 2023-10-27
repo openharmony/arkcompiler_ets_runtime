@@ -704,6 +704,11 @@ bool JSThread::IsAllContextsInitialized() const
     return contexts_.back()->IsInitialized();
 }
 
+bool JSThread::IsReadyToUpdateDetector() const
+{
+    return !GetEnableLazyBuiltins() && IsAllContextsInitialized();
+}
+
 Area *JSThread::GetOrCreateRegExpCache()
 {
     if (regExpCache_ == nullptr) {

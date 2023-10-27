@@ -21,12 +21,16 @@
 #include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
+using PGONativeFunctionId = panda::ecmascript::pgo::DumpUtils::PGONativeFunctionId;
 void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
     const std::vector<GateRef> &values, SlotIDFormat format, OperationType type)
 {
     switch (type) {
         case OperationType::CALL:
             ProfileCall(glue, pc, func, values[0], profileTypeInfo, format);
+            break;
+        case OperationType::NATIVE_CALL:
+            ProfileNativeCall(glue, pc, func, values[0], profileTypeInfo, format);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0], format);
@@ -48,6 +52,9 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
             break;
         case OperationType::FALSE_BRANCH:
             ProfileBranch(glue, pc, func, profileTypeInfo, false);
+            break;
+        case OperationType::ITERATOR_FUNC_KIND:
+            ProfileGetIterator(glue, pc, func, values[0], profileTypeInfo, format);
             break;
         default:
             break;
@@ -276,6 +283,107 @@ void ProfilerStubBuilder::ProfileCall(
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+GateRef ProfilerStubBuilder::TryGetPGONativeFunctionID(GateRef glue, GateRef target)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+
+    DEFVARIABLE(functionKind, VariableType::INT32(), Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID)));
+    DEFVARIABLE(maybeFunc, VariableType::JS_ANY(), Undefined());
+    Label isArrayIterProtoNext(env);
+    Label notArrayIterProtoNext(env);
+    Label isMapIterProtoNext(env);
+    Label notMapIterProtoNext(env);
+    Label isSetIterProtoNext(env);
+    Label notSetIterProtoNext(env);
+    Label isStringIterProtoNext(env);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_ITERATOR_PROTO_NEXT_INDEX);
+    Branch(Int64Equal(target, *maybeFunc), &isArrayIterProtoNext, &notArrayIterProtoNext);
+    Bind(&isArrayIterProtoNext);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::ARRAY_ITERATOR_PROTO_NEXT));
+        Jump(&exit);
+    }
+    Bind(&notArrayIterProtoNext);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::MAP_ITERATOR_PROTO_NEXT_INDEX);
+    Branch(Int64Equal(target, *maybeFunc), &isMapIterProtoNext, &notMapIterProtoNext);
+    Bind(&isMapIterProtoNext);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::MAP_ITERATOR_PROTO_NEXT));
+        Jump(&exit);
+    }
+    Bind(&notMapIterProtoNext);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::SET_ITERATOR_PROTO_NEXT_INDEX);
+    Branch(Int64Equal(target, *maybeFunc), &isSetIterProtoNext, &notSetIterProtoNext);
+    Bind(&isSetIterProtoNext);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::SET_ITERATOR_PROTO_NEXT));
+        Jump(&exit);
+    }
+    Bind(&notSetIterProtoNext);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::STRING_ITERATOR_PROTO_NEXT_INDEX);
+    Branch(Int64Equal(target, *maybeFunc), &isStringIterProtoNext, &exit);
+    Bind(&isStringIterProtoNext);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::STRING_ITERATOR_PROTO_NEXT));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *functionKind;
+    env->SubCfgExit();
+    return ret;
+}
+
+void ProfilerStubBuilder::ProfileNativeCall(
+    GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label exit(env);
+    Label currentIsHot(env);
+
+    Branch(TaggedIsUndefined(profileTypeInfo), &exit, &currentIsHot);
+    Bind(&currentIsHot);
+    {
+        Label updateSlot(env);
+        Label initSlot(env);
+        Label sameValueCheck(env);
+        Label invalidate(env);
+
+        GateRef slotId = GetSlotID(pc, format);
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        GateRef newId = TryGetPGONativeFunctionID(glue, target);
+        Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
+        Bind(&updateSlot);
+        GateRef oldId = TaggedGetInt(slotValue);
+        Branch(Int32Equal(oldId, Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID))), &exit, &sameValueCheck);
+        Bind(&sameValueCheck);
+        Branch(Int32Equal(oldId, newId), &exit, &invalidate);
+        Bind(&invalidate);
+        {
+            GateRef invalidId = Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidId));
+            TryPreDumpInner(glue, func, profileTypeInfo);
+            Jump(&exit);
+        }
+        Bind(&initSlot);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newId));
+            TryPreDumpInner(glue, func, profileTypeInfo);
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -516,6 +624,118 @@ void ProfilerStubBuilder::TryPreDumpInner(GateRef glue, GateRef func, GateRef pr
     {
         CallRuntime(glue, RTSTUB_ID(PGOPreDump), { func });
         Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iterator)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+
+    DEFVARIABLE(functionKind, VariableType::INT32(), Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID)));
+    DEFVARIABLE(maybeFunc, VariableType::JS_ANY(), Undefined());
+    Label isArrayProtoValues(env);
+    Label notArrayProtoValues(env);
+    Label isSetProtoValues(env);
+    Label notSetProtoValues(env);
+    Label isMapProtoEntries(env);
+    Label notMapProtoEntries(env);
+    Label isStringProtoIter(env);
+    Label notStringProtoIter(env);
+    Label isTypedArrayProtoValues(env);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+    Branch(Int64Equal(iterator, *maybeFunc), &isArrayProtoValues, &notArrayProtoValues);
+    Bind(&isArrayProtoValues);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::ARRAY_PROTO_ITERATOR));
+        Jump(&exit);
+    }
+    Bind(&notArrayProtoValues);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
+    Branch(Int64Equal(iterator, *maybeFunc), &isSetProtoValues, &notSetProtoValues);
+    Bind(&isSetProtoValues);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::SET_PROTO_ITERATOR));
+        Jump(&exit);
+    }
+    Bind(&notSetProtoValues);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
+    Branch(Int64Equal(iterator, *maybeFunc), &isMapProtoEntries, &notMapProtoEntries);
+    Bind(&isMapProtoEntries);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::MAP_PROTO_ITERATOR));
+        Jump(&exit);
+    }
+    Bind(&notMapProtoEntries);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::STRING_PROTO_ITER_FUNCTION_INDEX);
+    Branch(Int64Equal(iterator, *maybeFunc), &isStringProtoIter, &notStringProtoIter);
+    Bind(&isStringProtoIter);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::STRING_PROTO_ITERATOR));
+        Jump(&exit);
+    }
+    Bind(&notStringProtoIter);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                  GlobalEnv::TYPED_ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+    Branch(Int64Equal(iterator, *maybeFunc), &isTypedArrayProtoValues, &exit);
+    Bind(&isTypedArrayProtoValues);
+    {
+        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::TYPED_ARRAY_PROTO_ITERATOR));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *functionKind;
+    env->SubCfgExit();
+    return ret;
+}
+
+void ProfilerStubBuilder::ProfileGetIterator(
+    GateRef glue, GateRef pc, GateRef func, GateRef iterator, GateRef profileTypeInfo, SlotIDFormat format)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label exit(env);
+    Label profiler(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    Bind(&profiler);
+    {
+        Label updateSlot(env);
+        Label initSlot(env);
+        Label sameValueCheck(env);
+        Label invalidate(env);
+
+        GateRef slotId = GetSlotID(pc, format);
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        GateRef newIterKind = GetIterationFunctionKind(glue, iterator);
+        Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
+        Bind(&updateSlot);
+        GateRef oldIterKind = TaggedGetInt(slotValue);
+        Branch(Int32Equal(oldIterKind, Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID))),
+            &exit, &sameValueCheck);
+        Bind(&sameValueCheck);
+        Branch(Int32Equal(oldIterKind, newIterKind), &exit, &invalidate);
+        Bind(&invalidate);
+        {
+            GateRef invalidKind = Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidKind));
+            TryPreDumpInner(glue, func, profileTypeInfo);
+            Jump(&exit);
+        }
+        Bind(&initSlot);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newIterKind));
+            TryPreDumpInner(glue, func, profileTypeInfo);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     env->SubCfgExit();

@@ -2093,6 +2093,36 @@ DEF_CALL_SIGNATURE(Getnextpropname)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(CreateJSSetIterator)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateJSSetIterator", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateJSMapIterator)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateJSMapIterator", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(FastStringEqual)
 {
     // 3 : 3 input parameters

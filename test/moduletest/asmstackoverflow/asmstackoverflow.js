@@ -41,3 +41,12 @@ try {
         print("proxy stackoverflow!");
     }
 }
+try {
+    function func() { }
+    Function.prototype.__proto__ = new Proxy(func, {})
+    Function.prototype.__proto__ = new Proxy(func, {})
+} catch (error) {
+    if (error instanceof RangeError) {
+        print("proxy stackoverflow2!");
+    }
+}

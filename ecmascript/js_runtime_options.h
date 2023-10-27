@@ -146,6 +146,8 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_EXTERNAL_PKG,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
     OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
+    OPTION_COMPILER_OPT_CONSTANT_FOLDING,
+    OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1258,6 +1260,16 @@ public:
         return enableOptLoopInvariantCodeMotion_;
     }
 
+    bool IsEnableOptConstantFolding() const
+    {
+        return enableOptConstantFolding_;
+    }
+
+    void SetEnableOptConstantFolding(bool value)
+    {
+        enableOptConstantFolding_ = value;
+    }
+
     void SetEnableOptOnHeapCheck(bool value)
     {
         enableOptOnHeapCheck_ = value;
@@ -1266,6 +1278,16 @@ public:
     bool IsEnableOptOnHeapCheck() const
     {
         return enableOptOnHeapCheck_;
+    }
+
+    bool IsEnableLexenvSpecialization() const
+    {
+        return enableLexenvSpecialization_;
+    }
+
+    void SetEnableLexenvSpecialization(bool value)
+    {
+        enableLexenvSpecialization_ = value;
     }
 
 private:
@@ -1369,8 +1391,10 @@ private:
     bool compilerNoCheck_ {false};
     bool fastAOTCompileMode_ {false};
     bool enableOptLoopPeeling_ {true};
+    bool enableOptConstantFolding_ {true};
     bool enableOptOnHeapCheck_ {true};
     bool enableOptLoopInvariantCodeMotion_ {false};
+    bool enableLexenvSpecialization_ {true};
 };
 }  // namespace panda::ecmascript
 

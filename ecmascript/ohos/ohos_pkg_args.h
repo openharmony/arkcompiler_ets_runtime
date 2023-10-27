@@ -17,16 +17,24 @@
 #define ECMASCRIPT_OHOS_OHOS_PKG_ARGS_H
 
 #include <limits>
+#include <memory>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/json_parser.h"
+#include "ecmascript/compiler/aot_compiler.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
@@ -38,8 +46,36 @@ public:
     constexpr static const char *const KEY_FILE_NAME = "abcName";
     constexpr static const char *const KEY_ABC_OFFSET = "abcOffset";
     constexpr static const char *const KEY_ABC_SIZE = "abcSize";
+    constexpr static const char *const KEY_PGO_DIR = "pgoDir";
 
     OhosPkgArgs() = default;
+
+    static bool ParseArgs(CompilationPreprocessor &preProcessor, CompilationOptions &cOptions)
+    {
+        ASSERT(preProcessor.runtimeOptions_.IsTargetCompilerMode());
+        std::shared_ptr<OhosPkgArgs> pkgArgs = std::make_shared<OhosPkgArgs>();
+        if (!preProcessor.runtimeOptions_.GetCompilerPkgJsonInfo().empty()) {
+            if (!pkgArgs->ParseFromJson(preProcessor.vm_, preProcessor.runtimeOptions_.GetCompilerPkgJsonInfo())) {
+                return false;
+            }
+            LOG_COMPILER(INFO) << "Parse main pkg info success.";
+            preProcessor.pkgsArgs_[pkgArgs->GetFullName()] = pkgArgs;
+            if (!ParseProfilerPath(pkgArgs, preProcessor, cOptions)) {
+                return false;
+            }
+        }
+        if (preProcessor.runtimeOptions_.GetCompilerEnableExternalPkg() &&
+            !preProcessor.runtimeOptions_.GetCompilerExternalPkgJsonInfo().empty()) {
+            OhosPkgArgs::ParseListFromJson(preProcessor.vm_,
+                                           preProcessor.runtimeOptions_.GetCompilerExternalPkgJsonInfo(),
+                                           preProcessor.pkgsArgs_);
+        }
+        for (const auto &pkgInfo : preProcessor.pkgsArgs_) {
+            preProcessor.pandaFileNames_.emplace_back(pkgInfo.first);
+            pkgInfo.second->Dump();
+        }
+        return true;
+    }
 
     bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
     {
@@ -78,7 +114,8 @@ public:
         return true;
     }
 
-    static bool ParseListFromJson(EcmaVM *vm, const std::string &jsonInfo, std::map<std::string, OhosPkgArgs> &argsMap)
+    static bool ParseListFromJson(EcmaVM *vm, const std::string &jsonInfo,
+                                  std::map<std::string, std::shared_ptr<OhosPkgArgs>> &argsMap)
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
@@ -95,18 +132,18 @@ public:
         JSHandle<JSArray> valueHandle(vm->GetJSThread(), resultValue);
         JSHandle<TaggedArray> elements(vm->GetJSThread(), valueHandle->GetElements());
         for (uint32_t i = 0; i < elements->GetLength(); i++) {
-            OhosPkgArgs pkgInfo;
             JSHandle<JSTaggedValue> entry(vm->GetJSThread(), elements->Get(i));
             if (entry->IsHole()) {
                 continue;
             }
+            std::shared_ptr<OhosPkgArgs> pkgInfo = std::make_shared<OhosPkgArgs>();
             JSTaggedValue entryValue(static_cast<JSTaggedType>(entry->GetRawData()));
             JSHandle<JSObject> entryHandle(vm->GetJSThread(), entryValue);
-            if (!pkgInfo.ParseFromJsObject(vm, entryHandle)) {
+            if (!pkgInfo->ParseFromJsObject(vm, entryHandle)) {
                 LOG_COMPILER(ERROR) << "Pkg list entry info parse failed. jsonData: " << jsonInfo.c_str();
                 return false;
             }
-            argsMap[pkgInfo.GetFullName()] = pkgInfo;
+            argsMap[pkgInfo->GetFullName()] = pkgInfo;
         }
         return true;
     }
@@ -162,6 +199,8 @@ public:
         } else if (strcmp(key, KEY_ABC_SIZE) == 0) {
             char *str = nullptr;
             abcSize_ = static_cast<uint32_t>(strtol(value, &str, 0));
+        } else if (strcmp(key, KEY_PGO_DIR) == 0) {
+            pgoDir_ = value;
         } else {
             LOG_COMPILER(ERROR) << "Unknown keyword when parse pkg info. key: " << key << ", value: " << value;
         }
@@ -170,7 +209,7 @@ public:
     bool Valid() const
     {
         if (!base::StringHelper::EndsWith(abcName_, ".abc")) {
-            LOG_COMPILER(ERROR) << "The last argument must be abc file, but now is: " << abcName_ << std::endl;
+            LOG_COMPILER(ERROR) << KEY_FILE_NAME << " must be abc file, but now is: " << abcName_;
             return false;
         }
         return !bundleName_.empty() && !moduleName_.empty() && !pkgPath_.empty() && (abcOffset_ != INVALID_VALUE) &&
@@ -179,9 +218,13 @@ public:
 
     void Dump() const
     {
-        LOG_COMPILER(INFO) << "PkgInfo: " << KEY_BUNDLE_NAME << ": " << bundleName_ << ", " << KEY_MODULE_NAME << ": "
-                           << moduleName_ << ", " << KEY_PKG_PATH << ": " << pkgPath_ << ", " << KEY_ABC_OFFSET << ": "
-                           << std::hex << abcOffset_ << ", " << KEY_ABC_SIZE << ": " << abcSize_;
+        LOG_COMPILER(INFO) << "PkgInfo: "
+                           << KEY_BUNDLE_NAME << ": " << bundleName_ << ", "
+                           << KEY_MODULE_NAME << ": " << moduleName_ << ", "
+                           << KEY_PKG_PATH << ": " << pkgPath_ << ", "
+                           << KEY_ABC_OFFSET << ": " << std::hex << abcOffset_ << ", "
+                           << KEY_ABC_SIZE << ": " << abcSize_ << ", "
+                           << KEY_PGO_DIR << ": " << pgoDir_;
     }
 
     const std::string &GetBundleName() const
@@ -214,12 +257,101 @@ public:
         return abcSize_;
     }
 
+    const std::string &GetPgoDir() const
+    {
+        return pgoDir_;
+    }
+
+    void SetPgoDir(const std::string &pgoDir)
+    {
+        pgoDir_ = pgoDir;
+    }
+
+    std::string GetPgoPaths() const
+    {
+        // 1. use target aps when app in white list
+        if (WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
+            std::string pgoPaths = GetTargetApPaths();
+            if (!pgoPaths.empty()) {
+                return pgoPaths;
+            }
+        }
+
+        // 2. use baseline ap if there's no runtime ap
+        auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
+        if (FileExist(baselineAp.c_str())) {
+            return baselineAp;
+        }
+        return "";
+    }
+
 private:
+    static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, CompilationPreprocessor &preProcessor,
+                                  CompilationOptions &cOptions)
+    {
+        if (!preProcessor.runtimeOptions_.IsPartialCompilerMode()) {
+            return true;
+        }
+        if (pkgArgs->GetPgoDir().empty() && !cOptions.profilerIn_.empty()) {
+            // try get pgo dir from --compiler-pgo-profiler-path
+            arg_list_t pandaFileNames = base::StringHelper::SplitString(cOptions.profilerIn_, GetFileDelimiter());
+            ASSERT(!pandaFileNames.empty());
+            // just parse the first ap's dir
+            pkgArgs->SetPgoDir(ResolveDirPath(pandaFileNames.at(0)));
+        }
+        // reset profilerIn from pgo dir
+        cOptions.profilerIn_ = pkgArgs->GetPgoPaths();
+        if (cOptions.profilerIn_.empty()) {
+            LOG_COMPILER(ERROR) << "No available ap files found in " << pkgArgs->GetPgoDir();
+            return false;
+        }
+        return true;
+    }
+
+    /*
+    * Before: xxx/xxx
+    * After:  xxx
+    */
+    static std::string ResolveDirPath(const std::string &fileName)
+    {
+        // find last '/', '\\'
+        auto foundPos = fileName.find_last_of("/\\");
+        if (foundPos == std::string::npos) {
+            return "";
+        }
+        return fileName.substr(0, foundPos);
+    }
+
+    std::string GetTargetApPaths() const
+    {
+        std::string pgoPaths;
+
+        // handle runtime ap
+        auto runtimeAp = GetRuntimeApPath();
+        if (!runtimeAp.empty()) {
+            if (!pgoPaths.empty()) {
+                pgoPaths += GetFileDelimiter();
+            }
+            pgoPaths += runtimeAp;
+        }
+        return pgoPaths;
+    }
+
+    std::string GetRuntimeApPath() const
+    {
+        auto runtimeAp = pgoDir_ + '/' + pgo::ApNameUtils::GetRuntimeApName(moduleName_);
+        if (!FileExist(runtimeAp.c_str())) {
+            return "";
+        }
+        return runtimeAp;
+    }
+
     static constexpr uint32_t INVALID_VALUE = std::numeric_limits<uint32_t>::max();
     std::string bundleName_;
     std::string moduleName_;
     std::string pkgPath_;
     std::string abcName_;
+    std::string pgoDir_;
     uint32_t abcOffset_ {INVALID_VALUE};
     uint32_t abcSize_ {INVALID_VALUE};
 };
