@@ -200,7 +200,7 @@ void JSDebugger::DumpBreakpoints()
     }
 }
 
-bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint)
+bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const
 {
     if (!breakpoint.has_value()) {
         return false;
