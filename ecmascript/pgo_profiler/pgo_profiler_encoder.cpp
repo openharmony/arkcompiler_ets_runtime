@@ -28,7 +28,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
-#include "os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
@@ -104,7 +104,7 @@ bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
     if (!isProfilingInitialized_) {
         return false;
     }
-    os::memory::ReadLockHolder lock(rwLock_);
+    ReadLockHolder lock(rwLock_);
     const auto *entry = abcFilePool_->GetEntry(abcId);
     if (entry == nullptr) {
         return false;

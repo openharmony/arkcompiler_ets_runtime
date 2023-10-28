@@ -22,7 +22,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
-#include "os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 const int THRESHOLD_GROWTH_FACTORY = 2; // 2:TimeDelta Threshold Growth Factory
