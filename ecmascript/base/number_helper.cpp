@@ -102,7 +102,7 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     auto value = bit_cast<uint64_t>(number);
     value += 1;
     double delta = HALF * (bit_cast<double>(value) - number);
-
+    delta = std::max(delta, bit_cast<double>(static_cast<uint64_t>(1))); // 1 : The binary of the smallest double is 1
     CString result;
     if (numberFraction != 0 && numberFraction >= delta) {
         result += ".";
