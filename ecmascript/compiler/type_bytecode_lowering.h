@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H
-#define ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
+#define ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
@@ -24,9 +24,9 @@
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
-class TSHCRLowering {
+class TypeBytecodeLowering {
 public:
-    TSHCRLowering(Circuit *circuit, PassContext *ctx,
+    TypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, bool enableTypeLog,
                    const std::string& name)
         : circuit_(circuit),
@@ -46,9 +46,9 @@ public:
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
           thread_(ctx->GetEcmaVM()->GetJSThread()) {}
 
-    ~TSHCRLowering() = default;
+    ~TypeBytecodeLowering() = default;
 
-    bool RunTSHCRLowering();
+    bool RunTypeBytecodeLowering();
 
 private:
     bool IsLogEnabled() const
@@ -203,4 +203,4 @@ private:
     const JSThread *thread_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H

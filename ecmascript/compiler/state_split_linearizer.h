@@ -20,7 +20,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/lcr_lowering.h"
+#include "ecmascript/compiler/mcr_lowering.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/mem/chunk_containers.h"
 
@@ -51,7 +51,7 @@ private:
     std::string methodName_;
     Circuit* circuit_ {nullptr};
     GraphLinearizer graphLinearizer_;
-    LCRLowering lcrLowering_;
+    MCRLowering lcrLowering_;
     friend class StateDependBuilder;
 };
 };  // namespace panda::ecmascript::kungfu

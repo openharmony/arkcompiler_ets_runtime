@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/type_bytecode_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/circuit.h"
@@ -23,7 +23,7 @@
 
 namespace panda::ecmascript::kungfu {
 using PGONativeFunctionId = pgo::DumpUtils::PGONativeFunctionId;
-bool TSHCRLowering::RunTSHCRLowering()
+bool TypeBytecodeLowering::RunTypeBytecodeLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -54,7 +54,7 @@ bool TSHCRLowering::RunTSHCRLowering()
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
                            << "===================="
-                           << " After TSHCRlowering "
+                           << " After TypeBytecodeLowering "
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
@@ -83,7 +83,7 @@ bool TSHCRLowering::RunTSHCRLowering()
     return success;
 }
 
-bool TSHCRLowering::IsTrustedType(GateRef gate) const
+bool TypeBytecodeLowering::IsTrustedType(GateRef gate) const
 {
     if (acc_.IsConstant(gate)) {
         return true;
@@ -123,7 +123,7 @@ bool TSHCRLowering::IsTrustedType(GateRef gate) const
     return false;
 }
 
-bool TSHCRLowering::IsTrustedStringType(GateRef gate) const
+bool TypeBytecodeLowering::IsTrustedStringType(GateRef gate) const
 {
     auto op = acc_.GetOpCode(gate);
     if (op == OpCode::LOAD_ELEMENT) {
@@ -149,7 +149,7 @@ bool TSHCRLowering::IsTrustedStringType(GateRef gate) const
     return false;
 }
 
-void TSHCRLowering::Lower(GateRef gate)
+void TypeBytecodeLowering::Lower(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
@@ -332,7 +332,7 @@ void TSHCRLowering::Lower(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TSHCRLowering::LowerTypedBinOp(GateRef gate, bool convertNumberType)
+void TypeBytecodeLowering::LowerTypedBinOp(GateRef gate, bool convertNumberType)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -344,7 +344,7 @@ void TSHCRLowering::LowerTypedBinOp(GateRef gate, bool convertNumberType)
 }
 
 template<TypedUnOp Op>
-void TSHCRLowering::LowerTypedUnOp(GateRef gate)
+void TypeBytecodeLowering::LowerTypedUnOp(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     if (HasNumberType(gate, value)) {
@@ -352,7 +352,7 @@ void TSHCRLowering::LowerTypedUnOp(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerTypedStrictEq(GateRef gate)
+void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -367,7 +367,7 @@ void TSHCRLowering::LowerTypedStrictEq(GateRef gate)
     }
 }
 
-bool TSHCRLowering::HasNumberType(GateRef gate, GateRef value) const
+bool TypeBytecodeLowering::HasNumberType(GateRef gate, GateRef value) const
 {
     GateType valueType = acc_.GetGateType(value);
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
@@ -378,7 +378,7 @@ bool TSHCRLowering::HasNumberType(GateRef gate, GateRef value) const
     return false;
 }
 
-bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right, bool convertNumberType) const
+bool TypeBytecodeLowering::HasNumberType(GateRef gate, GateRef left, GateRef right, bool convertNumberType) const
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
@@ -397,7 +397,7 @@ bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right, boo
     return false;
 }
 
-bool TSHCRLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, GateRef right) const
+bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, GateRef right) const
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
@@ -409,7 +409,7 @@ bool TSHCRLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, G
 }
 
 template<TypedBinOp Op>
-void TSHCRLowering::SpeculateStrings(GateRef gate)
+void TypeBytecodeLowering::SpeculateStrings(GateRef gate)
 {
     if (Op == TypedBinOp::TYPED_EQ) {
         AddProfiling(gate);
@@ -433,7 +433,7 @@ void TSHCRLowering::SpeculateStrings(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TSHCRLowering::SpeculateNumbers(GateRef gate)
+void TypeBytecodeLowering::SpeculateNumbers(GateRef gate)
 {
     AddProfiling(gate);
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -449,7 +449,7 @@ void TSHCRLowering::SpeculateNumbers(GateRef gate)
 }
 
 template<TypedUnOp Op>
-void TSHCRLowering::SpeculateNumber(GateRef gate)
+void TypeBytecodeLowering::SpeculateNumber(GateRef gate)
 {
     AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
@@ -474,7 +474,7 @@ void TSHCRLowering::SpeculateNumber(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypeToNumeric(GateRef gate)
+void TypeBytecodeLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     if (HasNumberType(gate, src)) {
@@ -483,7 +483,7 @@ void TSHCRLowering::LowerTypeToNumeric(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerPrimitiveTypeToNumber(GateRef gate)
+void TypeBytecodeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
@@ -493,7 +493,7 @@ void TSHCRLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerConditionJump(GateRef gate, bool flag)
+void TypeBytecodeLowering::LowerConditionJump(GateRef gate, bool flag)
 {
     GateRef condition = acc_.GetValueIn(gate, 0);
     GateType conditionType = acc_.GetGateType(condition);
@@ -503,7 +503,7 @@ void TSHCRLowering::LowerConditionJump(GateRef gate, bool flag)
     }
 }
 
-void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
+void TypeBytecodeLowering::SpeculateConditionJump(GateRef gate, bool flag)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -517,7 +517,7 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
 
-void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
+void TypeBytecodeLowering::DeleteConstDataIfNoUser(GateRef gate)
 {
     auto uses = acc_.Uses(gate);
     if (uses.begin() == uses.end()) {
@@ -526,7 +526,7 @@ void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
+void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
@@ -540,7 +540,7 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
     DeleteConstDataIfNoUser(constData);
 }
 
-void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
+void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
@@ -564,7 +564,7 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     DeleteConstDataIfNoUser(constData);
 }
 
-void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key,
+void TypeBytecodeLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key,
                                      GateRef value)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -649,7 +649,7 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
     acc_.ReplaceHirAndDeleteIfException(gate, StateDepend(mergeState, dependSelector), result);
 }
 
-GateRef TSHCRLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr)
+GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr)
 {
     GateRef receiver = accessHelper.GetReceiver();
     GateRef plrGate = builder_.Int32(plr.GetData());
@@ -687,7 +687,7 @@ GateRef TSHCRLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper 
     return result;
 }
 
-void TSHCRLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value)
+void TypeBytecodeLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value)
 {
     GateRef constData = acc_.GetValueIn(gate, 1);
     uint16_t keyIndex = acc_.GetConstantValue(constData);
@@ -698,7 +698,7 @@ void TSHCRLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef recei
     builder_.CallRuntime(glue_, stubId, builder_.GetDepend(), { receiver, key, value }, gate);
 }
 
-bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
+bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
 {
     // String: primitive string type only
     // e.g. let s1 = "ABC"; // OK
@@ -727,7 +727,7 @@ bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType re
     return false; // No lowering performed
 }
 
-bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
 {
     EcmaString *propString = EcmaString::Cast(key.GetTaggedObject());
     // (1) get length
@@ -750,7 +750,7 @@ bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedVal
     return TryLowerTypedLdObjByNameForBuiltinMethod(gate, key, type);
 }
 
-bool TSHCRLowering::IsCreateArray(GateRef gate)
+bool TypeBytecodeLowering::IsCreateArray(GateRef gate)
 {
     if (acc_.GetOpCode(gate) != OpCode::JS_BYTECODE) {
         return false;
@@ -769,7 +769,7 @@ bool TSHCRLowering::IsCreateArray(GateRef gate)
     return false;
 }
 
-void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
+void TypeBytecodeLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
@@ -784,7 +784,7 @@ void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
+void TypeBytecodeLowering::LowerTypedLdTypedArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
@@ -797,7 +797,7 @@ void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypedLdStringLength(GateRef gate)
+void TypeBytecodeLowering::LowerTypedLdStringLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef str = acc_.GetValueIn(gate, 2);
@@ -808,7 +808,7 @@ void TSHCRLowering::LowerTypedLdStringLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
 {
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
     if (!protoField.has_value()) {
@@ -842,7 +842,7 @@ bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTag
     return true;
 }
 
-void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
+void TypeBytecodeLowering::LowerTypedLdObjByIndex(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -862,7 +862,7 @@ void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
+void TypeBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -904,7 +904,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
-void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
+void TypeBytecodeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 {
     GateRef receiver = Circuit::NullGate();
     GateRef propKey = Circuit::NullGate();
@@ -943,7 +943,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-GateRef TSHCRLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
+GateRef TypeBytecodeLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
@@ -956,7 +956,7 @@ GateRef TSHCRLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
     return builder_.LoadElement<TypedLoadOp::STRING_LOAD_ELEMENT>(receiver, propKey);
 }
 
-GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)
+GateRef TypeBytecodeLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
@@ -983,7 +983,7 @@ GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, Ele
     return result;
 }
 
-GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
+GateRef TypeBytecodeLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
@@ -1020,7 +1020,7 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
     return Circuit::NullGate();
 }
 
-void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind)
+void TypeBytecodeLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
@@ -1041,7 +1041,7 @@ void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateR
 }
 
 
-void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
+void TypeBytecodeLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
@@ -1086,7 +1086,7 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
     }
 }
 
-void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
+void TypeBytecodeLowering::LowerTypedStObjByValue(GateRef gate)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 4);        // 4: num of value ins
     GateRef receiver = acc_.GetValueIn(gate, 1);  // 1: receiver
@@ -1113,7 +1113,7 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
-void TSHCRLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
+void TypeBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     auto value = acc_.GetValueIn(gate, 0);
@@ -1133,7 +1133,7 @@ void TSHCRLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypedNewObjRange(GateRef gate)
+void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
@@ -1160,7 +1160,7 @@ void TSHCRLowering::LowerTypedNewObjRange(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
+void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 {
     GateRef ctor = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
@@ -1190,7 +1190,7 @@ void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
+void TypeBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                                          BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
@@ -1206,7 +1206,7 @@ void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::
     }
 }
 
-bool TSHCRLowering::TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj)
+bool TypeBytecodeLowering::TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj)
 {
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
     if (sampleType.IsNone()) {
@@ -1228,7 +1228,7 @@ bool TSHCRLowering::TrySpeculateCallThis0Native(GateRef gate, GateRef func, Gate
     return true;
 }
 
-BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
+BuiltinsStubCSigns::ID TypeBytecodeLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsBuiltinObjectMethod(id, funcType)) {
@@ -1239,7 +1239,7 @@ BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef fun
     return stubId;
 }
 
-void TSHCRLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TypeBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC)
 {
     if (!Uncheck()) {
@@ -1252,7 +1252,7 @@ void TSHCRLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, Gate
     }
 }
 
-void TSHCRLowering::LowerFastCall(GateRef gate, GateRef func,
+void TypeBytecodeLowering::LowerFastCall(GateRef gate, GateRef func,
     const std::vector<GateRef> &argsFastCall, bool isNoGC)
 {
     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
@@ -1261,7 +1261,7 @@ void TSHCRLowering::LowerFastCall(GateRef gate, GateRef func,
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TSHCRLowering::LowerCall(GateRef gate, GateRef func,
+void TypeBytecodeLowering::LowerCall(GateRef gate, GateRef func,
     const std::vector<GateRef> &args, bool isNoGC)
 {
     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
@@ -1270,7 +1270,7 @@ void TSHCRLowering::LowerCall(GateRef gate, GateRef func,
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TypeBytecodeLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (IsLoadVtable(func)) {
@@ -1306,7 +1306,7 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
     }
 }
 
-void TSHCRLowering::LowerTypedCallArg0(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 0);
     GateType funcType = acc_.GetGateType(func);
@@ -1318,7 +1318,7 @@ void TSHCRLowering::LowerTypedCallArg0(GateRef gate)
     LowerTypedCall(gate, func, actualArgc, funcType, 0);
 }
 
-void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 1);
     GateType funcType = acc_.GetGateType(func);
@@ -1338,7 +1338,7 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerTypedCallArg2(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallArg2(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     GateType funcType = acc_.GetGateType(func);
@@ -1350,7 +1350,7 @@ void TSHCRLowering::LowerTypedCallArg2(GateRef gate)
     LowerTypedCall(gate, func, actualArgc, funcType, 2); // 2: 2 params
 }
 
-void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallArg3(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 3); // 3:function
     GateType funcType = acc_.GetGateType(func);
@@ -1362,7 +1362,7 @@ void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
     LowerTypedCall(gate, func, actualArgc, funcType, 3); // 3: 3 params
 }
 
-void TSHCRLowering::LowerTypedCallrange(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallrange(GateRef gate)
 {
     std::vector<GateRef> vec;
     std::vector<GateRef> vec1;
@@ -1379,7 +1379,7 @@ void TSHCRLowering::LowerTypedCallrange(GateRef gate)
     LowerTypedCall(gate, func, actualArgc, funcType, argc);
 }
 
-void TSHCRLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
+void TypeBytecodeLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
 {
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
     if (!tsManager_->IsHotnessFunc(funcGt)) {
@@ -1402,7 +1402,7 @@ void TSHCRLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArg
     CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-bool TSHCRLowering::IsLoadVtable(GateRef func)
+bool TypeBytecodeLowering::IsLoadVtable(GateRef func)
 {
     auto op = acc_.GetOpCode(func);
     if (op != OpCode::LOAD_PROPERTY || !acc_.IsVtable(func)) {
@@ -1411,7 +1411,7 @@ bool TSHCRLowering::IsLoadVtable(GateRef func)
     return true;
 }
 
-bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func)
+bool TypeBytecodeLowering::CanOptimizeAsFastCall(GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
@@ -1424,7 +1424,7 @@ bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func)
     return true;
 }
 
-void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TypeBytecodeLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
                                                 GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
@@ -1440,7 +1440,7 @@ void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, Glob
     }
 }
 
-void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TypeBytecodeLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
@@ -1456,7 +1456,7 @@ void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTS
     }
 }
 
-void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TypeBytecodeLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
@@ -1472,7 +1472,7 @@ void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, 
     }
 }
 
-void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1495,7 +1495,7 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
     LowerTypedThisCall(gate, func, actualArgc, 0);
 }
 
-void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -1523,7 +1523,7 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
     LowerTypedThisCall(gate, func, actualArgc, 1);
 }
 
-void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallthis2(GateRef gate)
 {
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
@@ -1536,7 +1536,7 @@ void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
     LowerTypedThisCall(gate, func, actualArgc, 2); // 2: 2 params
 }
 
-void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 {
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
@@ -1560,7 +1560,7 @@ void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
     LowerTypedThisCall(gate, func, actualArgc, 3); // 3: 3 params
 }
 
-void TSHCRLowering::LowerTypedThisCall(GateRef gate, GateRef func, GateRef actualArgc, uint32_t argc)
+void TypeBytecodeLowering::LowerTypedThisCall(GateRef gate, GateRef func, GateRef actualArgc, uint32_t argc)
 {
     GateType funcType = acc_.GetGateType(func);
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
@@ -1582,7 +1582,7 @@ void TSHCRLowering::LowerTypedThisCall(GateRef gate, GateRef func, GateRef actua
 }
 
 
-void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
+void TypeBytecodeLowering::LowerTypedCallthisrange(GateRef gate)
 {
     // this
     size_t fixedInputsNum = 1;
@@ -1598,7 +1598,7 @@ void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
     LowerTypedThisCall(gate, func, actualArgc, numIns - callTargetIndex - fixedInputsNum);
 }
 
-void TSHCRLowering::AddProfiling(GateRef gate)
+void TypeBytecodeLowering::AddProfiling(GateRef gate)
 {
     hitTypedOpCount_++;
     AddHitBytecodeCount();
@@ -1644,7 +1644,7 @@ void TSHCRLowering::AddProfiling(GateRef gate)
     }
 }
 
-void TSHCRLowering::AddBytecodeCount(EcmaOpcode op)
+void TypeBytecodeLowering::AddBytecodeCount(EcmaOpcode op)
 {
     currentOp_ = op;
     if (bytecodeMap_.find(op) != bytecodeMap_.end()) {
@@ -1654,12 +1654,12 @@ void TSHCRLowering::AddBytecodeCount(EcmaOpcode op)
     }
 }
 
-void TSHCRLowering::DeleteBytecodeCount(EcmaOpcode op)
+void TypeBytecodeLowering::DeleteBytecodeCount(EcmaOpcode op)
 {
     bytecodeMap_.erase(op);
 }
 
-void TSHCRLowering::AddHitBytecodeCount()
+void TypeBytecodeLowering::AddHitBytecodeCount()
 {
     if (bytecodeHitTimeMap_.find(currentOp_) != bytecodeHitTimeMap_.end()) {
         bytecodeHitTimeMap_[currentOp_]++;
@@ -1669,7 +1669,7 @@ void TSHCRLowering::AddHitBytecodeCount()
 }
 
 
-void TSHCRLowering::LowerTypedTypeOf(GateRef gate)
+void TypeBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 {
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -1690,7 +1690,7 @@ void TSHCRLowering::LowerTypedTypeOf(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerGetIterator(GateRef gate)
+void TypeBytecodeLowering::LowerGetIterator(GateRef gate)
 {
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
     if (sampleType.IsNone()) {

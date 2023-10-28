@@ -443,4 +443,11 @@ JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
     LOG_ECMA(INFO) << "Enter Gc()";
     return JSTaggedValue::Undefined();
 }
+
+// empty function for pgoAssertType
+JSTaggedValue BuiltinsArkTools::PGOAssertType([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter PGOAssertType";
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript::builtins

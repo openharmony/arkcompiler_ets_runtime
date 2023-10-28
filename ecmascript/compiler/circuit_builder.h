@@ -40,10 +40,10 @@ class BuiltinsStringStubBuilder;
 class CompilationConfig;
 class Environment;
 class Label;
-class NTypeHCRLowering;
+class NTypeBytecodeLowering;
 class SlowPathLowering;
 class StubBuilder;
-class TSHCRLowering;
+class TypeBytecodeLowering;
 class Variable;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
@@ -696,8 +696,8 @@ private:
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
     friend BuiltinsStringStubBuilder;
-    friend TSHCRLowering;
-    friend NTypeHCRLowering;
+    friend TypeBytecodeLowering;
+    friend NTypeBytecodeLowering;
     friend SlowPathLowering;
 };
 

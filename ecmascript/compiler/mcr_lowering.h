@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_LCR_LOWERING_H
-#define ECMASCRIPT_COMPILER_LCR_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_MCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_MCR_LOWERING_H
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
@@ -23,14 +23,14 @@
 
 
 namespace panda::ecmascript::kungfu {
-class LCRLowering : public PassVisitor {
+class MCRLowering : public PassVisitor {
 public:
-    LCRLowering(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg, Chunk *chunk)
+    MCRLowering(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg, Chunk *chunk)
         : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit),
           builder_(circuit, cmpCfg), glue_(acc_.GetGlueFromArgList())
     {
     }
-    ~LCRLowering() = default;
+    ~MCRLowering() = default;
 
     GateRef VisitGate(GateRef gate) override;
     StateDepend LowerConvert(StateDepend stateDepend, GateRef gate);
@@ -93,4 +93,4 @@ private:
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_LCR_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_MCR_LOWERING_H
