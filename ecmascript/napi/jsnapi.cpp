@@ -1804,23 +1804,6 @@ Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<JSValueRef>(prototype);
 }
 
-void* FunctionRef::GetData(const EcmaVM *vm)
-{
-    LocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
-    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
-    JSHandle<JSFunction> function(func);
-    if (!function->IsCallNapi()) {
-        return nullptr;
-    }
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
-    if (!extraInfoValue.IsJSNativePointer()) {
-        return nullptr;
-    }
-    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
-    return extraInfo->GetData();
-}
-
 bool FunctionRef::Inherit(const EcmaVM *vm, Local<FunctionRef> parent)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
