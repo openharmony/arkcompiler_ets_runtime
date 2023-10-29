@@ -51,3 +51,11 @@ Cannot convert a illegal value to a String
 abc
 1111,2222
 4
+0,b,a,d,d,b,d,c
+a,b,a,d,d,b,d,c
+a,add,1
+a,add,dc
+d,發,1,点点滴滴多
+d,發,給,点点滴滴多
+0,c,c,cc,a
+a,c,c,cc,a

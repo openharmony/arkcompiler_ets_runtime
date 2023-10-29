@@ -160,6 +160,7 @@ public:
     }
     void SetupRegExpResultCache();
     void SetupNumberToStringResultCache();
+    void SetupStringSplitResultCache();
     JSHandle<JSTaggedValue> GetRegExpCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
@@ -214,6 +215,16 @@ public:
     void SetNumberToStringResultCache(JSTaggedValue newCache)
     {
         numberToStringResultCache_ = newCache;
+    }
+
+    JSHandle<JSTaggedValue> GetStringSplitResultCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringSplitResultCache_));
+    }
+
+    void SetStringSplitResultCache(JSTaggedValue newCache)
+    {
+        stringSplitResultCache_ = newCache;
     }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
@@ -493,6 +504,7 @@ private:
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
     JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
+    JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};

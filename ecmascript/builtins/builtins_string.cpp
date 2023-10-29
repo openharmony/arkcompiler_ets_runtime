@@ -1473,6 +1473,16 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
     EcmaVM *ecmaVm, const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
     uint32_t thisLength, uint32_t seperatorLength, uint32_t lim)
 {
+    if (lim == UINT32_MAX - 1) {
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        JSTaggedValue cacheResult = StringSplitResultCache::FindCachedResult(thread, cacheTable, thisString,
+            seperatorString);
+        if (cacheResult != JSTaggedValue::Undefined()) {
+            JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread,
+                JSHandle<TaggedArray>(thread, cacheResult)));
+            return resultArray.GetTaggedValue();
+        }
+    }
     uint32_t arrayLength = 0;
     std::vector<int32_t> posArray;
     int32_t index = 0;
@@ -1488,27 +1498,30 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
     }
     uint32_t posArrLength = posArray.size();
     arrayLength = lim > posArrLength ? posArrLength + 1 : posArrLength;
-    JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
-    JSHandle<TaggedArray> newElements = ecmaVm->GetFactory()->NewTaggedArray(arrayLength);
-    resultArray->SetElements(thread, newElements);
-    JSHandle<JSArray>(resultArray)->SetArrayLength(thread, arrayLength);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> newElements(factory->NewTaggedArray(arrayLength));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread, newElements));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
     index = 0;
     for (uint32_t i = 0; i < posArrLength; i++) {
         pos = posArray[i];
         EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, pos - index);
         JSHandle<JSTaggedValue> elementTag(thread, elementString);
-        // Perform CreateDataProperty(A, "0", S), CreateDataProperty's fast path
-        JSObject::CreateDataProperty(thread, resultArray, i, elementTag);
-        ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
+        newElements->Set(thread, i, elementTag);
         index = pos + static_cast<int32_t>(seperatorLength);
     }
     if (lim > posArrLength) {
         EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, thisLength - index);
         JSHandle<JSTaggedValue> elementTag(thread, elementString);
-        // Perform CreateDataProperty(A, "0", S), CreateDataProperty's fast path
-        JSObject::CreateDataProperty(thread, resultArray, posArrLength, elementTag);
-        ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
+        newElements->Set(thread, posArrLength, elementTag);
+    }
+
+    if (lim == UINT32_MAX - 1) {
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, newElements);
     }
     return resultArray.GetTaggedValue();
 }
@@ -2023,4 +2036,60 @@ int32_t BuiltinsString::ConvertDoubleToInt(double d)
     }
     return base::NumberHelper::DoubleToInt(d, base::INT32_BITS);
 }
+
+JSTaggedValue StringSplitResultCache::CreateCacheTable(const JSThread *thread)
+{
+    int length = CACHE_SIZE * ENTRY_SIZE;
+    auto table = static_cast<StringSplitResultCache*>(
+        *thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined()));
+    return JSTaggedValue(table);
+}
+
+JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
+    const JSHandle<StringSplitResultCache> &cache, const JSHandle<EcmaString> &thisString,
+    const JSHandle<EcmaString> &pattern)
+{
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t entry = hash & (CACHE_SIZE - 1);
+    uint32_t index = entry * ENTRY_SIZE;
+    JSTaggedValue cacheThis = cache->Get(index + STRING_INDEX);
+    JSTaggedValue cachePattern = cache->Get(index + PATTERN_INDEX);
+    if (!cacheThis.IsString() || !cachePattern.IsString()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<EcmaString> cacheStringHandle(thread, cacheThis);
+    JSHandle<EcmaString> cachePatternHandle(thread, cachePattern);
+
+    if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), thisString, cacheStringHandle) &&
+        EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), pattern, cachePatternHandle)) {
+        JSHandle<TaggedArray> cacheArray(thread, cache->Get(index + ARRAY_INDEX));
+        uint32_t arrayLength = cacheArray->GetLength();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> copyArray = factory->NewAndCopyTaggedArray(cacheArray,
+            arrayLength, arrayLength);
+        return copyArray.GetTaggedValue();
+    }
+    return JSTaggedValue::Undefined();
+}
+
+void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
+    const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &pattern,
+    const JSHandle<TaggedArray> &resultArray)
+{
+    // clone to cache array
+    uint32_t arrayLength = resultArray->GetLength();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> newElements(factory->NewTaggedArray(arrayLength));
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        newElements->Set(thread, i, resultArray->Get(i));
+    }
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t entry  = hash & (CACHE_SIZE - 1);
+    uint32_t index = entry * ENTRY_SIZE;
+
+    cache->Set(thread, index + STRING_INDEX, thisString);
+    cache->Set(thread, index + PATTERN_INDEX, pattern);
+    cache->Set(thread, index + ARRAY_INDEX, newElements);
+}
+
 }  // namespace panda::ecmascript::builtins

@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/ecma_string_table.h"
@@ -105,6 +106,7 @@ bool EcmaContext::Initialize()
     SetupRegExpResultCache();
     SetupRegExpGlobalResult();
     SetupNumberToStringResultCache();
+    SetupStringSplitResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
@@ -714,6 +716,11 @@ void EcmaContext::SetupNumberToStringResultCache()
     numberToStringResultCache_ = builtins::NumberToStringResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::SetupStringSplitResultCache()
+{
+    stringSplitResultCache_ = builtins::StringSplitResultCache::CreateCacheTable(thread_);
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -723,6 +730,7 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     if (moduleManager_) {
         moduleManager_->Iterate(v);
