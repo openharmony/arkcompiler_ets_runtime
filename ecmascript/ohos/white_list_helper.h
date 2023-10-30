@@ -17,6 +17,7 @@
 #define ECMASCRIPT_OHOS_WHITE_LIST_HELPER_H
 
 #include <fstream>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -28,19 +29,28 @@ class WhiteListHelper {
 public:
     static std::shared_ptr<WhiteListHelper> GetInstance()
     {
-        static auto helper = std::make_shared<WhiteListHelper>();
+        static const std::string WHITE_LIST_NAME = "/etc/ark/app_aot_white_list.conf";
+        static auto helper = std::make_shared<WhiteListHelper>(WHITE_LIST_NAME);
         return helper;
     }
 
-    WhiteListHelper()
+    explicit WhiteListHelper(const std::string &whiteListName)
     {
-        ReadWhiteList();
+        ReadWhiteList(whiteListName);
     }
 
     ~WhiteListHelper() = default;
 
+    bool IsEnable(const std::string &bundleName)
+    {
+        return whiteList_.find(bundleName) != whiteList_.end();
+    }
+
     bool IsEnable(const std::string &bundleName, const std::string &moduleName)
     {
+        if (IsEnable(bundleName)) {
+            return true;
+        }
         return whiteList_.find(bundleName + ":" + moduleName) != whiteList_.end();
     }
 
@@ -56,13 +66,12 @@ private:
         data.erase(data.find_last_not_of(' ') + 1);
     }
 
-    void ReadWhiteList()
+    void ReadWhiteList(const std::string &whiteListName)
     {
-        static const std::string WHITE_LIST_NAME = "/etc/ark/app_aot_white_list.conf";
-        std::ifstream inputFile(WHITE_LIST_NAME);
+        std::ifstream inputFile(whiteListName);
 
         if (!inputFile.is_open()) {
-            LOG_ECMA(ERROR) << "bundle white list not exist!";
+            LOG_ECMA(ERROR) << "bundle white list not exist! file: " << whiteListName;
             return;
         }
 
@@ -81,7 +90,7 @@ private:
             whiteList_.insert(appName);
         }
     }
-    std::set<std::string> whiteList_;
+    std::set<std::string> whiteList_ {};
 };
 
 #endif
