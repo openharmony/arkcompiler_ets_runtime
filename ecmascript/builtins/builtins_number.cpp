@@ -440,7 +440,7 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
         JSHandle<NumberToStringResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
         JSTaggedValue cacheResult =  cacheTable->FindCachedResult(value);
         if (cacheResult != JSTaggedValue::Undefined()) {
-            return JSHandle<EcmaString>(thread, EcmaString::Cast(cacheResult)).GetTaggedValue();
+            return cacheResult;
         }
         JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
         cacheTable->SetCachedResult(thread, value, resultJSHandle);

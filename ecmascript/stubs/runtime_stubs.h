@@ -127,8 +127,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
-    V(ComputeHashcode)                    \
-    V(JSHClassFindProtoTransitions)
+    V(ComputeHashcode)                         \
+    V(JSHClassFindProtoTransitions)            \
+    V(NumberHelperStringToDouble)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -409,6 +410,7 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
+    static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
