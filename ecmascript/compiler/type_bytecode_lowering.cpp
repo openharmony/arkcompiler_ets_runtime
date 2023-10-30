@@ -22,7 +22,6 @@
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
-using PGONativeFunctionId = pgo::DumpUtils::PGONativeFunctionId;
 bool TypeBytecodeLowering::RunTypeBytecodeLowering()
 {
     std::vector<GateRef> gateList;
@@ -1206,28 +1205,6 @@ void TypeBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, cons
     }
 }
 
-bool TypeBytecodeLowering::TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj)
-{
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNone()) {
-        return false;
-    }
-    ASSERT(sampleType.GetProfileType().IsNativeFunctionId());
-    int funcIdValue = (-1) * sampleType.GetProfileType().GetId();
-    PGONativeFunctionId funcId = static_cast<PGONativeFunctionId>(funcIdValue);
-    if (funcId == PGONativeFunctionId::INVALID) {
-        return false;
-    }
-    AddProfiling(gate);
-    GateRef funcIdGate = builder_.Int32(funcIdValue);
-    if (!Uncheck()) {
-        builder_.NativeCallTargetCheck(func, funcIdGate);
-    }
-    GateRef result = builder_.TypedCallNative(gate, thisObj, funcIdGate);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-    return true;
-}
-
 BuiltinsStubCSigns::ID TypeBytecodeLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
@@ -1237,6 +1214,16 @@ BuiltinsStubCSigns::ID TypeBytecodeLowering::GetBuiltinId(BuiltinTypeId id, Gate
     std::string name = tsManager_->GetFuncName(funcType);
     BuiltinsStubCSigns::ID stubId = BuiltinsStubCSigns::GetBuiltinId(name);
     return stubId;
+}
+
+BuiltinsStubCSigns::ID TypeBytecodeLowering::GetPGOBuiltinId(GateRef gate)
+{
+    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.IsNone()) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    ASSERT(sampleType.GetProfileType().IsBuiltinFunctionId());
+    return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetProfileType().GetId());
 }
 
 void TypeBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
@@ -1484,7 +1471,10 @@ void TypeBytecodeLowering::LowerTypedCallthis0(GateRef gate)
         SpeculateCallBuiltin(gate, func, { thisObj }, id, true);
         return;
     }
-    if (TrySpeculateCallThis0Native(gate, func, thisObj)) {
+    BuiltinsStubCSigns::ID pgoFuncId = GetPGOBuiltinId(gate);
+    if (pgoFuncId != BuiltinsStubCSigns::ID::NONE) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { thisObj }, pgoFuncId, true);
         return;
     }
     if (!CanOptimizeAsFastCall(func)) {
@@ -1692,25 +1682,14 @@ void TypeBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 
 void TypeBytecodeLowering::LowerGetIterator(GateRef gate)
 {
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNone()) {
-        return;
-    }
-    ASSERT(sampleType.GetProfileType().IsNativeFunctionId());
-    int iterKindValue = (-1) * sampleType.GetProfileType().GetId();
-    PGONativeFunctionId iterKind = static_cast<PGONativeFunctionId>(iterKindValue);
-    if (iterKind == PGONativeFunctionId::INVALID) {
+    BuiltinsStubCSigns::ID id = GetPGOBuiltinId(gate);
+    if (id == BuiltinsStubCSigns::ID::NONE) {
         return;
     }
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef iterKindGate = builder_.Int32(iterKindValue);
     AddProfiling(gate);
-    if (!Uncheck()) {
-        builder_.IteratorFunctionCheck(obj, iterKindGate);
-    }
-    GateRef result = builder_.GetFixedIterator(obj, iterKindGate);
-    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+    SpeculateCallBuiltin(gate, obj, { obj }, id, true);
 }
 }  // namespace panda::ecmascript

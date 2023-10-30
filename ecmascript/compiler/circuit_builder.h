@@ -427,9 +427,6 @@ public:
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef TypeOfCheck(GateRef gate, GateType type);
     GateRef TypedTypeOf(GateType type);
-    GateRef IteratorFunctionCheck(GateRef obj, GateRef kind);
-    GateRef GetFixedIterator(GateRef obj, GateRef kind);
-    GateRef NativeCallTargetCheck(GateRef func, GateRef funcId);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -520,13 +517,10 @@ public:
     GateRef IsOptimizedWithBitField(GateRef bitfield);
     GateRef ComputeTaggedArraySize(GateRef length);
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
-    GateRef IsRegExpReplaceDetectorValid(GateRef glue);
-    GateRef IsRegExpSplitDetectorValid(GateRef glue);
-    GateRef IsMapIteratorDetectorValid(GateRef glue);
-    GateRef IsSetIteratorDetectorValid(GateRef glue);
-    GateRef IsStringIteratorDetectorValid(GateRef glue);
-    GateRef IsArrayIteratorDetectorValid(GateRef glue);
-    GateRef IsTypedArrayIteratorDetectorValid(GateRef glue);
+    GateRef TaggedIsHeapObjectOp(GateRef value);
+    GateRef IsSpecificObjectType(GateRef obj, JSType type);
+    GateRef IsMarkerCellValid(GateRef cell);
+    GateRef IsMarkerCellValidOp(GateRef cell);
     
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);
@@ -561,9 +555,10 @@ public:
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
-    inline GateRef TaggedIsJSMap(GateRef obj);
-    inline GateRef TaggedIsJSSet(GateRef obj);
-    inline GateRef TaggedIsTypedArray(GateRef obj);
+    inline GateRef TaggedObjectIsJSMap(GateRef obj);
+    inline GateRef TaggedObjectIsJSSet(GateRef obj);
+    inline GateRef TaggedObjectIsTypedArray(GateRef obj);
+    inline GateRef TaggedObjectIsJSArray(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);

@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/builtins_lowering.h"
 
+#include "ecmascript/global_env.h"
+
 namespace panda::ecmascript::kungfu {
 void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
 {
@@ -41,6 +43,19 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
             break;
         case BUILTINS_STUB_ID(STRINGIFY):
             LowerTypedStringify(gate);
+            break;
+        case BUILTINS_STUB_ID(MAP_PROTO_ITERATOR):
+        case BUILTINS_STUB_ID(SET_PROTO_ITERATOR):
+        case BUILTINS_STUB_ID(STRING_PROTO_ITERATOR):
+        case BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR):
+        case BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR):
+            LowerBuiltinIterator(gate, id);
+            break;
+        case BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT):
+        case BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT):
+        case BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT):
+        case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT):
+            LowerIteratorNext(gate, id);
             break;
         default:
             break;
@@ -256,10 +271,69 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
     builder_.SetEnvironment(env);
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
-    GateRef constantFunction = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
+    switch (id) {
+        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR: {
+            return LowerCallTargetCheckWithDetector(gate, id);
+        }
+        default: {
+            return LowerCallTargetCheckDefault(gate, id);
+        }
+    }
+}
 
+GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef constantFunction = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     return builder_.Equal(function, constantFunction);
+}
+
+GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    JSType expectType = JSType::INVALID;
+    uint8_t detectorIndex = 0;
+    switch (id) {
+        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR: {
+            expectType = JSType::JS_MAP;
+            detectorIndex = GlobalEnv::MAP_ITERATOR_DETECTOR_INDEX;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR: {
+            expectType = JSType::JS_SET;
+            detectorIndex = GlobalEnv::SET_ITERATOR_DETECTOR_INDEX;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR: {
+            expectType = JSType::STRING_FIRST;
+            detectorIndex = GlobalEnv::STRING_ITERATOR_DETECTOR_INDEX;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR: {
+            expectType = JSType::JS_ARRAY;
+            detectorIndex = GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX;
+            break;
+        }
+        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR: {
+            expectType = JSType::JS_TYPED_ARRAY_FIRST;
+            detectorIndex = GlobalEnv::TYPED_ARRAY_ITERATOR_DETECTOR_INDEX;
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    GateRef obj = acc_.GetValueIn(gate, 2);  // 2: iterator obj
+    GateRef check1 =  builder_.BoolAnd(
+        builder_.TaggedIsHeapObjectOp(obj), builder_.IsSpecificObjectType(obj, expectType));
+    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef markerCell = builder_.GetGlobalEnvObj(glueGlobalEnv, detectorIndex);
+    GateRef check2 = builder_.BoolAnd(check1, builder_.IsMarkerCellValid(markerCell));
+    return check2;
 }
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
@@ -282,6 +356,16 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
             return funcCheck;
         case BuiltinsStubCSigns::ID::LocaleCompare:
         case BuiltinsStubCSigns::ID::SORT:
+        case BuiltinsStubCSigns::ID::STRINGIFY:
+        case BuiltinsStubCSigns::ID::MAP_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::SET_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::STRING_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::ARRAY_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR:
+        case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
+        case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
+        case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
+        case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
             // Don't need check para
             return funcCheck;
         default: {
@@ -298,6 +382,66 @@ void BuiltinLowering::LowerTypedStringify(GateRef gate)
     std::vector<GateRef> args;
     args.emplace_back(value);
     GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(FastStringify), args);
+    ReplaceHirWithValue(gate, result);
+}
+
+void BuiltinLowering::LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef result = Circuit::NullGate();
+    switch (id) {
+        case BUILTINS_STUB_ID(MAP_PROTO_ITERATOR): {
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSMapIterator, { glue, obj });
+            break;
+        }
+        case BUILTINS_STUB_ID(SET_PROTO_ITERATOR): {
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateJSSetIterator, { glue, obj });
+            break;
+        }
+        case BUILTINS_STUB_ID(STRING_PROTO_ITERATOR): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(CreateStringIterator), { obj }, true);
+            break;
+        }
+        case BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSArrayIterator), { obj }, true);
+            break;
+        }
+        case BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSTypedArrayIterator), { obj }, true);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+    ReplaceHirWithValue(gate, result);
+}
+
+void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef result = Circuit::NullGate();
+    switch (id) {
+        case BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(MapIteratorNext), { thisObj }, true);
+            break;
+        }
+        case BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SetIteratorNext), { thisObj }, true);
+            break;
+        }
+        case BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(StringIteratorNext), { thisObj }, true);
+            break;
+        }
+        case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArrayIteratorNext), { thisObj }, true);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
     ReplaceHirWithValue(gate, result);
 }
 }  // namespace panda::ecmascript::kungfu

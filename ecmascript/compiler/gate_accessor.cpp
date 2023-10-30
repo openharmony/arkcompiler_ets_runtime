@@ -140,6 +140,13 @@ size_t GateAccessor::GetIndex(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
+size_t GateAccessor::GetJSType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::IS_SPECIFIC_OBJECT_TYPE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
 uint32_t GateAccessor::GetArraySize(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
@@ -455,7 +462,6 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::CONSTRUCT:
-        case OpCode::TYPED_CALL_NATIVE:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());

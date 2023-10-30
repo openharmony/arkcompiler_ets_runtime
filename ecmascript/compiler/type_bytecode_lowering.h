@@ -169,7 +169,7 @@ private:
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                               BuiltinsStubCSigns::ID id, bool isThrow);
     BuiltinsStubCSigns::ID GetBuiltinId(BuiltinTypeId id, GateRef func);
-    bool TrySpeculateCallThis0Native(GateRef gate, GateRef func, GateRef thisObj);
+    BuiltinsStubCSigns::ID GetPGOBuiltinId(GateRef gate);
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);

@@ -907,7 +907,7 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
         return;
     }
     int calleeMethodId = slotValue.GetInt();
-    ProfileType::Kind kind = (calleeMethodId < 0) ? ProfileType::Kind::NativeFunctionId : ProfileType::Kind::MethodId;
+    ProfileType::Kind kind = (calleeMethodId < 0) ? ProfileType::Kind::BuiltinFunctionId : ProfileType::Kind::MethodId;
     PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(calleeMethodId), kind);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
@@ -925,7 +925,7 @@ void PGOProfiler::DumpGetIterator(ApEntityId abcId, const CString &recordName, E
     }
     int iterKind = value.GetInt();
     ASSERT(iterKind <= 0);
-    ProfileType::Kind pgoKind = ProfileType::Kind::NativeFunctionId;
+    ProfileType::Kind pgoKind = ProfileType::Kind::BuiltinFunctionId;
     PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(iterKind), pgoKind);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);

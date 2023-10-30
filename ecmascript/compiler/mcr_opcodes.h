@@ -26,9 +26,8 @@ namespace panda::ecmascript::kungfu {
     V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
     V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
-    V(IteratorFunctionCheck, ITERATOR_FUNCTION_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                 \
-    V(GetFixedIterator, GET_FIXED_ITERATOR, GateFlags::NONE_FLAG, 1, 1, 2)                           \
-    V(NativeCallTargetCheck, NATIVE_CALLTARGET_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                 \
+    V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                       \
+    V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
@@ -74,7 +73,8 @@ namespace panda::ecmascript::kungfu {
     V(HClassStableArrayCheck,      HCLASS_STABLE_ARRAY_CHECK,      GateFlags::CHECKABLE, 1, 1, 1)       \
     V(HeapAlloc,                   HEAP_ALLOC,                     GateFlags::NONE_FLAG, 1, 1, 1)       \
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
-    V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
+    V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
+    V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                       \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)

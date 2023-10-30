@@ -95,7 +95,16 @@ namespace panda::ecmascript::kungfu {
     V(FLOOR)  /* math list end */                   \
     V(LocaleCompare)                                \
     V(SORT)                                         \
-    V(STRINGIFY)
+    V(STRINGIFY)                                    \
+    V(MAP_PROTO_ITERATOR)                           \
+    V(SET_PROTO_ITERATOR)                           \
+    V(STRING_PROTO_ITERATOR)                        \
+    V(ARRAY_PROTO_ITERATOR)                         \
+    V(TYPED_ARRAY_PROTO_ITERATOR)                   \
+    V(MAP_ITERATOR_PROTO_NEXT)                      \
+    V(SET_ITERATOR_PROTO_NEXT)                      \
+    V(STRING_ITERATOR_PROTO_NEXT)                   \
+    V(ARRAY_ITERATOR_PROTO_NEXT)
 
 class BuiltinsStubCSigns {
 public:
@@ -110,11 +119,12 @@ public:
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = SQRT,
-        TYPED_BUILTINS_LAST = STRINGIFY,
+        TYPED_BUILTINS_LAST = ARRAY_ITERATOR_PROTO_NEXT,
         TYPED_BUILTINS_MATH_FIRST = SQRT,
         TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
     };
+    static_assert(ID::NONE == 0);
 
     static void Initialize();
 
@@ -182,6 +192,14 @@ public:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::STRINGIFY:
                 return ConstantIndex::JSON_STRINGIFY_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
+                return ConstantIndex::MAP_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
+                return ConstantIndex::SET_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
+                return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+                return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -228,6 +246,8 @@ enum class BuiltinsArgs : size_t {
 };
 
 #define BUILTINS_STUB_ID(name) kungfu::BuiltinsStubCSigns::name
+// to distinguish with the positive method offset of js function
+#define PGO_BUILTINS_STUB_ID(name) ((-1) * kungfu::BuiltinsStubCSigns::name)
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
 #define IS_TYPED_BUILTINS_MATH_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinMath(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)

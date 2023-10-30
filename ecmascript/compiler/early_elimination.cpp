@@ -86,8 +86,6 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::TYPE_OF_CHECK:
-        case OpCode::ITERATOR_FUNCTION_CHECK:
-        case OpCode::NATIVE_CALLTARGET_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);

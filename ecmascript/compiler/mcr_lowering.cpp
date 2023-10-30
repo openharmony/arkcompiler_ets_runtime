@@ -91,6 +91,15 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::CHECK_AND_CONVERT:
             LowerCheckAndConvert(gate);
             break;
+        case OpCode::TAGGED_IS_HEAP_OBJECT:
+            LowerTaggedIsHeapObject(gate);
+            break;
+        case OpCode::IS_MARKER_CELL_VALID:
+            LowerIsMarkerCellValid(gate);
+            break;
+        case OpCode::IS_SPECIFIC_OBJECT_TYPE:
+            LowerIsSpecificObjectType(gate);
+            break;
         default:
             break;
     }
@@ -148,6 +157,57 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerTaggedIsHeapObject(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.TaggedIsHeapObject(receiver);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void MCRLowering::LowerIsMarkerCellValid(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef cell = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.IsMarkerCellValid(cell);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    JSType expectType = static_cast<JSType>(acc_.GetJSType(gate));
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef result;
+    switch (expectType) {
+        case JSType::JS_MAP: {
+            result = builder_.TaggedObjectIsJSMap(obj);
+            break;
+        }
+        case JSType::JS_SET: {
+            result = builder_.TaggedObjectIsJSSet(obj);
+            break;
+        }
+        case JSType::JS_ARRAY: {
+            result = builder_.TaggedObjectIsJSArray(obj);
+            break;
+        }
+        case JSType::STRING_FIRST: {
+            result = builder_.TaggedObjectIsString(obj);
+            break;
+        }
+        case JSType::JS_TYPED_ARRAY_FIRST: {
+            result = builder_.TaggedObjectIsTypedArray(obj);
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void MCRLowering::LowerGetConstPool(GateRef gate)

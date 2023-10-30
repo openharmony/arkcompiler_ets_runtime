@@ -185,65 +185,29 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsJSMap(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSMap(GateRef obj)
 {
-    Label entry(env_);
-    SubCfgEntry(&entry);
-    Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
-    Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objType = GetObjectType(LoadHClass(obj));
-        result = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
 }
 
-GateRef CircuitBuilder::TaggedIsJSSet(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef obj)
 {
-    Label entry(env_);
-    SubCfgEntry(&entry);
-    Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
-    Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objType = GetObjectType(LoadHClass(obj));
-        result = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
 }
 
-GateRef CircuitBuilder::TaggedIsTypedArray(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)
 {
-    Label entry(env_);
-    SubCfgEntry(&entry);
-    Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
-    Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef jsType = GetObjectType(LoadHClass(obj));
-        result = BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-                         Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    GateRef jsType = GetObjectType(LoadHClass(obj));
+    return BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef obj)
+{
+    GateRef objType = GetObjectType(LoadHClass(obj));
+    return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
 inline GateRef CircuitBuilder::IsOptimizedAndNotFastCall(GateRef obj)
