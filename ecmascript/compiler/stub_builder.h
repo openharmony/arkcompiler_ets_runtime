@@ -332,6 +332,7 @@ public:
     GateRef IsJSObject(GateRef obj);
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
+    GateRef IsConfigable(GateRef attr);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
@@ -559,6 +560,7 @@ public:
     GateRef IsDoubleRepInPropAttr(GateRef attr);
     GateRef SetTaggedRepInPropAttr(GateRef attr);
     void SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value);
+    template<typename DictionaryT>
     void UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value);
     GateRef GetBitMask(GateRef bitoffset);
     GateRef IntPtrEuqal(GateRef x, GateRef y);
@@ -573,7 +575,8 @@ public:
     void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
         ProfileOperation callback = ProfileOperation());
     void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
-    GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
+    GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
+        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation());
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation()); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
