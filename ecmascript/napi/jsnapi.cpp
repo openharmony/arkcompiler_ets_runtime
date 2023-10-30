@@ -546,6 +546,16 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
@@ -1774,7 +1784,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     vm->GetHeap()->ClearKeptObjects();
-
+    vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
