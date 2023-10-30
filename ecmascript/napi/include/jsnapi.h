@@ -366,11 +366,6 @@ public:
     ECMA_DISALLOW_COPY(EscapeLocalScope);
     ECMA_DISALLOW_MOVE(EscapeLocalScope);
 
-    bool EscapeCalled() const
-    {
-        return alreadyEscape_;
-    }
-
     template<typename T>
     inline Local<T> Escape(Local<T> current)
     {
