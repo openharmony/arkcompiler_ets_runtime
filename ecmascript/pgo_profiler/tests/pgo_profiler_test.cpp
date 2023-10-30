@@ -749,15 +749,15 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
                         auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
                     } else if (std::string(className) == "Foot") {
                         auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 4);
                     } else {
                         ASSERT_EQ(desc->GetSuperProfileType().GetRaw(), 0);
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 2);
                     }
                 }
             }
