@@ -81,6 +81,11 @@ public:
             return true;
         }
 
+        void Remap(PGOContext &context)
+        {
+            type_.Remap(context);
+        }
+
     private:
         ApEntityId entryId_ {0};
         ProfileType type_;
@@ -152,6 +157,13 @@ public:
         pool_->Merge(*profileTypePool.pool_, [&](ApEntityId oldEntryId, ApEntityId newEntryId) {
             idMapping.try_emplace(oldEntryId, newEntryId);
         });
+    }
+
+    void Remap(PGOContext &context)
+    {
+        for (auto &entry : pool_->GetPool()) {
+            entry.second.Remap(context);
+        }
     }
 
     std::shared_ptr<PoolType> &GetPool()

@@ -707,6 +707,13 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     if (!ParseSectionsFromBinary(apSectionList_, buffer, header)) {
         return;
     }
+
+    if (!abcIdRemap_.empty()) {
+        // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
+        LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
+        profileTypePool_->Remap(*this);
+    }
+
     SectionInfo *info = header->GetRecordInfoSection();
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
@@ -923,6 +930,8 @@ void PGORecordDetailInfos::Clear()
     recordPool_->Clear();
     profileTypePool_->Clear();
     apSectionList_.clear();
+    moduleLayoutDescInfos_.clear();
+    abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();
 }
@@ -948,6 +957,11 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
 {
     header_ = header;
     ParseSectionsFromBinary(apSectionList_, buffer, header);
+    if (!abcIdRemap_.empty()) {
+        // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
+        LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
+        profileTypePool_->Remap(*this);
+    }
     SectionInfo *info = header->GetRecordInfoSection();
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
@@ -1048,6 +1062,8 @@ void PGORecordSimpleInfos::Clear()
     recordPool_->Clear();
     profileTypePool_->Clear();
     apSectionList_.clear();
+    moduleLayoutDescInfos_.clear();
+    abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();
 }

@@ -27,6 +27,8 @@ test_js_files = [
   "object_literal",
   "sample_test",
   "array_size_test",
+  "truck",
+  "vehicle",
 ]
 
 foreach(file, test_js_files) {

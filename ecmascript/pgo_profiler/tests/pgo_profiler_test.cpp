@@ -18,6 +18,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
 #include "ecmascript/elements.h"
 #include "ecmascript/object_factory.h"
@@ -138,6 +140,79 @@ protected:
         pf_ = JSPandaFileManager::GetInstance()->FindJSPandaFile(CString(targetAbcPath));
 
         JSNApi::DestroyJSVM(vm_);
+    }
+
+    void ParseRelatedPandaFileMethods(
+        PGOProfilerDecoder &loader,
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> &methodIdInAp)
+    {
+        std::shared_ptr<PGOAbcFilePool> abcFilePool = std::make_shared<PGOAbcFilePool>();
+        ASSERT_TRUE(loader.LoadFull(abcFilePool));
+        for (const auto &recordInfo : loader.GetRecordDetailInfos().GetRecordInfos()) {
+            auto recordProfile = recordInfo.first;
+            ASSERT_EQ(recordProfile.GetKind(), ProfileType::Kind::LocalRecordId);
+            if (recordProfile.IsNone()) {
+                continue;
+            }
+            const auto *entry =
+                loader.GetRecordDetailInfos().GetRecordPool()->GetPool()->GetEntry(recordProfile.GetId());
+            const auto abcNormalizedDesc =
+                JSPandaFile::GetNormalizedFileDesc(abcFilePool->GetEntry(recordProfile.GetAbcId())->GetData());
+            if (abcNormalizedDesc.empty()) {
+                continue;
+            }
+
+            const auto *info = recordInfo.second;
+            for (const auto &method : info->GetMethodInfos()) {
+                // add ap entry info
+                methodIdInAp[abcNormalizedDesc.c_str()][entry->GetData().c_str()].emplace_back(method.first);
+            }
+        };
+    }
+
+    void CheckApMethods(
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> &methodIdInAp)
+    {
+        for (auto abcIter = methodIdInAp.begin(); abcIter != methodIdInAp.end();) {
+            std::string fileName(abcIter->first.c_str());
+            auto lastDirToken = fileName.find_last_of('/');
+            if (lastDirToken != std::string::npos) {
+                fileName = fileName.substr(lastDirToken + 1);
+            }
+            std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList = abcIter->second;
+            CheckApMethodsInApFiles(fileName, recordMethodList);
+            if (recordMethodList.empty()) {
+                abcIter = methodIdInAp.erase(abcIter);
+            } else {
+                abcIter++;
+            }
+        }
+        ASSERT_TRUE(methodIdInAp.empty());
+    }
+
+    void CheckApMethodsInApFiles(const std::string &fileName,
+                                  std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
+    {
+        std::vector<MethodLiteral *> methodLiterals {};
+        CreateJSPandaFile(fileName.c_str(), methodLiterals);
+        for (auto &methodLiteral : methodLiterals) {
+            auto methodName = MethodLiteral::GetRecordName(pf_.get(), methodLiteral->GetMethodId());
+            auto recordEntry = recordMethodList.find(methodName.c_str());
+            if (recordEntry == recordMethodList.end()) {
+                continue;
+            }
+            for (auto index = 0; index < recordEntry->second.size(); ++index) {
+                if (!(recordEntry->second.at(index) == methodLiteral->GetMethodId())) {
+                    continue;
+                }
+                // Remove matched entry
+                recordEntry->second.erase(recordEntry->second.begin() + index);
+                if (recordEntry->second.empty()) {
+                    recordEntry = recordMethodList.erase(recordEntry);
+                }
+                break;
+            }
+        }
     }
 
     static constexpr uint32_t DECODER_THRESHOLD = 2;
@@ -1142,5 +1217,54 @@ HWTEST_F_L0(PGOProfilerTest, PGOHClassLayoutDescInnerLegacyCheckForWideClassType
     ASSERT_EQ(descRecover.GetProfileType().GetKind(), ProfileType::Kind::ClassId);
     ASSERT_EQ(descRecover.GetSuperProfileType().GetId(), 0xaff);
     ASSERT_EQ(descRecover.GetSuperProfileType().GetKind(), ProfileType::Kind::ElementId);
+}
+
+HWTEST_F_L0(PGOProfilerTest, RuntimeMerge)
+{
+    mkdir("ark-profiler19/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "truck");
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "call_test");
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "truck");
+
+    // Loader
+    PGOProfilerDecoder loader("ark-profiler19/modules.ap", DECODER_THRESHOLD);
+    CString expectRecordName = "sample_test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
+    ParseRelatedPandaFileMethods(loader, methodIdInAp);
+    ASSERT_EQ(methodIdInAp.size(), 3);
+    CheckApMethods(methodIdInAp);
+#else
+    uint32_t checksum = pf_->GetChecksum();
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+#endif
+    unlink("ark-profiler19/modules.ap");
+    rmdir("ark-profiler19/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
+{
+    mkdir("ark-profiler20/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    ExecuteAndLoadJSPandaFile("ark-profiler20/truck.ap", "truck");
+    ExecuteAndLoadJSPandaFile("ark-profiler20/call_test.ap", "call_test");
+
+    // Loader
+    PGOProfilerDecoder loader("ark-profiler20/merged.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler20/truck.ap:ark-profiler20/call_test.ap",
+                                                 "ark-profiler20/merged.ap", 1, ApGenMode::OVERWRITE));
+
+    CString expectRecordName = "sample_test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
+    ParseRelatedPandaFileMethods(loader, methodIdInAp);
+    ASSERT_EQ(methodIdInAp.size(), 3);
+    CheckApMethods(methodIdInAp);
+#else
+    uint32_t checksum = pf_->GetChecksum();
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+#endif
+    unlink("ark-profiler20/truck.ap");
+    unlink("ark-profiler20/call_test.ap");
+    rmdir("ark-profiler20/");
 }
 }  // namespace panda::test

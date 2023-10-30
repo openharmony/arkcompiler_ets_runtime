@@ -30,6 +30,12 @@ ProfileTypeRef::ProfileTypeRef(PGOContext &context, const ProfileType &type)
     UpdateId(apId);
 }
 
+ProfileTypeRef &ProfileTypeRef::Remap([[maybe_unused]] const PGOContext &context)
+{
+    LOG_ECMA(ERROR) << "ProfileTypeRef do not support remapping";
+    UNREACHABLE();
+}
+
 ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
 {
     if (!context.GetHeader()->SupportWideProfileType()) {
@@ -44,5 +50,13 @@ ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
             type_ = typeEntry->GetProfileType().GetRaw();
         }
     }
+}
+
+ProfileType &ProfileType::Remap([[maybe_unused]]const PGOContext &context)
+{
+    if ((GetAbcId() >= PGOAbcFilePool::RESERVED_COUNT) && (!context.GetAbcIdRemap().empty())) {
+        UpdateAbcId(context.GetAbcIdRemap().at(GetAbcId()));
+    }
+    return *this;
 }
 } // namespace panda::ecmascript::pgo
