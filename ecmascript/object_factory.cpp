@@ -242,6 +242,8 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
             UNREACHABLE();
         }
         pointer->ResetExternalPointer(newData);
+        vm_->GetNativeAreaAllocator()->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
+                                                             NativeFlag::ARRAY_BUFFER);
         return;
     }
 
@@ -251,9 +253,11 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         UNREACHABLE();
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size);
+                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           NativeFlag::ARRAY_BUFFER);
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
+    vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -288,9 +292,11 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
             UNREACHABLE();
         }
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                               vm_->GetNativeAreaAllocator(), false, length);
+                                                               vm_->GetNativeAreaAllocator(), false, length,
+                                                               NativeFlag::ARRAY_BUFFER);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
         arrayBuffer->SetWithNativeAreaAllocator(true);
+        vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
     }
     return arrayBuffer;
 }
@@ -382,9 +388,11 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size);
+                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           NativeFlag::REGEXP_BTYECODE);
     regexp->SetByteCodeBuffer(thread_, pointer.GetTaggedValue());
     regexp->SetLength(static_cast<uint32_t>(size));
+    vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(size, NativeFlag::REGEXP_BTYECODE);
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,

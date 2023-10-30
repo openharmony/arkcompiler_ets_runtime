@@ -469,7 +469,8 @@ public:
                                                         const DeleteEntryPoint &callBack = nullptr,
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
-                                                        size_t nativeBindingsize = 0);
+                                                        size_t nativeBindingsize = 0,
+                                                        NativeFlag flag = NativeFlag::NO_DIV);
 
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
