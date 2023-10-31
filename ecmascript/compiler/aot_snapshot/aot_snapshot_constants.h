@@ -13,18 +13,20 @@
  * limitations under the License.
  */
 
-declare function AssertType(value:any, type:string):void;
+#ifndef ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_CONSTANTS_H
+#define ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_CONSTANTS_H
 
-import {foo1, foo2} from "./export"
+#include "ecmascript/mem/mem_common.h"
 
-let f1 = new foo1();
-let f2 = new foo2();
-AssertType(f1.b1, "(string, string) => string");
-AssertType(f1.b2, "number");
-AssertType(f1.b1("a", "b"), "string");
+namespace panda::ecmascript {
+class AOTSnapshotConstants final {
+public:
+    static constexpr uint8_t SNAPSHOT_DATA_ITEM_SIZE = 2;
+    static constexpr uint8_t SNAPSHOT_CP_ARRAY_ITEM_SIZE = 2;
 
-AssertType(f2.a1, "number");
-AssertType(f2.a2, "string");
-AssertType(f2.a3, "foo1");
-AssertType(f2.a3.b2, "number");
-AssertType(f2.a4, "(number, number) => number");
+private:
+    AOTSnapshotConstants() = default;
+    ~AOTSnapshotConstants() = default;
+};
+}  // panda::ecmascript::kungfu
+#endif // ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_CONSTANTS_H

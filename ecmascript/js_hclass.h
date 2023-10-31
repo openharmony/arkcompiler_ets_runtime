@@ -63,11 +63,11 @@ namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
 namespace pgo {
-    class PGOHClassLayoutDesc;
-    enum class PGOObjKind;
+    class HClassLayoutDesc;
+    class PGOHClassTreeDesc;
 } // namespace pgo
-using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
-using PGOObjKind = pgo::PGOObjKind;
+using HClassLayoutDesc = pgo::HClassLayoutDesc;
+using PGOHClassTreeDesc = pgo::PGOHClassTreeDesc;
 
 struct Reference;
 
@@ -382,7 +382,7 @@ public:
                     bool isOptimized = false, bool canFastCall = false);
 
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                    bool withoutInlinedProperties = false);
+                                    bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void TransitionElementsToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
@@ -406,11 +406,18 @@ public:
     static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array);
     static bool TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
         const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
+    static std::pair<bool, JSTaggedValue> ConvertOrTransitionWithRep(const JSThread *thread,
+        const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+        PropertyAttributes &attr);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
+        const JSThread *thread, const JSHandle<JSHClass> &protoClass);
 
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
+
+    static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
 
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
@@ -1646,6 +1653,11 @@ public:
         return ObjectSizeInWordsBits::Decode(bits) * JSTaggedValue::TaggedTypeSize();
     }
 
+    inline uint32_t GetObjectSizeExcludeInlinedProps() const
+    {
+        return GetObjectSize() - GetInlinedProperties() * JSTaggedValue::TaggedTypeSize();
+    }
+
     inline void SetObjectSize(uint32_t num)
     {
         ASSERT((num / JSTaggedValue::TaggedTypeSize()) <= MAX_OBJECT_SIZE_IN_WORDS);
@@ -1720,6 +1732,7 @@ public:
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
     static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
+    static PropertyLookupResult LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
     static PropertyLookupResult LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
                                                                        JSTaggedValue key);
 
@@ -1750,8 +1763,16 @@ public:
     DECL_DUMP()
 
     static CString DumpJSType(JSType type);
-    static bool DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjKind kind);
-    static uint32_t ComputeHashcode(const JSHClass *hclass);
+
+    static JSHandle<JSHClass> CreateRootHClass(const JSThread *thread, const HClassLayoutDesc *desc, uint32_t maxNum);
+    static JSHandle<JSHClass> CreateChildHClass(
+        const JSThread *thread, const JSHandle<JSHClass> &parent, const HClassLayoutDesc *desc);
+    static bool DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
+    static bool DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
+    static bool UpdateRootLayoutDesc(
+        const JSHClass *hclass, const PGOHClassTreeDesc *treeDesc, HClassLayoutDesc *rootDesc);
+    static bool UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *childDesc);
+    static CString DumpToString(JSTaggedType hclassVal);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
@@ -1792,6 +1813,7 @@ public:
     using OffsetBits = IsAccessorBit::NextField<uint32_t, OFFSET_BITFIELD_NUM>;
     using WritableField = OffsetBits::NextFlag;
     using RepresentationBits = WritableField::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
+    using IsInlinedPropsBits = RepresentationBits::NextFlag;
 
     explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
     ~PropertyLookupResult() = default;
@@ -1882,6 +1904,16 @@ public:
     inline Representation GetRepresentation()
     {
         return RepresentationBits::Get(data_);
+    }
+
+    inline void SetIsInlinedProps(bool flag)
+    {
+        IsInlinedPropsBits::Set(flag, &data_);
+    }
+
+    inline bool IsInlinedProps()
+    {
+        return IsInlinedPropsBits::Get(data_);
     }
 
     inline uint32_t GetData() const

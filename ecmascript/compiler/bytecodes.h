@@ -352,6 +352,17 @@ public:
         }
     }
 
+    static bool IsCreateEmptyArrayOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     static bool IsCreateArrayWithBufferOp(EcmaOpcode opcode)
     {
         switch (opcode) {

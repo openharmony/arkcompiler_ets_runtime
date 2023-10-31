@@ -48,7 +48,7 @@ bool ClassInstanceTypeStrategy::CheckAndInsert(CollectedType &types, const GateT
         if (hclassIndex == -1) {
             return true;
         }
-        JSHClass *hclass = JSHClass::Cast(tsManager->GetValueFromCache(hclassIndex).GetTaggedObject());
+        JSHClass *hclass = JSHClass::Cast(tsManager->GetAOTHClassInfoByIndex(hclassIndex).GetTaggedObject());
         if (hclass->HasTSSubtyping()) {
             GlobalTSTypeRef instanceGT = type.GetGTRef();
             GateType classType = GateType(tsManager->GetClassType(instanceGT));

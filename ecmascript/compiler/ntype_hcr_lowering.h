@@ -49,7 +49,7 @@ private:
     void LowerStLexVar(GateRef gate);
     void LowerLdLexVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
     GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
     GateRef NewTaggedArray(size_t length);
     GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);

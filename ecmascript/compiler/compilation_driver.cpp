@@ -33,6 +33,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
     : vm_(collector->GetVM()),
       jsPandaFile_(collector->GetJSPandaFile()),
       pfDecoder_(profilerDecoder),
+      collector_(collector),
       bytecodeInfo_(collector->GetBytecodeInfo()),
       fileGenerator_(fileGenerator),
       fileName_(fileName),
@@ -252,5 +253,23 @@ bool CompilationDriver::FilterOption(const std::map<std::string, std::vector<std
 
     std::vector<std::string> vec = it->second;
     return find(vec.begin(), vec.end(), methodName) != vec.end();
+}
+
+void CompilationDriver::SetCurrentConstantPool(uint32_t methodOffset) const
+{
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    ptManager->SetCurConstantPool(jsPandaFile_, methodOffset);
+}
+
+void CompilationDriver::StoreConstantPoolInfo() const
+{
+    auto &methodList = bytecodeInfo_.GetMethodList();
+    for (auto &x : methodList) {
+        if (!bytecodeInfo_.FindMethodOffsetToRecordName(x.first)) {
+            bytecodeInfo_.AddSkippedMethod(x.first);
+        }
+    }
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    ptManager->GetAOTSnapshot().StoreConstantPoolInfo(collector_);
 }
 } // namespace panda::ecmascript::kungfu

@@ -20,6 +20,7 @@
 #include <string>
 #include <variant>
 
+#include "ecmascript/elements.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
@@ -33,6 +34,7 @@ public:
     enum class TypeKind : uint8_t {
         SCALAR_OP_TYPE,
         RW_OP_TYPE,
+        DEFINE_OP_TYPE,
     };
     PGOType() = default;
     explicit PGOType(TypeKind kind) : kind_(kind) {}
@@ -45,6 +47,11 @@ public:
     bool IsRwOpType() const
     {
         return kind_ == TypeKind::RW_OP_TYPE;
+    }
+
+    bool IsDefineOpType() const
+    {
+        return kind_ == TypeKind::DEFINE_OP_TYPE;
     }
 
 private:
@@ -98,9 +105,10 @@ public:
     }
 
     static PGOSampleTemplate CreateProfileType(ApEntityId recordId, int32_t profileType,
-                                               typename ProfileType::Kind kind = ProfileType::Kind::ClassId)
+                                               typename ProfileType::Kind kind = ProfileType::Kind::ClassId,
+                                               bool isRoot = false)
     {
-        return PGOSampleTemplate(PGOProfileType(recordId, profileType, kind));
+        return PGOSampleTemplate(PGOProfileType(recordId, profileType, kind, isRoot));
     }
 
     static PGOSampleTemplate NoneType()
@@ -359,81 +367,116 @@ private:
 using PGOSampleType = PGOSampleTemplate<ProfileType>;
 using PGOSampleTypeRef = PGOSampleTemplate<ProfileTypeRef>;
 
-enum class PGOObjKind {
-    LOCAL,
-    PROTOTYPE,
-    CONSTRUCTOR,
-    ELEMENT,
-};
-
 template <typename PGOProfileType>
 class PGOObjectTemplate {
 public:
     PGOObjectTemplate() = default;
-    PGOObjectTemplate(PGOProfileType type, PGOObjKind kind) : type_(type), objKind_(kind) {}
+    PGOObjectTemplate(PGOProfileType type) : receiverType_(type) {}
+    PGOObjectTemplate(PGOProfileType receiverRootType, PGOProfileType receiverType, PGOProfileType holdRootType,
+        PGOProfileType holdType, PGOProfileType holdTraRootType, PGOProfileType holdTraType)
+        : receiverRootType_(receiverRootType), receiverType_(receiverType), holdRootType_(holdRootType),
+        holdType_(holdType), holdTraRootType_(holdTraRootType), holdTraType_(holdTraType) {}
 
     template <typename FromType>
     void ConvertFrom(PGOContext &context, const FromType &from)
     {
-        objKind_ = from.GetObjKind();
-        type_ = PGOProfileType(context, from.GetProfileType());
+        receiverRootType_ = PGOProfileType(context, from.GetReceiverRootType());
+        receiverType_ = PGOProfileType(context, from.GetReceiverType());
+        holdRootType_ = PGOProfileType(context, from.GetHoldRootType());
+        holdType_ = PGOProfileType(context, from.GetHoldType());
+        holdTraRootType_ = PGOProfileType(context, from.GetHoldTraRootType());
+        holdTraType_ = PGOProfileType(context, from.GetHoldTraType());
     }
 
     std::string GetInfoString() const
     {
-        std::string result = type_.GetTypeString();
-        result += "(";
-        if (objKind_ == PGOObjKind::CONSTRUCTOR) {
-            result += "c";
-        } else if (objKind_ == PGOObjKind::PROTOTYPE) {
-            result += "p";
-        } else if (objKind_ == PGOObjKind::ELEMENT) {
-            result += "e";
-        } else {
-            result += "l";
-        }
+        std::string result = "(receiverRoot";
+        result += receiverRootType_.GetTypeString();
+        result += ", receiver";
+        result += receiverType_.GetTypeString();
+        result += ", holdRoot";
+        result += holdRootType_.GetTypeString();
+        result += ", hold";
+        result += holdType_.GetTypeString();
+        result += ", holdTraRoot";
+        result += holdTraRootType_.GetTypeString();
+        result += ", holdTra";
+        result += holdTraType_.GetTypeString();
         result += ")";
         return result;
     }
 
     PGOProfileType GetProfileType() const
     {
-        return type_;
+        return receiverType_;
     }
 
-    PGOObjKind GetObjKind() const
+    PGOProfileType GetReceiverRootType() const
     {
-        return objKind_;
+        return receiverRootType_;
+    }
+
+    PGOProfileType GetReceiverType() const
+    {
+        return receiverType_;
+    }
+
+    PGOProfileType GetHoldRootType() const
+    {
+        return holdRootType_;
+    }
+
+    PGOProfileType GetHoldType() const
+    {
+        return holdType_;
+    }
+
+    PGOProfileType GetHoldTraRootType() const
+    {
+        return holdTraRootType_;
+    }
+
+    PGOProfileType GetHoldTraType() const
+    {
+        return holdTraType_;
     }
 
     bool IsNone() const
     {
-        return type_.IsNone();
+        return receiverType_.IsNone();
     }
 
     bool InConstructor() const
     {
-        return objKind_ == PGOObjKind::CONSTRUCTOR;
+        return receiverType_.IsConstructor();
     }
 
     bool InElement() const
     {
-        return objKind_ == PGOObjKind::ELEMENT;
+        return receiverType_.IsElementType();
     }
 
     bool operator<(const PGOObjectTemplate &right) const
     {
-        return type_ < right.type_ || objKind_ < right.objKind_;
+        return receiverRootType_ < right.receiverRootType_ || receiverType_ < right.receiverType_ ||
+            holdRootType_ < right.holdRootType_ || holdType_ < right.holdType_ ||
+            holdTraRootType_ < right.holdTraRootType_ || holdTraType_ < right.holdTraType_;
     }
 
     bool operator==(const PGOObjectTemplate &right) const
     {
-        return type_ == right.type_ && objKind_ == right.objKind_;
+        return receiverRootType_ == right.receiverRootType_ && receiverType_ == right.receiverType_ &&
+            holdRootType_ == right.holdRootType_ && holdType_ == right.holdType_ &&
+            holdTraRootType_ == right.holdTraRootType_ && holdTraType_ == right.holdTraType_;
     }
 
 private:
-    PGOProfileType type_ {PGOProfileType()};
-    PGOObjKind objKind_ {PGOObjKind::LOCAL};
+    PGOProfileType receiverRootType_ { PGOProfileType() };
+    PGOProfileType receiverType_ { PGOProfileType() };
+    PGOProfileType holdRootType_ { PGOProfileType() };
+    PGOProfileType holdType_ { PGOProfileType() };
+    PGOProfileType holdTraRootType_ { PGOProfileType() };
+    PGOProfileType holdTraType_ { PGOProfileType() };
 };
 using PGOObjectInfo = PGOObjectTemplate<ProfileType>;
 using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef>;
@@ -494,8 +537,156 @@ private:
     uint32_t count_ = 0;
     PGOObjectInfoType infos_[POLY_CASE_NUM];
 };
-
 using PGORWOpType = PGORWOpTemplate<PGOObjectInfo>;
 using PGORWOpTypeRef = PGORWOpTemplate<PGOObjectInfoRef>;
+
+template <typename PGOProfileType>
+class PGODefineOpTemplate : public PGOType {
+public:
+    PGODefineOpTemplate() : PGOType(TypeKind::DEFINE_OP_TYPE), type_(PGOProfileType()) {};
+    explicit PGODefineOpTemplate(PGOProfileType type) : PGOType(TypeKind::DEFINE_OP_TYPE), type_(type) {};
+
+    template <typename FromType>
+    void ConvertFrom(PGOContext &context, const FromType &from)
+    {
+        type_ = PGOProfileType(context, from.GetProfileType());
+        ctorPt_ = PGOProfileType(context, from.GetCtorPt());
+        protoPt_ = PGOProfileType(context, from.GetProtoTypePt());
+        kind_ = from.GetElementsKind();
+    }
+
+    std::string GetTypeString() const
+    {
+        std::string result = "(local";
+        result += type_.GetTypeString();
+        result += ", ctor";
+        result += ctorPt_.GetTypeString();
+        result += ", proto";
+        result += protoPt_.GetTypeString();
+        result += ", elementsKind:";
+        result += std::to_string(static_cast<int32_t>(kind_));
+        return result;
+    }
+
+    bool IsNone() const
+    {
+        return type_.IsNone();
+    }
+
+    PGOProfileType GetProfileType() const
+    {
+        return type_;
+    }
+
+    void SetCtorPt(PGOProfileType type)
+    {
+        ctorPt_ = type;
+    }
+
+    PGOProfileType GetCtorPt() const
+    {
+        return ctorPt_;
+    }
+
+    void SetProtoTypePt(PGOProfileType type)
+    {
+        protoPt_ = type;
+    }
+
+    PGOProfileType GetProtoTypePt() const
+    {
+        return protoPt_;
+    }
+
+    void SetElementsKind(ElementsKind kind)
+    {
+        kind_ = kind;
+    }
+
+    ElementsKind GetElementsKind() const
+    {
+        return kind_;
+    }
+
+    bool operator<(const PGODefineOpTemplate &right) const
+    {
+        return this->GetProfileType() < right.GetProfileType();
+    }
+
+private:
+    PGOProfileType type_ { PGOProfileType() };
+    PGOProfileType ctorPt_ { PGOProfileType() };
+    PGOProfileType protoPt_ { PGOProfileType() };
+    ElementsKind kind_ { ElementsKind::NONE };
+};
+
+using PGODefineOpType = PGODefineOpTemplate<ProfileType>;
+using PGODefineOpTypeRef = PGODefineOpTemplate<ProfileTypeRef>;
+
+class PGOTypeRef {
+public:
+    PGOTypeRef() : type_(nullptr) {}
+
+    explicit PGOTypeRef(PGOType *type) : type_(type) {}
+
+    explicit PGOTypeRef(const PGOSampleType *type) : type_(static_cast<const PGOType*>(type)) {}
+
+    explicit PGOTypeRef(const PGORWOpType *type) : type_(static_cast<const PGOType*>(type)) {}
+
+    explicit PGOTypeRef(const PGODefineOpType *type) : type_(static_cast<const PGOType*>(type)) {}
+
+    static PGOTypeRef NoneType()
+    {
+        return PGOTypeRef();
+    }
+
+    bool operator<(const PGOTypeRef &right) const
+    {
+        return type_ < right.type_;
+    }
+
+    bool operator!=(const PGOTypeRef &right) const
+    {
+        return type_ != right.type_;
+    }
+
+    bool operator==(const PGOTypeRef &right) const
+    {
+        return type_ == right.type_;
+    }
+
+    const PGOSampleType* GetPGOSampleType()
+    {
+        if (type_ == nullptr) {
+            static PGOSampleType noneType = PGOSampleType::NoneType();
+            return &noneType;
+        }
+        ASSERT(type_->IsScalarOpType());
+        return static_cast<const PGOSampleType*>(type_);
+    }
+
+    const PGORWOpType* GetPGORWOpType()
+    {
+        if (type_ == nullptr) {
+            static PGORWOpType noneType;
+            return &noneType;
+        }
+        ASSERT(type_->IsRwOpType());
+        return static_cast<const PGORWOpType*>(type_);
+    }
+
+    const PGODefineOpType* GetPGODefineOpType()
+    {
+        if (type_ == nullptr) {
+            static PGODefineOpType noneType;
+            return &noneType;
+        }
+        ASSERT(type_->IsDefineOpType());
+        return static_cast<const PGODefineOpType*>(type_);
+    }
+
+private:
+    const PGOType *type_;
+};
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILER_TYPE_H

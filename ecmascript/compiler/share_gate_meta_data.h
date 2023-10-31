@@ -30,6 +30,8 @@
 
 namespace panda::ecmascript::kungfu {
 using GateRef = int32_t;
+using PGOTypeRef = pgo::PGOTypeRef;
+using PGODefineOpType = pgo::PGODefineOpType;
 using PGOSampleType = pgo::PGOSampleType;
 using PGORWOpType = pgo::PGORWOpType;
 enum class TypedBinOp : uint8_t;
@@ -68,7 +70,8 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotNull,                        NOTNULL)                      \
     V(BuiltinPrototypeHClassMismatch, BUILTINPROTOHCLASSMISMATCH)   \
     V(IteratorFunctionDisMactch,      ITERATORFUNCTIONDISMATCH)     \
-    V(NativeCallTargetDisMatch,       NATIVECALLTARGETDISMATCH)
+    V(NativeCallTargetDisMatch,       NATIVECALLTARGETDISMATCH)     \
+    V(ProtoTypeChanged,               PROTOTYPECHANGED)             \
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

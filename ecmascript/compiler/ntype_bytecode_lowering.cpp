@@ -62,10 +62,6 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
             LowerNTypedStownByIndex(gate);
             break;
-        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerNTypedStOwnByName(gate);
-            break;
         case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
             LowerThrowUndefinedIfHoleWithName(gate);
             break;
@@ -143,11 +139,7 @@ void NTypeBytecodeLowering::LowerNTypedCreateEmptyArray(GateRef gate)
     // in the future, the type of the elements in the array will be obtained through pgo,
     // and the type will be used to determine whether to create a typed-array.
     AddProfiling(gate);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
-    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
-    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
     GateRef array = builder_.CreateArray(kind, 0);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
@@ -157,32 +149,17 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = acc_.GetValueIn(gate, 0);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
     uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
-    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-        thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName_);
-    JSHandle<JSArray> arrayHandle(thread, arr);
-
-    ElementsKind kind = acc_.TryGetElementsKind(gate);
-    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
-    GateType gateType = acc_.GetGateType(gate);
     panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
-    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
-    tsManager_->AddArrayTSElements(id, arrayHandle->GetElements());
-    tsManager_->AddArrayTSElementsKind(id, JSTaggedValue(static_cast<int64_t>(kind)));
-    gateType = tsManager_->TryNarrowUnionType(gateType);
 
-    int elementIndex = -1;
-    if (tsManager_->IsArrayTypeKind(gateType)) {
-        elementIndex = tsManager_->GetElementsIndexByArrayType(gateType, id);
-    }
+    int elementIndex = ptManager_->GetElementsIndexByEntityId(id);
     if (elementIndex == -1) { // slowpath
         return;
     }
 
     AddProfiling(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
     GateRef elementIndexGate = builder_.IntPtr(elementIndex);
     GateRef array = builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, index, elementIndexGate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
@@ -211,51 +188,6 @@ void NTypeBytecodeLowering::LowerNTypedStownByIndex(GateRef gate)
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
-}
-
-void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
-{
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    auto constData = acc_.GetValueIn(gate, 0);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto propKey = tsManager_->GetStringFromConstantPool(propIndex);
-
-    GateRef receiver = acc_.GetValueIn(gate, 1);
-    GateRef value = acc_.GetValueIn(gate, 2);
-
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = -1;
-    if (tsManager_->IsObjectTypeKind(receiverType)) {
-        hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
-    }
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, propKey);
-    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath
-        return;
-    }
-    AddProfiling(gate);
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    builder_.StoreProperty(receiver, pfrGate, value);
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
-}
-
-uint64_t NTypeBytecodeLowering::GetBcAbsoluteOffset(GateRef gate) const
-{
-    uint64_t pcOffset = acc_.TryGetPcOffset(gate);
-    uint64_t pfOffset = reinterpret_cast<uint64_t>(jsPandaFile_->GetHeader());
-    uint64_t methodOffset = reinterpret_cast<uint64_t>(methodLiteral_->GetBytecodeArray());
-    uint64_t bcAbsoluteOffset = methodOffset - pfOffset + pcOffset;
-    return bcAbsoluteOffset;
 }
 
 void NTypeBytecodeLowering::AddProfiling(GateRef gate)

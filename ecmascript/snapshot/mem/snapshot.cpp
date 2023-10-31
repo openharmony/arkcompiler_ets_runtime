@@ -30,13 +30,12 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    JSTaggedValue root = tsManager->GetSnapshotData();
+    kungfu::AOTSnapshot &aotSnapshot = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager()->GetAOTSnapshot();
+    JSTaggedValue root = aotSnapshot.GetSnapshotData();
     if (root == JSTaggedValue::Hole()) {
         // root equals hole means no data stored.
         LOG_COMPILER(ERROR) << "error: no data for ai file generation!";

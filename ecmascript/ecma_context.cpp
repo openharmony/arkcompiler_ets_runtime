@@ -111,6 +111,7 @@ bool EcmaContext::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
+    ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     initialized_ = true;
     return true;
@@ -206,6 +207,10 @@ EcmaContext::~EcmaContext()
     if (tsManager_ != nullptr) {
         delete tsManager_;
         tsManager_ = nullptr;
+    }
+    if (ptManager_ != nullptr) {
+        delete ptManager_;
+        ptManager_ = nullptr;
     }
     if (regExpParserCache_ != nullptr) {
         delete regExpParserCache_;
@@ -748,6 +753,9 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     }
     if (tsManager_) {
         tsManager_->Iterate(v);
+    }
+    if (ptManager_) {
+        ptManager_->Iterate(v);
     }
     if (aotFileManager_) {
         aotFileManager_->Iterate(v);

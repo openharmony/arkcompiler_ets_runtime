@@ -693,25 +693,35 @@ GateRef CircuitBuilder::LoadStringLength(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset)
+GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-
-    auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(offset), type.GetMachineType(),
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(bits), type.GetMachineType(),
                                      { currentDepend, receiver }, type.GetGateType());
     currentLabel->SetDepend(ret);
     return ret;
 }
 
+GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromConstpool(index), MachineType::I64,
+                                     { currentDepend, constpool }, GateType::AnyType());
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::StoreConstOffset(VariableType type,
-    GateRef receiver, size_t offset, GateRef value)
+    GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-
-    auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(offset), type.GetMachineType(),
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
         { currentControl, currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -858,13 +868,13 @@ GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
 }
 
 GateRef CircuitBuilder::InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
-                                            GateType gateType, PGOSampleType sampleType, TypedBinOp op)
+                                            GateType gateType, PGOTypeRef pgoType, TypedBinOp op)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(leftType, rightType);
-    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, sampleType),
+    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, pgoType),
                                      MachineType::I64,
                                      {currentControl, currentDepend, left, right},
                                      gateType);

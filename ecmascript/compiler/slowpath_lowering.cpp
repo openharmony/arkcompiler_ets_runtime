@@ -1158,11 +1158,12 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue_, exceptionOffset);
-    GateRef loadException = circuit_->NewGate(circuit_->Load(), VariableType::JS_ANY().GetMachineType(),
+    auto bit = LoadStoreAccessor::ToValue(MemoryOrder::NOT_ATOMIC);
+    GateRef loadException = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
         { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
     GateRef holeCst = builder_.HoleConstant();
-    GateRef clearException = circuit_->NewGate(circuit_->Store(), MachineType::NOVALUE,
+    GateRef clearException = circuit_->NewGate(circuit_->Store(bit), MachineType::NOVALUE,
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
@@ -1186,7 +1187,8 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate)
 {
     GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
     GateRef val = builder_.Int64Add(glue_, offset);
-    GateRef newGate = circuit_->NewGate(circuit_->Load(), VariableType::JS_ANY().GetMachineType(),
+    auto bit = LoadStoreAccessor::ToValue(MemoryOrder::NOT_ATOMIC);
+    GateRef newGate = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
         { builder_.GetDepend(), val }, VariableType::JS_ANY().GetGateType());
     ReplaceHirWithValue(gate, newGate);
 }
@@ -2219,7 +2221,8 @@ void SlowPathLowering::LowerDefineGetterSetterByValue(GateRef gate)
     GateRef getter = acc_.GetValueIn(gate, 2);
     GateRef setter = acc_.GetValueIn(gate, 3);
     GateRef acc = acc_.GetValueIn(gate, 4);
-    auto args = { obj, prop, getter, setter, acc };
+    auto args = { obj, prop, getter, setter, acc,
+        builder_.UndefineConstant(), builder_.Int32ToTaggedInt(builder_.Int32(1)) };
     GateRef result = LowerCallRuntime(gate, id, args);
     ReplaceHirWithValue(gate, result);
 }

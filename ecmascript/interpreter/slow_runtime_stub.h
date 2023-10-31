@@ -181,6 +181,8 @@ public:
     static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
 
     static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
+    static JSTaggedValue UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
+                                      JSTaggedValue newjshclass, JSTaggedValue key);
 
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);

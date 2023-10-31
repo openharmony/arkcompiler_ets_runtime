@@ -1444,6 +1444,19 @@ void LLVMIRBuilder::VisitLoad(GateRef gate, GateRef base)
     baseAddr = CanonicalizeToPtr(baseAddr, memType);
 
     LLVMValueRef result = LLVMBuildLoad(builder_, baseAddr, "");
+    auto order = acc_.GetMemoryOrder(gate);
+    switch (order) {
+        case MemoryOrder::MEMORY_ORDER_RELEASE: {
+            LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
+        }
+        case MemoryOrder::NOT_ATOMIC: {
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+    }
     Bind(gate, result);
 
     if (IsLogEnabled()) {
@@ -1461,6 +1474,19 @@ void LLVMIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
     baseAddr = CanonicalizeToPtr(baseAddr, ptrType);
 
     LLVMValueRef result = LLVMBuildStore(builder_, data, baseAddr);
+    auto order = acc_.GetMemoryOrder(gate);
+    switch (order) {
+        case MemoryOrder::MEMORY_ORDER_RELEASE: {
+            LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
+        }
+        case MemoryOrder::NOT_ATOMIC: {
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+    }
     Bind(gate, result);
 
     if (IsLogEnabled()) {

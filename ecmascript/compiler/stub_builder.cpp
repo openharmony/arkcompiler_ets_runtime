@@ -1244,8 +1244,9 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
     } else {
         auto depend = env_->GetCurrentLabel()->GetDepend();
         GateRef ptr = PtrAdd(base, offset);
+        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::NOT_ATOMIC);
         GateRef result = env_->GetCircuit()->NewGate(
-            env_->GetCircuit()->Store(), MachineType::NOVALUE,
+            env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
             { depend, value, ptr }, type.GetGateType());
         env_->GetCurrentLabel()->SetDepend(result);
         if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
@@ -2386,6 +2387,9 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
         handlerInfo = GetInt32OfTInt(GetTransitionHandlerInfo(handler));
     }
 
+    GateRef oldHClass = LoadHClass(receiver);
+    GateRef prototype = GetPrototypeFromHClass(oldHClass);
+    StorePrototype(glue, newHClass, prototype);
     StoreHClass(glue, receiver, newHClass);
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
@@ -3003,6 +3007,9 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
                 Branch(Int32Equal(metaData, cachedMetaData), &isMatch, &notMatch);
                 Bind(&isMatch);
                 {
+                    GateRef oldHClass = LoadHClass(receiver);
+                    GateRef prototype = GetPrototypeFromHClass(oldHClass);
+                    StorePrototype(glue, transitionHClass, prototype);
 #if ECMASCRIPT_ENABLE_IC
                     NotifyHClassChanged(glue, hclass, transitionHClass);
 #endif
@@ -3033,6 +3040,9 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
             {
                 GateRef newHClass = LoadObjectFromWeakRef(value);
                 result = newHClass;
+                GateRef oldHClass = LoadHClass(receiver);
+                GateRef prototype = GetPrototypeFromHClass(oldHClass);
+                StorePrototype(glue, newHClass, prototype);
 #if ECMASCRIPT_ENABLE_IC
                 NotifyHClassChanged(glue, hclass, newHClass);
 #endif

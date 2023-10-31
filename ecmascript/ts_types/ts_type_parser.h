@@ -21,7 +21,6 @@
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 
 namespace panda::ecmascript {
-using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
 using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
 /* TSTypeParser parses types recorded in abc files into TSTypes. VM uses TSTypeTables to
  * store TSTypes. Each TSTypeTable is used to store all types from the same record.
@@ -187,8 +186,6 @@ private:
     JSHandle<JSTaggedValue> ParseNonImportPGOType(GlobalTSTypeRef gt, PGOInfo &info);
 
     JSHandle<JSTaggedValue> ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info);
-
-    bool VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLayoutDesc &desc);
 
     void FillPropTypes(const JSPandaFile *jsPandaFile,
                        const CString &recordName,

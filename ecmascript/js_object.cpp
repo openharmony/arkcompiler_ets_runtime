@@ -2368,6 +2368,10 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
             }
             obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
         }
+        auto inlineNum = ihc->GetInlinedProperties();
+        for (size_t i = propsLen; i < inlineNum; i++) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, JSTaggedValue::Null());
+        }
         if (isSuccess) {
             return;
         }

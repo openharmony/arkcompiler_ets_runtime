@@ -86,6 +86,7 @@ public:
                        MethodInfo &methodInfo)
     {
         Module *module = GetModule();
+        SetCurrentConstantPool(methodOffset);
         cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, methodOffset,
             methodPcInfo, methodInfo, module);
         if (methodInfo.IsTypeInferAbort()) {
@@ -135,6 +136,7 @@ public:
             index++;
         }
         CompileLastModuleThenDestroyIfNeeded();
+        StoreConstantPoolInfo();
     }
 
     void FetchPGOMismatchResult();
@@ -342,9 +344,14 @@ private:
     bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap, const std::string &recordName,
                       const std::string &methodName) const;
 
+    void SetCurrentConstantPool(uint32_t methodOffset) const;
+
+    void StoreConstantPoolInfo() const;
+
     EcmaVM *vm_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     PGOProfilerDecoder &pfDecoder_;
+    BytecodeInfoCollector* collector_;
     BCInfo &bytecodeInfo_;
     std::deque<uint32_t> compileQueue_ {};
     std::map<CString, uint32_t> sortedRecords_ {};

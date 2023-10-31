@@ -100,6 +100,7 @@ int Main(const int argc, const char **argv)
         arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
 #endif
         EcmaContext *context1 = JSNApi::CreateJSContext(vm);
+        JSNApi::SwitchCurrentContext(vm, context1);
         ClockScope execute;
         for (const auto &fileName : fileNames) {
             auto res = JSNApi::Execute(vm, fileName, entry);
