@@ -62,3 +62,13 @@ const handler = {};
 const proxy = new Proxy(arr2, handler);
 const arr3 = proxy.constructor(1, 2, 3, 4);
 print(arr3);
+
+function Target() {}
+var handler1 = {
+    construct: function(t, args) {
+        return new t(args[0], args[1]);
+    }
+};
+var P = new Proxy(Target, handler1);
+new P(1, 1.1);
+print(JSON.stringify(P));
