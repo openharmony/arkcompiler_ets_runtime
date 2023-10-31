@@ -1284,6 +1284,156 @@ template("host_typeinfer_test_action") {
   }
 }
 
+template("host_pgotypeinfer_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+
+  _test_ts_path_ = "./${_target_name_}.js"
+  _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+
+  _host_aot_target_ =
+      "$js_root/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+
+  _test_es2abc_abc_path_ = "$target_out_dir/es2abc/${_target_name_}.abc"
+
+  if (defined(invoker.is_common_js) && invoker.is_common_js) {
+    extra_args = [ "--commonjs" ]
+  } else {
+    extra_args = [ "--module" ]
+  }
+  extra_args += [ "--merge-abc" ]
+
+  es2abc_gen_abc("es2abc_gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    if (defined(invoker.is_multi_file_tests) && invoker.is_multi_file_tests) {
+      _test_es2abc_ts_path_ = "."
+    } else {
+      _test_es2abc_ts_path_ = _test_ts_path_
+    }
+    src_js = rebase_path(_test_es2abc_ts_path_)
+    dst_file = rebase_path(_test_es2abc_abc_path_)
+
+    in_puts = [ _test_ts_path_ ]
+    out_puts = [ _test_es2abc_abc_path_ ]
+  }
+
+  _script_args_ = rebase_path(_test_es2abc_abc_path_)
+
+  action("${_target_name_}PgoExecute") {
+    testonly = true
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":es2abc_gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+        " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
+        rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    if (defined(invoker.is_enable_enableArkTools) &&
+        invoker.is_enable_enableArkTools) {
+      _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_es2abc_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/pgo" ]
+  }
+
+  action("${_target_name_}Es2abcAotTypeInferAction") {
+    testonly = true
+
+    _script_args_ = rebase_path(_test_es2abc_abc_path_)
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":es2abc_gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    # Pgo Execute
+    deps += [ ":${_target_name_}PgoExecute" ]
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ = " --compiler-assert-types=true" +
+                            " --compiler-opt-type-lowering=false" +
+                            " --compiler-opt-loop-peeling=false"
+
+    # Pgo Option
+    _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                             rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+    }
+
+    if (defined(invoker.is_enable_global_typeinfer) &&
+        invoker.is_enable_global_typeinfer) {
+      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_es2abc_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/es2abc/" ]
+  }
+}
+
 template("host_quickfix_test_action") {
   _target_name_ = "${target_name}"
 

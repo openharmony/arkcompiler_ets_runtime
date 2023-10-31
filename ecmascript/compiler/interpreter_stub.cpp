@@ -343,9 +343,55 @@ DECLARE_ASM_HANDLER(HandleGetunmappedargs)
 
 DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
 {
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    auto env = GetEnvironment();
     GateRef restIdx = ZExtInt8ToInt32(ReadInst8_0(pc));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(COPYRESTARGS_IMM8));
+    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, restIdx);
+    GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
+    GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
+    Label dispatch(env);
+    Label slowPath(env);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue, *res, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetExtensibleToBitfield(glue, *res, true);
+    Label setArgumentsBegin(env);
+    Label setArgumentsAgain(env);
+    Label setArgumentsEnd(env);
+    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
+    LoopBegin(&setArgumentsBegin);
+    {
+        GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
+        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        SetPropertyByIndex(glue, *res, *i, receiver, true);
+        i = Int32Add(*i, Int32(1));
+        Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
+        Bind(&setArgumentsAgain);
+    }
+    LoopEnd(&setArgumentsBegin);
+    Bind(&setArgumentsEnd);
+    Branch(HasPendingException(glue), &slowPath, &dispatch);
+    Bind(&dispatch);
+    {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(COPYRESTARGS_IMM8);
+    }
+
+    Bind(&slowPath);
+    {
+        GateRef result2 = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
+        CHECK_EXCEPTION_WITH_ACC(result2, INT_PTR(COPYRESTARGS_IMM8));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleWideCopyrestargsPrefImm16)

@@ -197,7 +197,6 @@ JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFast()
     if (hasSlowProperties_) {
         return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
     }
-    ASSERT(keyLength_ != 0);
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     uint32_t arraySize = keyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE;
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);

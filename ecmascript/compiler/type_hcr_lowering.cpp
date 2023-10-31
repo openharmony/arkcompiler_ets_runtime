@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/type_mcr_lowering.h"
+#include "ecmascript/compiler/type_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -25,7 +25,7 @@
 #include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
 using PGONativeFunctionId = panda::ecmascript::pgo::DumpUtils::PGONativeFunctionId;
-GateRef TypeMCRLowering::VisitGate(GateRef gate)
+GateRef TypeHCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
@@ -151,7 +151,7 @@ GateRef TypeMCRLowering::VisitGate(GateRef gate)
     return Circuit::NullGate();
 }
 
-void TypeMCRLowering::LowerJSCallTargetCheck(GateRef gate)
+void TypeHCRLowering::LowerJSCallTargetCheck(GateRef gate)
 {
     TypedCallTargetCheckOp Op = acc_.GetTypedCallTargetCheckOp(gate);
     switch (Op) {
@@ -189,7 +189,7 @@ void TypeMCRLowering::LowerJSCallTargetCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerPrimitiveTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerPrimitiveTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -207,7 +207,7 @@ void TypeMCRLowering::LowerPrimitiveTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerIntCheck(GateRef gate)
+void TypeHCRLowering::LowerIntCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
 
@@ -218,7 +218,7 @@ void TypeMCRLowering::LowerIntCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerDoubleCheck(GateRef gate)
+void TypeHCRLowering::LowerDoubleCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
 
@@ -229,7 +229,7 @@ void TypeMCRLowering::LowerDoubleCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerNumberCheck(GateRef gate)
+void TypeHCRLowering::LowerNumberCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
 
@@ -240,7 +240,7 @@ void TypeMCRLowering::LowerNumberCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerBooleanCheck(GateRef gate)
+void TypeHCRLowering::LowerBooleanCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
 
@@ -251,7 +251,7 @@ void TypeMCRLowering::LowerBooleanCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerStableArrayCheck(GateRef gate)
+void TypeHCRLowering::LowerStableArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -268,7 +268,7 @@ void TypeMCRLowering::LowerStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex)
+void TypeHCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex)
 {
     type = DeoptType::NOTARRAY;
     switch (id) {
@@ -311,7 +311,7 @@ void TypeMCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t
     }
 }
 
-void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
+void TypeHCRLowering::LowerTypedArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -337,7 +337,7 @@ void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerEcmaStringCheck(GateRef gate)
+void TypeHCRLowering::LowerEcmaStringCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -349,7 +349,7 @@ void TypeMCRLowering::LowerEcmaStringCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef str = acc_.GetValueIn(gate, 0);
@@ -379,14 +379,14 @@ void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypeMCRLowering::GetLengthFromString(GateRef gate)
+GateRef TypeHCRLowering::GetLengthFromString(GateRef gate)
 {
     GateRef shiftCount = builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT);
     return builder_.Int32LSR(
         builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), shiftCount);
 }
 
-void TypeMCRLowering::LowerStringLength(GateRef gate)
+void TypeHCRLowering::LowerStringLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -395,7 +395,7 @@ void TypeMCRLowering::LowerStringLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
 
-void TypeMCRLowering::LowerLoadTypedArrayLength(GateRef gate)
+void TypeHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -403,7 +403,7 @@ void TypeMCRLowering::LowerLoadTypedArrayLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
 
-void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerObjectTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateType type = acc_.GetObjectTypeAccessor(gate).GetType();
@@ -418,7 +418,7 @@ void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerTSSubtypingCheck(GateRef gate)
+void TypeHCRLowering::LowerTSSubtypingCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
     Label levelValid(&builder_);
@@ -428,7 +428,7 @@ void TypeMCRLowering::LowerTSSubtypingCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
+void TypeHCRLowering::LowerSimpleHClassCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
     GateRef compare = BuildCompareHClass(gate, frameState);
@@ -436,7 +436,7 @@ void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerObjectTypeCompare(GateRef gate)
+void TypeHCRLowering::LowerObjectTypeCompare(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetObjectTypeAccessor(gate).GetType();
@@ -451,14 +451,14 @@ void TypeMCRLowering::LowerObjectTypeCompare(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerSimpleHClassCompare(GateRef gate)
+void TypeHCRLowering::LowerSimpleHClassCompare(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
     GateRef compare = BuildCompareHClass(gate, frameState) ;
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), compare);
 }
 
-void TypeMCRLowering::LowerTSSubtypingCompare(GateRef gate)
+void TypeHCRLowering::LowerTSSubtypingCompare(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
     Label levelValid(&builder_);
@@ -467,7 +467,7 @@ void TypeMCRLowering::LowerTSSubtypingCompare(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), compare);
 }
 
-GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit)
+GateRef TypeHCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit)
 {
     GateRef receiver = acc_.GetValueIn(gate, 0);
     bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
@@ -510,7 +510,7 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
     return *check;
 }
 
-GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
+GateRef TypeHCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
 {
     GateRef receiver = acc_.GetValueIn(gate, 0);
     bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
@@ -528,7 +528,7 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
 }
 
-void TypeMCRLowering::LowerRangeCheckPredicate(GateRef gate)
+void TypeHCRLowering::LowerRangeCheckPredicate(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto deoptType = DeoptType::NOTARRAY;
@@ -560,7 +560,7 @@ void TypeMCRLowering::LowerRangeCheckPredicate(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
+void TypeHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
@@ -587,7 +587,7 @@ void TypeMCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerIndexCheck(GateRef gate)
+void TypeHCRLowering::LowerIndexCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto deoptType = DeoptType::NOTLEGALIDX;
@@ -602,7 +602,7 @@ void TypeMCRLowering::LowerIndexCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 
-GateRef TypeMCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+GateRef TypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                                           bool useLabel)
 {
     if (useLabel) {
@@ -616,7 +616,7 @@ GateRef TypeMCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int ind
     }
 }
 
-void TypeMCRLowering::LowerTypeConvert(GateRef gate)
+void TypeHCRLowering::LowerTypeConvert(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto leftType = acc_.GetLeftType(gate);
@@ -630,7 +630,7 @@ void TypeMCRLowering::LowerTypeConvert(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
+void TypeHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
 {
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (srcType.IsBooleanType()) {
@@ -662,19 +662,19 @@ void TypeMCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType 
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
+GateRef TypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
     return builder_.LoadFromTaggedArray(constPool, index);
 }
 
-GateRef TypeMCRLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
+GateRef TypeHCRLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
     return builder_.GetValueFromTaggedArray(constPool, index);
 }
 
-void TypeMCRLowering::LowerLoadProperty(GateRef gate)
+void TypeHCRLowering::LowerLoadProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
@@ -697,7 +697,7 @@ void TypeMCRLowering::LowerLoadProperty(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeMCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
@@ -722,7 +722,7 @@ void TypeMCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
     ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeMCRLowering::LowerStoreProperty(GateRef gate)
+void TypeHCRLowering::LowerStoreProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, plr, value
@@ -742,7 +742,7 @@ void TypeMCRLowering::LowerStoreProperty(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, plr, value
@@ -767,7 +767,7 @@ void TypeMCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
     ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerLoadArrayLength(GateRef gate)
+void TypeHCRLowering::LowerLoadArrayLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef array = acc_.GetValueIn(gate, 0);
@@ -776,7 +776,7 @@ void TypeMCRLowering::LowerLoadArrayLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-GateRef TypeMCRLowering::GetElementSize(BuiltinTypeId id)
+GateRef TypeHCRLowering::GetElementSize(BuiltinTypeId id)
 {
     GateRef elementSize = Circuit::NullGate();
     switch (id) {
@@ -804,7 +804,7 @@ GateRef TypeMCRLowering::GetElementSize(BuiltinTypeId id)
     return elementSize;
 }
 
-VariableType TypeMCRLowering::GetVariableType(BuiltinTypeId id)
+VariableType TypeHCRLowering::GetVariableType(BuiltinTypeId id)
 {
     VariableType type = VariableType::JS_ANY();
     switch (id) {
@@ -834,7 +834,7 @@ VariableType TypeMCRLowering::GetVariableType(BuiltinTypeId id)
     return type;
 }
 
-void TypeMCRLowering::LowerLoadElement(GateRef gate)
+void TypeHCRLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto op = acc_.GetTypedLoadOp(gate);
@@ -884,7 +884,7 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -902,7 +902,7 @@ void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
 }
 
 // for JSArray
-void TypeMCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState)
+void TypeHCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -915,7 +915,7 @@ void TypeMCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
+void TypeHCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -957,7 +957,7 @@ void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-GateRef TypeMCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type)
+GateRef TypeHCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type)
 {
     GateRef arrbuffer =
         builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
@@ -966,7 +966,7 @@ GateRef TypeMCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef receiver, Gate
     return result;
 }
 
-GateRef TypeMCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type,
+GateRef TypeHCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type,
                                                     Label *isByteArray, Label *isArrayBuffer, Label *exit)
 {
     GateRef byteArrayOrArraybuffer =
@@ -997,7 +997,7 @@ GateRef TypeMCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef of
     return *result;
 }
 
-void TypeMCRLowering::LowerStringLoadElement(GateRef gate)
+void TypeHCRLowering::LowerStringLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = acc_.GetGlueFromArgList();
@@ -1009,7 +1009,7 @@ void TypeMCRLowering::LowerStringLoadElement(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     auto op = acc_.GetTypedStoreOp(gate);
@@ -1051,7 +1051,7 @@ void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
 }
 
 // for JSArray
-void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);  // 0: receiver
@@ -1065,7 +1065,7 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
 }
 
 // for JSTypedArray
-void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id)
+void TypeHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -1102,7 +1102,7 @@ void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value)
+void TypeHCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value)
 {
     GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
                                                  JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
@@ -1111,7 +1111,7 @@ void TypeMCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRe
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
 }
 
-void TypeMCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value,
+void TypeHCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value,
                                                   Label *isByteArray, Label *isArrayBuffer, Label *exit)
 {
     GateRef byteArrayOrArraybuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
@@ -1140,7 +1140,7 @@ void TypeMCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef offs
 }
 
 // for UInt8ClampedArray
-void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
+void TypeHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
 
@@ -1184,34 +1184,34 @@ void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-GateRef TypeMCRLowering::DoubleToTaggedDoublePtr(GateRef gate)
+GateRef TypeHCRLowering::DoubleToTaggedDoublePtr(GateRef gate)
 {
     return builder_.DoubleToTaggedDoublePtr(gate);
 }
 
-GateRef TypeMCRLowering::ChangeInt32ToFloat64(GateRef gate)
+GateRef TypeHCRLowering::ChangeInt32ToFloat64(GateRef gate)
 {
     return builder_.ChangeInt32ToFloat64(gate);
 }
 
-GateRef TypeMCRLowering::TruncDoubleToInt(GateRef gate)
+GateRef TypeHCRLowering::TruncDoubleToInt(GateRef gate)
 {
     return builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(gate));
 }
 
-GateRef TypeMCRLowering::IntToTaggedIntPtr(GateRef x)
+GateRef TypeHCRLowering::IntToTaggedIntPtr(GateRef x)
 {
     GateRef val = builder_.SExtInt32ToInt64(x);
     return builder_.ToTaggedIntPtr(val);
 }
 
-void TypeMCRLowering::LowerTypedCallBuitin(GateRef gate)
+void TypeHCRLowering::LowerTypedCallBuitin(GateRef gate)
 {
     BuiltinLowering lowering(circuit_);
     lowering.LowerTypedCallBuitin(gate);
 }
 
-void TypeMCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
+void TypeHCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1227,7 +1227,7 @@ void TypeMCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1251,7 +1251,7 @@ void TypeMCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1275,7 +1275,7 @@ void TypeMCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1293,7 +1293,7 @@ void TypeMCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1313,7 +1313,7 @@ void TypeMCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1331,7 +1331,7 @@ void TypeMCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
@@ -1351,7 +1351,7 @@ void TypeMCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerCallTargetCheck(GateRef gate)
+void TypeHCRLowering::LowerCallTargetCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -1369,7 +1369,7 @@ void TypeMCRLowering::LowerCallTargetCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
+void TypeHCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -1383,7 +1383,7 @@ void TypeMCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ArgumentAccessor argAcc(circuit_);
@@ -1416,7 +1416,7 @@ void TypeMCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }
 
-void TypeMCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef superCtor = acc_.GetValueIn(gate, 0);
@@ -1443,7 +1443,7 @@ void TypeMCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }
 
-void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
+void TypeHCRLowering::LowerGetSuperConstructor(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef ctor = acc_.GetValueIn(gate, 0);
@@ -1452,7 +1452,7 @@ void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 
-GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
+GateRef TypeHCRLowering::LoadFromVTable(GateRef receiver, size_t index)
 {
     GateRef hclass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
@@ -1464,7 +1464,7 @@ GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
     return builder_.Load(VariableType::JS_ANY(), itemOwner, builder_.TaggedGetInt(itemOffset));
 }
 
-VariableType TypeMCRLowering::GetVarType(PropertyLookupResult plr)
+VariableType TypeHCRLowering::GetVarType(PropertyLookupResult plr)
 {
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         return kungfu::VariableType::FLOAT64();
@@ -1475,23 +1475,23 @@ VariableType TypeMCRLowering::GetVarType(PropertyLookupResult plr)
     }
 }
 
-GateRef TypeMCRLowering::LoadSupers(GateRef hclass)
+GateRef TypeHCRLowering::LoadSupers(GateRef hclass)
 {
     return builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::SUPERS_OFFSET);
 }
 
-GateRef TypeMCRLowering::GetLengthFromSupers(GateRef supers)
+GateRef TypeHCRLowering::GetLengthFromSupers(GateRef supers)
 {
     return builder_.LoadConstOffset(VariableType::INT32(), supers, TaggedArray::EXTRACT_LENGTH_OFFSET);
 }
 
-GateRef TypeMCRLowering::GetValueFromSupers(GateRef supers, size_t index)
+GateRef TypeHCRLowering::GetValueFromSupers(GateRef supers, size_t index)
 {
     GateRef val = builder_.LoadFromTaggedArray(supers, index);
     return builder_.LoadObjectFromWeakRef(val);
 }
 
-GateRef TypeMCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver,
+GateRef TypeHCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver,
     AccessorMode mode, GateRef value)
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
@@ -1506,7 +1506,7 @@ GateRef TypeMCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef functi
     return builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
 }
 
-void TypeMCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend,
+void TypeHCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend,
                                                      GateRef value)
 {
     auto condition = builder_.HasPendingException(glue);
@@ -1521,7 +1521,7 @@ void TypeMCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef gl
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
 
-void TypeMCRLowering::LowerLoadGetter(GateRef gate)
+void TypeHCRLowering::LowerLoadGetter(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
@@ -1536,7 +1536,7 @@ void TypeMCRLowering::LowerLoadGetter(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), getter);
 }
 
-void TypeMCRLowering::LowerLoadSetter(GateRef gate)
+void TypeHCRLowering::LowerLoadSetter(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
@@ -1552,7 +1552,7 @@ void TypeMCRLowering::LowerLoadSetter(GateRef gate)
 }
 
 // subtyping check and hclss check
-void TypeMCRLowering::LowerInlineAccessorCheck(GateRef gate)
+void TypeHCRLowering::LowerInlineAccessorCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -1602,7 +1602,7 @@ void TypeMCRLowering::LowerInlineAccessorCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -1623,7 +1623,7 @@ void TypeMCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeMCRLowering::LowerTypeOfCheck(GateRef gate)
+void TypeHCRLowering::LowerTypeOfCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -1658,7 +1658,7 @@ void TypeMCRLowering::LowerTypeOfCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateType type = acc_.GetParamGateType(gate);
@@ -1693,7 +1693,7 @@ void TypeMCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeMCRLowering::LowerIteratorFunctionCheck(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerIteratorFunctionCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -1730,7 +1730,7 @@ void TypeMCRLowering::LowerIteratorFunctionCheck(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerGetFixedIterator(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerGetFixedIterator(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef obj = acc_.GetValueIn(gate, 0);
@@ -1764,7 +1764,7 @@ void TypeMCRLowering::LowerGetFixedIterator(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeMCRLowering::LowerNativeCallTargetCheck(GateRef gate)
+void TypeHCRLowering::LowerNativeCallTargetCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -1799,7 +1799,7 @@ void TypeMCRLowering::LowerNativeCallTargetCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerTypedCallNative(GateRef gate, GateRef glue)
+void TypeHCRLowering::LowerTypedCallNative(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef thisObj = acc_.GetValueIn(gate, 0);

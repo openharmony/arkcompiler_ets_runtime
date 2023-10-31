@@ -103,7 +103,7 @@ public:
     static constexpr VersionType RECORD_POOL_MINI_VERSION = {0, 0, 0, 9};
     static constexpr VersionType WIDE_CLASS_TYPE_MINI_VERSION = {0, 0, 0, 10};
     static constexpr VersionType PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION = {0, 0, 0, 11};
-    static constexpr VersionType ELEMENETS_TRACK_INFO_MINI_VERSION = {0, 0, 0, 12};
+    static constexpr VersionType ELEMENTS_TRACK_INFO_MINI_VERSION = {0, 0, 0, 12};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
@@ -268,7 +268,7 @@ public:
 
     bool SupportElementsTrackInfo() const
     {
-        return CompatibleVerify(ELEMENETS_TRACK_INFO_MINI_VERSION);
+        return CompatibleVerify(ELEMENTS_TRACK_INFO_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);

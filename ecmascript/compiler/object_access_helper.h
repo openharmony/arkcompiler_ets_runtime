@@ -52,7 +52,7 @@ private:
     PropertyLookupResult plr_ {};
 };
 
-// An auxiliary class serving TSHCRLowering, used for named object property access,
+// An auxiliary class serving TypeBytecodeLowering, used for named object property access,
 // invoking TSManager and HClass.
 class ObjectAccessHelper final {
 public:

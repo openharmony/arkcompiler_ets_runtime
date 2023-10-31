@@ -225,6 +225,24 @@ public:
         pool_->SetGetSectionCb(GetSection);
         pool_->SetSupportCb(Support);
     }
+    
+    void Merge(const PGOContext &context, PGOAbcFilePool &pool)
+    {
+        if (pool.GetPool() == nullptr) {
+            return;
+        }
+        pool_->Merge(*pool.GetPool(), [&](ApEntityId oldEntryId, ApEntityId newEntryId) {
+            context.AddAbcIdRemap(oldEntryId, newEntryId);
+        });
+    }
+
+    void Copy(const std::shared_ptr<PGOAbcFilePool> &pool)
+    {
+        for (auto &entry : pool->GetPool()->GetPool()) {
+            auto emplacedEntry = GetPool()->GetPool().try_emplace(entry.first, entry.second.GetData());
+            emplacedEntry.first->second.SetEntryId(entry.first);
+        }
+    }
 };
 
 }  // namespace panda::ecmascript::pgo

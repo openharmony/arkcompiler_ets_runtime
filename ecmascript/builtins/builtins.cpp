@@ -772,7 +772,8 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // Number = new Function()
     JSHandle<JSObject> numFunction(
-        NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE));
+        NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE,
+            BUILTINS_STUB_ID(NumberConstructor)));
     numFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, numFuncInstanceHClass.GetTaggedValue());
 
     // Number.prototype method
@@ -787,7 +788,7 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     }
     for (const base::BuiltinFunctionEntry &entry: Number::GetNumberGlobalFunctions()) {
         SetFuncToObjAndGlobal(env, globalObject, numFunction,
-                              entry.GetName(), entry.GetEntrypoint(), entry.GetLength());
+                              entry.GetName(), entry.GetEntrypoint(), entry.GetLength(), entry.GetBuiltinStubId());
     }
     // Number constant
     for (const base::BuiltinConstantEntry &entry: Number::GetNumberConstants()) {
@@ -2689,14 +2690,19 @@ void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::stri
 
 void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                      const JSHandle<JSObject> &obj, std::string_view key,
-                                     EcmaEntrypoint func, int length)
+                                     EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
+    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+        auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
+    }
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
     JSObject::DefineOwnProperty(thread_, globalObject, keyString, descriptor);

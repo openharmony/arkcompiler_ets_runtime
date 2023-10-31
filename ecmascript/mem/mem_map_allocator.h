@@ -135,18 +135,20 @@ public:
     MemMapFreeList() = default;
     ~MemMapFreeList() = default;
 
-    void Initialize(MemMap memMap)
+    void Initialize(MemMap memMap, size_t capacity)
     {
-        memMap_ = memMap;
+        memMaps_.emplace_back(memMap);
         freeList_.emplace(memMap.GetSize(), memMap);
-        capacity_ = memMap.GetSize();
+        capacity_ = capacity;
     }
 
     void Finalize()
     {
-        PageUnmap(memMap_);
+        for (auto &memMap : memMaps_) {
+            PageUnmap(memMap);
+        }
+        memMaps_.clear();
         freeList_.clear();
-        freeSet_.clear();
     }
 
     NO_COPY_SEMANTIC(MemMapFreeList);
@@ -190,14 +192,13 @@ public:
             iterate = freeList_.lower_bound(size);
             // Unable to get memory from freeList, use PageMap
             if (iterate == freeList_.end()) {
-                if (freeListPoolSize_ + freeSetPoolSize_ + size > capacity_) {
-                    LOG_GC(ERROR) << "Freeset pool oom: overflow(" << freeSetPoolSize_ << ")";
-                    return MemMap();
-                }
-                MemMap smemMap = PageMap(size, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
-                freeSet_.emplace(reinterpret_cast<uintptr_t>(smemMap.GetMem()));
-                freeSetPoolSize_ += size;
-                return smemMap;
+                size_t incrementCapacity = std::max(size, INCREMENT_HUGE_OBJECT_CAPACITY);
+                MemMap smemMap = PageMap(incrementCapacity, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
+                LOG_GC(INFO) << "Huge object mem pool increase PageMap size: " << smemMap.GetSize();
+                memMaps_.emplace_back(smemMap);
+                freeList_.emplace(smemMap.GetSize(), smemMap);
+                iterate = freeList_.lower_bound(size);
+                ASSERT(iterate != freeList_.end());
             }
         }
         MemMap memMap = iterate->second;
@@ -214,24 +215,15 @@ public:
     void AddMemToList(MemMap memMap)
     {
         LockHolder lock(lock_);
-        auto search = freeSet_.find(reinterpret_cast<uintptr_t>(memMap.GetMem()));
-        if (UNLIKELY(search != freeSet_.end())) {
-            freeSetPoolSize_ -= memMap.GetSize();
-            freeSet_.erase(search);
-            PageUnmap(memMap);
-        } else {
-            freeListPoolSize_ -= memMap.GetSize();
-            freeList_.emplace(memMap.GetSize(), memMap);
-        }
+        freeListPoolSize_ -= memMap.GetSize();
+        freeList_.emplace(memMap.GetSize(), memMap);
     }
 
 private:
     Mutex lock_;
-    MemMap memMap_;
+    std::vector<MemMap> memMaps_;
     std::multimap<size_t, MemMap> freeList_;
-    std::set<uintptr_t> freeSet_;
     std::atomic_size_t freeListPoolSize_ {0};
-    std::atomic_size_t freeSetPoolSize_ {0};
     size_t capacity_ {0};
 };
 
@@ -247,11 +239,11 @@ public:
     {
         AdapterSuitablePoolCapacity();
         memMapTotalSize_ = 0;
-        size_t hugeObjectCapacity = std::min(capacity_ / 2, MAX_HUGE_OBJECT_CAPACITY);
-        MemMap memMap = PageMap(hugeObjectCapacity, PAGE_PROT_NONE, alignment);
+        size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
+        MemMap memMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
         PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
         PageRelease(memMap.GetMem(), memMap.GetSize());
-        memMapFreeList_.Initialize(memMap);
+        memMapFreeList_.Initialize(memMap, capacity_);
     }
 
     void Finalize()

@@ -127,8 +127,11 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
-    V(ComputeHashcode)                    \
-    V(JSHClassFindProtoTransitions)
+    V(ComputeHashcode)                         \
+    V(JSHClassFindProtoTransitions)            \
+    V(NumberHelperStringToDouble)              \
+    V(StringGetStart)                          \
+    V(StringGetEnd)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -409,6 +412,7 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
+    static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
@@ -417,6 +421,9 @@ public:
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
     static uint32_t ComputeHashcode(JSTaggedType ecmaString);
+
+    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length);
+    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

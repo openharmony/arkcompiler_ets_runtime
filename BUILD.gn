@@ -182,7 +182,10 @@ group("ark_runtime_host_unittest") {
   deps = []
   if (host_os != "mac") {
     # js unittest
-    deps += [ ":ark_unittest" ]
+    deps += [
+      ":ark_unittest",
+      "$js_root/test/typeinfer:ark_pgotypeinfer_test",
+    ]
 
     # js bytecode test
     deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
@@ -980,11 +983,10 @@ ohos_source_set("libark_jsruntime_set") {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
   }
 
-  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
-    if (!is_cross_platform_build) {
-      defines += [ "ENABLE_QOS" ]
-      external_deps += [ "qos_manager:qos" ]
-    }
+  if (is_ohos && is_standard_system && !is_cross_platform_build &&
+      defined(global_parts_info) && defined(global_parts_info.qos_manager)) {
+    defines += [ "ENABLE_QOS" ]
+    external_deps += [ "qos_manager:qos" ]
   }
 
   if (enable_target_compilation) {
@@ -1068,13 +1070,6 @@ ohos_source_set("libark_jsruntime_test_set") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-  }
-
-  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
-    if (!is_cross_platform_build) {
-      defines += [ "ENABLE_QOS" ]
-      external_deps += [ "qos_manager:qos" ]
-    }
   }
 
   if (enable_coverage) {

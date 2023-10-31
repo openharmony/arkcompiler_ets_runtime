@@ -469,7 +469,10 @@ private:
     V(Getnextpropname)                      \
     V(CreateJSSetIterator)                  \
     V(CreateJSMapIterator)                  \
-    V(JSHClassFindProtoTransitions)
+    V(JSHClassFindProtoTransitions)         \
+    V(NumberHelperStringToDouble)           \
+    V(StringGetStart)                       \
+    V(StringGetEnd)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

@@ -259,7 +259,7 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Branch(TaggedIsUndefined(enumCache), &slowpath, &cacheHit);
     Bind(&cacheHit);
     {
-        GateRef hclass = LoadHClass(obj);
+        GateRef hclass = LoadHClass(*object);
         result = NewJSForinIterator(glue, *object, enumCache, hclass);
         Jump(&exit);
     }

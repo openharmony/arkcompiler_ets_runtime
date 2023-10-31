@@ -80,7 +80,7 @@ public:
     void UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag);
     void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
-    ProfileType InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId);
+    ProfileType InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId, ProfileType::Kind typeKind = ProfileType::Kind::LiteralId);
     ProfileType InsertTraceId(JSTaggedType hclass, ProfileType traceType);
 
 private:
@@ -133,7 +133,8 @@ private:
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *hclass, PGOObjKind kind);
     bool AddObjectInfoByTraceId(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                                JSHClass *hclass, ProfileType::Kind classKind, PGOObjKind kind);
+                                JSHClass *hclass, ProfileType::Kind classKind, PGOObjKind kind,
+                                JSHClass *receiverClass = nullptr);
 
     JSTaggedValue PopFromProfileQueue();
 

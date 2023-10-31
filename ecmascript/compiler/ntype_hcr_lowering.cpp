@@ -14,291 +14,186 @@
  */
 
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 
-void NTypeHCRLowering::RunNTypeHCRLowering()
+GateRef NTypeHCRLowering::VisitGate(GateRef gate)
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            Lower(gate);
-        }
-    }
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After NTypeHCRlowering "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
-}
-
-void NTypeHCRLowering::Lower(GateRef gate)
-{
-    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-    // initialize label manager
-    Environment env(gate, circuit_, &builder_);
-    switch (ecmaOpcode) {
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-            LowerNTypedCreateEmptyArray(gate);
+    GateRef glue = acc_.GetGlueFromArgList();
+    auto op = acc_.GetOpCode(gate);
+    switch (op) {
+        case OpCode::CREATE_ARRAY:
+            LowerCreateArray(gate, glue);
             break;
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            LowerNTypedCreateArrayWithBuffer(gate);
-            break;
-        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
-        case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
-        case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
-            LowerNTypedStownByIndex(gate);
-            break;
-        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerNTypedStOwnByName(gate);
-            break;
-        case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
-            LowerThrowUndefinedIfHoleWithName(gate);
-            break;
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-            LowerLdLexVar(gate);
-            break;
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-            LowerStLexVar(gate);
+        case OpCode::CREATE_ARRAY_WITH_BUFFER:
+            LowerCreateArrayWithBuffer(gate, glue);
             break;
         default:
             break;
     }
+    return Circuit::NullGate();
 }
 
-void NTypeHCRLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
+void NTypeHCRLowering::LowerCreateArray(GateRef gate, GateRef glue)
 {
-    GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
-    builder_.LexVarIsHoleCheck(value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
-}
-
-void NTypeHCRLowering::LowerLdLexVar(GateRef gate)
-{
-    AddProfiling(gate);
-    GateRef level = acc_.GetValueIn(gate, 0); // 0: first parameter
-    GateRef index = acc_.GetValueIn(gate, 1); // 1: the second parameter
-    GateRef currentEnv = acc_.GetValueIn(gate, 2); // 2: the third parameter
-
-    uint32_t levelValue = static_cast<uint32_t>(acc_.GetConstantValue(level));
-    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
-    GateRef result = Circuit::NullGate();
-    if (levelValue == 0) {
-        result = builder_.LoadFromTaggedArray(currentEnv, indexValue);
-    } else if (levelValue == 1) { // 1: level 1
-        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
-        result = builder_.LoadFromTaggedArray(parentEnv, indexValue);
+    Environment env(gate, circuit_, &builder_);
+    if (acc_.GetArraySize(gate) == 0) {
+        LowerCreateEmptyArray(gate);
     } else {
-        // level > 1, go slowpath
-        return;
+        LowerCreateArrayWithOwn(gate, glue);
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void NTypeHCRLowering::LowerStLexVar(GateRef gate)
+void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate)
 {
-    AddProfiling(gate);
-    GateRef level = acc_.GetValueIn(gate, 0); // 0: first parameter
-    GateRef index = acc_.GetValueIn(gate, 1); // 1: the second parameter
-    GateRef currentEnv = acc_.GetValueIn(gate, 2); // 2: the third parameter
-    GateRef value = acc_.GetValueIn(gate, 3); // 3: the fourth parameter
+    GateRef length = builder_.Int32(0);
+    GateRef elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
 
-    uint32_t levelValue = static_cast<uint32_t>(acc_.GetConstantValue(level));
-    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
-    GateRef result = Circuit::NullGate();
-    if (levelValue == 0) {
-        result = builder_.StoreToTaggedArray(currentEnv, indexValue, value);
-    } else if (levelValue == 1) { // 1: level 1
-        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
-        result = builder_.StoreToTaggedArray(parentEnv, indexValue, value);
-    } else {
-        // level > 1, go slowpath
-        return;
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-void NTypeHCRLowering::LowerNTypedCreateEmptyArray(GateRef gate)
-{
-    // in the future, the type of the elements in the array will be obtained through pgo,
-    // and the type will be used to determine whether to create a typed-array.
-    AddProfiling(gate);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
-    ElementsKind kind = acc_.TryGetElementsKind(gate);
-    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
-    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
-    GateRef array = builder_.CreateArray(kind, 0);
+    auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-void NTypeHCRLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
+void NTypeHCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
 {
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    uint32_t elementsLength = acc_.GetArraySize(gate);
+    GateRef length = builder_.IntPtr(elementsLength);
+    GateRef elements = CreateElementsWithLength(gate, glue, elementsLength);
+
+    auto array = NewJSArrayLiteral(gate, elements, length);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef aotElmIndex = acc_.GetValueIn(gate, 1);
+    auto elementIndex = acc_.GetConstantValue(aotElmIndex);
+    uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    ArgumentAccessor argAcc(circuit_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
-    uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-        thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName_);
+        thread, constpoolHandle.GetTaggedValue(), constPoolIndex, recordName_);
     JSHandle<JSArray> arrayHandle(thread, arr);
-
-    ElementsKind kind = acc_.TryGetElementsKind(gate);
-    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
-    GateType gateType = acc_.GetGateType(gate);
-    panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
-    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
-    tsManager_->AddArrayTSElements(id, arrayHandle->GetElements());
-    tsManager_->AddArrayTSElementsKind(id, JSTaggedValue(static_cast<int64_t>(kind)));
-    gateType = tsManager_->TryNarrowUnionType(gateType);
-
-    int elementIndex = -1;
-    if (tsManager_->IsArrayTypeKind(gateType)) {
-        elementIndex = tsManager_->GetElementsIndexByArrayType(gateType, id);
+    TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
+    uint32_t literialLength = arrayLiteral->GetLength();
+    uint32_t arrayLength = acc_.GetArraySize(gate);
+    GateRef elements = Circuit::NullGate();
+    GateRef length = Circuit::NullGate();
+    if (arrayLength > literialLength) {
+        elements = CreateElementsWithLength(gate, glue, arrayLength);
+        for (uint32_t i = 0; i < literialLength; i++) {
+            GateRef value = builder_.LoadFromTaggedArray(literialElements, i);
+            builder_.StoreToTaggedArray(elements, i, value);
+        }
+        length = builder_.IntPtr(arrayLength);
+    } else {
+        elements = literialElements;
+        length = builder_.IntPtr(literialLength);
     }
-    if (elementIndex == -1) { // slowpath
-        return;
-    }
 
-    AddProfiling(gate);
-    GateRef elementIndexGate = builder_.IntPtr(elementIndex);
-    GateRef array = builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, index, elementIndexGate);
+    auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-void NTypeHCRLowering::LowerNTypedStownByIndex(GateRef gate)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
 {
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef value = acc_.GetValueIn(gate, 2);
-    if (acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY &&
-        acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY_WITH_BUFFER) {
-        return;
-    }
-    builder_.COWArrayCheck(receiver);
-
-    AddProfiling(gate);
-    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    uint32_t arraySize = acc_.GetArraySize(receiver);
-    if (indexValue > arraySize) {
-        acc_.TrySetElementsKind(receiver, ElementsKind::HOLE);
-    }
-    acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
-    index = builder_.Int32(indexValue);
-    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    return builder_.LoadFromTaggedArray(constPool, index);
 }
 
-void NTypeHCRLowering::LowerNTypedStOwnByName(GateRef gate)
+GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength)
 {
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    auto constData = acc_.GetValueIn(gate, 0);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto propKey = tsManager_->GetStringFromConstantPool(propIndex);
-
-    GateRef receiver = acc_.GetValueIn(gate, 1);
-    GateRef value = acc_.GetValueIn(gate, 2);
-
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = -1;
-    if (tsManager_->IsObjectTypeKind(receiverType)) {
-        hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
+    GateRef elements = Circuit::NullGate();
+    GateRef length = builder_.IntPtr(arrayLength);
+    if (arrayLength < MAX_TAGGED_ARRAY_LENGTH) {
+        elements = NewTaggedArray(arrayLength);
+    } else {
+        elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
     }
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, propKey);
-    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath
-        return;
-    }
-    AddProfiling(gate);
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    builder_.StoreProperty(receiver, pfrGate, value);
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    return elements;
 }
 
-uint64_t NTypeHCRLowering::GetBcAbsoluteOffset(GateRef gate) const
+GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length)
 {
-    uint64_t pcOffset = acc_.TryGetPcOffset(gate);
-    uint64_t pfOffset = reinterpret_cast<uint64_t>(jsPandaFile_->GetHeader());
-    uint64_t methodOffset = reinterpret_cast<uint64_t>(methodLiteral_->GetBytecodeArray());
-    uint64_t bcAbsoluteOffset = methodOffset - pfOffset + pcOffset;
-    return bcAbsoluteOffset;
-}
-
-void NTypeHCRLowering::AddProfiling(GateRef gate)
-{
-    if (IsTraceBC()) {
-        // see stateSplit as a part of JSByteCode if exists
-        GateRef maybeStateSplit = acc_.GetDep(gate);
-        GateRef current = Circuit::NullGate();
-        if (acc_.GetOpCode(maybeStateSplit) == OpCode::STATE_SPLIT) {
-            current = maybeStateSplit;
-        } else {
-            current = gate;
-        }
-
-        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-        GateRef typedPath = builder_.Int32ToTaggedInt(builder_.Int32(1));
-        GateRef traceGate = builder_.CallRuntime(glue_, RTSTUB_ID(DebugAOTPrint), acc_.GetDep(current),
-                                                 { constOpcode, typedPath }, gate);
-        acc_.SetDep(current, traceGate);
-        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: trace or STATE_SPLIT
+    ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
+    GateRef hclass = Circuit::NullGate();
+    if (!Elements::IsGeneric(kind)) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        auto hclassIndex = thread->GetArrayHClassIndexMap().at(kind);
+        hclass = builder_.GetGlobalConstantValue(hclassIndex);
+    } else {
+        GateRef globalEnv = builder_.GetGlobalEnv();
+        hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     }
 
-    if (IsProfiling()) {
-        // see stateSplit as a part of JSByteCode if exists
-        GateRef maybeStateSplit = acc_.GetDep(gate);
-        GateRef current = Circuit::NullGate();
-        if (acc_.GetOpCode(maybeStateSplit) == OpCode::STATE_SPLIT) {
-            current = maybeStateSplit;
-        } else {
-            current = gate;
-        }
+    JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
+    JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
+    size_t arraySize = arrayHC->GetObjectSize();
+    size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
 
-        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-        GateRef mode =
-            builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
-        GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
-                                                 { constOpcode, mode }, gate);
-        acc_.SetDep(current, profiling);
-        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
+
+    builder_.StartAllocate();
+    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    // initialization
+    for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
+        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
+    }
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
+                              builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
+    builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
+    builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
+    builder_.FinishAllocate();
+    return array;
+}
+
+GateRef NTypeHCRLowering::NewTaggedArray(size_t length)
+{
+    GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_CLASS_INDEX);
+    GateRef elementsSize = builder_.ComputeTaggedArraySize(builder_.IntPtr(length));
+
+    builder_.StartAllocate();
+    GateRef elements = builder_.HeapAlloc(elementsSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), elements, 0, elementsHclass);
+    builder_.StoreConstOffset(VariableType::JS_ANY(), elements, TaggedArray::LENGTH_OFFSET,
+        builder_.Int32ToTaggedInt(builder_.IntPtr(length)));
+    size_t endOffset = TaggedArray::DATA_OFFSET + length * JSTaggedValue::TaggedTypeSize();
+    // initialization
+    for (size_t offset = TaggedArray::DATA_OFFSET; offset < endOffset; offset += JSTaggedValue::TaggedTypeSize()) {
+        builder_.StoreConstOffset(VariableType::INT64(), elements, offset, builder_.Hole());
+    }
+    builder_.FinishAllocate();
+
+    return elements;
+}
+
+GateRef NTypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+    bool useLabel)
+{
+    if (useLabel) {
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
+        return result;
+    } else {
+        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
+        GateRef target = builder_.IntPtr(index);
+        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
+        return result;
     }
 }
 }

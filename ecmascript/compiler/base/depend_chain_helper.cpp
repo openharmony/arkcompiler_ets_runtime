@@ -103,4 +103,19 @@ DependChains* DependChains::UpdateNode(GateRef gate)
     that->size_ = size_ + 1;
     return that;
 }
+
+GateRef DependChains::LookupStLexvarNode(LexicalEnvSpecialization* lexicalEnvSpecialization, GateRef gate)
+{
+    GateRef result = Circuit::NullGate();
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        if (lexicalEnvSpecialization->SearchStLexVar(node->gate, gate, result)) {
+            return node->gate;
+        } else {
+            if (result == gate) {
+                return Circuit::NullGate();
+            }
+        }
+    }
+    return Circuit::NullGate();
+}
 } // namespace panda::ecmascript::kungfu

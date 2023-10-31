@@ -2441,6 +2441,18 @@ JSTaggedValue RuntimeStubs::JSHClassFindProtoTransitions(JSHClass *cls, JSTagged
     return JSTaggedValue(cls->FindProtoTransitions(key, proto));
 }
 
+JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    CVector<uint8_t> buf;
+    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
+    if (base::NumberHelper::IsEmptyString(str.begin(), str.end())) {
+        return base::BuiltinsBase::GetTaggedDouble(base::NAN_VALUE);
+    }
+    double result = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0, base::IGNORE_TRAILING);
+    return base::BuiltinsBase::GetTaggedDouble(result);
+}
+
 double RuntimeStubs::TimeClip(double time)
 {
     return JSDate::TimeClip(time);
@@ -2708,6 +2720,30 @@ uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
     auto string = reinterpret_cast<EcmaString *>(ecmaString);
     uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
     return result;
+}
+
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isUtf8) {
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
+    } else {
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
+    }
+}
+
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isUtf8) {
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        return base::StringHelper::GetEnd(data, start, length);
+    } else {
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        return base::StringHelper::GetEnd(data, start, length);
+    }
 }
 
 DEF_RUNTIME_STUBS(FastStringify)

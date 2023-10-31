@@ -74,6 +74,8 @@ public:
         }
     }
 
+    ProfileType &Remap(const PGOContext &context);
+
     bool IsNone() const
     {
         return type_ == PROFILE_TYPE_NONE.type_;
@@ -181,6 +183,8 @@ public:
         UpdateId(type);
     }
     ProfileTypeRef(PGOContext &context, const ProfileType &type);
+
+    ProfileTypeRef &Remap(const PGOContext &context);
 
     bool IsNone() const
     {

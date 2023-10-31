@@ -45,7 +45,7 @@ public:
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
         // For FA jsvm, merge with existed output file
-        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::MERGE);
     }
 
     void SetBundleName(const std::string &bundleName)

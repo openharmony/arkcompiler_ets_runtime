@@ -1412,6 +1412,7 @@ void MethodTypeInfer::Verify() const
     for (const auto &gate : gateList) {
         if (IsByteCodeGate(gate)) {
             TypeCheck(gate);
+            PGOTypeCheck(gate);
         }
     }
 }
@@ -1451,7 +1452,7 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
             const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
             const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
 
-            std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[TypeAssertion] ");
+            std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[TypeAssertion] ", false);
             log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
 
             LOG_COMPILER(ERROR) << "[TypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
@@ -1460,8 +1461,67 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
     }
 }
 
+void MethodTypeInfer::PGOTypeCheck(GateRef gate) const
+{
+    auto &info = GetByteCodeInfo(gate);
+    if (!info.IsBc(EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8)) { // ArkTools.pgoAssertType
+        return ;
+    }
+    // 1. thisObj
+    auto thisObj = gateAccessor_.GetValueIn(gate, 0);
+    if (!IsByteCodeGate(thisObj)) {
+        return ;
+    }
+    auto &thisObjInfo = GetByteCodeInfo(thisObj);
+    if (!thisObjInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) &&
+        !thisObjInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
+        return;
+    }
+    auto thisObjName = gateAccessor_.GetValueIn(thisObj, 1);
+    uint16_t thisObjNameStrId = gateAccessor_.GetConstantValue(thisObjName);
+    auto thisObjNameString = tsManager_->GetStdStringFromConstantPool(thisObjNameStrId);
+    // 2. funcName
+    auto func = gateAccessor_.GetValueIn(gate, 3);
+    if (!IsByteCodeGate(func)) {
+        return ;
+    }
+    auto &funcInfo = GetByteCodeInfo(func);
+    if (!funcInfo.IsBc(EcmaOpcode::LDOBJBYNAME_IMM8_ID16)) {
+        return;
+    }
+    auto funcName = gateAccessor_.GetValueIn(func, 1);
+    uint16_t funcNameStrId = gateAccessor_.GetConstantValue(funcName);
+    auto funcNameString = tsManager_->GetStdStringFromConstantPool(funcNameStrId);
+    // 3. check whether it is ArkTools.pgoAssertType()
+    if (thisObjNameString == "ArkTools" && funcNameString == "pgoAssertType") {
+        // 4. expected type
+        GateRef expectedGate = gateAccessor_.GetValueIn(gate, 2);
+        GateRef constId = gateAccessor_.GetValueIn(expectedGate, 0);
+        uint16_t strId = gateAccessor_.GetConstantValue(constId);
+        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId); // expected type
+        // 5. pgo type
+        GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
+        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type
+        auto pgoTypeStr = pgoType.ToString();
+        // 6. compare expected type and pgo type
+        if (expectedTypeStr != pgoTypeStr) {
+            const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+            EntityId methodId = builder_->GetMethod()->GetMethodId();
+            DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+            const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
+            const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+
+            std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[PGOTypeAssertion] ", true);
+            log += "[PGOTypeAssertion] but expected type: " + expectedTypeStr + "\n";
+
+            LOG_COMPILER(ERROR) << "[PGOTypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
+            LOG_COMPILER(FATAL) << log << "[compiler] [PGOTypeAssertion] end";
+        }
+    }
+}
+
 std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
-                                                    const std::string &logPreFix) const
+                                                    const std::string &logPreFix, bool isPGO) const
 {
     std::string log(logPreFix);
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
@@ -1495,12 +1555,17 @@ std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtra
         }
     }
 
-    GateType type = gateAccessor_.GetGateType(gate);
-    log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-    if (!tsManager_->IsPrimitiveTypeKind(type)) {
-        GlobalTSTypeRef gt = type.GetGTRef();
-        log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
-        log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
+    if (!isPGO) {
+        GateType type = gateAccessor_.GetGateType(gate);
+        log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+        if (!tsManager_->IsPrimitiveTypeKind(type)) {
+            GlobalTSTypeRef gt = type.GetGTRef();
+            log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+            log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
+        }
+    } else {
+        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(gate); // pgo type
+        log += "pgoType: " + pgoType.ToString() + ", ";
     }
 
     log += "\n[compiler] ";

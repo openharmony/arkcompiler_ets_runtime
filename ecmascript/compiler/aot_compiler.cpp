@@ -101,6 +101,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableCollectLiteralInfo_ = false;
+    isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
 }
 
 bool CompilationPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)
@@ -334,7 +335,8 @@ int Main(const int argc, const char **argv)
                                 cOptions.isEnableOptOnHeapCheck_,
                                 cOptions.isEnableOptLoopInvariantCodeMotion_,
                                 cOptions.isEnableCollectLiteralInfo_,
-                                cOptions.isEnableOptConstantFolding_);
+                                cOptions.isEnableOptConstantFolding_,
+                                cOptions.isEnableLexenvSpecialization_);
         std::string entrypoint = GetEntryPoint(runtimeOptions);
         PassManager passManager(vm,
                                 entrypoint,

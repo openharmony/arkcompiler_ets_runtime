@@ -28,7 +28,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
-#include "os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
@@ -104,7 +104,7 @@ bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
     if (!isProfilingInitialized_) {
         return false;
     }
-    os::memory::ReadLockHolder lock(rwLock_);
+    ReadLockHolder lock(rwLock_);
     const auto *entry = abcFilePool_->GetEntry(abcId);
     if (entry == nullptr) {
         return false;
@@ -146,6 +146,30 @@ bool PGOProfilerEncoder::Save()
     }
     LockHolder lock(mutex_);
     return InternalSave();
+}
+
+void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncoder, PGOProfilerDecoder &decoder,
+                                               const SaveTask *task)
+{
+    // copy abcFilePool from runtime to temp merger.
+    ASSERT(abcFilePool_->GetPool()->Empty());
+    abcFilePool_->Copy(runtimeEncoder.abcFilePool_);
+    if (!decoder.LoadFull(abcFilePool_)) {
+        LOG_ECMA(ERROR) << "Fail to load ap: " << realOutPath_;
+    } else {
+        Merge(decoder.GetPandaFileInfos());
+        globalRecordInfos_ = decoder.GetRecordDetailInfosPtr();
+    }
+    if (task && task->IsTerminate()) {
+        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+        return;
+    }
+    Merge(*runtimeEncoder.pandaFileInfos_);
+    if (task && task->IsTerminate()) {
+        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+        return;
+    }
+    Merge(*runtimeEncoder.globalRecordInfos_);
 }
 
 bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
@@ -209,6 +233,15 @@ bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
     if (!isProfilingInitialized_) {
         return false;
+    }
+    if ((mode_ == MERGE) && FileExist(realOutPath_.c_str())) {
+        PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
+        encoder.InitializeData();
+        PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
+        encoder.MergeWithExistProfile(*this, decoder, task);
+        auto saveAndRenameResult = encoder.SaveAndRename(task);
+        encoder.Destroy();
+        return saveAndRenameResult;
     }
     return SaveAndRename(task);
 }

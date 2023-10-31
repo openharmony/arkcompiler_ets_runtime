@@ -163,6 +163,10 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
             holder.allocator_ = new TlabAllocator(heap_);
         }
     }
+    if (initialized_.load(std::memory_order_acquire)) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
     initialized_.store(true, std::memory_order_release);
 }
 

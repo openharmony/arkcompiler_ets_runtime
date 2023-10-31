@@ -631,10 +631,153 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
     }
 }
 
+GateRef BuiltinsStringStubBuilder::ConvertAndClampRelativeIndex(GateRef index, GateRef length)
+{
+    auto env = GetEnvironment();
+
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(relativeIndex, VariableType::INT32(), Int32(-1));
+
+    Label indexGreaterThanOrEqualZero(env);
+    Label indexLessThanZero(env);
+    Label next(env);
+
+    Branch(Int32GreaterThanOrEqual(index, Int32(0)), &indexGreaterThanOrEqualZero, &indexLessThanZero);
+    Bind(&indexGreaterThanOrEqualZero);
+    {
+        relativeIndex = index;
+        Jump(&next);
+    }
+    Bind(&indexLessThanZero);
+    {
+        relativeIndex = Int32Add(index, length);
+        Jump(&next);
+    }
+    Bind(&next);
+    {
+        Label relativeIndexLessThanZero(env);
+        Label elseCheck(env);
+        Label exit(env);
+
+        Branch(Int32LessThan(*relativeIndex, Int32(0)), &relativeIndexLessThanZero, &elseCheck);
+        Bind(&relativeIndexLessThanZero);
+        {
+            relativeIndex = Int32(0);
+            Jump(&exit);
+        }
+        Bind(&elseCheck);
+        {
+            Label relativeIndexGreaterThanLength(env);
+
+            Branch(Int32GreaterThan(*relativeIndex, length), &relativeIndexGreaterThanLength, &exit);
+            Bind(&relativeIndexGreaterThanLength);
+            {
+                relativeIndex = length;
+                Jump(&exit);
+            }
+        }
+        Bind(&exit);
+        auto ret = *relativeIndex;
+        env->SubCfgExit();
+        return ret;
+    }
+}
+
+void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+
+    DEFVARIABLE(start, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(end, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(sliceLen, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label objNotUndefinedAndNull(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label isString(env);
+
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            Label startTagDefined(env);
+
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagDefined);
+            Bind(&startTagDefined);
+            {
+                Label startTagIsInt(env);
+                Label endTagUndefined(env);
+                Label endTagDefined(env);
+                Label endTagIsInt(env);
+                Label next(env);
+
+                GateRef startTag = GetCallArg0(numArgs);
+                Branch(TaggedIsInt(startTag), &startTagIsInt, slowPath);
+                Bind(&startTagIsInt);
+                GateRef thisLen = GetLengthFromString(thisValue);
+                start = ConvertAndClampRelativeIndex(GetInt32OfTInt(startTag), thisLen);
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagUndefined, &endTagDefined);
+                Bind(&endTagUndefined);
+                {
+                    end = thisLen;
+                    Jump(&next);
+                }
+                Bind(&endTagDefined);
+                {
+                    GateRef endTag = GetCallArg1(numArgs);
+                    Branch(TaggedIsInt(endTag), &endTagIsInt, slowPath);
+                    Bind(&endTagIsInt);
+                    end = ConvertAndClampRelativeIndex(GetInt32OfTInt(endTag), thisLen);
+                    Jump(&next);
+                }
+                Bind(&next);
+                {
+                    Label emptyString(env);
+                    Label fastSubString(env);
+                    Label finish(env);
+
+                    sliceLen = Int32Sub(*end, *start);
+                    Branch(Int32LessThanOrEqual(*sliceLen, Int32(0)), &emptyString, &fastSubString);
+                    Bind(&emptyString);
+                    {
+                        result = GetGlobalConstantValue(
+                            VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+                        Jump(&finish);
+                    }
+                    Bind(&fastSubString);
+                    {
+                        Label thisFlattenFastPath(env);
+                        FlatStringStubBuilder thisFlat(this);
+                        thisFlat.FlattenString(glue, thisValue, &thisFlattenFastPath);
+                        Bind(&thisFlattenFastPath);
+                        StringInfoGateRef stringInfoGate(&thisFlat);
+                        result = FastSubString(glue, thisValue, *start, *sliceLen, stringInfoGate);
+                        Jump(&finish);
+                    }
+                    Bind(&finish);
+                    res->WriteVariable(*result);
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
 void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef numArgs [[maybe_unused]],
     Variable *res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    DEFVARIABLE(start, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(end, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(sliceLen, VariableType::INT32(), Int32(-1));
 
     Label objNotUndefinedAndNull(env);
 
@@ -1721,24 +1864,13 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcStrin
     Bind(&notEmpty);
     {
         Label srcFlattenFastPath(env);
-        Label isUtf8(env);
-        Label isUtf16(env);
 
         FlatStringStubBuilder srcFlat(this);
         srcFlat.FlattenString(glue, srcString, &srcFlattenFastPath);
         Bind(&srcFlattenFastPath);
         StringInfoGateRef srcStringInfoGate(&srcFlat);
-        Branch(IsUtf8String(srcString), &isUtf8, &isUtf16);
-        Bind(&isUtf8);
-        {
-            result = EcmaStringTrimBody(glue, srcStringInfoGate, trimMode, true);
-            Jump(&exit);
-        }
-        Bind(&isUtf16);
-        {
-            result = EcmaStringTrimBody(glue, srcStringInfoGate, trimMode, false);
-            Jump(&exit);
-        }
+        result = EcmaStringTrimBody(glue, srcStringInfoGate, trimMode, IsUtf8String(srcString));
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
@@ -1746,34 +1878,28 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcStrin
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate, GateRef trimMode, bool isUtf8)
+GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate,
+    GateRef trimMode, GateRef isUtf8)
 {
     auto env = GetEnvironment();
 
     Label entry(env);
     env->SubCfgEntry(&entry);
 
-    GateRef dataLen = srcStringInfoGate.GetLength();
+    GateRef srcLen = srcStringInfoGate.GetLength();
+    GateRef srcString = srcStringInfoGate.GetString();
 
     DEFVARIABLE(start, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(end, VariableType::INT32(), Int32Sub(dataLen, Int32(1)));
+    DEFVARIABLE(end, VariableType::INT32(), Int32Sub(srcLen, Int32(1)));
 
     Label trimOrTrimStart(env);
     Label notTrimStart(env);
     Label next(env);
 
-    GateRef utfData;
-    if (isUtf8) {
-        utfData = GetUtf8Data(srcStringInfoGate.GetString(), dataLen);
-    } else {
-        utfData = GetUtf16Data(srcStringInfoGate.GetString(), dataLen);
-    }
-
     Branch(Int32GreaterThanOrEqual(trimMode, Int32(0)), &trimOrTrimStart, &notTrimStart);
     Bind(&trimOrTrimStart); // mode = TrimMode::TRIM or TrimMode::TRIM_START
     {
-        //start = CallRuntime(glue, RTSTUB_ID(RTStringGetStart), {isUtf8, utfData, dataLen});
-        //start = CallNGRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, utfData, dataLen})
+        start = CallNGCRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, srcString, srcLen});
         Jump(&notTrimStart);
     }
     Bind(&notTrimStart);
@@ -1782,14 +1908,14 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGa
         Branch(Int32LessThanOrEqual(trimMode, Int32(0)), &trimOrTrimEnd, &next);
         Bind(&trimOrTrimEnd); // mode = TrimMode::TRIM or TrimMode::TRIM_END
         {
-            //end = CallRuntime(glue, RTSTUB_ID(RTStringGetEnd), {isUtf8, data, *start, dataLen});
-            //end = Int32(0);
+            end = CallNGCRuntime(glue, RTSTUB_ID(StringGetEnd), {isUtf8, srcString, *start, srcLen});
             Jump(&next);
         }
     }
     Bind(&next);
     {
-        auto ret = FastSubString(glue, srcStringInfoGate.GetString(), *start, Int32Add(Int32Sub(*end, *start), Int32(1)), srcStringInfoGate);
+        auto ret = FastSubString(glue, srcString, *start,
+                                 Int32Add(Int32Sub(*end, *start), Int32(1)), srcStringInfoGate);
         env->SubCfgExit();
         return ret;
     }

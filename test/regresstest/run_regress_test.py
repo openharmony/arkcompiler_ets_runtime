@@ -301,6 +301,7 @@ def open_write_file(file_path, append):
 
 
 def run_test_case_with_expect(command, test_case_file, expect_file, result_file, timeout):
+    ret_code = 0
     expect_output_str = read_expect_file(expect_file, test_case_file)
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
@@ -327,11 +328,13 @@ def run_test_case_with_expect(command, test_case_file, expect_file, result_file,
 
 
 def run_test_case_with_assert(command, test_case_file, result_file, timeout):
+    ret_code = 0
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
             out, err = process.communicate(timeout=timeout)
             ret_code = process.poll()
-            if ret_code != 0 or err != b'':
+            err_str = err.decode('UTF-8')
+            if ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
                 out_put_std(ret_code, command, f'FAIL: {test_case_file} \nerr: {str(err)}')
                 write_result_file(f'FAIL {test_case_file} \n', result_file)
                 return False

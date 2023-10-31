@@ -37,6 +37,7 @@
     V("isRegExpReplaceDetectorValid",  IsRegExpReplaceDetectorValid,  0, INVALID)         \
     V("isSymbolIteratorDetectorValid", IsSymbolIteratorDetectorValid, 1, INVALID)         \
     V("isTSHClass",                    IsTSHClass,                    1, INVALID)         \
+    V("pgoAssertType",                 PGOAssertType,                 2, INVALID)         \
     V("print",                         ObjectDump,                    0, INVALID)         \
     V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
     V("timeInUs",                      TimeInUs,                      0, INVALID)
@@ -137,6 +138,8 @@ public:
     static JSTaggedValue WaitForBackgroundOptimization(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue Gc(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PGOAssertType(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

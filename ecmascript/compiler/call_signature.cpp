@@ -1180,6 +1180,20 @@ DEF_CALL_SIGNATURE(JSHClassFindProtoTransitions)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(NumberHelperStringToDouble)
+{
+    // 1 : 1 input parameters
+    CallSignature bigIntSameValueZero("NumberHelperStringToDouble", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = bigIntSameValueZero;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(BigIntEquals)
 {
     // 2 : 2 input parameters
@@ -1204,6 +1218,35 @@ DEF_CALL_SIGNATURE(BigIntSameValueZero)
     std::array<VariableType, 2> params = { // 2 : 2 input parameters
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(StringGetStart)
+{
+    CallSignature stringGetStart("StringGetStart", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = stringGetStart;
+    std::array<VariableType, 3> params = { // 3 : three input parameters
+        VariableType::BOOL(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(StringGetEnd)
+{
+    CallSignature stringGetEnd("StringGetEnd", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = stringGetEnd;
+    std::array<VariableType, 4> params = { // 4 : four input parameters
+        VariableType::BOOL(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

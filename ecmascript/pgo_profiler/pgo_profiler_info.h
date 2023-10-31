@@ -514,6 +514,21 @@ public:
         return header_->SupportElementsTrackInfo();
     }
 
+    void ResetAbcIdRemap() const override
+    {
+        abcIdRemap_.clear();
+    }
+
+    void AddAbcIdRemap(ApEntityId oldId, ApEntityId newId) const override
+    {
+        abcIdRemap_[oldId] = newId;
+    }
+
+    const std::map<ApEntityId, ApEntityId> &GetAbcIdRemap() const override
+    {
+        return abcIdRemap_;
+    }
+
     NO_COPY_SEMANTIC(PGORecordDetailInfos);
     NO_MOVE_SEMANTIC(PGORecordDetailInfos);
 
@@ -531,6 +546,7 @@ private:
     std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
+    mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
 };
 
 class PGORecordSimpleInfos : public PGOContext {
@@ -674,6 +690,21 @@ public:
         return header_->SupportElementsTrackInfo();
     }
 
+    void ResetAbcIdRemap() const override
+    {
+        abcIdRemap_.clear();
+    }
+
+    const std::map<ApEntityId, ApEntityId> &GetAbcIdRemap() const override
+    {
+        return abcIdRemap_;
+    }
+
+    void AddAbcIdRemap(ApEntityId oldId, ApEntityId newId) const override
+    {
+        abcIdRemap_[oldId] = newId;
+    }
+
     NO_COPY_SEMANTIC(PGORecordSimpleInfos);
     NO_MOVE_SEMANTIC(PGORecordSimpleInfos);
 
@@ -689,6 +720,7 @@ private:
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
+    mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
 };
 } // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_PROFILER_INFO_H

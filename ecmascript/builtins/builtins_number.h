@@ -44,7 +44,7 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsNumber::func refers to the native implementation of Number[name].
 #define BUILTIN_NUMBER_GLOBAL_FUNCTIONS(V)                                              \
-    V("parseFloat", ParseFloat, 1, INVALID) /* Number.parseFloat ( string ) */          \
+    V("parseFloat", ParseFloat, 1, NumberParseFloat) /* Number.parseFloat ( string ) */ \
     V("parseInt",   ParseInt,   2, INVALID) /* Number.parseInt ( string, radix ) */
 
 #define BUILTIN_NUMBER_FUNCTIONS(V)         \
@@ -166,6 +166,35 @@ private:
 #undef BUILTIN_NUMBER_FUNCTION_ENTRY
 
     static JSTaggedNumber ThisNumberValue(JSThread *thread, EcmaRuntimeCallInfo *argv);
+};
+
+class NumberToStringResultCache : public TaggedArray {
+public:
+    static NumberToStringResultCache *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<NumberToStringResultCache*>(object);
+    }
+    static JSTaggedValue CreateCacheTable(const JSThread *thread);
+    JSTaggedValue FindCachedResult(JSTaggedValue &number);
+    void SetCachedResult(const JSThread *thread, JSTaggedValue &number, JSHandle<EcmaString> &result);
+    int GetNumberHash(JSTaggedValue &number)
+    {
+        int mask = INITIAL_CACHE_NUMBER - 1;
+        int value = 0;
+        if (number.IsInt()) {
+            value = number.GetInt();
+        } else {
+            int64_t bits = base::bit_cast<int64_t>(number.GetDouble());
+            value = static_cast<int>(bits) ^ static_cast<int>(bits >> 32); // 32: hight 32 bit
+        }
+        return value & mask;
+    }
+
+private:
+    static constexpr int INITIAL_CACHE_NUMBER = 256;
+    static constexpr int NUMBER_INDEX = 0;
+    static constexpr int RESULT_INDEX = 1;
+    static constexpr int ENTRY_SIZE = 2;
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_NUBMER_H

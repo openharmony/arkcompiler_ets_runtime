@@ -791,7 +791,7 @@ bool EcmaString::ToInt(int32_t *index)
         loopStart = 1;
     }
 
-    if (ToUInt64FromLoopStart(&n, loopStart, data) && n < JSObject::MAX_ELEMENT_INDEX) {
+    if (ToUInt64FromLoopStart(&n, loopStart, data) && n <= base::MAX_INT_VALUE) {
         *index = negative ? -n : n;
         return true;
     }

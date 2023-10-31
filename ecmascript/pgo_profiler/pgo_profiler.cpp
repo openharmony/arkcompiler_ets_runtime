@@ -67,13 +67,15 @@ void PGOProfiler::ProfileDefineClass(JSTaggedType ctor)
     auto traceId = ctorMethod->GetMethodId().GetOffset();
     auto ctorMethodHClass = ctorFunc->GetClass();
     ctorMethodHClass->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-    InsertLiteralTraceId(JSTaggedType(ctorFunc->GetClass()), GetMethodAbcId(ctorFunc), traceId);
+    InsertLiteralTraceId(JSTaggedType(ctorFunc->GetClass()), GetMethodAbcId(ctorFunc), traceId,
+                         ProfileType::Kind::ClassId);
 
     auto prototype = ctorFunc->GetProtoOrHClass();
     if (prototype.IsJSObject()) {
         auto prototypeHClass = prototype.GetTaggedObject()->GetClass();
         prototypeHClass->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-        InsertLiteralTraceId(JSTaggedType(prototypeHClass), GetMethodAbcId(ctorFunc), traceId);
+        InsertLiteralTraceId(JSTaggedType(prototypeHClass), GetMethodAbcId(ctorFunc), traceId,
+                             ProfileType::Kind::ClassId);
     }
 }
 
@@ -360,7 +362,7 @@ JSTaggedValue PGOProfiler::PopFromProfileQueue()
 bool PGOProfiler::PausePGODump()
 {
     if (state_ == State::PAUSE) {
-        os::memory::LockHolder lock(mutex_);
+        LockHolder lock(mutex_);
         if (state_ == State::PAUSE) {
             condition_.SignalAll();
             return true;
@@ -669,7 +671,7 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
         }
     }
     if (secondValue.IsTransWithProtoHandler()) {
-        auto kind = PGOObjKind::PROTOTYPE;
+        auto kind = PGOObjKind::LOCAL;
         auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
         auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
         if (transitionHClassVal.IsJSHClass()) {
@@ -938,7 +940,8 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
     if (hclass->IsClassConstructor()) {
         kind = PGOObjKind::CONSTRUCTOR;
         auto rootHClass = JSHClass::FindRootHClass(hclass);
-        AddObjectInfoByTraceId(abcId, recordName, methodId, bcOffset, rootHClass, ProfileType::Kind::ClassId, kind);
+        AddObjectInfoByTraceId(abcId, recordName, methodId, bcOffset, rootHClass,
+                               ProfileType::Kind::ClassId, kind, hclass);
     } else if (hclass->IsJSArray()) {
         if (kind == PGOObjKind::ELEMENT) {
             auto elementsKind = hclass->GetElementsKind();
@@ -956,7 +959,8 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
             // maybe object literal
             auto rootHClass = JSHClass::FindRootHClass(hclass);
             auto profileKind = ProfileType::Kind::LiteralId;
-            if (AddObjectInfoByTraceId(abcId, recordName, methodId, bcOffset, rootHClass, profileKind, kind)) {
+            if (AddObjectInfoByTraceId(abcId, recordName, methodId, bcOffset, rootHClass,
+                                       profileKind, kind, hclass)) {
                 return;
             }
         }
@@ -966,7 +970,7 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
             auto prototypeHClass = prototype.GetTaggedObject()->GetClass();
             auto rootHClass = JSHClass::FindRootHClass(prototypeHClass);
             if (AddObjectInfoByTraceId(abcId, recordName, methodId, bcOffset, rootHClass, ProfileType::Kind::ClassId,
-                                       kind)) {
+                                       kind, hclass)) {
                 return;
             }
         }
@@ -978,7 +982,7 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
 
 bool PGOProfiler::AddObjectInfoByTraceId(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                          int32_t bcOffset, JSHClass *hclass, ProfileType::Kind classKind,
-                                         PGOObjKind kind)
+                                         PGOObjKind kind, JSHClass *receiverClass)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     auto iter = tracedProfiles_.find(JSTaggedType(hclass));
@@ -987,14 +991,18 @@ bool PGOProfiler::AddObjectInfoByTraceId(ApEntityId abcId, const CString &record
         traceType.UpdateKind(classKind);
         PGOObjectInfo info(traceType, kind);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
+        if (receiverClass != nullptr) {
+            recordInfos_->AddLayout(PGOSampleType(iter->second), JSTaggedType(receiverClass), kind);
+        }
         return true;
     }
     return false;
 }
 
-ProfileType PGOProfiler::InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId)
+ProfileType PGOProfiler::InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId,
+                                              ProfileType::Kind typeKind)
 {
-    ProfileType literalType(abcId, traceId, ProfileType::Kind::LiteralId);
+    ProfileType literalType(abcId, traceId, typeKind);
     return InsertTraceId(hclass, literalType);
 }
 

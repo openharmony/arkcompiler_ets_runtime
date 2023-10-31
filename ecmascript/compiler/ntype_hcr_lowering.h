@@ -20,72 +20,56 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
-
 namespace panda::ecmascript::kungfu {
-class NTypeHCRLowering {
+class NTypeHCRLowering : public PassVisitor {
 public:
-    NTypeHCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager, const MethodLiteral *methodLiteral,
-                     const CString &recordName, bool enableLog, const std::string& name)
-        : circuit_(circuit),
+    NTypeHCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, const CString &recordName, Chunk* chunk)
+        : PassVisitor(circuit, chunk, visitor),
+          circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
+          dependEntry_(circuit->GetDependRoot()),
+          tsManager_(ctx->GetTSManager()),
           recordName_(recordName),
-          tsManager_(tsManager),
-          jsPandaFile_(ctx->GetJSPandaFile()),
-          methodLiteral_(methodLiteral),
-          enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
-          methodName_(name),
           glue_(acc_.GetGlueFromArgList()) {}
 
     ~NTypeHCRLowering() = default;
-
-    void RunNTypeHCRLowering();
+    GateRef VisitGate(GateRef gate) override;
 private:
+    static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     void Lower(GateRef gate);
-    void LowerNTypedCreateEmptyArray(GateRef gate);
-    void LowerNTypedCreateArrayWithBuffer(GateRef gate);
-    void LowerNTypedStownByIndex(GateRef gate);
-    void LowerNTypedStOwnByName(GateRef gate);
-    void LowerLdLexVar(GateRef gate);
+    void LowerCreateArray(GateRef gate, GateRef glue);
+    void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
+    void LowerCreateEmptyArray(GateRef gate);
+    void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStLexVar(GateRef gate);
-    void LowerThrowUndefinedIfHoleWithName(GateRef gate);
-    uint64_t GetBcAbsoluteOffset(GateRef gate) const;
+    void LowerLdLexVar(GateRef gate);
 
-    bool IsLogEnabled() const
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
+    GateRef NewTaggedArray(size_t length);
+    GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
+    GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                             bool useLabel = false);
+
+    GateRef GetFrameState(GateRef gate) const
     {
-        return enableLog_;
+        return acc_.GetFrameState(gate);
     }
 
-    bool IsProfiling() const
-    {
-        return profiling_;
-    }
-
-    bool IsTraceBC() const
-    {
-        return traceBc_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
-
-    void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    const CString &recordName_;
+    GateRef dependEntry_;
     TSManager *tsManager_ {nullptr};
-    const JSPandaFile *jsPandaFile_ {nullptr};
-    const MethodLiteral *methodLiteral_ {nullptr};
-    bool enableLog_ {false};
+    const CString &recordName_;
+    panda_file::File::EntityId methodId_ {0};
     bool profiling_ {false};
     bool traceBc_ {false};
-    std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu

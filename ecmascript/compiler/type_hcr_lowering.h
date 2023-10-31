@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H
-#define ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/combined_pass_visitor.h"
 
 namespace panda::ecmascript::kungfu {
-// TypeMCRLowering Process
+// TypeHCRLowering Process
 // SW: state wire, DW: depend wire, VW: value wire
 // Before Type Lowering:
 //                                    SW   DW   VW
@@ -96,14 +96,14 @@ namespace panda::ecmascript::kungfu {
 //                                  |      JS_BYTECODE       |
 //                                  +------------------------+
 
-class TypeMCRLowering : public PassVisitor {
+class TypeHCRLowering : public PassVisitor {
 public:
-    TypeMCRLowering(Circuit *circuit, RPOVisitor *visitor,
+    TypeHCRLowering(Circuit *circuit, RPOVisitor *visitor,
                     CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk, bool onHeapCheck)
         : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager), onHeapCheck_(onHeapCheck) {}
 
-    ~TypeMCRLowering() = default;
+    ~TypeHCRLowering() = default;
 
     GateRef VisitGate(GateRef gate) override;
 
@@ -236,4 +236,4 @@ private:
     bool onHeapCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H

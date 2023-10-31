@@ -39,6 +39,33 @@ thread_local uint64_t RandomGenerator::randomState_ {0};
 constexpr char CHARS[] = "0123456789abcdefghijklmnopqrstuvwxyz";  // NOLINT (modernize-avoid-c-arrays)
 constexpr uint64_t MAX_MANTISSA = 0x1ULL << 52U;
 
+static const double POWERS_OF_TEN[] = {
+    1.0,                      // 10^0
+    10.0,
+    100.0,
+    1000.0,
+    10000.0,
+    100000.0,
+    1000000.0,
+    10000000.0,
+    100000000.0,
+    1000000000.0,
+    10000000000.0,            // 10^10
+    100000000000.0,
+    1000000000000.0,
+    10000000000000.0,
+    100000000000000.0,
+    1000000000000000.0,
+    10000000000000000.0,
+    100000000000000000.0,
+    1000000000000000000.0,
+    10000000000000000000.0,
+    100000000000000000000.0,  // 10^20
+    1000000000000000000000.0,
+    10000000000000000000000.0 // 10^22
+};
+static const int POWERS_OF_TEN_SIZE = 23;
+
 static inline uint8_t ToDigit(uint8_t c)
 {
     if (c >= '0' && c <= '9') {
@@ -671,10 +698,15 @@ double NumberHelper::Strtod(const char *str, int exponent, uint8_t radix)
         }
         ++p;
     }
+
+    // cal pow
+    int exponentAbs = exponent < 0 ? -exponent : exponent;
+    double powVal = ((radix == DECIMAL) && (exponentAbs < POWERS_OF_TEN_SIZE)) ?
+        POWERS_OF_TEN[exponentAbs] : std::pow(radix, exponentAbs);
     if (exponent < 0) {
-        result = number / std::pow(radix, -exponent);
+        result = number / powVal;
     } else {
-        result = number * std::pow(radix, exponent);
+        result = number * powVal;
     }
     return sign == Sign::NEG ? -result : result;
 }

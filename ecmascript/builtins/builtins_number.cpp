@@ -437,7 +437,14 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     }
     // 8. If radixNumber = 10, return ToString(x).
     if (radix == base::DECIMAL) {
-        return value.ToString(thread).GetTaggedValue();
+        JSHandle<NumberToStringResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(value);
+        if (cacheResult != JSTaggedValue::Undefined()) {
+            return cacheResult;
+        }
+        JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
+        cacheTable->SetCachedResult(thread, value, resultJSHandle);
+        return resultJSHandle.GetTaggedValue();
     }
 
     double valueNumber = value.GetNumber();
@@ -484,5 +491,33 @@ JSTaggedNumber BuiltinsNumber::ThisNumberValue(JSThread *thread, EcmaRuntimeCall
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "not number type", JSTaggedNumber::Exception());
+}
+
+JSTaggedValue NumberToStringResultCache::CreateCacheTable(const JSThread *thread)
+{
+    int length = INITIAL_CACHE_NUMBER * ENTRY_SIZE;
+    auto table = static_cast<NumberToStringResultCache*>(
+        *thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined()));
+    return JSTaggedValue(table);
+}
+
+JSTaggedValue NumberToStringResultCache::FindCachedResult(JSTaggedValue &number)
+{
+    int entry = NumberToStringResultCache::GetNumberHash(number);
+    uint32_t index = entry * ENTRY_SIZE;
+    JSTaggedValue entryNumber = Get(index + NUMBER_INDEX);
+    if (entryNumber == number) {
+        return Get(index + RESULT_INDEX);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+void NumberToStringResultCache::SetCachedResult(const JSThread *thread, JSTaggedValue &number,
+    JSHandle<EcmaString> &result)
+{
+    int entry = NumberToStringResultCache::GetNumberHash(number);
+    uint32_t index = entry * ENTRY_SIZE;
+    Set(thread, index + NUMBER_INDEX, number);
+    Set(thread, index + RESULT_INDEX, result.GetTaggedValue());
 }
 }  // namespace panda::ecmascript::builtins
