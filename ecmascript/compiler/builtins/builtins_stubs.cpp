@@ -173,7 +173,8 @@ DECLARE_BUILTINS(String##method)                                                
     V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
     V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
-    V(Replace,      JS_ANY,     Undefined())
+    V(Replace,      JS_ANY,     Undefined())                                        \
+    V(Slice,        JS_ANY,     Undefined())
 
 BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
 

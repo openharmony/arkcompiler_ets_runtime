@@ -36,7 +36,9 @@ public:
     void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
+    GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,
         const StringInfoGateRef &stringInfoGate);

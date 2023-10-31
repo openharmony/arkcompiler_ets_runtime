@@ -78,7 +78,7 @@
     /* String.prototype.search ( regexp ) */                                        \
     V("search",            Search,            1, INVALID)                           \
     /* String.prototype.slice ( start, end ) */                                     \
-    V("slice",             Slice,             2, INVALID)                           \
+    V("slice",             Slice,             2, StringSlice)                       \
     /* String.prototype.split ( separator, limit ) */                               \
     V("split",             Split,             2, INVALID)                           \
     /* String.prototype.startsWith ( searchString [ , position ] ) */               \

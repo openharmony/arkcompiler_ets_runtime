@@ -38,6 +38,7 @@ namespace panda::ecmascript::kungfu {
     V(StringReplace)                                \
     V(StringCharAt)                                 \
     V(StringFromCharCode)                           \
+    V(StringSlice)                                  \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \
