@@ -117,7 +117,7 @@ public:
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             preIsWord = IsWordChar(PeekPrevChar(currentPtr_, input_));
         }
-        bool currentIsWord = IsWordChar(PeekChar(currentPtr_, inputEnd_));
+        bool currentIsWord = !IsEOF() && IsWordChar(PeekChar(currentPtr_, inputEnd_));
         if (((opCode == RegExpOpCode::OP_WORD_BOUNDARY) &&
             ((!preIsWord && currentIsWord) || (preIsWord && !currentIsWord))) ||
             ((opCode == RegExpOpCode::OP_NOT_WORD_BOUNDARY) &&

@@ -722,7 +722,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
         }
         bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
         FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
-        if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
+        if (EcmaStringAccessor(inputString).IsTreeString()) { // use flattenedString as srcString
             inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
         }
         const uint8_t *strBuffer;
@@ -1640,7 +1640,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     size_t stringLength = EcmaStringAccessor(inputString).GetLength();
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
     FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
-    if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
+    if (EcmaStringAccessor(inputString).IsTreeString()) { // use flattenedString as srcString
         inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
     }
     const uint8_t *strBuffer;
@@ -1879,7 +1879,7 @@ JSTaggedValue BuiltinsRegExp::RegExpExecForTestFast(JSThread *thread, JSHandle<J
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
     FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), inputString);
-    if (flatStrInfo.GetStartIndex() == 0) { // IsNotSlicedString
+    if (EcmaStringAccessor(inputString).IsTreeString()) { // use flattenedString as srcString
         inputString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
     }
     const uint8_t *strBuffer;
