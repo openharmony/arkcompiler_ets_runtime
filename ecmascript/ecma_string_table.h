@@ -46,6 +46,7 @@ public:
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
     bool CheckStringTableValidity();
+    void RelocateConstantData(const JSPandaFile *jsPandaFile);
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);

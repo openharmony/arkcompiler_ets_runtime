@@ -150,11 +150,13 @@ inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint
     size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
 {
     auto string = ConstantString::Cast(vm->GetFactory()->AllocConstantStringObject(type));
+    auto thread = vm->GetJSThread();
     string->SetLength(length, compressed);
     string->SetRawHashcode(0);
     string->SetConstantData(const_cast<uint8_t *>(utf8Data));
     // The string might be serialized, the const data will be replaced by index in the panda file.
     string->SetEntityId(idOffset);
+    string->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
     return string;
 }
 

@@ -2309,17 +2309,26 @@ JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
     return array;
 }
 
-JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size)
+JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size, void *srcData,
+                                                MemSpaceType spaceType)
 {
     size_t byteSize = ByteArray::ComputeSize(size, length);
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetByteArrayClass().GetTaggedObject());
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(arrayClass, byteSize);
+    TaggedObject *header = AllocObjectWithSpaceType(byteSize, arrayClass, spaceType);
     JSHandle<ByteArray> array(thread_, header);
 
     void *data = array->GetData();
-    if (memset_s(data, length * size, 0, length * size) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
+
+    if (srcData != nullptr) {
+        if (memcpy_s(data, length * size, srcData, length * size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+    } else {
+        if (memset_s(data, length * size, 0, length * size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
     }
 
     array->SetArrayLength(length);
