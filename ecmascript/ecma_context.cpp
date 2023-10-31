@@ -33,6 +33,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/log.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -830,14 +831,14 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
 {
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
-        LOG_ECMA(ERROR) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
         ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
         return false;
     }
 
     std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
     if (!aotFileManager_->LoadAiFile(aiFile)) {
-        LOG_ECMA(ERROR) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
+        LOG_ECMA(WARN) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
         ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
         return false;
     }

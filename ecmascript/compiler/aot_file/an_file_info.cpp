@@ -55,6 +55,10 @@ bool AnFileInfo::Load(const std::string &filename)
                             << "please execute ark_aot_compiler with options --aot-file.";
         return false;
     }
+    if (!FileExist(realPath.c_str())) {
+        LOG_ECMA(WARN) << "File not exist. file: " << realPath;
+        return false;
+    }
 
     fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
     if (fileMapMem_.GetOriginAddr() == nullptr) {
