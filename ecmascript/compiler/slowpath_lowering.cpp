@@ -1547,8 +1547,8 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef numberBigInt = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef numberBigInt = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(LdBigInt), {numberBigInt}, true);
     ReplaceHirWithValue(gate, result);
 }
@@ -1832,8 +1832,8 @@ void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef pattern = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef pattern = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     GateRef flags = acc_.GetValueIn(gate, 1);
     GateRef newGate = LowerCallRuntime(gate, id, { pattern, builder_.ToTaggedInt(flags) }, true);
     ReplaceHirWithValue(gate, newGate);
@@ -1915,8 +1915,8 @@ void SlowPathLowering::LowerStOwnByName(GateRef gate)
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef propKey = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     // we do not need to merge outValueGate, so using GateRef directly instead of using Variable
@@ -2015,8 +2015,8 @@ void SlowPathLowering::LowerTryStGlobalByName(GateRef gate)
 void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, bool isConst)
 {
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef propKey = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     acc_.SetDep(gate, propKey);
     // 2 : number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -2082,8 +2082,8 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate)
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef propKey = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     GateRef result;
@@ -2277,8 +2277,8 @@ void SlowPathLowering::LowerLdSuperByName(GateRef gate)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef prop = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef prop = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     GateRef result =
         LowerCallRuntime(gate, RTSTUB_ID(OptLdSuperByValue), {acc_.GetValueIn(gate, 1), prop, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
@@ -2289,8 +2289,8 @@ void SlowPathLowering::LowerStSuperByName(GateRef gate)
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = acc_.GetValueIn(gate, 0);
-    GateRef prop = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef prop = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     auto args2 = { acc_.GetValueIn(gate, 1), prop, acc_.GetValueIn(gate, 2), jsFunc };
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(OptStSuperByValue), args2, true);
     ReplaceHirWithValue(gate, result);
@@ -3184,9 +3184,9 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
 
 void SlowPathLowering::LowerLdStr(GateRef gate)
 {
-    GateRef stringId = acc_.GetValueIn(gate, 0);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef res = builder_.LoadObjectFromConstPool(jsFunc, stringId);
+    GateRef res = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     ReplaceHirWithValue(gate, res);
 }
 }  // namespace panda::ecmascript

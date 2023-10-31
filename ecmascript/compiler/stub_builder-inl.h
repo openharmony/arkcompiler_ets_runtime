@@ -2700,11 +2700,6 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
     return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
 }
 
-inline GateRef StubBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
-{
-    return env_->GetBuilder()->LoadObjectFromConstPool(jsFunc, index);
-}
-
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
 {
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));

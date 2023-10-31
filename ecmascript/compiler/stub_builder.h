@@ -702,7 +702,6 @@ public:
 
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);
-    inline GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     inline GateRef LoadPfHeaderFromConstPool(GateRef jsFunc);
     GateRef RemoveTaggedWeakTag(GateRef weak);
     inline GateRef LoadHCIndexFromConstPool(GateRef cachedArray, GateRef cachedLength, GateRef traceId, Label *miss);
