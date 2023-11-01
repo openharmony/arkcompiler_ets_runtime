@@ -1530,6 +1530,27 @@ GateRef StubBuilder::IsDigit(GateRef ch)
         Int32GreaterThanOrEqual(ch, Int32('0')));
 }
 
+void StubBuilder::TryToGetInteger(GateRef string, Variable *num, Label *success, Label *failed)
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+    Label inRange(env);
+    Label isInteger(env);
+
+    GateRef len = GetLengthFromString(string);
+    Branch(Int32LessThan(len, Int32(MAX_ELEMENT_INDEX_LEN)), &inRange, failed);
+    Bind(&inRange);
+    {
+        Branch(IsIntegerString(string), &isInteger, failed);
+        Bind(&isInteger);
+        {
+            GateRef integerNum = ZExtInt32ToInt64(GetRawHashFromString(string));
+            num->WriteVariable(integerNum);
+            Jump(success);
+        }
+    }
+}
+
 GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
 {
     auto env = GetEnvironment();
@@ -1551,6 +1572,9 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
         Branch(isUtf16String, &exit, &isUtf8);
         Bind(&isUtf8);
         {
+            Label getFailed(env);
+            TryToGetInteger(string, &result, &exit, &getFailed);
+            Bind(&getFailed);
             DEFVARIABLE(c, VariableType::INT32(), Int32(0));
             FlatStringStubBuilder thisFlat(this);
             thisFlat.FlattenString(glue, string, &flattenFastPath);
@@ -5957,24 +5981,7 @@ void StubBuilder::ReturnExceptionIfAbruptCompletion(GateRef glue)
 
 GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    Label noRawHashcode(env);
-    Label exit(env);
-    DEFVARIABLE(hashcode, VariableType::INT32(), Int32(0));
-    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::HASHCODE_OFFSET));
-    Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
-    Bind(&noRawHashcode);
-    {
-        hashcode = CallNGCRuntime(glue, RTSTUB_ID(ComputeHashcode), { value });
-        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *hashcode;
-    env->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->GetHashcodeFromString(glue, value);
 }
 
 GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj)

@@ -48,18 +48,6 @@ public:
     JSThread *thread {nullptr};
 };
 
-static bool CheckHole(JSHandle<TaggedHashArray> &hashArray)
-{
-    uint32_t arrayLength = hashArray->GetLength();
-    for (uint32_t i = 0; i < arrayLength; i++) {
-        JSTaggedValue indexValue = hashArray->Get(i);
-        if (indexValue.IsHole()) {
-            return false;
-        }
-    }
-    return true;
-}
-
 /**
  * @tc.name: CreateTaggedHashArray
  * @tc.desc: Call "TaggedHashArray::Create" function Create TaggedHashArray object, check whether the object
@@ -151,8 +139,6 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetLinkNode)
         keyHash = TaggedNode::Hash(listKey.GetTaggedValue());
         TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, listKey, listValue);
     }
-    bool result = CheckHole(taggedHashArray);
-    EXPECT_TRUE(result);
     keyHash = TaggedNode::Hash(myKey4.GetTaggedValue());
     // change value and add new key
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey4, myKey4Value);
@@ -200,8 +186,6 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetTreeNode)
         uint32_t hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
         taggedHashArray->Set(thread, hashArrayIndex, rootTreeWithValueNode.GetTaggedValue());
     }
-    bool result = CheckHole(taggedHashArray);
-    EXPECT_TRUE(result);
     keyHash = TaggedNode::Hash(myKey5.GetTaggedValue());
     // change value and add new key
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey5, myKey5Value);

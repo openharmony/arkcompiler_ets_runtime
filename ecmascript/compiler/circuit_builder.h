@@ -576,6 +576,9 @@ public:
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
+    GateRef IsIntegerString(GateRef string);
+    GateRef GetRawHashFromString(GateRef value);
+    void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
 
     // for in
     GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
