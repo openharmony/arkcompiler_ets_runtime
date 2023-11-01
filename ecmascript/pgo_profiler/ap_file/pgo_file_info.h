@@ -139,7 +139,7 @@ public:
 
     bool Verify() const
     {
-        return VerifyVersion("apPath file", LAST_VERSION, false);
+        return VerifyVersion("apPath file", LAST_VERSION, IsStrictMatch());
     }
 
     bool Verify(void *buffer, size_t bufferSize) const
@@ -271,6 +271,17 @@ public:
         return CompatibleVerify(ELEMENTS_TRACK_INFO_MINI_VERSION);
     }
 
+    static bool IsStrictMatch()
+    {
+        return strictMatch_;
+    }
+
+    // just for test
+    static void SetStrictMatch(bool strictMatch)
+    {
+        strictMatch_ = strictMatch;
+    }
+
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
@@ -288,6 +299,7 @@ private:
 
     uint32_t sectionNumber_ {SECTION_SIZE};
     SectionInfo sectionInfos_;
+    static bool strictMatch_;
 };
 
 class PGOProfilerHeaderLegacy : public base::FileHeaderBase {

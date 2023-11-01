@@ -84,6 +84,9 @@ public:
 
     bool ResetOutPathByModuleName(const std::string &moduleName);
 
+protected:
+    PGOProfilerHeader *header_ {nullptr};
+
 private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
@@ -97,7 +100,6 @@ private:
     std::string outDir_;
     uint32_t hotnessThreshold_ {2};
     std::string realOutPath_;
-    PGOProfilerHeader *header_ {nullptr};
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
