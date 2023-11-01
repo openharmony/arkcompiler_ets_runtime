@@ -258,15 +258,15 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetObjectFunction(thread_, objectFunction);
     env->SetObjectFunctionPrototype(thread_, objFuncPrototype);
 
-    JSHandle<JSHClass> FunctionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
+    JSHandle<JSHClass> functionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
                                                                      JSType::JS_FUNCTION, env->GetFunctionPrototype());
-    env->SetFunctionClassWithProto(thread_, FunctionClass);
-    FunctionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
+    env->SetFunctionClassWithProto(thread_, functionClass);
+    functionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
                                                   env->GetFunctionPrototype());
-    env->SetFunctionClassWithoutProto(thread_, FunctionClass);
-    FunctionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE,
+    env->SetFunctionClassWithoutProto(thread_, functionClass);
+    functionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE,
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
-    env->SetFunctionClassWithoutName(thread_, FunctionClass);
+    env->SetFunctionClassWithoutName(thread_, functionClass);
 
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
