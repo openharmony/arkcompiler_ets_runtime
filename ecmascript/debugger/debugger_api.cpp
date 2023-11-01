@@ -196,11 +196,25 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         LOG_DEBUGGER(ERROR) << "GetVregIndex: extractor is null";
         return -1;
     }
+
+    uint32_t currentOffset = frameHandler->GetBytecodeOffset();
+    int32_t regNumber = -1;
+    uint32_t startOffset = 0;
+    uint32_t endOffset = UINT32_MAX;
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
     for (auto iter = table.begin(); iter != table.end(); iter++) {
-        if (iter->name == name.data()) {
-            return iter->regNumber;
+        // if currentOffset not in variable's scope, skip it
+        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset <= iter->endOffset) {
+            // if there are multiple variables with the same name, get regNumber with the smallest scope
+            if (iter->startOffset >= startOffset && iter->endOffset <= endOffset) {
+                regNumber = iter->regNumber;
+                startOffset = iter->startOffset;
+                endOffset = iter->endOffset;
+            }
         }
+    }
+    if (regNumber != -1) {
+        return regNumber;
     }
     return -1;
 }
