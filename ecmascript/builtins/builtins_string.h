@@ -268,5 +268,26 @@ private:
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
     // 21.1.3.17.1
 };
+
+class StringSplitResultCache : public TaggedArray {
+public:
+    static StringSplitResultCache *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<StringSplitResultCache*>(object);
+    }
+    static JSTaggedValue CreateCacheTable(const JSThread *thread);
+    static JSTaggedValue FindCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern);
+    static void SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern,
+        const JSHandle<TaggedArray> &result);
+
+private:
+    static constexpr int CACHE_SIZE = 256;
+    static constexpr int STRING_INDEX = 0;
+    static constexpr int PATTERN_INDEX = 1;
+    static constexpr int ARRAY_INDEX = 2;
+    static constexpr int ENTRY_SIZE = 3;
+};
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_STRING_H

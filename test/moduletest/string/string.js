@@ -157,3 +157,28 @@ var test13 = test12.split(test11);
 var test14 = test12.lastIndexOf(test11);
 print(test13);
 print(test14);
+
+let s = "abaddbdc"
+s.split("")
+let split = s.split("")
+split[0] = "0"
+print(split)
+print(s.split(""))
+s.split("b")
+split = s.split("b")
+split[2] = 1
+print(split)
+print(s.split("b"))
+s = "d的發的給的点点滴滴多"
+s.split("的")
+split = s.split("的")
+split[2] = 1
+print(split)
+print(s.split("的"))
+
+let newStr = new String("adcdcdccda")
+newStr.split("d")
+split = newStr.split("d")
+split[0] = "0"
+print(split)
+print(newStr.split("d"))
