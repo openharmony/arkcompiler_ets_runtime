@@ -354,7 +354,7 @@ PGOSampleType TypeRecorder::GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) co
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
             const auto sampleType = bcOffsetPGOOpTypeMap_.at(offset);
             ASSERT(sampleType.IsProfileType());
-            if (!sampleType.GetProfileType().IsNativeFunctionId()) {
+            if (!sampleType.GetProfileType().IsBuiltinFunctionId()) {
                 return PGOSampleType::NoneType();
             }
             return sampleType;

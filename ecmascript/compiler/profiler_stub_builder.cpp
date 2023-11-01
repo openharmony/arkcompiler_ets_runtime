@@ -21,7 +21,6 @@
 #include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
-using PGONativeFunctionId = panda::ecmascript::pgo::DumpUtils::PGONativeFunctionId;
 void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
     const std::vector<GateRef> &values, SlotIDFormat format, OperationType type)
 {
@@ -289,14 +288,14 @@ void ProfilerStubBuilder::ProfileCall(
     env->SubCfgExit();
 }
 
-GateRef ProfilerStubBuilder::TryGetPGONativeFunctionID(GateRef glue, GateRef target)
+GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef glue, GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
 
-    DEFVARIABLE(functionKind, VariableType::INT32(), Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID)));
+    DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
     DEFVARIABLE(maybeFunc, VariableType::JS_ANY(), Undefined());
     Label isArrayIterProtoNext(env);
     Label notArrayIterProtoNext(env);
@@ -306,41 +305,43 @@ GateRef ProfilerStubBuilder::TryGetPGONativeFunctionID(GateRef glue, GateRef tar
     Label notSetIterProtoNext(env);
     Label isStringIterProtoNext(env);
 
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_ITERATOR_PROTO_NEXT_INDEX);
+    maybeFunc = GetGlobalConstantValue(
+        VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX);
     Branch(Int64Equal(target, *maybeFunc), &isArrayIterProtoNext, &notArrayIterProtoNext);
     Bind(&isArrayIterProtoNext);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::ARRAY_ITERATOR_PROTO_NEXT));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT));
         Jump(&exit);
     }
     Bind(&notArrayIterProtoNext);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::MAP_ITERATOR_PROTO_NEXT_INDEX);
+    maybeFunc = GetGlobalConstantValue(
+        VariableType::JS_ANY(), glue, ConstantIndex::MAP_ITERATOR_PROTO_NEXT_INDEX);
     Branch(Int64Equal(target, *maybeFunc), &isMapIterProtoNext, &notMapIterProtoNext);
     Bind(&isMapIterProtoNext);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::MAP_ITERATOR_PROTO_NEXT));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT));
         Jump(&exit);
     }
     Bind(&notMapIterProtoNext);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::SET_ITERATOR_PROTO_NEXT_INDEX);
+    maybeFunc = GetGlobalConstantValue(
+        VariableType::JS_ANY(), glue, ConstantIndex::SET_ITERATOR_PROTO_NEXT_INDEX);
     Branch(Int64Equal(target, *maybeFunc), &isSetIterProtoNext, &notSetIterProtoNext);
     Bind(&isSetIterProtoNext);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::SET_ITERATOR_PROTO_NEXT));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT));
         Jump(&exit);
     }
     Bind(&notSetIterProtoNext);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::STRING_ITERATOR_PROTO_NEXT_INDEX);
+    maybeFunc = GetGlobalConstantValue(
+        VariableType::JS_ANY(), glue, ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX);
     Branch(Int64Equal(target, *maybeFunc), &isStringIterProtoNext, &exit);
     Bind(&isStringIterProtoNext);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::STRING_ITERATOR_PROTO_NEXT));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
         Jump(&exit);
     }
     Bind(&exit);
-    auto ret = *functionKind;
+    auto ret = *functionId;
     env->SubCfgExit();
     return ret;
 }
@@ -365,16 +366,16 @@ void ProfilerStubBuilder::ProfileNativeCall(
 
         GateRef slotId = GetSlotID(pc, format);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        GateRef newId = TryGetPGONativeFunctionID(glue, target);
+        GateRef newId = TryGetBuiltinFunctionId(glue, target);
         Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldId = TaggedGetInt(slotValue);
-        Branch(Int32Equal(oldId, Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID))), &exit, &sameValueCheck);
+        Branch(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);
         Bind(&sameValueCheck);
         Branch(Int32Equal(oldId, newId), &exit, &invalidate);
         Bind(&invalidate);
         {
-            GateRef invalidId = Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID));
+            GateRef invalidId = Int32(PGO_BUILTINS_STUB_ID(NONE));
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
@@ -629,14 +630,14 @@ void ProfilerStubBuilder::TryPreDumpInner(GateRef glue, GateRef func, GateRef pr
     env->SubCfgExit();
 }
 
-GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iterator)
+GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterator)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
 
-    DEFVARIABLE(functionKind, VariableType::INT32(), Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID)));
+    DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
     DEFVARIABLE(maybeFunc, VariableType::JS_ANY(), Undefined());
     Label isArrayProtoValues(env);
     Label notArrayProtoValues(env);
@@ -654,7 +655,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iter
     Branch(Int64Equal(iterator, *maybeFunc), &isArrayProtoValues, &notArrayProtoValues);
     Bind(&isArrayProtoValues);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::ARRAY_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR));
         Jump(&exit);
     }
     Bind(&notArrayProtoValues);
@@ -662,7 +663,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iter
     Branch(Int64Equal(iterator, *maybeFunc), &isSetProtoValues, &notSetProtoValues);
     Bind(&isSetProtoValues);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::SET_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(SET_PROTO_ITERATOR));
         Jump(&exit);
     }
     Bind(&notSetProtoValues);
@@ -670,7 +671,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iter
     Branch(Int64Equal(iterator, *maybeFunc), &isMapProtoEntries, &notMapProtoEntries);
     Bind(&isMapProtoEntries);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::MAP_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(MAP_PROTO_ITERATOR));
         Jump(&exit);
     }
     Bind(&notMapProtoEntries);
@@ -678,7 +679,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iter
     Branch(Int64Equal(iterator, *maybeFunc), &isStringProtoIter, &notStringProtoIter);
     Bind(&isStringProtoIter);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::STRING_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(STRING_PROTO_ITERATOR));
         Jump(&exit);
     }
     Bind(&notStringProtoIter);
@@ -687,11 +688,11 @@ GateRef ProfilerStubBuilder::GetIterationFunctionKind(GateRef glue, GateRef iter
     Branch(Int64Equal(iterator, *maybeFunc), &isTypedArrayProtoValues, &exit);
     Bind(&isTypedArrayProtoValues);
     {
-        functionKind = Int32(static_cast<int32_t>(PGONativeFunctionId::TYPED_ARRAY_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR));
         Jump(&exit);
     }
     Bind(&exit);
-    auto ret = *functionKind;
+    auto ret = *functionId;
     env->SubCfgExit();
     return ret;
 }
@@ -715,17 +716,17 @@ void ProfilerStubBuilder::ProfileGetIterator(
 
         GateRef slotId = GetSlotID(pc, format);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        GateRef newIterKind = GetIterationFunctionKind(glue, iterator);
+        GateRef newIterKind = GetIterationFunctionId(glue, iterator);
         Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldIterKind = TaggedGetInt(slotValue);
-        Branch(Int32Equal(oldIterKind, Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID))),
+        Branch(Int32Equal(oldIterKind, Int32(PGO_BUILTINS_STUB_ID(NONE))),
             &exit, &sameValueCheck);
         Bind(&sameValueCheck);
         Branch(Int32Equal(oldIterKind, newIterKind), &exit, &invalidate);
         Bind(&invalidate);
         {
-            GateRef invalidKind = Int32(static_cast<int32_t>(PGONativeFunctionId::INVALID));
+            GateRef invalidKind = Int32(PGO_BUILTINS_STUB_ID(NONE));
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidKind));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);

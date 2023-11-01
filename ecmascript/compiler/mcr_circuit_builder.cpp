@@ -243,59 +243,14 @@ GateRef CircuitBuilder::TypedTypeOf(GateType type)
     return ret;
 }
 
-GateRef CircuitBuilder::IteratorFunctionCheck(GateRef obj, GateRef kind)
+GateRef CircuitBuilder::IsMarkerCellValid(GateRef cell)
 {
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->IteratorFunctionCheck(),
-        MachineType::I1, {currentControl, currentDepend, obj, kind, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
+    GateRef bitfield = Load(VariableType::INT32(), cell, IntPtr(MarkerCell::BIT_FIELD_OFFSET));
+    return Int32Equal(
+        Int32And(Int32LSR(bitfield, Int32(MarkerCell::IsDetectorInvalidBits::START_BIT)),
+                 Int32((1LU << MarkerCell::IsDetectorInvalidBits::SIZE) - 1)),
+        Int32(0));
 }
-
-GateRef CircuitBuilder::GetFixedIterator(GateRef obj, GateRef kind)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(circuit_->GetFixedIterator(),
-        MachineType::I64, {currentControl, currentDepend, obj, kind}, GateType::AnyType());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::NativeCallTargetCheck(GateRef func, GateRef funcId)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->NativeCallTargetCheck(),
-        MachineType::I1, {currentControl, currentDepend, func, funcId, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-#define SYMBOL_DETECTOR_VALID_DEFINE(type, name, index)                                                 \
-GateRef CircuitBuilder::Is##name##Valid(GateRef glue)                                                   \
-{                                                                                                       \
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));  \
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);            \
-    GateRef cell = GetGlobalEnvValue(                                                                   \
-        VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::index);                                       \
-    GateRef bitfield = Load(VariableType::INT32(), cell, IntPtr(MarkerCell::BIT_FIELD_OFFSET));         \
-    return Int32Equal(                                                                                  \
-        Int32And(Int32LSR(bitfield, Int32(MarkerCell::IsDetectorInvalidBits::START_BIT)),               \
-                 Int32((1LU << MarkerCell::IsDetectorInvalidBits::SIZE) - 1)),                          \
-        Int32(0));                                                                                      \
-}
-GLOBAL_ENV_DETECTOR_FIELDS(SYMBOL_DETECTOR_VALID_DEFINE)
-#undef SYMBOL_DETECTOR_VALID_DEFINE
 
 GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst, ConvertSupport support)
 {
@@ -499,7 +454,12 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
+    GateRef frameState;
+    if (Bytecodes::IsCallOp(acc_.GetByteCodeOpcode(gate))) {
+        frameState = acc_.GetFrameState(gate);
+    } else {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
                                         MachineType::I1,
                                         { currentControl, currentDepend, function, id, param, frameState},
@@ -753,6 +713,42 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::TaggedIsHeapObjectOp(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->TaggedIsHeapObject(), MachineType::I1,
+                                         { currentControl, currentDepend, value },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::IsSpecificObjectType(GateRef obj, JSType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->IsSpecificObjectType(static_cast<int32_t>(type)), MachineType::I1,
+                                         { currentControl, currentDepend, obj },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::IsMarkerCellValidOp(GateRef cell)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->IsMarkerCellValid(), MachineType::I1,
+                                         { currentControl, currentDepend, cell },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
 }
 
 GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)

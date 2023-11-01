@@ -51,6 +51,9 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::COW_ARRAY_CHECK:
         case OpCode::FLATTEN_TREE_STRING_CHECK:
         case OpCode::CHECK_AND_CONVERT:
+        case OpCode::TAGGED_IS_HEAP_OBJECT:
+        case OpCode::IS_MARKER_CELL_VALID:
+        case OpCode::IS_SPECIFIC_OBJECT_TYPE:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
@@ -152,6 +155,12 @@ bool LaterElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
         case OpCode::GET_GLOBAL_CONSTANT_VALUE: {
             if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::IS_SPECIFIC_OBJECT_TYPE: {
+            if (acc_.GetJSType(lhs) != acc_.GetJSType(rhs)) {
                 return false;
             }
             break;

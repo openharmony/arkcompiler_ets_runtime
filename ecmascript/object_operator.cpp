@@ -222,38 +222,64 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
         return;
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    if (receiver.IsJSRegExp()) {
-        if (PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
-            PropertyDetector::InvalidateRegExpReplaceDetector(env);
+    JSHClass *hclass = receiver.GetTaggedObject()->GetClass();
+    JSType type = hclass->GetObjectType();
+    switch (type) {
+        case JSType::JS_REG_EXP: {
+            if (PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+                PropertyDetector::InvalidateRegExpReplaceDetector(env);
+            }
+            if (PropertyDetector::IsRegExpSplitDetectorValid(env)) {
+                PropertyDetector::InvalidateRegExpSplitDetector(env);
+            }
+            return;
         }
-        if (PropertyDetector::IsRegExpSplitDetectorValid(env)) {
-            PropertyDetector::InvalidateRegExpSplitDetector(env);
+        case JSType::JS_MAP: {
+            if (PropertyDetector::IsMapIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateMapIteratorDetector(env);
+            }
+            return;
         }
-        return;
+        case JSType::JS_SET: {
+            if (PropertyDetector::IsSetIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateSetIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_PRIMITIVE_REF: {
+            if (JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString() &&
+                PropertyDetector::IsStringIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateStringIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_ARRAY: {
+            if (PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateArrayIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY:
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY:
+        case JSType::JS_FLOAT32_ARRAY:
+        case JSType::JS_FLOAT64_ARRAY:
+        case JSType::JS_BIGINT64_ARRAY:
+        case JSType::JS_BIGUINT64_ARRAY: {
+            if (PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+            }
+            return;
+        }
+        default:
+            break;
     }
-    if (receiver.IsJSMap() && PropertyDetector::IsMapIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateMapIteratorDetector(env);
-        return;
-    }
-    if (receiver.IsJSSet() && PropertyDetector::IsSetIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateSetIteratorDetector(env);
-        return;
-    }
-    if (receiver.IsJSPrimitiveRef() &&
-        JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString() &&
-        PropertyDetector::IsStringIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateStringIteratorDetector(env);
-        return;
-    }
-    if (receiver.IsJSArray() && PropertyDetector::IsArrayIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateArrayIteratorDetector(env);
-        return;
-    }
-    if (receiver.IsTypedArray() && PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
-        return;
-    }
-    if (receiver.GetTaggedObject()->GetClass()->IsPrototype() &&
+
+    if (hclass->IsPrototype() &&
         (receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
          receiver == env->GetTaggedUint8ArrayFunctionPrototype() ||
          receiver == env->GetTaggedUint8ClampedArrayFunctionPrototype() ||

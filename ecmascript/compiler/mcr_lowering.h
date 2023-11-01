@@ -39,6 +39,9 @@ private:
     void DeleteStateSplit(GateRef gate);
     void LowerArrayGuardianCheck(GateRef gate);
     void LowerHeapObjectCheck(GateRef gate);
+    void LowerTaggedIsHeapObject(GateRef gate);
+    void LowerIsMarkerCellValid(GateRef gate);
+    void LowerIsSpecificObjectType(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);

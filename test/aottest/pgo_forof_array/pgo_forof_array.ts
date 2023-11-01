@@ -30,3 +30,14 @@ for (let i = 0; i < 50; i++) {
     foo(obj1)
 }
 print(r)
+
+// for-of manully
+let b = obj1[Symbol.iterator]
+let c = b.apply(obj1, [1])
+for (let i = 0; i < 10; i++) {
+    let m = c.next(100)
+    if (m.done) {
+        break
+    }
+    print(m.value)
+}
