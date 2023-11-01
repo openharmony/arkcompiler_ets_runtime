@@ -33,6 +33,7 @@
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
+#include "ecmascript/compiler/native_inline_lowering.h"
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -415,16 +416,21 @@ public:
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
-        if (!passOptions->EnableLexenvSpecialization()) {
-            return false;
+        if (passOptions->EnableLexenvSpecialization()) {
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
+            visitor.AddPass(&lexicalEnvSpecialization);
+            visitor.VisitGraph();
+            visitor.PrintLog("lexicalEnvSpecialization");
+            lexicalEnvSpecialization.PrintSpecializeId();
         }
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
-        visitor.AddPass(&lexicalEnvSpecialization);
-        visitor.VisitGraph();
-        visitor.PrintLog("lexicalEnvSpecialization");
-        lexicalEnvSpecialization.PrintSpecializeId();
+
+        if (passOptions->EnableInlineNative()) {
+            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetPassContext(), enableLog,
+                                              data->GetMethodName());
+            nativeInline.RunNativeInlineLowering();
+        }
         return true;
     }
 };

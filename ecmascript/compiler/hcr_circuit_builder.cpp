@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -446,5 +447,33 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
     GateRef propOffset = Int32Mul(Int32Add(inlinedPropsStart, attrOffset),
         Int32(JSTaggedValue::TaggedTypeSize()));
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
+}
+
+GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
+{
+    Label subentry(env_);
+    env_->SubCfgEntry(&subentry);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label exit(env_);
+    Label targetIsHeapObject(env_);
+    Label targetIsStableArray(env_);
+
+    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        Branch(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        Bind(&targetIsStableArray);
+        {
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
+            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env_->SubCfgExit();
+    return res;
 }
 }

@@ -334,7 +334,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LinkedHashMapComputeCapacity)       \
     V(LinkedHashSetComputeCapacity)       \
     V(JSObjectGrowElementsCapacity)       \
-    V(HClassCloneWithAddProto)
+    V(HClassCloneWithAddProto)            \
+    V(ArrayForEachContinue)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

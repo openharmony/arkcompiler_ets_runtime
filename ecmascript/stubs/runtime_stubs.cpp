@@ -2760,6 +2760,38 @@ DEF_RUNTIME_STUBS(ObjectSlowAssign)
     return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ArrayForEachContinue)
+{
+    RUNTIME_STUBS_HEADER(ArrayForEachContinue);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);      // 0: means the zeroth parameter
+    JSMutableHandle<JSTaggedValue> key(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 1: means the first parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 2);         // 2: means the second parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 3);   // 3: means the third parameter
+    JSHandle<JSTaggedValue> lengthHandle = GetHArg<JSTaggedValue>(argv, argc, 4);       // 4: means the fourth parameter
+    const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    uint32_t i = key->GetInt();
+    uint32_t len = lengthHandle->GetInt();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    while (i < len) {
+        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, i);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        if (exists) {
+            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, i);
+            key.Update(JSTaggedValue(i));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            JSTaggedValue funcResult = JSFunction::Call(info);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult.GetRawData());
+        }
+        i++;
+    }
+
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

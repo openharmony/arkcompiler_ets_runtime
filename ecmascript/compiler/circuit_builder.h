@@ -45,6 +45,7 @@ class SlowPathLowering;
 class StubBuilder;
 class TypeBytecodeLowering;
 class Variable;
+class NativeInlineLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -382,6 +383,7 @@ public:
     inline GateRef IsCallableFromBitField(GateRef bitfield);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    GateRef IsStabelArray(GateRef glue, GateRef obj);
 
     // WeakRef
     inline GateRef CreateWeakRef(GateRef x);
@@ -699,6 +701,7 @@ private:
     friend TypeBytecodeLowering;
     friend NTypeBytecodeLowering;
     friend SlowPathLowering;
+    friend NativeInlineLowering;
 };
 
 }  // namespace panda::ecmascript::kungfu
