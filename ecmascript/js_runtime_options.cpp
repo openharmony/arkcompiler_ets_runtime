@@ -177,6 +177,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-deopt", required_argument, nullptr, OPTION_COMPILER_TRACE_DEOPT},
         {"compiler-trace-inline", required_argument, nullptr, OPTION_COMPILER_TRACE_INLINE},
         {"compiler-trace-value-numbering", required_argument, nullptr, OPTION_COMPILER_TRACE_VALUE_NUMBERING},
+        {"compiler-trace-instruction-combine", required_argument, nullptr, OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
@@ -190,6 +191,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
+        {"compiler-opt-instr-combine", required_argument, nullptr, OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
         {"compiler-opt-new-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
@@ -385,6 +387,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceValueNumbering(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceInstructionCombine(argBool);
                 } else {
                     return false;
                 }
@@ -674,6 +684,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableLaterElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableInstrcutionCombine(argBool);
                 } else {
                     return false;
                 }

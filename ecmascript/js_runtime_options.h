@@ -98,7 +98,6 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
     OPTION_COMPILER_TRACE_INLINE,
-    OPTION_COMPILER_TRACE_VALUE_NUMBERING,
     OPTION_COMPILER_MAX_INLINE_BYTECODES,
     OPTION_COMPILER_DEOPT_THRESHOLD,
     OPTION_COMPILER_STRESS_DEOPT,
@@ -118,7 +117,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_EARLY_ELIMINATION,
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
-    OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
@@ -148,6 +146,10 @@ enum CommandValues {
     OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
     OPTION_COMPILER_OPT_CONSTANT_FOLDING,
     OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION,
+    OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE,
+    OPTION_COMPILER_TRACE_VALUE_NUMBERING,
+    OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE,
+    OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -986,6 +988,16 @@ public:
         return enableLaterElimination_;
     }
 
+    void SetEnableInstrcutionCombine(bool value)
+    {
+        enableInstrcutionCombine = value;
+    }
+
+    bool IsEnableInstrcutionCombine() const
+    {
+        return enableInstrcutionCombine;
+    }
+
     void SetEnableValueNumbering(bool value)
     {
         enableValueNumbering_ = value;
@@ -1149,6 +1161,16 @@ public:
     bool GetTraceValueNumbering() const
     {
         return traceValueNumbering_;
+    }
+
+    void SetTraceInstructionCombine(bool value)
+    {
+        traceInstructionCombine_ = value;
+    }
+
+    bool GetTraceInstructionCombine() const
+    {
+        return traceInstructionCombine_;
     }
 
     void SetMaxInlineBytecodes(size_t value)
@@ -1360,6 +1382,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
+    bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
@@ -1383,6 +1406,7 @@ private:
     std::string compilerSkipMethods_ {""};
     bool traceInline_ {false};
     bool traceValueNumbering_{false};
+    bool traceInstructionCombine_{false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
     std::string hapPath_ {""};

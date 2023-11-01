@@ -81,7 +81,8 @@ class Variable;
     V(Int8LSR, Lsr, MachineType::I8)                                      \
     V(Int32LSR, Lsr, MachineType::I32)                                    \
     V(Int64LSR, Lsr, MachineType::I64)                                    \
-    V(Int32ASR, Asr, MachineType::I32)
+    V(Int32ASR, Asr, MachineType::I32)                                    \
+    V(Int64ASR, Asr, MachineType::I64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                  \
     V(BoolNot, Rev, MachineType::I1)                                   \
