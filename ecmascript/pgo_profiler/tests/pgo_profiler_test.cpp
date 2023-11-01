@@ -21,10 +21,12 @@
 #include <unordered_map>
 #include <utility>
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
@@ -44,6 +46,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/tests/pgo_context_mock.h"
+#include "ecmascript/pgo_profiler/tests/pgo_encoder_mock.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -66,12 +69,18 @@ public:
         GTEST_LOG_(INFO) << "TearDownCase";
     }
 
+    void SetUp() override
+    {
+        strictMatch_ = PGOProfilerHeader::IsStrictMatch();
+    }
+
     void TearDown() override
     {
         JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, pf_.get());
         vm_ = nullptr;
         pf_.reset();
         PGOProfilerManager::GetInstance()->Destroy();
+        PGOProfilerHeader::SetStrictMatch(strictMatch_);
     }
 
 protected:
@@ -217,6 +226,7 @@ protected:
 
     static constexpr uint32_t DECODER_THRESHOLD = 2;
     EcmaVM *vm_ = nullptr;
+    bool strictMatch_ = false;
     std::shared_ptr<JSPandaFile> pf_;
 };
 
@@ -1266,5 +1276,28 @@ HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
     unlink("ark-profiler20/truck.ap");
     unlink("ark-profiler20/call_test.ap");
     rmdir("ark-profiler20/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, ApVersionMatchCheck)
+{
+    mkdir("ark-ApVersionMatchCheck/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "sample_test";
+    ExecuteAndLoadJSPandaFile("ark-ApVersionMatchCheck/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+
+    PGOProfilerEncoderMock encoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD,
+                                   PGOProfilerEncoder::ApGenMode::MERGE);
+    encoder.InitializeData();
+    encoder.SetVersion(PGOProfilerHeader::PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION);
+    encoder.Save();
+
+    PGOProfilerDecoder decoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD);
+    PGOProfilerHeader::SetStrictMatch(true);
+    ASSERT_FALSE(decoder.LoadFull());
+    PGOProfilerHeader::SetStrictMatch(false);
+    ASSERT_TRUE(decoder.LoadFull());
+
+    unlink("ark-ApVersionMatchCheck/modules.ap");
+    unlink("ark-ApVersionMatchCheck/");
 }
 }  // namespace panda::test

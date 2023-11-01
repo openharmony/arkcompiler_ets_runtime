@@ -237,6 +237,7 @@ bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
     if ((mode_ == MERGE) && FileExist(realOutPath_.c_str())) {
         PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
         encoder.InitializeData();
+        encoder.header_->SetVersion(header_->GetVersion());
         PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
         encoder.MergeWithExistProfile(*this, decoder, task);
         auto saveAndRenameResult = encoder.SaveAndRename(task);
