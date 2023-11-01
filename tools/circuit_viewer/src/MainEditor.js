@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-const { GLFrame } = require("./engine/GLFrame");
-const { Scr } = require("./engine/XDefine");
-const { XTools } = require("./engine/XTools");
-const { XSelect } = require("./engine/control/XSelect");
-const { X2DFast } = require("./engine/graphics/X2DFast");
-const { IrViewer } = require("./ir/IrViewer");
-const { LogParser } = require("./ir/LogParser");
+const { GLFrame } = require('./engine/GLFrame');
+const { Scr } = require('./engine/XDefine');
+const { XTools } = require('./engine/XTools');
+const { XSelect } = require('./engine/control/XSelect');
+const { X2DFast } = require('./engine/graphics/X2DFast');
+const { IrViewer } = require('./ir/IrViewer');
+const { LogParser } = require('./ir/LogParser');
 
 class MainEditor {
   constructor() {
     XTools.LoadConfig();
 
-    this.filePoint_ = "";
+    this.filePoint_ = '';
     this.files_ = [];
     this.viewer_ = {}
-    LogParser.Load("test.txt", this.onLoad.bind(this));
+    LogParser.Load('test.txt', this.onLoad.bind(this));
 
     this.selectFile_ = new XSelect(this.files_, this.filePoint_);
     this.selectFile_.registCallback(this.changeFile.bind(this));
@@ -51,34 +51,36 @@ class MainEditor {
     catch (e) {
       XTools.PROC_TO = 0;
       console.log(e);
-      alert("读取" + fn + "失败");
+      alert('读取' + fn + '失败');
       return;
     }
   }
   onDrop(files, x, y) {
-    if (files.length == 1) {
+    if (files.length === 1) {
       let reader = new FileReader();
       reader.readAsDataURL(files[0]);
       reader.onload = (e) => {
-        let ret = atob(e.target.result.split(",")[1]);
+        let ret = atob(e.target.result.split(',')[1]);
         this.onLoad(files[0].name, ret);
       }
     }
   }
   static pInstance_ = null;
   static gi() {
-    if (MainEditor.pInstance_ == null) MainEditor.pInstance_ = new MainEditor();
+    if (MainEditor.pInstance_ === null) {
+      MainEditor.pInstance_ = new MainEditor();
+    }
     return MainEditor.pInstance_;
   }
 
   onDraw() {
     if (this.selectFile_.list_.length <= 0) {
-      X2DFast.gi().drawText("拖入log文件", 30, Scr.logicw / 2, Scr.logich / 2, 1, 1, 0, -2, -2, 0xff000000);
+      X2DFast.gi().drawText('拖入log文件', 30, Scr.logicw / 2, Scr.logich / 2, 1, 1, 0, -2, -2, 0xff000000);
       return;
     }
 
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         this.viewer_[v].onDraw();
       }
     }
@@ -98,7 +100,7 @@ class MainEditor {
       return true;
     }
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         if (this.viewer_[v].onTouch(msg, x, y)) {
           return true;
         }
@@ -109,7 +111,7 @@ class MainEditor {
 
   onKey(k) {
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         if (this.viewer_[v].onKey(k)) {
           return true;
         }

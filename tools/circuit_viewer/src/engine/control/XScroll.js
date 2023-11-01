@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-const { X2DFast } = require("../graphics/X2DFast");
+const { X2DFast } = require('../graphics/X2DFast');
 
 class XScroll {
   constructor(options) {
-    if (options["type"]) {
-      this.type_ = options["type"];
+    if (options['type']) {
+      this.type_ = options['type'];
     }
     else {
-      this.type_ = "right";
+      this.type_ = 'right';
     }
     this.barOff_ = 0;
     this.useScrH_ = false;
@@ -35,10 +35,10 @@ class XScroll {
   }
   draw() {
     X2DFast.gi().fillRect(this.posX_, this.posY_, this.posW_, this.posH_, 0x40808080);
-    if (this.type_ == "right") {
+    if (this.type_ === 'right') {
       X2DFast.gi().fillRect(this.posX_ + 1, this.posY_ + this.barOff_, this.posW_ - 2, this.posH_ / 3, 0x40000000);
     }
-    else if (this.type_ == "button") {
+    else if (this.type_ === 'button') {
       X2DFast.gi().fillRect(this.posX_ + this.barOff_, this.posY_ + 1, this.posW_ / 3, this.posH_ - 2, 0x40000000);
     }
   }
@@ -50,7 +50,7 @@ class XScroll {
     return true;
   }
   setBarOff(rate) {
-    if (this.type_ == "right") {
+    if (this.type_ === 'right') {
       this.barOff_ = this.posH_ * 2 / 3 * rate;
     }
     else {
@@ -59,7 +59,7 @@ class XScroll {
     this.modifyBarOff(0, 0);
   }
   getBarOff() {
-    if (this.type_ == "right") {
+    if (this.type_ === 'right') {
       return this.barOff_ / (this.posH_ * 2 / 3);
     }
     else {
@@ -67,7 +67,7 @@ class XScroll {
     }
   }
   modifyBarOff(dx, dy) {
-    if (this.type_ == "right") {
+    if (this.type_ === 'right') {
       this.barOff_ += dy;
       if (this.barOff_ > this.posH_ * 2 / 3) {
         this.barOff_ = this.posH_ * 2 / 3;
@@ -87,7 +87,7 @@ class XScroll {
     let isIn = this.isTouchIn(x, y);
     switch (msg) {
       case 10:
-        if (this.type_ == "right") {
+        if (this.type_ === 'right') {
           this.modifyBarOff(0, -this.posH_ / 3 / 10);
         }
         else if (isIn) {
@@ -95,7 +95,7 @@ class XScroll {
         }
         break;
       case 11:
-        if (this.type_ == "right") {
+        if (this.type_ === 'right') {
           this.modifyBarOff(0, this.posH_ / 3 / 10);
         }
         else if (isIn) {
@@ -105,7 +105,7 @@ class XScroll {
       case 1:
         if (isIn) {
           this.touchDown_ = true;
-          if (this.type_ == "right") {
+          if (this.type_ === 'right') {
             if (y - this.posY_ < this.barOff_ || y - this.posY_ > this.barOff_ + this.posH_ / 3) {
               this.barOff_ = y - this.posY_ - this.posH_ / 3 / 2;
               this.modifyBarOff(0, 0);

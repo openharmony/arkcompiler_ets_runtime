@@ -67,7 +67,7 @@ export class X2DFast {
     gl.disable(gl.DEPTH_TEST);
 
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);// ONE_MINUS_SRC_ALPHA
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // ONE_MINUS_SRC_ALPHA
     // GL_FUNC_ADD、GL_FUNC_SUBTRACT、GL_FUNC_REVERSE_SUBTRACT、GL_MIN、GL_MAX和GL_LOGIC_OP
   }
 
@@ -79,7 +79,7 @@ export class X2DFast {
     while (i < Math.PI * 2 + 0.00001) {
       let dx = Math.cos(i) * rw + ox;
       let dy = Math.sin(i) * rh + oy;
-      if (lx != -1) {
+      if (lx !== -1) {
         this.drawLine(lx, ly, dx, dy, c, lw);
       }
       lx = dx;
@@ -105,7 +105,7 @@ export class X2DFast {
       linewidth,
       fAngle(x2 - x1, y2 - y1),
       0,
-      0,// +0.5
+      0, // +0.5
       c
     );
   }
@@ -119,16 +119,16 @@ export class X2DFast {
 
   static testTransform(x, y, sw, sh, ra, ox, oy, realw, realh) {
     X2DFast.tmpMat.unit();
-    if (ox == -1) ox = 0;
-    if (ox == -2) ox = Math.floor(realw / 2);
-    if (ox == -3) ox = realw;
-    if (oy == -1) oy = 0;
-    if (oy == -2) oy = Math.floor(realh / 2);
-    if (oy == -3) oy = realh;
-    if (ox != 0 || oy != 0) X2DFast.tmpMat.move(-ox, -oy, 0);
-    if (sw != 1 || sh != 1) X2DFast.tmpMat.scale(sw, sh, 1);
-    if (ra != 0) X2DFast.tmpMat.rotate(0, 0, ra);
-    if (x != 0 || y != 0) X2DFast.tmpMat.move(x, y, 0);
+    if (ox === -1) ox = 0;
+    if (ox === -2) ox = Math.floor(realw / 2);
+    if (ox === -3) ox = realw;
+    if (oy === -1) oy = 0;
+    if (oy === -2) oy = Math.floor(realh / 2);
+    if (oy === -3) oy = realh;
+    if (ox !== 0 || oy !== 0) X2DFast.tmpMat.move(-ox, -oy, 0);
+    if (sw !== 1 || sh !== 1) X2DFast.tmpMat.scale(sw, sh, 1);
+    if (ra !== 0) X2DFast.tmpMat.rotate(0, 0, ra);
+    if (x !== 0 || y !== 0) X2DFast.tmpMat.move(x, y, 0);
   }
   clearBuffer() {
     this.ridDict = {};
@@ -144,7 +144,9 @@ export class X2DFast {
       a = Math.floor(c[3] * 63 / 255);
     }
     else {
-      if (c == -1) c = 0xffffffff;
+      if (c === -1) {
+        c = 0xffffffff;
+      }
       r = Math.floor((((c >> 16) & 0xff) * 63) / 255);
       g = Math.floor((((c >> 8) & 0xff) * 63) / 255);
       b = Math.floor(((c & 0xff) * 63) / 255);
@@ -177,7 +179,7 @@ export class X2DFast {
     let intX = parseInt(x);
     let intY = parseInt(y);
     let pcut = XTexture.gi().allCuts[cid];
-    if (pcut == null) return;
+    if (pcut === null) return;
     if (!(pcut.rid in this.ridDict)) {
       if (this.ridPoint >= 16) {
         this.freshBuffer();
@@ -203,7 +205,7 @@ export class X2DFast {
   }
   freshBuffer() {
     XTexture.gi()._FreshText();
-    if (this.drawCount == 0) return;
+    if (this.drawCount === 0) return;
     let ps = XShader.gi().use(XShader.ID_SHADER_FAST);
     for (let rid in this.ridDict) {
       gl.activeTexture(gl.TEXTURE0 + this.ridDict[rid]);
