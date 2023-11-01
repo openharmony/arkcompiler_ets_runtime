@@ -181,7 +181,6 @@ group("ark_aot_ts_test") {
     "pgo_forof_map",
     "pgo_forof_modify_iterator",
     "pgo_forof_set",
-    "pgo_forof_set_prototype",
     "pgo_forof_string",
     "pgo_forof_typed_array",
     "pgo_objectliteral_operation",

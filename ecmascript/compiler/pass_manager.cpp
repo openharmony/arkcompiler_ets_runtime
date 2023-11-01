@@ -114,11 +114,6 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<TSInlineLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
-        // skip async function, because some application run with errors.
-        if (methodInfo.IsTypeInferAbort()) {
-            data.AbortCompilation();
-            return;
-        }
         pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
