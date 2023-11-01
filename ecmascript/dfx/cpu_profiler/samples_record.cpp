@@ -523,6 +523,22 @@ std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
     return std::move(profileInfo_);
 }
 
+uint64_t SamplesRecord::GetProfileInfoBufferSize() const
+{
+    uint64_t size = sizeof(struct ProfileInfo);
+
+    for (int i = 0; i < MAX_NODE_COUNT; ++i) {
+        size += profileInfo_->nodes[i].codeEntry.functionName.size();
+        size += profileInfo_->nodes[i].codeEntry.moduleName.size();
+        size += profileInfo_->nodes[i].codeEntry.url.size();
+        size += profileInfo_->nodes[i].children.size() * sizeof(int);
+    }
+    size += profileInfo_->samples.size() * sizeof(int);
+    size += profileInfo_->timeDeltas.size() * sizeof(int);
+
+    return size;
+}
+
 void SamplesRecord::SetBeforeGetCallNapiStackFlag(bool flag)
 {
     beforeCallNapi_.store(flag);

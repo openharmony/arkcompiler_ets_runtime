@@ -131,6 +131,7 @@ public:
     const std::string GetFileName() const;
     void ClearSampleData();
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
+    uint64_t GetProfileInfoBufferSize() const;
     bool GetIsStart() const;
     void SetIsStart(bool isStart);
     bool GetGcState() const;

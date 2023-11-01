@@ -182,6 +182,11 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
     return profileInfo;
 }
 
+uint64_t CpuProfiler::GetProfileInfoBufferSize() const
+{
+    return generator_->GetProfileInfoBufferSize();
+}
+
 void CpuProfiler::SetCpuSamplingInterval(int interval)
 {
     interval_ = static_cast<uint32_t>(interval);
