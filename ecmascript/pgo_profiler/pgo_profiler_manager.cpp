@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include <fstream>
 
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -27,7 +28,7 @@ namespace {
 bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold,
                                       ApGenMode mode)
 {
-    arg_list_t pandaFileNames = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
+    arg_list_t apFileNames = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
     PGOProfilerEncoder merger(outPath, hotnessThreshold, mode);
     if (!merger.InitializeData()) {
         LOG_ECMA(ERROR) << "PGO Profiler encoder initialized failed. outPath: " << outPath
@@ -36,7 +37,7 @@ bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::str
     }
     bool isFirstFile = true;
     std::string firstApFileName;
-    for (const auto &fileName : pandaFileNames) {
+    for (const auto &fileName : apFileNames) {
         if (!base::StringHelper::EndsWith(fileName, ".ap")) {
             LOG_ECMA(ERROR) << "The file path(" << fileName << ") does not end with .ap";
             continue;

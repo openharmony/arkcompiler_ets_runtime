@@ -54,6 +54,16 @@ public:
         return whiteList_.find(bundleName + ":" + moduleName) != whiteList_.end();
     }
 
+    void AddWhiteListEntry(const std::string &entry)
+    {
+        whiteList_.insert(entry);
+    }
+
+    void Clear()
+    {
+        whiteList_.clear();
+    }
+
 private:
     NO_COPY_SEMANTIC(WhiteListHelper);
     NO_MOVE_SEMANTIC(WhiteListHelper);
@@ -84,10 +94,10 @@ private:
                 continue;
             }
             // skip comment line
-            if (appName.find_first_of('#') == 0) {
+            if (appName.at(0) == '#') {
                 continue;
             }
-            whiteList_.insert(appName);
+            AddWhiteListEntry(appName);
         }
     }
     std::set<std::string> whiteList_ {};
