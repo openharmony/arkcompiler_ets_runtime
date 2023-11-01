@@ -24,6 +24,10 @@ GateRef ValueNumbering::VisitGate(GateRef gate)
     if (opcode != OpCode::CONVERT && !useNewGVN_) {
         return Circuit::NullGate();
     }
+    if (acc_.GetStateCount(gate) > 0 || acc_.GetDependCount(gate) > 0) {
+        return Circuit::NullGate();
+    }
+    
     if (entries_ == nullptr) {
         InitEntries(entriesLength_);
         SetEntry(hash, gate);
