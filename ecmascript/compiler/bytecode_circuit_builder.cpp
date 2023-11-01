@@ -678,7 +678,14 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
 {
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    frameStateBuilder_.AdvanceToNextBc(bytecodeInfo, iterator.Index());
+    FrameLiveOut* liveout;
+    auto bcId = iterator.Index();
+    if (iterator.IsInRange(bcId - 1)) {
+        liveout = frameStateBuilder_.GetOrOCreateBCEndLiveOut(bcId - 1);
+    } else {
+        liveout = frameStateBuilder_.GetOrOCreateBBLiveOut(bb.id);
+    }
+    frameStateBuilder_.AdvanceToNextBc(bytecodeInfo, liveout, bcId);
     GateRef gate = Circuit::NullGate();
     if (bytecodeInfo.IsSetConstant()) {
         // handle bytecode command to get constants

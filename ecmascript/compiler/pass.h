@@ -731,7 +731,11 @@ public:
         AsyncFunctionLowering lowering(data->GetBuilder(), data->GetCircuit(), data->GetCompilerConfig(),
                                        enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {
-            lowering.ProcessAll();
+            if (IsFunctionMain(data)) {
+                lowering.ProcessAll();
+            } else {
+                data->MarkAsTypeAbort();
+            }
         }
         return true;
     }

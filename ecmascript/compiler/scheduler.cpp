@@ -244,7 +244,7 @@ bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
         if (upperBound.count(gate) > 0) {
             returnValue = upperBound[gate];
             getReturn = true;
-        } else if (acc.IsProlog(gate) || acc.IsRoot(gate)) {
+        } else if (acc.IsProlog(gate) || acc.IsRoot(gate) || acc.IsVirtualState(gate)) {
             returnValue = 0;
             getReturn = true;
         } else if (acc.IsFixed(gate)) {

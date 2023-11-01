@@ -143,6 +143,12 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
     return NewGate(meta, machineType, args.size(), args.begin(), type, comment);
 }
 
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
+    const std::vector<GateRef>& inList, GateType type, const char* comment)
+{
+    return NewGate(meta, machineType, inList.size(), inList.data(), type, comment);
+}
+
 GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment)
 {
     return NewGate(meta, machineType, {}, type, comment);

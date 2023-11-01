@@ -222,6 +222,10 @@ FrameLiveOut *FrameStateBuilder::GetOrOCreateBCEndLiveOut(uint32_t bcIndex)
 
 FrameLiveOut *FrameStateBuilder::GetOrOCreateBBLiveOut(size_t bbIndex)
 {
+    // As BB0 is empty, its bbBeginStateLiveouts is the same as BB1.
+    if (bbIndex == 0) {
+        bbIndex = 1;
+    }
     auto liveout = bbBeginStateLiveouts_[bbIndex];
     if (liveout == nullptr) {
         auto chunk = circuit_->chunk();
@@ -283,10 +287,10 @@ void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t 
     }
 }
 
-void FrameStateBuilder::AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, uint32_t bcId)
+void FrameStateBuilder::AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
 {
     if (bytecodeInfo.IsGeneral()) {
-        BindStateSplitBefore(bytecodeInfo, bcId);
+        BindStateSplitBefore(bytecodeInfo, liveout, bcId);
     }
 }
 
@@ -558,7 +562,7 @@ void FrameStateBuilder::NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAs
     if (!bcBuilder_->IsTypeLoweringEnabled()) {
         return;
     }
-    auto stateSplit = BuildStateSplit(liveContext_, bbNext.start);
+    auto stateSplit = BuildStateSplit(liveContext_, liveout, bbNext.start);
     liveContext_->currentDepend_ = stateSplit;
 }
 
@@ -605,7 +609,8 @@ void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb)
         if (!bcBuilder_->IsTypeLoweringEnabled()) {
             return;
         }
-        auto stateSplit = BuildStateSplit(liveContext_, bb.start);
+        auto liveout = GetOrOCreateBBLiveOut(bb.id);
+        auto stateSplit = BuildStateSplit(liveContext_, liveout, bb.start);
         liveContext_->currentDepend_ = stateSplit;
     }
 }
@@ -1112,10 +1117,10 @@ void FrameStateBuilder::DumpLiveState()
     }
 }
 
-GateRef FrameStateBuilder::BuildFrameState(FrameContext* frameContext, size_t bcIndex)
+GateRef FrameStateBuilder::BuildFrameState(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex)
 {
     auto pcOffset = bcBuilder_->GetPcOffset(bcIndex);
-    GateRef gateValues = BuildFrameValues(frameContext);
+    GateRef gateValues = BuildFrameValues(frameContext, liveout);
 
     GateRef frameArgs = bcBuilder_->GetFrameArgs();
     GateRef preFrameState = bcBuilder_->GetPreFrameState();
@@ -1126,9 +1131,9 @@ GateRef FrameStateBuilder::BuildFrameState(FrameContext* frameContext, size_t bc
     return frameState;
 }
 
-GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, size_t bcIndex)
+GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex)
 {
-    auto frameState = BuildFrameState(frameContext, bcIndex);
+    auto frameState = BuildFrameState(frameContext, liveout, bcIndex);
     auto state = frameContext->currentState_;
     auto depend = frameContext->currentDepend_;
     ASSERT(state != Circuit::NullGate());
@@ -1136,13 +1141,13 @@ GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, size_t bc
     return circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
 }
 
-void FrameStateBuilder::BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, uint32_t bcId)
+void FrameStateBuilder::BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
 {
     if (!bcBuilder_->IsTypeLoweringEnabled()) {
         return;
     }
     if (bytecodeInfo.IsCall()) {
-        frameStateCache_ = BuildFrameState(liveContext_, bcId);
+        frameStateCache_ = BuildFrameState(liveContext_, liveout, bcId);
     }
     ASSERT(!liveContext_->needStateSplit_);
 }
@@ -1158,12 +1163,12 @@ void FrameStateBuilder::BindStateSplitAfter(const BytecodeInfo &bytecodeInfo,
         acc_.ReplaceFrameStateIn(gate, frameState);
     }
     if (!bytecodeInfo.NoSideEffects() && !bytecodeInfo.IsThrow()) {
-        auto stateSplit = BuildStateSplit(liveContext_, bcId + 1); // 1: for after
+        auto stateSplit = BuildStateSplit(liveContext_, GetOrOCreateBCEndLiveOut(bcId), bcId + 1); // 1: for after
         liveContext_->currentDepend_ = stateSplit;
     }
 }
 
-GateRef FrameStateBuilder::BuildFrameValues(FrameContext* frameContext)
+GateRef FrameStateBuilder::BuildFrameValues(FrameContext* frameContext, FrameLiveOut* liveout)
 {
     size_t frameStateInputs = numVregs_;
     std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
@@ -1172,7 +1177,7 @@ GateRef FrameStateBuilder::BuildFrameValues(FrameContext* frameContext)
                                                    GateType::TaggedValue());
     for (size_t i = 0; i < numVregs_; i++) {
         auto value = frameContext->ValuesAt(i);
-        if (value == Circuit::NullGate()) {
+        if (value == Circuit::NullGate() || !liveout->TestBit(i)) {
             value = optimizedGate;
         }
         inList[i] = value;

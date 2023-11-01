@@ -55,6 +55,8 @@ public:
         const std::initializer_list<GateRef>& args, GateType type, const char* comment = nullptr);
     GateRef NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns,
                     const GateRef inList[], GateType type, const char* comment = nullptr);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType,
+                    const std::vector<GateRef>& inList, GateType type, const char* comment = nullptr);
     void PrintAllGates() const;
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;

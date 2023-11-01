@@ -776,6 +776,11 @@ public:
         ASSERT(InRange());
     }
 
+    bool IsInRange(int idx) const
+    {
+        return (idx <= end_) && (idx >= start_);
+    }
+    
     bool InRange() const
     {
         return (index_ <= end_) && (index_ >= start_);

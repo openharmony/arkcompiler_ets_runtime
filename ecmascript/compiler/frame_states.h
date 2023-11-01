@@ -111,11 +111,13 @@ public:
     ~FrameStateBuilder();
 
     void DoBytecodeAnalysis();
-    void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, uint32_t bcId);
+    void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
     void UpdateFrameValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId,
         GateRef gate);
     void UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId);
     void UpdateStateDepend(GateRef state, GateRef depend);
+    FrameLiveOut *GetOrOCreateBCEndLiveOut(uint32_t bcIndex);
+    FrameLiveOut *GetOrOCreateBBLiveOut(size_t bbIndex);
     GateRef GetCurrentState() const
     {
         return liveContext_->currentState_;
@@ -164,9 +166,6 @@ private:
     bool MergeIntoPredBC(uint32_t predPc);
     bool MergeFromPredBC(uint32_t predPc);
     void MergeFromCatchBB(size_t bbId);
-
-    FrameLiveOut *GetOrOCreateBCEndLiveOut(uint32_t bcIndex);
-    FrameLiveOut *GetOrOCreateBBLiveOut(size_t bbIndex);
 
     FrameLiveOut *GetFrameLiveoutAfter(uint32_t bcId)
     {
@@ -229,11 +228,11 @@ private:
     bool IsLoopBackEdge(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
 
     GateRef BuildFrameContext(FrameContext* frameContext);
-    void BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, uint32_t bcId);
+    void BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
     void BindStateSplitAfter(const BytecodeInfo &bytecodeInfo, uint32_t bcId, GateRef gate);
-    GateRef BuildFrameValues(FrameContext* frameContext);
-    GateRef BuildStateSplit(FrameContext* frameContext, size_t bcIndex);
-    GateRef BuildFrameState(FrameContext* frameContext, size_t bcIndex);
+    GateRef BuildFrameValues(FrameContext* frameContext, FrameLiveOut* liveout);
+    GateRef BuildStateSplit(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);
+    GateRef BuildFrameState(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);
     void AddEmptyBlock(BytecodeRegion* bb);
     FrameContext *GetCachedContext();
 

@@ -118,10 +118,13 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                 // loop needs to modify the phi node or not.
                 GateRef emptyOffsetGate = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(-1),
                                                             MachineType::I32, GateType::NJSValue());
-                // 2: valuesIn
-                GateRef bcOffsetPhiGate = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32,
-                                                            {stateInGate, restoreOffsetGate, emptyOffsetGate},
-                                                            GateType::NJSValue());
+
+                auto numIn = accessor_.GetNumIns(stateInGate);
+                std::vector<GateRef> inList(numIn + 1, emptyOffsetGate);
+                inList[0] = stateInGate; // 0 : state in
+                inList[1] = restoreOffsetGate; // 1 : outloop value in
+                GateRef bcOffsetPhiGate = circuit_->NewGate(circuit_->ValueSelector(numIn), MachineType::I32,
+                                                            inList, GateType::NJSValue());
 
                 GateRef condition = builder_.Equal(offsetConstantGate, bcOffsetPhiGate);
                 GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(0), {stateInGate, condition});
@@ -242,25 +245,25 @@ void AsyncFunctionLowering::ModifyStateInput(GateRef stateInGate, GateRef ifBran
 void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &resumeInLoopBody)
 {
     ASSERT(accessor_.GetOpCode(stateInGate) == OpCode::LOOP_BEGIN);
-    GateRef loopBack = accessor_.GetIn(stateInGate, 0);
-    if (accessor_.GetOpCode(loopBack) != OpCode::LOOP_BACK) {
-        loopBack = accessor_.GetIn(stateInGate, 1);
-    }
-    ChunkQueue<GateRef> resuemList(circuit_->chunk());
-    resuemList.push(loopBack);
+    ChunkQueue<GateRef> resumeList(circuit_->chunk());
     ChunkVector<VisitState> visited(circuit_->GetMaxGateId() + 1, VisitState::UNVISITED, circuit_->chunk());
+    for (auto i = 0; i < accessor_.GetNumIns(stateInGate); i++) {
+        GateRef inGate = accessor_.GetIn(stateInGate, i);
+        if (accessor_.GetOpCode(inGate) == OpCode::LOOP_BACK) {
+            resumeList.push(inGate);
+            visited[accessor_.GetId(inGate)] = VisitState::VISITED;
+        }
+    }
     auto loopBeginId = accessor_.GetId(stateInGate);
     visited[loopBeginId] = VisitState::VISITED;
-    auto loopBackId = accessor_.GetId(loopBack);
-    visited[loopBackId] = VisitState::VISITED;
-    while (!resuemList.empty()) {
-        GateRef curGate = resuemList.front();
+    while (!resumeList.empty()) {
+        GateRef curGate = resumeList.front();
         if (accessor_.GetOpCode(curGate) == OpCode::JS_BYTECODE &&
             accessor_.GetByteCodeOpcode(curGate) == EcmaOpcode::RESUMEGENERATOR) {
             resumeInLoopBody = true;
             break;
         }
-        resuemList.pop();
+        resumeList.pop();
         size_t stateStart = 0;
         size_t stateEnd = accessor_.GetStateCount(curGate);
         for (size_t idx = stateStart; idx < stateEnd; idx++) {
@@ -268,7 +271,7 @@ void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &res
             auto id = accessor_.GetId(gate);
             if (visited[id] == VisitState::UNVISITED) {
                 visited[id] = VisitState::VISITED;
-                resuemList.push(gate);
+                resumeList.push(gate);
             }
         }
     }
