@@ -1041,4 +1041,12 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
     return factory->NewJSStableArrayWithElements(dstElements).GetTaggedValue();
 }
 
+JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                                  const JSHandle<JSTaggedValue> &callbackFnHandle)
+{
+    JSHandle<TaggedArray> srcElements(thread, thisObj->GetElements());
+    JSArray::SortElements(thread, srcElements, callbackFnHandle);
+    return thisObj.GetTaggedValue();
+}
+
 }  // namespace panda::ecmascript

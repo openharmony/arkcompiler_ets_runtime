@@ -269,6 +269,51 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
     return false;
 }
 
+int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
+{
+    ASSERT(x.IsInt() && y.IsInt());
+    int xValue = x.GetInt();
+    int yValue = y.GetInt();
+    if (xValue == yValue) {
+        return 0;
+    }
+    if (xValue == 0 || yValue == 0) {
+        return xValue > yValue ? 1 : -1;
+    }
+    uint32_t unsignedX = xValue;
+    uint32_t unsignedY = yValue;
+    if (yValue > 0) {
+        if (xValue < 0) {
+            return -1;
+        }
+    } else {
+        if (xValue > 0) {
+            return 1;
+        }
+        unsignedX = -xValue;
+        unsignedY = -yValue;
+    }
+    int xDigit = log10(unsignedX);
+    int yDigit = log10(unsignedY);
+    int res;
+    if (xDigit > yDigit) {
+        unsignedY *= pow(10, xDigit - yDigit); // 10: decimal
+        res = 1;
+    }
+    if (yDigit > xDigit) {
+        unsignedX *= pow(10, yDigit - xDigit); // 10: decimal
+        res = -1;
+    }
+    if (unsignedX > unsignedY) {
+        return 1;
+    }
+
+    if (unsignedY > unsignedX) {
+        return -1;
+    }
+    return res;
+}
+
 ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                         const JSHandle<JSTaggedValue> &y)
 {
