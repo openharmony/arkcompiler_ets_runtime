@@ -456,11 +456,15 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         return false;
     }
 
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
         "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
-        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        panda::os::library_loader::LibraryHandle libraryHandle(nullptr);
+        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
     }
     return ret;
 #else
@@ -468,10 +472,12 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         return false;
     }
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
         DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
     }
     return ret;
 #endif // PANDA_TARGET_IOS
