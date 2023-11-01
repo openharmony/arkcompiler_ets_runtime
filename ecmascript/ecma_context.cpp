@@ -752,9 +752,6 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (aotFileManager_) {
         aotFileManager_->Iterate(v);
     }
-    if (propertiesCache_ != nullptr) {
-        propertiesCache_->Clear();
-    }
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;

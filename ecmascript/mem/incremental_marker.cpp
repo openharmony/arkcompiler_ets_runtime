@@ -86,6 +86,7 @@ void IncrementalMarker::Initialize()
     heap_->SetMarkType(MarkType::MARK_FULL);
     heap_->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
     heap_->Prepare();
+    heap_->GetJSThread()->ClearPropertiesCache();
     heap_->GetOldSpace()->SelectCSet();
     heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
         current->ClearMarkGCBitset();
