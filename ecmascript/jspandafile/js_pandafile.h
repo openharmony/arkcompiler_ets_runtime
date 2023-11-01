@@ -208,6 +208,16 @@ public:
         return pf_->IsExternal(id);
     }
 
+    inline bool Contain(uint8_t *data) const
+    {
+        uintptr_t header = ToUintPtr(GetHeader());
+        uintptr_t dataPointer = ToUintPtr(data);
+        if (header < dataPointer && dataPointer < (header + GetFileSize())) {
+            return true;
+        }
+        return false;
+    }
+
     inline panda_file::File::StringData GetStringData(panda_file::File::EntityId id) const
     {
         return pf_->GetStringData(id);

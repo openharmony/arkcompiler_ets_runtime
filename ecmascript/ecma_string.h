@@ -664,10 +664,15 @@ static_assert((LineEcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::
 
 class ConstantString : public EcmaString {
 public:
-    static constexpr size_t ENTITY_ID_OFFSET = EcmaString::SIZE;
+    static constexpr size_t RELOCTAED_DATA_OFFSET = EcmaString::SIZE;
     // ConstantData is the pointer of const string in the pandafile.
     // String in pandafile is encoded by the utf8 format.
-    ACCESSORS_PRIMITIVE_FIELD(EntityId, uint32_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
+    // EntityId is normally the uint32_t index in the pandafile.
+    // When the pandafile is to be removed, EntityId will become -1.
+    // The real string data will be reloacted into bytearray and stored in RelocatedData.
+    // ConstantData will also point at data of bytearray data.
+    ACCESSORS(RelocatedData, RELOCTAED_DATA_OFFSET, ENTITY_ID_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(EntityId, int64_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
     ACCESSORS_NATIVE_FIELD(ConstantData, uint8_t, CONSTANT_DATA_OFFSET, SIZE);
 
     CAST_CHECK(ConstantString, IsConstantString);
@@ -685,6 +690,12 @@ public:
     static size_t ObjectSize()
     {
         return ConstantString::SIZE;
+    }
+
+    uint32_t GetEntityIdU32() const
+    {
+        ASSERT(GetEntityId() >= 0);
+        return static_cast<uint32_t>(GetEntityId());
     }
 
     template<bool verify = true>

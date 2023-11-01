@@ -354,7 +354,8 @@ public:
                                                  const JSHandle<JSTaggedValue> keys,
                                                  const JSHandle<JSTaggedValue> cachedHclass);
 
-    JSHandle<ByteArray> NewByteArray(uint32_t length, uint32_t size);
+    JSHandle<ByteArray> NewByteArray(uint32_t length, uint32_t size, void *srcData = nullptr,
+                                     MemSpaceType spaceType = MemSpaceType::SEMI_SPACE);
 
     JSHandle<PropertyBox> NewPropertyBox(const JSHandle<JSTaggedValue> &name);
 

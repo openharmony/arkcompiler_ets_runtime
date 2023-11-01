@@ -478,6 +478,7 @@ private:
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
         std::string_view entryPoint, JSHandle<JSFunction> &func);
     bool LoadAOTFiles(const std::string &aotFileName);
+    void RelocateConstantString(const JSPandaFile *jsPandaFile);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 

@@ -509,6 +509,7 @@ void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
         }
         if (constpools.size() == 0) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            RelocateConstantString(iterator->first);
             JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
@@ -539,12 +540,21 @@ void EcmaContext::ProcessReferences(const WeakRootVisitor &visitor)
         }
         if (constpools.size() == 0) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            RelocateConstantString(iterator->first);
             JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
             ++iterator;
         }
     }
+}
+
+void EcmaContext::RelocateConstantString(const JSPandaFile *jsPandaFile)
+{
+    if (!jsPandaFile->IsFirstMergedAbc()) {
+        return;
+    }
+    vm_->GetEcmaStringTable()->RelocateConstantData(jsPandaFile);
 }
 
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
