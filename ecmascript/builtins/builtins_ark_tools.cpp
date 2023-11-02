@@ -189,6 +189,13 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::HintGC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    return JSTaggedValue(const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->
+        CheckAndTriggerHintGC());
+}
+
 JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

@@ -32,6 +32,7 @@
     V("getLexicalEnv",                 GetLexicalEnv,                 1, INVALID)         \
     V("hasTSSubtyping",                HasTSSubtyping,                1, INVALID)         \
     V("hiddenStackSourceFile",         HiddenStackSourceFile,         0, INVALID)         \
+    V("hintGC",                        HintGC,                        0, INVALID)         \
     V("isNotHoleProperty",             IsNotHoleProperty,             2, INVALID)         \
     V("isPrototype",                   IsPrototype,                   1, INVALID)         \
     V("isRegExpReplaceDetectorValid",  IsRegExpReplaceDetectorValid,  0, INVALID)         \
@@ -94,6 +95,8 @@ public:
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HintGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HiddenStackSourceFile(EcmaRuntimeCallInfo *info);
 
