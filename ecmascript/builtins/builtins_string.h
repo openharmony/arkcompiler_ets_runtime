@@ -99,7 +99,7 @@
     /* String.prototype.toUpperCase ( ) */                                          \
     V("toUpperCase",       ToUpperCase,       0, INVALID)                           \
     /* String.prototype.trim ( ) */                                                 \
-    V("trim",              Trim,              0, INVALID)                           \
+    V("trim",              Trim,              0, StringTrim)                        \
     /* String.prototype.trimEnd ( ) */                                              \
     V("trimEnd",           TrimEnd,           0, INVALID)                           \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \

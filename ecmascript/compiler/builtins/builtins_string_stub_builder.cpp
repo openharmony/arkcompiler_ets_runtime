@@ -771,6 +771,32 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
+void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef numArgs [[maybe_unused]],
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(start, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(end, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(sliceLen, VariableType::INT32(), Int32(-1));
+
+    Label objNotUndefinedAndNull(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label thisIsString(env);
+
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        Branch(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        GateRef result = EcmaStringTrim(glue, thisValue, Int32(0)); // 0: mode = TrimMode::TRIM
+        res->WriteVariable(result);
+        Jump(exit);
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)
 {
     auto env = GetEnvironment();
@@ -1812,5 +1838,86 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode)
+{
+    auto env = GetEnvironment();
+
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label emptyString(env);
+    Label notEmpty(env);
+    Label exit(env);
+
+    GateRef srcLen = GetLengthFromString(srcString);
+    Branch(Int32Equal(srcLen, Int32(0)), &emptyString, &notEmpty);
+    Bind(&emptyString);
+    {
+        result = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notEmpty);
+    {
+        Label srcFlattenFastPath(env);
+
+        FlatStringStubBuilder srcFlat(this);
+        srcFlat.FlattenString(glue, srcString, &srcFlattenFastPath);
+        Bind(&srcFlattenFastPath);
+        StringInfoGateRef srcStringInfoGate(&srcFlat);
+        result = EcmaStringTrimBody(glue, srcStringInfoGate, trimMode, IsUtf8String(srcString));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate,
+    GateRef trimMode, GateRef isUtf8)
+{
+    auto env = GetEnvironment();
+
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    GateRef srcLen = srcStringInfoGate.GetLength();
+    GateRef srcString = srcStringInfoGate.GetString();
+
+    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(end, VariableType::INT32(), Int32Sub(srcLen, Int32(1)));
+
+    Label trimOrTrimStart(env);
+    Label notTrimStart(env);
+    Label next(env);
+
+    Branch(Int32GreaterThanOrEqual(trimMode, Int32(0)), &trimOrTrimStart, &notTrimStart);
+    Bind(&trimOrTrimStart); // mode = TrimMode::TRIM or TrimMode::TRIM_START
+    {
+        start = CallNGCRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, srcString, srcLen});
+        Jump(&notTrimStart);
+    }
+    Bind(&notTrimStart);
+    {
+        Label trimOrTrimEnd(env);
+        Branch(Int32LessThanOrEqual(trimMode, Int32(0)), &trimOrTrimEnd, &next);
+        Bind(&trimOrTrimEnd); // mode = TrimMode::TRIM or TrimMode::TRIM_END
+        {
+            end = CallNGCRuntime(glue, RTSTUB_ID(StringGetEnd), {isUtf8, srcString, *start, srcLen});
+            Jump(&next);
+        }
+    }
+    Bind(&next);
+    {
+        auto ret = FastSubString(glue, srcString, *start,
+                                 Int32Add(Int32Sub(*end, *start), Int32(1)), srcStringInfoGate);
+        env->SubCfgExit();
+        return ret;
+    }
 }
 }  // namespace panda::ecmascript::kungfu

@@ -2722,6 +2722,30 @@ uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
     return result;
 }
 
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isUtf8) {
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
+    } else {
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
+    }
+}
+
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isUtf8) {
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        return base::StringHelper::GetEnd(data, start, length);
+    } else {
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        return base::StringHelper::GetEnd(data, start, length);
+    }
+}
+
 DEF_RUNTIME_STUBS(FastStringify)
 {
     RUNTIME_STUBS_HEADER(FastStringify);

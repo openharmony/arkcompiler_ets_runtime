@@ -1224,6 +1224,35 @@ DEF_CALL_SIGNATURE(BigIntSameValueZero)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(StringGetStart)
+{
+    CallSignature stringGetStart("StringGetStart", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = stringGetStart;
+    std::array<VariableType, 3> params = { // 3 : three input parameters
+        VariableType::BOOL(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(StringGetEnd)
+{
+    CallSignature stringGetEnd("StringGetEnd", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = stringGetEnd;
+    std::array<VariableType, 4> params = { // 4 : four input parameters
+        VariableType::BOOL(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \
