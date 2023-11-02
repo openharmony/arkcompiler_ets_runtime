@@ -388,12 +388,6 @@ GateRef CircuitBuilder::NanValue()
     return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
-GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
-{
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
-}
-
 void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate)
 {
     GateRef frameArgs = acc_.GetFrameArgs(hirGate);

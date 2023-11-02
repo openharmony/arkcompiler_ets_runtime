@@ -246,7 +246,6 @@ public:
     GateRef FunctionIsResolved(GateRef function);
     GateRef HasPendingException(GateRef glue); // shareir
     GateRef IsUtf16String(GateRef string);
-    GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
 
     // label related
     void NewEnvironment(GateRef hir);
