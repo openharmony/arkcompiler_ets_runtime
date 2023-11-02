@@ -44,6 +44,7 @@ class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
 class STWYoungGC;
+enum class NativeFlag : uint8_t;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 

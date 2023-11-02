@@ -232,12 +232,20 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
     } else {
-        globalStorage_->IterateUsageGlobal([visitor](Node *node) {
+        size_t globalCount = 0;
+        globalStorage_->IterateUsageGlobal([visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
                 visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
+            globalCount++;
         });
+        static bool hasCheckedGlobalCount = false;
+        static const size_t WARN_GLOBAL_COUNT = 100000;
+        if (!hasCheckedGlobalCount && globalCount >= WARN_GLOBAL_COUNT) {
+            LOG_ECMA(WARN) << "Global reference count is " << globalCount << ",It exceed the upper limit 100000!";
+            hasCheckedGlobalCount = true;
+        }
     }
 }
 
