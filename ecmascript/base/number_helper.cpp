@@ -609,6 +609,7 @@ double NumberHelper::StringToDouble(const uint8_t *start, const uint8_t *end, ui
     }
 
     // 8. parse '.'
+    exponent = 0;
     if (radix == DECIMAL && *p == '.') {
         RETURN_IF_CONVERSION_END(++p, end, (digits > 0 || (digits == 0 && leadingZero)) ?
                                            (number * std::pow(radix, exponent)) : NAN_VALUE);
