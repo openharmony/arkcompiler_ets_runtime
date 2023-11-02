@@ -1813,17 +1813,13 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedArgs(JSThread *thread, JSTaggedType
 JSTaggedValue RuntimeStubs::RuntimeCopyRestArgs(JSThread *thread, JSTaggedType *sp, uint32_t restNumArgs,
                                                 uint32_t startIdx)
 {
-    JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(restNumArgs));
-
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < restNumArgs; ++i) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        element.Update(JSTaggedValue(sp[startIdx + i]));
-        JSObject::SetProperty(thread, restArray, i, element, true);
-    }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return restArray.GetTaggedValue();
+    return JSArray::ArrayCreateWithInit(
+        thread, restNumArgs, [thread, sp, startIdx] (const JSHandle<TaggedArray> &newElements, uint32_t length) {
+        for (uint32_t i = 0; i < length; ++i) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newElements->Set(thread, i, JSTaggedValue(sp[startIdx + i]));
+        }
+    });
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateArrayWithBuffer(JSThread *thread, ObjectFactory *factory,
