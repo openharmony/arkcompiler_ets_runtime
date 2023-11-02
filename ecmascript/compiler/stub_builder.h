@@ -335,6 +335,8 @@ public:
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
     GateRef IsConfigable(GateRef attr);
+    GateRef IsDefaultAttribute(GateRef attr);
+    GateRef IsArrayLengthWritable(GateRef glue, GateRef receiver);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
@@ -485,6 +487,7 @@ public:
     GateRef IsDigit(GateRef ch);
     void TryToGetInteger(GateRef string, Variable *num, Label *success, Label *failed);
     GateRef StringToElementIndex(GateRef glue, GateRef string);
+    GateRef ComputeElementCapacity(GateRef oldLength);
     GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
                                                GateRef maxNonInlinedFastPropsCapacity);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
@@ -606,6 +609,10 @@ public:
     template<OpCode Op, MachineType Type>
     GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
+    GateRef AddElementInternal(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef attr);
+    GateRef ShouldTransToDict(GateRef capcity, GateRef index);
+    void NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver);
+    GateRef GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);

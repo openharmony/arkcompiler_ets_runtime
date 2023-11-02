@@ -207,6 +207,131 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
     return ret;
 }
 
+GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRef newLen)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    NewObjectStubBuilder newBuilder(this);
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    GateRef array = newBuilder.NewTaggedArray(glue, newLen);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+    GateRef oldL = GetLengthOfTaggedArray(elements);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*index, oldL), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            GateRef value = GetValueFromTaggedArray(elements, *index);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
+            index = Int32Add(*index, Int32(1));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Label loopHead1(env);
+        Label loopEnd1(env);
+        Label afterLoop1(env);
+        Label storeValue1(env);
+        Jump(&loopHead1);
+        LoopBegin(&loopHead1);
+        {
+            Branch(Int32UnsignedLessThan(*index, oldL), &storeValue1, &afterLoop1);
+            Bind(&storeValue1);
+            {
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, Hole());
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd1);
+            }
+        }
+        Bind(&loopEnd1);
+        LoopEnd(&loopHead1);
+        Bind(&afterLoop1);
+        {
+            res = array;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    NewObjectStubBuilder newBuilder(this);
+    Label emptyArray(env);
+    Label notEmptyArray(env);
+    Branch(Int32Equal(newLen, Int32(0)), &emptyArray, &notEmptyArray);
+    Bind(&emptyArray);
+    result = GetEmptyArray(glue);
+    Jump(&exit);
+    Bind(&notEmptyArray);
+    {
+        Label extendArray(env);
+        Label notExtendArray(env);
+        Branch(Int32GreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
+        Bind(&extendArray);
+        {
+            result = ExtendArray(glue, elements, newLen);
+            Jump(&exit);
+        }
+        Bind(&notExtendArray);
+        {
+            GateRef array = newBuilder.NewTaggedArray(glue, newLen);
+            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+            GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label afterLoop(env);
+            Label storeValue(env);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                Branch(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
+                Bind(&storeValue);
+                {
+                    GateRef value = GetValueFromTaggedArray(elements, *index);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
+                    index = Int32Add(*index, Int32(1));
+                    Jump(&loopEnd);
+                }
+            }
+            Bind(&loopEnd);
+            LoopEnd(&loopHead);
+            Bind(&afterLoop);
+            {
+                result = array;
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass)
 {
     auto env = GetEnvironment();

@@ -787,6 +787,31 @@ GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef ol
     return ret;
 }
 
+GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef newL = Int32Add(oldLength, Int32LSR(oldLength, Int32(1)));
+    Label reachMin(env);
+    Label notReachMin(env);
+    Branch(Int32GreaterThan(newL, Int32(JSObject::MIN_ELEMENTS_LENGTH)), &reachMin, &notReachMin);
+    {
+        Bind(&reachMin);
+        result = newL;
+        Jump(&exit);
+        Bind(&notReachMin);
+        result = Int32(JSObject::MIN_ELEMENTS_LENGTH);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::CallGetterHelper(
     GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback)
 {
@@ -2972,6 +2997,261 @@ void StubBuilder::TransitToElementsKind(GateRef glue, GateRef receiver, GateRef 
     env->SubCfgExit();
 }
 
+GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef attr)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(kind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::NONE)));
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label isArray(env);
+    Label notArray(env);
+    Branch(IsJsArray(receiver), &isArray, &notArray);
+    Bind(&isArray);
+    {
+        GateRef oldLen = GetArrayLength(receiver);
+        Label indexGreaterOrEq(env);
+        Branch(Int32GreaterThanOrEqual(index, oldLen), &indexGreaterOrEq, &notArray);
+        Bind(&indexGreaterOrEq);
+        {
+            Label isArrLenWritable(env);
+            Label notArrLenWritable(env);
+            Branch(IsArrayLengthWritable(glue, receiver), &isArrLenWritable, &notArrLenWritable);
+            Bind(&isArrLenWritable);
+            {
+                SetArrayLength(glue, receiver, Int32Add(index, Int32(1)));
+                Label indexGreater(env);
+                Branch(Int32GreaterThan(index, oldLen), &indexGreater, &notArray);
+                Bind(&indexGreater);
+                kind = Int32(static_cast<int32_t>(ElementsKind::HOLE));
+                Jump(&notArray);
+            }
+            Bind(&notArrLenWritable);
+            result = False();
+            Jump(&exit);
+        }
+    }
+    Bind(&notArray);
+    {
+        NotifyStableArrayElementsGuardians(glue, receiver);
+        GateRef hclass = LoadHClass(receiver);
+        GateRef elements = GetElementsArray(receiver);
+        Label isDicMode(env);
+        Label notDicMode(env);
+        Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+        Bind(&isDicMode);
+        {
+            GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
+                { receiver, elements, IntToTaggedInt(index), value, IntToTaggedInt(attr), TaggedFalse() });
+            SetElementsArray(VariableType::JS_POINTER(), glue, receiver, res);
+            result = True();
+            Jump(&exit);
+        }
+        Bind(&notDicMode);
+        {
+            GateRef capacity = GetLengthOfTaggedArray(elements);
+            GateRef notDefault = BoolNot(IsDefaultAttribute(attr));
+            Label indexGreaterLen(env);
+            Label notGreaterLen(env);
+            Branch(BoolOr(Int32GreaterThanOrEqual(index, capacity), notDefault), &indexGreaterLen, &notGreaterLen);
+            Bind(&indexGreaterLen);
+            {
+                Label isTransToDict(env);
+                Label notTransToDict(env);
+                Branch(BoolOr(ShouldTransToDict(capacity, index), notDefault), &isTransToDict, &notTransToDict);
+                Bind(&isTransToDict);
+                {
+                    GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
+                        { receiver, elements, IntToTaggedInt(index), value, IntToTaggedInt(attr), TaggedTrue() });
+                    SetElementsArray(VariableType::JS_POINTER(), glue, receiver, res);
+                    result = True();
+                    Jump(&exit);
+                }
+                Bind(&notTransToDict);
+                {
+                    GateRef newElements = GrowElementsCapacity(glue, receiver, Int32Add(index, Int32(1)));
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
+                    TransitToElementsKind(glue, receiver, value, *kind);
+                    result = True();
+                    Jump(&exit);
+                }
+            }
+            Bind(&notGreaterLen);
+            {
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
+                TransitToElementsKind(glue, receiver, value, *kind);
+                result = True();
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    DEFVARIABLE(newElements, VariableType::JS_ANY(), Hole());
+    NewObjectStubBuilder newBuilder(this);
+    GateRef newCapacity = ComputeElementCapacity(capacity);
+    GateRef elements = GetElementsArray(receiver);
+    newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity);
+    SetElementsArray(VariableType::JS_POINTER(), glue, receiver, *newElements);
+    auto ret = *newElements;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    Label isGreaterThanCapcity(env);
+    Label notGreaterThanCapcity(env);
+    Branch(Int32GreaterThanOrEqual(index, capacity), &isGreaterThanCapcity, &notGreaterThanCapcity);
+    Bind(&isGreaterThanCapcity);
+    {
+        Label isLessThanMax(env);
+        Label notLessThanMax(env);
+        Branch(Int32LessThanOrEqual(Int32Sub(index, capacity),
+                                    Int32(JSObject::MAX_GAP)), &isLessThanMax, &notLessThanMax);
+        Bind(&isLessThanMax);
+        {
+            Label isLessThanInt32Max(env);
+            Label notLessThanInt32Max(env);
+            Branch(Int32LessThan(index, Int32(INT32_MAX)), &isLessThanInt32Max, &notLessThanInt32Max);
+            Bind(&isLessThanInt32Max);
+            {
+                Label isLessThanMin(env);
+                Label notLessThanMin(env);
+                Branch(Int32LessThan(capacity, Int32(JSObject::MIN_GAP)), &isLessThanMin, &notLessThanMin);
+                Bind(&isLessThanMin);
+                {
+                    result = False();
+                    Jump(&exit);
+                }
+                Bind(&notLessThanMin);
+                {
+                    result = Int32GreaterThan(index, Int32Mul(capacity, Int32(JSObject::FAST_ELEMENTS_FACTOR)));
+                    Jump(&exit);
+                }
+            }
+            Bind(&notLessThanInt32Max);
+            {
+                result = True();
+                Jump(&exit);
+            }
+        }
+        Bind(&notLessThanMax);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&notGreaterThanCapcity);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+    GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
+    Label isGuardians(env);
+    Branch(Equal(guardians, True()), &isGuardians, &exit);
+    Bind(&isGuardians);
+    {
+        GateRef hclass = LoadHClass(receiver);
+        Label isProtoType(env);
+        Branch(BoolOr(IsProtoTypeHClass(hclass), IsJsArray(receiver)), &isProtoType, &exit);
+        Bind(&isProtoType);
+        {
+            Label isEnvProtoType(env);
+            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef objectFunctionPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                                GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
+            GateRef arrayPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                       GlobalEnv::ARRAY_PROTOTYPE_INDEX);
+            Branch(BoolOr(Equal(objectFunctionPrototype, receiver), Equal(arrayPrototype, receiver)),
+                &isEnvProtoType, &exit);
+            Bind(&isEnvProtoType);
+            Store(VariableType::BOOL(), glue, glue, guardiansOffset, False());
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
+
+GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    GateRef hclass = LoadHClass(receiver);
+    Label isDicMode(env);
+    Label notDicMode(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+    Bind(&isDicMode);
+    {
+        GateRef array = GetPropertiesArray(receiver);
+        GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::LENGTH_STRING_INDEX);
+        GateRef entry = FindEntryFromNameDictionary(glue, array, lengthString);
+        Label notNegtiveOne(env);
+        Label isNegtiveOne(env);
+        Branch(Int32NotEqual(entry, Int32(-1)), &notNegtiveOne, &isNegtiveOne);
+        Bind(&notNegtiveOne);
+        {
+            GateRef attr = GetAttributesFromDictionary<NameDictionary>(array, entry);
+            result = IsWritable(attr);
+            Jump(&exit);
+        }
+        Bind(&isNegtiveOne);
+        {
+            GateRef attr1 = Int32(PropertyAttributes::GetDefaultAttributes());
+            result = IsWritable(attr1);
+            Jump(&exit);
+        }
+    }
+    Bind(&notDicMode);
+    {
+        GateRef layoutInfo = GetLayoutFromHClass(hclass);
+        GateRef propAttr = GetPropAttrFromLayoutInfo(layoutInfo, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+        GateRef attr = GetInt32OfTInt(propAttr);
+        result = IsWritable(attr);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef metaData)
 {
     auto env = GetEnvironment();
@@ -3247,12 +3527,10 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     Branch(IsExtensible(receiver), &isExtensible, &notExtensible);
     Bind(&isExtensible);
     {
-        GateRef result = CallRuntime(glue, RTSTUB_ID(AddElementInternal),
-            { receiver, IntToTaggedInt(index), value,
-            IntToTaggedInt(Int32(PropertyAttributes::GetDefaultAttributes())) });
         Label success(env);
         Label failed(env);
-        Branch(TaggedIsTrue(result), &success, &failed);
+        Branch(AddElementInternal(glue, receiver, index, value,
+                                  Int32(PropertyAttributes::GetDefaultAttributes())), &success, &failed);
         Bind(&success);
         {
             returnValue = Undefined();
