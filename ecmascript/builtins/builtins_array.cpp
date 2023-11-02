@@ -2744,12 +2744,13 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
     // b. If depthNum < 0, set depthNum to 0.
     if (argc > 0) {
         JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 0);
-        JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        depthNum = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
-        depthNum = depthNum < 0 ? 0 : depthNum;
+        if (!msg1->IsUndefined()) {
+            JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            depthNum = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+            depthNum = depthNum < 0 ? 0 : depthNum;
+        }
     }
-
     // 5. Let A be ? ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
