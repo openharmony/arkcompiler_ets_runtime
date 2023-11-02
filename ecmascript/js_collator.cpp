@@ -20,6 +20,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/ecma_string-inl.h"
 
 #include "unicode/udata.h"
 
@@ -315,15 +316,20 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     return collator;
 }
 
-icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales)
+icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSTaggedValue &locales)
 {
-    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    std::string cacheEntry = locales.IsUndefined() ? "" : EcmaStringAccessor(locales).ToStdString();
     void *cachedCollator =
         thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(IcuFormatterType::COLLATOR, cacheEntry);
     if (cachedCollator != nullptr) {
         return reinterpret_cast<icu::Collator*>(cachedCollator);
     }
     return nullptr;
+}
+
+icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales)
+{
+    return GetCachedIcuCollator(thread, locales.GetTaggedValue());
 }
 
 UColAttributeValue JSCollator::OptionToUColAttribute(CaseFirstOption caseFirstOption)
@@ -455,22 +461,49 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
     return options;
 }
 
-icu::UnicodeString EcmaStringToUString(const JSHandle<EcmaString> &string)
+ARK_INLINE icu::UnicodeString EcmaStringToUString(EcmaString *string)
 {
-    std::string stdString(ConvertToString(*string, StringConvertedUsage::LOGICOPERATION));
-    icu::StringPiece sp(stdString);
+    CVector<uint8_t> buf;
+    Span<const uint8_t> span = EcmaStringAccessor(string).ToUtf8Span(buf);
+    icu::StringPiece sp(reinterpret_cast<const char*>(span.begin()), span.size());
     icu::UnicodeString uString = icu::UnicodeString::fromUTF8(sp);
     return uString;
+}
+
+icu::UnicodeString EcmaStringToUString(const JSHandle<EcmaString> &string)
+{
+    return EcmaStringToUString(string.GetObject<EcmaString>());
 }
 
 JSTaggedValue JSCollator::CompareStrings(const icu::Collator *icuCollator, const JSHandle<EcmaString> &string1,
                                          const JSHandle<EcmaString> &string2)
 {
+    return CompareStrings(icuCollator, string1.GetObject<EcmaString>(), string2.GetObject<EcmaString>());
+}
+
+JSTaggedValue JSCollator::CompareStrings(const icu::Collator *icuCollator, EcmaString *string1, EcmaString *string2)
+{
+    UCollationResult result;
+    UErrorCode status = U_ZERO_ERROR;
+    if (string1 == string2) {
+        return JSTaggedValue(UCollationResult::UCOL_EQUAL);
+    }
+    {
+        EcmaStringAccessor string1Acc(string1);
+        EcmaStringAccessor string2Acc(string2);
+        if (string1Acc.IsUtf8() && string1Acc.IsLineOrConstantString() &&
+            string2Acc.IsUtf8() && string2Acc.IsLineOrConstantString()) {
+            icu::StringPiece stringPiece1(reinterpret_cast<const char*>(string1Acc.GetDataUtf8()),
+                                          string1Acc.GetLength());
+            icu::StringPiece stringPiece2(reinterpret_cast<const char*>(string2Acc.GetDataUtf8()),
+                                          string2Acc.GetLength());
+            result = icuCollator->compareUTF8(stringPiece1, stringPiece2, status);
+            return JSTaggedValue(result);
+        }
+    }
     icu::UnicodeString uString1 = EcmaStringToUString(string1);
     icu::UnicodeString uString2 = EcmaStringToUString(string2);
 
-    UCollationResult result;
-    UErrorCode status = U_ZERO_ERROR;
     result = icuCollator->compare(uString1, uString2, status);
     ASSERT(U_SUCCESS(status));
 

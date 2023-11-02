@@ -177,6 +177,24 @@ DECLARE_BUILTINS(String##method)                                                
     V(Trim,         JS_ANY,     Undefined())                                        \
     V(Slice,        JS_ANY,     Undefined())
 
+DECLARE_BUILTINS(LocaleCompare)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsStringStubBuilder stringStubBuilder(this);
+    stringStubBuilder.LocaleCompare(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LocaleCompare));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
 BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
 
 #undef DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER

@@ -471,6 +471,7 @@ private:
     V(CreateJSMapIterator)                  \
     V(JSHClassFindProtoTransitions)         \
     V(NumberHelperStringToDouble)           \
+    V(LocaleCompareNoGc)                    \
     V(StringGetStart)                       \
     V(StringGetEnd)
 
