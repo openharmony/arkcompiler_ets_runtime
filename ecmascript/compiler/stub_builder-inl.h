@@ -2622,9 +2622,19 @@ inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, Ga
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
 }
 
-inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
+inline GateRef StubBuilder::IsIntegerString(GateRef string)
 {
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::HASHCODE_OFFSET), rawHashcode);
+    return env_->GetBuilder()->IsIntegerString(string);
+}
+
+inline GateRef StubBuilder::GetRawHashFromString(GateRef value)
+{
+    return env_->GetBuilder()->GetRawHashFromString(value);
+}
+
+inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger)
+{
+    env_->GetBuilder()->SetRawHashcode(glue, str, rawHashcode, isInteger);
 }
 
 inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)

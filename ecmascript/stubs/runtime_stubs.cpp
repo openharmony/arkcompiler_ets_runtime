@@ -2718,8 +2718,7 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
 uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
 {
     auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
-    return result;
+    return EcmaStringAccessor(string).ComputeHashcode();
 }
 
 int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)

@@ -44,21 +44,26 @@ JSTaggedValue BuiltinsNumber::NumberConstructor(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+
     // 1. If value is present, then a , b , c.
     // 2. Else Let n be +0𝔽.
     JSTaggedNumber numberValue(0);
     if (argv->GetArgsNumber() > 0) {
         JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
         // a. Let prim be ? ToNumeric(value).
-        JSHandle<JSTaggedValue> numericVal = JSTaggedValue::ToNumeric(thread, value);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // b. If Type(prim) is BigInt, let n be 𝔽(ℝ(prim)).
-        if (numericVal->IsBigInt()) {
-            JSHandle<BigInt> bigNumericVal(numericVal);
-            numberValue = BigInt::BigIntToNumber(bigNumericVal);
+        if (!value->IsNumber()) {
+            JSHandle<JSTaggedValue> numericVal = JSTaggedValue::ToNumeric(thread, value);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            // b. If Type(prim) is BigInt, let n be 𝔽(ℝ(prim)).
+            if (numericVal->IsBigInt()) {
+                JSHandle<BigInt> bigNumericVal(numericVal);
+                numberValue = BigInt::BigIntToNumber(bigNumericVal);
+            } else {
+                // c. Otherwise, let n be prim.
+                numberValue = JSTaggedNumber(numericVal.GetTaggedValue());
+            }
         } else {
-            // c. Otherwise, let n be prim.
-            numberValue = JSTaggedNumber(numericVal.GetTaggedValue());
+            numberValue = JSTaggedNumber(value.GetTaggedValue());
         }
     }
     // 3. If NewTarget is undefined, return n.

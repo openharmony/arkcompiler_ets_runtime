@@ -184,7 +184,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         if (bundleName != vm->GetBundleName()) {
             entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
             if (vm->EnableReportModuleResolvingFailure()) {
-                CString msg = "[ArkRuntime Log] Cannot preview this HSP module as" \
+                CString msg = "[ArkRuntime Log] Cannot preview this HSP module as " \
                     "it is imported from outside the current application.";
                 LOG_NO_TAG(ERROR) << msg;
             }

@@ -82,13 +82,14 @@ inline bool JSTaggedValue::ToBoolean() const
     UNREACHABLE();
 }
 
-inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, JSTaggedValue tagged)
 {
-    if (tagged->IsInt() || tagged->IsDouble()) {
-        return JSTaggedNumber(tagged.GetTaggedValue());
+    DISALLOW_GARBAGE_COLLECTION;
+    if (tagged.IsInt() || tagged.IsDouble()) {
+        return JSTaggedNumber(tagged);
     }
 
-    switch (tagged->GetRawData()) {
+    switch (tagged.GetRawData()) {
         case JSTaggedValue::VALUE_UNDEFINED:
         case JSTaggedValue::VALUE_HOLE: {
             return JSTaggedNumber(base::NAN_VALUE);
@@ -105,21 +106,27 @@ inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, const JSHandle<J
         }
     }
 
-    if (tagged->IsString()) {
-        return StringToDouble(tagged.GetTaggedValue());
+    if (tagged.IsString()) {
+        return StringToNumber(tagged);
     }
-    if (tagged->IsECMAObject()) {
-        JSHandle<JSTaggedValue> primValue(thread, ToPrimitive(thread, tagged, PREFER_NUMBER));
+    if (tagged.IsECMAObject()) {
+        JSHandle<JSTaggedValue>taggedHandle(thread, tagged);
+        JSTaggedValue primValue = ToPrimitive(thread, taggedHandle, PREFER_NUMBER);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedNumber::Exception());
         return ToNumber(thread, primValue);
     }
-    if (tagged->IsSymbol()) {
+    if (tagged.IsSymbol()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Symbol value to a number", JSTaggedNumber::Exception());
     }
-    if (tagged->IsBigInt()) {
+    if (tagged.IsBigInt()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a BigInt value to a number", JSTaggedNumber::Exception());
     }
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Unknown value to a number", JSTaggedNumber::Exception());
+}
+
+inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    return ToNumber(thread, tagged.GetTaggedValue());
 }
 
 inline JSTaggedValue JSTaggedValue::ToBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
