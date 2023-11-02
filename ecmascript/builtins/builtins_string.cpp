@@ -1172,7 +1172,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                     continueFromIndex = pos + 1;
                     break;
                 }
-                JSHandle<EcmaString> captureName(capture);
+                JSHandle<EcmaString> captureName = JSTaggedValue::ToString(thread, capture);
                 stringBuilder += EcmaStringAccessor(captureName).ToU16String();
                 if (EcmaStringAccessor(captureName).IsUtf16()) {
                     canBeCompress = false;

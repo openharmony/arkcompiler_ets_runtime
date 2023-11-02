@@ -2314,13 +2314,14 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
         JSTaggedValue value = args->Get(i);
         arr->Set(thread, i + preArgsSize, value);
     }
+    JSHandle<JSArray> newArr = JSArray::CreateArrayFromList(thread, arr);
 
     // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
     const int32_t argsLength = 3;  // 3: «target, argArray, newTarget »
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(target.GetTaggedValue(), arr.GetTaggedValue(), newTgt.GetTaggedValue());
+    info->SetCallArg(target.GetTaggedValue(), newArr.GetTaggedValue(), newTgt.GetTaggedValue());
     JSTaggedValue newObjValue = JSFunction::Call(info);
     // 10.ReturnIfAbrupt(newObj).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
