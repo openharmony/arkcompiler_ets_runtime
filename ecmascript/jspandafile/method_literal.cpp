@@ -149,4 +149,33 @@ uint32_t MethodLiteral::GetCodeSize(const JSPandaFile *jsPandaFile, EntityId met
     panda_file::CodeDataAccessor cda(*pandaFile, codeId);
     return cda.GetCodeSize();
 }
+
+std::optional<std::set<uint32_t>> MethodLiteral::GetConcurrentRequestedModules(const JSPandaFile *jsPandaFile) const
+{
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    EntityId methodId = GetMethodId();
+    panda_file::MethodDataAccessor mda(*pf, methodId);
+    std::set<uint32_t> requestedModules;
+    bool hasRequestedModules = false;
+    mda.EnumerateAnnotations([&](EntityId annotationId) {
+        panda_file::AnnotationDataAccessor ada(*pf, annotationId);
+        auto *annotationName = reinterpret_cast<const char *>(pf->GetStringData(ada.GetClassId()).data);
+        if (::strcmp("L_ESConcurrentModuleRequestsAnnotation;", annotationName) == 0) {
+            hasRequestedModules = true;
+            uint32_t elemCount = ada.GetCount();
+            for (uint32_t i = 0; i < elemCount; i++) {
+                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
+                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
+                if (::strcmp("ConcurrentModuleRequest", elemName) == 0) {
+                    uint32_t index = adae.GetScalarValue().GetValue();
+                    requestedModules.insert(index);
+                }
+            }
+        }
+    });
+    if (!hasRequestedModules) {
+        return std::nullopt;
+    }
+    return requestedModules;
+}
 } // namespace panda::ecmascript

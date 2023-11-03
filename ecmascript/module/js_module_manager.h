@@ -112,7 +112,7 @@ private:
         bool excuteFromJob = false);
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &recordName, bool excuteFromJob = false);
-    
+
     JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
         const CString &recordName, bool excuteFromJob = false);
 

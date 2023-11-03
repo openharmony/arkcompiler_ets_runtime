@@ -3657,10 +3657,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
-    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
     method->SetModule(thread, module);
     return true;
 }

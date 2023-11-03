@@ -111,7 +111,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSTaggedValue resolvedModule = binding->GetModule();
         ASSERT(resolvedModule.IsSourceTextModule());
         SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
-        
+
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
