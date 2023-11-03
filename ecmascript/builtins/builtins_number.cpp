@@ -314,7 +314,7 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // 1. Let x be ? thisNumberValue(this value).
     [[maybe_unused]] JSHandle<JSTaggedValue> x(thread, ThisNumberValue(thread, argv));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    
+
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     [[maybe_unused]] bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
@@ -521,7 +521,7 @@ void NumberToStringResultCache::SetCachedResult(const JSThread *thread, JSTagged
     JSHandle<EcmaString> &result)
 {
     int entry = NumberToStringResultCache::GetNumberHash(number);
-    uint32_t index = entry * ENTRY_SIZE;
+    uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
     Set(thread, index + NUMBER_INDEX, number);
     Set(thread, index + RESULT_INDEX, result.GetTaggedValue());
 }
