@@ -153,6 +153,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
     "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
+    "--compiler-enable-native-inline:      Enable inline native function: Default: 'false'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -245,6 +246,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
         {"compiler-enable-lexenv-specialization", required_argument, nullptr,
             OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
+        {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENBALE_NATIVE_INLINE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -834,6 +836,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableLexenvSpecialization(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENBALE_NATIVE_INLINE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableNativeInline(argBool);
                 } else {
                     return false;
                 }
