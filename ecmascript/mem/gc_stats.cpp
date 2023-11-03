@@ -147,14 +147,8 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DESCRIPTION_FORMAT("Native memory usage size:")
                     << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n"
                     << STATS_DESCRIPTION_FORMAT("NativeBindingSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "KB\n"
-                    << STATS_DESCRIPTION_FORMAT("ArrayBufferNativeSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetArrayBufferNativeSize()))
-                    << "KB\n"
-                    << STATS_DESCRIPTION_FORMAT("RegExpByteCodeNativeSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetRegExpNativeSize())) << "KB\n"
-                    << STATS_DESCRIPTION_FORMAT("ChunkNativeSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetChunkNativeSize())) << "KB";
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "KB";
+
     switch (gcType_) {
         case GCType::STW_YOUNG_GC: {
             double copiedRate = double(GetRecordData(RecordData::SEMI_ALIVE_SIZE)) /
