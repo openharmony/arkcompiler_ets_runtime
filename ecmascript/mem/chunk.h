@@ -23,6 +23,7 @@
 
 namespace panda::ecmascript {
 class NativeAreaAllocator;
+enum class NativeFlag;
 
 class PUBLIC_API Chunk {
 public:
