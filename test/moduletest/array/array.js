@@ -133,7 +133,7 @@ try {
      v21 = v20.pop();
      print(v21);
 } catch (error) {
-    
+
 }
 
 var arr21 = [1,2,3,4,,6];
@@ -299,7 +299,7 @@ try {
     }
 
     print("Group 10: fromIndex with side effects:");
-    let accessCount = 0; 
+    let accessCount = 0;
     const arrProxyHandler = {
         has(target, key) {
             accessCount += 1;
@@ -334,7 +334,7 @@ try {
         for (let method of [ Array.prototype.indexOf, Array.prototype.lastIndexOf ]) {
             try {
                 const result = method.call(arr, 10, fromIndex);
-                print(`ERROR: Unexpected result (which is ${result}) returned by method '${method.name}': ` + 
+                print(`ERROR: Unexpected result (which is ${result}) returned by method '${method.name}': ` +
                       `Expects a TypeError thrown for fromIndex type '${prompt}'.`);
             } catch (e) {
                 // Expects a TypeError thrown and caught here.
@@ -353,3 +353,13 @@ try {
 } catch (e) {
     print("CallbackFn is not callable");
 }
+
+var getTrap = function(t, key) {
+    if (key === "length") return {[Symbol.toPrimitive]() {return 3}};
+    if (key === "2") return "baz";
+    if (key === "3") return "bar";
+};
+var target1 = [];
+var obj = new Proxy(target1, {get: getTrap, has: () => true});
+print([].concat(obj));
+print(Array.prototype.concat.apply(obj))
