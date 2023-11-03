@@ -29,7 +29,8 @@ namespace panda::ecmascript::kungfu {
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
 #define BUILTINS_STUB_LIST(V)                       \
     BUILTINS_METHOD_STUB_LIST(V)                    \
-    BUILTINS_CONSTRUCTOR_STUB_LIST(V)
+    BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
+    AOT_AND_BUILTINS_STUB_LIST(V)
 
 #define BUILTINS_METHOD_STUB_LIST(V)                \
     V(StringCharCodeAt)                             \
@@ -89,6 +90,9 @@ namespace panda::ecmascript::kungfu {
     V(DateConstructor)                              \
     V(ArrayConstructor)
 
+#define AOT_AND_BUILTINS_STUB_LIST(V)               \
+    V(LocaleCompare)
+
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)  /* list start and math list start */   \
     V(COS)                                          \
@@ -97,7 +101,6 @@ namespace panda::ecmascript::kungfu {
     V(ATAN)                                         \
     V(ABS)                                          \
     V(FLOOR)  /* math list end */                   \
-    V(LocaleCompare)                                \
     V(SORT)                                         \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
@@ -163,8 +166,9 @@ public:
 
     static bool IsTypedBuiltin(ID builtinId)
     {
-        return (BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
-               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST);
+        return (BuiltinsStubCSigns::ID::LocaleCompare == builtinId) ||
+               ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
+               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
     }
 
     static bool IsTypedBuiltinMath(ID builtinId)

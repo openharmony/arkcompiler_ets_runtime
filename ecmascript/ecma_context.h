@@ -75,7 +75,8 @@ enum class IcuFormatterType {
     SIMPLE_DATE_FORMAT_DATE,
     SIMPLE_DATE_FORMAT_TIME,
     NUMBER_FORMATTER,
-    COLLATOR
+    COLLATOR,
+    ICU_FORMATTER_TYPE_COUNT
 };
 
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
@@ -273,32 +274,27 @@ public:
                                 IcuDeleteEntry deleteEntry = nullptr)
     {
         EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
+        icuObjCache_[static_cast<int>(type)] = icuFormatter;
     }
 
-    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    ARK_INLINE void *GetIcuFormatterFromCache(IcuFormatterType type, std::string &locale)
     {
-        auto iter = icuObjCache_.find(type);
-        if (iter != icuObjCache_.end()) {
-            EcmaContext::IcuFormatter icuFormatter = iter->second;
-            if (icuFormatter.locale == locale) {
-                return icuFormatter.icuObj;
-            }
+        auto &icuFormatter = icuObjCache_[static_cast<int>(type)];
+        if (icuFormatter.locale == locale) {
+            return icuFormatter.icuObj;
         }
         return nullptr;
     }
 
     void ClearIcuCache()
     {
-        auto iter = icuObjCache_.begin();
-        while (iter != icuObjCache_.end()) {
-            EcmaContext::IcuFormatter icuFormatter = iter->second;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
+            auto &icuFormatter = icuObjCache_[i];
             IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
             if (deleteEntry != nullptr) {
                 deleteEntry(icuFormatter.icuObj, vm_);
             }
-            iter->second = EcmaContext::IcuFormatter{};
-            iter++;
+            icuFormatter = EcmaContext::IcuFormatter{};
         }
     }
 
@@ -545,8 +541,7 @@ private:
         IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
-    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
-
+    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
     // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;

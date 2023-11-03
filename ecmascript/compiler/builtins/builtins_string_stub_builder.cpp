@@ -1840,6 +1840,58 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     return ret;
 }
 
+void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
+                                              [[maybe_unused]] Variable *res, [[maybe_unused]] Label *exit,
+                                              Label *slowPath)
+{
+    auto env = GetEnvironment();
+
+    Label thisIsHeapObj(env);
+    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Bind(&thisIsHeapObj);
+    {
+        Label thisValueIsString(env);
+        Label fristArgIsString(env);
+        Label arg0IsHeapObj(env);
+        Branch(IsString(thisValue), &thisValueIsString, slowPath);
+        Bind(&thisValueIsString);
+        GateRef arg0 = GetCallArg0(numArgs);
+        Branch(TaggedIsHeapObject(arg0), &arg0IsHeapObj, slowPath);
+        Bind(&arg0IsHeapObj);
+        Branch(IsString(arg0), &fristArgIsString, slowPath);
+        Bind(&fristArgIsString);
+#ifdef ARK_SUPPORT_INTL
+        GateRef locales = GetCallArg1(numArgs);
+        
+        GateRef options = GetCallArg2(numArgs);
+        GateRef localesIsUndef = TaggedIsUndefined(locales);
+        GateRef optionsIsUndef = TaggedIsUndefined(options);
+        GateRef cacheable = BoolAnd(BoolOr(localesIsUndef, TaggedObjectIsString(locales)), optionsIsUndef);
+        Label optionsIsString(env);
+        Label cacheAble(env);
+        Label uncacheable(env);
+
+        Branch(cacheable, &cacheAble, &uncacheable);
+        Bind(&cacheAble);
+        {
+            Label defvalue(env);
+            GateRef resValue = CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), {glue, locales, thisValue, arg0});
+            Branch(TaggedIsUndefined(resValue), slowPath, &defvalue);
+            Bind(&defvalue);
+            *res = resValue;
+            Jump(exit);
+        }
+        Bind(&uncacheable);
+        {
+            res->WriteVariable(CallRuntime(glue, RTSTUB_ID(LocaleCompareWithGc), {locales, thisValue, arg0, options}));
+            Jump(exit);
+        }
+#else
+    Jump(slowPath);
+#endif
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode)
 {
     auto env = GetEnvironment();

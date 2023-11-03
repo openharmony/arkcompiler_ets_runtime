@@ -159,6 +159,9 @@ public:
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     // 21.1.3.10
     static JSTaggedValue LocaleCompare(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LocaleCompareGC(JSThread *thread, JSHandle<JSTaggedValue> locales,
+                                         JSHandle<EcmaString> thisHandle, JSHandle<EcmaString> thatHandle,
+                                         JSHandle<JSTaggedValue> options, bool cacheable);
     // 21.1.3.11
     static JSTaggedValue Match(EcmaRuntimeCallInfo *argv);
 

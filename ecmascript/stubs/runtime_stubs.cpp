@@ -2783,6 +2783,31 @@ DEF_RUNTIME_STUBS(ObjectSlowAssign)
     return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LocaleCompareWithGc)
+{
+    RUNTIME_STUBS_HEADER(LocaleCompareWithGc);
+    JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
+    JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
+    JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
+    return builtins::BuiltinsString::LocaleCompareGC(thread, locales, thisHandle, thatHandle,
+        options, cacheable).GetRawData();
+}
+
+JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
+                                              EcmaString *thatHandle)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto collator = JSCollator::GetCachedIcuCollator(thread, JSTaggedValue(locales));
+    JSTaggedValue result = JSTaggedValue::Undefined();
+    if (collator != nullptr) {
+        result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+    }
+    return result;
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);

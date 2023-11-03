@@ -568,6 +568,30 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
 #endif
 }
 
+JSTaggedValue BuiltinsString::LocaleCompareGC(JSThread *thread, JSHandle<JSTaggedValue> locales,
+                                              JSHandle<EcmaString> thisHandle, JSHandle<EcmaString> thatHandle,
+                                              JSHandle<JSTaggedValue> options, bool cacheable)
+{
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
+    JSHandle<JSCollator> initCollator =
+        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    icu::Collator *icuCollator = nullptr;
+    if (cacheable) {
+        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
+        ASSERT(icuCollator != nullptr);
+    } else {
+        icuCollator = initCollator->GetIcuCollator();
+    }
+    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+    return result;
+}
+
+
 // 21.1.3.11
 JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
 {

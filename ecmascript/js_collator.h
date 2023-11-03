@@ -88,6 +88,7 @@ public:
                                                    bool enableLocaleCache = false);
 
     static icu::Collator *GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales);
+    static icu::Collator *GetCachedIcuCollator(JSThread *thread, const JSTaggedValue &locales);
 
     // 11.3.4 Intl.Collator.prototype.resolvedOptions ()
     static JSHandle<JSObject> ResolvedOptions(JSThread *thread, const JSHandle<JSCollator> &collator);
@@ -96,6 +97,8 @@ public:
 
     static JSTaggedValue CompareStrings(const icu::Collator *icuCollator, const JSHandle<EcmaString> &string1,
                                         const JSHandle<EcmaString> &string2);
+
+    static JSTaggedValue CompareStrings(const icu::Collator *icuCollator, EcmaString *string1, EcmaString *string2);
 
     static JSTaggedValue FastCompareStrings(JSThread *thread, const icu::Collator *icuCollator,
                                             const JSHandle<EcmaString> &string1,
