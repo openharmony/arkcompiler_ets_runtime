@@ -403,7 +403,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
                 object->Destroy();
                 iter = nativePointerList_.erase(iter);
             } else {
@@ -428,7 +427,6 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
                 object->Destroy();
                 iter = nativePointerList_.erase(iter);
                 continue;
@@ -454,7 +452,6 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
-        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy();
         nativePointerList_.erase(iter);
     }

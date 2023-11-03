@@ -73,8 +73,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
                                                             const DeleteEntryPoint &callBack,
                                                             void *data,
                                                             bool nonMovable,
-                                                            size_t nativeBindingsize,
-                                                            NativeFlag flag)
+                                                            size_t nativeBindingsize)
 {
     NewObjectHook();
     TaggedObject *header;
@@ -89,12 +88,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetDeleter(callBack);
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
-    obj->SetNativeFlag(flag);
-    
+
     if (callBack != nullptr) {
-        if (flag == NativeFlag::NO_DIV) {
-            heap_->IncreaseNativeBindingSize(nativeBindingsize);
-        }
+        heap_->IncreaseNativeBindingSize(nativeBindingsize);
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
     }
     return obj;

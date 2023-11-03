@@ -18,7 +18,6 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
 using DeleteEntryPoint = void (*)(void *, void *);
@@ -44,7 +43,6 @@ public:
         SetExternalPointer(nullptr);
         SetDeleter(nullptr);
         SetData(nullptr);
-        SetNativeFlag(NativeFlag::NO_DIV);
     }
 
     inline void Detach()
@@ -57,9 +55,8 @@ public:
     ACCESSORS_NATIVE_FIELD(ExternalPointer, void, POINTER_OFFSET, DELETER_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Deleter, DeleteEntryPoint, DELETER_OFFSET, DATA_OFFSET)
     ACCESSORS_NATIVE_FIELD(Data, void, DATA_OFFSET, DATA_SIZE_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BindingSize, uint64_t, DATA_SIZE_OFFSET, FLAG_OFFSET);
-    // native memory statistic flag
-    ACCESSORS_PRIMITIVE_FIELD(NativeFlag, NativeFlag, FLAG_OFFSET, LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(BindingSize, uint64_t, DATA_SIZE_OFFSET, LAST_OFFSET)
+
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_NATIVE_FIELD(POINTER_OFFSET, DATA_SIZE_OFFSET)
