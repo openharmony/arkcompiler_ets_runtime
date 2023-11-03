@@ -330,6 +330,9 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());
         kValue.Update(array->Get(k));
+        if(kValue->IsHole()) {
+            kValue.Update(JSTaggedValue::Undefined());
+        }
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
