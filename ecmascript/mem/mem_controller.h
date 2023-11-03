@@ -17,6 +17,8 @@
 #define ECMASCRIPT_MEM_MEM_CONTROLLER_H
 
 #include <chrono>
+#include <cmath>
+#include <limits>
 
 #include "ecmascript/base/gc_ring_buffer.h"
 #include "ecmascript/mem/heap.h"
@@ -117,6 +119,11 @@ public:
     void AddSurvivalRate(double rate)
     {
         recordedSurvivalRates_.Push(rate);
+        if (UNLIKELY(std::isnan(predictedSurvivalRate_))) {
+            predictedSurvivalRate_ = rate;
+        } else {
+            predictedSurvivalRate_ = ALPHA * rate + (1 - ALPHA) * predictedSurvivalRate_;
+        }
     }
 
     double GetAverageSurvivalRate() const
@@ -129,6 +136,14 @@ public:
         return result / count;
     }
 
+    double GetPredictedSurvivalRate() const
+    {
+        if (UNLIKELY(std::isnan(predictedSurvivalRate_))) {
+            return 0;
+        }
+        return predictedSurvivalRate_;
+    }
+
     void ResetRecordedSurvivalRates()
     {
         recordedSurvivalRates_.Reset();
@@ -136,6 +151,8 @@ public:
 
 private:
     static constexpr int LENGTH = 10;
+    // Decayed weight for predicting survival rate.
+    static constexpr double ALPHA = 0.8;
     static double CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDuration, LENGTH> &buffer);
     static double CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDuration, LENGTH> &buffer,
                                         const BytesAndDuration &initial, const double timeMs);
@@ -162,6 +179,8 @@ private:
 
     int startCounter_ {0};
     double markCompactSpeedCache_ {0.0};
+
+    double predictedSurvivalRate_ {std::numeric_limits<double>::quiet_NaN()};
 
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedMarkCompacts_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedNewSpaceAllocations_;

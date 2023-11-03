@@ -280,6 +280,7 @@ public:
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     bool CheckAndTriggerOldGC(size_t size = 0);
+    bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
      * Parallel GC related configurations and utilities.
@@ -576,6 +577,8 @@ private:
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
+    // Threadshold that HintGC will actually trigger GC.
+    static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();

@@ -33,4 +33,5 @@ print(res);
 
 print(ArkTools.forceFullGC());
 
-
+ArkTools.hintGC();
+print("call hintGC to make vm decide to trigger GC or do noting");
