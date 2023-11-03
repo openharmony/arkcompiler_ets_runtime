@@ -510,21 +510,6 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
     return gate;
 }
 
-GateRef BytecodeCircuitBuilder::TryNewSaveRegister(const BytecodeInfo& bytecodeInfo, GateRef depend)
-{
-    if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
-        bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8) {
-        auto hole = circuit_->GetConstantGate(MachineType::I64,
-                                              JSTaggedValue::VALUE_HOLE,
-                                              GateType::TaggedValue());
-        uint32_t numRegs = GetNumberVRegsWithEnv();
-        std::vector<GateRef> vec(numRegs + 1, hole);
-        vec[0] = depend;
-        return circuit_->NewGate(circuit_->SaveRegister(numRegs), vec);
-    }
-    return depend;
-}
-
 void BytecodeCircuitBuilder::MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex)
 {
     auto state = frameStateBuilder_.GetCurrentState();
@@ -571,7 +556,6 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb)
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     GateRef state = frameStateBuilder_.GetCurrentState();
     GateRef depend = frameStateBuilder_.GetCurrentDepend();
-    depend = TryNewSaveRegister(bytecodeInfo, depend);
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
     bool writable = !bytecodeInfo.NoSideEffects();

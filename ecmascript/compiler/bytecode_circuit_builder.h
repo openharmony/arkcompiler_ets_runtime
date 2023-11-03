@@ -548,7 +548,6 @@ private:
     void NewJump(BytecodeRegion &bbd);
     GateRef NewReturn(BytecodeRegion &bb);
     void NewByteCode(BytecodeRegion &bb);
-    GateRef TryNewSaveRegister(const BytecodeInfo& bytecodeInfo, GateRef depend);
     void MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex);
     void MergeExceptionGete(BytecodeRegion &bb, const BytecodeInfo& bytecodeInfo, uint32_t bcIndex);
     void BuildSubCircuit();

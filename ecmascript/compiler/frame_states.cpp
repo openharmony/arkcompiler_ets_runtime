@@ -291,6 +291,25 @@ void FrameStateBuilder::AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameL
 {
     if (bytecodeInfo.IsGeneral()) {
         BindStateSplitBefore(bytecodeInfo, liveout, bcId);
+        if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
+            bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8) {
+            auto hole = circuit_->GetConstantGate(MachineType::I64,
+                                                  JSTaggedValue::VALUE_HOLE,
+                                                  GateType::TaggedValue());
+            uint32_t numRegs = accumulatorIndex_;
+            std::vector<GateRef> vec(numRegs + 1, hole);
+            vec[0] = liveContext_->currentDepend_;
+            // accumulator is res
+            for (size_t i = 0; i < numRegs; i++) {
+                if (liveout->TestBit(i)) {
+                    vec[i + 1] = liveContext_->ValuesAt(i);  // 1: skip dep
+                } else {
+                    vec[i + 1] = hole; // 1: skip dep
+                }
+            }
+            auto res = circuit_->NewGate(circuit_->SaveRegister(numRegs), vec);
+            liveContext_->currentDepend_ = res;
+        }
     }
 }
 

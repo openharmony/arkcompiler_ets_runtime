@@ -779,6 +779,9 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate)
 {
     GateRef genObj = acc_.GetValueIn(gate, 1);
     GateRef saveRegister = acc_.GetDep(gate);
+    while (acc_.GetOpCode(saveRegister) != OpCode::SAVE_REGISTER) {
+        saveRegister = acc_.GetDep(saveRegister);
+    }
     ASSERT(acc_.GetOpCode(saveRegister) == OpCode::SAVE_REGISTER);
 
     acc_.SetDep(gate, acc_.GetDep(saveRegister));

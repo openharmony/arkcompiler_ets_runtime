@@ -247,7 +247,7 @@ void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &res
     ASSERT(accessor_.GetOpCode(stateInGate) == OpCode::LOOP_BEGIN);
     ChunkQueue<GateRef> resumeList(circuit_->chunk());
     ChunkVector<VisitState> visited(circuit_->GetMaxGateId() + 1, VisitState::UNVISITED, circuit_->chunk());
-    for (auto i = 0; i < accessor_.GetNumIns(stateInGate); i++) {
+    for (size_t i = 0; i < accessor_.GetNumIns(stateInGate); i++) {
         GateRef inGate = accessor_.GetIn(stateInGate, i);
         if (accessor_.GetOpCode(inGate) == OpCode::LOOP_BACK) {
             resumeList.push(inGate);
