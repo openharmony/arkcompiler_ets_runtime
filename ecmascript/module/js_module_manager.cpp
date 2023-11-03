@@ -707,4 +707,43 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const JSPandaFi
     }
     return ResolveModule(thread, jsPandaFile);
 }
+
+JSHandle<JSTaggedValue> ModuleManager::LoadNativeModule(JSThread *thread, const std::string &key)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+    JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+    if (IsImportedModuleLoaded(keyHandle.GetTaggedValue())) {
+        JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(keyHandle.GetTaggedValue());
+        requiredModule.Update(moduleRecord);
+    } else {
+        CString requestPath = ConvertToString(keyHandle.GetTaggedValue());
+        CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
+        auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
+        JSHandle<JSTaggedValue> nativeModuleHld = ResolveNativeModule(requestPath, moduleType);
+        JSHandle<SourceTextModule> nativeModule = 
+            JSHandle<SourceTextModule>::Cast(nativeModuleHld);
+        JSHandle<JSTaggedValue> keyValue(thread, keyHandle.GetTaggedValue());
+        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, keyValue,
+            moduleType)) {
+            LOG_FULL(ERROR) << "loading native module" << requestPath << " failed";
+        }
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+        requiredModule.Update(nativeModule);
+    }
+
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = JSHandle<SourceTextModule>(requiredModule);
+    if (ecmaModule->GetIsNewBcVersion()) {
+        int index = GetExportObjectIndex(vm_, ecmaModule, key);
+        JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
+        JSHandle<JSTaggedValue> exportObj(thread, result);
+        return exportObj;
+    }
+
+    JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
+    JSHandle<JSTaggedValue> exportObj(thread, result);
+    return exportObj;
+
+}
 } // namespace panda::ecmascript

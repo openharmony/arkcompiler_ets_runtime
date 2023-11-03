@@ -65,6 +65,8 @@ public:
         const CString &recordName, bool excuteFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
+    JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
+
     JSTaggedValue GetCurrentModule();
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);

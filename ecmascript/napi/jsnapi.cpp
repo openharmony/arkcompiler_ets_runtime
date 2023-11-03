@@ -972,6 +972,15 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
+Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
+{   
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
+    return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
  // Initialize IcuData Path
 void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 {
