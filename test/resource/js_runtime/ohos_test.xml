@@ -1308,4 +1308,15 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="ThreadTerminationTest">
+        <preparer>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_1.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_2.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_3.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_4.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_5.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/test/executiontest/termination_6.abc -> /data/test" src="out"/>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>

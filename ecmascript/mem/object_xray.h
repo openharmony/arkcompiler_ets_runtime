@@ -136,6 +136,7 @@ public:
             case JSType::JS_URI_ERROR:
             case JSType::JS_SYNTAX_ERROR:
             case JSType::JS_OOM_ERROR:
+            case JSType::JS_TERMINATION_ERROR:
             case JSType::JS_ASYNCITERATOR:
             case JSType::JS_ITERATOR:
                 JSObject::Cast(object)->VisitRangeSlot(visitor);

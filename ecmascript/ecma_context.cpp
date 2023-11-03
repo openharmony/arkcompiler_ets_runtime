@@ -628,8 +628,8 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
 
 bool EcmaContext::HasPendingJob()
 {
-    if (isProcessingPendingJob_) {
-        return true;
+    if (UNLIKELY(thread_->HasTerminated())) {
+        return false;
     }
     return job::MicroJobQueue::HasPendingJob(thread_, GetMicroJobQueue());
 }

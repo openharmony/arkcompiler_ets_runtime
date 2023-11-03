@@ -292,6 +292,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_TERMINATION_ERROR:
             return WriteJSError(value);
         case JSType::JS_DATE:
             return WriteJSDate(value);
@@ -554,6 +555,8 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
             return WriteType(SerializationUID::SYNTAX_ERROR);
         case JSType::JS_OOM_ERROR:
             return WriteType(SerializationUID::OOM_ERROR);
+        case JSType::JS_TERMINATION_ERROR:
+            return WriteType(SerializationUID::TERMINATION_ERROR);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1153,6 +1156,7 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
         case SerializationUID::URI_ERROR:
         case SerializationUID::SYNTAX_ERROR:
         case SerializationUID::OOM_ERROR:
+        case SerializationUID::TERMINATION_ERROR:
             return ReadJSError(uid);
         case SerializationUID::JS_DATE:
             return ReadJSDate();
@@ -1418,6 +1422,9 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             break;
         case SerializationUID::OOM_ERROR:
             errorType = base::ErrorType::OOM_ERROR;
+            break;
+        case SerializationUID::TERMINATION_ERROR:
+            errorType = base::ErrorType::TERMINATION_ERROR;
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";

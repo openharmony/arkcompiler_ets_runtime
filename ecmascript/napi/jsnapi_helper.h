@@ -65,7 +65,8 @@
     V(TypeError, TYPE_ERROR)           \
     V(AggregateError, AGGREGATE_ERROR) \
     V(EvalError, EVAL_ERROR)           \
-    V(OOMError, OOM_ERROR)
+    V(OOMError, OOM_ERROR)             \
+    V(TerminationError, TERMINATION_ERROR)
 
 namespace panda {
 using NativeFinalize = void (*)(EcmaVM *);

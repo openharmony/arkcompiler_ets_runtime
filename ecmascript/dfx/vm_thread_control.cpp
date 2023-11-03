@@ -36,6 +36,12 @@ bool VmThreadControl::NotifyVMThreadSuspension() // block caller thread
     return true;
 }
 
+void VmThreadControl::RequestTerminateExecution()
+{
+    SetTerminationRequest(true);
+    thread_->SetCheckSafePointStatus();
+}
+
 void VmThreadControl::SetVMNeedSuspension(bool flag)
 {
     thread_->SetVMNeedSuspension(flag);
@@ -44,6 +50,11 @@ void VmThreadControl::SetVMNeedSuspension(bool flag)
 bool VmThreadControl::VMNeedSuspension() const
 {
     return thread_->VMNeedSuspension();
+}
+
+void VmThreadControl::SetTerminationRequest(bool flag)
+{
+    thread_->SetTerminationRequest(flag);
 }
 
 void VmThreadControl::SetVMSuspended(bool flag)

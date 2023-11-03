@@ -542,6 +542,12 @@ bool DFXJSNApi::IsSuspended([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void DFXJSNApi::TerminateExecution(const EcmaVM *vm)
+{
+    ecmascript::VmThreadControl* vmThreadControl = vm->GetAssociatedJSThread()->GetVmThreadControl();
+    vmThreadControl->RequestTerminateExecution();
+}
+
 bool DFXJSNApi::CheckSafepoint([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
