@@ -17,7 +17,7 @@
  * @tc.name:arrayfindIndex
  * @tc.desc:test Array.findIndex
  * @tc.type: FUNC
- * @tc.require: issuesI8D8UH
+ * @tc.require: issueI8D8UH
  */
 
 (function(){
