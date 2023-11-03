@@ -150,6 +150,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE,
     OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
+    OPTION_COMPILER_ENBALE_NATIVE_INLINE,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1312,6 +1313,16 @@ public:
         enableLexenvSpecialization_ = value;
     }
 
+    bool IsEnableNativeInline() const
+    {
+        return enableNativeInline_;
+    }
+
+    void SetEnableNativeInline(bool value)
+    {
+        enableNativeInline_ = value;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1419,6 +1430,7 @@ private:
     bool enableOptOnHeapCheck_ {true};
     bool enableOptLoopInvariantCodeMotion_ {false};
     bool enableLexenvSpecialization_ {true};
+    bool enableNativeInline_ {false};
 };
 }  // namespace panda::ecmascript
 

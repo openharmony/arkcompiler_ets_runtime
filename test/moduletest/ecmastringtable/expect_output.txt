@@ -15,6 +15,13 @@ id: no-schema:/src/xxx-js/instantiated-1af0bf5b.js - load: undefined
 id: no-schema:/src/xxx-js/instantiation.js - load: undefined
 id: no-schema:/src/xxx-js/cc.js - load: undefined
 id: no-schema:/src/instantiated-1af0bf5b.js - load: undefined
+id: 12022421 - load: undefined
+id: 123420002 - load: undefined
+id: 908890 - load: undefined
+id: 9088000 - load: undefined
+id: 999999999 - load: undefined
+id: 1000000000 - load: undefined
+id: 0100000 - load: undefined
 key1 === key2:  true
 key3 === key4:  true
 key5 === key6:  true
@@ -23,6 +30,18 @@ id: no-schema:/src/xxx-js/instantiated-1af0bf5b.js - load: [object Object]
 id: no-schema:/src/xxx-js/instantiation.js - load: [object Object]
 id: no-schema:/src/xxx-js/cc.js - load: [object Object]
 id: no-schema:/src/instantiated-1af0bf5b.js - load: [object Object]
+numkey1 === numkey2:  true
+numkey3 === numkey4:  true
+numkey5 === numkey6:  true
+numkey7 === numkey8:  true
+numkey9 === numkey10:  true
+numkey11 === numkey12:  true
+id: 12022421 - load: [object Object]
+id: 123420002 - load: [object Object]
+id: 908890 - load: [object Object]
+id: 9088000 - load: [object Object]
+id: 999999999 - load: [object Object]
+id: 1000000000 - load: [object Object]
 res: true
 res: true
 res: true

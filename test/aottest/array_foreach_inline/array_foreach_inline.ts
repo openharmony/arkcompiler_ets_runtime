@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,25 +13,21 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:compareobjecthclass
- * @tc.desc:test compareHClass
- * @tc.type: FUNC
- * @tc.require: issueI5NO8G
- */
-var res = false;
+let array1:numeber[] = [4, 5, 6];
 
-    let obj1 = {x : 1, y : 2, z :3};
-    let obj2 = {y : 2, x : 1, z :3};
-    let obj3 = {x : 11, y : 12, z :13};    
+array1.forEach((element) => {
+        print(element)
+});
 
-if(!ArkTools.compareHClass(obj1, obj2) && ArkTools.compareHClass(obj1, obj3)) {
-    res = true;
-}
+array1.forEach((element) => {
+    array1[array1.length] = array1.length
+    print(element)
+});
 
-print(res);
+array1.forEach((element) => {
+    delete array1[1];
+    print(element)
+});
 
-print(ArkTools.forceFullGC());
+print(array1.length)
 
-ArkTools.hintGC();
-print("call hintGC to make vm decide to trigger GC or do noting");

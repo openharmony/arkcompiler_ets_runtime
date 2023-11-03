@@ -30,8 +30,9 @@ EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
 {
     ASSERT(EcmaStringAccessor(firstString).NotTreeString());
     ASSERT(EcmaStringAccessor(secondString).NotTreeString());
-    uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
-    hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
+    auto [hashCode, isInteger] = EcmaStringAccessor(firstString).ComputeRawHashcode();
+    hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode, isInteger);
+
     auto range = table_.equal_range(hashCode);
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;

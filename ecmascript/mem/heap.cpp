@@ -742,6 +742,22 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     return false;
 }
 
+bool Heap::CheckAndTriggerHintGC()
+{
+    if (IsInBackground()) {
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        return true;
+    }
+    if (InSensitiveStatus()) {
+        return false;
+    }
+    if (memController_->GetPredictedSurvivalRate() < SURVIVAL_RATE_THRESHOLD) {
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        return true;
+    }
+    return false;
+}
+
 bool Heap::CheckOngoingConcurrentMarking()
 {
     if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToMark() &&

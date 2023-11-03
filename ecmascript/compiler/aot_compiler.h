@@ -60,6 +60,7 @@ struct CompilationOptions {
     bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
+    bool isEnableNativeInline_;
 };
 
 class CompilationPreprocessor {
