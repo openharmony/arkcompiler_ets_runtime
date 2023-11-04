@@ -15,9 +15,6 @@ if (!defined(ark_standalone_build)) {
   ark_standalone_build = false
 }
 
-is_cross_platform_build =
-    defined(build_cross_platform_version) && build_cross_platform_version
-
 declare_args() {
   # If true, use icu to implement Intl APIs.
   # If false, use @ohos.intl APIs to implement Intl APIs.
@@ -45,8 +42,7 @@ enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false
 ark_compile_mode = "debug"
-if (is_cross_platform_build && defined(runtime_mode) &&
-    runtime_mode == "release") {
+if (is_arkui_x && defined(runtime_mode) && runtime_mode == "release") {
   ark_compile_mode = "release"
 }
 
@@ -62,7 +58,7 @@ if (is_standard_system || ark_standalone_build) {
   icu_subsystem_name = "global"
 }
 
-if (is_cross_platform_build && target_os == "ios") {
+if (is_arkui_x && target_os == "ios") {
   sdk_libc_secshared_dep =
       "$ark_third_party_root/bounds_checking_function:libsec_static"
 } else {
@@ -73,14 +69,14 @@ sdk_libc_secshared_config =
     "$ark_third_party_root/bounds_checking_function:libsec_public_config"
 
 # ohos device, windows previewer, mac previewer
-enable_hilog = !ark_standalone_build && !is_cross_platform_build &&
-               (is_ohos || is_mingw || is_mac)
-enable_dump_in_faultlog = !ark_standalone_build && !is_cross_platform_build &&
-                          is_ohos && is_standard_system
-enable_bytrace = !ark_standalone_build && !is_cross_platform_build && is_ohos &&
-                 is_standard_system
-enable_hitrace = !ark_standalone_build && !is_cross_platform_build && is_ohos &&
-                 is_standard_system
+enable_hilog =
+    !ark_standalone_build && !is_arkui_x && (is_ohos || is_mingw || is_mac)
+enable_dump_in_faultlog =
+    !ark_standalone_build && !is_arkui_x && is_ohos && is_standard_system
+enable_bytrace =
+    !ark_standalone_build && !is_arkui_x && is_ohos && is_standard_system
+enable_hitrace =
+    !ark_standalone_build && !is_arkui_x && is_ohos && is_standard_system
 
 hiviewdfx_deps = []
 hiviewdfx_ext_deps = []
@@ -103,8 +99,8 @@ if (enable_hilog) {
   }
 }
 
-enable_target_compilation = !ark_standalone_build && !is_mac &&
-                            !is_cross_platform_build && current_cpu == "arm64"
+enable_target_compilation =
+    !ark_standalone_build && !is_mac && !is_arkui_x && current_cpu == "arm64"
 
 have_local_code_sign = false
 if (defined(global_parts_info) &&
