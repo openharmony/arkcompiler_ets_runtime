@@ -2721,26 +2721,27 @@ uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
     return EcmaStringAccessor(string).ComputeHashcode();
 }
 
-int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     }
 }
 
-int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString,
+    int32_t start, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     }
 }
