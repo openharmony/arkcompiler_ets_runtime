@@ -54,7 +54,8 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaF
     std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
 
     SnapshotProcessor processor(vm_);
@@ -82,7 +83,8 @@ void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileNa
     std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
 
     SnapshotProcessor processor(vm_);
@@ -109,7 +111,8 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
     std::fstream write(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::app);
     if (!write.good()) {
         write.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
     // if builtins.snapshot file has exist, return directly
     if (write.tellg()) {
