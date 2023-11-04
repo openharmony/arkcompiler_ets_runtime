@@ -293,9 +293,9 @@ icu::UnicodeString ReplaceSkeleton(const icu::UnicodeString input, HourCycleOpti
 }
 
 std::unique_ptr<icu::SimpleDateFormat> DateTimeStylePattern(DateTimeStyleOption dateStyle,
-                                                            DateTimeStyleOption timeStyle, 
-                                                            icu::Locale &icuLocale, 
-                                                            HourCycleOption hc, 
+                                                            DateTimeStyleOption timeStyle,
+                                                            icu::Locale &icuLocale,
+                                                            HourCycleOption hc,
                                                             icu::DateTimePatternGenerator *generator)
 {
     std::unique_ptr<icu::SimpleDateFormat> result;
@@ -304,7 +304,7 @@ std::unique_ptr<icu::SimpleDateFormat> DateTimeStylePattern(DateTimeStyleOption 
     result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
         icu::DateFormat::createDateTimeInstance(icuDateStyle, icuTimeStyle, icuLocale)));
     UErrorCode status = U_ZERO_ERROR;
-    icu::UnicodeString pattern;
+    icu::UnicodeString pattern("");
     pattern = result->toPattern(pattern);
     icu::UnicodeString skeleton = icu::DateTimePatternGenerator::staticGetSkeleton(pattern, status);
     ASSERT_PRINT(U_SUCCESS(status), "staticGetSkeleton failed");
@@ -583,7 +583,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
         if (explicitFormatComponents != 0) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid option : option", dateTimeFormat);
         }
-        simpleDateFormatIcu = DateTimeStylePattern(dateStyle, timeStyle, icuLocale, 
+        simpleDateFormatIcu = DateTimeStylePattern(dateStyle, timeStyle, icuLocale,
                                                    hc, generator.get());
     }
     if (U_FAILURE(status) != 0) {
