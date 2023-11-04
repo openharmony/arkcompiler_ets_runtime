@@ -78,6 +78,7 @@
     V(JSTaggedValue, SyntaxErrorFunction, SYNTAX_ERROR_FUNCTION_INDEX)                              \
     V(JSTaggedValue, EvalErrorFunction, EVAL_ERROR_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, OOMErrorFunction, OOM_ERROR_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, TerminationErrorFunction, TERMINATION_ERROR_FUNCTION_INDEX)                    \
     V(JSTaggedValue, IntlFunction, INTL_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, LocaleFunction, LOCALE_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, DateTimeFormatFunction, DATE_TIME_FORMAT_FUNCTION_INDEX)                       \

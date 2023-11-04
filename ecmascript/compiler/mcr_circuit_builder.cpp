@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/compiler/mcr_circuit_builder.h"
+#include "ecmascript/message_string.h"
+#include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/global_env.h"
@@ -958,6 +961,47 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, bool isTypedArray)
     return Circuit::NullGate();
 }
 
+GateRef CircuitBuilder::IsIntegerString(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef hash = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    return Int32Equal(
+        Int32And(hash, Int32(EcmaString::IS_INTEGER_MASK)),
+        Int32(EcmaString::IS_INTEGER_MASK));
+}
+
+GateRef CircuitBuilder::GetRawHashFromString(GateRef value)
+{
+    GateRef hash = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    return Int32And(hash, Int32(~EcmaString::IS_INTEGER_MASK));
+}
+
+void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label integer(env_);
+    Label notInteger(env_);
+    Label exit(env_);
+
+    DEFVALUE(hash, env_, VariableType::INT32(), Int32(0));
+    Branch(isInteger, &integer, &notInteger);
+    Bind(&integer);
+    {
+        hash = Int32Or(rawHashcode, Int32(EcmaString::IS_INTEGER_MASK));
+        Jump(&exit);
+    }
+    Bind(&notInteger);
+    {
+        hash = Int32And(rawHashcode, Int32(~EcmaString::IS_INTEGER_MASK));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_HASHCODE_OFFSET), *hash);
+    SubCfgExit();
+    return;
+}
+
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
@@ -971,14 +1015,14 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     SubCfgEntry(&subentry);
     Label noRawHashcode(env_);
     Label exit(env_);
-    DEFVAlUE(hashcode, env_, VariableType::INT32(), Int32(0));
-    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::HASHCODE_OFFSET));
+    DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
+    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
         hashcode =
             CallNGCRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate());
-        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
+        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
     Bind(&exit);
@@ -994,8 +1038,8 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label noRawHashcode(env_);
     Label storeHash(env_);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::INT64(), Int64(-1));
-    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::HASHCODE_OFFSET)));
+    DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
+    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
     Branch(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {
@@ -1023,7 +1067,7 @@ GateRef CircuitBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::INT32(), Int32(static_cast<int32_t>(EnumCacheKind::NONE)));
+    DEFVALUE(result, env_, VariableType::INT32(), Int32(static_cast<int32_t>(EnumCacheKind::NONE)));
 
     Label enumCacheIsArray(env_);
     Label isEmptyArray(env_);
@@ -1056,7 +1100,7 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
 
     Label isSameHclass(env_);
     Label isSimpleEnumCache(env_);
@@ -1106,8 +1150,8 @@ GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
     Label isJSObject(env_);
     Label hasNoDeleteProperty(env_);
 
-    DEFVAlUE(result, env_, VariableType::BOOL(), True());
-    DEFVAlUE(current, env_, VariableType::JS_ANY(), receiver);
+    DEFVALUE(result, env_, VariableType::BOOL(), True());
+    DEFVALUE(current, env_, VariableType::JS_ANY(), receiver);
 
     Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
     LoopBegin(&loopHead);

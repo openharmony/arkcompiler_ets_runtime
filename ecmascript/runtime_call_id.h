@@ -398,6 +398,8 @@ namespace panda::ecmascript {
     V(Error, AggregateErrorToString)          \
     V(Error, OOMErrorConstructor)             \
     V(Error, OOMErrorToString)                \
+    V(Error, TerminationErrorConstructor)     \
+    V(Error, TerminationErrorToString)        \
     V(Function, Constructor)                  \
     V(Function, PrototypeApply)               \
     V(Function, PrototypeBind)                \

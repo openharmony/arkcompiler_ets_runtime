@@ -675,43 +675,112 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
     return true;
 }
 
-uint32_t EcmaString::ComputeHashcode(uint32_t hashSeed) const
+bool EcmaString::HashIntegerString(uint32_t length, uint32_t *hash, const uint32_t hashSeed) const
 {
-    uint32_t hash;
+    ASSERT(length >= 0);
+    Span<const uint8_t> str = FastToUtf8Span();
+    return HashIntegerString(str.data(), length, hash, hashSeed);
+}
+
+uint32_t EcmaString::ComputeHashcode() const
+{
+    auto [hash, isInteger] = ComputeRawHashcode();
+    return MixHashcode(hash, isInteger);
+}
+
+// hashSeed only be used when computing two separate strings merged hashcode.
+std::pair<uint32_t, bool> EcmaString::ComputeRawHashcode() const
+{
+    uint32_t hash = 0;
     uint32_t length = GetLength();
+    if (length == 0) {
+        return {hash, false};
+    }
+
     if (IsUtf8()) {
+        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
+        if (length < MAX_ELEMENT_INDEX_LEN && this->HashIntegerString(length, &hash, 0)) {
+            return {hash, true};
+        }
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        hash = ComputeHashForData(data, length, hashSeed);
+        // String can not convert to integer number, using normal hashcode computing algorithm.
+        hash = this->ComputeHashForData(data, length, 0);
+        return {hash, false};
     } else {
         CVector<uint16_t> buf;
         const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
-        hash = ComputeHashForData(data, length, hashSeed);
+        // If rawSeed has certain value, and second string uses UTF16 encoding,
+        // then merged string can not be small integer number.
+        hash = this->ComputeHashForData(data, length, 0);
+        return {hash, false};
     }
-    return hash;
+}
+
+// hashSeed only be used when computing two separate strings merged hashcode.
+uint32_t EcmaString::ComputeHashcode(uint32_t rawHashSeed, bool isInteger) const
+{
+    uint32_t hash;
+    uint32_t length = GetLength();
+    if (length == 0) {
+        return MixHashcode(rawHashSeed, isInteger);
+    }
+
+    if (IsUtf8()) {
+        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
+        if ((rawHashSeed == 0 || isInteger) &&
+             length < MAX_ELEMENT_INDEX_LEN && this->HashIntegerString(length, &hash, rawHashSeed)) {
+            return hash;
+        }
+        CVector<uint8_t> buf;
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+        // String can not convert to integer number, using normal hashcode computing algorithm.
+        hash = this->ComputeHashForData(data, length, rawHashSeed);
+        return MixHashcode(hash, NOT_INTEGER);
+    } else {
+        CVector<uint16_t> buf;
+        const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
+        // If rawSeed has certain value, and second string uses UTF16 encoding,
+        // then merged string can not be small integer number.
+        hash = this->ComputeHashForData(data, length, rawHashSeed);
+        return MixHashcode(hash, NOT_INTEGER);
+    }
 }
 
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
 {
-    uint32_t hash = 0;
+    uint32_t mixHash = 0;
     if (canBeCompress) {
-        hash = ComputeHashForData(utf8Data, utf8Len, 0);
+        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
+        if (utf8Len < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf8Data, utf8Len, &mixHash, 0)) {
+            return mixHash;
+        }
+        uint32_t hash = ComputeHashForData(utf8Data, utf8Len, 0);
+        return MixHashcode(hash, NOT_INTEGER);
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
         CVector<uint16_t> tmpBuffer(utf16Len);
         [[maybe_unused]] auto len = base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
                                                                                utf16Len, 0);
         ASSERT(len == utf16Len);
-        hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
+        uint32_t hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
+        return MixHashcode(hash, NOT_INTEGER);
     }
-    return hash;
+    LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
 }
 
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
 {
-    return ComputeHashForData(utf16Data, length, 0);
+    uint32_t mixHash = 0;
+    // String length smaller than 10, try to compute integer hash.
+    if (length < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf16Data, length, &mixHash, 0)) {
+        return mixHash;
+    }
+    uint32_t hash = ComputeHashForData(utf16Data, length, 0);
+    return MixHashcode(hash, NOT_INTEGER);
 }
 
 /* static */
@@ -749,6 +818,11 @@ bool EcmaString::ToElementIndex(uint32_t *index)
     }
     if (UNLIKELY(IsUtf16())) {
         return false;
+    }
+
+    // fast path: get integer from string's hash value
+    if (TryToGetInteger(index)) {
+        return true;
     }
 
     CVector<uint8_t> buf;

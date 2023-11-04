@@ -130,6 +130,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ComputeHashcode)                         \
     V(JSHClassFindProtoTransitions)            \
     V(NumberHelperStringToDouble)              \
+    V(LocaleCompareNoGc)                       \
     V(StringGetStart)                          \
     V(StringGetEnd)
 
@@ -336,7 +337,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LinkedHashMapComputeCapacity)       \
     V(LinkedHashSetComputeCapacity)       \
     V(JSObjectGrowElementsCapacity)       \
-    V(HClassCloneWithAddProto)
+    V(HClassCloneWithAddProto)            \
+    V(LocaleCompareWithGc)                \
+    V(ArrayForEachContinue)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -413,6 +416,8 @@ public:
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
+    static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
+                                           EcmaString *thatHandle);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
@@ -422,8 +427,8 @@ public:
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
     static uint32_t ComputeHashcode(JSTaggedType ecmaString);
 
-    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length);
-    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length);
+    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
+    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

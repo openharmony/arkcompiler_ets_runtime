@@ -484,6 +484,61 @@ int64_t NumberHelper::DoubleToInt64(double d)
     return static_cast<int64_t>(d);
 }
 
+bool NumberHelper::IsDigitalString(const uint8_t *start, const uint8_t *end)
+{
+    int len = end - start;
+    for (int i = 0; i < len; i++) {
+        if (*(start + i) < '0' || *(start + i) > '9') {
+            return false;
+        }
+    }
+    return true;
+}
+
+int NumberHelper::StringToInt(const uint8_t *start, const uint8_t *end)
+{
+    int num = *start - '0';
+    for (int i = 1; i < (end - start); i++) {
+        num = 10 * num + (*(start + i) - '0');
+    }
+    return num;
+}
+
+// only for string is ordinary string and using UTF8 encoding
+// Fast path for short integer and some special value
+std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *start,
+    const uint8_t *end, JSTaggedValue string)
+{
+    ASSERT(start < end);
+    EcmaStringAccessor strAccessor(string);
+    bool minus = (start[0] == '-');
+    int pos = (minus ? 1 : 0);
+
+    if (pos == (end - start)) {
+        return {true, JSTaggedNumber(NAN_VALUE)};
+    } else if (*(start + pos) > '9') {
+        // valid number's codes not longer than '9', except 'I' and non-breaking space.
+        if (*(start + pos) != 'I' && *(start + pos) != 0xA0) {
+            return {true, JSTaggedNumber(NAN_VALUE)};
+        }
+    } else if ((end - (start + pos)) <= MAX_ELEMENT_INDEX_LEN && IsDigitalString((start + pos), end)) {
+        int num = StringToInt((start + pos), end);
+        if (minus) {
+            if (num == 0) {
+                return {true, JSTaggedNumber(SignedZero(Sign::NEG))};
+            }
+            num = -num;
+        } else {
+            if (num != 0 || (num == 0 && (end - start == 1))) {
+                strAccessor.TryToSetIntegerHash(num);
+            }
+        }
+        return {true, JSTaggedNumber(num)};
+    }
+
+    return {false, JSTaggedNumber(NAN_VALUE)};
+}
+
 double NumberHelper::StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags)
 {
     auto p = const_cast<uint8_t *>(start);
@@ -609,6 +664,7 @@ double NumberHelper::StringToDouble(const uint8_t *start, const uint8_t *end, ui
     }
 
     // 8. parse '.'
+    exponent = 0;
     if (radix == DECIMAL && *p == '.') {
         RETURN_IF_CONVERSION_END(++p, end, (digits > 0 || (digits == 0 && leadingZero)) ?
                                            (number * std::pow(radix, exponent)) : NAN_VALUE);

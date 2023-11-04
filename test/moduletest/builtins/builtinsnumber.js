@@ -109,4 +109,7 @@ print(s)
 print(Number.parseInt("4294967294"))
 print(Number.parseInt("2147483648"))
 
+print(Number.parseFloat("10000000000000000000000.0"));
+
+
 print("builtins number end");

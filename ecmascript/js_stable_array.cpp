@@ -329,7 +329,17 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
     while (k < len) {
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());
-        kValue.Update(array->Get(k));
+        JSTaggedValue val = array->Get(k);
+        if (val.IsHole()) {
+            auto res = JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue();
+            if (res.IsHole()) {
+                kValue.Update(JSTaggedValue::Undefined());
+            } else {
+                kValue.Update(res);
+            }
+        } else {
+            kValue.Update(val);
+        }
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

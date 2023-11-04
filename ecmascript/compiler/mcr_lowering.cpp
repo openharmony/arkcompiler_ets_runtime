@@ -113,7 +113,7 @@ void MCRLowering::LowerConvertHoleAsUndefined(GateRef gate)
     Label returnUndefined(&builder_);
     Label exit(&builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), receiver);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), receiver);
 
     builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT);
     builder_.Bind(&returnUndefined);
@@ -340,7 +340,7 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
 
 GateRef MCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
 {
-    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
@@ -363,7 +363,7 @@ GateRef MCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
 
 GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
 {
-    DEFVAlUE(result, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(result, (&builder_), VariableType::INT32(), builder_.Int32(0));
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
@@ -380,7 +380,7 @@ GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
 
 GateRef MCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
 {
-    DEFVAlUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
     Label isInt(&builder_);
     Label isDouble(&builder_);
     builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
@@ -592,7 +592,7 @@ GateRef MCRLowering::ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit)
     Label isOverFlow(&builder_);
     Label notOverFlow(&builder_);
     GateRef upperBound = builder_.Int32(INT32_MAX);
-    DEFVAlUE(taggedVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(taggedVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     builder_.Branch(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
     builder_.Bind(&notOverFlow);
     taggedVal = builder_.Int32ToTaggedPtr(gate);
@@ -700,7 +700,7 @@ void MCRLowering::HeapAllocateInYoung(GateRef gate)
 {
     Label exit(&builder_);
     GateRef size = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 #ifndef ARK_ASAN_ON
     Label success(&builder_);
     Label callRuntime(&builder_);
@@ -829,7 +829,7 @@ void MCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRe
     Label storeValue(&builder_);
     Label endLoop(&builder_);
 
-    DEFVAlUE(startOffset, (&builder_), VariableType::INT32(), start);
+    DEFVALUE(startOffset, (&builder_), VariableType::INT32(), start);
     builder_.Jump(&begin);
     builder_.LoopBegin(&begin);
     {

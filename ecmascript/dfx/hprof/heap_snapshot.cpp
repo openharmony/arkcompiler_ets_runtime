@@ -276,7 +276,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_FUNCTION_BASE:
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:
-            return GetString("JSFunction");
+            return GetString(CString(ParseFunctionName(entry)));
         case JSType::JS_ERROR:
             return GetString("Error");
         case JSType::JS_EVAL_ERROR:
@@ -295,6 +295,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Syntax Error");
         case JSType::JS_OOM_ERROR:
             return GetString("OutOfMemory Error");
+        case JSType::JS_TERMINATION_ERROR:
+            return GetString("Termination Error");
         case JSType::JS_REG_EXP:
             return GetString("Regexp");
         case JSType::JS_SET:
@@ -966,16 +968,10 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     if (edgeName != "name") {
         return;
     }
-    auto fromName = *entryFrom->GetName();
-    if (*entryTo->GetName() != "" && (fromName == "JSFunctionBase" ||
-        fromName == "JSFunction" || fromName == "PromiseValueThunkOrThrowerFunction" ||
-        fromName == "JSGeneratorFunction" || fromName == "PromiseAllSettledElementFunction" ||
-        fromName == "Bound Function" || fromName == "PromiseAnyRejectElementFunction" ||
-        fromName == "PromiseReactionsFunction" || fromName == "PromiseExecutorFunction" ||
-        fromName == "PromiseAllResolveElementFunction" || fromName == "AsyncFunction" ||
-        fromName == "ProxyRevocFunction" || fromName == "AsyncFromSyncIterUnwarpFunction" ||
-        fromName == "PromiseFinallyFunction" || fromName == "JSIntlBoundFunction" ||
-        fromName == "JSAsyncGeneratorFunction" || fromName == "AsyncAwaitStatusFunction")) {
+    if (entryFrom->GetType() > NodeType::JS_BOUND_FUNCTION || entryFrom->GetType() < NodeType::JS_FUNCTION_BASE) {
+        return;
+    }
+    if (*entryTo->GetName() != "" && *entryTo->GetName() != "InternalAccessor") {
         entryFrom->SetName(GetString(*entryTo->GetName()));
     }
 }
@@ -998,6 +994,23 @@ CString *HeapSnapshot::GenerateEdgeName([[maybe_unused]] TaggedObject *from, [[m
     // This Function is Unused
     ASSERT(from != nullptr && from != to);
     return GetString("[]");  // unAnalysed
+}
+
+std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
+{
+    JSFunctionBase *func = JSFunctionBase::Cast(obj);
+    Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    if (methodLiteral == nullptr) {
+        return "JSFunction";
+    }
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+    if (nameStr.empty()) {
+        return "anonymous";
+    }
+    return nameStr;
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)
@@ -1154,7 +1167,7 @@ FrontType NodeTypeConverter::Convert(NodeType type)
     } else if (type == NodeType::JS_OBJECT) {
         fType = FrontType::OBJECT;
     } else if (type >= NodeType::JS_FUNCTION_FIRST && type <= NodeType::JS_FUNCTION_LAST) {
-        fType = FrontType::DEFAULT;
+        fType = FrontType::CLOSURE;
     } else if (type == NodeType::JS_BOUND_FUNCTION) {
         fType = FrontType::DEFAULT;
     } else if (type == NodeType::JS_FUNCTION_BASE) {

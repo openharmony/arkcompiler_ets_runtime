@@ -38,6 +38,7 @@ public:
     void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Trim(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
@@ -59,7 +60,8 @@ public:
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
     GateRef StringConcat(GateRef glue, GateRef leftString, GateRef rightString);
     GateRef EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode);
-    GateRef EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate, GateRef trimMode, GateRef isUtf8);
+    GateRef EcmaStringTrimBody(GateRef glue, GateRef thisValue, StringInfoGateRef srcStringInfoGate,
+        GateRef trimMode, GateRef isUtf8);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
 private:

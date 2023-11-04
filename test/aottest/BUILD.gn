@@ -44,6 +44,7 @@ group("ark_aot_ts_test") {
     "and",
     "array",
     "array_bounds_check_elimination",
+    "array_foreach_inline",
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",

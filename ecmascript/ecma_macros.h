@@ -364,6 +364,10 @@
     THROW_ERROR(thread, ErrorType::OOM_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_TERMINATION_ERROR(thread, message)               \
+    THROW_ERROR(thread, ErrorType::TERMINATION_ERROR, message)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_STACK_BEFORE_THROW_IF_ASM(thread)                                                   \
     do {                                                                                           \
         if ((thread)->IsAsmInterpreter()) {                                                        \

@@ -2718,30 +2718,30 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
 uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
 {
     auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(0);
-    return result;
+    return EcmaStringAccessor(string).ComputeHashcode();
 }
 
-int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     }
 }
 
-int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString,
+    int32_t start, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     }
 }
@@ -2782,6 +2782,63 @@ DEF_RUNTIME_STUBS(ObjectSlowAssign)
     JSHandle<JSObject> toAssign = GetHArg<JSObject>(argv, argc, 0);            // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> source = GetHArg<JSTaggedValue>(argv, argc, 1);    // 1: means the first parameter
     return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LocaleCompareWithGc)
+{
+    RUNTIME_STUBS_HEADER(LocaleCompareWithGc);
+    JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
+    JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
+    JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
+    return builtins::BuiltinsString::LocaleCompareGC(thread, locales, thisHandle, thatHandle,
+        options, cacheable).GetRawData();
+}
+
+JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
+                                              EcmaString *thatHandle)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto collator = JSCollator::GetCachedIcuCollator(thread, JSTaggedValue(locales));
+    JSTaggedValue result = JSTaggedValue::Undefined();
+    if (collator != nullptr) {
+        result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+    }
+    return result;
+}
+
+DEF_RUNTIME_STUBS(ArrayForEachContinue)
+{
+    RUNTIME_STUBS_HEADER(ArrayForEachContinue);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);      // 0: means the zeroth parameter
+    JSMutableHandle<JSTaggedValue> key(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 1: means the first parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 2);         // 2: means the second parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 3);   // 3: means the third parameter
+    JSHandle<JSTaggedValue> lengthHandle = GetHArg<JSTaggedValue>(argv, argc, 4);       // 4: means the fourth parameter
+    const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    uint32_t i = key->GetInt();
+    uint32_t len = lengthHandle->GetInt();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    while (i < len) {
+        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, i);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        if (exists) {
+            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, i);
+            key.Update(JSTaggedValue(i));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            JSTaggedValue funcResult = JSFunction::Call(info);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult.GetRawData());
+        }
+        i++;
+    }
+
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

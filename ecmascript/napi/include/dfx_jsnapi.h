@@ -110,6 +110,7 @@ public:
     static void ResumeVM(const EcmaVM *vm);
     static bool SuspendVM(const EcmaVM *vm);
     static bool IsSuspended(const EcmaVM *vm);
+    static void TerminateExecution(const EcmaVM *vm);
     static bool CheckSafepoint(const EcmaVM *vm);
     static void ResumeVMById(EcmaVM *vm, uint32_t tid);
     static bool SuspendVMById(EcmaVM *vm, uint32_t tid);

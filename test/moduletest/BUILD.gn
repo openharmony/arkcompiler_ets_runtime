@@ -19,6 +19,7 @@ group("ark_js_moduletest") {
     "array",
     "arrayfindlast",
     "arrayflat",
+    "arrayfindindex",
     "arrayforeach",
     "arrayjoin",
     "arraytoreversed",
@@ -162,6 +163,7 @@ group("ark_asm_test") {
     "array",
     "arrayfindlast",
     "arrayflat",
+    "arrayfindindex",
     "arrayforeach",
     "arrayjoin",
     "arraysort",
@@ -281,6 +283,7 @@ group("ark_asm_single_step_test") {
 
   test_list = [
     "allocatearraybuffer",
+    "arrayfindindex",
     "arrayfindlast",
     "arrayflat",
     "arrayforeach",

@@ -198,6 +198,9 @@ group("ark_runtime_host_unittest") {
       deps += [ "$js_root/test/regresstest:ark_regress_test" ]
     }
 
+    # execution test
+    deps += [ "$js_root/test/executiontest:ark_execution_test" ]
+
     # ts aot test and asm test
     if (!run_with_asan) {
       deps += [
@@ -484,6 +487,7 @@ config("ark_jsruntime_common_config") {
 config("ecma_test_config") {
   visibility = [
     "./ecmascript/*",
+    "./test/executiontest/*",
     "./test/fuzztest/*",
   ]
 

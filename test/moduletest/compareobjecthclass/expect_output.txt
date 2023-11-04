@@ -13,3 +13,4 @@
 
 true
 true
+call hintGC to make vm decide to trigger GC or do noting

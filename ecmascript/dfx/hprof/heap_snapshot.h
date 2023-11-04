@@ -493,6 +493,7 @@ private:
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
+    std::string ParseFunctionName(TaggedObject *obj);
 
     Node *InsertNodeUnique(Node *node);
     void EraseNodeUnique(Node *node);

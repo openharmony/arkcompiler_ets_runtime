@@ -480,9 +480,22 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
+void JSThread::TerminateExecution()
+{
+    // set the TERMINATE_ERROR to exception
+    ObjectFactory *factory = GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR, "Terminate execution!");
+    SetException(error.GetTaggedValue());
+}
+
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
+    if (HasTerminationRequest()) {
+        TerminateExecution();
+        SetVMTerminated(true);
+        SetTerminationRequest(false);
+    }
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }

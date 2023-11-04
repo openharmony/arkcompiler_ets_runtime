@@ -116,6 +116,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "mcr_circuit_builder.cpp",
     "mcr_gate_meta_data.cpp",
     "mcr_lowering.cpp",
+    "native_inline_lowering.cpp",
     "new_object_stub_builder.cpp",
     "ntype_bytecode_lowering.cpp",
     "ntype_hcr_lowering.cpp",

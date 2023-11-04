@@ -2735,7 +2735,7 @@ HWTEST_F_L0(BuiltinsMathTest, Max_3)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsMath::Max(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread_, prev);
-    JSTaggedValue expect = BuiltinsBase::GetTaggedDouble(100.0);
+    JSTaggedValue expect = BuiltinsBase::GetTaggedInt(100);
     ASSERT_EQ(result.GetRawData(), expect.GetRawData());
 }
 

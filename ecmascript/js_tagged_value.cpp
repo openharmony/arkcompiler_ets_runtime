@@ -16,6 +16,7 @@
 #include "ecmascript/js_tagged_value.h"
 
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -1247,14 +1248,43 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
     return false;
 }
 
+JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
+{
+    EcmaStringAccessor strAccessor(tagged);
+    size_t strLen = strAccessor.GetLength();
+    if (strLen == 0) {
+        return JSTaggedNumber(0);
+    }
+    if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
+        uint32_t index;
+        // fast path: get integer from string's hash value
+        if (strAccessor.TryToGetInteger(&index)) {
+            return JSTaggedNumber(index);
+        }
+        Span<const uint8_t> str = strAccessor.FastToUtf8Span();
+        if (strAccessor.GetLength() == 0) {
+            return JSTaggedNumber(0);
+        }
+        auto [isSuccess, result] = base::NumberHelper::FastStringToNumber(str.begin(), str.end(), tagged);
+        if (isSuccess) {
+            return result;
+        }
+    }
+    CVector<uint8_t> buf;
+    Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+    double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
+                                                  base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
+    return JSTaggedNumber(d);
+}
+
 JSHandle<JSTaggedValue> JSTaggedValue::ToNumeric(JSThread *thread, JSHandle<JSTaggedValue> tagged)
 {
     // 1. Let primValue be ? ToPrimitive(value, number)
-    JSHandle<JSTaggedValue> primValue(thread, ToPrimitive(thread, tagged, PREFER_NUMBER));
+    JSTaggedValue primValue = ToPrimitive(thread, tagged, PREFER_NUMBER);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // 2. If Type(primValue) is BigInt, return primValue.
-    if (primValue->IsBigInt()) {
-        return primValue;
+    if (primValue.IsBigInt()) {
+        return JSHandle<JSTaggedValue>(thread, primValue);
     }
     // 3. Return ? ToNumber(primValue).
     JSTaggedNumber number = ToNumber(thread, primValue);

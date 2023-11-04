@@ -310,6 +310,7 @@ public:
     GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
+    GateRef TaggedObjectIsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
     GateRef IsSlicedString(GateRef obj);
     GateRef IsConstantString(GateRef obj);
@@ -406,6 +407,9 @@ public:
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    inline GateRef IsIntegerString(GateRef string);
+    inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
+    inline GateRef GetRawHashFromString(GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef GetFirstFromTreeString(GateRef string);
     GateRef GetSecondFromTreeString(GateRef string);
@@ -478,6 +482,7 @@ public:
     GateRef IsUtf8String(GateRef string);
     GateRef IsInternalString(GateRef string);
     GateRef IsDigit(GateRef ch);
+    void TryToGetInteger(GateRef string, Variable *num, Label *success, Label *failed);
     GateRef StringToElementIndex(GateRef glue, GateRef string);
     GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
                                                GateRef maxNonInlinedFastPropsCapacity);
@@ -701,7 +706,6 @@ public:
                       std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
-    inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 
     GateRef GetNormalStringData(const StringInfoGateRef &stringInfoGate);
