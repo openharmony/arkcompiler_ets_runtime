@@ -79,7 +79,7 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
     Label exit(&builder_);
 
     GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
@@ -172,7 +172,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
 
     Label exit(&builder_);
     GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     Label isInt(&builder_);
     Label notInt(&builder_);

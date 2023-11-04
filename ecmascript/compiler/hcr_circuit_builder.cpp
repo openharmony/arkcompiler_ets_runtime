@@ -434,7 +434,7 @@ GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
 {
     Label subentry(env_);
     env_->SubCfgEntry(&subentry);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label exit(env_);
     Label targetIsHeapObject(env_);
     Label targetIsStableArray(env_);

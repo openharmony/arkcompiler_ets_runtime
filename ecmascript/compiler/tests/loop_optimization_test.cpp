@@ -67,8 +67,8 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.SetEnvironment(&env);
     auto array = builder.Arguments(1);
 
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
     
     Label loopHead(&env);
     Label loopBody(&env);
@@ -148,8 +148,8 @@ HWTEST_F_L0(LoopOptimizationTest, LoopNumberCalculationOptimizationTest)
     auto arg = builder.Arguments(1);
     acc.SetMachineType(arg, MachineType::I32);
     
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
     
     Label loopHead(&env);
     Label loopBody(&env);
@@ -198,8 +198,8 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     GateRef invariant = circuit.NewGate(circuit.Load(), MachineType::I32,
         { circuit.GetDependRoot(), arg2 }, GateType::NJSValue());
     
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
     
     Label loopHead(&env);
     Label loopBody(&env);

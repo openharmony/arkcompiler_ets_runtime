@@ -340,7 +340,7 @@ void TypeHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef str = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), str);
+    DEFVALUE(result, (&builder_), VariableType::JS_POINTER(), str);
     Label isTreeString(&builder_);
     Label exit(&builder_);
 
@@ -482,7 +482,7 @@ GateRef TypeHCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
         return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level), "checkHClass");
     }
 
-    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     GateRef levelGate = builder_.Int32(level);
     GateRef length = GetLengthFromSupers(supers);
 
@@ -619,7 +619,7 @@ void TypeHCRLowering::LowerTypeConvert(GateRef gate)
 
 void TypeHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
 {
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (srcType.IsBooleanType()) {
         Label exit(&builder_);
         Label isTrue(&builder_);
@@ -696,7 +696,7 @@ void TypeHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
     GateRef accessor = LoadFromVTable(receiver, plr.GetOffset());
     GateRef getter = builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::GETTER_OFFSET);
 
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
     Label callGetter(&builder_);
     Label exit(&builder_);
     builder_.Branch(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
@@ -958,8 +958,8 @@ GateRef TypeHCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef of
 {
     GateRef byteArrayOrArraybuffer =
         builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    DEFVAlUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    DEFVAlUE(result, (&builder_), type, builder_.Double(0));
+    DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(result, (&builder_), type, builder_.Double(0));
 
     GateRef isOnHeap = builder_.Load(VariableType::BOOL(), receiver, builder_.IntPtr(JSTypedArray::ON_HEAP_OFFSET));
     builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
@@ -1104,7 +1104,7 @@ void TypeHCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef offs
     GateRef byteArrayOrArraybuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
                                                               JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef isOnHeap = builder_.Load(VariableType::BOOL(), receiver, builder_.IntPtr(JSTypedArray::ON_HEAP_OFFSET));
-    DEFVAlUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
     {
@@ -1137,7 +1137,7 @@ void TypeHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef value = acc_.GetValueIn(gate, 2);
 
-    DEFVAlUE(result, (&builder_), VariableType::INT32(), value);
+    DEFVALUE(result, (&builder_), VariableType::INT32(), value);
     GateRef topValue = builder_.Int32(static_cast<uint32_t>(UINT8_MAX));
     GateRef bottomValue = builder_.Int32(static_cast<uint32_t>(0));
     Label isOverFlow(&builder_);
@@ -1374,7 +1374,7 @@ void TypeHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 
     GateRef ctor = acc_.GetValueIn(gate, 0);
 
-    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     Label allocate(&builder_);
     Label exit(&builder_);
 
@@ -1404,7 +1404,7 @@ void TypeHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     GateRef superCtor = acc_.GetValueIn(gate, 0);
     GateRef newTarget = acc_.GetValueIn(gate, 1);
 
-    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     Label allocate(&builder_);
     Label exit(&builder_);
 
@@ -1567,7 +1567,7 @@ void TypeHCRLowering::LowerInlineAccessorCheck(GateRef gate)
 
     Label levelValid(&builder_);
     Label exit(&builder_);
-    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     GateRef levelGate = builder_.Int32(level);
     GateRef length = GetLengthFromSupers(supers);
 
@@ -1592,7 +1592,7 @@ void TypeHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     GateRef leftLength = GetLengthFromString(left);
     GateRef rightLength = GetLengthFromString(right);
 
-    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
     Label lenEqual(&builder_);
     Label exit(&builder_);
     builder_.Branch(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);

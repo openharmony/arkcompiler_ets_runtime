@@ -7132,7 +7132,7 @@ GateRef StubBuilder::TaggedGetNumber(GateRef x)
 
     Label targetIsInt(env);
     Label targetIsDouble(env);
-    DEFVAlUE(number, env_, VariableType::FLOAT64(), Double(0));
+    DEFVALUE(number, env_, VariableType::FLOAT64(), Double(0));
     Branch(TaggedIsInt(x), &targetIsInt, &targetIsDouble);
     Bind(&targetIsInt);
     {

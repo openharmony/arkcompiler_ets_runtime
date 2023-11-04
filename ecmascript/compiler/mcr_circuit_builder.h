@@ -84,7 +84,7 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -104,7 +104,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -123,7 +123,7 @@ GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -143,7 +143,7 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -170,7 +170,7 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -239,7 +239,7 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     Label bothAreHeapObjet(env_);
     Label bothAreStringType(env_);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
     Bind(&bothAreHeapObjet);
     {
@@ -328,7 +328,7 @@ GateRef CircuitBuilder::TaggedIsJSArray(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
