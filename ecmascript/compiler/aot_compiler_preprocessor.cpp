@@ -20,6 +20,9 @@
 #include "ecmascript/ohos/ohos_pkg_args.h"
 
 namespace panda::ecmascript::kungfu {
+namespace {
+constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
+}  // namespace
 using PGOProfilerManager = pgo::PGOProfilerManager;
 
 CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions)
@@ -86,8 +89,8 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     ASSERT(vmOpt.IsTargetCompilerMode());
     // target need fast compiler mode
     vmOpt.SetFastAOTCompileMode(true);
-    vmOpt.SetOptLevel(3);  // 3: default opt level
-    cOptions.optLevel_ = 3;
+    vmOpt.SetOptLevel(DEFAULT_OPT_LEVEL);
+    cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
     vmOpt.SetEnableOptOnHeapCheck(false);
     cOptions.isEnableOptOnHeapCheck_ = false;
 }

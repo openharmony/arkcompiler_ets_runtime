@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_ECMA_VM_H
 #define ECMASCRIPT_ECMA_VM_H
 
-#include <cstdint>
 #include <mutex>
 
 #include "ecmascript/base/config.h"
@@ -24,7 +23,6 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
