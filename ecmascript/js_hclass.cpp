@@ -497,7 +497,7 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        array->SetClass(hclass);
+        array->SynchronizedSetClass(hclass);
     }
 }
 
@@ -523,7 +523,7 @@ bool JSHClass::TransitToElementsKind(
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        object->SetClass(hclass);
+        object->SynchronizedSetClass(hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return true;

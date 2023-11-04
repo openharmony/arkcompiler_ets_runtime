@@ -39,6 +39,11 @@ public:
         return reinterpret_cast<LayoutInfo *>(obj);
     }
 
+    inline static LayoutInfo *UncheckCast(TaggedObject *obj)
+    {
+        return reinterpret_cast<LayoutInfo *>(obj);
+    }
+
     void Initialize(const JSThread *thread, int num = 0);
     int GetPropertiesCapacity() const;
     int NumberOfElements() const;

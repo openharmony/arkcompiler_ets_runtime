@@ -425,7 +425,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
-        array->SetClass(hclass);
+        array->SynchronizedSetClass(hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
