@@ -1314,8 +1314,10 @@ Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-    JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
-    symbol->SetDescription(vm->GetJSThread(), desc);
+    if (!description.IsEmpty()) {
+        JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
+        symbol->SetDescription(vm->GetJSThread(), desc);
+    }
     return JSNApiHelper::ToLocal<SymbolRef>(JSHandle<JSTaggedValue>(symbol));
 }
 
