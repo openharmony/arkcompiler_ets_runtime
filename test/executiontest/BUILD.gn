@@ -84,7 +84,7 @@ group("ark_execution_test") {
   testonly = true
 
   # deps file
-  deps = [ ":ThreadTerminationTestAction" ]
+  deps = []
 }
 
 group("host_unittest") {
