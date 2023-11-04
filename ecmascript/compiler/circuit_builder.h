@@ -33,7 +33,7 @@
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
-#define DEFVAlUE(varname, cirBuilder, type, val) \
+#define DEFVALUE(varname, cirBuilder, type, val) \
         Variable varname(cirBuilder, type, cirBuilder->NextVariableId(), val)
 
 class BuiltinsStringStubBuilder;

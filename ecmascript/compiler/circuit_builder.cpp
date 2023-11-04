@@ -622,7 +622,7 @@ GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
 {
     Label entryPass(env_);
     SubCfgEntry(&entryPass);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label heapObj(env_);
     Label exit(env_);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
@@ -646,7 +646,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label cache(env_);
 
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
     Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {

@@ -66,8 +66,8 @@ HWTEST_F_L0(ConstantFoldingTest, ConstantFoldingTypedBinOpTest)
     
     builder.SetEnvironment(&env);
 
-    DEFVAlUE(number1, (&builder), VariableType::INT32(), builder.Int32(14));
-    DEFVAlUE(number2, (&builder), VariableType::INT32(), builder.Int32(7));
+    DEFVALUE(number1, (&builder), VariableType::INT32(), builder.Int32(14));
+    DEFVALUE(number2, (&builder), VariableType::INT32(), builder.Int32(7));
 
     auto sum = builder.Int32Add(*number1, *number2);
     auto convert = builder.ConvertInt32ToTaggedInt(sum);

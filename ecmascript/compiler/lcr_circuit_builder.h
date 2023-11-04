@@ -114,7 +114,7 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
     Label isInt(env_);
     Label isDouble(env_);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::FLOAT64(), Double(0));
+    DEFVALUE(result, env_, VariableType::FLOAT64(), Double(0));
     Branch(TaggedIsInt(x), &isInt, &isDouble);
     Bind(&isInt);
     {
@@ -137,7 +137,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
     Label overflow(env_);
 
     GateRef xInt = ChangeFloat64ToInt32(x);
-    DEFVAlUE(result, env_, VariableType::INT32(), xInt);
+    DEFVALUE(result, env_, VariableType::INT32(), xInt);
 
     GateRef xInt64 = CastDoubleToInt64(x);
     // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
