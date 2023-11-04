@@ -27,3 +27,13 @@
     });
     print(index);
 })();
+
+(function () {
+    var array1 = [,];
+
+    function findIndex() {
+      return array1.findIndex(v => v > 0);
+    }
+    array1.__proto__.push(6);
+    print(findIndex())
+})();
