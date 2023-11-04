@@ -1243,11 +1243,12 @@ DEF_CALL_SIGNATURE(BigIntSameValueZero)
 
 DEF_CALL_SIGNATURE(StringGetStart)
 {
-    CallSignature stringGetStart("StringGetStart", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetStart("StringGetStart", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetStart;
-    std::array<VariableType, 3> params = { // 3 : three input parameters
+    std::array<VariableType, 4> params = { // 4 : four input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
@@ -1257,11 +1258,12 @@ DEF_CALL_SIGNATURE(StringGetStart)
 
 DEF_CALL_SIGNATURE(StringGetEnd)
 {
-    CallSignature stringGetEnd("StringGetEnd", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetEnd("StringGetEnd", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetEnd;
-    std::array<VariableType, 4> params = { // 4 : four input parameters
+    std::array<VariableType, 5> params = { // 5 : five input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32(),
     };

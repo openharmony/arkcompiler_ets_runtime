@@ -427,8 +427,8 @@ public:
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
     static uint32_t ComputeHashcode(JSTaggedType ecmaString);
 
-    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length);
-    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length);
+    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
+    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);
