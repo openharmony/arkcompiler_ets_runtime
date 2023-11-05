@@ -78,6 +78,9 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
         } else {
             elements->Set(thread, index, JSTaggedValue::Hole());
         }
+    } else {
+        JSHandle<JSTaggedValue> thisObjVal(receiver);
+        result = JSArray::FastGetPropertyByValue(thread, thisObjVal, index).GetTaggedValue();
     }
     receiver->SetArrayLength(thread, index);
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
