@@ -127,7 +127,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
-    V(ComputeHashcode)                         \
     V(JSHClassFindProtoTransitions)            \
     V(NumberHelperStringToDouble)              \
     V(LocaleCompareNoGc)                       \
@@ -142,6 +141,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
+    V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
@@ -425,7 +425,6 @@ public:
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
-    static uint32_t ComputeHashcode(JSTaggedType ecmaString);
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
