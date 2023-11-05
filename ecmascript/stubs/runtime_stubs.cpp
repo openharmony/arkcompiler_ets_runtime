@@ -158,6 +158,14 @@ DEF_RUNTIME_STUBS(GetHash32)
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ComputeHashcode)
+{
+    JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode();
+    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
+}
+
 void RuntimeStubs::PrintHeapReginInfo(uintptr_t argGlue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -2713,12 +2721,6 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
     }
     auto callTimer = thread->GetEcmaVM()->GetCallTimer();
     callTimer->StopCount(method);
-}
-
-uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
-{
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    return EcmaStringAccessor(string).ComputeHashcode();
 }
 
 int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex)
