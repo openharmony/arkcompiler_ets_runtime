@@ -22,8 +22,6 @@
 
 namespace panda::ecmascript::kungfu {
 using ClassInfoExtractor = panda::ecmascript::ClassInfoExtractor;
-using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
-using PGOHandler = pgo::PGOHandler;
 void TSHClassGenerator::GenerateTSHClasses() const
 {
     const JSThread *thread = tsManager_->GetThread();
@@ -41,64 +39,6 @@ void TSHClassGenerator::GenerateTSHClasses() const
             RecursiveGenerate(classType);
         } else if (!classType->GetHasLinked()) {
             SubtypingOperator::MergeClassField(thread, classType);
-        }
-    }
-}
-
-void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc,
-    bool enableOptTrackField) const
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    auto hclassValue = tsManager_->GetTSHClass(type);
-    if (!hclassValue.IsJSHClass()) {
-        return;
-    }
-
-    if (!enableOptTrackField) {
-        return;
-    }
-
-    std::vector<JSHClass *> superHClasses;
-    kungfu::GateType current = type;
-    while (tsManager_->GetSuperGateType(current)) {
-        auto superHClassValue = tsManager_->GetTSHClass(current);
-        if (!superHClassValue.IsJSHClass()) {
-            break;
-        }
-        superHClasses.emplace_back(JSHClass::Cast(superHClassValue.GetTaggedObject()));
-    }
-
-    auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
-    const JSThread *thread = tsManager_->GetThread();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    uint32_t numOfProps = hclass->NumberOfProps();
-    for (uint32_t i = 0; i < numOfProps; i++) {
-        auto key = layoutInfo->GetKey(i);
-        if (!key.IsString()) {
-            continue;
-        }
-        auto keyString = EcmaStringAccessor(key).ToCString();
-        PGOHandler newHandler;
-        if (desc.FindDescWithKey(keyString, newHandler)) {
-            auto attr = layoutInfo->GetAttr(i);
-            if (newHandler.SetAttribute(attr)) {
-                hclass->SetIsAllTaggedProp(false);
-            }
-            layoutInfo->SetNormalAttr(thread, i, attr);
-
-            // Update super class representation
-            for (auto superHClass : superHClasses) {
-                int entry = JSHClass::FindPropertyEntry(thread, superHClass, key);
-                if (entry == -1) {
-                    continue;
-                }
-                auto superLayout = LayoutInfo::Cast(superHClass->GetLayout().GetTaggedObject());
-                PropertyAttributes superAttr = superLayout->GetAttr(entry);
-                if (newHandler.SetAttribute(superAttr)) {
-                    superHClass->SetIsAllTaggedProp(false);
-                }
-                superLayout->SetNormalAttr(thread, entry, superAttr);
-            }
         }
     }
 }

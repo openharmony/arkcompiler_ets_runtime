@@ -328,6 +328,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ContainerRBTreeForEach)             \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
+    V(UpdateHClass)                       \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
     V(ArraySort)                          \
@@ -662,7 +663,9 @@ private:
     static inline JSTaggedValue RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,
                                                                  const JSHandle<JSTaggedValue> &prop,
                                                                  const JSHandle<JSTaggedValue> &getter,
-                                                                 const JSHandle<JSTaggedValue> &setter, bool flag);
+                                                                 const JSHandle<JSTaggedValue> &setter, bool flag,
+                                                                 const JSHandle<JSTaggedValue> &func,
+                                                                 int32_t pcOffset);
     static inline JSTaggedValue RuntimeSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
@@ -719,6 +722,8 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
+        const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
     static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,

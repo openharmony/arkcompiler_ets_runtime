@@ -196,6 +196,7 @@ public:
                 frameState_ = gate;
                 break;
             case OpCode::STATE_SPLIT:
+            case OpCode::DEPEND_RELAY:
                 acc_.DeleteGate(gate);
                 return;
             case OpCode::CONVERT:

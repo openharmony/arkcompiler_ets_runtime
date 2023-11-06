@@ -1512,8 +1512,8 @@ void MethodTypeInfer::PGOTypeCheck(GateRef gate) const
         auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId); // expected type
         // 5. pgo type
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
-        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type
-        auto pgoTypeStr = pgoType.ToString();
+        auto pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type
+        auto pgoTypeStr = pgoType.GetPGOSampleType()->ToString();
         // 6. compare expected type and pgo type
         if (expectedTypeStr != pgoTypeStr) {
             const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
@@ -1575,8 +1575,8 @@ std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtra
             log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
         }
     } else {
-        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(gate); // pgo type
-        log += "pgoType: " + pgoType.ToString() + ", ";
+        auto pgoType = gateAccessor_.TryGetPGOType(gate); // pgo type
+        log += "pgoType: " + pgoType.GetPGOSampleType()->ToString() + ", ";
     }
 
     log += "\n[compiler] ";

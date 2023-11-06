@@ -328,31 +328,32 @@ void TSInlineLowering::ReplaceAccessorInput(CallGateInfo &info, GateRef glue, Me
 GateRef TSInlineLowering::BuildAccessor(CallGateInfo &info)
 {
     GateRef gate = info.GetCallGate();
-    GateRef depend = acc_.GetDep(gate);
+    Environment env(gate, circuit_, &builder_);
     GateRef receiver = GetAccessorReceiver(gate);
     GateRef accessor = Circuit::NullGate();
-    uint32_t plrData = GetPlrData(receiver, acc_.GetValueIn(gate, 1));
+    uint32_t plrData = info.GetPlr().GetData();
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    ASSERT(pgoTypes->GetCount() == 1);
+    auto pgoType = pgoTypes->GetObjectInfo(0);
+    ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int holderHCIndex = ptManager->GetHClassIndexByProfileType(holderType);
+    auto holderHC = builder_.GetHClassGateFromIndex(gate, holderHCIndex);
+
+    auto currentLabel = env.GetCurrentLabel();
+    auto state = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
     if (info.IsCallGetter()) {
         accessor = circuit_->NewGate(circuit_->LoadGetter(), MachineType::I64,
-                                     {depend, receiver, builder_.Int32(plrData)}, GateType::AnyType());
+                                     {state, depend, receiver, holderHC, builder_.Int32(plrData)}, GateType::AnyType());
     } else {
         accessor = circuit_->NewGate(circuit_->LoadSetter(), MachineType::I64,
-                                     {depend, receiver, builder_.Int32(plrData)}, GateType::AnyType());
+                                     {state, depend, receiver, holderHC, builder_.Int32(plrData)}, GateType::AnyType());
     }
     acc_.ReplaceDependIn(gate, accessor);
+    acc_.ReplaceDependIn(gate, accessor);
     return accessor;
-}
-
-uint32_t TSInlineLowering::GetPlrData(GateRef receiver, GateRef constData)
-{
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(tsManager_->GetThread(), hclass, prop);
-    return plr.GetData();
 }
 
 void TSInlineLowering::ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method)
@@ -516,17 +517,27 @@ void TSInlineLowering::InlineFuncCheck(const CallGateInfo &info)
     acc_.ReplaceDependIn(gate, ret);
 }
 
-void TSInlineLowering::InlineAccessorCheck(GateRef gate, GateRef receiver)
+void TSInlineLowering::InlineAccessorCheck(const CallGateInfo &info)
 {
-    GateRef callState = acc_.GetState(gate);
-    GateRef callDepend = acc_.GetDep(gate);
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-    GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+    ASSERT(info.IsCallAccessor());
+    GateRef gate = info.GetCallGate();
+    GateRef receiver = GetAccessorReceiver(gate);
+    Environment env(gate, circuit_, &builder_);
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    ASSERT(pgoTypes->GetCount() == 1);
+    auto pgoType = pgoTypes->GetObjectInfo(0);
+    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int receiverHCIndex = ptManager->GetHClassIndexByProfileType(receiverType);
+    auto expectReceiverHC = builder_.GetHClassGateFromIndex(gate, receiverHCIndex);
+
+    auto currentLabel = env.GetCurrentLabel();
+    auto callState = currentLabel->GetControl();
+    auto callDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(callDepend);
-    GateRef ret = circuit_->NewGate(circuit_->InlineAccessorCheck(static_cast<size_t>(receiverType.Value())),
-        MachineType::I1, {callState, callDepend, receiver, hclassIndexGate, frameState}, GateType::NJSValue());
+    GateRef ret = circuit_->NewGate(circuit_->InlineAccessorCheck(), MachineType::I1,
+        {callState, callDepend, receiver, expectReceiverHC, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }
@@ -536,10 +547,7 @@ void TSInlineLowering::InlineCheck(CallGateInfo &info)
     if (info.IsNormalCall()) {
         InlineFuncCheck(info);
     } else {
-        ASSERT(info.IsCallAccessor());
-        GateRef gate = info.GetCallGate();
-        GateRef receiver = GetAccessorReceiver(gate);
-        InlineAccessorCheck(gate, receiver);
+        InlineAccessorCheck(info);
     }
 }
 
@@ -621,29 +629,42 @@ bool TSInlineLowering::IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOf
     return callerMethodOffset == calleeMethodOffset;
 }
 
-bool TSInlineLowering::IsAccessor(GateRef receiver, GateRef constData)
+PropertyLookupResult TSInlineLowering::IsAccessor(GateRef gate, GateRef constData)
 {
     uint16_t propIndex = acc_.GetConstantValue(constData);
     auto prop = tsManager_->GetStringFromConstantPool(propIndex);
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
-        int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-        if (hclassIndex == -1) {
-            return false;
-        }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
-        if (!hclass->HasTSSubtyping()) {
-            return false;
-        }
-        PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(tsManager_->GetThread(), hclass, prop);
-        if (!plr.IsFound()) {
-            return false;
-        }
-
-        return plr.IsAccessor();
+    // PGO currently does not support call, so GT is still used to support inline operations.
+    // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
+    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+        return PropertyLookupResult();
     }
-    return false;
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    if (pgoTypes->GetCount() != 1) {
+        return PropertyLookupResult();
+    }
+    auto pgoType = pgoTypes->GetObjectInfo(0);
+    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
+    ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    JSHClass *hclass = nullptr;
+    if (receiverType == holderType) {
+        int hclassIndex = ptManager->GetHClassIndexByProfileType(receiverType);
+        if (hclassIndex == -1) {
+            return PropertyLookupResult();
+        }
+        hclass = JSHClass::Cast(ptManager->QueryHClass(receiverType.first, receiverType.second).GetTaggedObject());
+    } else {
+        int hclassIndex = ptManager->GetHClassIndexByProfileType(holderType);
+        if (hclassIndex == -1) {
+            return PropertyLookupResult();
+        }
+        hclass = JSHClass::Cast(ptManager->QueryHClass(holderType.first, holderType.second).GetTaggedObject());
+    }
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(thread_, hclass, prop);
+    return plr;
 }
 
 GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter)
@@ -663,10 +684,13 @@ void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> 
 {
     GateRef receiver = GetAccessorReceiver(gate);
     GateRef constData = acc_.GetValueIn(gate, 1);
-    if (IsAccessor(receiver, constData)) {
+    PropertyLookupResult plr = IsAccessor(gate, constData);
+    GateType receiverType = acc_.GetGateType(receiver);
+    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
+    if (plr.IsAccessor() && tsManager_->IsClassInstanceTypeKind(classInstanceGT)) {
         GlobalTSTypeRef gt = GetAccessorFuncGT(receiver, constData, IsCallSetter(kind));
         if (!gt.IsDefault()) {
-            workList.push(CallGateInfo(gate, kind, gt, 0));
+            workList.push(CallGateInfo(gate, kind, gt, 0, plr));
             lastCallId_ = acc_.GetId(gate);
         }
     }

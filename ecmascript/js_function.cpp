@@ -111,6 +111,9 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
     fun->SetProtoOrHClass(thread, hclass);
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineIClass(fun.GetTaggedType(), hclass.GetTaggedType());
+    }
     return *hclass;
 }
 
@@ -711,6 +714,12 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     ASSERT(!prototype->IsHole());
     newJSHClass->SetPrototype(thread, prototype);
     derived->SetProtoOrHClass(thread, newJSHClass);
+
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineIClass(derived.GetTaggedType(),
+            newJSHClass.GetTaggedType());
+    }
+
     return newJSHClass;
 }
 

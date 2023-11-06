@@ -1032,6 +1032,11 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
+inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
+{
+    return env_->GetBuilder()->StorePrototype(glue, hclass, prototype);
+}
+
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 {
     return env_->GetBuilder()->GetObjectType(hClass);

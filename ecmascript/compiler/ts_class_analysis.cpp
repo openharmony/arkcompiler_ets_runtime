@@ -102,7 +102,7 @@ void TSClassAnalysis::AnalyzeProperties(const JSThread *thread, const TSClassTyp
     GlobalTSTypeRef classGT = classType->GetGT();
     int hclassIndex = tsManager_->GetHClassIndex(classGT);
     ASSERT(hclassIndex != -1);
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetAOTHClassInfoByIndex(hclassIndex).GetTaggedObject());
     if (UNLIKELY(hclass->IsDictionaryMode())) {
         return;
     }

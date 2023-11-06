@@ -183,7 +183,7 @@ public:
         return metaBuilder_.JSBytecode(valuesIn, opcode, pcOffset, flags);
     }
 
-    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOSampleType type)
+    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
     {
         return metaBuilder_.TypedBinaryOp(value, binOp, type);
     }

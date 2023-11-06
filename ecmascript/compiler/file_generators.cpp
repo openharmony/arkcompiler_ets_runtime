@@ -443,7 +443,9 @@ void AOTFileGenerator::SaveSnapshotFile()
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     const auto &methodToEntryIndexMap = aotInfo_.GetMethodToEntryIndexMap();
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap);
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    ptManager->GetAOTSnapshot().ResolveSnapshotData(methodToEntryIndexMap);
+
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {

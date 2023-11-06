@@ -109,11 +109,15 @@ void ProfilerStubBuilder::ProfileOpType(
     Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
     Bind(&profiler);
     {
+        Label icSlotValid(env);
         Label uninitialize(env);
         Label compareLabel(env);
         Label updateSlot(env);
 
         GateRef slotId = GetSlotID(pc, format);
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         DEFVARIABLE(curType, VariableType::INT32(), type);
         DEFVARIABLE(curCount, VariableType::INT32(), Int32(0));
@@ -155,9 +159,14 @@ void ProfilerStubBuilder::ProfileDefineClass(
     Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
     Bind(&profiler);
     {
-        GateRef slotId = GetSlotID(pc, format);
-        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        Label icSlotValid(env);
         Label updateSlot(env);
+
+        GateRef slotId = GetSlotID(pc, format);
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Branch(TaggedIsUndefined(slotValue), &updateSlot, &exit);
         Bind(&updateSlot);
         auto weakCtor = env->GetBuilder()->CreateWeakRef(constructor);
@@ -181,13 +190,18 @@ void ProfilerStubBuilder::ProfileCreateObject(
     Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
     Bind(&profiler);
     {
-        GateRef slotId = GetSlotID(pc, format);
-        auto hclass = LoadHClass(newObj);
-        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        Label icSlotValid(env);
         Label isHeapObject(env);
         Label isWeak(env);
         Label uninitialized(env);
         Label updateSlot(env);
+
+        GateRef slotId = GetSlotID(pc, format);
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
+        auto hclass = LoadHClass(newObj);
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Branch(TaggedIsHeapObject(slotValue), &isHeapObject, &uninitialized);
         Bind(&isHeapObject);
         {
@@ -245,11 +259,16 @@ void ProfilerStubBuilder::ProfileCall(
         }
         Bind(&currentIsHotness);
         {
-            GateRef slotId = GetSlotID(pc, format);
-            GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+            Label icSlotValid(env);
             Label isInt(env);
             Label uninitialized(env);
             Label updateSlot(env);
+
+            GateRef slotId = GetSlotID(pc, format);
+            GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+            Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+            Bind(&icSlotValid);
+            GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
             Branch(TaggedIsInt(slotValue), &isInt, &uninitialized);
             Bind(&isInt);
             {
@@ -359,20 +378,26 @@ void ProfilerStubBuilder::ProfileNativeCall(
     Branch(TaggedIsUndefined(profileTypeInfo), &exit, &currentIsHot);
     Bind(&currentIsHot);
     {
+        Label icSlotValid(env);
         Label updateSlot(env);
         Label initSlot(env);
         Label sameValueCheck(env);
         Label invalidate(env);
 
         GateRef slotId = GetSlotID(pc, format);
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        GateRef newId = TryGetBuiltinFunctionId(glue, target);
         Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldId = TaggedGetInt(slotValue);
         Branch(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);
         Bind(&sameValueCheck);
-        Branch(Int32Equal(oldId, newId), &exit, &invalidate);
+        {
+            GateRef newId = TryGetBuiltinFunctionId(glue, target);
+            Branch(Int32Equal(oldId, newId), &exit, &invalidate);
+        }
         Bind(&invalidate);
         {
             GateRef invalidId = Int32(PGO_BUILTINS_STUB_ID(NONE));
@@ -382,6 +407,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
         }
         Bind(&initSlot);
         {
+            GateRef newId = TryGetBuiltinFunctionId(glue, target);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
@@ -533,6 +559,7 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, GateRef pc, GateRef func, 
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label profiler(env);
+    Label icSlotValid(env);
     Label hasSlot(env);
     Label currentIsTrue(env);
     Label currentIsFalse(env);
@@ -550,6 +577,9 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, GateRef pc, GateRef func, 
     Bind(&profiler);
     {
         GateRef slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Branch(TaggedIsHole(slotValue), &exit, &hasSlot);   // ishole -- isundefined
         Bind(&hasSlot);
@@ -709,21 +739,27 @@ void ProfilerStubBuilder::ProfileGetIterator(
     Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
     Bind(&profiler);
     {
+        Label icSlotValid(env);
         Label updateSlot(env);
         Label initSlot(env);
         Label sameValueCheck(env);
         Label invalidate(env);
 
         GateRef slotId = GetSlotID(pc, format);
+        GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
+        Branch(Int32LessThan(slotId, length), &icSlotValid, &exit);
+        Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        GateRef newIterKind = GetIterationFunctionId(glue, iterator);
         Branch(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldIterKind = TaggedGetInt(slotValue);
         Branch(Int32Equal(oldIterKind, Int32(PGO_BUILTINS_STUB_ID(NONE))),
             &exit, &sameValueCheck);
         Bind(&sameValueCheck);
-        Branch(Int32Equal(oldIterKind, newIterKind), &exit, &invalidate);
+        {
+            GateRef newIterKind = GetIterationFunctionId(glue, iterator);
+            Branch(Int32Equal(oldIterKind, newIterKind), &exit, &invalidate);
+        }
         Bind(&invalidate);
         {
             GateRef invalidKind = Int32(PGO_BUILTINS_STUB_ID(NONE));
@@ -733,6 +769,7 @@ void ProfilerStubBuilder::ProfileGetIterator(
         }
         Bind(&initSlot);
         {
+            GateRef newIterKind = GetIterationFunctionId(glue, iterator);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newIterKind));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);

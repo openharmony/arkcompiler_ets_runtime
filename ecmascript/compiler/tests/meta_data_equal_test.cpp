@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/type_bytecode_lowering.h"
 #include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -37,6 +38,7 @@ using ecmascript::kungfu::GateMetaData;
 using ecmascript::kungfu::GateType;
 using ecmascript::kungfu::JSBytecodeMetaData;
 using ecmascript::kungfu::MachineType;
+using ecmascript::kungfu::PGOTypeRef;
 using ecmascript::kungfu::PGOSampleType;
 using ecmascript::kungfu::TypedBinOp;
 using ecmascript::kungfu::TypedCallTargetCheckOp;
@@ -147,13 +149,19 @@ HWTEST_F_L0(MetaDataEqualTests, HCRMetaDataEqualTest)
     static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta2))->SetElementsKind(ElementsKind::NUMBER);
     EXPECT_TRUE(acc.MetaDataValueEqu(gate, gate2));
 
-    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta))->SetType(PGOSampleType::CreateProfileType(0, 0));
-    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta2))->SetType(PGOSampleType::CreateProfileType(0, 0));
-    EXPECT_TRUE(acc.MetaDataValueEqu(gate, gate2));
+    PGOSampleType type = PGOSampleType::CreateProfileType(0, 0);
+    PGOSampleType type2 = PGOSampleType::CreateProfileType(0, 0);
+    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta))
+        ->SetType(PGOTypeRef(static_cast<const PGOSampleType *>(&type)));
+    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta2))
+        ->SetType(PGOTypeRef(static_cast<const PGOSampleType *>(&type2)));
+    EXPECT_FALSE(acc.MetaDataValueEqu(gate, gate2));
 
-
-    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta))->SetType(PGOSampleType::CreateProfileType(0, 0));
-    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta2))->SetType(PGOSampleType::CreateProfileType(0, 1));
+    PGOSampleType type3 = PGOSampleType::CreateProfileType(0, 1);
+    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta))
+        ->SetType(PGOTypeRef(static_cast<const PGOSampleType *>(&type)));
+    static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta2))
+        ->SetType(PGOTypeRef(static_cast<const PGOSampleType *>(&type3)));
     EXPECT_FALSE(acc.MetaDataValueEqu(gate, gate2));
 
     static_cast<JSBytecodeMetaData *>(const_cast<GateMetaData *>(meta))->SetElementsKind(ElementsKind::NUMBER);
@@ -196,17 +204,21 @@ HWTEST_F_L0(MetaDataEqualTests, MCRMetaDataEqualTest)
     EXPECT_TRUE(acc.MetaDataValueEqu(callGate4, callGate3));
 
     // TypedBinaryMetaData
+    PGOSampleType type5 = PGOSampleType::CreateProfileType(0, 1);
     auto callGate5 = circuit.NewGate(
-        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOSampleType::CreateProfileType(0, 1)), MachineType::I64,
-        {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
+        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOTypeRef(static_cast<const PGOSampleType *>(&type5))),
+        MachineType::I64, { Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate() },
+        GateType::AnyType());
 
     // TypedBinaryMetaData
+    PGOSampleType type6 = PGOSampleType::CreateProfileType(0, 1);
     auto callGate6 = circuit.NewGate(
-        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOSampleType::CreateProfileType(0, 1)), MachineType::I64,
-        {Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
+        circuit.TypedBinaryOp(0, TypedBinOp::TYPED_ADD, PGOTypeRef(static_cast<const PGOSampleType *>(&type6))),
+        MachineType::I64, { Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate(), Circuit::NullGate() },
+        GateType::AnyType());
 
-    EXPECT_TRUE(acc.MetaDataValueEqu(callGate5, callGate6));
-    EXPECT_TRUE(acc.MetaDataValueEqu(callGate6, callGate5));
+    EXPECT_FALSE(acc.MetaDataValueEqu(callGate5, callGate6));
+    EXPECT_FALSE(acc.MetaDataValueEqu(callGate6, callGate5));
 }
 
 

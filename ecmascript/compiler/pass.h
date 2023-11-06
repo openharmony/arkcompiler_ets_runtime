@@ -106,6 +106,11 @@ public:
         return ctx_->GetTSManager();
     }
 
+    PGOTypeManager* GetPTManager() const
+    {
+        return ctx_->GetPTManager();
+    }
+
     const JSPandaFile *GetJSPandaFile() const
     {
         return ctx_->GetJSPandaFile();
@@ -253,11 +258,6 @@ public:
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
                                         enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-        if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
-            InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
-                                                data->GetMethodName(), enableLog);
-            initAnalysis.Run();
-        }
         return true;
     }
 };
@@ -329,7 +329,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
+            enableLog, data->GetMethodName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);

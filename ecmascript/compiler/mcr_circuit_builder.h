@@ -440,13 +440,13 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
 
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
-    PGOSampleType sampleType)
+    PGOTypeRef pgoType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(xType, yType);
-    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, sampleType),
+    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, pgoType),
         MachineType::I64, {currentControl, currentDepend, x, y}, gateType);
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
@@ -601,6 +601,13 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
+}
+
+GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(valType, array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,

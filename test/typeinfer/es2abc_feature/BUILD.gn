@@ -18,7 +18,6 @@ group("ark_typeinfer_es2abc_feature_test") {
     "arrow_function_in_foreach",
     "indexsignature_class",
     "indexsignature_object",
-    "member_variable_Initialization",
     "namespace_multiple",
     "namespace_nested",
     "namespace_type",

@@ -1921,8 +1921,10 @@ DEF_RUNTIME_STUBS(DefineGetterSetterByValue)
     JSHandle<JSTaggedValue> getter = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> setter = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue flag = GetArg(argv, argc, 4);  // 4: means the fourth parameter
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the sixth parameter
+    int32_t pcOffset = GetArg(argv, argc, 6).GetInt();  // 6: means the seventh parameter
     bool bFlag = flag.ToBoolean();
-    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag).GetRawData();
+    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag, func, pcOffset).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SuperCall)
@@ -2235,6 +2237,17 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
     JSTaggedValue result = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue hint = GetArg(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(UpdateHClass)
+{
+    RUNTIME_STUBS_HEADER(UpdateHClass);
+    JSTaggedValue oldhc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue newhc = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSHClass> oldhclass(thread, oldhc);
+    JSHandle<JSHClass> newhclass(thread, newhc);
+    return RuntimeUpdateHClass(thread, oldhclass, newhclass, key).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)

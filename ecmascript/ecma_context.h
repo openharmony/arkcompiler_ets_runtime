@@ -69,6 +69,9 @@ class MicroJobQueue;
 namespace tooling {
 class JsDebuggerManager;
 }  // namespace tooling
+namespace kungfu {
+class PGOTypeManager;
+} // namespace kungfu
 
 enum class IcuFormatterType {
     SIMPLE_DATE_FORMAT_DEFAULT,
@@ -131,6 +134,11 @@ public:
     TSManager *GetTSManager() const
     {
         return tsManager_;
+    }
+
+    kungfu::PGOTypeManager *GetPTManager() const
+    {
+        return ptManager_;
     }
 
     ARK_INLINE JSThread *GetJSThread() const
@@ -522,6 +530,7 @@ private:
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
     TSManager *tsManager_ {nullptr};
+    kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
 
     // atomics

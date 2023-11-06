@@ -145,7 +145,7 @@ public:
         return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, pcOffset, flags);
     }
 
-    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOSampleType type)
+    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
     {
         return new (chunk_) TypedBinaryMetaData(value, binOp, type);
     }

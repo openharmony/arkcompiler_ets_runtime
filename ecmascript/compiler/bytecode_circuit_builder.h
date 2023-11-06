@@ -393,8 +393,7 @@ public:
 
     ElementsKind GetArrayElementsKind(GateRef gate) const
     {
-        auto pgoType = typeRecorder_.GetPGOHclassLayoutInfo(gateAcc_.TryGetPcOffset(gate));
-        return typeRecorder_.GetElementsKind(pgoType);
+        return typeRecorder_.GetElementsKind(gateAcc_.TryGetPcOffset(gate));
     }
 
     bool ShouldPGOTypeInfer(GateRef gate) const

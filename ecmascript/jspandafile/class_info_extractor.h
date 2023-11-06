@@ -100,7 +100,7 @@ public:
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSHClass> &ihclass,
+                                                       const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
 
 private:
