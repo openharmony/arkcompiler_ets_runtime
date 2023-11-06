@@ -46,7 +46,7 @@ bool ParallelEvacuator::VisitBodyInObj(
         if (markWord.IsForwardingAddress()) {
             dst = markWord.ToForwardingAddress();
         }
-        auto layout = LayoutInfo::Cast(dst);
+        auto layout = LayoutInfo::UncheckCast(dst);
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             callback(slot);
