@@ -67,6 +67,7 @@ static constexpr size_t FIVE_VALUE = 5;
 
 #define DECLARE_CACHED_VALUE_META(VALUE)                                                        \
 GateMetaData cachedMerge##VALUE##_ { OpCode::MERGE, GateFlags::CONTROL, VALUE, 0, 0 };          \
+GateMetaData cachedLoopBegin##VALUE##_ { OpCode::LOOP_BEGIN, GateFlags::CONTROL, VALUE, 0, 0 }; \
 GateMetaData cachedDependSelector##VALUE##_ { OpCode::DEPEND_SELECTOR, GateFlags::FIXED, 1, VALUE, 0 };
 CACHED_VALUE_LIST(DECLARE_CACHED_VALUE_META)
 #undef DECLARE_CACHED_VALUE_META

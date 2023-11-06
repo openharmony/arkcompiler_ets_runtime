@@ -1150,6 +1150,18 @@ void GateAccessor::ReplaceDependIn(GateRef gate, GateRef in, size_t index)
     circuit_->ModifyIn(gate, stateCount + index, in);
 }
 
+void GateAccessor::ReplaceOrNewDependIn(GateRef gate, GateRef in, size_t index)
+{
+    ASSERT(index < GetDependCount(gate));
+    size_t stateCount = GetStateCount(gate);
+    auto depend = GetDep(gate);
+    if (depend == Circuit::NullGate()) {
+        circuit_->NewIn(gate, stateCount + index, in);
+    } else {
+        circuit_->ModifyIn(gate, stateCount + index, in);
+    }
+}
+
 void GateAccessor::ReplaceValueIn(GateRef gate, GateRef in, size_t index)
 {
     ASSERT(index < GetInValueCount(gate));
@@ -1667,14 +1679,14 @@ uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
     return GetConstantValue(stringId);
 }
 
-bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
+bool GateAccessor::IsLoopBackUse(GateRef gate, const UseIterator &useIt) const
 {
-    if (IsStateIn(useIt)) {
-        return (useIt.GetIndex() == 1) && IsLoopHead(*useIt);
+    if (IsLoopBack(gate) && IsStateIn(useIt)) {
+        return IsLoopHead(*useIt);
     }
     if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
-        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt)); // 2 means the Index
+        return IsLoopHead(GetState(*useIt));
     }
     return false;
 }

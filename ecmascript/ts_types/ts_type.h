@@ -246,7 +246,7 @@ public:
 
     ACCESSORS(PropertyType, PROTOTYPE_TYPE_OFFSET, SIZE);
 
-    static void AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+    static bool AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
                                const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,

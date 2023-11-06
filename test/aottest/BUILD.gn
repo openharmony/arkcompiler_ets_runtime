@@ -54,6 +54,7 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
+    "bc_builder",
     "bind",
     "binaryop_special_value",
     "builtinmath",

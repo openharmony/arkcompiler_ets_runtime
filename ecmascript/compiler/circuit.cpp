@@ -406,8 +406,11 @@ void Circuit::DeleteIn(GateRef gate, size_t idx)
 
 void Circuit::DeleteGate(GateRef gate)
 {
-    LoadGatePtr(gate)->DeleteGate();
-    LoadGatePtr(gate)->SetMetaData(Nop());
+    // constant in constant cache, dont delete it.
+    if (GetOpCode(gate) != OpCode::CONSTANT) {
+        LoadGatePtr(gate)->DeleteGate();
+        LoadGatePtr(gate)->SetMetaData(Nop());
+    }
 }
 
 void Circuit::DecreaseIn(GateRef gate, size_t idx)

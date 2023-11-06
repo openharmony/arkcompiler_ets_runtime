@@ -38,7 +38,7 @@ class DebugInfo;
 enum class VisitState : uint8_t {
     UNVISITED,
     PENDING,
-    VISITED
+    VISITED,
 };
 
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid

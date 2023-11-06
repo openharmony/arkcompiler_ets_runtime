@@ -450,7 +450,7 @@ bool Verifier::RunFlowCyclesFind(const Circuit* circuit)
             continue;
         }
         auto succ = *cur.it;
-        if (acc.IsLoopBackUse(cur.it)) {
+        if (acc.IsLoopBackUse(cur.gate, cur.it)) {
             cur.it++;
             continue;
         }

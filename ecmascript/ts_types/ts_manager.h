@@ -317,7 +317,7 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateNamespaceType();
 
-    void AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType);
+    bool AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType);
 
     inline bool IsUserDefinedClassTypeKind(const kungfu::GateType &gateType) const
     {

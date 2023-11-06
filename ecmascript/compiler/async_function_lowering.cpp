@@ -288,10 +288,11 @@ GateRef AsyncFunctionLowering::GetDependPhiFromLoopBegin(GateRef gate) const
 
 GateRef AsyncFunctionLowering::GetEntryBBStateOut() const
 {
-    auto bb = bcBuilder_->GetBasicBlockById(1);   // 1 : First Block Id
-    auto state = bb.stateCurrent;
-    if (accessor_.IsCFGMerge(state)) {
-        return accessor_.GetState(state);
+    auto& bb = bcBuilder_->GetBasicBlockById(0);   // 0 : Entry Block Id
+    // state may CheckSafePointAndStackOver
+    auto state = bb.dependCache;
+    if (state == Circuit::NullGate()) {
+        return circuit_->GetStateRoot();
     } else {
         return state;
     }
@@ -299,10 +300,10 @@ GateRef AsyncFunctionLowering::GetEntryBBStateOut() const
 
 GateRef AsyncFunctionLowering::GetEntryBBDependOut() const
 {
-    auto bb = bcBuilder_->GetBasicBlockById(1);   // 1 : First Block Id
-    auto depend = bb.dependCurrent;
-    if (accessor_.IsDependSelector(depend)) {
-        return accessor_.GetDep(depend);
+    auto& bb = bcBuilder_->GetBasicBlockById(0);   // 0 : Entry Block Id
+    auto depend = bb.dependCache;
+    if (depend == Circuit::NullGate()) {
+        return circuit_->GetDependRoot();
     } else {
         return depend;
     }
