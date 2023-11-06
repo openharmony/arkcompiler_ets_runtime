@@ -475,7 +475,7 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
                 // 1. Let P be ToString(k).
                 // 2. Let exists be HasProperty(E, P).
                 // 3. If exists is true, then
-                fromKey.Update(JSTaggedValue(k));
+                fromKey.Update(JSTaggedValue::ToString(thread, JSTaggedValue(k)));
                 toKey.Update(JSTaggedValue(n));
                 bool exists = JSTaggedValue::HasProperty(thread, ele, fromKey);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
