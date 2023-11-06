@@ -1810,20 +1810,6 @@ DEF_CALL_SIGNATURE(DoubleToLength)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(ComputeHashcode)
-{
-    // 1 : 1 input parameters
-    CallSignature index("ComputeHashcode", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters
