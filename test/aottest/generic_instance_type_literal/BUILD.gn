@@ -10,25 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-group("ark_typeinfer_es2abc_feature_test") {
-  testonly = true
-  test_list = [
-    "arrow_function",
-    "arrow_function_in_foreach",
-    "indexsignature_class",
-    "indexsignature_object",
-    "member_variable_Initialization",
-    "namespace_multiple",
-    "namespace_nested",
-    "namespace_type",
-    "namespace_variable",
-    "type_alias",
-    "type_assertion",
-  ]
-
+host_aot_test_action("generic_instance_type_literal") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}Es2abcAotTypeInferAction" ]
-  }
 }

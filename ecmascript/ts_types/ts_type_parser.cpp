@@ -248,8 +248,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(objectType);
         }
-        case TSTypeKind::BUILTIN_INSTANCE:
-        case TSTypeKind::GENERIC_INSTANCE: {
+        case TSTypeKind::BUILTIN_INSTANCE: {
             return ParseGenericsInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
         }
         default: {
