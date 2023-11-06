@@ -1643,13 +1643,13 @@ const BytecodeInfo &BytecodeIterator::GetBytecodeInfo() const
 
 const uint8_t *BytecodeIterator::PeekNextPc(size_t i) const
 {
-    ASSERT(index_ + i <= end_);
-    return builder_->GetPCByIndex(index_ + i);
+    ASSERT(index_ + static_cast<int32_t>(i) <= end_);
+    return builder_->GetPCByIndex(static_cast<uint32_t>(index_ + i));
 }
 
 const uint8_t *BytecodeIterator::PeekPrevPc(size_t i) const
 {
-    ASSERT(index_ - i >= start_);
-    return builder_->GetPCByIndex(index_ - i);
+    ASSERT(index_ - static_cast<int32_t>(i) >= start_);
+    return builder_->GetPCByIndex(static_cast<uint32_t>(index_ - i));
 }
 } // panda::ecmascript::kungfu

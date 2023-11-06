@@ -69,7 +69,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
 
     DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
     DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -104,7 +104,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.LoopExit({&sum});
     auto convert = builder.ConvertInt32ToTaggedInt(*sum);
     builder.Return(convert);
-    LoopAnalysis analysis(&circuit, &chunk);
+    LoopAnalysis analysis(nullptr, &circuit, &chunk);
     ecmascript::kungfu::LoopInfo beforeOpt(&chunk, loopBegin);
     ecmascript::kungfu::LoopInfo afterOpt(&chunk, loopBegin);
     analysis.CollectLoopBody(&beforeOpt);
@@ -147,10 +147,10 @@ HWTEST_F_L0(LoopOptimizationTest, LoopNumberCalculationOptimizationTest)
     builder.SetEnvironment(&env);
     auto arg = builder.Arguments(1);
     acc.SetMachineType(arg, MachineType::I32);
-    
+
     DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
     DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -197,10 +197,10 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     acc.SetMachineType(arg2, MachineType::ARCH);
     GateRef invariant = circuit.NewGate(circuit.Load(), MachineType::I32,
         { circuit.GetDependRoot(), arg2 }, GateType::NJSValue());
-    
+
     DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
     DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -208,7 +208,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     builder.LoopBegin(&loopHead);
     auto loopBegin = builder.GetState();
     auto loopEntry = acc.GetState(loopBegin);
-    
+
     builder.Branch(builder.Int32LessThan(*index, invariant), &loopBody, &loopExit);
     builder.Bind(&loopBody);
     auto variant = builder.Load(VariableType::INT32(), arg1, builder.PtrAdd(arg2, *index));

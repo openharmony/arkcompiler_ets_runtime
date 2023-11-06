@@ -365,15 +365,16 @@ GlobalTSTypeRef TSInterfaceType::GetIndexSignType(JSThread *thread, const JSHand
 }
 
 
-void TSNamespaceType::AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+bool TSNamespaceType::AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<TSObjLayoutInfo> propLayout(thread, namespaceType->GetPropertyType());
     if (propLayout->Find(key.GetTaggedValue())) {
-        return;
+        return false;
     }
     JSHandle<TSObjLayoutInfo> newPropLayout = TSObjLayoutInfo::PushBack(thread, propLayout, key, value);
     namespaceType->SetPropertyType(thread, newPropLayout.GetTaggedValue());
+    return true;
 }
 
 GlobalTSTypeRef TSNamespaceType::GetPropTypeGT(JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,

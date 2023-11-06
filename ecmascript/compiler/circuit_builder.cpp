@@ -104,7 +104,7 @@ GateRef CircuitBuilder::Goto(GateRef state)
 GateRef CircuitBuilder::LoopBegin(GateRef state)
 {
     auto nullGate = Circuit::NullGate();
-    return circuit_->NewGate(circuit_->LoopBegin(), { state, nullGate });
+    return circuit_->NewGate(circuit_->LoopBegin(2), { state, nullGate }); // 2: entry&back
 }
 
 GateRef CircuitBuilder::LoopEnd(GateRef state)
@@ -295,10 +295,11 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, currentDepend, condition,
+        MachineType::I1, { currentControl, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
+    auto dependRelay = DependRelay(ret, currentDepend);
     currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
+    currentLabel->SetDepend(dependRelay);
     return ret;
 }
 

@@ -764,13 +764,13 @@ GlobalTSTypeRef TSManager::CreateNamespaceType()
     return AddTSTypeToInferredTable(JSHandle<TSType>(namespaceType));
 }
 
-void TSManager::AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType)
+bool TSManager::AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType)
 {
     JSHandle<JSTaggedValue> tsType = GetTSType(GlobalTSTypeRef(objType.Value()));
     JSHandle<TSNamespaceType> namespaceType(tsType);
     JSHandle<JSTaggedValue> key(thread_, name);
     JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(valueType.Value()));
-    TSNamespaceType::AddKeyAndValue(thread_, namespaceType, key, value);
+    return TSNamespaceType::AddKeyAndValue(thread_, namespaceType, key, value);
 }
 
 GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const

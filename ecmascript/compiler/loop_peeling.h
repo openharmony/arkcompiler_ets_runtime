@@ -38,6 +38,10 @@ private:
     void SetCopy(GateRef gate);
     GateRef GetCopy(GateRef gate) const;
     GateRef TryGetCopy(GateRef gate) const;
+    void CopyLoopBody();
+    void CopyLoopHeader();
+    void CopyLoopExit();
+    GateRef CopySelector(GateRef stateMerge, GateRef selector, size_t numLoopbacks);
     void Print() const;
     bool IsLogEnabled() const
     {

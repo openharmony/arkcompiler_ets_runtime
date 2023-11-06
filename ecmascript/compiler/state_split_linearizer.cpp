@@ -88,10 +88,11 @@ public:
 
     void Run(ChunkVector<GateRegion*>& regionList)
     {
+        maxGateId_ = acc_.GetCircuit()->GetMaxGateId();
         replacement_.SetDepend(acc_.GetDependRoot());
         dependStart_ = replacement_.Depend();
         auto entry = regionList.front();
-        linearizer_->circuit_->AdvanceTime();
+        acc_.GetCircuit()->AdvanceTime();
         entry->SetVisited(acc_);
         ASSERT(pendingList_.empty());
         pendingList_.emplace_back(entry);
@@ -107,16 +108,41 @@ public:
             }
         }
         ConnectPendingRegionEdges();
+        DeleteUnusedGates();
     }
 
-    void VisitFixedGate(GateRef curGate)
+    void DeleteUnusedGates()
     {
-        auto op = acc_.GetOpCode(curGate);
-        if (op == OpCode::DEPEND_SELECTOR || op == OpCode::DEPEND_RELAY) {
-            replacement_.SetDepend(curGate);
-            dependStart_ = curGate;
-        } else {
-            VisitGate(curGate);
+        std::vector<GateRef> gateList;
+        auto circuit = acc_.GetCircuit();
+        circuit->GetAllGates(gateList);
+
+        for (const auto &gate : gateList) {
+            if (acc_.GetMark(gate) == MarkCode::NO_MARK &&
+                !acc_.IsProlog(gate) && !acc_.IsRoot(gate) &&
+                acc_.GetId(gate) <= maxGateId_) {
+                acc_.DeleteGate(gate);
+            }
+        }
+    }
+
+    void TryFindDependStart(GateRegion* curRegion)
+    {
+        // 0: is state
+        for (; currentIndex_ > 0; currentIndex_--) {
+            auto curGate = curRegion->gateList_[currentIndex_];
+            auto op = acc_.GetOpCode(curGate);
+            if (op == OpCode::DEPEND_SELECTOR || op == OpCode::DEPEND_RELAY) {
+                replacement_.SetDepend(curGate);
+                dependStart_ = curGate;
+                acc_.SetMark(curGate, MarkCode::VISITED);
+            } else {
+                VisitGate(curGate);
+            }
+            if (dependStart_ != Circuit::NullGate()) {
+                currentIndex_--;
+                break;
+            }
         }
     }
 
@@ -125,14 +151,8 @@ public:
         replacement_.SetState(curRegion->GetState());
         currentIndex_ = static_cast<int32_t>(curRegion->gateList_.size() - 1); // 1: -1 for size
         TryLoadDependStart(curRegion);
-        // 0: is state
-        for (; currentIndex_ > 0; currentIndex_--) {
-            auto curGate = curRegion->gateList_[currentIndex_];
-            VisitFixedGate(curGate);
-            if (dependStart_ != Circuit::NullGate()) {
-                currentIndex_--;
-                break;
-            }
+        if (dependStart_ == Circuit::NullGate()) {
+            TryFindDependStart(curRegion);
         }
         ConnectStateDepend(curRegion);
         for (; currentIndex_ > 0; currentIndex_--) {
@@ -168,6 +188,7 @@ public:
 
     void VisitGate(GateRef gate)
     {
+        acc_.SetMark(gate, MarkCode::VISITED);
         auto& lowering = linearizer_->lcrLowering_;
         auto op = acc_.GetOpCode(gate);
         switch (op) {
@@ -175,6 +196,7 @@ public:
                 frameState_ = gate;
                 break;
             case OpCode::STATE_SPLIT:
+                acc_.DeleteGate(gate);
                 return;
             case OpCode::CONVERT:
                 ASSERT(replacement_.State() != Circuit::NullGate());
@@ -186,18 +208,45 @@ public:
         ProcessStateDepend(gate);
     }
 
+    void TryInsertRelay(GateRegion* curRegion)
+    {
+        auto currentState = curRegion->GetState();
+        auto curGate = curRegion->gateList_[currentIndex_];
+        if (acc_.GetOpCode(curGate) != OpCode::DEPEND_RELAY ||
+            acc_.GetState(curGate) != currentState) {
+            auto circuit = acc_.GetCircuit();
+            auto dependRelay = circuit->NewGate(
+                circuit->DependRelay(), { currentState, Circuit::NullGate() });
+            replacement_.SetDepend(dependRelay);
+            ASSERT(dependStart_ == Circuit::NullGate());
+            acc_.SetMark(dependRelay, MarkCode::VISITED);
+            dependStart_ = dependRelay;
+        }
+    }
+
     void TryLoadDependStart(GateRegion* curRegion)
     {
         auto currentState = curRegion->GetState();
         if (dependStart_ == Circuit::NullGate()) {
-            if (acc_.GetOpCode(currentState) == OpCode::IF_EXCEPTION) {
-                dependStart_ = currentState;
-                replacement_.SetDepend(dependStart_);
-            } else if (curRegion->preds_.size() == 1) {
+            if (curRegion->preds_.size() == 1) {
                 auto &edge = map_.GetEdge(curRegion->preds_[0], curRegion);
                 ASSERT(edge.dependOut != Circuit::NullGate());
                 replacement_.SetDepend(edge.dependOut);
                 frameState_ = edge.frameStateOut;
+            }
+
+            auto opcode = acc_.GetOpCode(currentState);
+            switch (opcode) {
+                case OpCode::IF_EXCEPTION:
+                    dependStart_ = currentState;
+                    replacement_.SetDepend(dependStart_);
+                    break;
+                case OpCode::IF_TRUE:
+                case OpCode::IF_FALSE:
+                    TryInsertRelay(curRegion);
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -232,7 +281,7 @@ public:
         if (dependStart_ != Circuit::NullGate()) {
             auto dependInput = acc_.GetDep(dependStart_, i);
             if (edge.dependOut != dependInput) {
-                acc_.ReplaceDependIn(dependStart_, edge.dependOut, i);
+                acc_.ReplaceOrNewDependIn(dependStart_, edge.dependOut, i);
             }
         }
     }
@@ -283,6 +332,7 @@ private:
     GateAccessor acc_;
     RegionStateDependMap map_;
     ChunkVector<PendingGateRegionEdge> pendingEdges_;
+    size_t maxGateId_ {0};
 };
 
 void StateSplitLinearizer::LinearizeStateSplit()

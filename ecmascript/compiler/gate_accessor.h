@@ -456,6 +456,7 @@ public:
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceDependIn(GateRef gate, GateRef in, size_t index = 0);
+    void ReplaceOrNewDependIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceValueIn(GateRef gate, GateRef in, size_t index = 0);
     void DeleteGate(GateRef gate);
     MachineType GetMachineType(GateRef gate) const;
@@ -579,7 +580,7 @@ public:
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
     void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
-    bool IsLoopBackUse(const UseIterator &useIt) const;
+    bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);

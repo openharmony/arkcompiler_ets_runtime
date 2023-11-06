@@ -38,7 +38,7 @@ class DebugInfo;
 enum class VisitState : uint8_t {
     UNVISITED,
     PENDING,
-    VISITED
+    VISITED,
 };
 
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
@@ -55,6 +55,8 @@ public:
         const std::initializer_list<GateRef>& args, GateType type, const char* comment = nullptr);
     GateRef NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns,
                     const GateRef inList[], GateType type, const char* comment = nullptr);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType,
+                    const std::vector<GateRef>& inList, GateType type, const char* comment = nullptr);
     void PrintAllGates() const;
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;

@@ -148,6 +148,7 @@ private:
     void VerifyTypePercent();
     void TypeCheck(GateRef gate) const;
     void PGOTypeCheck(GateRef gate) const;
+    void Enqueue(GateRef gate);
 
     std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
                                        const std::string &logPreFix, bool isPGO) const;

@@ -42,10 +42,10 @@ namespace panda::ecmascript::kungfu {
 struct ExceptionItem {
     uint8_t* startPc;
     uint8_t* endPc;
-    std::vector<uint8_t*> catchs;
+    std::vector<uint8_t*> catches;
 
-    ExceptionItem(uint8_t* startPc, uint8_t* endPc, std::vector<uint8_t*> catchs)
-        : startPc(startPc), endPc(endPc), catchs(catchs) {}
+    ExceptionItem(uint8_t* startPc, uint8_t* endPc, std::vector<uint8_t*> catches)
+        : startPc(startPc), endPc(endPc), catches(catches) {}
 };
 
 using ExceptionInfo = std::vector<ExceptionItem>;
@@ -160,36 +160,21 @@ struct BytecodeRegion {
     size_t id {0};
     uint32_t start {0};
     uint32_t end {0};
-    std::vector<BytecodeRegion *> preds {}; // List of predessesor blocks
-    std::vector<BytecodeRegion *> succs {}; // List of successors blocks
-    std::vector<BytecodeRegion *> trys {}; // List of trys blocks
-    std::vector<BytecodeRegion *> catchs {}; // List of catches blocks
-    std::vector<BytecodeRegion *> immDomBlocks {}; // List of dominated blocks
-    BytecodeRegion *iDominator {nullptr}; // Block that dominates the current block
-    std::vector<BytecodeRegion *> domFrontiers {}; // List of dominace frontiers
-    std::set<size_t> loopbackBlocks {}; // List of loopback block ids
-    bool isDead {false};
-    bool phiAcc {false};
-    size_t loopDepth {0};
-    std::set<uint16_t> phi {}; // phi node
-    std::set<GateRef> phiGate {}; // phi gate
+    ChunkVector<BytecodeRegion *> preds; // List of predessesor blocks
+    ChunkVector<BytecodeRegion *> succs; // List of successors blocks
+    ChunkVector<BytecodeRegion *> trys; // List of trys blocks
+    ChunkVector<BytecodeRegion *> catches; // List of catches blocks
     size_t numOfStatePreds {0};
-    size_t numOfLoopBacks {0};
-    size_t statePredIndex {0};
-    size_t forwardIndex {0};
-    size_t loopBackIndex {0};
-    std::vector<std::tuple<size_t, size_t, bool>> expandedPreds {};
-    GateRef loopExitState {Circuit::NullGate()};
-    GateRef loopExitDepend {Circuit::NullGate()};
-    GateRef stateCurrent {Circuit::NullGate()};
-    GateRef dependCurrent {Circuit::NullGate()};
-    GateRef stateMerge {Circuit::NullGate()};
-    GateRef dependMerge {Circuit::NullGate()};
-    GateRef loopBackStateMerge {Circuit::NullGate()};
-    GateRef loopBackDependMerge {Circuit::NullGate()};
-    std::unordered_map<uint16_t, GateRef> vregToValueGate {}; // corresponding value gates of vregs
-    GateRef valueSelectorAccGate {Circuit::NullGate()};
+    size_t loopNumber {0};
+    size_t loopIndex {0};
+    ChunkVector<std::tuple<size_t, size_t, bool>> expandedPreds;
+    GateRef dependCache {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
+
+    BytecodeRegion(Chunk* chunk) : preds(chunk), succs(chunk),
+        trys(chunk), catches(chunk), expandedPreds(chunk)
+    {
+    }
 
     BytecodeIterator &GetBytecodeIterator() {
         return bytecodeIterator_;
@@ -202,54 +187,28 @@ struct BytecodeRegion {
 
     void SortCatches()
     {
-        if (catchs.size() > 1) {
-            std::sort(catchs.begin(), catchs.end(), [](BytecodeRegion *first, BytecodeRegion *second) {
+        if (catches.size() > 1) {
+            std::sort(catches.begin(), catches.end(), [](BytecodeRegion *first, BytecodeRegion *second) {
                 return first->start < second->start;
             });
         }
     }
 
-    void UpdateTryCatchInfoForDeadBlock()
+    void EraseThisBlock(ChunkVector<BytecodeRegion *> &blocks)
     {
-        // Try-Catch infos of dead block should be cleared
-        UpdateTryCatchInfo();
-        isDead = true;
-    }
-
-    void UpdateRedundantTryCatchInfo(bool noThrow)
-    {
-        // if block which can throw exception has serval catchs block, only the innermost catch block is useful
-        if (!noThrow && catchs.size() > 1) {
-            size_t innerMostIndex = 1;
-            UpdateTryCatchInfo(innerMostIndex);
+        auto it = std::find(blocks.begin(), blocks.end(), this);
+        if (it != blocks.end()) {
+            blocks.erase(it);
         }
     }
 
-    void UpdateTryCatchInfoIfNoThrow(bool noThrow)
+    bool IsEmptryBlock() const
     {
-        // if block has no general insts, try-catch infos of it should be cleared
-        if (noThrow && !catchs.empty()) {
-            UpdateTryCatchInfo();
-        }
-    }
-
-private:
-    void UpdateTryCatchInfo(size_t index = 0)
-    {
-        for (auto catchBlock = catchs.begin() + index; catchBlock != catchs.end(); catchBlock++) {
-            auto tryBlock = std::find((*catchBlock)->trys.begin(), (*catchBlock)->trys.end(), this);
-            if (tryBlock != (*catchBlock)->trys.end()) {
-                (*catchBlock)->trys.erase(tryBlock);
-            }
-            if ((*catchBlock)->trys.size() == 0) {
-                (*catchBlock)->isDead = true;
-            }
-        }
-        catchs.erase(catchs.begin() + index, catchs.end());
+        return end == static_cast<uint32_t>(BytecodeIterator::INVALID_INDEX);
     }
 };
 
-using BytecodeGraph = std::vector<BytecodeRegion>;
+using BytecodeGraph = ChunkVector<BytecodeRegion*>;
 
 class BytecodeCircuitBuilder {
 public:
@@ -267,7 +226,7 @@ public:
                            PGOProfilerDecoder *decoder,
                            bool isInline,
                            bool enableOptTrackField)
-        : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
+        : tsManager_(tsManager), circuit_(circuit), graph_(circuit->chunk()), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes,
             enableOptTrackField),
@@ -276,9 +235,7 @@ public:
           frameStateBuilder_(this, circuit, methodLiteral),
           methodName_(name), recordName_(recordName),
           bytecodes_(bytecodes),
-          dfsList_(circuit->chunk()),
-          loopExitToVregGate_(circuit->chunk()),
-          loopExitToAccGate_(circuit->chunk()),
+          loopHeaderGates_(circuit->chunk()),
           preFrameState_(circuit_->GetRoot()),
           preFrameArgs_(circuit_->GetRoot()),
           isInline_(isInline)
@@ -289,8 +246,6 @@ public:
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
     void CollectRegionInfo(uint32_t bcIndex);
-    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc, bool needIter = true);
-    GateRef ResolveDef(const BytecodeRegion &bb, int32_t bcId, const uint16_t reg, const bool acc);
 
     [[nodiscard]] Circuit* GetCircuit() const
     {
@@ -339,11 +294,6 @@ public:
         jsGatesToByteCode_[gate] = bcIndex;
     }
 
-    const std::vector<std::pair<size_t, GateRef>>& GetLoopHeads() const
-    {
-        return loopHeads_;
-    }
-
     [[nodiscard]] const MethodLiteral* GetMethod() const
     {
         return method_;
@@ -387,24 +337,27 @@ public:
     template <class Callback>
     void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
     {
-        // Entry block is a empty block
-        if (IsEntryBlock(bb.id)) {
-            return;
-        }
         auto &iterator = bb.GetBytecodeIterator();
-        for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
+        iterator.GotoStart();
+        while (!iterator.Done()) {
             auto &bytecodeInfo = iterator.GetBytecodeInfo();
             bool ret = cb(bytecodeInfo);
             if (!ret) {
                 break;
             }
+            ++iterator;
         }
     }
 
     BytecodeRegion &GetBasicBlockById(size_t id)
     {
         ASSERT(id < graph_.size());
-        return graph_[id];
+        return RegionAt(id);
+    }
+
+    void AddBasicBlock(BytecodeRegion* region)
+    {
+        graph_.emplace_back(region);
     }
 
     size_t GetBasicBlockCount() const
@@ -512,10 +465,10 @@ public:
 
     bool EnableLoopOptimization() const
     {
-        return (!HasTryCatch()) && (loopHeads_.size() != 0);
+        return (!HasTryCatch()) && frameStateBuilder_.HasLoop();
     }
 
-    size_t LoopExitCount(size_t from, size_t to);
+    void RemoveUnreachableRegion();
 
     GateRef GetFrameArgs() const
     {
@@ -542,11 +495,6 @@ public:
         preFrameArgs_ = gate;
     }
 
-    const ChunkVector<size_t>& GetDfsList() const
-    {
-        return dfsList_;
-    }
-
     inline bool IsEntryBlock(const size_t bbId) const
     {
         return bbId == 0;
@@ -557,49 +505,58 @@ public:
         return bbId == 1;
     }
 
+    TSManager *GetTSManager() const
+    {
+        return tsManager_;
+    }
+
+    const TypeRecorder *GetTypeRecorder() const
+    {
+        return &typeRecorder_;
+    }
+
+    GateRef GetArgGate(const size_t currentVreg) const
+    {
+        return argAcc_.GetArgGate(currentVreg);
+    }
+
+    GateRef ArgGateNotExisted(const size_t currentVreg)
+    {
+        return argAcc_.ArgGateNotExisted(currentVreg);
+    }
+
+    ChunkVector<GateRef>& GetLoopHeaderGates()
+    {
+        return loopHeaderGates_;
+    }
+
+    size_t NumberOfLiveBlock() const
+    {
+        return numOfLiveBB_;
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
     void BuildEntryBlock();
     void BuildRegions(const ExceptionInfo &Exception);
-    void ComputeDominatorTree();
-    void BuildImmediateDominator(const std::vector<size_t> &immDom);
-    void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions(const std::unordered_map<size_t, size_t> &bbIdToDfsTimestamp);
-    void InsertPhi();
-    void InsertExceptionPhi(std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
-    void UpdateCFG();
-    bool ShouldBeDead(BytecodeRegion &curBlock);
     // build circuit
     void BuildCircuitArgs();
-    void CollectPredsInfo();
-    void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
-    void NewLoopBegin(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void NewLoopExit(GateRef &state, GateRef &depend);
-    void TryInsertLoopExit(BytecodeRegion &bb, BytecodeRegion &bbNext, GateRef &state, GateRef &depend);
-    void BuildBlockCircuitHead(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
-    void SetBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend);
-    void SetLoopBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext,
-                          GateRef &state, GateRef &depend);
     GateRef NewConst(const BytecodeInfo &info);
-    void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void NewReturn(BytecodeRegion &bb,  GateRef &state, GateRef &depend);
-    void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void NewJSGate(BytecodeRegion &bb);
+    void NewJump(BytecodeRegion &bbd);
+    GateRef NewReturn(BytecodeRegion &bb);
+    void NewByteCode(BytecodeRegion &bb);
+    void MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex);
+    void MergeExceptionGete(BytecodeRegion &bb, const BytecodeInfo& bytecodeInfo, uint32_t bcIndex);
     void BuildSubCircuit();
-    void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
-    GateRef NewLoopForwardPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
-    bool IsLoopExitValueExists(GateRef loopExit, uint16_t reg, bool acc);
-    GateRef GetLoopExitValue(GateRef loopExit, uint16_t reg, bool acc);
-    GateRef CreateLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
-    GateRef NewLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
-    GateRef NewValueFromPredBB(BytecodeRegion &bb, size_t idx, GateRef exit, uint16_t reg, bool acc);
 
+    void UpdateCFG();
+    void CollectTryPredsInfo();
+    void ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList);
+    void RemoveUnusedPredsInfo(BytecodeRegion& bb);
     void BuildCircuit();
-    GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
-    void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
     void PrintGraph();
     void PrintBBInfo();
     void PrintGraph(const char* title);
@@ -607,13 +564,9 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
-    void CollectLoopBack();
-    void ComputeLoopDepth(size_t loopHead);
-    void CountLoopBackEdge(size_t fromId, size_t toId);
-
-    inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
+    BytecodeRegion &RegionAt(size_t i)
     {
-        return (IsFirstBasicBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
+        return *graph_[i];
     }
 
     TSManager *tsManager_;
@@ -631,7 +584,6 @@ private:
     bool enableTypeLowering_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};
     std::vector<const uint8_t*> pcOffsets_;
-    std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_ {};
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
     const CString &recordName_;
@@ -639,13 +591,10 @@ private:
     RegionsInfo regionsInfo_{};
     std::vector<BytecodeInfo> infoData_ {};
     bool hasTryCatch_ {false};
-    std::vector<std::pair<size_t, GateRef>> loopHeads_;
-    size_t loopSize_{0};
-    ChunkVector<size_t> dfsList_;
-    ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
-    ChunkMap<GateRef, GateRef> loopExitToAccGate_;
+    ChunkVector<GateRef> loopHeaderGates_;
     GateRef preFrameState_ {Circuit::NullGate()};
     GateRef preFrameArgs_ {Circuit::NullGate()};
+    size_t numOfLiveBB_;
     bool isInline_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
