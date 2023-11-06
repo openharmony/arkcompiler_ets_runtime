@@ -148,6 +148,13 @@ public:
         }
         hooks_->NativeCalling(nativeAddress);
     }
+    void NativeReturnJS() override
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->NativeReturnJS();
+    }
     void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
     // used by debugger statement
@@ -165,6 +172,7 @@ private:
     bool RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
     void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset);
     bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
+    bool HandleNativeOut();
     bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
     void DumpBreakpoints();
     bool IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const;
