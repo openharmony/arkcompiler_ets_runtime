@@ -376,12 +376,13 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
     Label setArgumentsEnd(env);
+    GateRef elements = GetElementsArray(*res);
     Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
         GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
-        SetPropertyByIndex(glue, *res, *i, receiver, true);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
         Bind(&setArgumentsAgain);
