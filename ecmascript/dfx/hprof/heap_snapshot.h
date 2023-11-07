@@ -37,11 +37,22 @@ class EntryIdMap;
 // Define the Object Graphic
 using Address = uintptr_t;
 
-enum class NodeType : uint8_t {
-    JSTYPE_DECL,
-    PRIM_STRING, /* Primitive String */
-    PRIM_ARRAY,  /* Primitive Array */
-    SYNTHETIC    /* For Synthetic Root */
+enum class NodeType {
+    HIDDEN,
+    ARRAY,
+    STRING,
+    OBJECT,
+    CODE,
+    CLOSURE,
+    REGEXP,
+    HEAPNUMBER,
+    NATIVE,
+    SYNTHETIC,
+    CONSSTRING,
+    SLICEDSTRING,
+    SYMBOL,
+    BIGINT,
+    DEFAULT = NATIVE,
 };
 
 enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
@@ -141,7 +152,7 @@ private:
     uint32_t id_ {0};  // Range from 1
     uint32_t index_ {0};
     const CString *name_ {nullptr};
-    NodeType type_ {NodeType::INVALID};
+    NodeType type_ {NodeType::DEFAULT};
     size_t size_ {0};
     size_t edgeCount_ {0};
     uint32_t traceId_ {0};
@@ -534,36 +545,6 @@ public:
     EntryVisitor() = default;
     ~EntryVisitor() = default;
     static CString ConvertKey(JSTaggedValue key);
-};
-
-enum class FrontType {
-    HIDDEN,           /* kHidden */
-    ARRAY,            /* kArray */
-    STRING,           /* kString */
-    OBJECT,           /* kObject */
-    CODE,             /* kCode */
-    CLOSURE,          /* kClosure */
-    REGEXP,           /* kRegExp */
-    HEAPNUMBER,       /* kHeapNumber */
-    NATIVE,           /* kNative */
-    SYNTHETIC,        /* kSynthetic */
-    CONSSTRING,       /* kConsString */
-    SLICEDSTRING,     /* kSlicedString */
-    SYMBOL,           /* kSymbol */
-    BIGINT,           /* kBigInt */
-    DEFAULT = NATIVE, /* kDefault */
-};
-
-class NodeTypeConverter {
-public:
-    NodeTypeConverter() = default;
-    ~NodeTypeConverter() = default;
-    NO_MOVE_SEMANTIC(NodeTypeConverter);
-    NO_COPY_SEMANTIC(NodeTypeConverter);
-    /*
-     * For Front-End to Show Statistics Correctly
-     */
-    static FrontType Convert(NodeType type);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_H
