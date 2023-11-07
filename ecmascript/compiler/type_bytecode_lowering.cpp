@@ -1517,14 +1517,16 @@ bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
     GateType ctorType = acc_.GetGateType(ctor);
     GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
     GateRef constructGate = Circuit::NullGate();
-    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT) && enableNewArrayInline_) {
+    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT)) {
         if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
             if (!Uncheck()) {
                 builder_.ArrayConstructorCheck(ctor);
             }
             constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
         }
     } else if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::OBJECT, ctorGT)) {
+        AddProfiling(gate);
         if (!Uncheck()) {
             builder_.ObjectConstructorCheck(ctor);
         }

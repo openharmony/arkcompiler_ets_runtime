@@ -13,75 +13,31 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/lexical_env_specialization.h"
+#include "ecmascript/compiler/lexical_env_specialization_pass.h"
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
-void LexicalEnvSpecialization::Initialize()
+void LexicalEnvSpecializationPass::Initialize()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
-    SpecializeInlinedGetEnv();
 }
 
-GateRef LexicalEnvSpecialization::VisitDependEntry(GateRef gate)
+GateRef LexicalEnvSpecializationPass::VisitDependEntry(GateRef gate)
 {
     auto empty = new (chunk_) DependChains(chunk_);
     return UpdateDependChain(gate, empty);
 }
 
-void LexicalEnvSpecialization::SpecializeInlinedGetEnv()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        if (acc_.GetOpCode(gate) == OpCode::GET_ENV &&
-            acc_.GetOpCode(acc_.GetValueIn(gate, 0)) != OpCode::ARG) {
-            GateRef func = acc_.GetValueIn(gate, 0);
-            if (acc_.GetOpCode(func) == OpCode::JS_BYTECODE) {
-                TryReplaceGetEnv(gate, func);
-            }
-        }
-    }
-}
-
-void LexicalEnvSpecialization::TryReplaceGetEnv(GateRef gate, GateRef func)
-{
-    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(func);
-    switch (ecmaOpcode) {
-        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
-        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
-        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
-        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
-            GateRef replacement = acc_.GetValueIn(func, acc_.GetNumValueIn(func) - 1); // 1: last value in
-            ReplaceGetEnv(gate, replacement);
-            acc_.DeleteGate(gate);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
-void LexicalEnvSpecialization::ReplaceGetEnv(GateRef gate, GateRef env)
-{
-    auto uses = acc_.Uses(gate);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        ASSERT(acc_.IsValueIn(useIt));
-        useIt = acc_.ReplaceIn(useIt, env);
-    }
-}
-
-GateRef LexicalEnvSpecialization::VisitGate(GateRef gate)
+GateRef LexicalEnvSpecializationPass::VisitGate(GateRef gate)
 {
     auto opcode = acc_.GetOpCode(gate);
     switch (opcode) {
         case OpCode::JS_BYTECODE: {
             EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-            if (ecmaOpcode == EcmaOpcode::LDLEXVAR_IMM4_IMM4 ||
-                ecmaOpcode == EcmaOpcode::LDLEXVAR_IMM8_IMM8 ||
-                ecmaOpcode == EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16) {
+            if (Bytecodes::IsLdLexVarOp(ecmaOpcode)) {
                 return TrySpecializeLdLexVar(gate);
             }
             return VisitOther(gate);
@@ -96,7 +52,7 @@ GateRef LexicalEnvSpecialization::VisitGate(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef LexicalEnvSpecialization::VisitOther(GateRef gate)
+GateRef LexicalEnvSpecializationPass::VisitOther(GateRef gate)
 {
     ASSERT(acc_.GetDependCount(gate) >= 1);
     auto depIn = acc_.GetDep(gate);
@@ -108,7 +64,7 @@ GateRef LexicalEnvSpecialization::VisitOther(GateRef gate)
     return UpdateDependChain(gate, dependChain);
 }
 
-GateRef LexicalEnvSpecialization::VisitDependSelector(GateRef gate)
+GateRef LexicalEnvSpecializationPass::VisitDependSelector(GateRef gate)
 {
     auto state = acc_.GetState(gate);
     if (acc_.IsLoopHead(state)) {
@@ -139,7 +95,7 @@ GateRef LexicalEnvSpecialization::VisitDependSelector(GateRef gate)
     return UpdateDependChain(gate, copy);
 }
 
-GateRef LexicalEnvSpecialization::UpdateDependChain(GateRef gate, DependChains* dependChain)
+GateRef LexicalEnvSpecializationPass::UpdateDependChain(GateRef gate, DependChains* dependChain)
 {
     ASSERT(dependChain != nullptr);
     auto oldDependChain = GetDependChain(gate);
@@ -150,7 +106,7 @@ GateRef LexicalEnvSpecialization::UpdateDependChain(GateRef gate, DependChains* 
     return gate;
 }
 
-GateRef LexicalEnvSpecialization::TrySpecializeLdLexVar(GateRef gate)
+GateRef LexicalEnvSpecializationPass::TrySpecializeLdLexVar(GateRef gate)
 {
     ASSERT(acc_.GetDependCount(gate) == 1);
     auto depIn = acc_.GetDep(gate);
@@ -159,7 +115,7 @@ GateRef LexicalEnvSpecialization::TrySpecializeLdLexVar(GateRef gate)
     if (dependChain == nullptr) {
         return Circuit::NullGate();
     }
-    auto stlexvarGate = dependChain->LookupStLexvarNode(this, gate);
+    auto stlexvarGate = LookupStLexvarNode(dependChain, gate);
     if (stlexvarGate != Circuit::NullGate()) {
         return acc_.GetValueIn(stlexvarGate, 3); // 3: stlexvar value in
     }
@@ -169,7 +125,7 @@ GateRef LexicalEnvSpecialization::TrySpecializeLdLexVar(GateRef gate)
     return UpdateDependChain(gate, dependChain);
 }
 
-bool LexicalEnvSpecialization::SearchStLexVar(GateRef gate, GateRef ldLexVar, GateRef &result)
+bool LexicalEnvSpecializationPass::SearchStLexVar(GateRef gate, GateRef ldLexVar, GateRef &result)
 {
     if (HasNotDomIllegalOp(gate)) {
         result = ldLexVar;
@@ -181,45 +137,24 @@ bool LexicalEnvSpecialization::SearchStLexVar(GateRef gate, GateRef ldLexVar, Ga
     }
 
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-    switch (ecmaOpcode) {
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16: {
-            if (CheckStLexVar(gate, ldLexVar)) {
-                result = gate;
-                specializeId_.emplace_back(acc_.GetId(ldLexVar));
-                return true;
-            }
-            return false;
+    if (Bytecodes::IsStLexVarOp(ecmaOpcode)) {
+        if (CheckStLexVar(gate, ldLexVar)) {
+            result = gate;
+            specializeId_.emplace_back(acc_.GetId(ldLexVar));
+            return true;
         }
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            result = ldLexVar;
-            return false;
-        default:
-            return false;;
+        return false;
     }
+
+    if (Bytecodes::IsCallOrAccessorOp(ecmaOpcode)) {
+        result = ldLexVar;
+        return false;
+    }
+
+    return false;
 }
 
-bool LexicalEnvSpecialization::CheckStLexVar(GateRef gate, GateRef ldldLexVar)
+bool LexicalEnvSpecializationPass::CheckStLexVar(GateRef gate, GateRef ldldLexVar)
 {
     int32_t ldLevel = acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 0));
     int32_t ldSlot = acc_.TryGetValue(acc_.GetValueIn(ldldLexVar, 1)); // 1: slot
@@ -243,7 +178,7 @@ bool LexicalEnvSpecialization::CheckStLexVar(GateRef gate, GateRef ldldLexVar)
     return false;
 }
 
-bool LexicalEnvSpecialization::caclulateDistanceToTarget(GateRef startEnv, GateRef targetEnv, int32_t &dis)
+bool LexicalEnvSpecializationPass::caclulateDistanceToTarget(GateRef startEnv, GateRef targetEnv, int32_t &dis)
 {
     GateRef curEnv = startEnv;
     while (true) {
@@ -267,7 +202,7 @@ bool LexicalEnvSpecialization::caclulateDistanceToTarget(GateRef startEnv, GateR
     return false;
 }
 
-void LexicalEnvSpecialization::HasNotdomStLexVarOrCall(GateRef gate, GateRef next)
+void LexicalEnvSpecializationPass::HasNotdomStLexVarOrCall(GateRef gate, GateRef next)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::DEPEND_SELECTOR);
     ChunkVector<GateRef> vec(chunk_);
@@ -291,53 +226,29 @@ void LexicalEnvSpecialization::HasNotdomStLexVarOrCall(GateRef gate, GateRef nex
     }
 }
 
-void LexicalEnvSpecialization::LookUpNotDomStLexVarOrCall(GateRef current, GateRef next)
+void LexicalEnvSpecializationPass::LookUpNotDomStLexVarOrCall(GateRef current, GateRef next)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(current);
-    switch (ecmaOpcode) {
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-            if (current != next) {
-                auto iter = notdomStlexvar_.find(next);
-                if (iter == notdomStlexvar_.end()) {
-                    notdomStlexvar_[next] = current;
-                }
+    if (Bytecodes::IsStLexVarOp(ecmaOpcode)) {
+        if (current != next) {
+            auto iter = notdomStlexvar_.find(next);
+            if (iter == notdomStlexvar_.end()) {
+                notdomStlexvar_[next] = current;
             }
-            break;
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            if (current != next) {
-                auto iter = notDomCall_.find(next);
-                if (iter == notDomCall_.end()) {
-                    notDomCall_[next] = current;
-                }
+        }
+    }
+
+    if (Bytecodes::IsCallOrAccessorOp(ecmaOpcode)) {
+        if (current != next) {
+            auto iter = notDomCall_.find(next);
+            if (iter == notDomCall_.end()) {
+                notDomCall_[next] = current;
             }
-            break;
-        default:
-            break;
+        }
     }
 }
 
-bool LexicalEnvSpecialization::HasNotDomIllegalOp(GateRef gate)
+bool LexicalEnvSpecializationPass::HasNotDomIllegalOp(GateRef gate)
 {
     if (HasNotDomStLexvar(gate)) {
         return true;
@@ -350,7 +261,7 @@ bool LexicalEnvSpecialization::HasNotDomIllegalOp(GateRef gate)
     return false;
 }
 
-bool LexicalEnvSpecialization::HasNotDomStLexvar(GateRef gate)
+bool LexicalEnvSpecializationPass::HasNotDomStLexvar(GateRef gate)
 {
     auto iter = notdomStlexvar_.find(gate);
     if (iter != notdomStlexvar_.end()) {
@@ -359,7 +270,7 @@ bool LexicalEnvSpecialization::HasNotDomStLexvar(GateRef gate)
     return false;
 }
 
-bool LexicalEnvSpecialization::HasNotDomCall(GateRef gate)
+bool LexicalEnvSpecializationPass::HasNotDomCall(GateRef gate)
 {
     auto iter = notDomCall_.find(gate);
     if (iter != notDomCall_.end()) {
@@ -368,7 +279,23 @@ bool LexicalEnvSpecialization::HasNotDomCall(GateRef gate)
     return false;
 }
 
-void LexicalEnvSpecialization::PrintSpecializeId()
+GateRef LexicalEnvSpecializationPass::LookupStLexvarNode(DependChains* dependChain, GateRef gate)
+{
+    GateRef result = Circuit::NullGate();
+    for (auto iter = dependChain->begin(); iter != dependChain->end(); ++iter) {
+        GateRef curGate = iter.GetCurrentGate();
+        if (SearchStLexVar(curGate, gate, result)) {
+            return curGate;
+        } else {
+            if (result == gate) {
+                return Circuit::NullGate();
+            }
+        }
+    }
+    return Circuit::NullGate();
+}
+
+void LexicalEnvSpecializationPass::PrintSpecializeId()
 {
     if (enableLog_) {
         LOG_COMPILER(INFO) << "\033[34m" << "================="
@@ -379,5 +306,35 @@ void LexicalEnvSpecialization::PrintSpecializeId()
         }
         LOG_COMPILER(INFO) << "\033[34m" << "===========================================================" << "\033[0m";
     }
+}
+
+GateRef GetEnvSpecializationPass::VisitGate(GateRef gate)
+{
+    auto opcode = acc_.GetOpCode(gate);
+    if (opcode == OpCode::GET_ENV && acc_.GetOpCode(acc_.GetValueIn(gate, 0)) != OpCode::ARG) {
+        GateRef func = acc_.GetValueIn(gate, 0);
+        if (acc_.GetOpCode(func) == OpCode::JS_BYTECODE) {
+            return TryGetReplaceEnv(func);
+        }
+    }
+    return Circuit::NullGate();
+}
+
+
+GateRef GetEnvSpecializationPass::TryGetReplaceEnv(GateRef func)
+{
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(func);
+    switch (ecmaOpcode) {
+        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
+            GateRef replacement = acc_.GetValueIn(func, acc_.GetNumValueIn(func) - 1); // 1: last value in
+            return replacement;
+        }
+        default:
+            return Circuit::NullGate();
+    }
+    return Circuit::NullGate();
 }
 }

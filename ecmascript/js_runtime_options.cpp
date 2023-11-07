@@ -154,7 +154,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
     "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
     "--compiler-enable-native-inline:      Enable inline native function: Default: 'false'\n"
-    "--compiler-enable-fast-module:        Enable fast module bytecode: Default: 'false'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -248,7 +247,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-lexenv-specialization", required_argument, nullptr,
             OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
-        {"compiler-enable-fast-module", required_argument, nullptr, OPTION_COMPILER_ENABLE_FAST_MODULE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -850,15 +848,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_ENABLE_FAST_MODULE:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableFastModule(argBool);
-                } else {
-                    return false;
-                }
-                break;
-
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;

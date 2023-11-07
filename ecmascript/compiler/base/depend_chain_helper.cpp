@@ -61,38 +61,6 @@ bool DependChains::Equals(DependChains* that)
     return true;
 }
 
-uint32_t DependChains::FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRef input)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        uint32_t length = rangeGuard->CheckIndexCheckLengthInput(node->gate, input);
-        if (length > 0) { // found !!!
-            return length;
-        }
-    }
-    return 0;
-}
-
-uint32_t DependChains::FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef input)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        uint32_t length = rangeGuard->CheckIndexCheckIndexInput(node->gate, input);
-        if (length > 0) { // found !!!
-            return length;
-        }
-    }
-    return 0;
-}
-
-GateRef DependChains::LookupNode(LaterElimination* elimination, GateRef gate)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        if (elimination->CheckReplacement(node->gate, gate)) {
-            return node->gate;
-        }
-    }
-    return Circuit::NullGate();
-}
-
 DependChains* DependChains::UpdateNode(GateRef gate)
 {
     // assign node->next to head
@@ -102,20 +70,5 @@ DependChains* DependChains::UpdateNode(GateRef gate)
     that->head_ = node;
     that->size_ = size_ + 1;
     return that;
-}
-
-GateRef DependChains::LookupStLexvarNode(LexicalEnvSpecialization* lexicalEnvSpecialization, GateRef gate)
-{
-    GateRef result = Circuit::NullGate();
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        if (lexicalEnvSpecialization->SearchStLexVar(node->gate, gate, result)) {
-            return node->gate;
-        } else {
-            if (result == gate) {
-                return Circuit::NullGate();
-            }
-        }
-    }
-    return Circuit::NullGate();
 }
 } // namespace panda::ecmascript::kungfu

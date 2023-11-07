@@ -29,7 +29,7 @@
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/mcr_lowering.h"
-#include "ecmascript/compiler/lexical_env_specialization.h"
+#include "ecmascript/compiler/lexical_env_specialization_pass.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
@@ -299,7 +299,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, data->GetMethodName(), passOptions->EnableFastModule());
+            enableLog, enableTypeLog, data->GetMethodName());
         bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -329,7 +329,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            enableLog, data->GetMethodName(), passOptions->EnableFastModule());
+            enableLog, data->GetMethodName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -418,12 +418,22 @@ public:
         inlining.RunTSInlineLowering();
         if (passOptions->EnableLexenvSpecialization()) {
             Chunk chunk(data->GetNativeAreaAllocator());
-            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-            LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
-            visitor.AddPass(&lexicalEnvSpecialization);
-            visitor.VisitGraph();
-            visitor.PrintLog("lexicalEnvSpecialization");
-            lexicalEnvSpecialization.PrintSpecializeId();
+            {
+                CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+                GetEnvSpecializationPass getEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk);
+                visitor.AddPass(&getEnvSpecializationPass);
+                visitor.VisitGraph();
+                visitor.PrintLog("getEnvSpecializationPass");
+            }
+            {
+                CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+                LexicalEnvSpecializationPass lexicalEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk,
+                                                                          enableLog);
+                visitor.AddPass(&lexicalEnvSpecializationPass);
+                visitor.VisitGraph();
+                visitor.PrintLog("lexicalEnvSpecialization");
+                lexicalEnvSpecializationPass.PrintSpecializeId();
+            }
         }
 
         if (passOptions->EnableInlineNative()) {
