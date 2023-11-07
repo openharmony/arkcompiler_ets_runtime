@@ -1142,6 +1142,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
         onStartupEvent_ = false;
+        LOG_GC(INFO) << "SmartGC: exit app cold start";
     }
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
@@ -1165,6 +1166,7 @@ void Heap::NotifyHighSensitive(bool isStart)
 {
     onHighSensitiveEvent_ = isStart;
     if (!onHighSensitiveEvent_ && !onStartupEvent_) {
+        LOG_GC(DEBUG) << "SmartGC: exit high sensitive scene";
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
@@ -1177,7 +1179,9 @@ void Heap::NotifyHighSensitive(bool isStart)
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
         TryTriggerConcurrentMarking();
+        return;
     }
+    LOG_GC(DEBUG) << "SmartGC: enter high sensitive scene";
 }
 
 bool Heap::NeedStopCollection()
@@ -1190,7 +1194,7 @@ bool Heap::NeedStopCollection()
         ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) {
         return true;
     }
-
+    LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
     GetNewSpace()->SetOverShootSize(
         GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
         ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());

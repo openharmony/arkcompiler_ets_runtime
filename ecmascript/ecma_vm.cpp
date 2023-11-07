@@ -147,6 +147,7 @@ void EcmaVM::PostFork()
     heap_->EnableParallelGC();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
+    heap_->NotifyFinishColdStartSoon();
 #endif
 }
 

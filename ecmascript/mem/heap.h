@@ -233,6 +233,7 @@ public:
     {
         LockHolder holder(finishColdStartMutex_);
         onStartupEvent_ = true;
+        LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 
     /*
