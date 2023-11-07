@@ -864,6 +864,10 @@ void NumberSpeculativeLowering::VisitStringBinaryOp(GateRef gate)
             VisitStringCompare<TypedBinOp::TYPED_EQ>(gate);
             break;
         }
+        case TypedBinOp::TYPED_ADD: {
+            VisitStringAdd<TypedBinOp::TYPED_ADD>(gate);
+            break;
+        }
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -877,16 +881,25 @@ void NumberSpeculativeLowering::VisitStringCompare(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
 
     GateRef result;
-    switch (Op) {
-        case TypedBinOp::TYPED_EQ:
-            result = builder_.StringEqual(left, right);
-            break;
-        default:
-            LOG_COMPILER(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
+    ASSERT(Op == TypedBinOp::TYPED_EQ);
+    result = builder_.StringEqual(left, right);
 
     acc_.SetMachineType(gate, MachineType::I1);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+template<TypedBinOp Op>
+void NumberSpeculativeLowering::VisitStringAdd(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+
+    GateRef result;
+    ASSERT(Op == TypedBinOp::TYPED_ADD);
+    result = builder_.StringAdd(left, right);
+
+    acc_.SetMachineType(gate, MachineType::I64);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }

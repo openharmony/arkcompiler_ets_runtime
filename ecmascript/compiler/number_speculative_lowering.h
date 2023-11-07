@@ -72,6 +72,8 @@ private:
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);
+    template<TypedBinOp Op>
+    void VisitStringAdd(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);

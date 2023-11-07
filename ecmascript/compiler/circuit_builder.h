@@ -510,6 +510,7 @@ public:
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
+    GateRef StringAdd(GateRef x, GateRef y);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);

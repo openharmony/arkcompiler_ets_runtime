@@ -410,7 +410,7 @@ bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef 
 template<TypedBinOp Op>
 void TypeBytecodeLowering::SpeculateStrings(GateRef gate)
 {
-    if (Op == TypedBinOp::TYPED_EQ) {
+    if (Op == TypedBinOp::TYPED_EQ || Op == TypedBinOp::TYPED_ADD) {
         AddProfiling(gate);
         GateRef left = acc_.GetValueIn(gate, 0);
         GateRef right = acc_.GetValueIn(gate, 1);

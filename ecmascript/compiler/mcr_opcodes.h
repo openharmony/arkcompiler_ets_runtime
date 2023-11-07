@@ -28,7 +28,8 @@ namespace panda::ecmascript::kungfu {
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                         \
-    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
+    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)                                       \
+    V(StringAdd, STRING_ADD, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \

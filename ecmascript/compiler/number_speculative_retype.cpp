@@ -235,6 +235,8 @@ GateRef NumberSpeculativeRetype::VisitStringBinaryOp(GateRef gate)
     switch (op) {
         case TypedBinOp::TYPED_EQ:
             return VisitStringCompare(gate);
+        case TypedBinOp::TYPED_ADD:
+            return VisitStringAdd(gate);
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -245,6 +247,14 @@ GateRef NumberSpeculativeRetype::VisitStringCompare(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitStringAdd(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::StringType());
     }
     return Circuit::NullGate();
 }
