@@ -257,6 +257,15 @@ private:
     {
         return LoadGatePtrConst(gate)->GetMetaData();
     }
+#ifndef NDEBUG
+    GateRef GetGateRefById(size_t id) const
+    {
+        if (id > allGates_.size()) {
+            return NullGate();
+        }
+        return allGates_[id];
+    }
+#endif
 
 private:
     void* space_ {nullptr};

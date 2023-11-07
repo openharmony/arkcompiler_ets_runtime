@@ -428,7 +428,11 @@ public:
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
-    void Print(GateRef gate) const;
+    void Print(GateRef gate) const DUMP_API_ATTR;
+#ifndef NDEBUG
+    void PrintById(size_t id) const DUMP_API_ATTR ;
+#endif
+    void PrintWithBytecode(GateRef gate) const DUMP_API_ATTR;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
