@@ -94,7 +94,7 @@ void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWr
         if (i > 0) {
             writer->Write(",");  // add comma except first line
         }
-        writer->Write(static_cast<int>(NodeTypeConverter::Convert(node->GetType())));  // 1.
+        writer->Write(static_cast<int>(node->GetType()));  // 1.
         writer->Write(",");
         writer->Write(stringTable->GetStringId(node->GetName()));                      // 2.
         writer->Write(",");
