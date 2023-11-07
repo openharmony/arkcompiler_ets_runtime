@@ -268,7 +268,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   }
   external_deps = []
   deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -350,7 +350,7 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_jsruntime_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]
@@ -398,7 +398,7 @@ ohos_executable("ark_aot_compiler") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [
       "runtime_core:arkfile_header_deps",
       "runtime_core:libarkbase_static",
