@@ -20,7 +20,16 @@ declare_args() {
   # If false, use @ohos.intl APIs to implement Intl APIs.
   enable_ark_intl = true
   run_regress_test = false
+
+  TARGET = "x86_64"
+  HOST_ARCH = 64
 }
+
+if (target_cpu == "arm64") {
+  TARGET = "aarch64"
+}
+MAPLEALL_ROOT = "//arkcompiler/ets_runtime/ecmascript/mapleall"
+MAPLEALL_THIRD_PARTY_ROOT = "//third_party"
 
 if (!ark_standalone_build) {
   build_root = "//build"

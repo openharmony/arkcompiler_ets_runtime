@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* INTRINSIC(STR, NAME) */
+DEF_MIR_INTRINSIC(GET_AND_ADDI, "Lsun_2Fmisc_2FUnsafe_3B_7CgetAndAddInt_7C_28Ljava_2Flang_2FObject_3BJI_29I",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyI32, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI32)
+DEF_MIR_INTRINSIC(GET_AND_ADDL, "Lsun_2Fmisc_2FUnsafe_3B_7CgetAndAddLong_7C_28Ljava_2Flang_2FObject_3BJJ_29J",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyI64, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(GET_AND_SETI, "Lsun_2Fmisc_2FUnsafe_3B_7CgetAndSetInt_7C_28Ljava_2Flang_2FObject_3BJI_29I",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyI32, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI32)
+DEF_MIR_INTRINSIC(GET_AND_SETL, "Lsun_2Fmisc_2FUnsafe_3B_7CgetAndSetLong_7C_28Ljava_2Flang_2FObject_3BJJ_29J",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyI64, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(COMP_AND_SWAPI, "Lsun_2Fmisc_2FUnsafe_3B_7CcompareAndSwapInt_7C_28Ljava_2Flang_2FObject_3BJII_29Z",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyU1, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI32, kArgTyI32)
+DEF_MIR_INTRINSIC(COMP_AND_SWAPL, "Lsun_2Fmisc_2FUnsafe_3B_7CcompareAndSwapLong_7C_28Ljava_2Flang_2FObject_3BJJJ_29Z",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyU1, kArgTyRef, kArgTyRef, kArgTyI64, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(STR_INDEXOF, "Ljava_2Flang_2FString_3B_7CindexOf_7C_28Ljava_2Flang_2FString_3B_29I",\
+                  INTRNISJAVA | INTRNISSPECIAL, kArgTyI32, kArgTyRef, kArgTyRef)
+

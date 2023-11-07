@@ -1,0 +1,477 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* {mop, opnds, prop, latency, name, format, length} */
+/* begin machine operation code of X86_64 instruction , */
+DEFINE_MOP(MOP_begin, {},0,0,"","",0)
+
+/* # Definitions
+ * use x64 style b/w/l/q for 8b/16b/32b/64b operation
+ * and using AT&T style assembly
+ */
+
+/* X64 MOVES */
+// TODO: fix intruction opnds, prop, latency, format and length
+// TODO: the encoding and enumeration seems too verbose
+// TODO: understand how other system represent these MOPs (especially for x86-64)
+// TODO: this is still an experiment
+// TODO: should make sure the convention is consistent with (AT&T style?)
+// TODO: how the general Machine instruction is designed?
+
+/* mov */
+DEFINE_MOP(MOP_movb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
+DEFINE_MOP(MOP_movb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
+DEFINE_MOP(MOP_movb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8ID},ISLOAD,kLtAlu,"movb","0,1",1)
+DEFINE_MOP(MOP_movb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISSTORE,kLtAlu,"movb","0,1",1)
+DEFINE_MOP(MOP_movb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISSTORE,kLtAlu,"movb","0,1",1)
+
+DEFINE_MOP(MOP_movw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16ID},ISMOVE,kLtAlu,"movw","0,1",1)
+DEFINE_MOP(MOP_movw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16ID},ISMOVE,kLtAlu,"movw","0,1",1)
+DEFINE_MOP(MOP_movw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16ID},ISLOAD,kLtAlu,"movw","0,1",1)
+DEFINE_MOP(MOP_movw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISSTORE,kLtAlu,"movw","0,1",1)
+DEFINE_MOP(MOP_movw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISSTORE,kLtAlu,"movw","0,1",1)
+
+DEFINE_MOP(MOP_movl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32ID},ISMOVE,kLtAlu,"movl","0,1",1)
+DEFINE_MOP(MOP_movl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32ID},ISMOVE,kLtAlu,"movl","0,1",1)
+DEFINE_MOP(MOP_movl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32ID},ISLOAD,kLtAlu,"movl","0,1",1)
+DEFINE_MOP(MOP_movl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE,kLtAlu,"movl","0,1",1)
+DEFINE_MOP(MOP_movl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISSTORE,kLtAlu,"movl","0,1",1)
+
+DEFINE_MOP(MOP_movq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movq_i_r, {&OpndDesc::Imm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64ID},ISLOAD,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE,kLtAlu,"movq","0,1",1)
+
+/* movabs */
+//The movabs instruction to load arbitrary 64-bit constant into register and to load/store integer register from/to arbitrary constant 64-bit address is available
+DEFINE_MOP(MOP_movabs_i_r, {&OpndDesc::StImm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
+DEFINE_MOP(MOP_movabs_l_r, {&OpndDesc::Lbl64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
+
+/* push & pop & lea */
+DEFINE_MOP(MOP_pushq_r, {&OpndDesc::Reg64IS},0,kLtAlu,"pushq","0",1)
+DEFINE_MOP(MOP_popq_r, {&OpndDesc::Reg32IS},0,kLtAlu,"popq","0",1)
+
+DEFINE_MOP(MOP_leaq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64ID},0,kLtAlu,"leaq","0,1",1)
+DEFINE_MOP(MOP_leal_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg64ID},0,kLtAlu,"leaq","0,1",1)
+DEFINE_MOP(MOP_leaw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg64ID},0,kLtAlu,"leaq","0,1",1)
+
+/* Moving from a smaller data size to 32 bits */
+/* zero extension */
+DEFINE_MOP(MOP_movzbw_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg16ID},ISCONVERSION,kLtAlu,"movzbw","0,1",1)
+DEFINE_MOP(MOP_movzbw_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg16ID},ISCONVERSION,kLtAlu,"movzbw","0,1",1)
+DEFINE_MOP(MOP_movzbl_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movzbl","0,1",1)
+DEFINE_MOP(MOP_movzbl_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movzbl","0,1",1)
+DEFINE_MOP(MOP_movzwl_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movzwl","0,1",1)
+DEFINE_MOP(MOP_movzwl_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movzwl","0,1",1)
+/* sign extension */
+DEFINE_MOP(MOP_movsbw_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg16ID},ISCONVERSION,kLtAlu,"movsbw","0,1",1)
+DEFINE_MOP(MOP_movsbw_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg16ID},ISCONVERSION,kLtAlu,"movsbw","0,1",1)
+DEFINE_MOP(MOP_movsbl_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movsbl","0,1",1)
+DEFINE_MOP(MOP_movsbl_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movsbl","0,1",1)
+DEFINE_MOP(MOP_movswl_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movswl","0,1",1)
+DEFINE_MOP(MOP_movswl_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg32ID},ISCONVERSION,kLtAlu,"movswl","0,1",1)
+
+/* Moving from a smaller data size to 64 bits */
+/* zero extension */
+/*
+ * Perhaps unexpectedly, instructions that move or generate 32-bit register values also set the upper 32 bits of the register to zero.
+ * Consequently, there is no need for an instruction movzlq.
+ */
+DEFINE_MOP(MOP_movzbq_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movzbq","0,1",1)
+DEFINE_MOP(MOP_movzbq_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movzbq","0,1",1)
+DEFINE_MOP(MOP_movzwq_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movzwq","0,1",1)
+DEFINE_MOP(MOP_movzwq_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movzwq","0,1",1)
+/* sign extension */
+DEFINE_MOP(MOP_movsbq_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movsbq","0,1",1)
+DEFINE_MOP(MOP_movsbq_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movsbq","0,1",1)
+DEFINE_MOP(MOP_movswq_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movswq","0,1",1)
+DEFINE_MOP(MOP_movswq_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movswq","0,1",1)
+DEFINE_MOP(MOP_movslq_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movslq","0,1",1)
+DEFINE_MOP(MOP_movslq_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg64ID},ISCONVERSION,kLtAlu,"movslq","0,1",1)
+
+/* BasicOp */
+/* add */
+DEFINE_MOP(MOP_addb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"addb","0,1",1)
+DEFINE_MOP(MOP_addw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"addw","0,1",1)
+DEFINE_MOP(MOP_addl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"addl","0,1",1)
+DEFINE_MOP(MOP_addq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"addq","0,1",1)
+DEFINE_MOP(MOP_addb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"addb","0,1",1)
+DEFINE_MOP(MOP_addw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"addw","0,1",1)
+DEFINE_MOP(MOP_addl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"addl","0,1",1)
+DEFINE_MOP(MOP_addq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"addq","0,1",1)
+DEFINE_MOP(MOP_addb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"addb","0,1",1)
+DEFINE_MOP(MOP_addw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"addw","0,1",1)
+DEFINE_MOP(MOP_addl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"addl","0,1",1)
+DEFINE_MOP(MOP_addq_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"addq","0,1",1)
+DEFINE_MOP(MOP_addb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"addb","0,1",1)
+DEFINE_MOP(MOP_addw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"addw","0,1",1)
+DEFINE_MOP(MOP_addl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"addl","0,1",1)
+DEFINE_MOP(MOP_addq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"addq","0,1",1)
+DEFINE_MOP(MOP_addb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"addb","0,1",1)
+DEFINE_MOP(MOP_addw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"addw","0,1",1)
+DEFINE_MOP(MOP_addl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"addl","0,1",1)
+DEFINE_MOP(MOP_addq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"addq","0,1",1)
+/* sub */
+DEFINE_MOP(MOP_subb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"subb","0,1",1)
+DEFINE_MOP(MOP_subw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"subw","0,1",1)
+DEFINE_MOP(MOP_subl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"subl","0,1",1)
+DEFINE_MOP(MOP_subq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"subq","0,1",1)
+DEFINE_MOP(MOP_subb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"subb","0,1",1)
+DEFINE_MOP(MOP_subw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"subw","0,1",1)
+DEFINE_MOP(MOP_subl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"subl","0,1",1)
+DEFINE_MOP(MOP_subq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"subq","0,1",1)
+DEFINE_MOP(MOP_subb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"subb","0,1",1)
+DEFINE_MOP(MOP_subw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"subw","0,1",1)
+DEFINE_MOP(MOP_subl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"subl","0,1",1)
+DEFINE_MOP(MOP_subq_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"subq","0,1",1)
+DEFINE_MOP(MOP_subb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"subb","0,1",1)
+DEFINE_MOP(MOP_subw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"subw","0,1",1)
+DEFINE_MOP(MOP_subl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"subl","0,1",1)
+DEFINE_MOP(MOP_subq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"subq","0,1",1)
+DEFINE_MOP(MOP_subb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"subb","0,1",1)
+DEFINE_MOP(MOP_subw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"subw","0,1",1)
+DEFINE_MOP(MOP_subl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"subl","0,1",1)
+DEFINE_MOP(MOP_subq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"subq","0,1",1)
+/* and */
+DEFINE_MOP(MOP_andb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"andb","0,1",1)
+DEFINE_MOP(MOP_andw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"andw","0,1",1)
+DEFINE_MOP(MOP_andl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"andl","0,1",1)
+DEFINE_MOP(MOP_andq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"andq","0,1",1)
+DEFINE_MOP(MOP_andb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"andb","0,1",1)
+DEFINE_MOP(MOP_andw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"andw","0,1",1)
+DEFINE_MOP(MOP_andl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"andl","0,1",1)
+DEFINE_MOP(MOP_andq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"andq","0,1",1)
+DEFINE_MOP(MOP_andb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"andb","0,1",1)
+DEFINE_MOP(MOP_andw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"andw","0,1",1)
+DEFINE_MOP(MOP_andl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"andl","0,1",1)
+DEFINE_MOP(MOP_andq_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"andq","0,1",1)
+DEFINE_MOP(MOP_andb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"andb","0,1",1)
+DEFINE_MOP(MOP_andw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"andw","0,1",1)
+DEFINE_MOP(MOP_andl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"andl","0,1",1)
+DEFINE_MOP(MOP_andq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"andq","0,1",1)
+DEFINE_MOP(MOP_andb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"andb","0,1",1)
+DEFINE_MOP(MOP_andw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"andw","0,1",1)
+DEFINE_MOP(MOP_andl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"andl","0,1",1)
+DEFINE_MOP(MOP_andq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"andq","0,1",1)
+/* or */
+DEFINE_MOP(MOP_orb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"orb","0,1",1)
+DEFINE_MOP(MOP_orw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"orw","0,1",1)
+DEFINE_MOP(MOP_orl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"orl","0,1",1)
+DEFINE_MOP(MOP_orq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"orq","0,1",1)
+DEFINE_MOP(MOP_orb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"orb","0,1",1)
+DEFINE_MOP(MOP_orw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"orw","0,1",1)
+DEFINE_MOP(MOP_orl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"orl","0,1",1)
+DEFINE_MOP(MOP_orq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"orq","0,1",1)
+DEFINE_MOP(MOP_orb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"orb","0,1",1)
+DEFINE_MOP(MOP_orw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"orw","0,1",1)
+DEFINE_MOP(MOP_orl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"orl","0,1",1)
+DEFINE_MOP(MOP_orq_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"orq","0,1",1)
+DEFINE_MOP(MOP_orb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"orb","0,1",1)
+DEFINE_MOP(MOP_orw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"orw","0,1",1)
+DEFINE_MOP(MOP_orl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"orl","0,1",1)
+DEFINE_MOP(MOP_orq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"orq","0,1",1)
+DEFINE_MOP(MOP_orb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"orb","0,1",1)
+DEFINE_MOP(MOP_orw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"orw","0,1",1)
+DEFINE_MOP(MOP_orl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"orl","0,1",1)
+DEFINE_MOP(MOP_orq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"orq","0,1",1)
+/* xor */
+DEFINE_MOP(MOP_xorb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"xorb","0,1",1)
+DEFINE_MOP(MOP_xorw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"xorw","0,1",1)
+DEFINE_MOP(MOP_xorl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"xorl","0,1",1)
+DEFINE_MOP(MOP_xorq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"xorq","0,1",1)
+DEFINE_MOP(MOP_xorb_m_r, {&OpndDesc::Mem8S,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"xorb","0,1",1)
+DEFINE_MOP(MOP_xorw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"xorw","0,1",1)
+DEFINE_MOP(MOP_xorl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"xorl","0,1",1)
+DEFINE_MOP(MOP_xorq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"xorq","0,1",1)
+DEFINE_MOP(MOP_xorb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"xorb","0,1",1)
+DEFINE_MOP(MOP_xorw_i_r, {&OpndDesc::Imm16,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"xorw","0,1",1)
+DEFINE_MOP(MOP_xorl_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg32IDS},ISBASICOP,kLtAlu,"xorl","0,1",1)
+DEFINE_MOP(MOP_xorq_i_r, {&OpndDesc::Imm32,&OpndDesc::Reg64IDS},ISBASICOP,kLtAlu,"xorq","0,1",1)
+DEFINE_MOP(MOP_xorb_r_m, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"xorb","0,1",1)
+DEFINE_MOP(MOP_xorw_r_m, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"xorw","0,1",1)
+DEFINE_MOP(MOP_xorl_r_m, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"xorl","0,1",1)
+DEFINE_MOP(MOP_xorq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"xorq","0,1",1)
+DEFINE_MOP(MOP_xorb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"xorb","0,1",1)
+DEFINE_MOP(MOP_xorw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"xorw","0,1",1)
+DEFINE_MOP(MOP_xorl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"xorl","0,1",1)
+DEFINE_MOP(MOP_xorq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"xorq","0,1",1)
+
+/* UnaryOp */
+/* neg */
+DEFINE_MOP(MOP_negb_r, {&OpndDesc::Reg8IDS},ISUNARYOP,kLtAlu,"negb","0",1)
+DEFINE_MOP(MOP_negw_r, {&OpndDesc::Reg16IDS},ISUNARYOP,kLtAlu,"negw","0",1)
+DEFINE_MOP(MOP_negl_r, {&OpndDesc::Reg32IDS},ISUNARYOP,kLtAlu,"negl","0",1)
+DEFINE_MOP(MOP_negq_r, {&OpndDesc::Reg64IDS},ISUNARYOP,kLtAlu,"negq","0",1)
+DEFINE_MOP(MOP_negb_m, {&OpndDesc::Mem8S},ISUNARYOP,kLtAlu,"negb","0",1)
+DEFINE_MOP(MOP_negw_m, {&OpndDesc::Mem16S},ISUNARYOP,kLtAlu,"negw","0",1)
+DEFINE_MOP(MOP_negl_m, {&OpndDesc::Mem32S},ISUNARYOP,kLtAlu,"negl","0",1)
+DEFINE_MOP(MOP_negq_m, {&OpndDesc::Mem64S},ISUNARYOP,kLtAlu,"negq","0",1)
+/* not */
+DEFINE_MOP(MOP_notb_r, {&OpndDesc::Reg8IDS},ISUNARYOP,kLtAlu,"notb","0",1)
+DEFINE_MOP(MOP_notw_r, {&OpndDesc::Reg16IDS},ISUNARYOP,kLtAlu,"notw","0",1)
+DEFINE_MOP(MOP_notl_r, {&OpndDesc::Reg32IDS},ISUNARYOP,kLtAlu,"notl","0",1)
+DEFINE_MOP(MOP_notq_r, {&OpndDesc::Reg64IDS},ISUNARYOP,kLtAlu,"notq","0",1)
+DEFINE_MOP(MOP_notb_m, {&OpndDesc::Mem8S},ISUNARYOP,kLtAlu,"notb","0",1)
+DEFINE_MOP(MOP_notw_m, {&OpndDesc::Mem16S},ISUNARYOP,kLtAlu,"notw","0",1)
+DEFINE_MOP(MOP_notl_m, {&OpndDesc::Mem32S},ISUNARYOP,kLtAlu,"notl","0",1)
+DEFINE_MOP(MOP_notq_m, {&OpndDesc::Mem64S},ISUNARYOP,kLtAlu,"notq","0",1)
+
+/* shift -- shl/sar/shr reg8, use cl */
+/* shl */
+DEFINE_MOP(MOP_shlb_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"shlb","0,1",1)
+DEFINE_MOP(MOP_shlw_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"shlw","0,1",1)
+DEFINE_MOP(MOP_shll_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"shll","0,1",1)
+DEFINE_MOP(MOP_shlq_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"shlq","0,1",1)
+DEFINE_MOP(MOP_shlb_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"shlb","0,1",1)
+DEFINE_MOP(MOP_shlw_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"shlw","0,1",1)
+DEFINE_MOP(MOP_shll_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"shll","0,1",1)
+DEFINE_MOP(MOP_shlq_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"shlq","0,1",1)
+DEFINE_MOP(MOP_shlb_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"shlb","0,1",1)
+DEFINE_MOP(MOP_shlw_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"shlw","0,1",1)
+DEFINE_MOP(MOP_shll_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"shll","0,1",1)
+DEFINE_MOP(MOP_shlq_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"shlq","0,1",1)
+DEFINE_MOP(MOP_shlb_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"shlb","0,1",1)
+DEFINE_MOP(MOP_shlw_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"shlw","0,1",1)
+DEFINE_MOP(MOP_shll_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"shll","0,1",1)
+DEFINE_MOP(MOP_shlq_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"shlq","0,1",1)
+/* sar */
+DEFINE_MOP(MOP_sarb_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"sarb","0,1",1)
+DEFINE_MOP(MOP_sarw_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"sarw","0,1",1)
+DEFINE_MOP(MOP_sarl_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"sarl","0,1",1)
+DEFINE_MOP(MOP_sarq_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"sarq","0,1",1)
+DEFINE_MOP(MOP_sarb_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"sarb","0,1",1)
+DEFINE_MOP(MOP_sarw_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"sarw","0,1",1)
+DEFINE_MOP(MOP_sarl_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"sarl","0,1",1)
+DEFINE_MOP(MOP_sarq_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"sarq","0,1",1)
+DEFINE_MOP(MOP_sarb_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"sarb","0,1",1)
+DEFINE_MOP(MOP_sarw_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"sarw","0,1",1)
+DEFINE_MOP(MOP_sarl_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"sarl","0,1",1)
+DEFINE_MOP(MOP_sarq_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"sarq","0,1",1)
+DEFINE_MOP(MOP_sarb_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"sarb","0,1",1)
+DEFINE_MOP(MOP_sarw_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"sarw","0,1",1)
+DEFINE_MOP(MOP_sarl_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"sarl","0,1",1)
+DEFINE_MOP(MOP_sarq_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"sarq","0,1",1)
+/* shr */
+DEFINE_MOP(MOP_shrb_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"shrb","0,1",1)
+DEFINE_MOP(MOP_shrw_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"shrw","0,1",1)
+DEFINE_MOP(MOP_shrl_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"shrl","0,1",1)
+DEFINE_MOP(MOP_shrq_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"shrq","0,1",1)
+DEFINE_MOP(MOP_shrb_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg8IDS},ISSHIFT,kLtAlu,"shrb","0,1",1)
+DEFINE_MOP(MOP_shrw_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg16IDS},ISSHIFT,kLtAlu,"shrw","0,1",1)
+DEFINE_MOP(MOP_shrl_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg32IDS},ISSHIFT,kLtAlu,"shrl","0,1",1)
+DEFINE_MOP(MOP_shrq_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg64IDS},ISSHIFT,kLtAlu,"shrq","0,1",1)
+DEFINE_MOP(MOP_shrb_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"shrb","0,1",1)
+DEFINE_MOP(MOP_shrw_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"shrw","0,1",1)
+DEFINE_MOP(MOP_shrl_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"shrl","0,1",1)
+DEFINE_MOP(MOP_shrq_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"shrq","0,1",1)
+DEFINE_MOP(MOP_shrb_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem8D},ISSHIFT,kLtAlu,"shrb","0,1",1)
+DEFINE_MOP(MOP_shrw_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem16D},ISSHIFT,kLtAlu,"shrw","0,1",1)
+DEFINE_MOP(MOP_shrl_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem32D},ISSHIFT,kLtAlu,"shrl","0,1",1)
+DEFINE_MOP(MOP_shrq_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem64D},ISSHIFT,kLtAlu,"shrq","0,1",1)
+
+/* idiv, div  -- opnd(use), rax(def,use), rdx(def,use) */
+DEFINE_MOP(MOP_idivw_r, {&OpndDesc::Reg16IS, &OpndDesc::Reg16IDS, &OpndDesc::Reg16IDS},0,kLtAlu,"idivw","0",1)
+DEFINE_MOP(MOP_idivl_r, {&OpndDesc::Reg32IS, &OpndDesc::Reg32IDS, &OpndDesc::Reg32IDS},0,kLtAlu,"idivl","0",1)
+DEFINE_MOP(MOP_idivq_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg64IDS, &OpndDesc::Reg64IDS},0,kLtAlu,"idivq","0",1)
+DEFINE_MOP(MOP_idivw_m, {&OpndDesc::Mem16S, &OpndDesc::Reg16IDS, &OpndDesc::Reg16IDS},0,kLtAlu,"idivw","0",1)
+DEFINE_MOP(MOP_idivl_m, {&OpndDesc::Mem32S, &OpndDesc::Reg32IDS, &OpndDesc::Reg32IDS},0,kLtAlu,"idivl","0",1)
+DEFINE_MOP(MOP_idivq_m, {&OpndDesc::Mem64S, &OpndDesc::Reg64IDS, &OpndDesc::Reg64IDS},0,kLtAlu,"idivq","0",1)
+DEFINE_MOP(MOP_divw_r, {&OpndDesc::Reg16IS, &OpndDesc::Reg16IDS, &OpndDesc::Reg16IDS},0,kLtAlu,"divw","0",1)
+DEFINE_MOP(MOP_divl_r, {&OpndDesc::Reg32IS, &OpndDesc::Reg32IDS, &OpndDesc::Reg32IDS},0,kLtAlu,"divl","0",1)
+DEFINE_MOP(MOP_divq_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg64IDS, &OpndDesc::Reg64IDS},0,kLtAlu,"divq","0",1)
+DEFINE_MOP(MOP_divw_m, {&OpndDesc::Mem16S, &OpndDesc::Reg16IDS, &OpndDesc::Reg16IDS},0,kLtAlu,"divw","0",1)
+DEFINE_MOP(MOP_divl_m, {&OpndDesc::Mem32S, &OpndDesc::Reg32IDS, &OpndDesc::Reg32IDS},0,kLtAlu,"divl","0",1)
+DEFINE_MOP(MOP_divq_m, {&OpndDesc::Mem64S, &OpndDesc::Reg64IDS, &OpndDesc::Reg64IDS},0,kLtAlu,"divq","0",1)
+/* cwd, cdq, cqo  -- rax(def use), rdx(def) */
+DEFINE_MOP(MOP_cwd, {&OpndDesc::Reg16IDS, &OpndDesc::Reg16ID},0,kLtAlu,"cwd","",1)
+DEFINE_MOP(MOP_cdq, {&OpndDesc::Reg32IDS, &OpndDesc::Reg32ID},0,kLtAlu,"cdq","",1)
+DEFINE_MOP(MOP_cqo, {&OpndDesc::Reg64IDS, &OpndDesc::Reg64ID},0,kLtAlu,"cqo","",1)
+
+/* jmp, je, jne */
+DEFINE_MOP(MOP_jmpq_r, {&OpndDesc::Reg64IS},ISUNCONDBRANCH,kLtAlu,"jmp","0",1)
+DEFINE_MOP(MOP_jmpq_m, {&OpndDesc::Mem64S},ISUNCONDBRANCH,kLtAlu,"jmp","0",1)
+DEFINE_MOP(MOP_jmpq_l, {&OpndDesc::Lbl64},ISUNCONDBRANCH,kLtAlu,"jmp","0",1) // ip relative
+
+DEFINE_MOP(MOP_je_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"je","0",1)
+DEFINE_MOP(MOP_ja_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"ja","0",1)  // unsigned >
+DEFINE_MOP(MOP_jae_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jae","0",1) // unsigned >=
+DEFINE_MOP(MOP_jne_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jne","0",1)
+DEFINE_MOP(MOP_jb_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jb","0",1)  // unsigned <
+DEFINE_MOP(MOP_jbe_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jbe","0",1) // unsigned <=
+DEFINE_MOP(MOP_jg_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jg","0",1)  // signed >
+DEFINE_MOP(MOP_jge_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jge","0",1) // signed >=
+DEFINE_MOP(MOP_jl_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jl","0",1)  // signed <
+DEFINE_MOP(MOP_jle_l, {&OpndDesc::Lbl64},ISCONDBRANCH,kLtAlu,"jle","0",1) // signed <=
+
+/* cmp */
+DEFINE_MOP(MOP_cmpb_r_r, {&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},0,kLtAlu,"cmpb","0,1",1)
+DEFINE_MOP(MOP_cmpb_m_r, {&OpndDesc::Mem8S, &OpndDesc::Reg8IS},0,kLtAlu,"cmpb","0,1",1)
+DEFINE_MOP(MOP_cmpb_i_r, {&OpndDesc::Imm8, &OpndDesc::Reg8IS},0,kLtAlu,"cmpb","0,1",1)
+DEFINE_MOP(MOP_cmpb_r_m, {&OpndDesc::Reg8IS, &OpndDesc::Mem8S},0,kLtAlu,"cmpb","0,1",1)
+DEFINE_MOP(MOP_cmpb_i_m, {&OpndDesc::Imm8, &OpndDesc::Mem8S},0,kLtAlu,"cmpb","0,1",1)
+DEFINE_MOP(MOP_cmpw_r_r, {&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},0,kLtAlu,"cmpw","0,1",1)
+DEFINE_MOP(MOP_cmpw_m_r, {&OpndDesc::Mem16S, &OpndDesc::Reg16IS},0,kLtAlu,"cmpw","0,1",1)
+DEFINE_MOP(MOP_cmpw_i_r, {&OpndDesc::Imm16, &OpndDesc::Reg16IS},0,kLtAlu,"cmpw","0,1",1)
+DEFINE_MOP(MOP_cmpw_r_m, {&OpndDesc::Reg16IS, &OpndDesc::Mem16S},0,kLtAlu,"cmpw","0,1",1)
+DEFINE_MOP(MOP_cmpw_i_m, {&OpndDesc::Imm16, &OpndDesc::Mem16S},0,kLtAlu,"cmpw","0,1",1)
+DEFINE_MOP(MOP_cmpl_r_r, {&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},0,kLtAlu,"cmpl","0,1",1)
+DEFINE_MOP(MOP_cmpl_m_r, {&OpndDesc::Mem32S, &OpndDesc::Reg32IS},0,kLtAlu,"cmpl","0,1",1)
+DEFINE_MOP(MOP_cmpl_i_r, {&OpndDesc::Imm32, &OpndDesc::Reg32IS},0,kLtAlu,"cmpl","0,1",1)
+DEFINE_MOP(MOP_cmpl_r_m, {&OpndDesc::Reg32IS, &OpndDesc::Mem32S},0,kLtAlu,"cmpl","0,1",1)
+DEFINE_MOP(MOP_cmpl_i_m, {&OpndDesc::Imm32, &OpndDesc::Mem32S},0,kLtAlu,"cmpl","0,1",1)
+DEFINE_MOP(MOP_cmpq_r_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},0,kLtAlu,"cmpq","0,1",1)
+DEFINE_MOP(MOP_cmpq_m_r, {&OpndDesc::Mem64S, &OpndDesc::Reg64IS},0,kLtAlu,"cmpq","0,1",1)
+DEFINE_MOP(MOP_cmpq_i_r, {&OpndDesc::Imm32, &OpndDesc::Reg64IS},0,kLtAlu,"cmpq","0,1",1)
+DEFINE_MOP(MOP_cmpq_r_m, {&OpndDesc::Reg64IS, &OpndDesc::Mem64S},0,kLtAlu,"cmpq","0,1",1)
+DEFINE_MOP(MOP_cmpq_i_m, {&OpndDesc::Imm32, &OpndDesc::Mem64S},0,kLtAlu,"cmpq","0,1",1)
+
+/* test */
+DEFINE_MOP(MOP_testq_r_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},0,kLtAlu,"testq","0,1",1)
+
+/* setcc -- use ccreg(CF/ZF/SF/OF) */
+DEFINE_MOP(MOP_setbe_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setbe","0",1)
+DEFINE_MOP(MOP_setle_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setle","0",1)
+DEFINE_MOP(MOP_setae_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setae","0",1)
+DEFINE_MOP(MOP_setge_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setge","0",1)
+DEFINE_MOP(MOP_setne_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setne","0",1)
+DEFINE_MOP(MOP_setb_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setb","0",1)
+DEFINE_MOP(MOP_setl_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setl","0",1)
+DEFINE_MOP(MOP_seta_r, {&OpndDesc::Reg8ID},0,kLtAlu,"seta","0",1)
+DEFINE_MOP(MOP_setg_r, {&OpndDesc::Reg8ID},0,kLtAlu,"setg","0",1)
+DEFINE_MOP(MOP_sete_r, {&OpndDesc::Reg8ID},0,kLtAlu,"sete","0",1)
+DEFINE_MOP(MOP_seto_r, {&OpndDesc::Reg8ID},0,kLtAlu,"seto","0",1)
+DEFINE_MOP(MOP_setbe_m, {&OpndDesc::Mem8D},0,kLtAlu,"setbe","0",1)
+DEFINE_MOP(MOP_setle_m, {&OpndDesc::Mem8D},0,kLtAlu,"setle","0",1)
+DEFINE_MOP(MOP_setae_m, {&OpndDesc::Mem8D},0,kLtAlu,"setae","0",1)
+DEFINE_MOP(MOP_setge_m, {&OpndDesc::Mem8D},0,kLtAlu,"setge","0",1)
+DEFINE_MOP(MOP_setne_m, {&OpndDesc::Mem8D},0,kLtAlu,"setne","0",1)
+DEFINE_MOP(MOP_setb_m, {&OpndDesc::Mem8D},0,kLtAlu,"setb","0",1)
+DEFINE_MOP(MOP_setl_m, {&OpndDesc::Mem8D},0,kLtAlu,"setl","0",1)
+DEFINE_MOP(MOP_seta_m, {&OpndDesc::Mem8D},0,kLtAlu,"seta","0",1)
+DEFINE_MOP(MOP_setg_m, {&OpndDesc::Mem8D},0,kLtAlu,"setg","0",1)
+DEFINE_MOP(MOP_sete_m, {&OpndDesc::Mem8D},0,kLtAlu,"sete","0",1)
+DEFINE_MOP(MOP_seto_m, {&OpndDesc::Mem8D},0,kLtAlu,"seto","0",1)
+
+/* cmov */
+/* condition move if below or equal */
+DEFINE_MOP(MOP_cmovbew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovbew","0,1",1)
+DEFINE_MOP(MOP_cmovbel_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovbel","0,1",1)
+DEFINE_MOP(MOP_cmovbeq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovbeq","0,1",1)
+DEFINE_MOP(MOP_cmovbew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovbew","0,1",1)
+DEFINE_MOP(MOP_cmovbel_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovbel","0,1",1)
+DEFINE_MOP(MOP_cmovbeq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovbeq","0,1",1)
+/* condition move if less or equal */
+DEFINE_MOP(MOP_cmovlew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovlew","0,1",1)
+DEFINE_MOP(MOP_cmovlel_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovlel","0,1",1)
+DEFINE_MOP(MOP_cmovleq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovleq","0,1",1)
+DEFINE_MOP(MOP_cmovlew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovlew","0,1",1)
+DEFINE_MOP(MOP_cmovlel_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovlel","0,1",1)
+DEFINE_MOP(MOP_cmovleq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovleq","0,1",1)
+/* condition move if above or equal */
+DEFINE_MOP(MOP_cmovaew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovaew","0,1",1)
+DEFINE_MOP(MOP_cmovael_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovael","0,1",1)
+DEFINE_MOP(MOP_cmovaeq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovaeq","0,1",1)
+DEFINE_MOP(MOP_cmovaew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovaew","0,1",1)
+DEFINE_MOP(MOP_cmovael_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovael","0,1",1)
+DEFINE_MOP(MOP_cmovaeq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovaeq","0,1",1)
+/* condition move if greater or equal */
+DEFINE_MOP(MOP_cmovgew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovgew","0,1",1)
+DEFINE_MOP(MOP_cmovgel_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovgel","0,1",1)
+DEFINE_MOP(MOP_cmovgeq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovgeq","0,1",1)
+DEFINE_MOP(MOP_cmovgew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovgew","0,1",1)
+DEFINE_MOP(MOP_cmovgel_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovgel","0,1",1)
+DEFINE_MOP(MOP_cmovgeq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovgeq","0,1",1)
+/* condition move if not equal */
+DEFINE_MOP(MOP_cmovnew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovnew","0,1",1)
+DEFINE_MOP(MOP_cmovnel_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovnel","0,1",1)
+DEFINE_MOP(MOP_cmovneq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovneq","0,1",1)
+DEFINE_MOP(MOP_cmovnew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovnew","0,1",1)
+DEFINE_MOP(MOP_cmovnel_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovnel","0,1",1)
+DEFINE_MOP(MOP_cmovneq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovneq","0,1",1)
+/* condition move if below */
+DEFINE_MOP(MOP_cmovbw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovbw","0,1",1)
+DEFINE_MOP(MOP_cmovbl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovbl","0,1",1)
+DEFINE_MOP(MOP_cmovbq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovbq","0,1",1)
+DEFINE_MOP(MOP_cmovbw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovbw","0,1",1)
+DEFINE_MOP(MOP_cmovbl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovbl","0,1",1)
+DEFINE_MOP(MOP_cmovbq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovbq","0,1",1)
+/* condition move if less */
+DEFINE_MOP(MOP_cmovlw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovlw","0,1",1)
+DEFINE_MOP(MOP_cmovll_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovll","0,1",1)
+DEFINE_MOP(MOP_cmovlq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovlq","0,1",1)
+DEFINE_MOP(MOP_cmovlw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovlw","0,1",1)
+DEFINE_MOP(MOP_cmovll_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovll","0,1",1)
+DEFINE_MOP(MOP_cmovlq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovlq","0,1",1)
+/* condition move if above */
+DEFINE_MOP(MOP_cmovaw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovaw","0,1",1)
+DEFINE_MOP(MOP_cmoval_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmoval","0,1",1)
+DEFINE_MOP(MOP_cmovaq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovaq","0,1",1)
+DEFINE_MOP(MOP_cmovaw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovaw","0,1",1)
+DEFINE_MOP(MOP_cmoval_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmoval","0,1",1)
+DEFINE_MOP(MOP_cmovaq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovaq","0,1",1)
+/* condition move if greater */
+DEFINE_MOP(MOP_cmovgw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovgw","0,1",1)
+DEFINE_MOP(MOP_cmovgl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovgl","0,1",1)
+DEFINE_MOP(MOP_cmovgq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovgq","0,1",1)
+DEFINE_MOP(MOP_cmovgw_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovgw","0,1",1)
+DEFINE_MOP(MOP_cmovgl_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovgl","0,1",1)
+DEFINE_MOP(MOP_cmovgq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovgq","0,1",1)
+/* condition move if equal */
+DEFINE_MOP(MOP_cmovew_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovew","0,1",1)
+DEFINE_MOP(MOP_cmovel_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovel","0,1",1)
+DEFINE_MOP(MOP_cmoveq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmoveq","0,1",1)
+DEFINE_MOP(MOP_cmovew_m_r, {&OpndDesc::Mem16S,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovew","0,1",1)
+DEFINE_MOP(MOP_cmovel_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovel","0,1",1)
+DEFINE_MOP(MOP_cmoveq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64IDS},0,kLtAlu,"cmoveq","0,1",1)
+/* condition move if overflow */
+DEFINE_MOP(MOP_cmovow_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"cmovow","0,1",1)
+DEFINE_MOP(MOP_cmovol_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"cmovol","0,1",1)
+DEFINE_MOP(MOP_cmovoq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cmovoq","0,1",1)
+
+/* call, ret, leave */
+DEFINE_MOP(MOP_callq_l, {&OpndDesc::Lbl64,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
+DEFINE_MOP(MOP_callq_m, {&OpndDesc::Mem64S,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
+DEFINE_MOP(MOP_callq_r, {&OpndDesc::Reg64IS,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
+
+DEFINE_MOP(MOP_retq, {},CANTHROW,kLtBranch,"ret","",1)
+
+DEFINE_MOP(MOP_leaveq, {},CANTHROW,kLtBranch,"leave","",1)
+
+/* imul */
+DEFINE_MOP(MOP_imulw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"imulw","0,1",1)
+DEFINE_MOP(MOP_imull_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"imull","0,1",1)
+DEFINE_MOP(MOP_imulq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"imulq","0,1",1)
+
+/* nop */
+// TODO: still not clear why we need so many forms of nop (except for patch)
+DEFINE_MOP(MOP_nopb, {&OpndDesc::Mem8S},0,kLtAlu,"nopb","",1)
+DEFINE_MOP(MOP_nopw, {&OpndDesc::Mem16S},0,kLtAlu,"nopw","",1)
+DEFINE_MOP(MOP_nopl, {&OpndDesc::Mem32S},0,kLtAlu,"nopl","",1)
+DEFINE_MOP(MOP_nop, {},0,0,"nop","",1)
+
+/* Byte Swap */
+DEFINE_MOP(MOP_bswapl_r, {&OpndDesc::Reg32IDS},0,kLtAlu,"bswapl","0",1)
+DEFINE_MOP(MOP_bswapq_r, {&OpndDesc::Reg64IDS},0,kLtAlu,"bswapq","0",1)
+
+/* xchg */
+DEFINE_MOP(MOP_xchgb_r_r, {&OpndDesc::Reg8IDS,&OpndDesc::Reg8IDS},0,kLtAlu,"xchgb","0,1",1)
+
+/* end of X64 instructions */
+
+/* invalid operation */
+DEFINE_MOP(MOP_movq_i_m, {&OpndDesc::Imm64,&OpndDesc::Mem64D},0,kLtAlu,"invalid","0,1",1)
+
+/* pseudo operation */
+DEFINE_MOP(MOP_pseudo_ret_int, {&OpndDesc::Reg64IS},0,kLtUndef,"//MOP_pseudo_ret_int","", 0)

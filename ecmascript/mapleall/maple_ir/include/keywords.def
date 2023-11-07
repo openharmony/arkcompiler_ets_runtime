@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+  // opcode keywords
+#define OPCODE(X, Y, Z, S) KEYWORD(X)
+#include "opcodes.def"
+#undef OPCODE
+  // primitive types
+#define LOAD_ALGO_PRIMARY_TYPE
+#define PRIMTYPE(P) KEYWORD(P)
+#include "prim_types.def"
+#undef PRIMTYPE
+  // intrinsic names
+#undef DEF_MIR_INTRINSIC
+#define DEF_MIR_INTRINSIC(X, NAME, INTRN_CLASS, RETURN_TYPE, ...)  KEYWORD(X)
+#include "intrinsics.def"
+#undef DEF_MIR_INTRINSIC
+  KEYWORD(else)
+  // declaration keywords
+  KEYWORD(var)
+  KEYWORD(tempvar)
+  KEYWORD(reg)
+  KEYWORD(type)
+  KEYWORD(func)
+  KEYWORD(struct)
+  KEYWORD(structincomplete)
+  KEYWORD(union)
+  KEYWORD(class)
+  KEYWORD(classincomplete)
+  KEYWORD(interfaceincomplete)
+  KEYWORD(javaclass)
+  KEYWORD(javainterface)
+  // type attribute keywords
+#define FUNC_ATTR
+#define TYPE_ATTR
+#define FIELD_ATTR
+#define ATTR(X) KEYWORD(X)
+#include "all_attributes.def"
+#undef ATTR
+#undef FUNC_ATTR
+#undef TYPE_ATTR
+#undef FIELD_ATTR
+  KEYWORD(align)
+  // per-function declaration keywords
+  KEYWORD(framesize)
+  KEYWORD(upformalsize)
+  KEYWORD(moduleid)
+  KEYWORD(funcsize)
+  KEYWORD(funcid)
+  KEYWORD(formalwordstypetagged)
+  KEYWORD(localwordstypetagged)
+  KEYWORD(formalwordsrefcounted)
+  KEYWORD(localwordsrefcounted)
+  // per-module declaration keywords
+  KEYWORD(flavor)
+  KEYWORD(srclang)
+  KEYWORD(globalmemsize)
+  KEYWORD(globalmemmap)
+  KEYWORD(globalwordstypetagged)
+  KEYWORD(globalwordsrefcounted)
+  KEYWORD(id)
+  KEYWORD(numfuncs)
+  KEYWORD(entryfunc)
+  // file related declaration keywords
+  KEYWORD(fileinfo)
+  KEYWORD(filedata)
+  KEYWORD(srcfileinfo)
+  KEYWORD(funcinfo)
+  // special float constants
+  KEYWORD(nanf)
+  KEYWORD(nan)
+  KEYWORD(inff)
+  KEYWORD(inf)
+  // pragma
+  KEYWORD(pragma)
+  KEYWORD(param)
+  KEYWORD(func_ex)
+  KEYWORD(func_var)
+  // staticvalue
+  KEYWORD(staticvalue)
+  // import
+  KEYWORD(import)
+  KEYWORD(importpath)
+  // source position information
+  KEYWORD(LOC)
+  // scope and source var to mpl var mapping
+  KEYWORD(SCOPE)
+  KEYWORD(ALIAS)
+  // storage class
+  KEYWORD(pstatic)
+  KEYWORD(fstatic)
+  // file-scope asm
+  KEYWORD(asmdecl)

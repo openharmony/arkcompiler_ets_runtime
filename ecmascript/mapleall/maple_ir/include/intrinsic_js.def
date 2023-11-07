@@ -1,0 +1,124 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
+DEF_MIR_INTRINSIC(JS_INIT_CONTEXT,\
+                  "__js_init_context", INTRNISJS, kArgTyVoid, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_REQUIRE,\
+                  "__js_require", INTRNISJS | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_BIOBJECT,\
+                  "__jsobj_get_or_create_builtin", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_GET_BISTRING,\
+                  "__jsstr_get_builtin", INTRNISJS | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTySimplestr, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_THIS,\
+                  "__jsop_this", INTRNISJS | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_ADD,\
+                  "__jsop_add", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(ADD_WITH_OVERFLOW,\
+                  "__add_with_overflow", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(SUB_WITH_OVERFLOW,\
+                  "__sub_with_overflow", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(MUL_WITH_OVERFLOW,\
+                  "__mul_with_overflow", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_CONCAT,\
+                  "__jsstr_concat_2", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTySimplestr, kArgTySimplestr, kArgTySimplestr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_STRICTEQ,\
+                  "__jsop_stricteq", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSSTR_STRICTEQ,\
+                  "__jsstr_equal", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTySimplestr, kArgTySimplestr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_STRICTNE,\
+                  "__jsop_strictne", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSSTR_STRICTNE,\
+                  "__jsstr_ne", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTySimplestr, kArgTySimplestr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_INSTANCEOF,\
+                  "__jsop_instanceof", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_IN,\
+                  "__jsop_in", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_OR,\
+                  "__jsop_or", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_AND,\
+                  "__jsop_and", INTRNISJS | INTRNISJSBINARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_TYPEOF,\
+                  "__jsop_typeof", INTRNISJS | INTRNISJSUNARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW,\
+                  "__js_new", INTRNISJS | INTRNNOSIDEEFFECT, kArgTyPtr, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_STRING,\
+                  "__js_ToString", INTRNISJS | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTySimplestr, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSSTR_LENGTH,\
+                  "__jsstr_get_length", INTRNISJS | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU32, kArgTySimplestr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_BOOLEAN,\
+                  "__js_ToBoolean", INTRNISJS | INTRNISJSUNARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyU1, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NUMBER,\
+                  "__js_ToNumber", INTRNISJS | INTRNISJSUNARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_INT32,\
+                  "__js_ToInt32", INTRNISJS | INTRNISJSUNARY | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_PRINT,\
+                  "__jsop_print", INTRNISJS | INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_ERROR,\
+                  "__js_error", INTRNISJS | INTRNISPURE | INTRNNOSIDEEFFECT | INTRNNEVERRETURN, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_EVAL,\
+                  "__js_eval", kIntrnUndef, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_ICALL,\
+                  "__js_icall", INTRNISJS | INTRNRETURNSTRUCT, kArgTyDynany, kArgTyA32, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_CALL,
+                  "__jsop_call", INTRNISJS, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyPtr, kArgTyU32, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_CCALL,\
+                  "__jsop_ccall", INTRNISJS, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyPtr, kArgTyU32, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_NEW,
+                  "__jsop_new", INTRNISJS | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyPtr, kArgTyU32, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_SETTIMEOUT,
+                  "__js_setTimeout", INTRNISJS | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyI32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_SETCYCLEHEADER,\
+                  "__js_setCycleHeader", INTRNISJS, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW_OBJECT_0,\
+                  "__js_new_obj_obj_0", INTRNISJS | INTRNNOSIDEEFFECT, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW_OBJECT_1,\
+                  "__js_new_obj_obj_1", INTRNISJS | INTRNNOSIDEEFFECT, kArgTySimpleobj, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_SETPROP,\
+                  "__jsop_setprop", INTRNISJS, kArgTyVoid, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_GETPROP,\
+                  "__jsop_getprop", INTRNISJS | INTRNLOADMEM | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_DELPROP,\
+                  "__jsop_delprop", INTRNISJS, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_SETPROP_BY_NAME,\
+                  "__jsop_setprop_by_name", INTRNISJS, kArgTyVoid, kArgTyDynany, kArgTySimplestr, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_GETPROP_BY_NAME,\
+                  "__jsop_getprop_by_name", INTRNISJS | INTRNLOADMEM | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTySimplestr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_SETPROP_BY_INDEX,\
+                  "__jsop_setprop_by_index", INTRNISJS, kArgTyVoid, kArgTyDynany, kArgTyU32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_GETPROP_BY_INDEX,\
+                  "__jsop_getprop_by_index", INTRNISJS | INTRNLOADMEM | INTRNNOSIDEEFFECT, kArgTyDynany, kArgTyDynany, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_INITPROP_BY_NAME,\
+                  "__jsop_initprop", INTRNISJS, kArgTyVoid, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_INITPROP_GETTER,\
+                  "__jsop_initprop_getter", INTRNISJS, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_INITPROP_SETTER,\
+                  "__jsop_initprop_setter", INTRNISJS, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW_FUNCTION,\
+                  "__js_new_function", INTRNISJS, kArgTyDynany, kArgTyPtr, kArgTyPtr, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW_ARR_ELEMS,\
+                  "__js_new_arr_elems", INTRNISJS | INTRNNOSIDEEFFECT, kArgTySimpleobj, kArgTyPtr, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_NEW_ARR_LENGTH,\
+                  "__js_new_arr_length", INTRNISJS | INTRNNOSIDEEFFECT, kArgTySimpleobj, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_LENGTH,\
+                  "__jsop_length", INTRNISJS | INTRNLOADMEM | INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_NEW_ITERATOR,\
+                  "__jsop_valueto_iterator", INTRNISJS, kArgTyPtr, kArgTyDynany, kArgTyU32, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_NEXT_ITERATOR,\
+                  "__jsop_iterator_next", INTRNISJS, kArgTyDynany, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JSOP_MORE_ITERATOR,\
+                  "__jsop_more_iterator", INTRNISJS, kArgTyU32, kArgTyPtr, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+DEF_MIR_INTRINSIC(JS_ADDSYSEVENTLISTENER,\
+                  "__js_add_sysevent_listener", INTRNISJS, kArgTyU32, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)

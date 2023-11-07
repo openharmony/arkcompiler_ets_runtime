@@ -1,0 +1,176 @@
+static std::set<uint64> ValidBitmaskImmSet = {
+#include "valid_bitmask_imm.txt"
+};
+constexpr uint32 kMaxBitTableSize = 5;
+constexpr std::array<uint64, kMaxBitTableSize> bitmaskImmMultTable = {
+    0x0000000100000001UL, 0x0001000100010001UL, 0x0101010101010101UL, 0x1111111111111111UL, 0x5555555555555555UL,
+};
+
+bool IsBitSizeImmediate(uint64 val, uint32 bitLen, uint32 nLowerZeroBits) {
+    /* mask1 is a 64bits number that is all 1 shifts left size bits */
+    const uint64 mask1 = 0xffffffffffffffffUL << bitLen;
+    /* mask2 is a 64 bits number that nlowerZeroBits are all 1, higher bits aro all 0 */
+    uint64 mask2 = (1UL << static_cast<uint64>(nLowerZeroBits)) - 1UL;
+    return (mask2 & val) == 0UL && (mask1 & ((static_cast<uint64>(val)) >> nLowerZeroBits)) == 0UL;
+};
+
+bool IsBitmaskImmediate(uint64 val, uint32 bitLen) {
+  DEBUG_ASSERT(val != 0, "IsBitmaskImmediate() don's accept 0 or -1");
+  DEBUG_ASSERT(static_cast<int64>(val) != -1, "IsBitmaskImmediate() don's accept 0 or -1");
+  if ((bitLen == k32BitSize) && (static_cast<int32>(val) == -1)) {
+    return false;
+  }
+  uint64 val2 = val;
+  if (bitLen == k32BitSize) {
+    val2 = (val2 << k32BitSize) | (val2 & ((1ULL << k32BitSize) - 1));
+  }
+  bool expectedOutcome = (ValidBitmaskImmSet.find(val2) != ValidBitmaskImmSet.end());
+
+  if ((val & 0x1) != 0) {
+    /*
+     * we want to work with
+     * 0000000000000000000000000000000000000000000001100000000000000000
+     * instead of
+     * 1111111111111111111111111111111111111111111110011111111111111111
+     */
+    val = ~val;
+  }
+
+  if (bitLen == k32BitSize) {
+    val = (val << k32BitSize) | (val & ((1ULL << k32BitSize) - 1));
+  }
+
+  /* get the least significant bit set and add it to 'val' */
+  uint64 tmpVal = val + (val & static_cast<uint64>(UINT64_MAX - val + 1));
+
+  /* now check if tmp is a power of 2 or tmpVal==0. */
+  tmpVal = tmpVal & (tmpVal - 1);
+  if (tmpVal == 0) {
+    if (!expectedOutcome) {
+      LogInfo::MapleLogger() << "0x" << std::hex << std::setw(static_cast<int>(k16ByteSize)) <<
+          std::setfill('0') << static_cast<uint64>(val) << "\n";
+      return false;
+    }
+    DEBUG_ASSERT(expectedOutcome, "incorrect implementation: not valid value but returning true");
+    /* power of two or zero ; return true */
+    return true;
+  }
+
+  int32 p0 = __builtin_ctzll(val);
+  int32 p1 = __builtin_ctzll(tmpVal);
+  int64 diff = p1 - p0;
+
+  /* check if diff is a power of two; return false if not. */
+  if ((static_cast<uint64>(diff) & (static_cast<uint64>(diff) - 1)) != 0) {
+    DEBUG_ASSERT(!expectedOutcome, "incorrect implementation: valid value but returning false");
+    return false;
+  }
+
+  int32 logDiff = __builtin_ctzll(static_cast<uint64>(diff));
+  int64 pattern = static_cast<int64>(val & ((1ULL << static_cast<uint64>(diff)) - 1));
+#if DEBUG
+  bool ret = (val == pattern * bitmaskImmMultTable[kMaxBitTableSize - logDiff]);
+  DEBUG_ASSERT(expectedOutcome == ret, "incorrect implementation: return value does not match expected outcome");
+  return ret;
+#else
+  return val == pattern * bitmaskImmMultTable[kMaxBitTableSize - logDiff];
+#endif
+}
+
+bool Imm12BitValid(int64 value) {
+  bool result = IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal12Bits, 0);
+  // for target linux-aarch64-gnu
+  result = result || IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal12Bits, kMaxImmVal12Bits);
+  return result;
+}
+
+bool Imm12BitMaskValid(int64 value) {
+  if (value == 0 || static_cast<int64>(value) == -1) {
+    return true;
+  }
+  return IsBitmaskImmediate(static_cast<uint64>(value), k32BitSize);
+}
+
+bool Imm13BitValid(int64 value) {
+  bool result = IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal13Bits, 0);
+  // for target linux-aarch64-gnu
+  result = result || IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal13Bits, kMaxImmVal13Bits);
+  return result;
+}
+
+bool Imm13BitMaskValid(int64 value) {
+  if (value == 0 || static_cast<int64>(value) == -1) {
+    return true;
+  }
+  return IsBitmaskImmediate(static_cast<uint64>(value), k64BitSize);
+}
+
+bool Imm16BitValid(int64 value) {
+  bool result = IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal16Bits, 0);
+   /*
+    * for target linux-aarch64-gnu
+    * aarch64 assembly takes up to 24-bits immediate, generating
+    * either cmp or cmp with shift 12 encoding
+    */
+  result = result || IsBitSizeImmediate(static_cast<uint64>(value), kMaxImmVal12Bits, kMaxImmVal12Bits);
+  return result;
+}
+
+/*
+ * 8bit         : 0
+ * halfword     : 1
+ * 32bit - word : 2
+ * 64bit - word : 3
+ * 128bit- word : 4
+ */
+bool StrLdrSignedOfstValid(int64 value, uint32 wordSize) {
+  if (value <= k256BitSize && value >= kNegative256BitSize) {
+    return true;
+  } else if ((value > k256BitSize) && (value <= kMaxPimm[wordSize])) {
+    uint64 mask = (1U << wordSize) - 1U;
+    return (static_cast<uint64>(value) & mask) ? false : true;
+  }
+  return false;
+}
+
+
+bool StrLdr8ImmValid(int64 value) {
+  return StrLdrSignedOfstValid(value, 0);
+}
+
+bool StrLdr16ImmValid(int64 value) {
+  return StrLdrSignedOfstValid(value, k1ByteSize);
+}
+
+bool StrLdr32ImmValid(int64 value) {
+  return StrLdrSignedOfstValid(value, k2ByteSize);
+}
+
+bool StrLdr32PairImmValid(int64 value) {
+  if ((value <= kMaxSimm32Pair)  && (value >= kMinSimm32)) {
+    return (static_cast<uint64>(value) & 3) ? false : true;
+  }
+  return false;
+}
+
+bool StrLdr64ImmValid(int64 value) {
+ return StrLdrSignedOfstValid(value, k3ByteSize);
+}
+
+bool StrLdr64PairImmValid(int64 value) {
+  if (value <= kMaxSimm64Pair && (value >= kMinSimm64)) {
+    return (static_cast<uint64>(value) & 7) ? false : true;
+  }
+  return false;
+}
+
+bool StrLdr128ImmValid(int64 value) {
+  return StrLdrSignedOfstValid(value, k4ByteSize);
+}
+
+bool StrLdr128PairImmValid(int64 value) {
+  if (value < k1024BitSize && (value >= kNegative1024BitSize)) {
+    return (static_cast<uint64>(value) & 0xf) ? false : true;
+  }
+  return false;
+}

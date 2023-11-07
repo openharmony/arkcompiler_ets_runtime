@@ -1,0 +1,2 @@
+// {"old_funcName", "replaced_funcName"},
+{"memcpy", "memcpy_mpl"},
