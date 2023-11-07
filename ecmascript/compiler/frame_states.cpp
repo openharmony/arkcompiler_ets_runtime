@@ -93,10 +93,10 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
     return liveout->MergeLiveout(predliveOut);
 }
 
-bool FrameStateBuilder::MergeFromPredBC(uint32_t succPc)
+bool FrameStateBuilder::MergeFromSuccBB(size_t bbId)
 {
     // liveout next
-    auto liveout = GetOrOCreateBCEndLiveOut(succPc);
+    auto liveout = GetOrOCreateBBLiveOut(bbId);
     return liveOutResult_->MergeLiveout(liveout);
 }
 
@@ -846,10 +846,9 @@ public:
             auto liveout = frameBuilder_->GetOrOCreateBBLiveOut(loopInfo.loopHeadId);
             loopInfo.loopAssignment->Union(liveout->defRegisters_);
             loopInfo.numLoopBacks = 1;
-        } else {
+            loopInfo.loopBodys->SetBit(backId);
+        } else if (!loopInfo.loopBodys->TestBit(backId)) {
             loopInfo.numLoopBacks++;
-        }
-        if (bcBuilder_->EnableLoopOptimization()) {
             loopInfo.loopBodys->SetBit(backId);
         }
     }
@@ -862,9 +861,7 @@ public:
             auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
             InitLoopInfo(loopInfo, toBlock, info.fromId);
         }
-        if (bcBuilder_->EnableLoopOptimization()) {
-            TryMergeLoopEntry();
-        }
+        TryMergeLoopEntry();
         for (auto& info : loopbacks_) {
             auto& toBlock = bcBuilder_->GetBasicBlockById(info.toId);
             auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
@@ -899,11 +896,11 @@ public:
                 it = loopHeader.preds.erase(it);
                 std::replace(bbPred->succs.begin(), bbPred->succs.end(), &loopHeader, block);
                 block->preds.emplace_back(bbPred);
-                frameBuilder_->MergeFromPredBC(bbPred->end);
             } else {
                 it++;
             }
         }
+        frameBuilder_->MergeFromSuccBB(loopHeader.id);
         block->succs.emplace_back(&loopHeader);
         loopHeader.preds.insert(loopHeader.preds.begin(), block);
         frameBuilder_->AddEmptyBlock(block);
@@ -922,7 +919,7 @@ public:
             auto& loopInfo = frameBuilder_->loops_[i];
             auto& loopHeader = bcBuilder_->GetBasicBlockById(loopInfo.loopHeadId);
             size_t numOfEntries = static_cast<size_t>(loopHeader.numOfStatePreds - loopInfo.numLoopBacks);
-            if (numOfEntries > 1) {
+            if (numOfEntries > 1 && loopHeader.trys.size() == 0) {
                 InsertEmptyBytecodeRegion(loopInfo, loopHeader, numOfEntries);
             }
             // clear loopback bits for visit body

@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
@@ -2112,9 +2113,11 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
     int ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     int path = GetArg(argv, argc, 1).GetInt();
-    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::string pathStr = path == 0 ? "slow path  " : "TYPED path ";
-    LOG_ECMA(INFO) << "AOT " << pathStr << result;
+
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, true);
+    std::string opcode = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
+    LOG_ECMA(INFO) << "AOT " << pathStr << ": " << opcode << "@ " << data;
     return JSTaggedValue::Undefined().GetRawData();
 }
 

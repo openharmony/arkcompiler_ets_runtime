@@ -164,7 +164,7 @@ private:
     void ComputeLiveState();
     void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc);
-    bool MergeFromPredBC(uint32_t predPc);
+    bool MergeFromSuccBB(size_t bbId);
     void MergeFromCatchBB(size_t bbId);
 
     FrameLiveOut *GetFrameLiveoutAfter(uint32_t bcId)
