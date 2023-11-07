@@ -401,9 +401,10 @@ JSTaggedValue ContainersLightWeightMap::Set(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
+    JSHandle<JSAPILightWeightMap> lightWeightMap = JSHandle<JSAPILightWeightMap>::Cast(self);
+    JSAPILightWeightMap::Set(thread, lightWeightMap, key, value);
 
-    JSAPILightWeightMap::Set(thread, JSHandle<JSAPILightWeightMap>::Cast(self), key, value);
-    return JSTaggedValue::True();
+    return lightWeightMap.GetTaggedValue();
 }
 
 JSTaggedValue ContainersLightWeightMap::Remove(EcmaRuntimeCallInfo *argv)
