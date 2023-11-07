@@ -717,12 +717,12 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
 }
 
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->HasPendingJob();
 }
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
