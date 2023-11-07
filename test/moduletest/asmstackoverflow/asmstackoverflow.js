@@ -31,6 +31,18 @@ try {
     }
 }
 
+function foo2()
+{
+    foo2()
+}
+try {
+    foo2()
+} catch (e) {
+    if ((e instanceof RangeError)) {
+        print("stack overflow!");
+    }
+}
+
 const obj = {};
 const pro = new Proxy({}, obj);
 obj.__proto__ = pro;
