@@ -4049,6 +4049,35 @@ GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef i
     return ret;
 }
 
+GateRef StubBuilder::FastGetPropertyByValue(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+
+    Branch(TaggedIsHeapObject(obj), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        result = GetPropertyByValue(glue, obj, key, callback);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
+            { Undefined(), obj, key, IntToTaggedInt(Int32(0)) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
     ProfileOperation callback)
 {

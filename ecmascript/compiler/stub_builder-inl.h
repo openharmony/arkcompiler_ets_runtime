@@ -1147,25 +1147,6 @@ inline GateRef StubBuilder::IsString(GateRef obj)
     return res;
 }
 
-inline GateRef StubBuilder::TaggedObjectIsString(GateRef obj)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label heapObj(env);
-    Label exit(env);
-    GateRef isHeapObject = TaggedIsHeapObject(obj);
-    Branch(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    result = env_->GetBuilder()->TaggedObjectIsString(obj);
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 inline GateRef StubBuilder::IsLineString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

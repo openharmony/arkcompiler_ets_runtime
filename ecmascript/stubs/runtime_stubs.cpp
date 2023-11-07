@@ -2840,6 +2840,16 @@ DEF_RUNTIME_STUBS(ArrayForEachContinue)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetConcatSpreadable)
+{
+    RUNTIME_STUBS_HEADER(GetConcatSpreadable);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);      // 0: means the zeroth parameter
+    if (ArrayHelper::IsConcatSpreadable(thread, obj)) {
+        return JSTaggedValue::VALUE_TRUE;
+    }
+    return JSTaggedValue::VALUE_FALSE;
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name
