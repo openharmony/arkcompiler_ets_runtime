@@ -80,6 +80,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         size_t dataSize = 0;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
         if (!getBuffer) {
+#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+            if (vm->EnableReportModuleResolvingFailure()) {
+                LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
+            }
+#endif
             LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
