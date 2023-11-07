@@ -20,6 +20,7 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/mem/mem.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/message_string.h"
@@ -1619,7 +1620,9 @@ void TypeHCRLowering::LowerStringAdd(GateRef gate, [[maybe_unused]]GateRef glue)
     GateRef rightLen = builder_.GetLengthFromString(right);
     GateRef length = builder_.Int32Add(leftLen, rightLen);
     GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
-    Label leftEmpty(&builder_), leftNotEmpty(&builder_), exitEmpty(&builder_);
+    Label leftEmpty(&builder_);
+    Label leftNotEmpty(&builder_);
+    Label exitEmpty(&builder_);
 
     DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
     DEFVALUE(res, (&builder_), VariableType::JS_POINTER(), right);
@@ -1632,7 +1635,8 @@ void TypeHCRLowering::LowerStringAdd(GateRef gate, [[maybe_unused]]GateRef glue)
     }
     builder_.Bind(&leftNotEmpty);
     {
-        Label rightEmpty(&builder_), rightNotEmpty(&builder_);
+        Label rightEmpty(&builder_);
+        Label rightNotEmpty(&builder_);
         builder_.Branch(builder_.Equal(rightLen, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
         builder_.Bind(&rightEmpty);
         {
@@ -1641,20 +1645,22 @@ void TypeHCRLowering::LowerStringAdd(GateRef gate, [[maybe_unused]]GateRef glue)
         }
         builder_.Bind(&rightNotEmpty);
         {
-            Label length_ge_13(&builder_), length_lt_13(&builder_);
-            builder_.Branch(builder_.Int32LessThan(length, builder_.Int32(TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH)), &length_lt_13, &length_ge_13);
-            builder_.Bind(&length_lt_13);
+            Label goLineString(&builder_);
+            Label goTreeString(&builder_);
+            builder_.Branch(builder_.Int32LessThan(length, builder_.Int32(TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH)), &goLineString, &goTreeString);
+            builder_.Bind(&goLineString);
             {
                 res = builder_.CallStub(glue, gate, CommonStubCSigns::Add, { glue, left, right });
                 builder_.Jump(&exitEmpty);
             }
-            builder_.Bind(&length_ge_13);
+            builder_.Bind(&goTreeString);
             {
-                Label isUtf8(&builder_), isUtf16(&builder_), exit(&builder_);
+                Label isUtf8(&builder_);
+                Label isUtf16(&builder_);
+                Label exit(&builder_);
                 GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::TREE_STRING_CLASS_INDEX);
 
-                size_t memalign = static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT);
-                GateRef size = builder_.IntPtr((TreeEcmaString::SIZE + memalign - 1) & (~(memalign - 1)));
+                GateRef size = builder_.IntPtr(AlignUp(TreeEcmaString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
 
                 builder_.StartAllocate();
                 GateRef result = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
