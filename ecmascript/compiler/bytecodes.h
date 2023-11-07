@@ -352,6 +352,17 @@ public:
         }
     }
 
+    static bool IsCreateEmptyArrayOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     static bool IsCreateArrayWithBufferOp(EcmaOpcode opcode)
     {
         switch (opcode) {
@@ -732,6 +743,7 @@ private:
 
 class BytecodeIterator {
 public:
+    static constexpr int INVALID_INDEX = -1;
     BytecodeIterator() = default;
     BytecodeIterator(BytecodeCircuitBuilder *builder,
         uint32_t start, uint32_t end)
@@ -740,8 +752,8 @@ public:
         uint32_t start, uint32_t end)
     {
         builder_ = builder;
-        start_ = start;
-        end_ = end;
+        start_ = static_cast<int32_t>(start);
+        end_ = static_cast<int32_t>(end);
     }
 
     BytecodeIterator& operator++()
@@ -761,13 +773,12 @@ public:
 
     void Goto(uint32_t i)
     {
-        index_ = i;
+        index_ = static_cast<int32_t>(i);
     }
 
     void GotoStart()
     {
         index_ = start_;
-        ASSERT(InRange());
     }
 
     void GotoEnd()
@@ -776,6 +787,11 @@ public:
         ASSERT(InRange());
     }
 
+    bool IsInRange(int idx) const
+    {
+        return (idx <= end_) && (idx >= start_);
+    }
+    
     bool InRange() const
     {
         return (index_ <= end_) && (index_ >= start_);
@@ -788,7 +804,7 @@ public:
 
     uint32_t Index() const
     {
-        return index_;
+        return static_cast<uint32_t>(index_);
     }
 
     const BytecodeInfo &GetBytecodeInfo() const;
@@ -797,9 +813,9 @@ public:
 
 private:
     BytecodeCircuitBuilder *builder_ {nullptr};
-    uint32_t start_ {0};
-    uint32_t end_ {0};
-    uint32_t index_{ INVALID_INDEX };
+    int32_t start_ {0};
+    int32_t end_ {0};
+    int32_t index_{ INVALID_INDEX };
 };
 
 class BytecodeCallArgc {

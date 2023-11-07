@@ -25,6 +25,7 @@ public:
     enum Type {
         OBJ_LITERAL = 0,
         ARRAY_LITERAL,
+        EMPTY_ARRAY,
         CALL_TARGET,
         CLASS,
 
@@ -57,6 +58,18 @@ public:
                 }
             }
         }
+
+        template <class Callback>
+        void IterateValByMethodOffsetAndType(uint32_t methodOffset, const Callback &cb) const
+        {
+            if (methodOffsetToValVec_.find(methodOffset) != methodOffsetToValVec_.end()) {
+                const ValVec &valVec = methodOffsetToValVec_.at(methodOffset);
+                for (auto val : valVec) {
+                    cb(val.bcIndex, val.bcOffset, val.cpIndex);
+                }
+            }
+        }
+
     private:
         struct Val {
             uint32_t bcIndex;
@@ -85,6 +98,12 @@ public:
             Type type = static_cast<Type>(idx);
             infos_[idx].IterateValByMethodOffset(methodOffset, type, cb);
         }
+    }
+
+    template <class Callback>
+    void IterateInfoByType(uint32_t methodOffset, Type type, const Callback &cb) const
+    {
+        infos_[type].IterateValByMethodOffsetAndType(methodOffset, cb);
     }
 private:
     void Record(const InfoDetail &detail, Type type);

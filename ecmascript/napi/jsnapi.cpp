@@ -546,6 +546,16 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
@@ -662,7 +672,6 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
-    vm->ResetPGOProfiler();
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
@@ -708,12 +717,12 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
 }
 
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->HasPendingJob();
 }
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
@@ -1314,8 +1323,10 @@ Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-    JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
-    symbol->SetDescription(vm->GetJSThread(), desc);
+    if (!description.IsEmpty()) {
+        JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
+        symbol->SetDescription(vm->GetJSThread(), desc);
+    }
     return JSNApiHelper::ToLocal<SymbolRef>(JSHandle<JSTaggedValue>(symbol));
 }
 
@@ -1772,7 +1783,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     vm->GetHeap()->ClearKeptObjects();
-
+    vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 

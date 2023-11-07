@@ -449,7 +449,7 @@ private:
             }
             return length;
         }
-        
+
         CVector<uint16_t> tmpBuf;
         const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
         if (length > maxLength) {
@@ -973,7 +973,7 @@ public:
     {
         string_ = string;
     }
-    
+
     uint32_t GetStartIndex() const
     {
         return startIndex_;

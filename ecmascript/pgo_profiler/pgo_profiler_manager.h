@@ -55,6 +55,14 @@ public:
         }
     }
 
+    const std::string GetBundleName()
+    {
+        if (encoder_) {
+            encoder_->GetBundleName();
+        }
+        return "";
+    }
+
     void SetRequestAotCallback(const RequestAotCallback &cb)
     {
         requestAotCallback_ = cb;

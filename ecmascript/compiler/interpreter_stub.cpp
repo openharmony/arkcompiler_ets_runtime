@@ -376,12 +376,13 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
     Label setArgumentsEnd(env);
+    GateRef elements = GetElementsArray(*res);
     Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
         GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
-        SetPropertyByIndex(glue, *res, *i, receiver, true);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
         Bind(&setArgumentsAgain);
@@ -487,8 +488,15 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef getter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef frame = GetFrame(sp);
+    GateRef func = GetFunctionFromFrame(frame);
+
+    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef firstPC =
+        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    GateRef offset = TaggedPtrToTaggedIntPtr(PtrSub(pc, firstPC));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
-                              { obj, prop, getter, setter, acc }); // acc is flag
+                              { obj, prop, getter, setter, acc, func, offset }); // acc is flag
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 

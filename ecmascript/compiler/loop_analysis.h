@@ -34,19 +34,27 @@ struct LoopInfo {
 };
 class LoopAnalysis {
 public:
-    LoopAnalysis(Circuit *circuit, Chunk* chunk)
-        : acc_(circuit), chunk_(chunk), loopInfos_(chunk) {}
+    LoopAnalysis(BytecodeCircuitBuilder* bcBuilder, Circuit *circuit, Chunk* chunk)
+        : bcBuilder_(bcBuilder), acc_(circuit), chunk_(chunk), loopInfos_(chunk) {}
     ~LoopAnalysis() = default;
     void Run();
     void CollectLoopBody(LoopInfo* loopInfo);
     void LoopExitElimination();
     void PrintGraph();
     void PrintLoop(LoopInfo* loopInfo);
+    const ChunkVector<LoopInfo*>& GetLoopTree() const
+    {
+        return loopInfos_;
+    }
 
 private:
     void UpdateLoopInfo(LoopInfo* loopInfo, GateRef gate, size_t dep);
     size_t ComputeLoopDepth(GateRef cur, GateRef nex, size_t curDep);
+    void CollectUseGate(ChunkUnorderedMap<GateRef, size_t>& gateToDepth,
+        ChunkQueue<GateRef>& firstList, ChunkQueue<GateRef>& secondList,
+        LoopInfo* loopInfo, GateRef cur);
 
+    BytecodeCircuitBuilder* bcBuilder_{nullptr};
     GateAccessor acc_;
     Chunk* chunk_{nullptr};
     ChunkVector<LoopInfo*> loopInfos_;

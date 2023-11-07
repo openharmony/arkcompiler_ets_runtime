@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 
@@ -93,10 +94,9 @@ private:
 
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
-    using AccessMode = ObjectAccessHelper::AccessMode;
-    void LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key, GateRef value);
-    GateRef BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr);
-    void BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value);
+    void LowerTypedStOwnByName(GateRef gate);
+    GateRef BuildNamedPropertyAccess(GateRef hir, PGOObjectAccessHelper accessHelper, PropertyLookupResult plr);
+    using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key);
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
     bool TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
@@ -109,6 +109,7 @@ private:
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedStObjByValue(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
+
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);
 

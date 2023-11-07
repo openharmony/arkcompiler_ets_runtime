@@ -13,15 +13,18 @@
  * limitations under the License.
  */
 
-
-export class foo1{
-    b1 = (para1 : string, para2 : string) : string => {return para1 + para2};
-    b2 = 1;
+async function* foo() {
+    var i = 5;
+    while (i > 2) {
+        try {
+            yield 7;
+            print(i);
+        } catch (e) {
+        } 
+    }
 }
 
-export class foo2 {
-    a1 = 1;
-    a2 = "abc";
-    a3 = new foo1();
-    a4 = (para1 : number, para2 : number) : number => {return para1 + para2};
-}
+let a = foo();
+a.next();
+a.next();
+a.next();

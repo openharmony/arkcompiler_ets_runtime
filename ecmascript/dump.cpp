@@ -3176,6 +3176,7 @@ void GeneratorContext::Dump(std::ostream &os) const
 void ProtoChangeMarker::Dump(std::ostream &os) const
 {
     os << " - HasChanged: " << GetHasChanged() << "\n";
+    os << " - HasAccessorChanged: " << GetAccessorHasChanged() << "\n";
 }
 
 void MarkerCell::Dump(std::ostream &os) const

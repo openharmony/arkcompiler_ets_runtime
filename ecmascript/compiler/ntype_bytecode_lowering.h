@@ -25,15 +25,14 @@
 namespace panda::ecmascript::kungfu {
 class NTypeBytecodeLowering {
 public:
-    NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager, const MethodLiteral *methodLiteral,
-                     const CString &recordName, bool enableLog, const std::string& name)
+    NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
+                          bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
-          recordName_(recordName),
           tsManager_(tsManager),
+          ptManager_(ctx->GetPTManager()),
           jsPandaFile_(ctx->GetJSPandaFile()),
-          methodLiteral_(methodLiteral),
           enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -48,11 +47,9 @@ private:
     void LowerNTypedCreateEmptyArray(GateRef gate);
     void LowerNTypedCreateArrayWithBuffer(GateRef gate);
     void LowerNTypedStownByIndex(GateRef gate);
-    void LowerNTypedStOwnByName(GateRef gate);
     void LowerLdLexVar(GateRef gate);
     void LowerStLexVar(GateRef gate);
     void LowerThrowUndefinedIfHoleWithName(GateRef gate);
-    uint64_t GetBcAbsoluteOffset(GateRef gate) const;
 
     bool IsLogEnabled() const
     {
@@ -78,10 +75,9 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    const CString &recordName_;
     TSManager *tsManager_ {nullptr};
+    PGOTypeManager *ptManager_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
-    const MethodLiteral *methodLiteral_ {nullptr};
     bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};

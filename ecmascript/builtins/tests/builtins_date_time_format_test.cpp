@@ -662,13 +662,16 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_004)
     JSHandle<JSTaggedValue> dateStyleValue(factory->NewFromASCII("dateStyle"));
     JSHandle<JSTaggedValue> timeStyleeValue(factory->NewFromASCII("timeStyle"));
     JSHandle<JSTaggedValue> hour12Value(factory->NewFromASCII("hour12"));
+    JSHandle<JSTaggedValue> timeZone(factory->NewFromASCII("timeZone"));
+    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("UTC"));
     JSObject::SetProperty(thread, optionsObj, dateStyleValue, fullValue);
     JSObject::SetProperty(thread, optionsObj, timeStyleeValue, fullValue);
     JSObject::SetProperty(thread, optionsObj, hour12Value, falseValue);
+    JSObject::SetProperty(thread, optionsObj, timeZone, timeZoneValue);
     auto constructorResult = JSDateTimeFormatConstructor(thread, optionsObj, localesString);
     JSHandle<EcmaString> resultStr =
         JSDateTimeFormat::FormatDateTime(thread, JSHandle<JSDateTimeFormat>(thread, constructorResult), 0.0);
-    EXPECT_STREQ("1970年1月1日星期四 中国标准时间 08:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
+    EXPECT_STREQ("1970年1月1日星期四 协调世界时 00:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
 }
 }  // namespace panda::test
 

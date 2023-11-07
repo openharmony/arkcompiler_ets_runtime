@@ -102,6 +102,10 @@ namespace panda::ecmascript::kungfu {
     V(JSCALLTHIS_NOGC)                      \
     V(JSCALLTHIS_FAST_NOGC)
 
+#define MEMORY_ORDER_LIST(V)    \
+    V(NOT_ATOMIC)               \
+    V(MEMORY_ORDER_RELEASE)
+
 enum class TypedBinOp : uint8_t {
 #define DECLARE_TYPED_BIN_OP(OP) OP,
     TYPED_BIN_OP_LIST(DECLARE_TYPED_BIN_OP)
@@ -140,6 +144,12 @@ enum class TypedCallTargetCheckOp : uint8_t {
 #define DECLARE_TYPED_CALL_TARGET_CHECK_OP(OP) OP,
     TYPED_CALL_TARGET_CHECK_OP_LIST(DECLARE_TYPED_CALL_TARGET_CHECK_OP)
 #undef DECLARE_TYPED_CALL_TARGET_CHECK_OP
+};
+
+enum class MemoryOrder : uint8_t {
+#define MEMORY_ORDER(OP) OP,
+    MEMORY_ORDER_LIST(MEMORY_ORDER)
+#undef MEMORY_ORDER
 };
 
 enum class BranchKind : uint8_t {
@@ -237,7 +247,7 @@ private:
 
 class TypedBinaryMetaData : public OneParameterMetaData {
 public:
-    TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
+    TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
         : OneParameterMetaData(OpCode::TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2, value), // 2: valuesIn
         binOp_(binOp), type_(type)
     {
@@ -255,7 +265,7 @@ public:
         }
         return false;
     }
-    
+
     static const TypedBinaryMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::TYPED_BINARY_OP);
@@ -267,7 +277,7 @@ public:
         return binOp_;
     }
 
-    PGOSampleType GetType() const
+    PGOTypeRef GetType() const
     {
         return type_;
     }
@@ -276,7 +286,7 @@ public:
     static TypedBinOp GetSwapCompareOp(TypedBinOp op);
 private:
     TypedBinOp binOp_;
-    PGOSampleType type_;
+    PGOTypeRef type_;
 };
 
 class TypedUnaryAccessor {
@@ -364,6 +374,54 @@ public:
 private:
     using TrueWeightBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using FalseWeightBits = TrueWeightBits::NextField<uint32_t, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class LoadStoreAccessor {
+public:
+    static constexpr int MEMORY_ORDER_BITS = 8;
+    explicit LoadStoreAccessor(uint64_t value) : bitField_(value) {}
+
+    MemoryOrder GetMemoryOrder() const
+    {
+        return static_cast<MemoryOrder>(MemoryOrderBits::Get(bitField_));
+    }
+
+    static uint64_t ToValue(MemoryOrder order)
+    {
+        return MemoryOrderBits::Encode(static_cast<uint8_t>(order));
+    }
+private:
+    using MemoryOrderBits = panda::BitField<uint8_t, 0, MEMORY_ORDER_BITS>;
+
+    uint64_t bitField_;
+};
+
+class LoadStoreConstOffsetAccessor {
+public:
+    static constexpr int OPRAND_OFFSET_BITS = 32;
+    static constexpr int MEMORY_ORDER_BITS = 8;
+    explicit LoadStoreConstOffsetAccessor(uint64_t value) : bitField_(value) {}
+
+    MemoryOrder GetMemoryOrder() const
+    {
+        return static_cast<MemoryOrder>(MemoryOrderBits::Get(bitField_));
+    }
+
+    size_t GetOffset() const
+    {
+        return static_cast<size_t>(OprandOffsetBits::Get(bitField_));
+    }
+
+    static uint64_t ToValue(size_t offset, MemoryOrder order)
+    {
+        return OprandOffsetBits::Encode(static_cast<uint32_t>(offset)) |
+               MemoryOrderBits::Encode(static_cast<uint8_t>(order));
+    }
+private:
+    using OprandOffsetBits = panda::BitField<uint32_t, 0, OPRAND_OFFSET_BITS>;
+    using MemoryOrderBits = OprandOffsetBits::NextField<uint8_t, MEMORY_ORDER_BITS>;
 
     uint64_t bitField_;
 };

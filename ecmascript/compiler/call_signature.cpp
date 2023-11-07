@@ -1243,11 +1243,12 @@ DEF_CALL_SIGNATURE(BigIntSameValueZero)
 
 DEF_CALL_SIGNATURE(StringGetStart)
 {
-    CallSignature stringGetStart("StringGetStart", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetStart("StringGetStart", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetStart;
-    std::array<VariableType, 3> params = { // 3 : three input parameters
+    std::array<VariableType, 4> params = { // 4 : four input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
@@ -1257,11 +1258,12 @@ DEF_CALL_SIGNATURE(StringGetStart)
 
 DEF_CALL_SIGNATURE(StringGetEnd)
 {
-    CallSignature stringGetEnd("StringGetEnd", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetEnd("StringGetEnd", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetEnd;
-    std::array<VariableType, 4> params = { // 4 : four input parameters
+    std::array<VariableType, 5> params = { // 5 : five input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32(),
     };
@@ -1802,20 +1804,6 @@ DEF_CALL_SIGNATURE(DoubleToLength)
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
         VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(ComputeHashcode)
-{
-    // 1 : 1 input parameters
-    CallSignature index("ComputeHashcode", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::JS_ANY(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

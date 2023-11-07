@@ -26,6 +26,7 @@ group("ark_aot_js_test") {
     "undefined",
     "cjs",
     "for_await_of",
+    "dead_code_elimination",
   ]
 
   deps = []
@@ -53,6 +54,7 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
+    "bc_builder",
     "bind",
     "binaryop_special_value",
     "builtinmath",
@@ -130,6 +132,7 @@ group("ark_aot_ts_test") {
     "gettemplateobject",
     "getunmappedargs",
     "global_this_ts",
+    "generic_instance_type_literal",
     "helloaot",
     "helloconcurrent",
     "ic",

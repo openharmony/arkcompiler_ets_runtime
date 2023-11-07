@@ -98,7 +98,7 @@ public:
 
     template <typename Callback>
     void GetTypeInfo(const JSPandaFile *jsPandaFile, const CString &recordName, const MethodLiteral *methodLiteral,
-                     Callback callback)
+                     Callback callback) const
     {
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
@@ -132,7 +132,7 @@ public:
         return header_->SupportMethodChecksum();
     }
 
-    bool GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const;
+    bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const;
 
     bool IsLoaded() const
     {

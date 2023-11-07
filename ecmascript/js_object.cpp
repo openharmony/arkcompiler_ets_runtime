@@ -2357,7 +2357,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
         JSHClass *oldHC = obj->GetJSHClass();
         ihc->SetPrototype(thread, oldHC->GetPrototype());
-        obj->SetClass(ihc);
+        obj->SynchronizedSetClass(ihc);
         for (size_t i = 0; i < propsLen; i++) {
             auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
             // If value.first is false, indicating that value cannot be converted to the expected value of
@@ -2368,11 +2368,15 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
             }
             obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
         }
+        auto inlineNum = ihc->GetInlinedProperties();
+        for (size_t i = propsLen; i < inlineNum; i++) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, JSTaggedValue::Null());
+        }
         if (isSuccess) {
             return;
         }
         // If conversion fails, it needs to be rolled back to the old HClass and reset the value.
-        obj->SetClass(oldHC);
+        obj->SynchronizedSetClass(oldHC);
     } else if (thread->IsPGOProfilerEnable()) {
         // PGO need to track TrackType
         JSHClass *oldHC = obj->GetJSHClass();

@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
@@ -155,6 +156,14 @@ DEF_RUNTIME_STUBS(GetHash32)
     int key = argKey.GetInt();
     auto pkey = reinterpret_cast<uint8_t *>(&key);
     uint32_t result = panda::GetHash32(pkey, len.GetInt());
+    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ComputeHashcode)
+{
+    JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode();
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
@@ -425,7 +434,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
-        array->SetClass(hclass);
+        array->SynchronizedSetClass(hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
@@ -1913,8 +1922,10 @@ DEF_RUNTIME_STUBS(DefineGetterSetterByValue)
     JSHandle<JSTaggedValue> getter = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> setter = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue flag = GetArg(argv, argc, 4);  // 4: means the fourth parameter
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the sixth parameter
+    int32_t pcOffset = GetArg(argv, argc, 6).GetInt();  // 6: means the seventh parameter
     bool bFlag = flag.ToBoolean();
-    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag).GetRawData();
+    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag, func, pcOffset).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SuperCall)
@@ -2102,9 +2113,11 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
     int ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     int path = GetArg(argv, argc, 1).GetInt();
-    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::string pathStr = path == 0 ? "slow path  " : "TYPED path ";
-    LOG_ECMA(INFO) << "AOT " << pathStr << result;
+
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, true);
+    std::string opcode = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
+    LOG_ECMA(INFO) << "AOT " << pathStr << ": " << opcode << "@ " << data;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -2227,6 +2240,17 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
     JSTaggedValue result = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue hint = GetArg(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(UpdateHClass)
+{
+    RUNTIME_STUBS_HEADER(UpdateHClass);
+    JSTaggedValue oldhc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue newhc = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSHClass> oldhclass(thread, oldhc);
+    JSHandle<JSHClass> newhclass(thread, newhc);
+    return RuntimeUpdateHClass(thread, oldhclass, newhclass, key).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
@@ -2715,32 +2739,27 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
     callTimer->StopCount(method);
 }
 
-uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
-{
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    return EcmaStringAccessor(string).ComputeHashcode();
-}
-
-int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     }
 }
 
-int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString,
+    int32_t start, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     }
 }

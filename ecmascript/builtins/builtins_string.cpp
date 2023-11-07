@@ -1522,32 +1522,30 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
     }
     uint32_t posArrLength = posArray.size();
     arrayLength = lim > posArrLength ? posArrLength + 1 : posArrLength;
-
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> newElements(factory->NewTaggedArray(arrayLength));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread, newElements));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    index = 0;
-    for (uint32_t i = 0; i < posArrLength; i++) {
-        pos = posArray[i];
-        EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, pos - index);
-        JSHandle<JSTaggedValue> elementTag(thread, elementString);
-        newElements->Set(thread, i, elementTag);
-        index = pos + static_cast<int32_t>(seperatorLength);
-    }
-    if (lim > posArrLength) {
-        EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, thisLength - index);
-        JSHandle<JSTaggedValue> elementTag(thread, elementString);
-        newElements->Set(thread, posArrLength, elementTag);
-    }
-
-    if (lim == UINT32_MAX - 1) {
-        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
-        StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, newElements);
-    }
-    return resultArray.GetTaggedValue();
+    return JSArray::ArrayCreateWithInit(thread, arrayLength,
+        [thread, ecmaVm, &thisString, &seperatorString, &posArray, thisLength, seperatorLength, lim, posArrLength]
+        (const JSHandle<TaggedArray> &newElements, [[maybe_unused]] uint32_t length) {
+        int32_t index = 0;
+        int32_t pos = 0;
+        JSMutableHandle<JSTaggedValue> elementTag(thread, JSTaggedValue::Undefined());
+        for (uint32_t i = 0; i < posArrLength; i++) {
+            pos = posArray[i];
+            EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, pos - index);
+            elementTag.Update(JSTaggedValue(elementString));
+            newElements->Set(thread, i, elementTag);
+            index = pos + static_cast<int32_t>(seperatorLength);
+        }
+        if (lim > posArrLength) {
+            EcmaString *elementString =
+                EcmaStringAccessor::GetSubString(ecmaVm, thisString, index, thisLength - index);
+            elementTag.Update(JSTaggedValue(elementString));
+            newElements->Set(thread, posArrLength, elementTag);
+        }
+        if (lim == UINT32_MAX - 1) {
+            JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+            StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, newElements);
+        }
+    });
 }
 
 // 21.1.3.18

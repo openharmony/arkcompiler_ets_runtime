@@ -114,3 +114,5 @@ Expected TypeError caught in indexOf when fromIndex is symbol.
 Expected TypeError caught in lastIndexOf when fromIndex is symbol.
 ======== End: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========
 CallbackFn is not callable
+,,baz
+,,baz

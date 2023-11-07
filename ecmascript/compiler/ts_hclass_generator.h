@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_TS_HCLASS_GENERATOR_H
 #define ECMASCRIPT_COMPILER_TS_HCLASS_GENERATOR_H
 
-#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -26,8 +25,6 @@ public:
     ~TSHClassGenerator() = default;
 
     void GenerateTSHClasses() const;
-    void UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc,
-        bool enableOptTrackField) const;
 
 private:
     void RecursiveGenerate(const JSHandle<TSClassType> &classType) const;

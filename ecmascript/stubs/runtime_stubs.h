@@ -127,7 +127,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
-    V(ComputeHashcode)                         \
     V(JSHClassFindProtoTransitions)            \
     V(NumberHelperStringToDouble)              \
     V(LocaleCompareNoGc)                       \
@@ -142,6 +141,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
+    V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
@@ -328,6 +328,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ContainerRBTreeForEach)             \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
+    V(UpdateHClass)                       \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
     V(ArraySort)                          \
@@ -425,10 +426,9 @@ public:
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
-    static uint32_t ComputeHashcode(JSTaggedType ecmaString);
 
-    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length);
-    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length);
+    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
+    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);
@@ -663,7 +663,9 @@ private:
     static inline JSTaggedValue RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,
                                                                  const JSHandle<JSTaggedValue> &prop,
                                                                  const JSHandle<JSTaggedValue> &getter,
-                                                                 const JSHandle<JSTaggedValue> &setter, bool flag);
+                                                                 const JSHandle<JSTaggedValue> &setter, bool flag,
+                                                                 const JSHandle<JSTaggedValue> &func,
+                                                                 int32_t pcOffset);
     static inline JSTaggedValue RuntimeSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
@@ -720,6 +722,8 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
+        const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
     static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,

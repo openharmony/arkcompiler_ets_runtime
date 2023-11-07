@@ -89,6 +89,8 @@
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
+#include "ecmascript/ohos/white_list_helper.h"
+
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -145,6 +147,11 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
+    std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
+    if (!WhiteListHelper::GetInstance()->IsEnable(bundleName)) {
+        options_.SetEnablePGOProfiler(false);
+    }
+    ResetPGOProfiler();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
 #endif
@@ -403,6 +410,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
                 object->Destroy();
                 iter = nativePointerList_.erase(iter);
             } else {
@@ -427,6 +435,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
                 object->Destroy();
                 iter = nativePointerList_.erase(iter);
                 continue;
@@ -452,6 +461,7 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
     if (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
+        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy();
         nativePointerList_.erase(iter);
     }

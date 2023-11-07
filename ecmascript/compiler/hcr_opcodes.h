@@ -36,8 +36,8 @@ namespace panda::ecmascript::kungfu {
     V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                  \
-    V(CallGetter, CALL_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 2)            \
-    V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)
+    V(CallGetter, CALL_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)            \
+    V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 4)
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \

@@ -225,15 +225,28 @@ bool LayoutInfo::IsUninitializedProperty(const JSObject *object, uint32_t index)
     return val.IsHole();
 }
 
-void LayoutInfo::DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, PGOObjKind kind)
+void LayoutInfo::DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc)
 {
     auto key = GetKey(index);
     if (key.IsString()) {
         auto attr = GetAttr(index);
         TrackType type = attr.GetTrackType();
-        bool isAccessor = attr.IsAccessor();
+        int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = EcmaStringAccessor(key).ToCString();
-        desc.UpdateKeyAndDesc(keyString, PGOHandler(type, isAccessor), kind);
+        desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta));
     }
+}
+
+bool LayoutInfo::UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc)
+{
+    auto key = GetKey(index);
+    if (key.IsString()) {
+        auto attr = GetAttr(index);
+        TrackType type = attr.GetTrackType();
+        int propertyMeta = attr.GetPropertyMetaData();
+        auto keyString = EcmaStringAccessor(key).ToCString();
+        return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta));
+    }
+    return false;
 }
 }  // namespace panda::ecmascript
