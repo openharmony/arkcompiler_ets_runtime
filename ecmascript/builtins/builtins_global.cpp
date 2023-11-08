@@ -33,7 +33,7 @@ namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using StringHelper = base::StringHelper;
 // bitmap for "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_" + "@*+-./"
-constexpr std::uint8_t g_escapeBitMap[128] = {
+constexpr std::uint8_t ESCAPE_BIT_MAP[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1,
@@ -42,10 +42,10 @@ constexpr std::uint8_t g_escapeBitMap[128] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
     0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
-constexpr std::uint8_t g_escapeHexToChar[16] = {
+constexpr std::uint8_t ESCAPE_HEX_TO_CHAR[16] = {
     '0', '1', '2', '3', '4' ,'5' ,'6' ,'7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 };
-constexpr std::uint8_t g_escapeCharToHex[128] = {
+constexpr std::uint8_t ESCAPE_CHAR_TO_HEX[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -55,10 +55,14 @@ constexpr std::uint8_t g_escapeCharToHex[128] = {
     0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
-constexpr std::uint8_t g_escapeHexMask = 0xf;
-constexpr std::uint8_t g_escapeHexBit4 = 4;
-constexpr std::uint8_t g_escapeHexBit8 = 8;
-constexpr std::uint8_t g_escapeHexBit12 = 12;
+constexpr std::uint8_t ESCAPE_HEX_MASK = 0xf;
+constexpr std::uint8_t ESCAPE_HEX_BIT4 = 4;
+constexpr std::uint8_t ESCAPE_HEX_BIT8 = 8;
+constexpr std::uint8_t ESCAPE_HEX_BIT12 = 12;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET2 = 2;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET3 = 3;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET4 = 4;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET5 = 5;
 constexpr std::uint16_t CHAR16_LETTER_NULL = u'\0';
 
 // 18.2.1
@@ -778,20 +782,19 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
     //    e. Set k to k + 1.
     while (k < len) {
         uint16_t c = EcmaStringAccessor(string).Get(k);
-        if (c < std::numeric_limits<int8_t>::max() && g_escapeBitMap[c]==1) {
+        if (c < std::numeric_limits<int8_t>::max() && ESCAPE_BIT_MAP[c] == 1) {
             r.push_back(c);
         } else {
             r.push_back('%');
             if (c <= std::numeric_limits<uint8_t>::max()) {
-                r.push_back(g_escapeHexToChar[(c >> g_escapeHexBit4) & g_escapeHexMask]);
-                r.push_back(g_escapeHexToChar[c & g_escapeHexMask]);
-            }
-            else {
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT4) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[c & ESCAPE_HEX_MASK]);
+            } else {
                 r.push_back('u');
-                r.push_back(g_escapeHexToChar[(c >> g_escapeHexBit12) & g_escapeHexMask]);
-                r.push_back(g_escapeHexToChar[(c >> g_escapeHexBit8) & g_escapeHexMask]);
-                r.push_back(g_escapeHexToChar[(c >> g_escapeHexBit4) & g_escapeHexMask]);
-                r.push_back(g_escapeHexToChar[c & g_escapeHexMask]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT12) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT8) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT4) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[c & ESCAPE_HEX_MASK]);
             }
         }
         ++k;
@@ -843,25 +846,24 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
         uint16_t c = EcmaStringAccessor(string).Get(k);
         if (c == '%') {
             uint16_t c1 = EcmaStringAccessor(string).Get(k + 1);
-            if (k + 5 < len && c1 == 'u') {
-                uint16_t c2 = EcmaStringAccessor(string).Get(k + 2);
-                uint16_t c3 = EcmaStringAccessor(string).Get(k + 3);
-                uint16_t c4 = EcmaStringAccessor(string).Get(k + 4);
-                uint16_t c5 = EcmaStringAccessor(string).Get(k + 5);
-                if(IsHexDigits(c2) && IsHexDigits(c3) && IsHexDigits(c4) && IsHexDigits(c5)) {
-                    c = g_escapeCharToHex[c2];
-                    c = (c << g_escapeHexBit4) | g_escapeCharToHex[c3];
-                    c = (c << g_escapeHexBit4) | g_escapeCharToHex[c4];
-                    c = (c << g_escapeHexBit4) | g_escapeCharToHex[c5];
-                    k = k + 5;
+            if (k + ESCAPE_CHAR_OFFSET5 < len && c1 == 'u') {
+                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+                uint16_t c3 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET3);
+                uint16_t c4 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET4);
+                uint16_t c5 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET5);
+                if (IsHexDigits(c2) && IsHexDigits(c3) && IsHexDigits(c4) && IsHexDigits(c5)) {
+                    c = ESCAPE_CHAR_TO_HEX[c2];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c3];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c4];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c5];
+                    k = k + ESCAPE_CHAR_OFFSET5;
                 }
-            }
-            else if (k + 3 <= len) {
-                uint16_t c2 = EcmaStringAccessor(string).Get(k + 2);
-                if(IsHexDigits(c1) && IsHexDigits(c2)) {
-                    c = g_escapeCharToHex[c1];
-                    c = (c << g_escapeHexBit4) | g_escapeCharToHex[c2];
-                    k = k + 2;
+            } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
+                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+                if (IsHexDigits(c1) && IsHexDigits(c2)) {
+                    c = ESCAPE_CHAR_TO_HEX[c1];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c2];
+                    k = k + ESCAPE_CHAR_OFFSET2;
                 }
             }
         }
