@@ -282,6 +282,11 @@ public:
         return type_;
     }
 
+    std::string Str() const
+    {
+        return GateMetaData::Str(binOp_);
+    }
+
     static TypedBinOp GetRevCompareOp(TypedBinOp op);
     static TypedBinOp GetSwapCompareOp(TypedBinOp op);
 private:

@@ -863,6 +863,57 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
     return idx;
 }
 
+void Gate::PrintWithBytecode() const
+{
+    auto opcode = GetOpCode();
+    std::string bytecodeStr = "";
+    switch (opcode) {
+        case OpCode::JS_BYTECODE: {
+            bytecodeStr = GetJSBytecodeMetaData()->Str();
+            break;
+        }
+        case OpCode::TYPED_BINARY_OP: {
+            bytecodeStr = GetTypedBinaryMetaData()->Str();
+            break;
+        }
+        case OpCode::TYPED_UNARY_OP: {
+            auto typedOp = TypedUnaryAccessor(GetOneParameterMetaData()->GetValue()).GetTypedUnOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::TYPED_CONDITION_JUMP: {
+            auto typedOp = TypedJumpAccessor(GetOneParameterMetaData()->GetValue()).GetTypedJumpOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::LOAD_ELEMENT: {
+            auto typedOp = static_cast<TypedLoadOp>(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::STORE_ELEMENT: {
+            auto typedOp = static_cast<TypedStoreOp>(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::TYPED_CALLTARGETCHECK_OP: {
+            auto typedOp = GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::CONVERT:
+        case OpCode::CHECK_AND_CONVERT: {
+            ValuePairTypeAccessor accessor(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(accessor.GetSrcType()) + "_TO_" +
+                GateMetaData::Str(accessor.GetDstType());
+            break;
+        }
+        default:
+            break;
+    }
+    PrintGateWithAdditionOp(bytecodeStr);
+}
+
 void Gate::PrintGateWithAdditionOp(std::string additionOp) const
 {
     Print(additionOp);
