@@ -59,3 +59,4 @@ d,發,1,点点滴滴多
 d,發,給,点点滴滴多
 0,c,c,cc,a
 a,c,c,cc,a
+Tag.t82 == b :  true

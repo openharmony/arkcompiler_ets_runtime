@@ -226,7 +226,7 @@ private:
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
         if (hashcode == 0 && GetLength() != 0) {
             hashcode = ComputeHashcode();
-            SetRawHashcode(hashcode);
+            SetMixHashcode(hashcode);
         }
         return hashcode;
     }
