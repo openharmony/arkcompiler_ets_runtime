@@ -1408,6 +1408,7 @@ public:
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturnJS(const EcmaVM *vm);
+    static void NotifyLoadModule(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
