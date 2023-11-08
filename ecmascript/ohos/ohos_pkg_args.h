@@ -24,7 +24,7 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/json_parser.h"
-#include "ecmascript/compiler/aot_compiler.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
@@ -50,7 +50,7 @@ public:
 
     OhosPkgArgs() = default;
 
-    static bool ParseArgs(CompilationPreprocessor &preProcessor, CompilationOptions &cOptions)
+    static bool ParseArgs(AotCompilerPreprocessor &preProcessor, CompilationOptions &cOptions)
     {
         ASSERT(preProcessor.runtimeOptions_.IsTargetCompilerMode());
         std::shared_ptr<OhosPkgArgs> pkgArgs = std::make_shared<OhosPkgArgs>();
@@ -59,7 +59,8 @@ public:
                 return false;
             }
             LOG_COMPILER(INFO) << "Parse main pkg info success.";
-            preProcessor.pkgsArgs_[pkgArgs->GetFullName()] = pkgArgs;
+            preProcessor.mainPkgName_ = pkgArgs->GetFullName();
+            preProcessor.pkgsArgs_[preProcessor.mainPkgName_] = pkgArgs;
             if (!ParseProfilerPath(pkgArgs, preProcessor, cOptions)) {
                 return false;
             }
@@ -267,26 +268,51 @@ public:
         pgoDir_ = pgoDir;
     }
 
-    std::string GetPgoPaths() const
+    void GetPgoPaths(std::string &pgoPaths, bool &needMerge) const
     {
+        pgoPaths.clear();
+        needMerge = false;
         // 1. use target aps when app in white list
         if (WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
-            std::string pgoPaths = GetTargetApPaths();
-            if (!pgoPaths.empty()) {
-                return pgoPaths;
-            }
+            pgoPaths = GetTargetApPaths();
+        }
+        if (!pgoPaths.empty()) {
+            needMerge = true;
+            return;
         }
 
         // 2. use baseline ap if there's no runtime ap
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
         if (FileExist(baselineAp.c_str())) {
-            return baselineAp;
+            pgoPaths = baselineAp;
         }
-        return "";
+    }
+
+    std::string GetRuntimeApPath() const
+    {
+        auto runtimeAp = pgoDir_ + '/' + pgo::ApNameUtils::GetRuntimeApName(moduleName_);
+        if (!FileExist(runtimeAp.c_str())) {
+            return "";
+        }
+        return runtimeAp;
+    }
+
+    std::string GetMergedApPathWithoutCheck() const
+    {
+        return pgoDir_ + '/' + pgo::ApNameUtils::GetMergedApName(moduleName_);
+    }
+
+    std::string GetMergedApPath() const
+    {
+        auto mergedAp = GetMergedApPathWithoutCheck();
+        if (!FileExist(mergedAp.c_str())) {
+            return "";
+        }
+        return mergedAp;
     }
 
 private:
-    static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, CompilationPreprocessor &preProcessor,
+    static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, AotCompilerPreprocessor &preProcessor,
                                   CompilationOptions &cOptions)
     {
         if (!preProcessor.runtimeOptions_.IsPartialCompilerMode()) {
@@ -300,7 +326,7 @@ private:
             pkgArgs->SetPgoDir(ResolveDirPath(pandaFileNames.at(0)));
         }
         // reset profilerIn from pgo dir
-        cOptions.profilerIn_ = pkgArgs->GetPgoPaths();
+        pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
         if (cOptions.profilerIn_.empty()) {
             LOG_COMPILER(ERROR) << "No available ap files found in " << pkgArgs->GetPgoDir();
             return false;
@@ -324,7 +350,8 @@ private:
 
     std::string GetTargetApPaths() const
     {
-        std::string pgoPaths;
+        // handle merged ap
+        std::string pgoPaths = GetMergedApPath();
 
         // handle runtime ap
         auto runtimeAp = GetRuntimeApPath();
@@ -335,15 +362,6 @@ private:
             pgoPaths += runtimeAp;
         }
         return pgoPaths;
-    }
-
-    std::string GetRuntimeApPath() const
-    {
-        auto runtimeAp = pgoDir_ + '/' + pgo::ApNameUtils::GetRuntimeApName(moduleName_);
-        if (!FileExist(runtimeAp.c_str())) {
-            return "";
-        }
-        return runtimeAp;
     }
 
     static constexpr uint32_t INVALID_VALUE = std::numeric_limits<uint32_t>::max();

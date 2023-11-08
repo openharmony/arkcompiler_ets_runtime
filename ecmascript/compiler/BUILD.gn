@@ -58,6 +58,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   stack_protector_ret = false
   sources = [
     "access_object_stub_builder.cpp",
+    "aot_compiler_preprocessor.cpp",
     "argument_accessor.cpp",
     "array_bounds_check_elimination.cpp",
     "assembler/aarch64/assembler_aarch64.cpp",

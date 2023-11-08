@@ -51,7 +51,7 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
             realPath = path;
             return true;
         }
-        LOG_ECMA(ERROR) << "File path:" << path << " realpath failure";
+        LOG_ECMA(ERROR) << "File path:" << path << " realpath failure. errno: " << errno;
         return false;
     }
     realPath = std::string(buffer);
