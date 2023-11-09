@@ -25,7 +25,8 @@ JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacit
     uint32_t length = VectorToArrayIndex(capacity);
     JSHandle<WeakVector> vector;
     if (type == MemSpaceType::NON_MOVABLE) {
-        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Hole(), true));
+        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length,
+            JSTaggedValue::Hole(), true));
     } else {
         vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length));
     }

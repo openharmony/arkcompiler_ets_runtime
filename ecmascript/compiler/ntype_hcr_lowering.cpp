@@ -77,7 +77,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex);
+    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
@@ -104,10 +104,13 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
-    return builder_.LoadFromTaggedArray(constPool, index);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
+    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    return builder_.LoadFromTaggedArray(valVec, index);
 }
 
 GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength)

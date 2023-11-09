@@ -31,6 +31,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -550,10 +551,15 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
     }
     int32_t nextInlinedPropsIndex = objHandle->GetJSHClass()->GetNextInlinedPropsIndex();
     if (nextInlinedPropsIndex >= 0) {
-        objHandle->SetPropertyInlinedProps(thread, nextInlinedPropsIndex, valueHandle.GetTaggedValue());
         attr.SetOffset(nextInlinedPropsIndex);
         attr.SetIsInlinedProps(true);
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
+        auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        if (actualValue.first) {
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, actualValue.second);
+        } else {
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, actualValue.second);
+        }
         return attr;
     }
 
@@ -592,7 +598,12 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
 
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
-        array->Set(thread, nonInlinedProps, valueHandle.GetTaggedValue());
+        auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        if (actualValue.first) {
+            array->Set<true>(thread, nonInlinedProps, actualValue.second);
+        } else {
+            array->Set<false>(thread, nonInlinedProps, actualValue.second);
+        }
     } else {
         JSHandle<NameDictionary> dictHandle(array);
         JSHandle<NameDictionary> newDict =

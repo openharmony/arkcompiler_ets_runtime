@@ -107,6 +107,6 @@ GateRef TSHCROptPass::ConvertToSingleCharComparison(GateRef left, GateRef right)
     }
     return builder_.TypedBinaryOp<TypedBinOp::TYPED_EQ>(left, right, GateType::IntType(),
                                                         GateType::IntType(), GateType::BooleanType(),
-                                                        PGOSampleType::NoneType());
+                                                        PGOTypeRef::NoneType());
 }
 }  // namespace panda::ecmascript::kungfu

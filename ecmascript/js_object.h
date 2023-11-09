@@ -633,6 +633,8 @@ public:
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 
+    static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
+
     inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(uint32_t index, JSTaggedValue value);
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>

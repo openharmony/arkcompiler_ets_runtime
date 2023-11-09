@@ -23,9 +23,11 @@
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_parser.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -43,15 +45,6 @@ std::string GetHelper()
     str.append(COMPILER_HELP_HEAD_MSG);
     str.append(HELP_OPTION_MSG);
     return str;
-}
-
-std::string GetEntryPoint(const JSRuntimeOptions &runtimeOptions)
-{
-    std::string entrypoint = "init::func_main_0";
-    if (runtimeOptions.WasSetEntryPoint()) {
-        entrypoint = runtimeOptions.GetEntryPoint();
-    }
-    return entrypoint;
 }
 
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
@@ -234,9 +227,11 @@ void CompilationPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
     for (const AbcFileInfo &fileInfo : fileInfos_) {
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
         TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
+        PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
         BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
                                         cOptions.isEnableCollectLiteralInfo_);
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
+        const PGOBCInfo *bcInfo = collector.GetPGOBCInfo();
         const auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
         auto &methodList = bytecodeInfo.GetMethodList();
         for (const auto &method : methodList) {
@@ -249,14 +244,39 @@ void CompilationPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
             TypeRecorder typeRecorder(jsPandaFile, methodLiteral, tsManager, recordName, &profilerDecoder_,
                                       methodPcInfo, collector.GetByteCodes(), cOptions.isEnableOptTrackField_);
             typeRecorder.BindPgoTypeToGateType(jsPandaFile, tsManager, methodLiteral);
+
+            bcInfo->IterateInfoByType(methodOffset, PGOBCInfo::Type::ARRAY_LITERAL,
+                [this, tsManager, ptManager, &recordName](
+                    const uint32_t bcIdx, const uint32_t bcOffset, const uint32_t cpIdx) {
+                    JSHandle<ConstantPool> constpoolHandle(tsManager->GetConstantPool());
+                    JSThread *thread = vm_->GetJSThread();
+                    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(thread,
+                        constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+                    JSHandle<JSArray> arrayHandle(thread, arr);
+                    panda_file::File::EntityId id =
+                        ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
+                    ptManager->RecordElements(id, arrayHandle->GetElements());
+                });
         }
+    }
+}
+
+void CompilationPreprocessor::GeneratePGOTypes(const CompilationOptions &cOptions)
+{
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    for (const AbcFileInfo &fileInfo : fileInfos_) {
+        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
+        BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
+                                        cOptions.isEnableCollectLiteralInfo_);
+        PGOTypeParser parser(profilerDecoder_, ptManager);
+        parser.CreatePGOType(collector);
     }
 }
 
 void CompilationPreprocessor::SnapshotInitialize()
 {
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    tsManager->SnapshotInit(fileInfos_.size());
+    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    ptManager->InitAOTSnapshot(fileInfos_.size());
 }
 
 int Main(const int argc, const char **argv)
@@ -320,6 +340,7 @@ int Main(const int argc, const char **argv)
             return 1;
         }
         cPreprocessor.GenerateGlobalTypes(cOptions);
+        cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();
         ret = cPreprocessor.GetCompilerResult();
 
@@ -339,9 +360,7 @@ int Main(const int argc, const char **argv)
                                 cOptions.isEnableOptConstantFolding_,
                                 cOptions.isEnableLexenvSpecialization_,
                                 cOptions.isEnableNativeInline_);
-        std::string entrypoint = GetEntryPoint(runtimeOptions);
         PassManager passManager(vm,
-                                entrypoint,
                                 cOptions.triple_,
                                 cOptions.optLevel_,
                                 cOptions.relocMode_,

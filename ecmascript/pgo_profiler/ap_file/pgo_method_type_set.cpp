@@ -20,6 +20,7 @@
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
@@ -42,7 +43,7 @@ void PGOMethodTypeSet::Merge(const PGOMethodTypeSet *info)
         }
     }
     for (const auto &fromType : info->objDefOpTypeInfos_) {
-        AddDefine(fromType.GetOffset(), fromType.GetType(), fromType.GetSuperType());
+        AddDefine(fromType.GetOffset(), fromType.GetType());
     }
 }
 
@@ -67,9 +68,9 @@ bool PGOMethodTypeSet::ParseFromBinary(PGOContext &context, void **buffer)
                                        PGOSampleType::ConvertFrom(context, scalerInfo->GetType()));
         } else if (typeInfo->GetInfoType() == InfoType::DEFINE_CLASS_TYPE) {
             auto *defineInfo = reinterpret_cast<ObjDefOpTypeInfoRef *>(typeInfo);
-            ObjDefOpTypeInfo info(defineInfo->GetOffset(),
-                                    PGOSampleType::ConvertFrom(context, defineInfo->GetType()),
-                                    PGOSampleType::ConvertFrom(context, defineInfo->GetSuperType()));
+            PGODefineOpType type;
+            type.ConvertFrom(context, defineInfo->GetType());
+            ObjDefOpTypeInfo info(defineInfo->GetOffset(), type);
             objDefOpTypeInfos_.emplace(info);
         } else if (header->SupportUseHClassType() && typeInfo->GetInfoType() == InfoType::USE_HCLASS_TYPE) {
             auto *opTypeInfo = reinterpret_cast<RWScalarOpTypeInfoRef *>(typeInfo);
@@ -103,9 +104,9 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
     }
 
     for (const auto &typeInfo : objDefOpTypeInfos_) {
-        ObjDefOpTypeInfoRef infoRef(typeInfo.GetOffset(),
-                                        PGOSampleTypeRef::ConvertFrom(context, typeInfo.GetType()),
-                                        PGOSampleTypeRef::ConvertFrom(context, typeInfo.GetSuperType()));
+        PGODefineOpTypeRef typeRef;
+        typeRef.ConvertFrom(context, typeInfo.GetType());
+        ObjDefOpTypeInfoRef infoRef(typeInfo.GetOffset(), typeRef);
         methodStream.write(reinterpret_cast<char *>(&infoRef), infoRef.Size());
         number++;
     }

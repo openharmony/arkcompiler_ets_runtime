@@ -49,13 +49,38 @@ JSHandle<Derived> TaggedList<Derived>::Create(const JSThread *thread, int number
 template <typename Derived>
 void TaggedList<Derived>::CopyArray(const JSThread *thread, JSHandle<Derived> &taggedList)
 {
-    int capacity = GetCapacityFromTaggedArray();
+    int deleteNodeNum = NumberOfDeletedNodes();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    for (int i = 0; i < capacity; i++) {
-        value.Update(GetElement(i));
-        taggedList->SetElement(thread, i, value.GetTaggedValue());
+    if (deleteNodeNum == 0 || std::is_same_v<TaggedDoubleList, Derived>) {
+        int capacity = GetCapacityFromTaggedArray();
+        for (int i = 0; i < capacity; i++) {
+            value.Update(GetElement(i));
+            taggedList->SetElement(thread, i, value.GetTaggedValue());
+        }
+        taggedList->SetNumberOfDeletedNodes(thread, NumberOfDeletedNodes());
+        return;
     }
-    taggedList->SetNumberOfDeletedNodes(thread, NumberOfDeletedNodes());
+
+    int actualNodeNum = NumberOfNodes();
+    int tailTableIndex = ELEMENTS_START_INDEX + actualNodeNum * Derived::ENTRY_SIZE;
+    int nextTailIndex = ELEMENTS_START_INDEX + Derived::ENTRY_SIZE;
+    JSTaggedValue data = JSTaggedValue(ELEMENTS_START_INDEX);
+    taggedList->SetNumberOfNodes(thread, actualNodeNum);
+    taggedList->SetNumberOfDeletedNodes(thread, 0);
+    taggedList->SetElement(thread, HEAD_TABLE_INDEX, data);
+    taggedList->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(tailTableIndex));
+    taggedList->SetElement(thread, ELEMENTS_START_INDEX, JSTaggedValue::Hole());
+    taggedList->SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, JSTaggedValue(nextTailIndex));
+
+    int dataIndex = ELEMENTS_START_INDEX;
+    int nextIndex = GetElement(dataIndex + Derived::NEXT_PTR_OFFSET).GetInt();
+    for (int i = 0; i < actualNodeNum; i++) {
+        taggedList->SetElement(thread, nextTailIndex + i * Derived::ENTRY_SIZE,
+                               GetElement(nextIndex + i * Derived::ENTRY_SIZE));
+        taggedList->SetElement(thread, nextTailIndex + NEXT_PTR_OFFSET + i * Derived::ENTRY_SIZE,
+                               JSTaggedValue(nextTailIndex + (i + 1) * Derived::ENTRY_SIZE));
+    }
+    taggedList->SetElement(thread, tailTableIndex + 1, JSTaggedValue(dataIndex));
 }
 
 template <typename Derived>
@@ -85,6 +110,13 @@ JSTaggedValue TaggedList<Derived>::AddNode(const JSThread *thread, const JSHandl
     int nodeLength = list->NumberOfNodes();
     int finalDataIndex = ELEMENTS_START_INDEX + (nodeLength + 1 + deleteNodeLength) * Derived::ENTRY_SIZE;
 
+    if (std::is_same_v<TaggedSingleList, Derived> && taggedList != list) {
+        if (index != -1) {
+            prevDataIndex = list->FindPrevNodeByIndex(index);
+        } else {
+            prevDataIndex = list->GetElement(TAIL_TABLE_INDEX).GetInt();
+        }
+    }
     list->InsertNode(thread, value, prevDataIndex, finalDataIndex);
     if (index == -1 || nodeLength == index) {
         list->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(finalDataIndex));

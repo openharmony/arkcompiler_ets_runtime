@@ -574,7 +574,7 @@ GateRef ArrayBoundsCheckElimination::PredicateAdd(GateRef left, int32_t leftCons
     GateRef constGate = builder_.Int32(leftConst);
     GateRef binaryOpGate = builder_.InsertTypedBinaryop(left, constGate, GateType::NumberType(),
                                                         GateType::NumberType(), GateType::AnyType(),
-                                                        PGOSampleType::NoneType(), TypedBinOp::TYPED_ADD);
+                                                        PGOTypeRef::NoneType(), TypedBinOp::TYPED_ADD);
     return Predicate(binaryOpGate, cond, right);
 }
 
@@ -817,13 +817,13 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
                     GateRef minGate = builder_.Int32(info->min_);
                     lowerCompare = builder_.InsertTypedBinaryop(lowerCompare, minGate,
                                                     GateType::NumberType(), GateType::NumberType(),
-                                                    GateType::AnyType(), PGOSampleType::NoneType(),
+                                                    GateType::AnyType(), PGOTypeRef::NoneType(),
                                                     TypedBinOp::TYPED_ADD);
                 } else if (info->min_ < 0) {
                     GateRef minGate = builder_.Int32(-info->min_);
                     lowerCompare = builder_.InsertTypedBinaryop(lowerCompare, minGate,
                                                     GateType::NumberType(), GateType::NumberType(),
-                                                    GateType::AnyType(), PGOSampleType::NoneType(),
+                                                    GateType::AnyType(), PGOTypeRef::NoneType(),
                                                     TypedBinOp::TYPED_SUB);
                 }
 
@@ -836,13 +836,13 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
                         GateRef maxGate = builder_.Int32(info->max_);
                         upperCompare = builder_.InsertTypedBinaryop(upperCompare, maxGate,
                                                         GateType::NumberType(), GateType::NumberType(),
-                                                        GateType::AnyType(), PGOSampleType::NoneType(),
+                                                        GateType::AnyType(), PGOTypeRef::NoneType(),
                                                         TypedBinOp::TYPED_ADD);
                     } else if (info->max_ < 0) {
                         GateRef maxGate = builder_.Int32(-info->max_);
                         upperCompare = builder_.InsertTypedBinaryop(upperCompare, maxGate,
                                                         GateType::NumberType(), GateType::NumberType(),
-                                                        GateType::AnyType(), PGOSampleType::NoneType(),
+                                                        GateType::AnyType(), PGOTypeRef::NoneType(),
                                                         TypedBinOp::TYPED_SUB);
                     }
                 }

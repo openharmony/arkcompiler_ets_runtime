@@ -212,12 +212,12 @@ bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &re
     return recordSimpleInfos_->Match(GetNormalizedFileDesc(jsPandaFile), recordName, EntityId(methodId));
 }
 
-bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
+bool PGOProfilerDecoder::GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const
 {
     if (!isLoaded_ || !isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->GetHClassLayoutDesc(profileType, desc);
+    return recordSimpleInfos_->GetHClassTreeDesc(profileType, desc);
 }
 
 void PGOProfilerDecoder::GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount,

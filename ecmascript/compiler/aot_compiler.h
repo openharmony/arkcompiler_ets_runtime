@@ -61,6 +61,7 @@ struct CompilationOptions {
     bool isEnableOptConstantFolding_;
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
+    bool isEnablePGOHCRLowering_;
 };
 
 class CompilationPreprocessor {
@@ -87,6 +88,8 @@ public:
     bool GenerateAbcFileInfos();
 
     void GenerateGlobalTypes(const CompilationOptions &cOptions);
+
+    void GeneratePGOTypes(const CompilationOptions &cOptions);
 
     void SnapshotInitialize();
 

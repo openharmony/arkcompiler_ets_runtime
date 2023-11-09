@@ -65,12 +65,12 @@ public:
         return pcOffset_;
     }
 
-    void SetType(PGOSampleType type)
+    void SetType(PGOTypeRef type)
     {
         type_ = type;
     }
 
-    PGOSampleType GetType() const
+    PGOTypeRef GetType() const
     {
         return type_;
     }
@@ -102,7 +102,7 @@ public:
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
-    PGOSampleType type_;
+    PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};
 };
 

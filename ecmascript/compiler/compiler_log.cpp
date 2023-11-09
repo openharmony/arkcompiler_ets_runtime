@@ -253,14 +253,14 @@ void PGOTypeLogList::CollectGateTypeLogInfo(GateRef gate, bool isBinOp)
 
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     if (isBinOp) {
-        PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-        if (sampleType.IsNumber()) {
-            if (sampleType.IsInt()) {
+        const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+        if (sampleType->IsNumber()) {
+            if (sampleType->IsInt()) {
                 log_ += " [left type: int, right type: int]";
             } else {
-                if (sampleType.IsIntOverFlow()) {
+                if (sampleType->IsIntOverFlow()) {
                     log_ += " [left type: int, right type: int]";
-                } else if (sampleType.IsDouble()) {
+                } else if (sampleType->IsDouble()) {
                     log_ += " [left type: double, right type: double]";
                 } else {
                     log_ += " [left type: number, right type: number]";

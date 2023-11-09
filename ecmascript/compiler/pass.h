@@ -106,6 +106,11 @@ public:
         return ctx_->GetTSManager();
     }
 
+    PGOTypeManager* GetPTManager() const
+    {
+        return ctx_->GetPTManager();
+    }
+
     const JSPandaFile *GetJSPandaFile() const
     {
         return ctx_->GetJSPandaFile();
@@ -253,11 +258,6 @@ public:
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
                                         enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-        if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
-            InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
-                                                data->GetMethodName(), enableLog);
-            initAnalysis.Run();
-        }
         return true;
     }
 };
@@ -309,7 +309,7 @@ public:
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
                                   data->GetMethodName());
-        
+
         visitor.AddPass(&optimization);
         visitor.AddPass(&deadCodeElimination);
         visitor.VisitGraph();
@@ -329,7 +329,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
+            enableLog, data->GetMethodName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -522,22 +522,20 @@ public:
     {
         TimeScope timescope("LoopOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
-        const auto& headList = data->GetBuilder()->GetLoopHeads();
-        LoopAnalysis loopAnalysis_(data->GetCircuit(), &chunk);
-        for (auto head : headList) {
-            auto bb = data->GetBuilder()->GetBasicBlockById(head.second);
-            auto loopInfo = new LoopInfo(&chunk, bb.stateCurrent);
-            loopAnalysis_.CollectLoopBody(loopInfo);
-            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        LoopAnalysis loopAnalysis(data->GetBuilder(), data->GetCircuit(), &chunk);
+        loopAnalysis.Run();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        for (auto loopInfo : loopAnalysis.GetLoopTree()) {
+            loopAnalysis.CollectLoopBody(loopInfo);
             if (enableLog) {
-                loopAnalysis_.PrintLoop(loopInfo);
+                loopAnalysis.PrintLoop(loopInfo);
             }
             if (data->GetPassOptions()->EnableOptLoopPeeling()) {
                 LoopPeeling(data->GetBuilder(), data->GetCircuit(), enableLog,
                             data->GetMethodName(), &chunk, loopInfo).Peel();
             }
         }
-        loopAnalysis_.LoopExitElimination();
+        loopAnalysis.LoopExitElimination();
         return true;
     }
 };

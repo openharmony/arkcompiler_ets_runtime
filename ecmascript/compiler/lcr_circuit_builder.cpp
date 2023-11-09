@@ -94,20 +94,23 @@ GateRef CircuitBuilder::Alloca(size_t size)
     return GetCircuit()->NewGate(circuit_->Alloca(size), MachineType::ARCH, GateType::NJSValue());
 }
 
-void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
+void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value,
+    MemoryOrder order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef ptr = PtrAdd(base, offset);
-    GateRef result = GetCircuit()->NewGate(circuit_->Store(),
+    auto bit = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
         MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
     label->SetDepend(result);
 }
 
 // memory
-void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
+    MemoryOrder order)
 {
-    StoreWithNoBarrier(type, base, offset, value);
+    StoreWithNoBarrier(type, base, offset, value, order);
     if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
         Label entry(env_);
         SubCfgEntry(&entry);
@@ -125,21 +128,24 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
 }
 
 // memory
-GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef val = PtrAdd(base, offset);
-    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+    auto bits = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
                                            { depend, val }, type.GetGateType());
     label->SetDepend(result);
     return result;
 }
 
-GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend)
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
+    MemoryOrder order)
 {
     GateRef val = PtrAdd(base, offset);
-    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+    auto bits = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
                                            { depend, val }, type.GetGateType());
     return result;
 }

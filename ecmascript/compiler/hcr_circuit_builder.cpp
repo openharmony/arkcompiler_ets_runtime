@@ -322,7 +322,7 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
 }
 
-GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
@@ -332,7 +332,7 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult };
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder };
     AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset),
                                           MachineType::I64,
@@ -345,7 +345,7 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     return callGate;
 }
 
-GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    GateRef value, const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
@@ -355,7 +355,7 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, value };
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder, value };
     AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset),
                                           MachineType::I64,

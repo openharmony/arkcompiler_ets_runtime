@@ -1679,11 +1679,11 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
         auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
-        object->SetClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
+        object->SynchronizedSetClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
-    object->SetClass(reinterpret_cast<JSHClass *>(hclassAddr));
+    object->SynchronizedSetClass(reinterpret_cast<JSHClass *>(hclassAddr));
 }
 
 void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)

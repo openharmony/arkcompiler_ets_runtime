@@ -35,3 +35,9 @@ print(barStr.trim());
 let chinese = "     我，是一个中文句子    我前面有一些空格，我中间有一些空格。     我后面也有一些空格。          ";
 print(chinese);
 print(chinese.trim());
+
+let a = "a    assseeeeeeeeeeddddddd"
+let c = a.substring(1, 20);
+let d = c.substring(2, 20);
+print(d);
+print(d.trim())

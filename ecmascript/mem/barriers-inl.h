@@ -61,6 +61,15 @@ inline void Barriers::SynchronizedSetClass(void *obj, JSTaggedType value)
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(obj)->store(value, std::memory_order_release);
     WriteBarrier(obj, 0, value);
 }
+
+inline void Barriers::SynchronizedSetObject(void *obj, size_t offset, JSTaggedType value, bool isPrimitive)
+{
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)
+    ->store(value, std::memory_order_release);
+    if (!isPrimitive) {
+        WriteBarrier(obj, offset, value);
+    }
+}
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_BARRIERS_INL_H

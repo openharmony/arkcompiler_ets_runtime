@@ -76,6 +76,14 @@ GateRef CircuitBuilder::IsCallable(GateRef obj)
     return IsCallableFromBitField(bitfield);
 }
 
+GateRef CircuitBuilder::IsProtoTypeHClass(GateRef hClass)
+{
+    GateRef bitfield = LoadConstOffset(VariableType::INT32(), hClass, JSHClass::BIT_FIELD_OFFSET);
+    return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsPrototypeBit::START_BIT)),
+        Int32((1LU << JSHClass::IsPrototypeBit::SIZE) - 1)));
+}
+
 GateRef CircuitBuilder::IsTreeString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -165,6 +173,11 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
 void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
     Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
+}
+
+void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
+{
+    Store(VariableType::JS_POINTER(), glue, hclass, IntPtr(JSHClass::PROTOTYPE_OFFSET), prototype);
 }
 
 GateRef CircuitBuilder::GetObjectType(GateRef hClass)

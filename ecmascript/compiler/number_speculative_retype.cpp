@@ -412,9 +412,9 @@ GateRef NumberSpeculativeRetype::VisitTypedConditionJump(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitNumberCalculate(GateRef gate)
 {
     if (IsRetype()) {
-        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-        if (sampleType.IsNumber()) {
-            return SetOutputType(gate, sampleType);
+        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+        if (sampleType->IsNumber()) {
+            return SetOutputType(gate, *sampleType);
         } else {
             GateType gateType = acc_.GetGateType(gate);
             GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
@@ -448,9 +448,9 @@ GateRef NumberSpeculativeRetype::VisitNumberShiftAndLogical(GateRef gate)
         Environment env(gate, circuit_, &builder_);
         GateType leftType = acc_.GetLeftType(gate);
         GateType rightType = acc_.GetRightType(gate);
-        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-        if (sampleType.IsNumber()) {
-            if (sampleType.IsInt()) {
+        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+        if (sampleType->IsNumber()) {
+            if (sampleType->IsInt()) {
                 leftType = GateType::IntType();
                 rightType = GateType::IntType();
             } else {
@@ -690,19 +690,19 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
 
 void NumberSpeculativeRetype::ConvertForBinaryOp(GateRef gate)
 {
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             GateType leftType = GateType::IntType();
             GateType rightType = GateType::IntType();
             ConvertForIntOperator(gate, leftType, rightType);
         } else {
             GateType leftType = GateType::NumberType();
             GateType rightType = GateType::NumberType();
-            if (sampleType.IsIntOverFlow()) {
+            if (sampleType->IsIntOverFlow()) {
                 leftType = GateType::IntType();
                 rightType = GateType::IntType();
-            } else if (sampleType.IsDouble()) {
+            } else if (sampleType->IsDouble()) {
                 leftType = GateType::DoubleType();
                 rightType = GateType::DoubleType();
             }
@@ -722,9 +722,9 @@ void NumberSpeculativeRetype::ConvertForBinaryOp(GateRef gate)
 
 void NumberSpeculativeRetype::ConvertForCompareOp(GateRef gate)
 {
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             GateType leftType = GateType::IntType();
             GateType rightType = GateType::IntType();
             ConvertForIntOperator(gate, leftType, rightType);
@@ -1123,7 +1123,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, GateType::DoubleType(), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
@@ -1195,9 +1195,9 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
 {
     if (IsRetype()) {
-        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-        if (sampleType.IsNumber()) {
-            return SetOutputType(gate, sampleType);
+        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+        if (sampleType->IsNumber()) {
+            return SetOutputType(gate, *sampleType);
         } else {
             GateType gateType = acc_.GetGateType(gate);
             GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();

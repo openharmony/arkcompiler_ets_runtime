@@ -51,6 +51,11 @@ public:
         return tsManager_;
     }
 
+    PGOTypeManager* GetPTManager() const
+    {
+        return vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    }
+
     Bytecodes* GetByteCodes()
     {
         return bytecodes_;
@@ -187,10 +192,10 @@ private:                              \
 
 class PassManager {
 public:
-    explicit PassManager(EcmaVM* vm, std::string &entry, std::string &triple, size_t optLevel, size_t relocMode,
+    explicit PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+        : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerDecoder_(profilerDecoder), passOptions_(passOptions) {};
     ~PassManager() = default;
@@ -198,12 +203,9 @@ public:
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
 
 private:
-    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
-    void ProcessConstantPool(BytecodeInfoCollector *collector);
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
 
     EcmaVM *vm_ {nullptr};
-    std::string entry_ {};
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC

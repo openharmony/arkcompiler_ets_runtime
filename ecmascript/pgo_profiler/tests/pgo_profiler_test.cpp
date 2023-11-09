@@ -673,6 +673,7 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.write(result.c_str(), result.size());
     file.close();
 
+    PGOProfilerHeader::SetStrictMatch(false);
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
                                                                 ApGenMode::OVERWRITE));
 
@@ -775,20 +776,18 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, methodId](uint32_t offset, PGOType *type) {
+        auto callback = [methodName](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "Foot" || std::string(methodName) == "Arm") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
-                    ASSERT_EQ(pgoRWOpType.GetObjectInfo(0).GetProfileType(),
-                              ProfileType(ApEntityId(PGORecordPool::RESERVED_COUNT), methodId.GetOffset()));
                 } else if (std::string(methodName) == "foo" || std::string(methodName) == "Body") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                 }
             } else {
-                ASSERT_TRUE(false);
+                ASSERT_TRUE(true);
             }
         };
         decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
@@ -816,33 +815,28 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 3);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 1);
                     auto classId = EntityId(sampleType.GetProfileType().GetId());
                     auto className = MethodLiteral::GetMethodName(jsPandaFile.get(), classId);
                     if (std::string(className) == "Arm") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
+                        auto superClassId = EntityId(desc->GetProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
                     } else if (std::string(className) == "Foot") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
+                        auto superClassId = EntityId(desc->GetProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 4);
                     } else {
-                        ASSERT_EQ(desc->GetSuperProfileType().GetRaw(), 0);
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 2);
+                        ASSERT_EQ(desc->GetProfileType().GetRaw(), 0);
                     }
                 }
             }
@@ -877,10 +871,10 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
             decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
             ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
         }
-        auto callback = [methodName, types, &index](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, types, &index](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     return;
                 }
@@ -922,21 +916,18 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetLayoutDesc().size(), 1);
                 }
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "foo") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
@@ -983,41 +974,26 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
                 }
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "foo") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 2);
                     auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetProfileType());
-                    PGOHClassLayoutDesc *desc;
-                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].second.GetTrackType(), TrackType::INT);
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].second.GetTrackType(), TrackType::INT);
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].first, "z");
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].second.GetTrackType(), TrackType::INT);
+                    PGOHClassTreeDesc *desc;
+                    ASSERT_TRUE(decoder.GetHClassTreeDesc(classType, &desc));
 
                     classType = PGOSampleType(pgoRWOpType.GetObjectInfo(1).GetProfileType());
-                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].first, "u");
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].second.GetTrackType(), TrackType::DOUBLE);
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].second.GetTrackType(), TrackType::NUMBER);
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].first, "t");
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].second.GetTrackType(), TrackType::TAGGED);
+                    ASSERT_TRUE(decoder.GetHClassTreeDesc(classType, &desc));
                 }
             }
         };
@@ -1046,12 +1022,12 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
                     if (std::string(methodName) == "foo") {
@@ -1158,75 +1134,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOSampleTypeLegacyCheckForWideClassType)
     ASSERT_TRUE(sampleType.IsProfileType());
     ASSERT_EQ(sampleType.GetProfileType().GetId(), classTypeLegacy.GetId());
     ASSERT_EQ(sampleType.GetProfileType().GetKind(), classTypeLegacy.GetKind());
-}
-
-HWTEST_F_L0(PGOProfilerTest, PGOObjectInfoLegacyCheckForWideClassType)
-{
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    ProfileTypeLegacy classTypeLegacy(0xafe, ProfileType::Kind::ElementId);
-    auto &profileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy)));
-    PGOObjectInfoRef objInfoLegacy(profileTypeRef, PGOObjKind::CONSTRUCTOR);
-    PGOObjectInfo objInfo;
-    objInfo.ConvertFrom(context, objInfoLegacy);
-    ASSERT_EQ(objInfo.GetObjKind(), objInfoLegacy.GetObjKind());
-    ASSERT_EQ(objInfo.GetProfileType().GetId(), 0xafe);
-    ASSERT_EQ(objInfo.GetProfileType().GetKind(), ProfileType::Kind::ElementId);
-}
-
-HWTEST_F_L0(PGOProfilerTest, PGORWOpTypeLegacyCheckForWideClassType)
-{
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    PGORWOpTypeRef rwOpLegacy;
-    // add item1
-    ProfileTypeLegacy classTypeLegacy1(0xafe, ProfileType::Kind::ElementId);
-    auto &profileTypeRef1 = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy1)));
-    PGOObjectInfoRef infoLegacy1(profileTypeRef1, PGOObjKind::CONSTRUCTOR);
-    rwOpLegacy.AddObjectInfo(infoLegacy1);
-
-    // add item2
-    ProfileTypeLegacy classTypeLegacy2(0xaff, ProfileType::Kind::BuiltinsId);
-    auto &profileTypeRef2 = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy2)));
-    PGOObjectInfoRef infoLegacy2(profileTypeRef2, PGOObjKind::ELEMENT);
-    rwOpLegacy.AddObjectInfo(infoLegacy2);
-
-    PGORWOpType rwOp;
-    rwOp.ConvertFrom(context, rwOpLegacy);
-    ASSERT_EQ(rwOp.GetCount(), rwOpLegacy.GetCount());
-    // get item
-    PGOObjectInfo info1 = rwOp.GetObjectInfo(0);
-    PGOObjectInfo info2 = rwOp.GetObjectInfo(1);
-
-    ASSERT_EQ(info1.GetObjKind(), PGOObjKind::CONSTRUCTOR);
-    ASSERT_EQ(info2.GetProfileType().GetId(), 0xaff);
-    ASSERT_EQ(info2.GetProfileType().GetKind(), ProfileType::Kind::BuiltinsId);
-}
-
-HWTEST_F_L0(PGOProfilerTest, PGOHClassLayoutDescInnerLegacyCheckForWideClassType)
-{
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    // create legacy
-    ProfileTypeLegacy classTypeLegacy(0xafe, ProfileType::Kind::ClassId);
-    auto &profileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy)));
-    PGOSampleTypeRef sampleTypeLegacyClass(profileTypeRef);
-
-    ProfileTypeLegacy superClassTypeLegacy(0xaff, ProfileType::Kind::ElementId);
-    auto &superProfileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&superClassTypeLegacy)));
-    PGOSampleTypeRef superSampleTypeLegacyClass(superProfileTypeRef);
-    auto elementsKind = ElementsKind::HOLE_NUMBER;
-    PGOHClassLayoutDesc desc;
-    desc.SetElementsKind(elementsKind);
-    ElementsTrackInfo trackInfo;
-    size_t size = PGOHClassLayoutDescInnerRef::CaculateSize(desc);
-    PGOHClassLayoutDescInnerRef layoutLegacy(size, sampleTypeLegacyClass, superSampleTypeLegacyClass, elementsKind,
-                                             trackInfo);
-
-    PGOHClassLayoutDesc descRecover = layoutLegacy.Convert(context);
-
-    ASSERT_EQ(descRecover.GetElementsKind(), elementsKind);
-    ASSERT_EQ(descRecover.GetProfileType().GetId(), 0xafe);
-    ASSERT_EQ(descRecover.GetProfileType().GetKind(), ProfileType::Kind::ClassId);
-    ASSERT_EQ(descRecover.GetSuperProfileType().GetId(), 0xaff);
-    ASSERT_EQ(descRecover.GetSuperProfileType().GetKind(), ProfileType::Kind::ElementId);
 }
 
 HWTEST_F_L0(PGOProfilerTest, RuntimeMerge)

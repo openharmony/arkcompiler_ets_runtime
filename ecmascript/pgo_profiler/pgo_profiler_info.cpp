@@ -254,12 +254,11 @@ bool PGOMethodInfoMap::AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t
     return true;
 }
 
-bool PGOMethodInfoMap::AddDefine(
-    Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
+bool PGOMethodInfoMap::AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGODefineOpType type)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
-    typeInfoSet->AddDefine(offset, type, superType);
+    typeInfoSet->AddDefine(offset, type);
     return true;
 }
 
@@ -614,52 +613,73 @@ bool PGORecordDetailInfos::AddObjectInfo(
 }
 
 bool PGORecordDetailInfos::AddDefine(
-    ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
+    ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGODefineOpType type)
 {
     auto curMethodInfos = GetMethodInfoMap(recordProfileType);
     ASSERT(curMethodInfos != nullptr);
-    curMethodInfos->AddDefine(chunk_.get(), methodId, offset, type, superType);
+    curMethodInfos->AddDefine(chunk_.get(), methodId, offset, type);
 
-    PGOHClassLayoutDesc descInfo(type.GetProfileType());
-    descInfo.SetSuperProfileType(superType.GetProfileType());
-    auto iter = moduleLayoutDescInfos_.find(descInfo);
-    if (iter != moduleLayoutDescInfos_.end()) {
-        moduleLayoutDescInfos_.erase(iter);
+    PGOHClassTreeDesc descInfo(type.GetProfileType());
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter == hclassTreeDescInfos_.end()) {
+        hclassTreeDescInfos_.emplace(descInfo);
     }
-    moduleLayoutDescInfos_.emplace(descInfo);
     return true;
 }
 
-bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind)
+bool PGORecordDetailInfos::AddRootLayout(JSTaggedType hclass, ProfileType rootType)
 {
-    auto hclassObject = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
-    PGOHClassLayoutDesc descInfo(type.GetProfileType());
-    auto iter = moduleLayoutDescInfos_.find(descInfo);
-    if (iter != moduleLayoutDescInfos_.end()) {
-        auto &oldDescInfo = const_cast<PGOHClassLayoutDesc &>(*iter);
-        if (!JSHClass::DumpForProfile(hclassObject, oldDescInfo, kind)) {
+    PGOHClassTreeDesc descInfo(rootType);
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        return const_cast<PGOHClassTreeDesc &>(*iter).DumpForRoot(hclass, rootType);
+    } else {
+        if (!descInfo.DumpForRoot(hclass, rootType)) {
             return false;
         }
+        hclassTreeDescInfos_.emplace(descInfo);
+    }
+    return true;
+}
+
+bool PGORecordDetailInfos::UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType)
+{
+    PGOHClassTreeDesc descInfo(rootType);
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateLayout(rootType, hclass, curType);
     } else {
-        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
     }
     return true;
 }
 
-bool PGORecordDetailInfos::UpdateElements(PGOSampleType type, ElementsKind kind, uint32_t size,
-                                          RegionSpaceFlag spaceFlag)
+bool PGORecordDetailInfos::UpdateElements(PGOSampleType type, uint32_t size, RegionSpaceFlag spaceFlag)
 {
-    PGOHClassLayoutDesc descInfo(type.GetProfileType());
-    auto iter = moduleLayoutDescInfos_.find(descInfo);
-    if (iter != moduleLayoutDescInfos_.end()) {
-        auto &oldDescInfo = const_cast<PGOHClassLayoutDesc &>(*iter);
-        oldDescInfo.UpdateElementKind(kind);
+    PGOHClassTreeDesc descInfo(type.GetProfileType());
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        auto &oldDescInfo = const_cast<PGOHClassTreeDesc &>(*iter);
         oldDescInfo.UpdateArrayLength(size);
         oldDescInfo.UpdateSpaceFlag(spaceFlag);
     } else {
-        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
+    }
+    return true;
+}
+
+bool PGORecordDetailInfos::AddTransitionLayout(
+    ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType)
+{
+    PGOHClassTreeDesc descInfo(rootType);
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        return const_cast<PGOHClassTreeDesc &>(*iter).DumpForTransition(parent, parentType, child, childType);
+    } else {
+        if (!descInfo.DumpForTransition(parent, parentType, child, childType)) {
+            return false;
+        }
+        hclassTreeDescInfos_.emplace(descInfo);
     }
     return true;
 }
@@ -668,7 +688,8 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 {
     std::map<ApEntityId, ApEntityId> idMapping;
     recordPool_->Merge(*recordInfos.recordPool_, idMapping);
-    for (auto iter = recordInfos.recordInfos_.begin(); iter != recordInfos.recordInfos_.end(); iter++) {
+    CMap<ProfileType, PGOMethodInfoMap *> methodInfos = recordInfos.recordInfos_;
+    for (auto iter = methodInfos.begin(); iter != methodInfos.end(); iter++) {
         auto oldRecordType = iter->first;
         auto newIter = idMapping.find(oldRecordType.GetId());
         if (newIter == idMapping.end()) {
@@ -689,14 +710,17 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
         toMethodInfos->Merge(chunk_.get(), fromMethodInfos);
     }
     // Merge global layout desc infos to global method info map
-    for (auto info = recordInfos.moduleLayoutDescInfos_.begin(); info != recordInfos.moduleLayoutDescInfos_.end();
+    std::set<PGOHClassTreeDesc> hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
+    for (auto info = hclassTreeDescInfos.begin(); info != hclassTreeDescInfos.end();
          info++) {
-        auto fromInfo = *info;
-        auto result = moduleLayoutDescInfos_.find(fromInfo);
-        if (result == moduleLayoutDescInfos_.end()) {
-            moduleLayoutDescInfos_.emplace(fromInfo);
+        auto &fromInfo = *info;
+        auto result = hclassTreeDescInfos_.find(fromInfo);
+        if (result == hclassTreeDescInfos_.end()) {
+            PGOHClassTreeDesc descInfo(fromInfo.GetProfileType());
+            descInfo.Merge(fromInfo);
+            hclassTreeDescInfos_.emplace(descInfo);
         } else {
-            const_cast<PGOHClassLayoutDesc &>(*result).Merge(fromInfo);
+            const_cast<PGOHClassTreeDesc &>(*result).Merge(fromInfo);
         }
     }
 }
@@ -750,12 +774,12 @@ bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
 {
     SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
     for (uint32_t i = 0; i < secInfo.number_; i++) {
-        auto *info = base::ReadBufferInSize<PGOHClassLayoutDescInnerRef>(buffer);
+        auto *info = base::ReadBufferInSize<PGOHClassTreeDescInnerRef>(buffer);
         if (info == nullptr) {
             LOG_ECMA(INFO) << "Binary format error!";
             continue;
         }
-        moduleLayoutDescInfos_.emplace(info->Convert(*this));
+        hclassTreeDescInfos_.emplace(info->Convert(*this));
     }
     return true;
 }
@@ -809,24 +833,21 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     SectionInfo secInfo;
     auto layoutBeginPosition = stream.tellp();
     stream.seekp(sizeof(SectionInfo), std::ofstream::cur);
-    for (const auto &typeInfo : moduleLayoutDescInfos_) {
+    for (const auto &typeInfo : hclassTreeDescInfos_) {
         if (task && task->IsTerminate()) {
             LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
             return false;
         }
         auto profileType = PGOSampleType(typeInfo.GetProfileType());
-        auto elementsKind = typeInfo.GetElementsKind();
         auto trackInfo = typeInfo.GetElementsTrackInfo();
-        size_t size = PGOHClassLayoutDescInnerRef::CaculateSize(typeInfo);
+        size_t size = PGOHClassTreeDescInnerRef::CaculateSize(typeInfo);
         if (size == 0) {
             continue;
         }
-        auto superType = PGOSampleType(typeInfo.GetSuperProfileType());
 
         PGOSampleTypeRef classRef = PGOSampleTypeRef::ConvertFrom(*this, profileType);
-        PGOSampleTypeRef superRef = PGOSampleTypeRef::ConvertFrom(*this, superType);
         void *addr = allocator->Allocate(size);
-        auto descInfos = new (addr) PGOHClassLayoutDescInnerRef(size, classRef, superRef, elementsKind, trackInfo);
+        auto descInfos = new (addr) PGOHClassTreeDescInnerRef(size, classRef, trackInfo);
         descInfos->Merge(typeInfo);
         stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);
@@ -888,7 +909,7 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
 {
     std::string profilerString;
     bool isFirst = true;
-    for (auto layoutInfoIter : moduleLayoutDescInfos_) {
+    for (auto layoutInfoIter : hclassTreeDescInfos_) {
         if (isFirst) {
             profilerString += DumpUtils::NEW_LINE;
             profilerString += DumpUtils::ARRAY_START + DumpUtils::SPACE;
@@ -896,7 +917,7 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
         } else {
             profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
         }
-        profilerString += PGOHClassLayoutDescInner::GetTypeString(layoutInfoIter);
+        profilerString += PGOHClassTreeDescInner::GetTypeString(layoutInfoIter);
     }
     if (!isFirst) {
         profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
@@ -926,11 +947,15 @@ void PGORecordDetailInfos::Clear()
         iter.second->Clear();
         nativeAreaAllocator_.Delete(iter.second);
     }
+    for (auto iter : hclassTreeDescInfos_) {
+        iter.Clear();
+    }
+    hclassTreeDescInfos_.clear();
     recordInfos_.clear();
     recordPool_->Clear();
     profileTypePool_->Clear();
     apSectionList_.clear();
-    moduleLayoutDescInfos_.clear();
+    hclassTreeDescInfos_.clear();
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();
@@ -1018,12 +1043,14 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
         }
     }
     // Merge global layout desc infos to global method info map
-    for (const auto &moduleLayoutDescInfo : simpleInfos.moduleLayoutDescInfos_) {
-        auto result = moduleLayoutDescInfos_.find(moduleLayoutDescInfo);
-        if (result == moduleLayoutDescInfos_.end()) {
-            moduleLayoutDescInfos_.emplace(moduleLayoutDescInfo);
+    for (const auto &hclassTreeDescInfo : simpleInfos.hclassTreeDescInfos_) {
+        auto result = hclassTreeDescInfos_.find(hclassTreeDescInfo);
+        if (result == hclassTreeDescInfos_.end()) {
+            PGOHClassTreeDesc descInfo(hclassTreeDescInfo.GetProfileType());
+            descInfo.Merge(hclassTreeDescInfo);
+            hclassTreeDescInfos_.emplace(descInfo);
         } else {
-            const_cast<PGOHClassLayoutDesc &>(*result).Merge(moduleLayoutDescInfo);
+            const_cast<PGOHClassTreeDesc &>(*result).Merge(hclassTreeDescInfo);
         }
     }
 }
@@ -1032,12 +1059,12 @@ bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
 {
     SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
     for (uint32_t i = 0; i < secInfo.number_; i++) {
-        auto *info = base::ReadBufferInSize<PGOHClassLayoutDescInnerRef>(buffer);
+        auto *info = base::ReadBufferInSize<PGOHClassTreeDescInnerRef>(buffer);
         if (info == nullptr) {
             LOG_ECMA(INFO) << "Binary format error!";
             continue;
         }
-        moduleLayoutDescInfos_.emplace(info->Convert(*this));
+        hclassTreeDescInfos_.emplace(info->Convert(*this));
     }
     return true;
 }
@@ -1058,11 +1085,15 @@ void PGORecordSimpleInfos::Clear()
             nativeAreaAllocator_.Delete(iter.second);
         }
     }
+    for (auto iter : hclassTreeDescInfos_) {
+        iter.Clear();
+    }
+    hclassTreeDescInfos_.clear();
     methodIds_.clear();
     recordPool_->Clear();
     profileTypePool_->Clear();
     apSectionList_.clear();
-    moduleLayoutDescInfos_.clear();
+    hclassTreeDescInfos_.clear();
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();

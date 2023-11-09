@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 
@@ -42,6 +43,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
+            break;
+        case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
+            LowerLoadHClassFromConstpool(gate);
             break;
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
@@ -131,8 +135,20 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    GateRef result = builder_.Load(type, receiver, offset);
+    GateRef result = builder_.Load(type, receiver, offset, acc_.GetMemoryOrder(gate));
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
+}
+
+void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef constpool = acc_.GetValueIn(gate, 0);
+    uint32_t index = acc_.GetIndex(gate);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
+    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
+    GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
+    GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
 }
 
 void MCRLowering::LowerStoreConstOffset(GateRef gate)
@@ -143,7 +159,7 @@ void MCRLowering::LowerStoreConstOffset(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    builder_.Store(type, glue_, receiver, offset, value);
+    builder_.Store(type, glue_, receiver, offset, value, acc_.GetMemoryOrder(gate));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

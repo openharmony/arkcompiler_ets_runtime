@@ -31,12 +31,9 @@ public:
         return static_cast<TaggedObject *>(header);
     }
 
-    void SetClass(JSHandle<JSHClass> hclass);
-
     void SynchronizedSetClass(JSHClass *hclass);
     JSHClass *SynchronizedGetClass() const;
     void SetClassWithoutBarrier(JSHClass *hclass);
-    void SetClass(JSHClass *hclass);
     JSHClass *GetClass() const;
 
     // Size of object header
@@ -50,7 +47,14 @@ public:
     JSThread* GetJSThread() const;
 
 private:
+    void SetClass(JSHClass *hclass);
+    void SetClass(JSHandle<JSHClass> hclass);
+
     MarkWordType class_;
+
+    friend class Heap;
+    friend class ObjectFactory;
+    friend class EcmaString;
 };
 static_assert(TaggedObject::TaggedObjectSize() == sizeof(MarkWordType));
 }  //  namespace panda::ecmascript

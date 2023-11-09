@@ -151,6 +151,13 @@ bool PGOProfilerEncoder::Save()
 void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncoder, PGOProfilerDecoder &decoder,
                                                const SaveTask *task)
 {
+    // inherit some info from runtime encoder
+    ASSERT(header_ != nullptr);
+    ASSERT(runtimeEncoder.header_ != nullptr);
+    header_->SetVersion(runtimeEncoder.header_->GetVersion());
+    bundleName_ = runtimeEncoder.bundleName_;
+    moduleName_ = runtimeEncoder.moduleName_;
+
     // copy abcFilePool from runtime to temp merger.
     ASSERT(abcFilePool_->GetPool()->Empty());
     abcFilePool_->Copy(runtimeEncoder.abcFilePool_);
@@ -237,7 +244,6 @@ bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
     if ((mode_ == MERGE) && FileExist(realOutPath_.c_str())) {
         PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
         encoder.InitializeData();
-        encoder.header_->SetVersion(header_->GetVersion());
         PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
         encoder.MergeWithExistProfile(*this, decoder, task);
         auto saveAndRenameResult = encoder.SaveAndRename(task);

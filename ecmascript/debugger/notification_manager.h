@@ -38,6 +38,7 @@ public:
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void NativeCalling(const void *nativeAddress) = 0;
+    virtual void NativeReturnJS() = 0;
     virtual void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) = 0;
     virtual void MethodExit(JSHandle<Method> method) = 0;
 };
@@ -86,6 +87,13 @@ public:
     {
         if (UNLIKELY(listener_ != nullptr)) {
             listener_->NativeCalling(nativeAddress);
+        }
+    }
+
+    void NativeReturnJSEvent() const
+    {
+        if (UNLIKELY(listener_ != nullptr)) {
+            listener_->NativeReturnJS();
         }
     }
 

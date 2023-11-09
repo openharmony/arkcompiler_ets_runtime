@@ -45,6 +45,7 @@ private:
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
+    void LowerLoadHClassFromConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
