@@ -325,7 +325,7 @@ void AArch64MoveRegArgs::MoveRegisterArgs()
             secondArgInfo.symLoc = (firstArgInfo.doMemPairOpt)
                                        ? secondArgInfo.symLoc
                                        : static_cast<AArch64SymbolAlloc *>(aarchCGFunc->GetMemlayout()->GetSymAllocInfo(
-                                             secondArgInfo.sym->GetStIndex()));
+                                           secondArgInfo.sym->GetStIndex()));
             /* Make sure they are in same segment if want to use stp */
             if (((firstArgInfo.isTwoRegParm && secondArgInfo.isTwoRegParm) ||
                  (!firstArgInfo.isTwoRegParm && !secondArgInfo.isTwoRegParm)) &&

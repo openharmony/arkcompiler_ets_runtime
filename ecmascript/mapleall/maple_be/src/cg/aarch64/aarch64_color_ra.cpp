@@ -188,7 +188,8 @@ std::vector<Insn *> LiveRange::Rematerialize(AArch64CGFunc *cgFunc, RegOperand &
                     Operand *immOp = cgFunc->SelectIntConst(*intConst);
                     MOperator movOp = (GetSpillSize() == k32BitSize) ? MOP_wmovri32 : MOP_xmovri64;
                     insns.push_back(&cgFunc->GetInsnBuilder()->BuildInsn(movOp, regOp, *immOp));
-                } break;
+                    break;
+                }
                 default:
                     DEBUG_ASSERT(false, "Unsupported constant for rematerialization");
             }
@@ -211,7 +212,8 @@ std::vector<Insn *> LiveRange::Rematerialize(AArch64CGFunc *cgFunc, RegOperand &
                 &cgFunc->GetOrCreateMemOpndAfterRa(*symbol, offset, dataSize, false, regOp64, insns);
             MOperator mOp = cgFunc->PickLdInsn(spillMemOp->GetSize(), symType);
             insns.push_back(&cgFunc->GetInsnBuilder()->BuildInsn(mOp, regOp, *spillMemOp));
-        } break;
+            break;
+        }
         case OP_addrof: {
             const MIRSymbol *symbol = rematInfo.sym;
             int32 offset = 0;
@@ -257,7 +259,8 @@ std::vector<Insn *> LiveRange::Rematerialize(AArch64CGFunc *cgFunc, RegOperand &
                     insns.push_back(&cgFunc->GetInsnBuilder()->BuildInsn(MOP_xadrpl12, regOp, regOp, stImm));
                 }
             }
-        } break;
+            break;
+        }
         default:
             DEBUG_ASSERT(false, "Unexpected op in live range");
     }

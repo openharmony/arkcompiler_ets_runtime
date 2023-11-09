@@ -172,7 +172,8 @@ void TryCatchBlocksLower::RecoverBasicBlock()
                 LabelNode *labelStmt = static_cast<LabelNode *>(stmt);
                 labeledBBs.emplace_back(curBB);
                 curBB->SetLabelIdx(static_cast<LabelIdx>(labelStmt->GetLabelIdx()));
-            } break;
+                break;
+            }
             case OP_brtrue:
             case OP_brfalse:
                 condbrBBs.emplace_back(curBB);

@@ -3198,7 +3198,8 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
             Emit("\"").Emit(name).Emit("\"");
             Emit(CMNT "len = ");
             EmitDecUnsigned(name.length() + 1);
-        } break;
+            break;
+        }
         case DW_FORM_strp:
             Emit(".L" XSTR(DEBUG_STR_LABEL));
             fileStream << attr->GetId();
@@ -3378,7 +3379,8 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
                     EmitHexUnsigned(uintptr_t(elp));
                     break;
             }
-        } break;
+            break;
+        }
         default:
             CHECK_FATAL(maple::GetDwFormName(attr->GetDwForm()) != nullptr,
                         "GetDwFormName return null in Emitter::EmitDIAttrValue");
@@ -3639,7 +3641,8 @@ void Emitter::SetupDBGInfo(DebugInfo *mirdi)
                 DBGExprLoc *exprloc = emitter->memPool->New<DBGExprLoc>(emitter->GetCG()->GetMIRModule());
                 exprloc->GetSimpLoc()->SetDwOp(DW_OP_call_frame_cfa);
                 die->SetAttr(DW_AT_frame_base, exprloc);
-            } break;
+                break;
+            }
             case DW_TAG_structure_type:
             case DW_TAG_union_type:
             case DW_TAG_class_type:
@@ -3680,7 +3683,8 @@ void Emitter::SetupDBGInfo(DebugInfo *mirdi)
                     CHECK_FATAL(childDiae != nullptr, "child_diae is null in Emitter::SetupDBGInfo");
                     LUpdateAttrValue(mloc, offset);
                 }
-            } break;
+                break;
+            }
             default:
                 break;
         }

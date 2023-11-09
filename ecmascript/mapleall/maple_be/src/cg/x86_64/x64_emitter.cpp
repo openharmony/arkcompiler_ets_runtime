@@ -2256,7 +2256,8 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
                     __ EmitDwFormExprloc(uintptr(elp));
                     break;
             }
-        } break;
+            break;
+        }
         default:
             CHECK_FATAL(maple::GetDwFormName(attr.GetDwForm()) != nullptr,
                         "GetDwFormName return null in Emitter::EmitDIAttrValue");
