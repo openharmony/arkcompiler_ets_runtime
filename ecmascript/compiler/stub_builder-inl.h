@@ -200,7 +200,7 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::init
     SavePcIfNeeded(glue);
     const std::string name = RuntimeStubCSigns::GetRTName(index);
     GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
-                                                     Circuit::NullGate(), name.c_str());
+                                                     glue, name.c_str());
     return result;
 }
 

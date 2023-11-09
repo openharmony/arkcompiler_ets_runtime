@@ -19,7 +19,10 @@
 namespace panda::ecmascript::kungfu {
 
 #define HCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
-    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)
+    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
+    V(StoreModuleVar, STORE_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 3)                          \
+    V(LdLocalModuleVar, LD_LOCAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)
+    
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                         \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
@@ -30,7 +33,8 @@ namespace panda::ecmascript::kungfu {
     V(BuiltinsCall, BUILTINS_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
-    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)
+    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                    \
+    V(ArrayConstructor, ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
     V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)

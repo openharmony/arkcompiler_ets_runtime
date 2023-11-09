@@ -75,6 +75,14 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
             LowerStLexVar(gate);
             break;
+        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            LowerLdLocalMoudleVar(gate);
+            break;
+        case EcmaOpcode::STMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
+            LowerStModuleVar(gate);
+            break;
         default:
             break;
     }
@@ -82,6 +90,7 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
 
 void NTypeBytecodeLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
 {
+    AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
     builder_.LexVarIsHoleCheck(value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
@@ -232,5 +241,30 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
         acc_.SetDep(current, profiling);
         builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
     }
+}
+
+void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
+{
+    if (!IsFastModule()) {
+        return;
+    }
+    AddProfiling(gate);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.LdLocalModuleVar(jsFunc, index);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)
+{
+    if (!IsFastModule()) {
+        return;
+    }
+    AddProfiling(gate);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    builder_.StoreModuleVar(jsFunc, index, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }

@@ -138,6 +138,12 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPE_OF:
             LowerTypeOf(gate, glue);
             break;
+        case OpCode::ARRAY_CONSTRUCTOR_CHECK:
+            LowerArrayConstructorCheck(gate, glue);
+            break;
+        case OpCode::ARRAY_CONSTRUCTOR:
+            LowerArrayConstructor(gate, glue);
+            break;
         default:
             break;
     }
@@ -1800,5 +1806,165 @@ void TypeHCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
 
     GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, builder_.GetGlobalConstantOffset(index));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    Label isHeapObject(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.True());
+    check = builder_.TaggedIsHeapObject(newTarget);
+    builder_.Branch(*check, &isHeapObject, &exit);
+    builder_.Bind(&isHeapObject);
+    {
+        Label isJSFunction(&builder_);
+        check = builder_.IsJSFunction(newTarget);
+        builder_.Branch(*check, &isJSFunction, &exit);
+        builder_.Bind(&isJSFunction);
+        {
+            Label getHclass(&builder_);
+            GateRef glueGlobalEnvOffset = builder_.IntPtr(
+                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef arrayFunc =
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+            check = builder_.Equal(arrayFunc, newTarget);
+            builder_.Branch(*check, &getHclass, &exit);
+            builder_.Bind(&getHclass);
+            {
+                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(intialHClass);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*check, frameState, DeoptType::NEWBUILTINCTORFAIL);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (acc_.GetNumValueIn(gate) == 1) {
+        NewArrayConstructorWithNoArgs(gate, glue);
+        return;
+    }
+    ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: new target and arg0
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    GateRef arg0 = acc_.GetValueIn(gate, 1);
+    GateRef intialHClass =
+        builder_.Load(VariableType::JS_ANY(), newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    DEFVALUE(arrayLength, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    Label argIsNumber(&builder_);
+    Label arrayCreate(&builder_);
+    builder_.Branch(builder_.TaggedIsNumber(arg0), &argIsNumber, &slowPath);
+    builder_.Bind(&argIsNumber);
+    {
+        Label argIsInt(&builder_);
+        Label argIsDouble(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(arg0), &argIsInt, &argIsDouble);
+        builder_.Bind(&argIsInt);
+        {
+            Label validIntLength(&builder_);
+            GateRef intLen = builder_.GetInt64OfTInt(arg0);
+            GateRef isGEZero = builder_.Int64GreaterThanOrEqual(intLen, builder_.Int64(0));
+            GateRef isLEMaxLen = builder_.Int64LessThanOrEqual(intLen, builder_.Int64(JSArray::MAX_ARRAY_INDEX));
+            builder_.Branch(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+            builder_.Bind(&validIntLength);
+            {
+                arrayLength = intLen;
+                builder_.Jump(&arrayCreate);
+            }
+        }
+        builder_.Bind(&argIsDouble);
+        {
+            Label validDoubleLength(&builder_);
+            Label GetDoubleToIntValue(&builder_);
+            GateRef doubleLength = builder_.GetDoubleOfTDouble(arg0);
+            GateRef doubleToInt = builder_.DoubleToInt(doubleLength, &GetDoubleToIntValue);
+            GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
+            GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
+            GateRef doubleLEMaxLen =
+                builder_.DoubleLessThanOrEqual(doubleLength, builder_.Double(JSArray::MAX_ARRAY_INDEX));
+            builder_.Branch(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+            builder_.Bind(&validDoubleLength);
+            {
+                arrayLength = builder_.SExtInt32ToInt64(doubleToInt);
+                builder_.Jump(&arrayCreate);
+            }
+        }
+    }
+    builder_.Bind(&arrayCreate);
+    {
+        Label lengthValid(&builder_);
+        builder_.Branch(
+            builder_.Int64GreaterThan(*arrayLength, builder_.Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
+        builder_.Bind(&lengthValid);
+        {
+            NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+            newBuilder.SetParameters(glue, 0);
+            res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
+            GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+            builder_.Store(VariableType::INT32(), glue, *res, lengthOffset, builder_.TruncInt64ToInt32(*arrayLength));
+            GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+            builder_.SetPropertyInlinedProps(glue, *res, intialHClass, accessor,
+                builder_.Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+            builder_.SetExtensibleToBitfield(glue, *res, true);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&slowPath);
+    {
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range);
+        for (size_t i = 0; i < range; ++i) {
+            args[i] = acc_.GetValueIn(gate, i);
+        }
+        res = LowerCallRuntime(glue, gate, RTSTUB_ID(OptNewObjRange), args, true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
+void TypeHCRLowering::NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
+{
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    GateRef intialHClass =
+        builder_.Load(VariableType::JS_ANY(), newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef arrayLength = builder_.Int64(0);
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    newBuilder.SetParameters(glue, 0);
+    GateRef res = newBuilder.NewJSArrayWithSize(intialHClass, arrayLength);
+    GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+    builder_.Store(VariableType::INT32(), glue, res, lengthOffset, builder_.TruncInt64ToInt32(arrayLength));
+    GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    builder_.SetPropertyInlinedProps(glue, res, intialHClass, accessor,
+                                     builder_.Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+    builder_.SetExtensibleToBitfield(glue, res, true);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), res);
+}
+
+void TypeHCRLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend,
+                                                      GateRef value)
+{
+    auto condition = builder_.HasPendingException(glue);
+    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
 }
 }  // namespace panda::ecmascript::kungfu

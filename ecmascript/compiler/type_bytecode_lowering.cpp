@@ -283,6 +283,7 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
@@ -1472,27 +1473,33 @@ void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
-    if (!tsManager_->IsClassTypeKind(ctorType)) {
-        return;
+    GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
+    if (ctorGT.IsBuiltinModule()) {
+        if (TryLowerNewBuiltinConstructor(gate)) {
+            return;
+        }
     }
+}
 
-    AddProfiling(gate);
-
-    int hclassIndex = tsManager_->GetHClassIndexByClassGateType(ctorType);
-    GateRef stateSplit = acc_.GetDep(gate);
-
-    GateRef frameState = acc_.FindNearestFrameState(stateSplit);
-    GateRef thisObj = builder_.TypedNewAllocateThis(ctor, builder_.IntPtr(hclassIndex), frameState);
-
-    // call constructor
-    size_t range = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range, EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
-    std::vector<GateRef> args { glue_, actualArgc, ctor, ctor, thisObj };
-    for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
-        args.emplace_back(acc_.GetValueIn(gate, i));
+bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
+{
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateType ctorType = acc_.GetGateType(ctor);
+    GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
+    GateRef constructGate = Circuit::NullGate();
+    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT) && enableNewArrayInline_) {
+        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            if (!Uncheck()) {
+                builder_.ArrayConstructorCheck(ctor);
+            }
+            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
+        }
     }
-    GateRef constructGate = builder_.Construct(gate, args);
+    if (constructGate == Circuit::NullGate()) {
+        return false;
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+    return true;
 }
 
 void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
