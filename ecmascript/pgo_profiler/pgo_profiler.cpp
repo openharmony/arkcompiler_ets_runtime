@@ -640,6 +640,10 @@ void PGOProfiler::DumpICByName(ApEntityId abcId, const CString &recordName, Enti
 {
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
         return;
     }
     if (firstValue.IsWeak()) {
@@ -659,6 +663,10 @@ void PGOProfiler::DumpICByValue(ApEntityId abcId, const CString &recordName, Ent
 {
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
         return;
     }
     if (firstValue.IsWeak()) {
@@ -1097,6 +1105,15 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     AddTranstionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra);
+}
+
+void PGOProfiler::AddObjectInfoWithMega(
+    ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset)
+{
+    auto megaType = ProfileType::CreateMegeType();
+    PGOObjectInfo info(megaType, megaType, megaType, megaType, megaType, megaType);
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 
 void PGOProfiler::AddElementInfo(
