@@ -187,7 +187,7 @@ group("ark_runtime_host_unittest") {
     # js unittest
     deps += [
       ":ark_unittest",
-      "$js_root/test/typeinfer:ark_pgotypeinfer_test",
+      "$js_root/test/pgotypeinfer:ark_pgotypeinfer_test",
     ]
 
     # js bytecode test
