@@ -37,44 +37,53 @@ private:
     class Bound {
     public:
         Bound();
-        Bound(GateRef v);
+        explicit Bound(GateRef v);
         Bound(int lower, GateRef lowerGate, int upper, GateRef upperGate);
         Bound(TypedBinOp op, GateRef gate, int constant);
         ~Bound(){};
+
         int Upper()
         {
             return upper_;
         }
+
         GateRef UpperGate()
         {
             return upperGate_;
         }
+
         int Lower()
         {
             return lower_;
         }
+
         GateRef LowerGate()
         {
             return lowerGate_;
         }
+
         bool HasUpper()
         {
             return upperGate_ != Circuit::NullGate() || upper_ < INT_MAX;
         }
+
         bool HasLower()
         {
             return lowerGate_ != Circuit::NullGate() || lower_ > INT_MIN;
         }
+
         void RemoveUpper()
         {
             upperGate_ = Circuit::NullGate();
             upper_ = INT_MAX;
         }
+
         void RemoveLower()
         {
             lowerGate_ = Circuit::NullGate();
             lower_ = INT_MIN;
         }
+
         bool IsSmaller(Bound *b)
         {
             if (b->LowerGate() != upperGate_) {
@@ -82,6 +91,7 @@ private:
             }
             return upper_ < b->Lower();
         }
+
         Bound* Copy()
         {
             return new Bound(lower_, lowerGate_, upper_, upperGate_);
@@ -115,7 +125,7 @@ private:
     void AddIfCondition(IntegerStack &pushed, GateRef x, GateRef y, TypedBinOp op);
     Bound *AndOp(Bound *bound, Bound *b);
     Bound *OrOp(Bound *bound, Bound *b);
-    bool Contain(GateLists& gateLists, GateRef gate);
+    bool Contain(GateLists &gateLists, GateRef gate);
     void CalcBounds(GateRegion *block, GateRegion *loopHeader);
     bool CheckLoop(GateRef array, GateRef lowerGate, int lower, GateRef upperGate, int upper);
     void InBlockMotion(GateLists &indexChecked, GateLists &arrays);

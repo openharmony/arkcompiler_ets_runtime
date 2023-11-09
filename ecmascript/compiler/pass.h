@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_H
 #define ECMASCRIPT_COMPILER_PASS_H
 
+#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
@@ -24,7 +25,6 @@
 #include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/constant_folding.h"
 #include "ecmascript/compiler/early_elimination.h"
-#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
