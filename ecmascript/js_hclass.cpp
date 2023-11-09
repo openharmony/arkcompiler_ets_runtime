@@ -211,6 +211,8 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     // property transition to slow first
     if (!obj->GetJSHClass()->IsDictionaryMode()) {
         JSObject::TransitionToDictionary(thread, obj);
+    } else {
+        TransitionToDictionary(thread, obj);
     }
     obj->GetJSHClass()->SetIsDictionaryElement(true);
     obj->GetJSHClass()->SetIsStableElements(false);
