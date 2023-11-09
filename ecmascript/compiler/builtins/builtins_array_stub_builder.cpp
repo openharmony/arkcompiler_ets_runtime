@@ -292,4 +292,122 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     result->WriteVariable(IntToTaggedPtr(newLength));
     Jump(exit);
 }
+
+void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    Label isObject(env);
+    Label atLeastOneArg(env);
+    Label notFound(env);
+    Label thisLenNotZero(env);
+    Branch(TaggedIsObject(thisValue), &isObject, slowPath);
+    Bind(&isObject);
+    Branch(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
+    Bind(&atLeastOneArg);
+    GateRef thisLen = GetArrayLength(thisValue);
+    Branch(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
+    Bind(&thisLenNotZero);
+    {
+        DEFVARIABLE(fromIndex, VariableType::INT32(), Int32(0));
+        Label getArgTwo(env);
+        Label nextProcess(env);
+        Label nextCheck(env);
+        Branch(Int64Equal(numArgs, IntPtr(2)), &getArgTwo, &nextProcess); // 2: 2 parameters
+        Bind(&getArgTwo);
+        {
+            Label secondArgIsNumber(env);
+            GateRef fromIndexTemp = GetCallArg1(numArgs);
+            Branch(TaggedIsNumber(fromIndexTemp), &secondArgIsNumber, slowPath);
+            Bind(&secondArgIsNumber);
+            fromIndex = GetInt32OfTInt(fromIndexTemp);
+            Jump(&nextProcess);
+        }
+        Bind(&nextProcess);
+        {
+            Label setBackZero(env);
+            Label calculateFrom(env);
+            Branch(Int32GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
+            Bind(&nextCheck);
+            Branch(Int32LessThan(*fromIndex, Int32(0)), &setBackZero, &calculateFrom);
+            Bind(&setBackZero);
+            {
+                fromIndex = Int32(0);
+                Jump(&calculateFrom);
+            }
+            Bind(&calculateFrom);
+            {
+                DEFVARIABLE(from, VariableType::INT32(), Int32(0));
+                Label isFromIndex(env);
+                Label notOnlyFromIndex(env);
+                Label startLoop(env);
+                Branch(Int32GreaterThanOrEqual(*fromIndex, Int32(0)), &isFromIndex, &notOnlyFromIndex);
+                Bind(&isFromIndex);
+                {
+                    from = *fromIndex;
+                    Jump(&startLoop);
+                }
+                Bind(&notOnlyFromIndex); 
+                {
+                    Label isLenFromIndex(env);
+                    Label isZero(env);
+                    Branch(Int32GreaterThanOrEqual(Int32Add(thisLen, *fromIndex), Int32(0)), &isLenFromIndex, &isZero);
+                    Bind(&isLenFromIndex);
+                    {
+                        from = Int32Add(thisLen, *fromIndex);
+                        Jump(&startLoop);
+                    }
+                    Bind(&isZero);
+                    {
+                        from = Int32(0);
+                        Jump(&startLoop);
+                    }
+                }
+                Bind(&startLoop);
+                {
+                    GateRef searchElement = GetCallArg0(numArgs);
+                    GateRef elements = GetElementsArray(thisValue);
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label next(env);
+                    Label loopExit(env);
+                    Jump(&loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        Branch(Int32LessThan(*from, thisLen), &next, &loopExit);
+                        Bind(&next);
+                        {
+                            Label notHoleOrUndefValue(env);
+                            GateRef value = GetValueFromTaggedArray(elements, *from);
+                            Branch(BoolOr(TaggedIsHole(value), TaggedIsUndefined(value)), slowPath,
+                                &notHoleOrUndefValue);
+                            Bind(&notHoleOrUndefValue);
+                            {
+                                Label valueFound(env);
+                                GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
+                                Branch(valueEqual, &valueFound, &loopEnd);
+                                Bind(&valueFound);
+                                {
+                                    result->WriteVariable(TaggedTrue());
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                    }
+                    Bind(&loopEnd);
+                    from = Int32Add(*from, Int32(1));
+                    LoopEnd(&loopHead);
+                    Bind(&loopExit);
+                    Jump(&notFound);
+                }
+            }
+        }
+    }
+    Bind(&notFound);
+    {
+        result->WriteVariable(TaggedFalse());
+        Jump(exit);
+    }
+}
 }  // namespace panda::ecmascript::kungfu

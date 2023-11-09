@@ -53,6 +53,8 @@ public:
 
     void Push(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
+
+    void Includes(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
