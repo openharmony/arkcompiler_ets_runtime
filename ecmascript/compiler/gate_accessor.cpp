@@ -160,7 +160,8 @@ size_t GateAccessor::GetIndex(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
            GetOpCode(gate) == OpCode::GET_GLOBAL_CONSTANT_VALUE ||
            GetOpCode(gate) == OpCode::GET_GLOBAL_ENV_OBJ ||
-           GetOpCode(gate) == OpCode::LOAD_HCLASS_FROM_CONSTPOOL);
+           GetOpCode(gate) == OpCode::LOAD_HCLASS_FROM_CONSTPOOL ||
+           GetOpCode(gate) == OpCode::LOAD_BUILTIN_OBJECT);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }

@@ -154,6 +154,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
     "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
     "--compiler-enable-native-inline:      Enable inline native function: Default: 'false'\n"
+    "--compiler-enable-lowering-builtin:   Enable lowering global object: Default: 'false'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -187,8 +188,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
-        {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
-            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
+        {"compiler-opt-array-bounds-check-elimination",
+         required_argument,
+         nullptr,
+         OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
@@ -244,9 +247,12 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
-        {"compiler-enable-lexenv-specialization", required_argument, nullptr,
-            OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
+        {"compiler-enable-lexenv-specialization",
+         required_argument,
+         nullptr,
+         OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
+        {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -844,6 +850,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableNativeInline(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_LOWERING_BUILTIN:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableLoweringBuiltin(argBool);
                 } else {
                     return false;
                 }

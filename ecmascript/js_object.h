@@ -648,6 +648,7 @@ public:
     inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
     inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
     inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;
+    PropertyBox* GetGlobalPropertyBox(JSThread *thread, const std::string& key);
     template <bool needBarrier = true>
     inline void SetProperty(const JSThread *thread, const JSHClass *hclass, PropertyAttributes attr,
                             JSTaggedValue value);
@@ -685,6 +686,7 @@ private:
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
 
+    PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
