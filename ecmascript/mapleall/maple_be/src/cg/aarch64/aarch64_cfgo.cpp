@@ -25,7 +25,6 @@ void AArch64CFGOptimizer::InitOptimizePatterns()
         diffPassPatterns.emplace_back(memPool->New<ChainingPattern>(*cgFunc));
     }
     diffPassPatterns.emplace_back(memPool->New<SequentialJumpPattern>(*cgFunc));
-    // diffPassPatterns.emplace_back(memPool->New<AArch64FlipBRPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<DuplicateBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<UnreachBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<EmptyBBPattern>(*cgFunc));

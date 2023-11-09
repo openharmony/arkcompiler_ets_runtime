@@ -22,14 +22,6 @@ DEFINE_MOP(MOP_begin, {},0,0,"","",0)
  * and using AT&T style assembly
  */
 
-/* X64 MOVES */
-// TODO: fix intruction opnds, prop, latency, format and length
-// TODO: the encoding and enumeration seems too verbose
-// TODO: understand how other system represent these MOPs (especially for x86-64)
-// TODO: this is still an experiment
-// TODO: should make sure the convention is consistent with (AT&T style?)
-// TODO: how the general Machine instruction is designed?
-
 /* mov */
 DEFINE_MOP(MOP_movb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
 DEFINE_MOP(MOP_movb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
@@ -455,7 +447,6 @@ DEFINE_MOP(MOP_imull_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"imu
 DEFINE_MOP(MOP_imulq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"imulq","0,1",1)
 
 /* nop */
-// TODO: still not clear why we need so many forms of nop (except for patch)
 DEFINE_MOP(MOP_nopb, {&OpndDesc::Mem8S},0,kLtAlu,"nopb","",1)
 DEFINE_MOP(MOP_nopw, {&OpndDesc::Mem16S},0,kLtAlu,"nopw","",1)
 DEFINE_MOP(MOP_nopl, {&OpndDesc::Mem32S},0,kLtAlu,"nopl","",1)

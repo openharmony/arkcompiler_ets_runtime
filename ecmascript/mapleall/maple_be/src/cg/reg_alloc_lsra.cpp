@@ -695,7 +695,6 @@ uint32 LSRALinearScanRegAllocator::FillInHole(const LiveInterval &li)
             ili->GetAssignedReg() == 0) {
             continue;
         }
-        /* todo: find available holes in ili->GetRanges() */
     }
     return 0;
 }
@@ -1856,8 +1855,6 @@ uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li, bool is
         DEBUG_ASSERT(freeUntilPos[bestReg] != 0, "impossible");
         bestReg = 0;
     }
-    /* todo : try to fill in holes */
-    /* todo : try first split if no hole exists */
     return bestReg;
 }
 
@@ -2154,7 +2151,7 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
                                            << offset << std::endl;
                 }
             } else {
-                // TODO: li->GetAssignedReg - R0/RAX?
+                // li->GetAssignedReg - R0/RAX?
                 CHECK_FATAL(false, "not support currently");
                 insn->GetStackMap()->GetReferenceMap().ReocordRegisterRoots(li->GetAssignedReg());
             }
@@ -2178,19 +2175,18 @@ void LSRALinearScanRegAllocator::SolveRegOpndDeoptInfo(const RegOperand &regOpnd
                                                        int32 deoptVregNO) const
 {
     if (regOpnd.IsPhysicalRegister()) {
-        // TODO: Get Register No
+        // Get Register No
         deoptInfo.RecordDeoptVreg2LocationInfo(deoptVregNO, LocationInfo({kInRegister, 0}));
         return;
     }
     // process virtual RegOperand
     regno_t vRegNO = regOpnd.GetRegisterNumber();
-    // TODO: LiveInterval *li = GetLiveIntervalAt(vRegNO, insn->GetId());
     LiveInterval *li = liveIntervalsArray[vRegNO];
     if (li->IsShouldSave() || li->GetStackSlot() == kSpilled) {
         MemOperand *memOpnd = cgFunc->GetOrCreatSpillMem(vRegNO, regOpnd.GetSize());
         SolveMemOpndDeoptInfo(*(static_cast<const MemOperand *>(memOpnd)), deoptInfo, deoptVregNO);
     } else {
-        // TODO: Get Register NO
+        // Get Register NO
         deoptInfo.RecordDeoptVreg2LocationInfo(deoptVregNO, LocationInfo({kInRegister, li->GetAssignedReg()}));
     }
 }

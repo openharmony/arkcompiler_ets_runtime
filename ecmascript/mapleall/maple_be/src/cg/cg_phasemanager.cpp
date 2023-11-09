@@ -77,7 +77,7 @@ void CgFuncPM::GenerateOutPutFile(MIRModule &m)
     if (!cgOptions->SuppressFileInfo()) {
         assm.InitialFileInfo(m.GetInputFileName());
     }
-    // TODO: Dwarf info
+    // Dwarf info
     if (cgOptions->WithDwarf()) {
         assm.EmitDIHeader();
     }

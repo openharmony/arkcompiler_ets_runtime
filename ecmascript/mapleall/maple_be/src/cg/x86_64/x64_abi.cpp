@@ -36,7 +36,7 @@ bool IsAvailableReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return canBeAssigned;
-// TODO: add fp registers here.
+// add fp registers here.
 #undef FP_SIMD_REG
         default:
             return false;

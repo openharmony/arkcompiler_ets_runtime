@@ -1154,7 +1154,6 @@ bool MIRParser::ParseCallReturnPair(CallReturnPair &retpair)
         // parse type
         lexer.NextToken();
         TyIdx tyidx(0);
-        // RegreadNode regreadexpr;
         bool ret = ParsePrimType(tyidx);
         if (ret != true) {
             Error("call ParsePrimType failed in ParseCallReturns");

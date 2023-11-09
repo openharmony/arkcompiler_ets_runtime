@@ -50,11 +50,6 @@ void generateIR(LMIRBuilder *irBuilder)
                                      __ Trunc(__ i64Type, __ i32Type, __ Dread(__ GetLocalVar("param2")))));
     __ AppendStmt(bb, retStmt);
     __ AppendBB(bb);
-
-    // TODO: to be complete
-    /* case 2
-
-     */
 }
 
 int main()

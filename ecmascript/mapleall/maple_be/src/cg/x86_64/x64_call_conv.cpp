@@ -156,7 +156,6 @@ int32 GHCCallConventionInfo::Classification(const BECommon &be, MIRType &mirType
         default:
             CHECK_FATAL(false, "NYI");
     }
-    // TODO:
     return 0;
 }
 

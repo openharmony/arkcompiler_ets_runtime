@@ -98,9 +98,7 @@ public:
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(WebKitJSCallConventionInfo)
 const std::vector<X64reg> intParmRegs{R0};
 const std::vector<X64reg> intReturnRegs{R0};
-// TODO:
 const std::vector<X64reg> floatParmRegs{};
-// TODO:
 const std::vector<X64reg> floatReturnRegs{};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
@@ -116,9 +114,7 @@ CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(GHCCallConventionInfo)
 const std::vector<X64reg> intParmRegs{R13, RBP, R12, RBX, R14, RSI, RDI, R8, R9, R15};
 const std::vector<X64reg> intReturnRegs{};
-// TODO:
 const std::vector<X64reg> floatParmRegs{};
-// TODO:
 const std::vector<X64reg> floatReturnRegs{};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
