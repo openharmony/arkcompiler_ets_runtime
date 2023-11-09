@@ -17,10 +17,10 @@
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/mem/mem.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/message_string.h"
@@ -1609,88 +1609,13 @@ void TypeHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeHCRLowering::LowerStringAdd(GateRef gate, [[maybe_unused]]GateRef glue)
+void TypeHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef leftIsUtf8 = builder_.BoolNot(builder_.IsUtf16String(left));
-    GateRef rightIsUtf8 = builder_.BoolNot(builder_.IsUtf16String(right));
-    GateRef leftLen = builder_.GetLengthFromString(left);
-    GateRef rightLen = builder_.GetLengthFromString(right);
-    GateRef length = builder_.Int32Add(leftLen, rightLen);
-    GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
-    Label leftEmpty(&builder_);
-    Label leftNotEmpty(&builder_);
-    Label exitEmpty(&builder_);
-
-    DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
-    DEFVALUE(res, (&builder_), VariableType::JS_POINTER(), right);
-    
-    builder_.Branch(builder_.Equal(leftLen, builder_.Int32(0)), &leftEmpty, &leftNotEmpty);
-    builder_.Bind(&leftEmpty);
-    {
-        res = right;
-        builder_.Jump(&exitEmpty);
-    }
-    builder_.Bind(&leftNotEmpty);
-    {
-        Label rightEmpty(&builder_);
-        Label rightNotEmpty(&builder_);
-        builder_.Branch(builder_.Equal(rightLen, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
-        builder_.Bind(&rightEmpty);
-        {
-            res = left;
-            builder_.Jump(&exitEmpty);
-        }
-        builder_.Bind(&rightNotEmpty);
-        {
-            Label goLineString(&builder_);
-            Label goTreeString(&builder_);
-            builder_.Branch(builder_.Int32LessThan(length, builder_.Int32(TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH)), &goLineString, &goTreeString);
-            builder_.Bind(&goLineString);
-            {
-                res = builder_.CallStub(glue, gate, CommonStubCSigns::Add, { glue, left, right });
-                builder_.Jump(&exitEmpty);
-            }
-            builder_.Bind(&goTreeString);
-            {
-                Label isUtf8(&builder_);
-                Label isUtf16(&builder_);
-                Label exit(&builder_);
-                GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::TREE_STRING_CLASS_INDEX);
-
-                GateRef size = builder_.IntPtr(AlignUp(TreeEcmaString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
-
-                builder_.StartAllocate();
-                GateRef result = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-                builder_.StoreConstOffset(VariableType::JS_POINTER(), result, 0, elementsHclass); // StoreHClass
-                GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-
-                builder_.Branch(canBeCompressed, &isUtf8, &isUtf16);
-                builder_.Bind(&isUtf8);
-                {
-                    mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
-                    builder_.Jump(&exit);
-                }
-                builder_.Bind(&isUtf16);
-                {
-                    mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
-                    builder_.Jump(&exit);
-                }
-                builder_.Bind(&exit);
-                builder_.StoreConstOffset(VariableType::INT32(), result, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
-                builder_.StoreConstOffset(VariableType::INT32(), result, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
-                builder_.StoreConstOffset(VariableType::JS_POINTER(), result, TreeEcmaString::FIRST_OFFSET, left);
-                builder_.StoreConstOffset(VariableType::JS_POINTER(), result, TreeEcmaString::SECOND_OFFSET, right);
-                builder_.FinishAllocate();
-                res = result;
-                builder_.Jump(&exitEmpty);
-            }
-        }
-    }
-    builder_.Bind(&exitEmpty);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });;
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeHCRLowering::LowerTypeOfCheck(GateRef gate)

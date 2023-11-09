@@ -92,8 +92,6 @@ private:
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
 
-    GateRef VisitStringEqual(GateRef left, GateRef right);
-
     TypeInfo GetOutputType(GateRef gate) const
     {
         auto index = acc_.GetId(gate);
