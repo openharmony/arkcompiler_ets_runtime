@@ -36,17 +36,6 @@ if (is_enable_typeinfer_automatedcases) {
   }
 }
 
-group("ark_pgotypeinfer_test") {
-  testonly = true
-
-  test_list = [ "add" ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}Es2abcAotTypeInferAction" ]
-  }
-}
-
 group("ark_typeinfer_test") {
   testonly = true
 
