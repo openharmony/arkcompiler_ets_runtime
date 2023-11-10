@@ -20,7 +20,7 @@
  * @tc.require: issueI8FBM3
  */
 
-(function(){
+(function() {
     var a = [0, 1,,3];
     var index = a.findLastIndex(function(val){
         return val === undefined;

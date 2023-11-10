@@ -30,5 +30,5 @@ print(input.flat(undefined));
     }
     const wannabe = new MyArray();
     const flattened = wannabe.flat(Infinity);
-    print(flattened instanceof MyArray);//t
+    print(flattened instanceof MyArray);
 }
