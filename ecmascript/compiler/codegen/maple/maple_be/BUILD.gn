@@ -34,12 +34,12 @@ include_directories = [
 deps_libcg = [
   ":libmplbe",
   ":libmplad",
-  "$js_root/ecmascript/mapleall/mempool:libmempool",
-  "$js_root/ecmascript/mapleall/maple_phase:libmplphase",
-  "$js_root/ecmascript/mapleall/mpl2mpl:libmpl2mpl",
-  "$js_root/ecmascript/mapleall/maple_ir:libmplir",
-  "$js_root/ecmascript/mapleall/maple_util:libmplutil",
-  "$js_root/ecmascript/mapleall/maple_me:libmplme",
+  "${MAPLEALL_ROOT}/mempool:libmempool",
+  "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+  "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+  "${MAPLEALL_ROOT}/maple_ir:libmplir",
+  "${MAPLEALL_ROOT}/maple_util:libmplutil",
+  "${MAPLEALL_ROOT}/maple_me:libmplme",
 ]
 
 deps_libmplbe = [ ":libcglowerer" ]

@@ -28,7 +28,7 @@ declare_args() {
 if (target_cpu == "arm64") {
   TARGET = "aarch64"
 }
-MAPLEALL_ROOT = "//arkcompiler/ets_runtime/ecmascript/mapleall"
+MAPLEALL_ROOT = "//arkcompiler/ets_runtime/ecmascript/compiler/codegen/maple"
 MAPLEALL_THIRD_PARTY_ROOT = "//third_party"
 
 if (!ark_standalone_build) {
