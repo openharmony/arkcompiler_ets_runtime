@@ -1509,6 +1509,16 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(ThrowRangeError)
+{
+    RUNTIME_STUBS_HEADER(ThrowRangeError);
+    JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);
+    std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str());
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
+}
+
 DEF_RUNTIME_STUBS(LoadMiss)
 {
     RUNTIME_STUBS_HEADER(LoadMiss);
