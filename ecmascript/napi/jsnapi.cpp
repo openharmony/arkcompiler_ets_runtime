@@ -556,6 +556,11 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
+{
+    vm->SetDeviceDisconnectCallback(cb);
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);

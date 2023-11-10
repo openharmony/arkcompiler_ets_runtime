@@ -84,6 +84,7 @@ using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using DeviceDisconnectCallback = std::function<bool()>;
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
@@ -1405,6 +1406,7 @@ public:
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturnJS(const EcmaVM *vm);
+    static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
