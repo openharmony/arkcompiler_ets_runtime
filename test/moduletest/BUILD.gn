@@ -109,6 +109,7 @@ group("ark_js_moduletest") {
     "spreadoperator",
     "stackoverflow",
     "storeicbyname",
+    "storeicbyvalue",
     "string",
     "stringreplace",
     "stubbuilder",
