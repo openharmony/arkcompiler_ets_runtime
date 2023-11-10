@@ -306,7 +306,7 @@ public:
     void TryTriggerIdleCollection();
     void TryTriggerIncrementalMarking();
     void CalculateIdleDuration();
-
+    void UpdateWorkManager(WorkManager *workManager);
     /*
      * Wait for existing concurrent marking tasks to be finished (if any).
      * Return true if there's ongoing concurrent marking.
@@ -570,7 +570,6 @@ public:
             ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
         }
     }
-
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;

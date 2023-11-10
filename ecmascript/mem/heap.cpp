@@ -316,6 +316,7 @@ void Heap::EnableParallelGC()
                            << "totalThreadNum(taskpool): " << (maxEvacuateTaskCount_ + 1);
         delete workManager_;
         workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
+        UpdateWorkManager(workManager_);
     }
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
                                          maxEvacuateTaskCount_ - 1);
@@ -1404,4 +1405,17 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
     }
 #endif
 }
+
+void Heap::UpdateWorkManager(WorkManager *workManager)
+{
+    concurrentMarker_->workManager_ = workManager;
+    fullGC_->workManager_ = workManager;
+    stwYoungGC_->workManager_ = workManager;
+    incrementalMarker_->workManager_ = workManager;
+    nonMovableMarker_->workManager_ = workManager;
+    semiGCMarker_->workManager_ = workManager;
+    compressGCMarker_->workManager_ = workManager;
+    partialGC_->workManager_ = workManager;
+}
+
 }  // namespace panda::ecmascript

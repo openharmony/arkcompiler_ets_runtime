@@ -111,6 +111,8 @@ private:
     int64_t receiveIdleTime_ {0};
     double totalUsedIdleTime_ {0.0};
     double exceedIdleTime_ {0.0};
+
+    friend class Heap;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_INCREMENTAL_MARKER_H
