@@ -53,3 +53,9 @@ print(res3);
 let strData4 = "123";
 let res4 = JSON.parse(strData4);
 print(res4);
+
+try {
+    print(JSON.parse(`{"object": 42, "test":{}`))
+} catch (error) {
+    print(error.name)
+}
