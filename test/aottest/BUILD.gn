@@ -214,6 +214,7 @@ group("ark_aot_ts_test") {
     "strictequal",
     "strictnotequal",
     "string",
+    "string_add",
     "string_equal",
     "stsuperbyname",
     "sub",

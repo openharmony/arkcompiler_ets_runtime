@@ -185,6 +185,7 @@ private:
     void LowerLoadSetter(GateRef gate);
     void LowerInlineAccessorCheck(GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
+    void LowerStringAdd(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
 

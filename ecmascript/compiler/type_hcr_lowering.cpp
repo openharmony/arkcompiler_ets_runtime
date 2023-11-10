@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -127,6 +128,9 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::STRING_EQUAL:
             LowerStringEqual(gate, glue);
+            break;
+        case OpCode::STRING_ADD:
+            LowerStringAdd(gate, glue);
             break;
         case OpCode::TYPE_OF_CHECK:
             LowerTypeOfCheck(gate);
@@ -1717,6 +1721,15 @@ void TypeHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });;
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeHCRLowering::LowerTypeOfCheck(GateRef gate)

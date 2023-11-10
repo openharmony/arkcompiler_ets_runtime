@@ -98,6 +98,7 @@ private:
     GateRef VisitStrictEqual(GateRef gate);
 
     GateRef VisitStringCompare(GateRef gate);
+    GateRef VisitStringAdd(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
