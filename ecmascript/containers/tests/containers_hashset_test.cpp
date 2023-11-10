@@ -134,8 +134,8 @@ HWTEST_F_L0(ContainersHashSetTest, AddAndHas)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), i + 1);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), i + 1);
     }
 
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -164,8 +164,8 @@ HWTEST_F_L0(ContainersHashSetTest, Remove)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), i + 1);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), i + 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -208,8 +208,8 @@ HWTEST_F_L0(ContainersHashSetTest, Remove)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), NODE_NUMBERS + i);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), NODE_NUMBERS + i);
     }
     {
         std::string iKey = myKey + std::to_string(NODE_NUMBERS / 2);
@@ -240,8 +240,8 @@ HWTEST_F_L0(ContainersHashSetTest, Clear)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), i + 1);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), i + 1);
     }
 
     // test clear
@@ -282,8 +282,8 @@ HWTEST_F_L0(ContainersHashSetTest, Clear)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), i + 1);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), i + 1);
     }
 
     // test clear
@@ -326,8 +326,8 @@ HWTEST_F_L0(ContainersHashSetTest, KeysAndValuesAndEntries)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo1);
         JSTaggedValue result = ContainersHashSet::Add(callInfo1);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsJSAPIHashSet());
-        EXPECT_EQ(JSAPIHashSet::Cast(result.GetTaggedObject())->GetSize(), i + 1);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tSet->GetSize(), i + 1);
     }
 
     // test values
@@ -368,7 +368,7 @@ HWTEST_F_L0(ContainersHashSetTest, KeysAndValuesAndEntries)
         [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, callInfo3);
         JSTaggedValue result1 = ContainersHashSet::Add(callInfo3);
         TestHelper::TearDownFrame(thread, prev2);
-        EXPECT_TRUE(result1.IsJSAPIHashSet());
+        EXPECT_TRUE(result1.IsTrue());
         EXPECT_EQ(tSet->GetSize(), NODE_NUMBERS + i + 1);
     }
     EXPECT_EQ(tSet->GetSize(), NODE_NUMBERS * 2);
