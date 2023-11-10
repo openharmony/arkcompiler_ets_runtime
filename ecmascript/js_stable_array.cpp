@@ -202,11 +202,7 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
     auto result = elements->Get(0);
     for (uint32_t k = 1; k < length; k++) {
         auto kValue = elements->Get(k);
-        if (kValue.IsHole()) {
-            elements->Set(thread, k - 1, JSTaggedValue::Undefined());
-        } else {
-            elements->Set(thread, k - 1, kValue);
-        }
+        elements->Set(thread, k - 1, kValue);
     }
     uint32_t capacity = elements->GetLength();
     uint32_t index = length - 1;
