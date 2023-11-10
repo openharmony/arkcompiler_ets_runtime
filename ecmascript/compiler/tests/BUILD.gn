@@ -101,6 +101,22 @@ host_unittest_action("LoopOptimizationTest") {
   ]
 }
 
+host_unittest_action("ConstantFoldingTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "constant_folding_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
 host_unittest_action("GlobalValueNumberingTest") {
   module_out_path = module_output_path
 
@@ -118,13 +134,31 @@ host_unittest_action("GlobalValueNumberingTest") {
   ]
 }
 
+host_unittest_action("InstructionCombineTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "instruction_combine_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
 group("host_unittest") {
   testonly = true
 
   # deps file
   deps = [
     ":AssemblerTestAction",
+    ":ConstantFoldingTestAction",
     ":GlobalValueNumberingTestAction",
+    ":InstructionCombineTestAction",
     ":LoopOptimizationTestAction",
     ":TypedArrayLoweringTestAction",
   ]

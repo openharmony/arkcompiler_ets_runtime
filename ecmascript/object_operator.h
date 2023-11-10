@@ -62,6 +62,7 @@ public:
 
     void UpdateDetector();
     static void UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    static void UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver);
     static bool IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key);
 
     NO_COPY_SEMANTIC(ObjectOperator);
@@ -280,8 +281,6 @@ public:
     {
         SetFound(NOT_FOUND_INDEX, JSTaggedValue::Undefined(), PropertyAttributes::GetDefaultAttributes(), false, false);
     }
-    JSTaggedValue ConvertOrTransitionWithRep(const JSHandle<JSObject> &receiver,
-        const JSHandle<JSTaggedValue> &value, PropertyAttributes &attr, bool &needBarrier);
     bool UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                          bool isInternalAccessor, bool mayThrow = false);
     bool WriteDataPropertyInHolder(const PropertyDescriptor &desc)

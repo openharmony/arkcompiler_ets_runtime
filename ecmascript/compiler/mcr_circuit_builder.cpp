@@ -13,8 +13,15 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/mcr_circuit_builder.h"
+#include "ecmascript/message_string.h"
+#include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/stubs/runtime_stubs.h"
+
+#include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/marker_cell.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -239,6 +246,15 @@ GateRef CircuitBuilder::TypedTypeOf(GateType type)
     return ret;
 }
 
+GateRef CircuitBuilder::IsMarkerCellValid(GateRef cell)
+{
+    GateRef bitfield = Load(VariableType::INT32(), cell, IntPtr(MarkerCell::BIT_FIELD_OFFSET));
+    return Int32Equal(
+        Int32And(Int32LSR(bitfield, Int32(MarkerCell::IsDetectorInvalidBits::START_BIT)),
+                 Int32((1LU << MarkerCell::IsDetectorInvalidBits::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst, ConvertSupport support)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -441,7 +457,12 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
+    GateRef frameState;
+    if (Bytecodes::IsCallOp(acc_.GetByteCodeOpcode(gate))) {
+        frameState = acc_.GetFrameState(gate);
+    } else {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
                                         MachineType::I1,
                                         { currentControl, currentDepend, function, id, param, frameState},
@@ -672,29 +693,75 @@ GateRef CircuitBuilder::LoadStringLength(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset)
+GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-
-    auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(offset), type.GetMachineType(),
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(bits), type.GetMachineType(),
                                      { currentDepend, receiver }, type.GetGateType());
     currentLabel->SetDepend(ret);
     return ret;
 }
 
+GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromConstpool(index), MachineType::I64,
+                                     { currentDepend, constpool }, GateType::AnyType());
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::StoreConstOffset(VariableType type,
-    GateRef receiver, size_t offset, GateRef value)
+    GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-
-    auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(offset), type.GetMachineType(),
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
         { currentControl, currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::TaggedIsHeapObjectOp(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->TaggedIsHeapObject(), MachineType::I1,
+                                         { currentControl, currentDepend, value },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::IsSpecificObjectType(GateRef obj, JSType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->IsSpecificObjectType(static_cast<int32_t>(type)), MachineType::I1,
+                                         { currentControl, currentDepend, obj },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::IsMarkerCellValidOp(GateRef cell)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->IsMarkerCellValid(), MachineType::I1,
+                                         { currentControl, currentDepend, cell },
+                                         GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
 }
 
 GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)
@@ -801,13 +868,13 @@ GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
 }
 
 GateRef CircuitBuilder::InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
-                                            GateType gateType, PGOSampleType sampleType, TypedBinOp op)
+                                            GateType gateType, PGOTypeRef pgoType, TypedBinOp op)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(leftType, rightType);
-    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, sampleType),
+    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, pgoType),
                                      MachineType::I64,
                                      {currentControl, currentDepend, left, right},
                                      gateType);
@@ -904,6 +971,47 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, bool isTypedArray)
     return Circuit::NullGate();
 }
 
+GateRef CircuitBuilder::IsIntegerString(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef hash = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    return Int32Equal(
+        Int32And(hash, Int32(EcmaString::IS_INTEGER_MASK)),
+        Int32(EcmaString::IS_INTEGER_MASK));
+}
+
+GateRef CircuitBuilder::GetRawHashFromString(GateRef value)
+{
+    GateRef hash = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    return Int32And(hash, Int32(~EcmaString::IS_INTEGER_MASK));
+}
+
+void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label integer(env_);
+    Label notInteger(env_);
+    Label exit(env_);
+
+    DEFVALUE(hash, env_, VariableType::INT32(), Int32(0));
+    Branch(isInteger, &integer, &notInteger);
+    Bind(&integer);
+    {
+        hash = Int32Or(rawHashcode, Int32(EcmaString::IS_INTEGER_MASK));
+        Jump(&exit);
+    }
+    Bind(&notInteger);
+    {
+        hash = Int32And(rawHashcode, Int32(~EcmaString::IS_INTEGER_MASK));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_HASHCODE_OFFSET), *hash);
+    SubCfgExit();
+    return;
+}
+
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
@@ -917,14 +1025,14 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     SubCfgEntry(&subentry);
     Label noRawHashcode(env_);
     Label exit(env_);
-    DEFVAlUE(hashcode, env_, VariableType::INT32(), Int32(0));
-    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::HASHCODE_OFFSET));
+    DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
+    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
         hashcode = GetInt32OfTInt(
             CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate()));
-        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
+        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
     Bind(&exit);
@@ -940,8 +1048,8 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label noRawHashcode(env_);
     Label storeHash(env_);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::INT64(), Int64(-1));
-    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::HASHCODE_OFFSET)));
+    DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
+    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
     Branch(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {
@@ -962,5 +1070,120 @@ GateRef CircuitBuilder::ComputeTaggedArraySize(GateRef length)
 {
     return PtrAdd(IntPtr(TaggedArray::DATA_OFFSET),
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), length));
+}
+
+GateRef CircuitBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::INT32(), Int32(static_cast<int32_t>(EnumCacheKind::NONE)));
+
+    Label enumCacheIsArray(env_);
+    Label isEmptyArray(env_);
+    Label notEmptyArray(env_);
+
+    Branch(TaggedIsUndefinedOrNull(enumCache), &exit, &enumCacheIsArray);
+    Bind(&enumCacheIsArray);
+    GateRef emptyArray = GetEmptyArray(glue);
+    Branch(Int64Equal(enumCache, emptyArray), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        result = Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE));
+        Jump(&exit);
+    }
+    Bind(&notEmptyArray);
+    {
+        GateRef taggedKind = GetValueFromTaggedArray(enumCache, Int32(EnumCache::ENUM_CACHE_KIND_OFFSET));
+        result = TaggedGetInt(taggedKind);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+
+    Label isSameHclass(env_);
+    Label isSimpleEnumCache(env_);
+    Label notSimpleEnumCache(env_);
+    Label prototypeIsEcmaObj(env_);
+    Label isProtoChangeMarker(env_);
+    Label protoNotChanged(env_);
+
+    GateRef hclass = LoadHClass(receiver);
+    Branch(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
+    Bind(&isSameHclass);
+    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
+           &isSimpleEnumCache, &notSimpleEnumCache);
+    Bind(&isSimpleEnumCache);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&notSimpleEnumCache);
+    GateRef prototype = GetPrototypeFromHClass(hclass);
+    Branch(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
+    Bind(&prototypeIsEcmaObj);
+    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(hclass);
+    Branch(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
+    Bind(&isProtoChangeMarker);
+    Branch(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
+    Bind(&protoNotChanged);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+
+    Label loopHead(env_);
+    Label loopEnd(env_);
+    Label afterLoop(env_);
+    Label isJSObject(env_);
+    Label hasNoDeleteProperty(env_);
+
+    DEFVALUE(result, env_, VariableType::BOOL(), True());
+    DEFVALUE(current, env_, VariableType::JS_ANY(), receiver);
+
+    Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    {
+        Branch(IsJSObject(*current), &isJSObject, &exit);
+        Bind(&isJSObject);
+        GateRef hclass = LoadHClass(*current);
+        Branch(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
+        Bind(&hasNoDeleteProperty);
+        current = GetPrototypeFromHClass(hclass);
+        Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 }

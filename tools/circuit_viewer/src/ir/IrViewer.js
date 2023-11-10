@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-const { Scr } = require("../engine/XDefine");
-const { XTools } = require("../engine/XTools");
-const { XButton } = require("../engine/control/XButton");
-const { XScroll } = require("../engine/control/XScroll");
-const { XSelect } = require("../engine/control/XSelect");
-const { X2DFast } = require("../engine/graphics/X2DFast");
-const { XTexture } = require("../engine/graphics/XTexture");
-const { CanvasInput } = require("./CanvasInput");
-const { IrToPicture } = require("./IrToPicture");
-const { LogParser } = require("./LogParser");
-const { NapiLog } = require("./NapiLog");
+const { Scr } = require('../engine/XDefine');
+const { XTools } = require('../engine/XTools');
+const { XButton } = require('../engine/control/XButton');
+const { XScroll } = require('../engine/control/XScroll');
+const { XSelect } = require('../engine/control/XSelect');
+const { X2DFast } = require('../engine/graphics/X2DFast');
+const { XTexture } = require('../engine/graphics/XTexture');
+const { CanvasInput } = require('./CanvasInput');
+const { IrToPicture } = require('./IrToPicture');
+const { LogParser } = require('./LogParser');
+const { NapiLog } = require('./NapiLog');
 
-const INTYPE_STR = ["state", "depend", "value", "framestate", "root", "other"];
+const INTYPE_STR = ['state', 'depend', 'value', 'framestate', 'root', 'other'];
 
 class IrViewer {
   constructor(fn, result) {
@@ -54,12 +54,12 @@ class IrViewer {
 
     tx = 10;
     ty += 30;
-    this.selectFunc_ = new XSelect([], "");
+    this.selectFunc_ = new XSelect([], '');
     this.selectFunc_.move(tx, ty, 290, 20);
     this.selectFunc_.registCallback(this.changeFunc.bind(this));
 
     tx += 290 + 10;
-    this.selectMethod_ = new XSelect([], "");
+    this.selectMethod_ = new XSelect([], '');
     this.selectMethod_.move(tx, ty, 250, 20);
     this.selectMethod_.registCallback(this.changeMethod.bind(this));
 
@@ -68,14 +68,14 @@ class IrViewer {
     this.btnGo_ = [];
     this.mask_ = 0xffff;
     for (let i = 0; i < INTYPE_STR.length; i++) {
-      let bname = INTYPE_STR[i] + "✔️";//❌
+      let bname = INTYPE_STR[i] + '✔️'; //❌
       let bw = X2DFast.gi().getTextWidth(bname, 14) + 6;
       let btn = new XButton(tx, ty, bw, 20, bname);
       btn.inTypeId_ = i;
       btn.inTypeMask_ = 1;
       btn.onClicked_ = () => {
         btn.inTypeMask_ = 1 - btn.inTypeMask_;
-        btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ == 1 ? "✔️" : "❌");
+        btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ === 1 ? '✔️' : '❌');
         this.mask_ = (this.mask_ & ~(1 << btn.inTypeId_)) | (btn.inTypeMask_ << btn.inTypeId_);
         this.changeVisable();
       }
@@ -85,12 +85,12 @@ class IrViewer {
 
     tx = 10;
     ty += 30;
-    let bms = [["隐藏选中", () => { this.hideNode(0); }],
-    ["隐藏未选中", () => { this.hideNode(1); }],
-    ["显示隐藏", () => { this.hideNode(2); }],
-    ["选中前继", () => { this.selectNode(0); }],
-    ["选中后继", () => { this.selectNode(1); }],
-    ["刷新", () => { this.freshNode(); }]];
+    let bms = [['隐藏选中', () => { this.hideNode(0); }],
+    ['隐藏未选中', () => { this.hideNode(1); }],
+    ['显示隐藏', () => { this.hideNode(2); }],
+    ['选中前继', () => { this.selectNode(0); }],
+    ['选中后继', () => { this.selectNode(1); }],
+    ['刷新', () => { this.freshNode(); }]];
     for (let bm of bms) {
       let bw = X2DFast.gi().getTextWidth(bm[0], 14) + 6;
       let btn = new XButton(tx, ty, bw, 20, bm[0]);
@@ -104,8 +104,8 @@ class IrViewer {
       return b.posY_ - a.posY_;
     })
 
-    this.scrollY_ = new XScroll({ type: "right" });
-    this.scrollX_ = new XScroll({ type: "button" });
+    this.scrollY_ = new XScroll({ type: 'right' });
+    this.scrollX_ = new XScroll({ type: 'button' });
     this.scrollY_.move(Scr.logicw - 20, 100, 20, Scr.logich - 100 - 20);
     this.scrollX_.move(20, Scr.logich - 20, Scr.logicw - 40, 20);
 
@@ -115,13 +115,13 @@ class IrViewer {
   freshNode() {
     this.scrollY_.setBarOff(0);
     this.scrollX_.setBarOff(0.5);
-    IrToPicture.resetPicture(this.visable_.nodes, this.direct_.type.startsWith("block:"));
+    IrToPicture.resetPicture(this.visable_.nodes, this.direct_.type.startsWith('block:'));
   }
   hideNode(type) {
-    if (type == 0) {//隐藏选中
+    if (type === 0) { //隐藏选中
       this.hideNodeIds_ = this.hideNodeIds_.concat(this.selectPoint_);
     }
-    else if (type == 1) {//隐藏未选中
+    else if (type === 1) { //隐藏未选中
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
         if (this.selectPoint_.indexOf(parseInt(nodes[k].ir.id)) >= 0) {
@@ -130,7 +130,7 @@ class IrViewer {
         this.hideNodeIds_.push(parseInt(nodes[k].ir.id));
       }
     }
-    else {//显示所有
+    else { //显示所有
       this.hideNodeIds_ = [];
     }
     this.changeVisable();
@@ -147,11 +147,11 @@ class IrViewer {
       let id1 = parseInt(n1.ir.id);
       let id2 = parseInt(n2.ir.id);
       let idx = -1;
-      if (type == 0 && (n1.mask & this.mask_) != 0 && this.selectPoint_.indexOf(id2) >= 0) {//选中前继
+      if (type === 0 && (n1.mask & this.mask_) !== 0 && this.selectPoint_.indexOf(id2) >= 0) { //选中前继
         idx = this.hideNodeIds_.indexOf(id1);
         sel.add(id1);
       }
-      if (type == 1 && (n2.mask & this.mask_) != 0 && this.selectPoint_.indexOf(id1) >= 0) {//选中后继
+      if (type === 1 && (n2.mask & this.mask_) !== 0 && this.selectPoint_.indexOf(id1) >= 0) { //选中后继
         idx = this.hideNodeIds_.indexOf(id2);
         sel.add(id2);
       }
@@ -193,19 +193,19 @@ class IrViewer {
           }
           loadonce--;
 
-          method.irAll = IrToPicture.toPicture(method.irList, 1, method.type.startsWith("block:"));
+          method.irAll = IrToPicture.toPicture(method.irList, 1, method.type.startsWith('block:'));
           method.loaded = true;
         }
       }
     }
-    if (loadonce == 0) {
+    if (loadonce === 0) {
       XTools.PROC_TO = 20 + procto / total * 80;
       return true;
     }
     XTools.PROC_TO = 100;
     this.loaded_ = true;
     this.changeFile(this.pointFile_);
-    NapiLog.logInfo("load cost", Date.now() - this.t1_);
+    NapiLog.logInfo('load cost', Date.now() - this.t1_);
     return true;
   }
   changeFile(name) {
@@ -218,14 +218,14 @@ class IrViewer {
     this.pointFunc_ = name;
     let methods = [];
     for (let i = 0; i < this.data_[this.pointFile_][this.pointFunc_].length; i++) {
-      methods.push((i + 1) + "," + this.data_[this.pointFile_][this.pointFunc_][i].type);
+      methods.push((i + 1) + ',' + this.data_[this.pointFile_][this.pointFunc_][i].type);
     }
     this.selectMethod_.resetList(methods, methods[0]);
     this.changeMethod(methods[0]);
   }
   changeMethod(name) {
     this.pointMethod_ = name;
-    let p = parseInt(name.split(",")[0]) - 1;
+    let p = parseInt(name.split(',')[0]) - 1;
     this.direct_ = this.data_[this.pointFile_][this.pointFunc_][p];
     this.changeVisable();
   }
@@ -241,7 +241,7 @@ class IrViewer {
         n.hide = true;
       }
       else {
-        n.hide = (n.mask & this.mask_) == 0;
+        n.hide = (n.mask & this.mask_) === 0;
         if (!n.hide) {
           showNodes.push(k);
         }
@@ -250,7 +250,7 @@ class IrViewer {
     for (let k of showNodes) {
       let n = nodes[k];
       for (let i = 0; i < 5; i++) {
-        if ((this.mask_ & (1 << i) != 0) && (n.mask & (1 << i) != 0)) {//进入点也加进来
+        if ((this.mask_ & (1 << i) !== 0) && (n.mask & (1 << i) !== 0)) { //进入点也加进来
           for (let id of n.ir.in[i]) {
             nodes[id].hide = false;
           }
@@ -273,14 +273,14 @@ class IrViewer {
       if (n.hide) {
         continue;
       }
-      if (n.deep != IrToPicture.INVALID_DEEP) {
+      if (n.deep !== IrToPicture.INVALID_DEEP) {
         levely.add(n.pos.y);
       }
     }
     return Array.from(levely).sort((a, b) => { return parseInt(a) - parseInt(b) });
   }
   drawSmallMap(nodes, x1, x2, y1, y2) {
-    if (x1 == x2 || y2 == y1) {
+    if (x1 === x2 || y2 === y1) {
       return;
     }
     let [tx, ty, w, h] = this.smallMapRect;
@@ -290,7 +290,7 @@ class IrViewer {
     let sh = h / (y2 - y1);
 
     let dh = Math.max(20 * sh, 1);
-    for (let k in nodes) {//画节点
+    for (let k in nodes) { //画节点
       let n = nodes[k];
       if (n.hide) {
         continue;
@@ -333,7 +333,7 @@ class IrViewer {
   }
   onDraw() {
     if (this.loading()) {
-      X2DFast.gi().drawText("Loading " + XTools.PROC_TO.toFixed(1) + "%", 20, Scr.logicw / 2, Scr.logich / 2, 1, 1, 0, -2, -2, 0xff000000);
+      X2DFast.gi().drawText('Loading ' + XTools.PROC_TO.toFixed(1) + '%', 20, Scr.logicw / 2, Scr.logich / 2, 1, 1, 0, -2, -2, 0xff000000);
       return;
     }
     let smallMapSize = parseInt(Math.min(Scr.logicw / 3, Scr.logich / 3));
@@ -355,7 +355,7 @@ class IrViewer {
         continue;
       }
       collect.showCount++;
-      if (n.deep != IrToPicture.INVALID_DEEP) {
+      if (n.deep !== IrToPicture.INVALID_DEEP) {
         collect.singleCount++;
         if (maxx < n.pos.x + n.nameWidth + this.offx_) {
           maxx = n.pos.x + n.nameWidth + this.offx_;
@@ -370,11 +370,11 @@ class IrViewer {
       n.outhx = {};
     }
     this.selectLines_ = [];
-    let mmx1 = this.drawLines(this.offx_, this.offy_, nodes, lines, levely, [minx - 20, maxx + 20], false);//未选中的线
-    for (let k in nodes) {//画节点
+    let mmx1 = this.drawLines(this.offx_, this.offy_, nodes, lines, levely, [minx - 20, maxx + 20], false); //未选中的线
+    for (let k in nodes) { //画节点
       let n = nodes[k];
-      if (n.deep == IrToPicture.INVALID_DEEP) {
-        if (n.pos.x == IrToPicture.INVALID_DEEP) {
+      if (n.deep === IrToPicture.INVALID_DEEP) {
+        if (n.pos.x === IrToPicture.INVALID_DEEP) {
           n.pos.x = mmx1[1] - this.offx_ + 20;
         }
       }
@@ -414,7 +414,7 @@ class IrViewer {
       }
       X2DFast.gi().drawText(n.name, 14, dx + n.nameWidth / 2, dy + 2, 1, 1, 0, -2, -2, 0xff000000);
     }
-    this.drawLines(this.offx_, this.offy_, nodes, lines, levely, [minx - 20, maxx + 20], true);//选中的线
+    this.drawLines(this.offx_, this.offy_, nodes, lines, levely, [minx - 20, maxx + 20], true); //选中的线
     for (let ln of this.selectLines_) {
       let [r, g, b, a] = XTexture.ExpandColor(ln[4]);
       r = Math.max(0, r * 255 - 32);
@@ -423,7 +423,7 @@ class IrViewer {
       this.drawLine(ln[0], ln[1], ln[2], ln[3], 0xff000000 | (r << 16) | (g << 8) | b, ln[5] + 1);
     }
     if (mouseOn >= 0) {
-      let n = nodes[mouseOn];//显示选中节点的信息
+      let n = nodes[mouseOn]; //显示选中节点的信息
       let w = n.ir.maxDetailWidth + 2;
       let h = n.ir.detailList.length * 16 + 2;
       let x = XTools.MOUSE_POS.x - w;
@@ -455,15 +455,19 @@ class IrViewer {
       if (n.hide) {
         continue;
       }
-      if (n.pos.x < x1)
+      if (n.pos.x < x1) {
         x1 = n.pos.x;
-      if (n.pos.x + n.nameWidth > x2)
+      }
+      if (n.pos.x + n.nameWidth > x2) {
         x2 = n.pos.x + n.nameWidth;
+      }
 
-      if (n.pos.y < y1)
+      if (n.pos.y < y1) {
         y1 = n.pos.y;
-      if (n.pos.y + n.nameWidth > y2)
+      }
+      if (n.pos.y + n.nameWidth > y2) {
         y2 = n.pos.y + IrToPicture.NODEH;
+      }
     }
     x1 = Math.min(mmx1[0] - this.offx_, x1) - Scr.logicw / 3;
     x2 = Math.max(mmx1[1] - this.offx_, x2) + Scr.logicw / 3;
@@ -479,8 +483,12 @@ class IrViewer {
     let scrollH = y2 - y1;
     this.dragScoll.hh = scrollH - Scr.logich;
     this.dragScoll.ww = scrollW - Scr.logicw;
-    if (this.dragScoll.hh < 1) this.dragScoll.hh = 1;
-    if (this.dragScoll.ww < 1) this.dragScoll.ww = 1;
+    if (this.dragScoll.hh < 1) {
+      this.dragScoll.hh = 1;
+    }
+    if (this.dragScoll.ww < 1) {
+      this.dragScoll.ww = 1;
+    }
     if (this.drapBackground_) {
       this.scrollY_.setBarOff(-(this.offy_ + this.dragScoll.y1) / this.dragScoll.hh);
       this.scrollX_.setBarOff(-(this.offx_ + this.dragScoll.x1) / this.dragScoll.ww);
@@ -489,8 +497,12 @@ class IrViewer {
       this.offy_ = (-this.scrollY_.getBarOff()) * this.dragScoll.hh - this.dragScoll.y1;
       this.offx_ = (-this.scrollX_.getBarOff()) * this.dragScoll.ww - this.dragScoll.x1;
     }
-    if (this.dragScoll.hh > 1) this.scrollY_.move(Scr.logicw - 20, 100, 20, Scr.logich - 100 - 20).draw();
-    if (this.dragScoll.ww > 1) this.scrollX_.move(20, Scr.logich - 20, Scr.logicw - 40, 20).draw();
+    if (this.dragScoll.hh > 1) {
+      this.scrollY_.move(Scr.logicw - 20, 100, 20, Scr.logich - 100 - 20).draw();
+    }
+    if (this.dragScoll.ww > 1) {
+      this.scrollX_.move(20, Scr.logich - 20, Scr.logicw - 40, 20).draw();
+    }
 
     this.drawSmallMap(nodes, x1, x2, y1, y2);
 
@@ -502,9 +514,8 @@ class IrViewer {
       X2DFast.gi().fillRect(x, y, w, h, 0x80000000);
 
       let searchResultTxt =
-        this.searchInput.result.length == 0
-          ? '0/0'
-          : this.searchInput.point + 1 + '/' + this.searchInput.result.length;
+        this.searchInput.result.length === 0 ? '0/0' :
+          this.searchInput.point + 1 + '/' + this.searchInput.result.length;
 
       this.searchInput.btnUp.move(x + 20, y + 50, 32, 24).draw();
 
@@ -528,7 +539,7 @@ class IrViewer {
   checkLevel(levely, n1, n2) {
     let i1 = levely.indexOf(n1.pos.y);
     let i2 = levely.indexOf(n2.pos.y);
-    return i1 + 1 == i2;
+    return i1 + 1 === i2;
   }
   drawLines(offx, offy, nodes, lines, levely, mmx, select) {
     let aaa = 5;
@@ -545,7 +556,7 @@ class IrViewer {
         if (this.checkLevel(levely, n1, n2)) { }
         else {
           if (!(n1.outh[l.outNum] in n1.outhx)) {
-            mmx[lor] += lor == 0 ? aaa : -aaa;
+            mmx[lor] += lor === 0 ? aaa : -aaa;
             n1.outhx[n1.outh[l.outNum]] = mmx[lor];
           }
         }
@@ -580,10 +591,10 @@ class IrViewer {
         }
       }
 
-      if (select != selected) {
+      if (select !== selected) {
         if (this.checkLevel(levely, n1, n2)) { }
         else {
-          mmx[lor] += lor == 0 ? -aaa : aaa;
+          mmx[lor] += lor === 0 ? -aaa : aaa;
         }
         continue;
       }
@@ -591,7 +602,7 @@ class IrViewer {
       let c = 0xffc0c0c0;
       let lw = 1;
 
-      if (selected) {//选中的点进出的线使用指定的颜色，增加线宽
+      if (selected) { //选中的点进出的线使用指定的颜色，增加线宽
         c = XTools.CONFIG.LineColor[l.lineType];
         lw = 2;
       }
@@ -602,15 +613,15 @@ class IrViewer {
         ls.push([x2, y1 + n1.outh[l.outNum], x2, y2, c, lw]);
       }
       else {
-        let lx = n1.outhx[n1.outh[l.outNum]];//n1.outhx[l.outNum] 或 mmx[lor]
-        let ly = n2.inh[l.fromId + l.lineType];//n2.inh[l.inNum] 或 n2.inh[n1.ir.id]
+        let lx = n1.outhx[n1.outh[l.outNum]]; //n1.outhx[l.outNum] 或 mmx[lor]
+        let ly = n2.inh[l.fromId + l.lineType]; //n2.inh[l.inNum] 或 n2.inh[n1.ir.id]
 
         ls.push([x1, y1, x1, y1 + n1.outh[l.outNum], c, lw]);
         ls.push([x1, y1 + n1.outh[l.outNum], lx, y1 + n1.outh[l.outNum], c, lw]);
         ls.push([lx, y1 + n1.outh[l.outNum], lx, y2 - ly, c, lw]);
         ls.push([lx, y2 - ly, x2, y2 - ly, c, lw]);
         ls.push([x2, y2 - ly, x2, y2, c, lw]);
-        mmx[lor] += lor == 0 ? -aaa : aaa;
+        mmx[lor] += lor === 0 ? -aaa : aaa;
       }
       let mouseOn = false;
       for (let ln of ls) {
@@ -623,7 +634,7 @@ class IrViewer {
     return [Math.min(mmx1[0], mmx[0]), Math.max(mmx1[1], mmx[1])];
   }
   drawLine(x1, y1, x2, y2, c, lw = 1) {
-    if (x1 == x2) {
+    if (x1 === x2) {
       if (y1 > y2) {
         [y1, y2] = [y2, y1];
       }
@@ -632,7 +643,7 @@ class IrViewer {
         return true;
       }
     }
-    else if (y1 == y2) {
+    else if (y1 === y2) {
       if (x1 > x2) {
         [x1, x2] = [x2, x1];
       }
@@ -670,7 +681,7 @@ class IrViewer {
   resetOffset(x, y) {
     let [tx, ty, w, h] = this.smallMapRect;
     let [x1, y1, x2, y2] = [this.dragScoll.x1, this.dragScoll.y1, this.dragScoll.x2, this.dragScoll.y2];
-    if (x1 == x2 || y1 == y2) {
+    if (x1 === x2 || y1 === y2) {
       return;
     }
     let sw = w / (x2 - x1);
@@ -687,18 +698,18 @@ class IrViewer {
       return true;
     }
     if (this.smallMapLocked_) {
-      if (msg == 2) {
+      if (msg === 2) {
         this.resetOffset(x, y);
       }
-      if (msg == 3) {
+      if (msg === 3) {
         this.smallMapLocked_ = false;
       }
       return true;
     }
-    if (msg == 6) {
+    if (msg === 6) {
       this.drapBackground_ = null;
     }
-    if (msg == 3 && this.drapSelect_) {
+    if (msg === 3 && this.drapSelect_) {
       let nodes = this.visable_.nodes;
       for (let k of this.selectPoint_) {
         nodes[k].pos.x += this.drapSelect_.dx;
@@ -707,7 +718,7 @@ class IrViewer {
       this.drapSelect_ = null;
     }
     if (this.drapBackground_) {
-      if (msg == 2) {
+      if (msg === 2) {
         this.offx_ -= this.drapBackground_.x - x;
         this.offy_ -= this.drapBackground_.y - y;
         this.drapBackground_.x = x;
@@ -716,11 +727,11 @@ class IrViewer {
       return true;
     }
     if (this.drapSelect_) {
-      if (msg == 2) {
+      if (msg === 2) {
         if (Math.abs(this.drapSelect_.x - x) > 10 ||
           Math.abs(this.drapSelect_.y - y) > 10 ||
-          this.drapSelect_.dx != 0 ||
-          this.drapSelect_.dy != 0) {
+          this.drapSelect_.dx !== 0 ||
+          this.drapSelect_.dy !== 0) {
           this.drapSelect_.dx -= this.drapSelect_.x - x;
           this.drapSelect_.dy -= this.drapSelect_.y - y;
           this.drapSelect_.x = x;
@@ -736,7 +747,7 @@ class IrViewer {
       return true;
     }
     if (XTools.InRect(x, y, ...this.smallMapRect)) {
-      if (msg == 1) {
+      if (msg === 1) {
         this.resetOffset(x, y);
         this.smallMapLocked_ = true;
       }
@@ -772,7 +783,7 @@ class IrViewer {
         return true;
       }
     }
-    if (msg == 1) {
+    if (msg === 1) {
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
         let n = nodes[k];
@@ -800,7 +811,7 @@ class IrViewer {
       this.selectPoint_ = [];
     }
 
-    if (msg == 4) {
+    if (msg === 4) {
       this.drapBackground_ = {
         x: x,
         y: y,
@@ -816,28 +827,28 @@ class IrViewer {
       return true;
     }
     switch (k) {
-      case "PageUp":
+      case 'PageUp':
         this.selectNode(0);
         return true;
-      case "PageDown":
+      case 'PageDown':
         this.selectNode(1);
         return true;
-      case "H":
-      case "h":
+      case 'H':
+      case 'h':
         this.hideNode(0);
         return true;
-      case " ":
+      case ' ':
         this.hideNode(1);
         return true;
-      case "S":
-      case "s":
+      case 'S':
+      case 's':
         this.hideNode(2);
         return true;
-      case "Enter":
+      case 'Enter':
         this.freshNode();
         return true;
     }
-    if (k == 'ctrl+f' || k == 'ctrl+F') {
+    if (k === 'ctrl+f' || k === 'ctrl+F') {
       this.searchInput = {
         pos: [(Scr.logicw - 300), Scr.logich / 2, 200, 80],
         result: [],
@@ -866,15 +877,18 @@ class IrViewer {
             this.selectPoint_ = [];
             for (let i in nodes) {
               let n = nodes[i];
+              let searchName;
               if (XTools.CONFIG.OpTypeJsBytecode.indexOf(n.ir.op) >= 0) {
-                if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
-                  this.searchInput.result.push(i);
-                }
+                searchName = n.ir.bytecode;
+              }
+              else if (n.ir.typedop) {
+                searchName = n.ir.typedop;
               }
               else {
-                if (n.ir.id == v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {
-                  this.searchInput.result.push(i);
-                }
+                searchName = n.ir.op;
+              }
+              if (n.ir.id === v || searchName.indexOf(v) >= 0 || (isRegExp(v) && searchName.match(v))) {
+                this.searchInput.result.push(i);
               }
             }
             if (this.searchInput.result.length > 0) {

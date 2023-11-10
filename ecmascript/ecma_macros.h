@@ -96,6 +96,29 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                       \
+    static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
+    JSTaggedValue Get##name() const                                                                           \
+    {                                                                                                         \
+        /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
+        /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
+        /*       Synchronized means it will restrain the store and load in atomic.                         */ \
+        return JSTaggedValue(reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(this) + offset) \
+                             ->load(std::memory_order_acquire));                                              \
+    }                                                                                                         \
+    template<typename T>                                                                                      \
+    void Set##name([[maybe_unused]] const JSThread *thread, JSHandle<T> value)                                \
+    {                                                                                                         \
+        bool isPrimitive = !value.GetTaggedValue().IsHeapObject();                                            \
+        Barriers::SynchronizedSetObject(this, offset, value.GetTaggedValue().GetRawData(), isPrimitive);      \
+    }                                                                                                         \
+    void Set##name([[maybe_unused]] const JSThread *thread, JSTaggedValue value)                              \
+    {                                                                                                         \
+        bool isPrimitive = !value.IsHeapObject();                                                             \
+        Barriers::SynchronizedSetObject(this, offset, value.GetRawData(), isPrimitive);                       \
+    }
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFINE_ALIGN_SIZE(offset) \
     static constexpr size_t SIZE = ((offset) + sizeof(JSTaggedType) - 1U) & (~(sizeof(JSTaggedType) - 1U))
 
@@ -362,6 +385,10 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_OOM_ERROR(thread, message)               \
     THROW_ERROR(thread, ErrorType::OOM_ERROR, message)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_TERMINATION_ERROR(thread, message)               \
+    THROW_ERROR(thread, ErrorType::TERMINATION_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_STACK_BEFORE_THROW_IF_ASM(thread)                                                   \

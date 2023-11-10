@@ -189,6 +189,134 @@ JSHandle<EcmaString> JSDateTimeFormat::ToValueString(JSThread *thread, const Val
     return result;
 }
 
+icu::DateFormat::EStyle DateTimeStyleToEStyle(DateTimeStyleOption style)
+{
+    switch (style) {
+        case DateTimeStyleOption::FULL: {
+            return icu::DateFormat::kFull;
+        }
+        case DateTimeStyleOption::LONG: {
+            return icu::DateFormat::kLong;
+        }
+        case DateTimeStyleOption::MEDIUM: {
+            return icu::DateFormat::kMedium;
+        }
+        case DateTimeStyleOption::SHORT: {
+            return icu::DateFormat::kShort;
+        }
+        case DateTimeStyleOption::UNDEFINED: {
+            return icu::DateFormat::kNone;
+        }
+        default: {
+            return icu::DateFormat::kNone;
+        }
+    }
+}
+
+HourCycleOption HourCycleFromPattern(const icu::UnicodeString pattern)
+{
+    bool inQuote = false;
+    for (int32_t i = 0; i < pattern.length(); i++) {
+        char16_t ch = pattern[i];
+        switch (ch) {
+            case '\'':
+                inQuote = !inQuote;
+                break;
+            case 'K':
+                if (!inQuote) {
+                    return HourCycleOption::H11;
+                }
+                break;
+            case 'h':
+                if (!inQuote) {
+                    return HourCycleOption::H12;
+                }
+                break;
+            case 'H':
+                if (!inQuote) {
+                    return HourCycleOption::H23;
+                }
+                break;
+            case 'k':
+                if (!inQuote) {
+                    return HourCycleOption::H24;
+                }
+                break;
+            default : {
+                break;
+            }
+        }
+    }
+    return HourCycleOption::UNDEFINED;
+}
+
+icu::UnicodeString ReplaceSkeleton(const icu::UnicodeString input, HourCycleOption hc)
+{
+    icu::UnicodeString result;
+    char16_t to;
+    switch (hc) {
+        case HourCycleOption::H11:
+            to = 'K';
+            break;
+        case HourCycleOption::H12:
+            to = 'h';
+            break;
+        case HourCycleOption::H23:
+            to = 'H';
+            break;
+        case HourCycleOption::H24:
+            to = 'k';
+            break;
+        default:
+            UNREACHABLE();
+            break;
+    }
+    int inputLength = input.length();
+    for (int32_t i = 0; i < inputLength; ++i) {
+        switch (input[i]) {
+            case 'a':
+            case 'b':
+            case 'B':
+                break;
+            case 'h':
+            case 'H':
+            case 'k':
+            case 'K':
+                result += to;
+                break;
+            default:
+                result += input[i];
+                break;
+        }
+    }
+    return result;
+}
+
+std::unique_ptr<icu::SimpleDateFormat> DateTimeStylePattern(DateTimeStyleOption dateStyle,
+                                                            DateTimeStyleOption timeStyle,
+                                                            icu::Locale &icuLocale,
+                                                            HourCycleOption hc,
+                                                            icu::DateTimePatternGenerator *generator)
+{
+    std::unique_ptr<icu::SimpleDateFormat> result;
+    icu::DateFormat::EStyle icuDateStyle = DateTimeStyleToEStyle(dateStyle);
+    icu::DateFormat::EStyle icuTimeStyle = DateTimeStyleToEStyle(timeStyle);
+    result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
+        icu::DateFormat::createDateTimeInstance(icuDateStyle, icuTimeStyle, icuLocale)));
+    UErrorCode status = U_ZERO_ERROR;
+    icu::UnicodeString pattern("");
+    pattern = result->toPattern(pattern);
+    icu::UnicodeString skeleton = icu::DateTimePatternGenerator::staticGetSkeleton(pattern, status);
+    ASSERT_PRINT(U_SUCCESS(status), "staticGetSkeleton failed");
+    if (hc == HourCycleFromPattern(pattern)) {
+        return result;
+    }
+    skeleton = ReplaceSkeleton(skeleton, hc);
+    pattern = generator->getBestPattern(skeleton, UDATPG_MATCH_HOUR_FIELD_LENGTH, status);
+    result = std::make_unique<icu::SimpleDateFormat>(pattern, icuLocale, status);
+    return result;
+}
+
 // 13.1.1 InitializeDateTimeFormat (dateTimeFormat, locales, options)
 // NOLINTNEXTLINE(readability-function-size)
 JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *thread,
@@ -379,6 +507,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     //     c. Set opt.[[<prop>]] to value.
     std::string skeleton;
     std::vector<IcuPatternDesc> data = GetIcuPatternDesc(hc);
+    int32_t explicitFormatComponents = 0;
     for (const IcuPatternDesc &item : data) {
         // prop be [[TimeZoneName]]
         if (item.property == "timeZoneName") {
@@ -392,6 +521,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
         bool isFind = JSLocale::GetOptionOfString(thread, dateTimeOptions, property, item.allowedValues, &value);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
         if (isFind) {
+            explicitFormatComponents = 1;
             skeleton += item.map.find(value)->second;
             // [[Hour]] is defined.
             isHourDefined = (item.property == "hour") ? true : isHourDefined;
@@ -449,6 +579,13 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
         generator.get()->getBestPattern(dtfSkeleton, UDATPG_MATCH_HOUR_FIELD_LENGTH, status), dtfHourCycle);
     ASSERT_PRINT((U_SUCCESS(status) != 0), "get best pattern failed");
     auto simpleDateFormatIcu(std::make_unique<icu::SimpleDateFormat>(pattern, icuLocale, status));
+    if (dateStyle != DateTimeStyleOption::UNDEFINED || timeStyle != DateTimeStyleOption::UNDEFINED) {
+        if (explicitFormatComponents != 0) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid option : option", dateTimeFormat);
+        }
+        simpleDateFormatIcu = DateTimeStylePattern(dateStyle, timeStyle, icuLocale,
+                                                   hc, generator.get());
+    }
     if (U_FAILURE(status) != 0) {
         simpleDateFormatIcu = std::unique_ptr<icu::SimpleDateFormat>();
     }

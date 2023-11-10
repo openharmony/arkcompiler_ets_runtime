@@ -77,6 +77,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::INDEX_CHECK:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
@@ -337,6 +338,15 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::LOAD_CONST_OFFSET: {
             if (acc_.GetOffset(lhs) != acc_.GetOffset(rhs)) {
+                return false;
+            }
+            if (acc_.GetMemoryOrder(lhs) != acc_.GetMemoryOrder(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::LOAD_HCLASS_FROM_CONSTPOOL: {
+            if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
                 return false;
             }
             break;

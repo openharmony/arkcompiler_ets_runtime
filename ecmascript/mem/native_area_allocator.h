@@ -25,6 +25,13 @@
 #include "ecmascript/mem/area.h"
 
 namespace panda::ecmascript {
+enum class NativeFlag {
+    NO_DIV,
+    ARRAY_BUFFER,
+    REGEXP_BTYECODE,
+    CHUNK_MEM,
+};
+
 class PUBLIC_API NativeAreaAllocator {
 public:
     NativeAreaAllocator() = default;
@@ -102,6 +109,69 @@ public:
         return maxNativeMemoryUsage_.load(std::memory_order_relaxed);
     }
 
+    size_t GetArrayBufferNativeSize() const
+    {
+        return arrayBufferNativeSize_;
+    }
+
+    size_t GetRegExpNativeSize() const
+    {
+        return regExpNativeSize_;
+    }
+
+    size_t GetChunkNativeSize() const
+    {
+        return chunkNativeSize_;
+    }
+
+    inline void IncreaseNativeSizeStats(size_t size, NativeFlag flag)
+    {
+        if (size == 0) {
+            return;
+        }
+        switch (flag) {
+            case NativeFlag::ARRAY_BUFFER:
+                arrayBufferNativeSize_ += size;
+                break;
+            case NativeFlag::REGEXP_BTYECODE:
+                regExpNativeSize_ += size;
+                break;
+            case NativeFlag::CHUNK_MEM:
+                chunkNativeSize_ += size;
+                break;
+            default:
+                break;
+        }
+    }
+
+    inline void DecreaseNativeSizeStats(size_t size, NativeFlag flag)
+    {
+        if (size == 0) {
+            return;
+        }
+        switch (flag) {
+            case NativeFlag::ARRAY_BUFFER:
+                arrayBufferNativeSize_ -= size;
+                break;
+            case NativeFlag::REGEXP_BTYECODE:
+                regExpNativeSize_ -= size;
+                break;
+            case NativeFlag::CHUNK_MEM:
+                chunkNativeSize_ -= size;
+                break;
+            default:
+                break;
+        }
+    }
+
+    void ModifyNativeSizeStats(size_t preSize, size_t nextSize, NativeFlag flag) {
+        if (flag == NativeFlag::NO_DIV) {
+            return;
+        }
+        DecreaseNativeSizeStats(preSize, flag);
+        IncreaseNativeSizeStats(nextSize, flag);
+    }
+
     void *Allocate(size_t size)
     {
         if (size == 0) {
@@ -153,6 +223,10 @@ private:
     Area *cachedArea_ {nullptr};
     std::atomic<size_t> nativeMemoryUsage_ {0};
     std::atomic<size_t> maxNativeMemoryUsage_ {0};
+    // native area size stats
+    size_t arrayBufferNativeSize_ {0};
+    size_t regExpNativeSize_ {0};
+    size_t chunkNativeSize_ {0};
 };
 }  // namespace panda::ecmascript
 

@@ -24,8 +24,10 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/waiter_list.h"
+#include "global_handle_collection.h"
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -67,13 +69,17 @@ class MicroJobQueue;
 namespace tooling {
 class JsDebuggerManager;
 }  // namespace tooling
+namespace kungfu {
+class PGOTypeManager;
+} // namespace kungfu
 
 enum class IcuFormatterType {
     SIMPLE_DATE_FORMAT_DEFAULT,
     SIMPLE_DATE_FORMAT_DATE,
     SIMPLE_DATE_FORMAT_TIME,
     NUMBER_FORMATTER,
-    COLLATOR
+    COLLATOR,
+    ICU_FORMATTER_TYPE_COUNT
 };
 
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
@@ -101,6 +107,11 @@ public:
 
     bool Initialize();
 
+    bool IsExecutingPendingJob() const
+    {
+        return isProcessingPendingJob_.load();
+    }
+
     bool HasPendingJob();
 
     bool ExecutePromisePendingJob();
@@ -123,6 +134,11 @@ public:
     TSManager *GetTSManager() const
     {
         return tsManager_;
+    }
+
+    kungfu::PGOTypeManager *GetPTManager() const
+    {
+        return ptManager_;
     }
 
     ARK_INLINE JSThread *GetJSThread() const
@@ -157,6 +173,8 @@ public:
         hostPromiseRejectionTracker_ = cb;
     }
     void SetupRegExpResultCache();
+    void SetupNumberToStringResultCache();
+    void SetupStringSplitResultCache();
     JSHandle<JSTaggedValue> GetRegExpCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
@@ -202,6 +220,25 @@ public:
     bool GetAllowAtomicWait() const
     {
         return AllowAtomicWait_;
+    }
+    JSHandle<JSTaggedValue> GetNumberToStringResultCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&numberToStringResultCache_));
+    }
+
+    void SetNumberToStringResultCache(JSTaggedValue newCache)
+    {
+        numberToStringResultCache_ = newCache;
+    }
+
+    JSHandle<JSTaggedValue> GetStringSplitResultCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringSplitResultCache_));
+    }
+
+    void SetStringSplitResultCache(JSTaggedValue newCache)
+    {
+        stringSplitResultCache_ = newCache;
     }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
@@ -250,32 +287,27 @@ public:
                                 IcuDeleteEntry deleteEntry = nullptr)
     {
         EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
+        icuObjCache_[static_cast<int>(type)] = icuFormatter;
     }
 
-    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    ARK_INLINE void *GetIcuFormatterFromCache(IcuFormatterType type, std::string &locale)
     {
-        auto iter = icuObjCache_.find(type);
-        if (iter != icuObjCache_.end()) {
-            EcmaContext::IcuFormatter icuFormatter = iter->second;
-            if (icuFormatter.locale == locale) {
-                return icuFormatter.icuObj;
-            }
+        auto &icuFormatter = icuObjCache_[static_cast<int>(type)];
+        if (icuFormatter.locale == locale) {
+            return icuFormatter.icuObj;
         }
         return nullptr;
     }
 
     void ClearIcuCache()
     {
-        auto iter = icuObjCache_.begin();
-        while (iter != icuObjCache_.end()) {
-            EcmaContext::IcuFormatter icuFormatter = iter->second;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
+            auto &icuFormatter = icuObjCache_[i];
             IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
             if (deleteEntry != nullptr) {
                 deleteEntry(icuFormatter.icuObj, vm_);
             }
-            iter->second = EcmaContext::IcuFormatter{};
-            iter++;
+            icuFormatter = EcmaContext::IcuFormatter{};
         }
     }
 
@@ -403,6 +435,36 @@ public:
         return &globalConst_;
     }
 
+    void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
+    {
+        cachedPatchModules_.emplace(recordName, moduleRecord);
+    }
+    JSHandle<JSTaggedValue> FindPatchModule(const CString &recordName) const
+    {
+        auto iter = cachedPatchModules_.find(recordName);
+        if (iter != cachedPatchModules_.end()) {
+            return iter->second;
+        }
+        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole());
+    }
+    void ClearPatchModules()
+    {
+        GlobalHandleCollection gloalHandleCollection(thread_);
+        for (auto &item : cachedPatchModules_) {
+            gloalHandleCollection.Dispose(item.second);
+        }
+        cachedPatchModules_.clear();
+    }
+
+    StageOfHotReload GetStageOfHotReload() const
+    {
+        return stageOfHotReload_;
+    }
+    void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
+    {
+        stageOfHotReload_ = stageOfHotReload;
+    }
+
     bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
     bool JoinStackPush(JSHandle<JSTaggedValue> receiver);
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
@@ -431,20 +493,28 @@ private:
                                           CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob);
+    Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+        std::string_view entryPoint, JSHandle<JSFunction> &func);
     bool LoadAOTFiles(const std::string &aotFileName);
+    void RelocateConstantString(const JSPandaFile *jsPandaFile);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
+    PropertiesCache *propertiesCache_ {nullptr};
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
-    bool isProcessingPendingJob_ {false};
     bool initialized_ {false};
+    std::atomic<bool> isProcessingPendingJob_ {false};
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
+    JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
+    JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
@@ -453,9 +523,14 @@ private:
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
+    // for HotReload of module.
+    CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
+    StageOfHotReload stageOfHotReload_ = StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD;
+
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
     TSManager *tsManager_ {nullptr};
+    kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
 
     // atomics
@@ -480,8 +555,7 @@ private:
         IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
-    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
-
+    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
     // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
@@ -499,7 +573,6 @@ private:
     JSTaggedType *frameBase_ {nullptr};
     uint64_t stackStart_ {0};
     uint64_t stackLimit_ {0};
-    PropertiesCache *propertiesCache_ {nullptr};
     GlobalEnvConstants globalConst_;
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;

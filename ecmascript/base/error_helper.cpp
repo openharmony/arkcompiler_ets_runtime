@@ -118,6 +118,9 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorName(JSThread *thread, const JSHand
             case ErrorType::OOM_ERROR:
                 errorKey = globalConst->GetHandledOOMErrorString();
                 break;
+            case ErrorType::TERMINATION_ERROR:
+                errorKey = globalConst->GetHandledTerminationErrorString();
+                break;
             default:
                 errorKey = globalConst->GetHandledErrorString();
                 break;

@@ -31,6 +31,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -268,7 +269,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 return JSTaggedValue::Hole();
             }
             if (IsFastTypeArray(jsType)) {
-                return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, jsType);
+                return JSTypedArray::FastGetPropertyByIndex(thread, holder, index, jsType);
             }
             if (IsSpecialContainer(jsType)) {
                 return GetContainerProperty(thread, holder, index, jsType);
@@ -284,8 +285,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 if (!value.IsHole()) {
                     return value;
                 }
-            } else {
-                return JSTaggedValue::Hole();
             }
         } else {
             NumberDictionary *dict = NumberDictionary::Cast(elements);
@@ -354,6 +353,25 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 }
             }
         } else {
+            NumberDictionary *dict = NumberDictionary::Cast(elements);
+            int entry = dict->FindEntry(JSTaggedValue(static_cast<int>(index)));
+            if (entry != -1) {
+                auto attr = dict->GetAttributes(entry);
+                if (UNLIKELY(!attr.IsWritable() || !attr.IsConfigurable())) {
+                    return JSTaggedValue::Hole();
+                }
+                if (UNLIKELY(holder != receiver)) {
+                    break;
+                }
+                if (UNLIKELY(attr.IsAccessor())) {
+                    auto accessor = dict->GetValue(entry);
+                    if (ShouldCallSetter(receiver, holder, accessor, attr)) {
+                        return CallSetter(thread, receiver, value, accessor);
+                    }
+                }
+                dict->UpdateValue(thread, entry, value);
+                return JSTaggedValue::Undefined();
+            }
             return JSTaggedValue::Hole();
         }
         if (UseOwn) {
@@ -533,10 +551,15 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
     }
     int32_t nextInlinedPropsIndex = objHandle->GetJSHClass()->GetNextInlinedPropsIndex();
     if (nextInlinedPropsIndex >= 0) {
-        objHandle->SetPropertyInlinedProps(thread, nextInlinedPropsIndex, valueHandle.GetTaggedValue());
         attr.SetOffset(nextInlinedPropsIndex);
         attr.SetIsInlinedProps(true);
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
+        auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        if (actualValue.first) {
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, actualValue.second);
+        } else {
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, actualValue.second);
+        }
         return attr;
     }
 
@@ -566,7 +589,8 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
                 return attr;
             }
             // Grow properties array size
-            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(length, maxNonInlinedFastPropsCapacity);
+            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(thread, length,
+                                                                             maxNonInlinedFastPropsCapacity);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             array.Update(factory->CopyArray(array, length, capacity).GetTaggedValue());
             objHandle->SetProperties(thread, array.GetTaggedValue());
@@ -574,7 +598,12 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
 
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
-        array->Set(thread, nonInlinedProps, valueHandle.GetTaggedValue());
+        auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        if (actualValue.first) {
+            array->Set<true>(thread, nonInlinedProps, actualValue.second);
+        } else {
+            array->Set<false>(thread, nonInlinedProps, actualValue.second);
+        }
     } else {
         JSHandle<NameDictionary> dictHandle(array);
         JSHandle<NameDictionary> newDict =

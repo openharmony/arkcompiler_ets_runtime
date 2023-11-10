@@ -95,9 +95,9 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
         return false;
     }
 
-    auto iter = aiDatum_ .find(anFileInfoIndex);
+    auto iter = aiDatum_.find(anFileInfoIndex);
     // already loaded
-    if (iter != aiDatum_ .end()) {
+    if (iter != aiDatum_.end()) {
         return false;
     }
 
@@ -343,18 +343,18 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
     JSThread *thread = vm_->GetJSThread();
     JSHandle<TaggedArray> aiData(thread, deserializedData);
     uint32_t aiDataLen = aiData->GetLength();
-    ASSERT(aiDataLen % TSManager::SnapshotData::SNAPSHOT_DATA_ITEM_SIZE == 0);
-    aiDatum_ .insert({anFileInfoIndex, CMap<CString, CMap<int32_t, JSTaggedValue>>{}});
-    FileNameToMultiConstantPoolMap &fileNameToMulCpMap = aiDatum_ .at(anFileInfoIndex);
+    ASSERT(aiDataLen % AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE  == 0);
+    aiDatum_.insert({ anFileInfoIndex, CMap<CString, CMap<int32_t, JSTaggedValue>> {} });
+    FileNameToMultiConstantPoolMap &fileNameToMulCpMap = aiDatum_.at(anFileInfoIndex);
 
-    for (uint32_t i = 0; i < aiDataLen; i += TSManager::SnapshotData::SNAPSHOT_DATA_ITEM_SIZE) {
+    for (uint32_t i = 0; i < aiDataLen; i += AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE) {
         CString fileNameStr = EcmaStringAccessor(aiData->Get(i)).ToCString();
         JSHandle<TaggedArray> cpList(thread, aiData->Get(i + 1));
         uint32_t cpLen = cpList->GetLength();
-        ASSERT(cpLen % TSManager::SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE == 0);
+        ASSERT(cpLen % AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE == 0);
         fileNameToMulCpMap.insert({fileNameStr, CMap<int32_t, JSTaggedValue>{}});
         MultiConstantPoolMap &cpMap = fileNameToMulCpMap.at(fileNameStr);
-        for (uint32_t pos = 0; pos < cpLen; pos += TSManager::SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE) {
+        for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
             int32_t constantPoolID = cpList->Get(pos).GetInt();
             JSTaggedValue cp = cpList->Get(pos + 1);
             cpMap.insert({constantPoolID, cp});
@@ -366,13 +366,13 @@ JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPand
 {
     // The deserialization of the 'ai' data used by the multi-work
     // is not implemented yet, so there may be a case where
-    // aiDatum_  is empty, in which case the Hole will be returned
-    if (aiDatum_ .empty()) {
+    // aiDatum_ is empty, in which case the Hole will be returned
+    if (aiDatum_.empty()) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
     }
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    auto aiDatumIter = aiDatum_ .find(anFileInfoIndex);
-    if (aiDatumIter == aiDatum_ .end()) {
+    auto aiDatumIter = aiDatum_.find(anFileInfoIndex);
+    if (aiDatumIter == aiDatum_.end()) {
         LOG_COMPILER(FATAL) << "can not find aiData by anFileInfoIndex " << anFileInfoIndex;
         UNREACHABLE();
     }

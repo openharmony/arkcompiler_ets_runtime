@@ -475,7 +475,7 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
                 // 1. Let P be ToString(k).
                 // 2. Let exists be HasProperty(E, P).
                 // 3. If exists is true, then
-                fromKey.Update(JSTaggedValue(k));
+                fromKey.Update(JSTaggedValue::ToString(thread, JSTaggedValue(k)));
                 toKey.Update(JSTaggedValue(n));
                 bool exists = JSTaggedValue::HasProperty(thread, ele, fromKey);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2222,7 +2222,11 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Array sort
-    JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+    if (thisHandle->IsStableJSArray(thread) && callbackFnHandle->IsUndefined()) {
+        JSStableArray::Sort(thread, thisObjHandle, callbackFnHandle);
+    } else {
+        JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+    }
     return thisObjHandle.GetTaggedValue();
 }
 
@@ -2740,12 +2744,13 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
     // b. If depthNum < 0, set depthNum to 0.
     if (argc > 0) {
         JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 0);
-        JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        depthNum = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
-        depthNum = depthNum < 0 ? 0 : depthNum;
+        if (!msg1->IsUndefined()) {
+            JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            depthNum = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+            depthNum = depthNum < 0 ? 0 : depthNum;
+        }
     }
-
     // 5. Let A be ? ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));

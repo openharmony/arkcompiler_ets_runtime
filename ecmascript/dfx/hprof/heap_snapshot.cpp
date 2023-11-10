@@ -276,7 +276,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_FUNCTION_BASE:
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:
-            return GetString("JSFunction");
+            return GetString(CString(ParseFunctionName(entry)));
         case JSType::JS_ERROR:
             return GetString("Error");
         case JSType::JS_EVAL_ERROR:
@@ -295,6 +295,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Syntax Error");
         case JSType::JS_OOM_ERROR:
             return GetString("OutOfMemory Error");
+        case JSType::JS_TERMINATION_ERROR:
+            return GetString("Termination Error");
         case JSType::JS_REG_EXP:
             return GetString("Regexp");
         case JSType::JS_SET:
@@ -586,15 +588,38 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
 
 NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 {
-    NodeType nodeType = NodeType::INVALID;
+    NodeType nodeType = NodeType::DEFAULT;
     auto *hCls = entry->GetClass();
+    JSType type = hCls->GetObjectType();
+
     if (hCls->IsTaggedArray()) {
-        nodeType = NodeType::JS_ARRAY;
+        nodeType = NodeType::ARRAY;
     } else if (hCls->IsHClass()) {
-        nodeType = NodeType::HCLASS;
+        nodeType = NodeType::DEFAULT;
+    } else if (type == JSType::PROPERTY_BOX) {
+        nodeType = NodeType::HIDDEN;
+    } else if (type == JSType::JS_ARRAY || type == JSType::JS_TYPED_ARRAY) {
+        nodeType = NodeType::ARRAY;
+    } else if (type == JSType::JS_OBJECT) {
+        nodeType = NodeType::OBJECT;
+    } else if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
+        nodeType = NodeType::CLOSURE;
+    } else if (type == JSType::JS_BOUND_FUNCTION) {
+        nodeType = NodeType::DEFAULT;
+    } else if (type == JSType::JS_FUNCTION_BASE) {
+        nodeType = NodeType::DEFAULT;
+    } else if (type == JSType::JS_REG_EXP) {
+        nodeType = NodeType::REGEXP;
+    } else if (type == JSType::SYMBOL) {
+        nodeType = NodeType::SYMBOL;
+    } else if (type == JSType::JS_PRIMITIVE_REF) {
+        nodeType = NodeType::HEAPNUMBER;
+    } else if (type == JSType::BIGINT) {
+        nodeType = NodeType::BIGINT;
     } else {
-        nodeType = NodeType(hCls->GetObjectType());
+        nodeType = NodeType::DEFAULT;
     }
+
     return nodeType;
 }
 
@@ -691,7 +716,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
         }
         Address addr = reinterpret_cast<Address>(obj);
         auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-        node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::JS_PRIMITIVE_REF, 0,
+        node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::HEAPNUMBER, 0,
                              obj);
         entryMap_.InsertEntry(node);  // Fast Index
         if (!idExist) {
@@ -873,7 +898,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     }
     Address addr = reinterpret_cast<Address>(entry.GetTaggedObject());
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-    Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::PRIM_STRING, selfsize,
+    Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::STRING, selfsize,
                                entry.GetTaggedObject());
     if (!idExist) {
         entryIdMap_->InsertId(addr, sequenceId);
@@ -896,7 +921,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     Address addr = reinterpret_cast<Address>(stringValue.GetTaggedObject());
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-    node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
+    node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::STRING, selfsize,
                          stringValue.GetTaggedObject());
     Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
     if (existNode == node) {
@@ -966,16 +991,10 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     if (edgeName != "name") {
         return;
     }
-    auto fromName = *entryFrom->GetName();
-    if (*entryTo->GetName() != "" && (fromName == "JSFunctionBase" ||
-        fromName == "JSFunction" || fromName == "PromiseValueThunkOrThrowerFunction" ||
-        fromName == "JSGeneratorFunction" || fromName == "PromiseAllSettledElementFunction" ||
-        fromName == "Bound Function" || fromName == "PromiseAnyRejectElementFunction" ||
-        fromName == "PromiseReactionsFunction" || fromName == "PromiseExecutorFunction" ||
-        fromName == "PromiseAllResolveElementFunction" || fromName == "AsyncFunction" ||
-        fromName == "ProxyRevocFunction" || fromName == "AsyncFromSyncIterUnwarpFunction" ||
-        fromName == "PromiseFinallyFunction" || fromName == "JSIntlBoundFunction" ||
-        fromName == "JSAsyncGeneratorFunction" || fromName == "AsyncAwaitStatusFunction")) {
+    if (entryFrom->GetType() != NodeType::CLOSURE) {
+        return;
+    }
+    if (*entryTo->GetName() != "" && *entryTo->GetName() != "InternalAccessor") {
         entryFrom->SetName(GetString(*entryTo->GetName()));
     }
 }
@@ -998,6 +1017,23 @@ CString *HeapSnapshot::GenerateEdgeName([[maybe_unused]] TaggedObject *from, [[m
     // This Function is Unused
     ASSERT(from != nullptr && from != to);
     return GetString("[]");  // unAnalysed
+}
+
+std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
+{
+    JSFunctionBase *func = JSFunctionBase::Cast(obj);
+    Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    if (methodLiteral == nullptr) {
+        return "JSFunction";
+    }
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+    if (nameStr.empty()) {
+        return "anonymous";
+    }
+    return nameStr;
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)
@@ -1140,41 +1176,5 @@ void HeapEntryMap::InsertEntry(Node *node)
 {
     nodeEntryCount_++;
     nodesMap_.emplace(node->GetAddress(), node);
-}
-
-FrontType NodeTypeConverter::Convert(NodeType type)
-{
-    FrontType  fType = FrontType::DEFAULT;
-    if (type == NodeType::PROPERTY_BOX) {
-        fType = FrontType::HIDDEN;
-    } else if (type == NodeType::JS_ARRAY || type == NodeType::JS_TYPED_ARRAY) {
-        fType = FrontType::ARRAY;
-    } else if (type == NodeType::PRIM_STRING) {  // STRING
-        fType = FrontType::STRING;
-    } else if (type == NodeType::JS_OBJECT) {
-        fType = FrontType::OBJECT;
-    } else if (type >= NodeType::JS_FUNCTION_FIRST && type <= NodeType::JS_FUNCTION_LAST) {
-        fType = FrontType::DEFAULT;
-    } else if (type == NodeType::JS_BOUND_FUNCTION) {
-        fType = FrontType::DEFAULT;
-    } else if (type == NodeType::JS_FUNCTION_BASE) {
-        fType = FrontType::DEFAULT;
-    } else if (type == NodeType::JS_REG_EXP) {
-        fType = FrontType::REGEXP;
-    } else if (type == NodeType::SYMBOL) {
-        fType = FrontType::SYMBOL;
-    } else if (type == NodeType::JS_PRIMITIVE_REF) {
-        fType = FrontType::HEAPNUMBER;
-    } else if (type == NodeType::SYNTHETIC) {
-        fType = FrontType::SYNTHETIC;
-    } else {
-        fType = FrontType::DEFAULT;
-        // NATIVE,           /* kNative */
-        // CONSSTRING,       /* kConsString */
-        // SLICEDSTRING,     /* kSlicedString */
-        // SYMBOL,           /* kSymbol */
-        // BIGINT,           /* kBigInt */
-    }
-    return fType;
 }
 }  // namespace panda::ecmascript

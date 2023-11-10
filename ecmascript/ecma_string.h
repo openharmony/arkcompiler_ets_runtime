@@ -52,22 +52,34 @@ class FlatStringInfo;
     }
 
 class EcmaString : public TaggedObject {
+    /* Mix Hash Code: --   { 0 | [31 bits raw hash code] }     computed through string
+                      \    { 1 | [31 bits integer numbers] }   fastpath for string to number
+    */ 
 public:
     CAST_CHECK(EcmaString, IsString);
 
+    static constexpr uint32_t IS_INTEGER_MASK = 1U << 31;
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
     static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
     static constexpr uint32_t STRING_LENGTH_SHIFT_COUNT = 2U;
+    static constexpr uint32_t MAX_INTEGER_HASH_NUMBER = 0x3B9AC9FF;
+    static constexpr uint32_t MAX_CACHED_INTEGER_SIZE = 9;
 
     static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
     // In last bit of mix_length we store if this string is compressed or not.
-    ACCESSORS_PRIMITIVE_FIELD(MixLength, uint32_t, MIX_LENGTH_OFFSET, HASHCODE_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(RawHashcode, uint32_t, HASHCODE_OFFSET, SIZE)
+    ACCESSORS_PRIMITIVE_FIELD(MixLength, uint32_t, MIX_LENGTH_OFFSET, MIX_HASHCODE_OFFSET)
+    // In last bit of mix_hash we store if this string is small-integer number or not.
+    ACCESSORS_PRIMITIVE_FIELD(MixHashcode, uint32_t, MIX_HASHCODE_OFFSET, SIZE)
 
     enum CompressedStatus {
         STRING_COMPRESSED,
         STRING_UNCOMPRESSED,
+    };
+
+    enum IsIntegerStatus {
+        NOT_INTEGER = 0,
+        IS_INTEGER,
     };
 
     enum TrimMode : uint8_t {
@@ -121,14 +133,19 @@ private:
     static inline EcmaString *FastSubUtf16String(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
 
-    bool IsUtf8() const
+    inline bool IsUtf8() const
     {
         return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_COMPRESSED;
     }
 
-    bool IsUtf16() const
+    inline bool IsUtf16() const
     {
         return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED;
+    }
+
+    inline bool IsInteger() const
+    {
+        return (GetMixHashcode() & IS_INTEGER_MASK) == IS_INTEGER_MASK;
     }
 
     // require is LineString
@@ -140,38 +157,54 @@ private:
     inline uint8_t *GetDataUtf8Writable();
     inline uint16_t *GetDataUtf16Writable();
 
-    uint32_t GetLength() const
+    inline uint32_t GetLength() const
     {
         return GetMixLength() >> STRING_LENGTH_SHIFT_COUNT;
     }
 
-    void SetLength(uint32_t length, bool compressed = false)
+    inline void SetLength(uint32_t length, bool compressed = false)
     {
         ASSERT(length < MAX_STRING_LENGTH);
         // Use 0u for compressed/utf8 expression
         SetMixLength((length << STRING_LENGTH_SHIFT_COUNT) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
     }
 
+    inline uint32_t GetRawHashcode() const
+    {
+        return GetMixHashcode() & (~IS_INTEGER_MASK);
+    }
+
+    static inline uint32_t MixHashcode(uint32_t hashcode, bool isInteger)
+    {
+        return isInteger ? (hashcode | IS_INTEGER_MASK) : (hashcode & (~IS_INTEGER_MASK));
+    }
+
+    inline void SetRawHashcode(uint32_t hashcode, bool isInteger = false)
+    {
+        // Use 0u for not integer string's expression
+        SetMixHashcode(MixHashcode(hashcode, isInteger));
+    }
+
     inline size_t GetUtf8Length(bool modify = true) const;
 
-    void SetIsInternString()
+    inline void SetIsInternString()
     {
         SetMixLength(GetMixLength() | STRING_INTERN_BIT);
     }
 
-    bool IsInternString() const
+    inline bool IsInternString() const
     {
         return (GetMixLength() & STRING_INTERN_BIT) != 0;
     }
 
-    void ClearInternStringFlag()
+    inline void ClearInternStringFlag()
     {
         SetMixLength(GetMixLength() & ~STRING_INTERN_BIT);
     }
 
-    bool TryGetHashCode(uint32_t *hash)
+    inline bool TryGetHashCode(uint32_t *hash)
     {
-        uint32_t hashcode = GetRawHashcode();
+        uint32_t hashcode = GetMixHashcode();
         if (hashcode == 0 && GetLength() != 0) {
             return false;
         }
@@ -179,22 +212,90 @@ private:
         return true;
     }
 
+    inline uint32_t GetIntegerCode()
+    {
+        ASSERT(GetMixHashcode() & IS_INTEGER_MASK);
+        return GetRawHashcode();
+    }
+
     // not change this data structure.
     // if string is not flat, this func has low efficiency.
     uint32_t PUBLIC_API GetHashcode()
     {
-        uint32_t hashcode = GetRawHashcode();
+        uint32_t hashcode = GetMixHashcode();
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
         if (hashcode == 0 && GetLength() != 0) {
-            hashcode = ComputeHashcode(0);
+            hashcode = ComputeHashcode();
             SetRawHashcode(hashcode);
         }
         return hashcode;
     }
 
+    template<typename T>
+    inline static bool IsDecimalDigitChar(const T c)
+    {
+        return (c >= '0' && c <= '9');
+    }
+
+    static uint32_t ComputeIntegerHash(uint32_t *num, uint8_t c)
+    {
+        if (!IsDecimalDigitChar(c)) {
+            return false;
+        }
+        int charDate = c - '0';
+        *num = (*num) * 10 + charDate; // 10: decimal factor
+        return true;
+    }
+
+    bool HashIntegerString(uint32_t length, uint32_t *hash, uint32_t hashSeed) const;
+
+    template<typename T>
+    static bool HashIntegerString(const T *data, size_t size, uint32_t *hash, uint32_t hashSeed)
+    {
+        ASSERT(size >= 0);
+        if (hashSeed == 0) {
+            if (IsDecimalDigitChar(data[0]) && data[0] != '0') {
+                uint32_t num = data[0] - '0';
+                uint32_t i = 1;
+                do {
+                    if (i == size) {
+                        // compute mix hash
+                        if (num <= MAX_INTEGER_HASH_NUMBER) {
+                            *hash = MixHashcode(num, IS_INTEGER);
+                            return true;
+                        }
+                        return false;
+                    }
+                } while (ComputeIntegerHash(&num, data[i++]));
+            }
+            if (size == 1 && (data[0] == '0')) {
+                *hash = MixHashcode(0, IS_INTEGER);
+                return true;
+            }
+        } else {
+            if (IsDecimalDigitChar(data[0])) {
+                uint32_t num = hashSeed * 10 + (data[0] - '0'); // 10: decimal factor
+                uint32_t i = 1;
+                do {
+                    if (i == size) {
+                        // compute mix hash
+                        if (num <= MAX_INTEGER_HASH_NUMBER) {
+                            *hash = MixHashcode(num, IS_INTEGER);
+                            return true;
+                        }
+                        return false;
+                    }
+                } while (ComputeIntegerHash(&num, data[i++]));
+            }
+        }
+        return false;
+    }
+
     // not change this data structure.
     // if string is not flat, this func has low efficiency.
-    uint32_t PUBLIC_API ComputeHashcode(uint32_t hashSeed) const;
+    uint32_t PUBLIC_API ComputeHashcode() const;
+    std::pair<uint32_t, bool> PUBLIC_API ComputeRawHashcode() const;
+    uint32_t PUBLIC_API ComputeHashcode(uint32_t rawHashSeed, bool isInteger) const;
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress);
     static uint32_t ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length);
@@ -348,7 +449,7 @@ private:
             }
             return length;
         }
-        
+
         CVector<uint16_t> tmpBuf;
         const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
         if (length > maxLength) {
@@ -458,6 +559,29 @@ private:
             str = Span<const uint8_t>(data, strLen);
         }
         return str;
+    }
+
+    inline Span<const uint8_t> FastToUtf8Span() const;
+
+    bool TryToGetInteger(uint32_t *result)
+    {
+        if (!IsInteger()) {
+            return false;
+        }
+        ASSERT(GetLength() <= MAX_CACHED_INTEGER_SIZE);
+        *result = GetIntegerCode();
+        return true;
+    }
+
+    // using integer number set into hash
+    inline bool TryToSetIntegerHash(int32_t num)
+    {
+        uint32_t hashcode = GetMixHashcode();
+        if (hashcode == 0 && GetLength() != 0) {
+            SetRawHashcode(static_cast<uint32_t>(num), IS_INTEGER);
+            return true;
+        }
+        return false;
     }
 
     void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
@@ -664,10 +788,15 @@ static_assert((LineEcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::
 
 class ConstantString : public EcmaString {
 public:
-    static constexpr size_t ENTITY_ID_OFFSET = EcmaString::SIZE;
+    static constexpr size_t RELOCTAED_DATA_OFFSET = EcmaString::SIZE;
     // ConstantData is the pointer of const string in the pandafile.
     // String in pandafile is encoded by the utf8 format.
-    ACCESSORS_PRIMITIVE_FIELD(EntityId, uint32_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
+    // EntityId is normally the uint32_t index in the pandafile.
+    // When the pandafile is to be removed, EntityId will become -1.
+    // The real string data will be reloacted into bytearray and stored in RelocatedData.
+    // ConstantData will also point at data of bytearray data.
+    ACCESSORS(RelocatedData, RELOCTAED_DATA_OFFSET, ENTITY_ID_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(EntityId, int64_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
     ACCESSORS_NATIVE_FIELD(ConstantData, uint8_t, CONSTANT_DATA_OFFSET, SIZE);
 
     CAST_CHECK(ConstantString, IsConstantString);
@@ -685,6 +814,12 @@ public:
     static size_t ObjectSize()
     {
         return ConstantString::SIZE;
+    }
+
+    uint32_t GetEntityIdU32() const
+    {
+        ASSERT(GetEntityId() >= 0);
+        return static_cast<uint32_t>(GetEntityId());
     }
 
     template<bool verify = true>
@@ -838,7 +973,7 @@ public:
     {
         string_ = string;
     }
-    
+
     uint32_t GetStartIndex() const
     {
         return startIndex_;
@@ -1008,6 +1143,20 @@ public:
         return string_->ToUtf8Span(buf);
     }
 
+    // only for string is flat and using UTF8 encoding
+    inline Span<const uint8_t> FastToUtf8Span();
+
+    // Using string's hash to figure out whether the string can be converted to integer
+    inline bool TryToGetInteger(uint32_t *result)
+    {
+        return string_->TryToGetInteger(result);
+    }
+
+    inline bool TryToSetIntegerHash(int32_t num)
+    {
+        return string_->TryToSetIntegerHash(num);
+    }
+
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
     std::string ToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
@@ -1066,11 +1215,26 @@ public:
         return string_->GetHashcode();
     }
 
+    uint32_t GetRawHashcode()
+    {
+        return string_->GetRawHashcode();
+    }
+
     // not change src data structure.
     // if src is not flat, this func has low efficiency.
-    uint32_t ComputeHashcode(uint32_t hashSeed)
+    std::pair<uint32_t, bool> ComputeRawHashcode()
     {
-        return string_->ComputeHashcode(hashSeed);
+        return string_->ComputeRawHashcode();
+    }
+
+    uint32_t ComputeHashcode()
+    {
+        return string_->ComputeHashcode();
+    }
+
+    uint32_t ComputeHashcode(uint32_t rawHashSeed, bool isInteger)
+    {
+        return string_->ComputeHashcode(rawHashSeed, isInteger);
     }
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)

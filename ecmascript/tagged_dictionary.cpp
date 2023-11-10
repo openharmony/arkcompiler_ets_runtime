@@ -38,9 +38,12 @@ int NameDictionary::Hash(const JSTaggedValue &key)
     UNREACHABLE();
 }
 
+// for ohmurl path to compute hash code
 int NameDictionary::Hash(const uint8_t* str, int strSize)
 {
-    return EcmaString::ComputeHashForData(str, strSize, 0);
+    uint32_t hash = EcmaString::ComputeHashForData(str, strSize, 0);
+    // url path can not be small int.
+    return EcmaString::MixHashcode(hash, EcmaString::NOT_INTEGER);
 }
 
 bool NameDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)

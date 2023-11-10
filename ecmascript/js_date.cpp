@@ -821,17 +821,9 @@ void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date
     int64_t tz = 0;
     int64_t timeMsInt;
     timeMsInt = static_cast<int64_t>(timeMs);
-    bool preDst = IsDst(timeMsInt);
     if (isLocal) {  // timezone offset
         tz = GetLocalOffsetFromOS(timeMsInt, isLocal);
         timeMsInt += tz * MS_PER_SECOND * SEC_PER_MINUTE;
-        bool curDst = IsDst(timeMsInt);
-        int64_t dstOffset = MIN_PER_HOUR * SEC_PER_MINUTE * MS_PER_SECOND;
-        if (curDst) {
-            timeMsInt += preDst ? 0 : dstOffset;
-        } else {
-            timeMsInt -= preDst ? dstOffset : 0;
-        }
     }
 
     DateUtils::TransferTimeToDate(timeMsInt, date);

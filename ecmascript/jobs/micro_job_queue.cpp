@@ -70,6 +70,11 @@ void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> 
         if (thread->HasPendingException()) {
             return;
         }
+        if (thread->HasTerminated()) {
+            JSHandle<TaggedQueue> emptyQueue(thread->GlobalConstants()->GetHandledEmptyTaggedQueue());
+            jobQueue->SetPromiseJobQueue(thread, emptyQueue);
+            return;
+        }
         promiseQueue.Update(jobQueue->GetPromiseJobQueue());
     }
 

@@ -196,11 +196,25 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         LOG_DEBUGGER(ERROR) << "GetVregIndex: extractor is null";
         return -1;
     }
+
+    uint32_t currentOffset = frameHandler->GetBytecodeOffset();
+    int32_t regNumber = -1;
+    uint32_t startOffset = 0;
+    uint32_t endOffset = UINT32_MAX;
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
     for (auto iter = table.begin(); iter != table.end(); iter++) {
-        if (iter->name == name.data()) {
-            return iter->regNumber;
+        // if currentOffset not in variable's scope, skip it
+        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset <= iter->endOffset) {
+            // if there are multiple variables with the same name, get regNumber with the smallest scope
+            if (iter->startOffset >= startOffset && iter->endOffset <= endOffset) {
+                regNumber = iter->regNumber;
+                startOffset = iter->startOffset;
+                endOffset = iter->endOffset;
+            }
         }
+    }
+    if (regNumber != -1) {
+        return regNumber;
     }
     return -1;
 }
@@ -268,6 +282,16 @@ bool DebuggerApi::RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &loc
 void DebuggerApi::RemoveAllBreakpoints(JSDebugger *debugger)
 {
     return debugger->RemoveAllBreakpoints();
+}
+
+void DebuggerApi::SetSingleStepStatus(JSDebugger *debugger, bool status)
+{
+    return debugger->SetSingleStepStatus(status);
+}
+
+bool DebuggerApi::GetSingleStepStatus(JSDebugger *debugger)
+{
+    return debugger->GetSingleStepStatus();
 }
 
 // ScopeInfo
@@ -822,10 +846,10 @@ bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
     return false;
 }
 
-DebugInfoExtractor *DebuggerApi::GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url)
+std::vector<DebugInfoExtractor *> DebuggerApi::GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url)
 {
     const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
-    return hotReloadManager->GetPatchExtractor(url);
+    return hotReloadManager->GetPatchExtractors(url);
 }
 
 const JSPandaFile *DebuggerApi::GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile)

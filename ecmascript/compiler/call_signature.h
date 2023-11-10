@@ -466,7 +466,13 @@ private:
     V(FastStringEqual)                      \
     V(Getpropiterator)                      \
     V(Getnextpropname)                      \
-    V(JSHClassFindProtoTransitions)
+    V(CreateJSSetIterator)                  \
+    V(CreateJSMapIterator)                  \
+    V(JSHClassFindProtoTransitions)         \
+    V(NumberHelperStringToDouble)           \
+    V(LocaleCompareNoGc)                    \
+    V(StringGetStart)                       \
+    V(StringGetEnd)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

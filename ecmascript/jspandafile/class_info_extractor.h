@@ -47,7 +47,7 @@ public:
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                    const JSHandle<TaggedArray> &literal);
 
-    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread,
                                                     JSHandle<TaggedArray> &keys,
                                                     JSHandle<TaggedArray> &properties);
 
@@ -100,7 +100,7 @@ public:
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSHClass> &ihclass,
+                                                       const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
 
 private:

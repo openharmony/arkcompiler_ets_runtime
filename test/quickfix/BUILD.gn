@@ -15,6 +15,7 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 hot_reload_test_list = [
   # "check_import",
+  # "same_methodname",
   "class_inheritance",
   "class_mem_func",
   "class_mem_var",
@@ -25,10 +26,21 @@ hot_reload_test_list = [
   "import_export",
   "print_string",
   "record_not_same",
-  "same_methodname",
+  "module_var",
+  "module_func",
+  "module_class",
+  "module_class_inheritance",
 ]
 
+hot_reload_cold_patch_test_list = []
+
 if (!is_debug) {
+  hot_reload_cold_patch_test_list += [
+    "cold_classmemfunc",
+    "cold_closure",
+    "cold_printstring",
+  ]
+
   hot_reload_test_list += [
     "multi_classconstpool",
     "multi_closureconstpool",
@@ -65,6 +77,12 @@ foreach(testcase, hot_patch_test_list) {
   }
 }
 
+foreach(testcase, hot_reload_cold_patch_test_list) {
+  host_quickfix_test_action("${testcase}") {
+    entry_point = "--entry-point=base:module:coldpatch"
+  }
+}
+
 group("ark_quickfix_test") {
   testonly = true
 
@@ -74,6 +92,10 @@ group("ark_quickfix_test") {
   }
 
   foreach(testcase, hot_patch_test_list) {
+    deps += [ ":${testcase}QuickfixAction" ]
+  }
+
+  foreach(testcase, hot_reload_cold_patch_test_list) {
     deps += [ ":${testcase}QuickfixAction" ]
   }
 

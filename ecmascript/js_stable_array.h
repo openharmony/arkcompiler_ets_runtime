@@ -68,6 +68,9 @@ public:
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
 
+    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                              const JSHandle<JSTaggedValue> &callbackFnHandle);
+
 private:
     static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
     enum class IndexOfType {

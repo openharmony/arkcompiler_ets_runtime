@@ -116,6 +116,13 @@ namespace panda::ecmascript {
     V(Copyrestargs)                 \
     V(Trystobjprop)                 \
     V(GetTemplateObject)            \
+    V(CreateStringIterator)         \
+    V(NewJSArrayIterator)           \
+    V(NewJSTypedArrayIterator)      \
+    V(MapIteratorNext)              \
+    V(SetIteratorNext)              \
+    V(StringIteratorNext)           \
+    V(ArrayIteratorNext)            \
     V(GetIterator)                  \
     V(GetAsyncIterator)             \
     V(ThrowIfNotObject)             \
@@ -231,6 +238,7 @@ namespace panda::ecmascript {
     V(StPatchVar)                   \
     V(AsyncGeneratorReject)         \
     V(NotifyConcurrentResult)       \
+    V(UpdateHClass)                 \
     V(SetGeneratorState)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -391,6 +399,8 @@ namespace panda::ecmascript {
     V(Error, AggregateErrorToString)          \
     V(Error, OOMErrorConstructor)             \
     V(Error, OOMErrorToString)                \
+    V(Error, TerminationErrorConstructor)     \
+    V(Error, TerminationErrorToString)        \
     V(Function, Constructor)                  \
     V(Function, PrototypeApply)               \
     V(Function, PrototypeBind)                \

@@ -127,7 +127,11 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
-    V(JSHClassFindProtoTransitions)
+    V(JSHClassFindProtoTransitions)            \
+    V(NumberHelperStringToDouble)              \
+    V(LocaleCompareNoGc)                       \
+    V(StringGetStart)                          \
+    V(StringGetEnd)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -142,6 +146,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
     V(CopyArray)                          \
+    V(RTSubstitution)                     \
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
@@ -175,6 +180,13 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CreateGeneratorObj)                 \
     V(ThrowConstAssignment)               \
     V(GetTemplateObject)                  \
+    V(CreateStringIterator)               \
+    V(NewJSArrayIterator)                 \
+    V(NewJSTypedArrayIterator)            \
+    V(MapIteratorNext)                    \
+    V(SetIteratorNext)                    \
+    V(StringIteratorNext)                 \
+    V(ArrayIteratorNext)                  \
     V(GetNextPropName)                    \
     V(GetNextPropNameSlowpath)            \
     V(ThrowIfNotObject)                   \
@@ -305,7 +317,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetMethodFromCache)                 \
     V(GetArrayLiteralFromCache)           \
     V(GetObjectLiteralFromCache)          \
-    V(GetObjectLiteralInfoFromCache)      \
     V(GetStringFromCache)                 \
     V(OptLdSuperByValue)                  \
     V(OptStSuperByValue)                  \
@@ -317,6 +328,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ContainerRBTreeForEach)             \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
+    V(UpdateHClass)                       \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
     V(ArraySort)                          \
@@ -326,7 +338,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LinkedHashMapComputeCapacity)       \
     V(LinkedHashSetComputeCapacity)       \
     V(JSObjectGrowElementsCapacity)       \
-    V(HClassCloneWithAddProto)
+    V(HClassCloneWithAddProto)            \
+    V(LocaleCompareWithGc)                \
+    V(ArrayForEachContinue)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -402,6 +416,9 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
+    static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
+    static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
+                                           EcmaString *thatHandle);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
@@ -409,6 +426,9 @@ public:
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
+
+    static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
+    static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);
@@ -643,7 +663,9 @@ private:
     static inline JSTaggedValue RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,
                                                                  const JSHandle<JSTaggedValue> &prop,
                                                                  const JSHandle<JSTaggedValue> &getter,
-                                                                 const JSHandle<JSTaggedValue> &setter, bool flag);
+                                                                 const JSHandle<JSTaggedValue> &setter, bool flag,
+                                                                 const JSHandle<JSTaggedValue> &func,
+                                                                 int32_t pcOffset);
     static inline JSTaggedValue RuntimeSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
@@ -700,6 +722,8 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
+        const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
     static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,

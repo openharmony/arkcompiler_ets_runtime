@@ -36,7 +36,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
-    if (!loadedFirstPandaFile && !isBundlePack_ && strstr(desc_.c_str(), MERGE_ABC_NAME) != NULL) {
+    if (!loadedFirstPandaFile && !isBundlePack_) {
         // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
         // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
         isFirstPandafile_ = true;
@@ -236,12 +236,6 @@ bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo 
     return false;
 }
 
-CString JSPandaFile::GetJsonStringId(const JSRecordInfo &jsRecordInfo) const
-{
-    StringData sd = GetStringData(EntityId(jsRecordInfo.jsonStringId));
-    return utf::Mutf8AsCString(sd.data);
-}
-
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
 {
     CString entryPoint = GetNpmEntries(recordName);
@@ -343,8 +337,7 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
 }
 
 /*
- handle desc like:
- case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
+ handle desc like: case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
  case2: /data/storage/el1/bundle/entry/ets/widgets.abc -> entry/ets/widgets.abc
  case3: /data/app/el1/bundle/public/com.xx.xx/entry/ets/modules.abc -> entry/ets/modules.abc
  case4: /data/app/el1/bundle/public/com.xx.xx/entry/ets/widgets.abc -> entry/ets/widgets.abc

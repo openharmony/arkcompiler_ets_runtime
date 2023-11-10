@@ -161,324 +161,334 @@ class ObjectFactory;
     V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
-    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)
+    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)         \
+    V(JSTaggedValue, MapIteratorProtoNext, MAP_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)          \
+    V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)          \
+    V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)    \
+    V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)
+
+// All of type JSTaggedValue
+#define GLOBAL_ENV_CONSTANT_STRING(V) \
+    V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
+    V(PrototypeString,                PROTOTYPE_STRING_INDEX,                "prototype")                   \
+    V(LengthString,                   LENGTH_STRING_INDEX,                   "length")                      \
+    V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
+    V(SetString,                      SET_STRING_INDEX,                      "set")                         \
+    V(GetString,                      GET_STRING_INDEX,                      "get")                         \
+    V(WritableString,                 WRITABLE_STRING_INDEX,                 "writable")                    \
+    V(EnumerableString,               ENUMERABLE_STRING_INDEX,               "enumerable")                  \
+    V(ConfigurableString,             CONFIGURABLE_STRING_INDEX,             "configurable")                \
+    V(NameString,                     NAME_STRING_INDEX,                     "name")                        \
+    /* SymbolTable * RegisterSymbols */                                                                     \
+    V(GetPrototypeOfString,           GETPROTOTYPEOF_STRING_INDEX,           "getPrototypeOf")              \
+    V(SetPrototypeOfString,           SETPROTOTYPEOF_STRING_INDEX,           "setPrototypeOf")              \
+    V(IsExtensibleString,             ISEXTENSIBLE_STRING_INDEX,             "isExtensible")                \
+    V(PreventExtensionsString,        PREVENTEXTENSIONS_STRING_INDEX,        "preventExtensions")           \
+    V(GetOwnPropertyDescriptorString, GETOWNPROPERTYDESCRIPTOR_STRING_INDEX, "getOwnPropertyDescriptor")    \
+    V(DefinePropertyString,           DEFINEPROPERTY_STRING_INDEX,           "defineProperty")              \
+    V(HasString,                      HAS_STRING_INDEX,                      "has")                         \
+    V(DeletePropertyString,           DELETEPROPERTY_STRING_INDEX,           "deleteProperty")              \
+    V(EnumerateString,                ENUMERATE_STRING_INDEX,                "enumerate")                   \
+    V(OwnKeysString,                  OWNKEYS_STRING_INDEX,                  "ownKeys")                     \
+    V(ApplyString,                    APPLY_STRING_INDEX,                    "apply")                       \
+    V(NegativeZeroString,             NEGATIVE_ZERO_STRING_INDEX,            "-0")                          \
+    V(DoneString,                     DONE_STRING_INDEX,                     "done")                        \
+    V(ProxyString,                    PROXY_STRING_INDEX,                    "proxy")                       \
+    V(RevokeString,                   REVOKE_STRING_INDEX,                   "revoke")                      \
+    V(NextString,                     NEXT_STRING_INDEX,                     "next")                        \
+    V(ToStringString,                 TO_STRING_STRING_INDEX,                "toString")                    \
+    V(ToLocaleStringString,           TO_LOCALE_STRING_STRING_INDEX,         "toLocaleString")              \
+    V(ValueOfString,                  VALUE_OF_STRING_INDEX,                 "valueOf")                     \
+    V(UndefinedString,                UNDEFINED_STRING_INDEX,                "undefined")                   \
+    V(NullString,                     NULL_STRING_INDEX,                     "null")                        \
+    V(BooleanString,                  BOOLEAN_STRING_INDEX,                  "boolean")                     \
+    V(NumberString,                   NUMBER_STRING_INDEX,                   "number")                      \
+    V(BigIntString,                   BIGINT_STRING_INDEX,                   "bigint")                      \
+    V(FunctionString,                 FUNCTION_STRING_INDEX,                 "function")                    \
+    V(StringString,                   STRING_STRING_INDEX,                   "string")                      \
+    V(SymbolString,                   SYMBOL_STRING_INDEX,                   "symbol")                      \
+    V(ObjectString,                   OBJECT_STRING_INDEX,                   "object")                      \
+    V(TrueString,                     TRUE_STRING_INDEX,                     "true")                        \
+    V(FalseString,                    FALSE_STRING_INDEX,                    "false")                       \
+    V(ReturnString,                   RETURN_STRING_INDEX,                   "return")                      \
+    V(ProxyConstructString,           PROXY_CONSTRUCT_STRING_INDEX,          "construct")                   \
+    V(ProxyCallString,                PROXY_CALL_STRING_INDEX,               "call")                        \
+    V(PromiseThenString,              PROMISE_THEN_STRING_INDEX,             "then")                        \
+    V(PromiseCatchString,             PROMISE_CATCH_STRING_INDEX,            "catch")                       \
+    V(PromiseFinallyString,           PROMISE_FINALLY_STRING_INDEX,          "finally")                     \
+    V(PromiseStatusString,            PROMISE_STATUS_STRING_INDEX,           "status")                      \
+    V(PromiseFulfilledString,         PROMISE_FULFILLED_STRING_INDEX,        "fulfilled")                   \
+    V(PromiseRejectedString,          PROMISE_REJECTED_STRING_INDEX,         "rejected")                    \
+    V(PromiseReasonString,            PROMISE_REASON_STRING_INDEX,           "reason")                      \
+    V(ScriptJobString,                SCRIPT_JOB_STRING_INDEX,               "ScriptJobs")                  \
+    V(PromiseString,                  PROMISE_STRING_INDEX,                  "PrimiseJobs")                 \
+    V(ThrowerString,                  THROWER_STRING_INDEX,                  "Thrower")                     \
+    V(IdentityString,                 IDENTITY_STRING_INDEX,                 "Identity")                    \
+    V(CallerString,                   CALLER_STRING_INDEX,                   "caller")                      \
+    V(CalleeString,                   CALLEE_STRING_INDEX,                   "callee")                      \
+    V(Int8ArrayString,                INT8_ARRAY_STRING_INDEX,               "Int8Array")                   \
+    V(Uint8ArrayString,               UINT8_ARRAY_STRING_INDEX,              "Uint8Array")                  \
+    V(Uint8ClampedArrayString,        UINT8_CLAMPED_ARRAY_STRING_INDEX,      "Uint8ClampedArray")           \
+    V(Int16ArrayString,               INT16_ARRAY_STRING_INDEX,              "Int16Array")                  \
+    V(Uint16ArrayString,              UINT16_ARRAY_STRING_INDEX,             "Uint16Array")                 \
+    V(Int32ArrayString,               INT32_ARRAY_STRING_INDEX,              "Int32Array")                  \
+    V(Uint32ArrayString,              UINT32_ARRAY_STRING_INDEX,             "Uint32Array")                 \
+    V(Float32ArrayString,             FLOAT32_ARRAY_STRING_INDEX,            "Float32Array")                \
+    V(Float64ArrayString,             FLOAT64_ARRAY_STRING_INDEX,            "Float64Array")                \
+    V(BigInt64ArrayString,            BIGINT64_ARRAY_STRING_INDEX,           "BigInt64Array")               \
+    V(BigUint64ArrayString,           BIGUINT64_ARRAY_STRING_INDEX,          "BigUint64Array")              \
+    V(AsyncFunctionString,            ASYNC_FUNCTION_STRING_INDEX,           "AsyncFunction")               \
+    V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
+    V(IdString,                       ID_STRING_INDEX,                       "id")                          \
+    V(MethodString,                   METHOD_STRING_INDEX,                   "method")                      \
+    V(ParamsString,                   PARAMS_STRING_INDEX,                   "params")                      \
+    V(ResultString,                   RESULT_STRING_INDEX,                   "result")                      \
+    V(ToJsonString,                   TO_JSON_STRING_INDEX,                  "toJSON")                      \
+    V(GlobalString,                   GLOBAL_STRING_INDEX,                   "global")                      \
+    V(MessageString,                  MESSAGE_STRING_INDEX,                  "message")                     \
+    V(CauseString,                    CAUSE_STRING_INDEX,                    "cause")                       \
+    V(ErrorString,                    ERROR_STRING_INDEX,                    "Error")                       \
+    V(ErrorsString,                   ERRORS_STRING_INDEX,                   "errors")                      \
+    V(AggregateErrorString,           AGGREGATE_ERROR_STRING_INDEX,          "AggregateError")              \
+    V(RangeErrorString,               RANGE_ERROR_STRING_INDEX,              "RangeError")                  \
+    V(ReferenceErrorString,           REFERENCE_ERROR_STRING_INDEX,          "ReferenceError")              \
+    V(TypeErrorString,                TYPE_ERROR_STRING_INDEX,               "TypeError")                   \
+    V(URIErrorString,                 URI_ERROR_STRING_INDEX,                "URIError")                    \
+    V(SyntaxErrorString,              SYNTAX_ERROR_STRING_INDEX,             "SyntaxError")                 \
+    V(EvalErrorString,                EVAL_ERROR_STRING_INDEX,               "EvalError")                   \
+    V(OOMErrorString,                 OOM_ERROR_STRING_INDEX,                "OutOfMemoryError")            \
+    V(TerminationErrorString,         TERMINATION_ERROR_STRING_INDEX,        "TerminationError")            \
+    V(ErrorFuncString,                ERROR_FUNC_STRING_INDEX,               "errorfunc")                   \
+    V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
+    V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \
+    V(ObjNotCoercibleString,          OBJ_NOT_COERCIBLE_STRING_INDEX,        "objectnotcoercible")          \
+    /* for Intl. */                                                                                         \
+    V(LanguageString,                 LANGUAGE_STRING_CLASS_INDEX,           "language")                    \
+    V(ScriptString,                   SCRIPT_STRING_CLASS_INDEX,             "script")                      \
+    V(RegionString,                   REGION_STRING_CLASS_INDEX,             "region")                      \
+    V(BaseNameString,                 BASE_NAME_STRING_CLASS_INDEX,          "baseName")                    \
+    V(CalendarString,                 CALENDAR_STRING_CLASS_INDEX,           "calendar")                    \
+    V(CollationString,                COLLATION_STRING_CLASS_INDEX,          "collation")                   \
+    V(HourCycleString,                HOUR_CYCLE_STRING_CLASS_INDEX,         "hourCycle")                   \
+    V(CaseFirstString,                CASE_FIRST_STRING_CLASS_INDEX,         "caseFirst")                   \
+    V(NumericString,                  NUMERIC_STRING_CLASS_INDEX,            "numeric")                     \
+    V(NumberingSystemString,          NUMBERING_SYSTEM_STRING_CLASS_INDEX,   "numberingSystem")             \
+    V(TypeString,                     TYPE_STRING_INDEX,                     "type")                        \
+    V(LocaleMatcherString,            LOCALE_MATCHER_STRING_INDEX,           "localeMatcher")               \
+    V(FormatMatcherString,            FORMAT_MATCHER_STRING_INDEX,           "formatMatcher")               \
+    V(Hour12String,                   HOUR12_STRING_INDEX,                   "hour12")                      \
+    V(H11String,                      H11_STRING_INDEX,                      "h11")                         \
+    V(H12String,                      H12_STRING_INDEX,                      "h12")                         \
+    V(H23String,                      H23_STRING_INDEX,                      "h23")                         \
+    V(H24String,                      H24_STRING_INDEX,                      "h24")                         \
+    V(WeekdayString,                  WEEK_DAY_STRING_INDEX,                 "weekday")                     \
+    V(EraString,                      ERA_STRING_INDEX,                      "era")                         \
+    V(YearString,                     YEAR_STRING_INDEX,                     "year")                        \
+    V(QuarterString,                  QUARTER_STRING_INDEX,                  "quarter")                     \
+    V(MonthString,                    MONTH_STRING_INDEX,                    "month")                       \
+    V(DayString,                      DAY_STRING_INDEX,                      "day")                         \
+    V(HourString,                     HOUR_STRING_INDEX,                     "hour")                        \
+    V(MinuteString,                   MINUTE_STRING_INDEX,                   "minute")                      \
+    V(SecondString,                   SECOND_STRING_INDEX,                   "second")                      \
+    V(YearsString,                    YEARS_STRING_INDEX,                    "years")                       \
+    V(QuartersString,                 QUARTERS_STRING_INDEX,                 "quarters")                    \
+    V(MonthsString,                   MONTHS_STRING_INDEX,                   "months")                      \
+    V(DaysString,                     DAYS_STRING_INDEX,                     "days")                        \
+    V(HoursString,                    HOURS_STRING_INDEX,                    "hours")                       \
+    V(MinutesString,                  MINUTES_STRING_INDEX,                  "minutes")                     \
+    V(SecondsString,                  SECONDS_STRING_INDEX,                  "seconds")                     \
+    V(TimeZoneNameString,             TIME_ZONE_NAME_STRING_INDEX,           "timeZoneName")                \
+    V(LocaleString,                   LOCALE_STRING_INDEX,                   "locale")                      \
+    V(TimeZoneString,                 TIME_ZONE_STRING_INDEX,                "timeZone")                    \
+    V(LiteralString,                  LITERAL_STRING_INDEX,                  "literal")                     \
+    V(YearNameString,                 YEAR_NAME_STRING_INDEX,                "yearName")                    \
+    V(DayPeriodString,                DAY_PERIOD_STRING_INDEX,               "dayPeriod")                   \
+    V(FractionalSecondDigitsString,   FRACTIONAL_SECOND_DIGITS_STRING_INDEX, "fractionalSecondDigits")      \
+    V(FractionalSecondString,         FRACTIONAL_SECOND_STRING_INDEX,        "fractionalSecond")            \
+    V(RelatedYearString,              RELATED_YEAR_STRING_INDEX,             "relatedYear")                 \
+    V(LookUpString,                   LOOK_UP_STRING_INDEX,                  "lookup")                      \
+    V(BestFitString,                  BEST_FIT_STRING_INDEX,                 "bestfit")                     \
+    V(DateStyleString,                DATE_STYLE_STRING_INDEX,               "dateStyle")                   \
+    V(TimeStyleString,                TIME_STYLE_STRING_INDEX,               "timeStyle")                   \
+    V(UTCString,                      UTC_STRING_INDEX,                      "UTC")                         \
+    V(WeekString,                     WEEK_STRING_INDEX,                     "week")                        \
+    V(WeeksString,                    WEEKS_STRING_INDEX,                    "weeks")                       \
+    V(SourceString,                   SOURCE_STRING_INDEX,                   "source")                      \
+    V(FormatString,                   FORMAT_STRING_INDEX,                   "format")                      \
+    V(EnUsString,                     EN_US_STRING_INDEX,                    "en-US")                       \
+    V(UndString,                      UND_STRING_INDEX,                      "und")                         \
+    V(LatnString,                     LATN_STRING_INDEX,                     "latn")                        \
+    V(StyleString,                    STYLE_STRING_INDEX,                    "style")                       \
+    V(UnitString,                     UNIT_STRING_INDEX,                     "unit")                        \
+    V(IntegerString,                  INTEGER_STRING_INDEX,                  "integer")                     \
+    V(NanString,                      NAN_STRING_INDEX,                      "nan")                         \
+    V(InfinityString,                 INFINITY_STRING_INDEX,                 "infinity")                    \
+    V(FractionString,                 FRACTION_STRING_INDEX,                 "fraction")                    \
+    V(DecimalString,                  DECIMAL_STRING_INDEX,                  "decimal")                     \
+    V(GroupString,                    GROUP_STRING_INDEX,                    "group")                       \
+    V(GroupsString,                   GROUPS_STRING_INDEX,                   "groups")                      \
+    V(CurrencyString,                 CURRENCY_STRING_INDEX,                 "currency")                    \
+    V(CurrencySignString,             CURRENCY_SIGN_STRING_INDEX,            "currencySign")                \
+    V(CurrencyDisplayString,          CURRENCY_DISPLAY_STRING_INDEX,         "currencyDisplay")             \
+    V(PercentSignString,              PERCENT_SIGN_STRING_INDEX,             "percentSign")                 \
+    V(PercentString,                  PERCENT_STRING_INDEX,                  "percent")                     \
+    V(MinusSignString,                MINUS_SIGN_STRING_INDEX,               "minusSign")                   \
+    V(PlusSignString,                 PLUS_SIGN_STRING_INDEX,                "plusSign")                    \
+    V(ExponentSeparatorString,        EXPONENT_SEPARATOR_STRING_INDEX,       "exponentSeparator")           \
+    V(ExponentMinusSignString,        EXPONENT_MINUS_SIGN_INDEX,             "exponentMinusSign")           \
+    V(ExponentIntegerString,          EXPONENT_INTEGER_STRING_INDEX,         "exponentInteger")             \
+    V(LongString,                     LONG_STRING_INDEX,                     "long")                        \
+    V(ShortString,                    SHORT_STRING_INDEX,                    "short")                       \
+    V(FullString,                     FULL_STRING_INDEX,                     "full")                        \
+    V(MediumString,                   MEDIUM_STRING_INDEX,                   "medium")                      \
+    V(NarrowString,                   NARROW_STRING_INDEX,                   "narrow")                      \
+    V(AlwaysString,                   ALWAYS_STRING_INDEX,                   "always")                      \
+    V(AutoString,                     AUTO_STRING_INDEX,                     "auto")                        \
+    V(ThrowString,                    THROW_STRING_INDEX,                    "throw")                       \
+    V(UnitDisplayString,              UNIT_DISPLAY_INDEX,                    "unitDisplay")                 \
+    V(NotationString,                 NOTATION_INDEX,                        "notation")                    \
+    V(CompactDisplayString,           COMPACT_DISPALY_INDEX,                 "compactDisplay")              \
+    V(UserGroupingString,             USER_GROUPING_INDEX,                   "useGrouping")                 \
+    V(SignDisplayString,              SIGN_DISPLAY_INDEX,                    "signDisplay")                 \
+    V(CodeString,                     CODE_INDEX,                            "code")                        \
+    V(NarrowSymbolString,             NARROW_SYMBOL_INDEX,                   "narrowSymbol")                \
+    V(StandardString,                 STANDARD_INDEX,                        "standard")                    \
+    V(AccountingString,               ACCOUNTING_INDEX,                      "accounting")                  \
+    V(ScientificString,               SCIENTIFIC_INDEX,                      "scientific")                  \
+    V(EngineeringString,              ENGINEERING_INDEX,                     "engineering")                 \
+    V(CompactString,                  COMPACT_STRING_INDEX,                  "compact")                     \
+    V(NeverString,                    NEVER_INDEX,                           "never")                       \
+    V(ExceptZeroString,               EXPECT_ZERO_INDEX,                     "exceptZero")                  \
+    V(MinimumIntegerDigitsString,     MINIMUM_INTEGER_DIGITS_INDEX,          "minimumIntegerDigits")        \
+    V(MinimumFractionDigitsString,    MINIMUM_FRACTIONDIGITS_INDEX,          "minimumFractionDigits")       \
+    V(MaximumFractionDigitsString,    MAXIMUM_FRACTIONDIGITS_INDEX,          "maximumFractionDigits")       \
+    V(MinimumSignificantDigitsString, MINIMUM_SIGNIFICANTDIGITS_INDEX,       "minimumSignificantDigits")    \
+    V(MaximumSignificantDigitsString, MAXIMUM_SIGNIFICANTDIGITS_INDEX,       "maximumSignificantDigits")    \
+    V(InvalidDateString,              INVALID_DATE_INDEX,                    "Invalid Date")                \
+    V(UsageString,                    USAGE_INDEX,                           "usage")                       \
+    V(CompareString,                  COMPARE_INDEX,                         "compare")                     \
+    V(SensitivityString,              SENSITIVITY_INDEX,                     "sensitivity")                 \
+    V(IgnorePunctuationString,        IGNORE_PUNCTUATION_INDEX,              "ignorePunctuation")           \
+    V(CardinalString,                 CARDINAL_INDEX,                        "cardinal")                    \
+    V(OrdinalString,                  ORDINAL_INDEX,                         "ordinal")                     \
+    V(ExecString,                     EXEC_INDEX,                            "exec")                        \
+    V(LastIndexString,                LAST_INDEX_INDEX,                      "lastIndex")                   \
+    V(PluralCategoriesString,         PLURAL_CATEGORIES_INDEX,               "pluralCategories")            \
+    V(SortString,                     SORT_INDEX,                            "sort")                        \
+    V(SearchString,                   SEARCH_INDEX,                          "search")                      \
+    V(BaseString,                     BASE_INDEX,                            "base")                        \
+    V(AccentString,                   ACCENT_INDEX,                          "accent")                      \
+    V(CaseString,                     CASE_INDEX,                            "case")                        \
+    V(VariantString,                  VARIANT_INDEX,                         "variant")                     \
+    V(EnUsPosixString,                EN_US_POSIX_STRING_INDEX,              "en-US-POSIX")                 \
+    V(UpperString,                    UPPER_INDEX,                           "upper")                       \
+    V(LowerString,                    LOWER_INDEX,                           "lower")                       \
+    V(DefaultString,                  DEFAULT_INDEX,                         "default")                     \
+    V(SharedString,                   SHARED_INDEX,                          "shared")                      \
+    V(StartRangeString,               START_RANGE_INDEX,                     "startRange")                  \
+    V(EndRangeString,                 END_RANGE_INDEX,                       "endRange")                    \
+    V(Iso8601String,                  ISO8601_INDEX,                         "iso8601")                     \
+    V(GregoryString,                  GREGORY_INDEX,                         "gregory")                     \
+    V(EthioaaString,                  ETHIOAA_INDEX,                         "ethioaa")                     \
+    V(StickyString,                   STICKY_INDEX,                          "sticky")                      \
+    V(HasIndicesString,               HAS_INDICES_INDEX,                     "hasIndices")                  \
+    V(IndicesString,                  INDICES_INDEX,                         "indices")                     \
+    V(UString,                        U_INDEX,                               "u")                           \
+    V(IndexString,                    INDEX_INDEX,                           "index")                       \
+    V(InputString,                    INPUT_INDEX,                           "input")                       \
+    V(UnicodeString,                  UNICODE_INDEX,                         "unicode")                     \
+    V(ZeroString,                     ZERO_INDEX,                            "0")                           \
+    V(ValuesString,                   VALUES_INDEX,                          "values")                      \
+    V(AddString,                      ADD_INDEX,                             "add")                         \
+    V(AmbiguousString,                AMBIGUOUS_INDEX,                       "ambiguous")                   \
+    V(ModuleString,                   MODULE_INDEX,                          "Module")                      \
+    V(StarString,                     STAR_INDEX,                            "*")                           \
+    V(DateTimeFieldString,            DATETIMEFIELD_INDEX,                   "datetimefield")               \
+    V(ConjunctionString,              CONJUNCTION_INDEX,                     "conjunction")                 \
+    V(NoneString,                     NONE_INDEX,                            "none")                        \
+    V(FallbackString,                 FALLBACK_INDEX,                        "fallback")                    \
+    V(DisjunctionString,              DISJUNCTION_INDEX,                     "disjunction")                 \
+    V(ElementString,                  ELEMENT_INDEX,                         "element")                     \
+    V(FlagsString,                    FLAGS_INDEX,                           "flags")                       \
+    V(GString,                        G_INDEX,                               "g")                           \
+    V(NfcString,                      NFC_INDEX,                             "NFC")                         \
+    V(EntriesString,                  ENTRIES_INDEX,                         "entries")                     \
+    V(LeftSquareBracketString,        LEFT_SQUARE_BRACKET_INDEX,             "[")                           \
+    V(RightSquareBracketString,       RIGHT_SQUARE_BRACKET_INDEX,            "]")                           \
+    V(YString,                        Y_INDEX,                               "y")                           \
+    V(DollarString,                   DOLLAR_INDEX,                          "$")                           \
+    V(CommaString,                    COMMA_INDEX,                           ",")                           \
+    V(JoinString,                     JOIN_INDEX,                            "join")                        \
+    V(CopyWithinString,               COPY_WITHIN_INDEX,                     "copyWithin")                  \
+    V(FillString,                     FILL_INDEX,                            "fill")                        \
+    V(FindString,                     FIND_INDEX,                            "find")                        \
+    V(FindIndexString,                FIND_INDEX_INDEX,                      "findIndex")                   \
+    V(FlatString,                     FLAT_INDEX,                            "flat")                        \
+    V(FlatMapString,                  FLATMAP_INDEX,                         "flatMap")                     \
+    V(IncludesString,                 INCLUDES_INDEX,                        "includes")                    \
+    V(KeysString,                     KEYS_INDEX,                            "keys")                        \
+    V(BoundString,                    BOUND_INDEX,                           "bound")                       \
+    V(BackslashString,                BACKSLASH_INDEX,                       "/")                           \
+    V(SpaceString,                    SPACE_INDEX,                           " ")                           \
+    V(NanCapitalString,               NAN_INDEX,                             "NaN")                         \
+    V(NotEqualString,                 NOT_EQUAL_INDEX,                       "not-equal")                   \
+    V(OkString,                       OK_INDEX,                              "ok")                          \
+    V(TimeoutString,                  TIMEOUT_INDEX,                         "timed-out")                   \
+    V(CjsExportsString,               CJS_EXPORTS_INDEX,                     "exports")                     \
+    V(CjsCacheString,                 CJS_CACHE_INDEX,                       "_cache")                      \
+    V(NapiWrapperString,              NAPI_WRAPPER_INDEX,                    "_napiwrapper")                \
+    /* for require native module */                                                                         \
+    V(RequireNativeModuleString,      REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,     "requireNativeModule")         \
+    V(RequireNapiString,              REQUIRE_NAPI_FUNC_INDEX,               "requireNapi")                 \
+    V(DollarStringOne,                DOLLAR_STRING_ONE_INDEX,               "$1")                          \
+    V(DollarStringTwo,                DOLLAR_STRING_TWO_INDEX,               "$2")                          \
+    V(DollarStringThree,              DOLLAR_STRING_THREE_INDEX,             "$3")                          \
+    V(DollarStringFour,               DOLLAR_STRING_FOUR_INDEX,              "$4")                          \
+    V(DollarStringFive,               DOLLAR_STRING_FIVE_INDEX,              "$5")                          \
+    V(DollarStringSix,                DOLLAR_STRING_SIX_INDEX,               "$6")                          \
+    V(DollarStringSeven,              DOLLAR_STRING_SEVEN_INDEX,             "$7")                          \
+    V(DollarStringEight,              DOLLAR_STRING_EIGHT_INDEX,             "$8")                          \
+    V(DollarStringNine,               DOLLAR_STRING_NINE_INDEX,              "$9")                          \
+    /* for object to string */                                                                              \
+    V(UndefinedToString,              UNDEFINED_TO_STRING_INDEX,             "[object Undefined]")          \
+    V(NullToString,                   NULL_TO_STRING_INDEX,                  "[object Null]")               \
+    V(ObjectToString,                 OBJECT_TO_STRING_INDEX,                "[object Object]")             \
+    V(ArrayToString,                  ARRAY_TO_STRING_INDEX,                 "[object Array]")              \
+    V(StringToString,                 STRING_TO_STRING_INDEX,                "[object String]")             \
+    V(BooleanToString,                BOOLEAN_TO_STRING_INDEX,               "[object Boolean]")            \
+    V(NumberToString,                 NUMBER_TO_STRING_INDEX,                "[object Number]")             \
+    V(ArgumentsToString,              ARGUMENTS_TO_STRING_INDEX,             "[object Arguments]")          \
+    V(FunctionToString,               FUNCTION_TO_STRING_INDEX,              "[object Function]")           \
+    V(DateToString,                   DATE_TO_STRING_INDEX,                  "[object Date]")               \
+    V(ErrorToString,                  ERROR_TO_STRING_INDEX,                 "[object Error]")              \
+    V(RegExpToString,                 REGEXP_TO_STRING_INDEX,                "[object RegExp]")
 
 /* GlobalConstant */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GLOBAL_ENV_CONSTANT_CONSTANT(V)                                                                               \
-    V(JSTaggedValue, ConstructorString, CONSTRUCTOR_STRING_INDEX, constructor)                                        \
-    V(JSTaggedValue, PrototypeString, PROTOTYPE_STRING_INDEX, prototype)                                              \
-    V(JSTaggedValue, LengthString, LENGTH_STRING_INDEX, length)                                                       \
-    V(JSTaggedValue, ValueString, VALUE_STRING_INDEX, value)                                                          \
-    V(JSTaggedValue, GetString, GET_STRING_INDEX, get)                                                                \
-    V(JSTaggedValue, SetString, SET_STRING_INDEX, set)                                                                \
-    V(JSTaggedValue, WritableString, WRITABLE_STRING_INDEX, writable)                                                 \
-    V(JSTaggedValue, EnumerableString, ENUMERABLE_STRING_INDEX, enumerable)                                           \
-    V(JSTaggedValue, ConfigurableString, CONFIGURABLE_STRING_INDEX, configurable)                                     \
-    /* non ECMA standard jsapi containers iterators */                                                                \
-    V(JSTaggedValue, ArrayListFunction, ARRAYLIST_FUNCTION_INDEX, ArrayListFunction)                                  \
-    V(JSTaggedValue, ArrayListIteratorPrototype, ARRAYLIST_ITERATOR_PROTOTYPE_INDEX, ArrayListIterator)               \
-    V(JSTaggedValue, HashMapIteratorPrototype, HASHMAP_ITERATOR_PROTOTYPE_INDEX, HashMapIterator)                     \
-    V(JSTaggedValue, HashSetIteratorPrototype, HASHSET_ITERATOR_PROTOTYPE_INDEX, HashSetIterator)                     \
-    V(JSTaggedValue, LightWeightMapIteratorPrototype, LIGHTWEIGHTMAP_ITERATOR_PROTOTYPE_INDEX, LightWeightMapIterator) \
-    V(JSTaggedValue, LightWeightSetIteratorPrototype, LIGHTWEIGHTSET_ITERATOR_PROTOTYPE_INDEX, LightWeightSetIterator) \
-    V(JSTaggedValue, TreeMapIteratorPrototype, TREEMAP_ITERATOR_PROTOTYPE_INDEX, TreeMapIterator)                     \
-    V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)                     \
-    V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                           \
-    V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)                        \
-    V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                           \
-    V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator)           \
-    V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                              \
-    V(JSTaggedValue, DequeIteratorPrototype, DEQUE_ITERATOR_PROTOTYPE_INDEX, DequeIterator)                           \
-    V(JSTaggedValue, StackIteratorPrototype, STACK_ITERATOR_PROTOTYPE_INDEX, StackIterator)                           \
-    V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX, ListFunction)                                                 \
-    V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX, LinkedListFunction)                              \
-    V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX, ListIterator)                              \
-    V(JSTaggedValue, UndefinedIterResult, UNDEFINED_INTERATOR_RESULT_INDEX, UndefinedIterResult)                      \
-    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX, LinkedListIterator)           \
-    /* SymbolTable*RegisterSymbols */                                                                                 \
-    V(JSTaggedValue, NameString, NAME_STRING_INDEX, name)                                                             \
-    V(JSTaggedValue, GetPrototypeOfString, GETPROTOTYPEOF_STRING_INDEX, getPrototypeOf)                               \
-    V(JSTaggedValue, SetPrototypeOfString, SETPROTOTYPEOF_STRING_INDEX, setPrototypeOf)                               \
-    V(JSTaggedValue, IsExtensibleString, ISEXTENSIBLE_STRING_INDEX, isExtensible)                                     \
-    V(JSTaggedValue, PreventExtensionsString, PREVENTEXTENSIONS_STRING_INDEX, preventExtensions)                      \
-    V(JSTaggedValue, GetOwnPropertyDescriptorString, GETOWNPROPERTYDESCRIPTOR_STRING_INDEX, getOwnPropertyDescriptor) \
-    V(JSTaggedValue, DefinePropertyString, DEFINEPROPERTY_STRING_INDEX, defineProperty)                               \
-    V(JSTaggedValue, HasString, HAS_STRING_INDEX, has)                                                                \
-    V(JSTaggedValue, DeletePropertyString, DELETEPROPERTY_STRING_INDEX, deleteProperty)                               \
-    V(JSTaggedValue, EnumerateString, ENUMERATE_STRING_INDEX, enumerate)                                              \
-    V(JSTaggedValue, OwnKeysString, OWNKEYS_STRING_INDEX, ownKeys)                                                    \
-    V(JSTaggedValue, ApplyString, APPLY_STRING_INDEX, apply)                                                          \
-    V(JSTaggedValue, NegativeZeroString, NEGATIVE_ZERO_STRING_INDEX, -0)                                              \
-    V(JSTaggedValue, DoneString, DONE_STRING_INDEX, done)                                                             \
-    V(JSTaggedValue, ProxyString, PROXY_STRING_INDEX, proxy)                                                          \
-    V(JSTaggedValue, RevokeString, REVOKE_STRING_INDEX, revoke)                                                       \
-    V(JSTaggedValue, NextString, NEXT_STRING_INDEX, next)                                                             \
-    V(JSTaggedValue, ToStringString, TO_STRING_STRING_INDEX, toString)                                                \
-    V(JSTaggedValue, ToLocaleStringString, TO_LOCALE_STRING_STRING_INDEX, toLocaleString)                             \
-    V(JSTaggedValue, ValueOfString, VALUE_OF_STRING_INDEX, valueOf)                                                   \
-    V(JSTaggedValue, UndefinedString, UNDEFINED_STRING_INDEX, undefined)                                              \
-    V(JSTaggedValue, NullString, NULL_STRING_INDEX, null)                                                             \
-    V(JSTaggedValue, BooleanString, BOOLEAN_STRING_INDEX, boolean)                                                    \
-    V(JSTaggedValue, NumberString, NUMBER_STRING_INDEX, number)                                                       \
-    V(JSTaggedValue, BigIntString, BIGINT_STRING_INDEX, bigint)                                                       \
-    V(JSTaggedValue, FunctionString, FUNCTION_STRING_INDEX, function)                                                 \
-    V(JSTaggedValue, StringString, STRING_STRING_INDEX, string)                                                       \
-    V(JSTaggedValue, SymbolString, SYMBOL_STRING_INDEX, symbol)                                                       \
-    V(JSTaggedValue, ObjectString, OBJECT_STRING_INDEX, object)                                                       \
-    V(JSTaggedValue, TrueString, TRUE_STRING_INDEX, true)                                                             \
-    V(JSTaggedValue, FalseString, FALSE_STRING_INDEX, false)                                                          \
-    V(JSTaggedValue, ReturnString, RETURN_STRING_INDEX, return )                                                      \
-    V(JSTaggedValue, ProxyConstructString, PROXY_CONSTRUCT_STRING_INDEX, construct)                                   \
-    V(JSTaggedValue, ProxyCallString, PROXY_CALL_STRING_INDEX, call)                                                  \
-    V(JSTaggedValue, PromiseThenString, PROMISE_THEN_STRING_INDEX, then)                                              \
-    V(JSTaggedValue, PromiseCatchString, PROMISE_CATCH_STRING_INDEX, catch)                                           \
-    V(JSTaggedValue, PromiseFinallyString, PROMISE_FINALLY_STRING_INDEX, finally)                                     \
-    V(JSTaggedValue, PromiseStatusString, PROMISE_STATUS_STRING_INDEX, status)                                        \
-    V(JSTaggedValue, PromiseFulfilledString, PROMISE_FULFILLED_STRING_INDEX, fulfilled)                               \
-    V(JSTaggedValue, PromiseRejectedString, PROMISE_REJECTED_STRING_INDEX, rejected)                                  \
-    V(JSTaggedValue, PromiseReasonString, PROMISE_REASON_STRING_INDEX, reason)                                        \
-    V(JSTaggedValue, ScriptJobString, SCRIPT_JOB_STRING_INDEX, ScriptJobs)                                            \
-    V(JSTaggedValue, PromiseString, PROMISE_STRING_INDEX, PrimiseJobs)                                                \
-    V(JSTaggedValue, ThrowerString, THROWER_STRING_INDEX, Thrower)                                                    \
-    V(JSTaggedValue, IdentityString, IDENTITY_STRING_INDEX, Identity)                                                 \
-    V(JSTaggedValue, CallerString, CALLER_STRING_INDEX, caller)                                                       \
-    V(JSTaggedValue, CalleeString, CALLEE_STRING_INDEX, callee)                                                       \
-    V(JSTaggedValue, Int8ArrayString, INT8_ARRAY_STRING_INDEX, Int8Array)                                             \
-    V(JSTaggedValue, Uint8ArrayString, UINT8_ARRAY_STRING_INDEX, Uint8Array)                                          \
-    V(JSTaggedValue, Uint8ClampedArrayString, UINT8_CLAMPED_ARRAY_STRING_INDEX, Uint8ClampedArray)                    \
-    V(JSTaggedValue, Int16ArrayString, INT16_ARRAY_STRING_INDEX, Int16Array)                                          \
-    V(JSTaggedValue, Uint16ArrayString, UINT16_ARRAY_STRING_INDEX, Uint16Array)                                       \
-    V(JSTaggedValue, Int32ArrayString, INT32_ARRAY_STRING_INDEX, Int32Array)                                          \
-    V(JSTaggedValue, Uint32ArrayString, UINT32_ARRAY_STRING_INDEX, Uint32Array)                                       \
-    V(JSTaggedValue, Float32ArrayString, FLOAT32_ARRAY_STRING_INDEX, Float32Array)                                    \
-    V(JSTaggedValue, Float64ArrayString, FLOAT64_ARRAY_STRING_INDEX, Float64Array)                                    \
-    V(JSTaggedValue, BigInt64ArrayString, BIGINT64_ARRAY_STRING_INDEX, BigInt64Array)                                 \
-    V(JSTaggedValue, BigUint64ArrayString, BIGUINT64_ARRAY_STRING_INDEX, BigUint64Array)                              \
-    V(JSTaggedValue, AsyncFunctionString, ASYNC_FUNCTION_STRING_INDEX, AsyncFunction)                                 \
-    V(JSTaggedValue, PromiseResolveString, PROMISE_RESOLVE_STRING_INDEX, resolve)                                     \
-    V(JSTaggedValue, IdString, ID_STRING_INDEX, id)                                                                   \
-    V(JSTaggedValue, MethodString, METHOD_STRING_INDEX, method)                                                       \
-    V(JSTaggedValue, ParamsString, PARAMS_STRING_INDEX, params)                                                       \
-    V(JSTaggedValue, ResultString, RESULT_STRING_INDEX, result)                                                       \
-    V(JSTaggedValue, ToJsonString, TO_JSON_STRING_INDEX, toJSON)                                                      \
-    V(JSTaggedValue, GlobalString, GLOBAL_STRING_INDEX, global)                                                       \
-    V(JSTaggedValue, MessageString, MESSAGE_STRING_INDEX, message)                                                    \
-    V(JSTaggedValue, CauseString, CAUSE_STRING_INDEX, cause)                                                          \
-    V(JSTaggedValue, ErrorString, ERROR_STRING_INDEX, Error)                                                          \
-    V(JSTaggedValue, RangeErrorString, RANGE_ERROR_STRING_INDEX, RangeError)                                          \
-    V(JSTaggedValue, ReferenceErrorString, REFERENCE_ERROR_STRING_INDEX, ReferenceError)                              \
-    V(JSTaggedValue, TypeErrorString, TYPE_ERROR_STRING_INDEX, TypeError)                                             \
-    V(JSTaggedValue, ErrorsString, ERRORS_STRING_INDEX, Errors)                                                       \
-    V(JSTaggedValue, AggregateErrorString, AGGREGATE_ERROR_STRING_INDEX, AggregateError)                              \
-    V(JSTaggedValue, URIErrorString, URI_ERROR_STRING_INDEX, URIError)                                                \
-    V(JSTaggedValue, SyntaxErrorString, SYNTAX_ERROR_STRING_INDEX, SyntaxError)                                       \
-    V(JSTaggedValue, EvalErrorString, EVAL_ERROR_STRING_INDEX, EvalError)                                             \
-    V(JSTaggedValue, OOMErrorString, OOM_ERROR_STRING_INDEX, OOMError)                                                \
-    V(JSTaggedValue, ErrorFuncString, ERROR_FUNC_STRING_INDEX, errorfunc)                                             \
-    V(JSTaggedValue, StackString, STACK_STRING_INDEX, stack)                                                          \
-    V(JSTaggedValue, StackEmptyString, STACK_EMPTY_STRING_INDEX, stackisempty)                                        \
-    V(JSTaggedValue, ObjNotCoercibleString, OBJ_NOT_COERCIBLE_STRING_INDEX, objectnotcoercible)                       \
-    /* forIntl. */                                                                                                    \
-    V(JSTaggedValue, LanguageString, LANGUAGE_STRING_CLASS_INDEX, language)                                           \
-    V(JSTaggedValue, ScriptString, SCRIPT_STRING_CLASS_INDEX, script)                                                 \
-    V(JSTaggedValue, RegionString, REGION_STRING_CLASS_INDEX, region)                                                 \
-    V(JSTaggedValue, BaseNameString, BASE_NAME_STRING_CLASS_INDEX, baseName)                                          \
-    V(JSTaggedValue, CalendarString, CALENDAR_STRING_CLASS_INDEX, calendar)                                           \
-    V(JSTaggedValue, CollationString, COLLATION_STRING_CLASS_INDEX, collation)                                        \
-    V(JSTaggedValue, HourCycleString, HOUR_CYCLE_STRING_CLASS_INDEX, hourCycle)                                       \
-    V(JSTaggedValue, CaseFirstString, CASE_FIRST_STRING_CLASS_INDEX, caseFirst)                                       \
-    V(JSTaggedValue, NumericString, NUMERIC_STRING_CLASS_INDEX, numeric)                                              \
-    V(JSTaggedValue, NumberingSystemString, NUMBERING_SYSTEM_STRING_CLASS_INDEX, numberingSystem)                     \
-    V(JSTaggedValue, TypeString, TYPE_STRING_INDEX, type)                                                             \
-    V(JSTaggedValue, LocaleMatcherString, LOCALE_MATCHER_STRING_INDEX, localeMatcher)                                 \
-    V(JSTaggedValue, FormatMatcherString, FORMAT_MATCHER_STRING_INDEX, formatMatcher)                                 \
-    V(JSTaggedValue, Hour12String, HOUR12_STRING_INDEX, hour12)                                                       \
-    V(JSTaggedValue, H11String, H11_STRING_INDEX, h11)                                                                \
-    V(JSTaggedValue, H12String, H12_STRING_INDEX, h12)                                                                \
-    V(JSTaggedValue, H23String, H23_STRING_INDEX, h23)                                                                \
-    V(JSTaggedValue, H24String, H24_STRING_INDEX, h24)                                                                \
-    V(JSTaggedValue, WeekdayString, WEEK_DAY_STRING_INDEX, weekday)                                                   \
-    V(JSTaggedValue, EraString, ERA_STRING_INDEX, era)                                                                \
-    V(JSTaggedValue, YearString, YEAR_STRING_INDEX, year)                                                             \
-    V(JSTaggedValue, QuarterString, QUARTER_STRING_INDEX, quarter)                                                    \
-    V(JSTaggedValue, MonthString, MONTH_STRING_INDEX, month)                                                          \
-    V(JSTaggedValue, DayString, DAY_STRING_INDEX, day)                                                                \
-    V(JSTaggedValue, HourString, HOUR_STRING_INDEX, hour)                                                             \
-    V(JSTaggedValue, MinuteString, MINUTE_STRING_INDEX, minute)                                                       \
-    V(JSTaggedValue, SecondString, SECOND_STRING_INDEX, second)                                                       \
-    V(JSTaggedValue, YearsString, YEARS_STRING_INDEX, years)                                                          \
-    V(JSTaggedValue, QuartersString, QUARTERS_STRING_INDEX, quarters)                                                 \
-    V(JSTaggedValue, MonthsString, MONTHS_STRING_INDEX, months)                                                       \
-    V(JSTaggedValue, DaysString, DAYS_STRING_INDEX, days)                                                             \
-    V(JSTaggedValue, HoursString, HOURS_STRING_INDEX, hours)                                                          \
-    V(JSTaggedValue, MinutesString, MINUTES_STRING_INDEX, minutes)                                                    \
-    V(JSTaggedValue, SecondsString, SECONDS_STRING_INDEX, seconds)                                                    \
-    V(JSTaggedValue, TimeZoneNameString, TIME_ZONE_NAME_STRING_INDEX, timeZoneName)                                   \
-    V(JSTaggedValue, LocaleString, LOCALE_STRING_INDEX, locale)                                                       \
-    V(JSTaggedValue, TimeZoneString, TIME_ZONE_STRING_INDEX, timeZone)                                                \
-    V(JSTaggedValue, LiteralString, LITERAL_STRING_INDEX, literal)                                                    \
-    V(JSTaggedValue, YearNameString, YEAR_NAME_STRING_INDEX, yearName)                                                \
-    V(JSTaggedValue, DayPeriodString, DAY_PERIOD_STRING_INDEX, dayPeriod)                                             \
-    V(JSTaggedValue, FractionalSecondDigitsString, FRACTIONAL_SECOND_DIGITS_STRING_INDEX, fractionalSecondDigits)     \
-    V(JSTaggedValue, FractionalSecondString, FRACTIONAL_SECOND_STRING_INDEX, fractionalSecond)                        \
-    V(JSTaggedValue, RelatedYearString, RELATED_YEAR_STRING_INDEX, relatedYear)                                       \
-    V(JSTaggedValue, LookUpString, LOOK_UP_STRING_INDEX, lookup)                                                      \
-    V(JSTaggedValue, BestFitString, BEST_FIT_STRING_INDEX, bestfit)                                                   \
-    V(JSTaggedValue, DateStyleString, DATE_STYLE_STRING_INDEX, dateStyle)                                             \
-    V(JSTaggedValue, TimeStyleString, TIME_STYLE_STRING_INDEX, timeStyle)                                             \
-    V(JSTaggedValue, UTCString, UTC_STRING_INDEX, UTC)                                                                \
-    V(JSTaggedValue, WeekString, WEEK_STRING_INDEX, week)                                                             \
-    V(JSTaggedValue, WeeksString, WEEKS_STRING_INDEX, weeks)                                                          \
-    V(JSTaggedValue, SourceString, SOURCE_STRING_INDEX, source)                                                       \
-    V(JSTaggedValue, FormatString, FORMAT_STRING_INDEX, format)                                                       \
-    V(JSTaggedValue, EnUsString, EN_US_STRING_INDEX, en - US)                                                         \
-    V(JSTaggedValue, UndString, UND_STRING_INDEX, und)                                                                \
-    V(JSTaggedValue, LatnString, LATN_STRING_INDEX, latn)                                                             \
-    V(JSTaggedValue, StyleString, STYLE_STRING_INDEX, style)                                                          \
-    V(JSTaggedValue, UnitString, UNIT_STRING_INDEX, unit)                                                             \
-    V(JSTaggedValue, IntegerString, INTEGER_STRING_INDEX, integer)                                                    \
-    V(JSTaggedValue, NanString, NAN_STRING_INDEX, nan)                                                                \
-    V(JSTaggedValue, InfinityString, INFINITY_STRING_INDEX, infinity)                                                 \
-    V(JSTaggedValue, FractionString, FRACTION_STRING_INDEX, fraction)                                                 \
-    V(JSTaggedValue, DecimalString, DECIMAL_STRING_INDEX, decimal)                                                    \
-    V(JSTaggedValue, GroupString, GROUP_STRING_INDEX, group)                                                          \
-    V(JSTaggedValue, GroupsString, GROUPS_STRING_INDEX, groups)                                                       \
-    V(JSTaggedValue, CurrencyString, CURRENCY_STRING_INDEX, currency)                                                 \
-    V(JSTaggedValue, CurrencySignString, CURRENCY_SIGN_STRING_INDEX, currencySign)                                    \
-    V(JSTaggedValue, CurrencyDisplayString, CURRENCY_DISPLAY_STRING_INDEX, currencyDisplay)                           \
-    V(JSTaggedValue, PercentSignString, PERCENT_SIGN_STRING_INDEX, percentSign)                                       \
-    V(JSTaggedValue, PercentString, PERCENT_STRING_INDEX, percent)                                                    \
-    V(JSTaggedValue, MinusSignString, MINUS_SIGN_STRING_INDEX, minusSign)                                             \
-    V(JSTaggedValue, PlusSignString, PLUS_SIGN_STRING_INDEX, plusSign)                                                \
-    V(JSTaggedValue, ExponentSeparatorString, EXPONENT_SEPARATOR_STRING_INDEX, exponentSeparator)                     \
-    V(JSTaggedValue, ExponentMinusSignString, EXPONENT_MINUS_SIGN_INDEX, exponentMinusSign)                           \
-    V(JSTaggedValue, ExponentIntegerString, EXPONENT_INTEGER_STRING_INDEX, exponentInteger)                           \
-    V(JSTaggedValue, LongString, LONG_STRING_INDEX, long)                                                             \
-    V(JSTaggedValue, ShortString, SHORT_STRING_INDEX, short)                                                          \
-    V(JSTaggedValue, FullString, FULL_STRING_INDEX, full)                                                             \
-    V(JSTaggedValue, MediumString, MEDIUM_STRING_INDEX, medium)                                                       \
-    V(JSTaggedValue, NarrowString, NARROW_STRING_INDEX, narrow)                                                       \
-    V(JSTaggedValue, AlwaysString, ALWAYS_STRING_INDEX, always)                                                       \
-    V(JSTaggedValue, AutoString, AUTO_STRING_INDEX, auto)                                                             \
-    V(JSTaggedValue, ThrowString, THROW_STRING_INDEX, throw)                                                          \
-    V(JSTaggedValue, UnitDisplayString, UNIT_DISPLAY_INDEX, unitDisplay)                                              \
-    V(JSTaggedValue, NotationString, NOTATION_INDEX, notation)                                                        \
-    V(JSTaggedValue, CompactDisplayString, COMPACT_DISPALY_INDEX, compactDisplay)                                     \
-    V(JSTaggedValue, UserGroupingString, USER_GROUPING_INDEX, useGrouping)                                            \
-    V(JSTaggedValue, SignDisplayString, SIGN_DISPLAY_INDEX, signDisplay)                                              \
-    V(JSTaggedValue, CodeString, CODE_INDEX, code)                                                                    \
-    V(JSTaggedValue, NarrowSymbolString, NARROW_SYMBOL_INDEX, narrowSymbol)                                           \
-    V(JSTaggedValue, StandardString, STANDARD_INDEX, standard)                                                        \
-    V(JSTaggedValue, AccountingString, ACCOUNTING_INDEX, accounting)                                                  \
-    V(JSTaggedValue, ScientificString, SCIENTIFIC_INDEX, scientific)                                                  \
-    V(JSTaggedValue, EngineeringString, ENGINEERING_INDEX, engineering)                                               \
-    V(JSTaggedValue, CompactString, COMPACT_STRING_INDEX, compact)                                                    \
-    V(JSTaggedValue, NeverString, NEVER_INDEX, never)                                                                 \
-    V(JSTaggedValue, ExceptZeroString, EXPECT_ZERO_INDEX, exceptZero)                                                 \
-    V(JSTaggedValue, MinimumIntegerDigitsString, MINIMUM_INTEGER_DIGITS_INDEX, minimumIntegerDigits)                  \
-    V(JSTaggedValue, MinimumFractionDigitsString, MINIMUM_FRACTIONDIGITS_INDEX, minimumFractionDigits)                \
-    V(JSTaggedValue, MaximumFractionDigitsString, MAXIMUM_FRACTIONDIGITS_INDEX, maximumFractionDigits)                \
-    V(JSTaggedValue, MinimumSignificantDigitsString, MINIMUM_SIGNIFICANTDIGITS_INDEX, minimumSignificantDigits)       \
-    V(JSTaggedValue, MaximumSignificantDigitsString, MAXIMUM_SIGNIFICANTDIGITS_INDEX, maximumSignificantDigits)       \
-    V(JSTaggedValue, InvalidDateString, INVALID_DATE_INDEX, InvalidDate)                                              \
-    V(JSTaggedValue, UsageString, USAGE_INDEX, usage)                                                                 \
-    V(JSTaggedValue, CompareString, COMPARE_INDEX, compare)                                                           \
-    V(JSTaggedValue, SensitivityString, SENSITIVITY_INDEX, sensitivity)                                               \
-    V(JSTaggedValue, IgnorePunctuationString, IGNORE_PUNCTUATION_INDEX, ignorePunctuation)                            \
-    V(JSTaggedValue, CardinalString, CARDINAL_INDEX, cardinal)                                                        \
-    V(JSTaggedValue, OrdinalString, ORDINAL_INDEX, ordinal)                                                           \
-    V(JSTaggedValue, ExecString, EXEC_INDEX, exec)                                                                    \
-    V(JSTaggedValue, LastIndexString, LAST_INDEX_INDEX, lastIndex)                                                    \
-    V(JSTaggedValue, PluralCategoriesString, PLURAL_CATEGORIES_INDEX, pluralCategories)                               \
-    V(JSTaggedValue, SortString, SORT_INDEX, sort)                                                                    \
-    V(JSTaggedValue, SearchString, SEARCH_INDEX, search)                                                              \
-    V(JSTaggedValue, BaseString, BASE_INDEX, base)                                                                    \
-    V(JSTaggedValue, AccentString, ACCENT_INDEX, accent)                                                              \
-    V(JSTaggedValue, CaseString, CASE_INDEX, Case)                                                                    \
-    V(JSTaggedValue, VariantString, VARIANT_INDEX, variant)                                                           \
-    V(JSTaggedValue, EnUsPosixString, EN_US_POSIX_STRING_INDEX, en - US - POSIX)                                      \
-    V(JSTaggedValue, UpperString, UPPER_INDEX, upper)                                                                 \
-    V(JSTaggedValue, LowerString, LOWER_INDEX, lower)                                                                 \
-    V(JSTaggedValue, DefaultString, DEFAULT_INDEX, Default)                                                           \
-    V(JSTaggedValue, SharedString, SHARED_INDEX, shared)                                                              \
-    V(JSTaggedValue, StartRangeString, START_RANGE_INDEX, startRange)                                                 \
-    V(JSTaggedValue, EndRangeString, END_RANGE_INDEX, endRange)                                                       \
-    V(JSTaggedValue, Iso8601String, ISO8601_INDEX, iso8601)                                                           \
-    V(JSTaggedValue, GregoryString, GREGORY_INDEX, gregory)                                                           \
-    V(JSTaggedValue, EthioaaString, ETHIOAA_INDEX, ethioaa)                                                           \
-    V(JSTaggedValue, StickyString, STICKY_INDEX, sticky)                                                              \
-    V(JSTaggedValue, HasIndicesString, HAS_INDICES_INDEX, hasIndices)                                                 \
-    V(JSTaggedValue, IndicesString, INDICES_INDEX, indices)                                                           \
-    V(JSTaggedValue, UString, U_INDEX, u)                                                                             \
-    V(JSTaggedValue, IndexString, INDEX_INDEX, index)                                                                 \
-    V(JSTaggedValue, InputString, INPUT_INDEX, input)                                                                 \
-    V(JSTaggedValue, UnicodeString, UNICODE_INDEX, unicode)                                                           \
-    V(JSTaggedValue, ZeroString, ZERO_INDEX, zero)                                                                    \
-    V(JSTaggedValue, ValuesString, VALUES_INDEX, values)                                                              \
-    V(JSTaggedValue, AddString, ADD_INDEX, add)                                                                       \
-    V(JSTaggedValue, AmbiguousString, AMBIGUOUS_INDEX, ambiguous)                                                     \
-    V(JSTaggedValue, ModuleString, MODULE_INDEX, module)                                                              \
-    V(JSTaggedValue, StarString, STAR_INDEX, star)                                                                    \
-    V(JSTaggedValue, DateTimeFieldString, DATETIMEFIELD_INDEX, datetimefield)                                         \
-    V(JSTaggedValue, ConjunctionString, CONJUNCTION_INDEX, conjunction)                                               \
-    V(JSTaggedValue, NoneString, NONE_INDEX, none)                                                                    \
-    V(JSTaggedValue, FallbackString, FALLBACK_INDEX, fallback)                                                        \
-    V(JSTaggedValue, DisjunctionString, DISJUNCTION_INDEX, disjunction)                                               \
-    V(JSTaggedValue, ElementString, ELEMENT_INDEX, element)                                                           \
-    V(JSTaggedValue, FlagsString, FLAGS_INDEX, flags)                                                                 \
-    V(JSTaggedValue, GString, G_INDEX, g)                                                                             \
-    V(JSTaggedValue, NotEqualString, NOT_EQUAL_INDEX, notEqual)                                                       \
-    V(JSTaggedValue, OkString, OK_INDEX, ok)                                                                          \
-    V(JSTaggedValue, TimeoutString, TIMEOUT_INDEX, timedout)                                                          \
-    V(JSTaggedValue, NfcString, NFC_INDEX, nfc)                                                                       \
-    V(JSTaggedValue, EntriesString, ENTRIES_INDEX, entries)                                                           \
-    V(JSTaggedValue, LeftSquareBracketString, LEFT_SQUARE_BRACKET_INDEX, leftsquarebracket)                           \
-    V(JSTaggedValue, RightSquareBracketString, RIGHT_SQUARE_BRACKET_INDEX, rightsquarebracket)                        \
-    V(JSTaggedValue, YString, Y_INDEX, y)                                                                             \
-    V(JSTaggedValue, DollarString, DOLLAR_INDEX, dollar)                                                              \
-    V(JSTaggedValue, CommaString, COMMA_INDEX, comma)                                                                 \
-    V(JSTaggedValue, JoinString, JOIN_INDEX, join)                                                                    \
-    V(JSTaggedValue, CopyWithinString, COPY_WITHIN_INDEX, copywithin)                                                 \
-    V(JSTaggedValue, FillString, FILL_INDEX, fill)                                                                    \
-    V(JSTaggedValue, FindString, FIND_INDEX, find)                                                                    \
-    V(JSTaggedValue, FindIndexString, FIND_INDEX_INDEX, findindex)                                                    \
-    V(JSTaggedValue, FlatString, FLAT_INDEX, flat)                                                                    \
-    V(JSTaggedValue, FlatMapString, FLATMAP_INDEX, flatmap)                                                           \
-    V(JSTaggedValue, IncludesString, INCLUDES_INDEX, includes)                                                        \
-    V(JSTaggedValue, KeysString, KEYS_INDEX, keys)                                                                    \
-    V(JSTaggedValue, BoundString, BOUND_INDEX, bound)                                                                 \
-    V(JSTaggedValue, BackslashString, BACKSLASH_INDEX, backslash)                                                     \
-    V(JSTaggedValue, SpaceString, SPACE_INDEX, space)                                                                 \
-    V(JSTaggedValue, NanCapitalString, NAN_INDEX, nan)                                                                \
-    V(JSTaggedValue, CjsExportsString, CJS_EXPORTS_INDEX, exportsStr)                                                 \
-    V(JSTaggedValue, CjsCacheString, CJS_CACHE_INDEX, cacheStr)                                                       \
-    V(JSTaggedValue, NapiWrapperString, NAPI_WRAPPER_INDEX, napiwrapper)                                              \
-    /* for require native module */                                                                                   \
-    V(JSTaggedValue, RequireNativeModuleString, REQUIRE_NATIVE_MOUDULE_FUNC_INDEX, requireNativeModule)               \
-    V(JSTaggedValue, RequireNapiString, REQUIRE_NAPI_FUNC_INDEX, requireNapi)                                         \
-    V(JSTaggedValue, DollarStringOne, DOLLAR_STRING_ONE_INDEX, dollarStrOne)                                          \
-    V(JSTaggedValue, DollarStringTwo, DOLLAR_STRING_TWO_INDEX, dollarStrTwo)                                          \
-    V(JSTaggedValue, DollarStringThree, DOLLAR_STRING_THREE_INDEX, dollarStrThree)                                    \
-    V(JSTaggedValue, DollarStringFour, DOLLAR_STRING_FOUR_INDEX, dollarStrFour)                                       \
-    V(JSTaggedValue, DollarStringFive, DOLLAR_STRING_FIVE_INDEX, dollarStrFive)                                       \
-    V(JSTaggedValue, DollarStringSix, DOLLAR_STRING_SIX_INDEX, dollarStrSix)                                          \
-    V(JSTaggedValue, DollarStringSeven, DOLLAR_STRING_SEVEN_INDEX, dollarStrSeven)                                    \
-    V(JSTaggedValue, DollarStringEight, DOLLAR_STRING_EIGHT_INDEX, dollarStrEight)                                    \
-    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)                                       \
-    /* for object to string */                                                                                        \
-    V(JSTaggedValue, UndefinedToString, UNDEFINED_TO_STRING_INDEX, undefinedToString)                                 \
-    V(JSTaggedValue, NullToString, NULL_TO_STRING_INDEX, nullToString)                                                \
-    V(JSTaggedValue, ObjectToString, OBJECT_TO_STRING_INDEX, objectToString)                                          \
-    V(JSTaggedValue, ArrayToString, ARRAY_TO_STRING_INDEX, arrayToString)                                             \
-    V(JSTaggedValue, StringToString, STRING_TO_STRING_INDEX, stringToString)                                          \
-    V(JSTaggedValue, BooleanToString, BOOLEAN_TO_STRING_INDEX, booleanToString)                                       \
-    V(JSTaggedValue, NumberToString, NUMBER_TO_STRING_INDEX, numberToString)                                          \
-    V(JSTaggedValue, ArgumentsToString, ARGUMENTS_TO_STRING_INDEX, argumentsToString)                                 \
-    V(JSTaggedValue, FunctionToString, FUNCTION_TO_STRING_INDEX, functionToString)                                    \
-    V(JSTaggedValue, DateToString, DATE_TO_STRING_INDEX, dateToString)                                                \
-    V(JSTaggedValue, ErrorToString, ERROR_TO_STRING_INDEX, errorToString)                                             \
-    V(JSTaggedValue, RegExpToString, REGEXP_TO_STRING_INDEX, regExpToString)
+#define GLOBAL_ENV_CONSTANT_CONSTANT(V)                                                                     \
+    /* non ECMA standard jsapi containers iterators */                                                      \
+    V(JSTaggedValue, ArrayListFunction, ARRAYLIST_FUNCTION_INDEX, ArrayListFunction)                        \
+    V(JSTaggedValue, ArrayListIteratorPrototype, ARRAYLIST_ITERATOR_PROTOTYPE_INDEX, ArrayListIterator)     \
+    V(JSTaggedValue, HashMapIteratorPrototype, HASHMAP_ITERATOR_PROTOTYPE_INDEX, HashMapIterator)           \
+    V(JSTaggedValue, HashSetIteratorPrototype, HASHSET_ITERATOR_PROTOTYPE_INDEX, HashSetIterator)           \
+    V(JSTaggedValue, LightWeightMapIteratorPrototype,                                                       \
+        LIGHTWEIGHTMAP_ITERATOR_PROTOTYPE_INDEX, LightWeightMapIterator)                                    \
+    V(JSTaggedValue, LightWeightSetIteratorPrototype,                                                       \
+        LIGHTWEIGHTSET_ITERATOR_PROTOTYPE_INDEX, LightWeightSetIterator)                                    \
+    V(JSTaggedValue, TreeMapIteratorPrototype, TREEMAP_ITERATOR_PROTOTYPE_INDEX, TreeMapIterator)           \
+    V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)           \
+    V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                 \
+    V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)              \
+    V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                 \
+    V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator) \
+    V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                    \
+    V(JSTaggedValue, DequeIteratorPrototype, DEQUE_ITERATOR_PROTOTYPE_INDEX, DequeIterator)                 \
+    V(JSTaggedValue, StackIteratorPrototype, STACK_ITERATOR_PROTOTYPE_INDEX, StackIterator)                 \
+    V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX, ListFunction)                                       \
+    V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX, LinkedListFunction)                    \
+    V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX, ListIterator)                    \
+    V(JSTaggedValue, UndefinedIterResult, UNDEFINED_INTERATOR_RESULT_INDEX, UndefinedIterResult)            \
+    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX, LinkedListIterator)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \
@@ -492,19 +502,27 @@ class ObjectFactory;
 // ConstantIndex used for explicit visit each constant.
 enum class ConstantIndex : size_t {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define INDEX_FILTER(Type, Name, Index, Desc) Index,
-    GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER) GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER)
-        GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER) GLOBAL_ENV_CONSTANT_ACCESSOR(INDEX_FILTER)
-        GLOBAL_ENV_CACHES(INDEX_FILTER)
+#define INDEX_FILTER_COMMON(Index) Index,
+#define INDEX_FILTER_WITH_TYPE(Type, Name, Index, Desc) INDEX_FILTER_COMMON(Index)
+    GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_ACCESSOR(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
+#undef INDEX_FILTER_WITH_TYPE
 
-#undef INDEX_FILTER
-            CONSTATNT_COUNT,
+#define INDEX_FILTER_STRING(Name, Index, Token) INDEX_FILTER_COMMON(Index)
+    GLOBAL_ENV_CONSTANT_STRING(INDEX_FILTER_STRING)
+#undef INDEX_FILTER_STRING
+#undef INDEX_FILTER_COMMON
 
-    CONSTATNT_BEGIN = 0,
-    CONSTATNT_END = CONSTATNT_COUNT,
+    CONSTANT_COUNT,
 
-    READ_ONLY_CONSTATNT_BEGIN = CONSTATNT_BEGIN,
-    READ_ONLY_CONSTATNT_END = CONSTATNT_END,
+    CONSTANT_BEGIN = 0,
+    CONSTANT_END = CONSTANT_COUNT,
+
+    READ_ONLY_CONSTANT_BEGIN = CONSTANT_BEGIN,
+    READ_ONLY_CONSTANT_END = CONSTANT_END,
     JSAPI_CONTAINERS_BEGIN = ARRAYLIST_FUNCTION_INDEX,
     JSAPI_CONTAINERS_END = LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
     // ...
@@ -547,17 +565,24 @@ public:
     uintptr_t GetGlobalConstantAddr(ConstantIndex index) const;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_GET(Type, Name, Index, Desc) \
-    const Type Get##Name() const;         \
-    const JSHandle<Type> GetHandled##Name() const; \
+#define DECL_GET_COMMON(Type, Name)                 \
+    const Type Get##Name() const;                   \
+    const JSHandle<Type> GetHandled##Name() const;  \
     static size_t GetOffsetOf##Name();
 
-    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET)
-    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET)
-    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET)
-    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET)
-    GLOBAL_ENV_CACHES(DECL_GET)
-#undef DECL_GET
+#define DECL_GET_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_COMMON(Type, Name)
+    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
+#undef DECL_GET_WITH_TYPE
+
+#define DECL_GET_STRING(Name, Index, Token) DECL_GET_COMMON(JSTaggedValue, Name)
+    GLOBAL_ENV_CONSTANT_STRING(DECL_GET_STRING)
+#undef DECL_GET_STRING
+
+#undef DECL_GET_COMMON
 
     void VisitRangeSlot(const RootRangeVisitor &visitor)
     {
@@ -566,13 +591,13 @@ public:
 
     JSTaggedValue GetGlobalConstantObject(size_t index) const
     {
-        ASSERT(static_cast<ConstantIndex>(index) < ConstantIndex::CONSTATNT_COUNT);
+        ASSERT(static_cast<ConstantIndex>(index) < ConstantIndex::CONSTANT_COUNT);
         return constants_[index];
     }
 
     size_t GetConstantCount() const
     {
-        return static_cast<size_t>(ConstantIndex::CONSTATNT_COUNT);
+        return static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
     }
 
     size_t GetJSAPIContainersBegin() const
@@ -595,12 +620,12 @@ public:
     }
 
     static constexpr size_t SizeArch32 =
-        JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTATNT_COUNT);
+        JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
     static constexpr size_t SizeArch64 =
-        JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTATNT_COUNT);
+        JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
 
 private:
-    JSTaggedValue constants_[static_cast<int>(ConstantIndex::CONSTATNT_COUNT)];  // NOLINT(modernize-avoid-c-arrays)
+    JSTaggedValue constants_[static_cast<int>(ConstantIndex::CONSTANT_COUNT)];  // NOLINT(modernize-avoid-c-arrays)
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(GlobalEnvConstants), GlobalEnvConstants::SizeArch32, GlobalEnvConstants::SizeArch64);
 }  // namespace panda::ecmascript

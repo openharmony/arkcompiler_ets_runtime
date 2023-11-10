@@ -248,8 +248,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(objectType);
         }
-        case TSTypeKind::BUILTIN_INSTANCE:
-        case TSTypeKind::GENERIC_INSTANCE: {
+        case TSTypeKind::BUILTIN_INSTANCE: {
             return ParseGenericsInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
         }
         default: {
@@ -885,17 +884,6 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGO
         thread_, constpoolHandle.GetTaggedValue(), info.cpIdx, info.recordName);
     JSHandle<JSObject> objHandle(thread_, obj);
 
-    if (info.enableOptTrackField) {
-        ASSERT(info.pgoType.IsProfileType());
-        PGOHClassLayoutDesc *desc;
-        if (info.decoder->GetHClassLayoutDesc(info.pgoType, &desc)) {
-            if (!VerifyObjIhcPGOType(objHandle, *desc)) {
-                LOG_COMPILER(DEBUG) << "Verify ihc type failed";
-                return thread_->GlobalConstants()->GetHandledUndefined();
-            }
-        }
-    }
-
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
     if (oldHClass->IsDictionaryMode()) {
         return thread_->GlobalConstants()->GetHandledUndefined();
@@ -909,45 +897,6 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGO
     JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(0);
     tsManager_->AddInstanceTSHClass(gt, hclass);
     return JSHandle<JSTaggedValue>(objectType);
-}
-
-bool TSTypeParser::VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLayoutDesc &desc)
-{
-    auto hclass = obj->GetClass();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    uint32_t numOfProps = hclass->NumberOfProps();
-    for (uint32_t i = 0; i < numOfProps; i++) {
-        auto key = layoutInfo->GetKey(i);
-        if (!key.IsString()) {
-            continue;
-        }
-
-        auto attr = layoutInfo->GetAttr(i);
-        if (!attr.IsInlinedProps()) {
-            continue;
-        }
-        JSTaggedValue value = obj->GetPropertyInlinedProps(i);
-
-        auto keyString = EcmaStringAccessor(key).ToCString();
-        PGOHandler newHandler;
-        if (!desc.FindDescWithKey(keyString, newHandler)) {
-            continue;
-        }
-        PropertyAttributes newAttr;
-        if (!newHandler.SetAttribute(newAttr)) {
-            continue;
-        }
-        if (newAttr.IsDoubleRep()) {
-            if (!value.IsNumber()) {
-                return false;
-            }
-        } else if (newAttr.IsIntRep()) {
-            if (!value.IsInt()) {
-                return false;
-            }
-        }
-    }
-    return true;
 }
 
 static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,

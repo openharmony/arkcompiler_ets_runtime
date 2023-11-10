@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
+#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/pass_manager.h"
@@ -146,9 +147,11 @@ private:
     void Verify() const;
     void VerifyTypePercent();
     void TypeCheck(GateRef gate) const;
+    void PGOTypeCheck(GateRef gate) const;
+    void Enqueue(GateRef gate);
 
     std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
-                                       const std::string &logPreFix) const;
+                                       const std::string &logPreFix, bool isPGO) const;
 
     const BytecodeInfo &GetByteCodeInfo(const GateRef gate) const
     {

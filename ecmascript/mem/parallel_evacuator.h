@@ -121,11 +121,20 @@ private:
         bool Process(bool isMain) override;
     };
 
+    std::unordered_set<JSTaggedType> &ArrayTrackInfoSet(uint32_t threadIndex)
+    {
+        return arrayTrackInfoSets_[threadIndex];
+    }
+
+    TaggedObject* UpdateAddressAfterEvacation(TaggedObject *oldTrackInfo);
+
+    void UpdateTrackInfo();
+
     bool ProcessWorkloads(bool isMain = false);
 
     void EvacuateSpace();
-    bool EvacuateSpace(TlabAllocator *allocation, bool isMain = false);
-    void EvacuateRegion(TlabAllocator *allocator, Region *region);
+    bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, bool isMain = false);
+    void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
@@ -161,6 +170,7 @@ private:
 
     uintptr_t waterLine_ = 0;
     std::vector<std::unique_ptr<Workload>> workloads_;
+    std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
     std::atomic_int parallel_ = 0;
     Mutex mutex_;
     ConditionVariable condition_;

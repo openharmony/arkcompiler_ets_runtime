@@ -71,6 +71,8 @@ void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
     } else if (Bytecodes::IsCreateArrayWithBufferOp(opcode)) {
         auto cpIndex = bcIns.GetId().AsRawValue();
         Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::ARRAY_LITERAL);
+    } else if (Bytecodes::IsCreateEmptyArrayOp(opcode)) {
+        Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, 0}, Type::EMPTY_ARRAY);
     } else if (Bytecodes::IsCallOp(opcode)) {
         Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, 0}, Type::CALL_TARGET);
     } else if (Bytecodes::IsDefineClassWithBufferOp(opcode)) {

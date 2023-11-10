@@ -16,7 +16,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/type_mcr_lowering.h"
+#include "ecmascript/compiler/type_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
@@ -24,6 +24,7 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -268,9 +269,9 @@ void NumberSpeculativeLowering::VisitNumberCalculate(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType gateType = acc_.GetGateType(gate);
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             gateType = GateType::IntType();
         } else {
             gateType = GateType::DoubleType();
@@ -296,9 +297,9 @@ void NumberSpeculativeLowering::VisitNumberCompare(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType leftType = acc_.GetLeftType(gate);
     GateType rightType = acc_.GetRightType(gate);
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             leftType = GateType::IntType();
             rightType = GateType::IntType();
         } else {
@@ -346,9 +347,9 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType gateType = acc_.GetGateType(gate);
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             gateType = GateType::IntType();
         } else {
             gateType = GateType::DoubleType();
@@ -373,9 +374,9 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType gateType = acc_.GetGateType(gate);
-    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             gateType = GateType::IntType();
         } else {
             gateType = GateType::DoubleType();
@@ -588,10 +589,24 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
         // Hole check?
         GateRef result = Circuit::NullGate();
         if (output == TypeInfo::FLOAT64) {
-            result = builder_.LoadConstOffset(VariableType::FLOAT64(), receiver, plr.GetOffset());
+            if (plr.IsInlinedProps()) {
+                result = builder_.LoadConstOffset(VariableType::FLOAT64(), receiver, plr.GetOffset());
+            } else {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
+                result = builder_.GetValueFromTaggedArray(
+                    VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
+            }
             acc_.SetMachineType(gate, MachineType::F64);
         } else {
-            result = builder_.LoadConstOffset(VariableType::INT32(), receiver, plr.GetOffset());
+            if (plr.IsInlinedProps()) {
+                result = builder_.LoadConstOffset(VariableType::INT32(), receiver, plr.GetOffset());
+            } else {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
+                result = builder_.GetValueFromTaggedArray(
+                    VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
+            }
             acc_.SetMachineType(gate, MachineType::I32);
         }
         acc_.SetGateType(gate, GateType::NJSValue());

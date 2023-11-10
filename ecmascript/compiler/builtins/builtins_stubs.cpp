@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
@@ -171,7 +172,28 @@ DECLARE_BUILTINS(String##method)                                                
     V(FromCharCode, JS_ANY,     Hole())                                             \
     V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
     V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
-    V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))
+    V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
+    V(Replace,      JS_ANY,     Undefined())                                        \
+    V(Trim,         JS_ANY,     Undefined())                                        \
+    V(Slice,        JS_ANY,     Undefined())
+
+DECLARE_BUILTINS(LocaleCompare)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsStringStubBuilder stringStubBuilder(this);
+    stringStubBuilder.LocaleCompare(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LocaleCompare));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 
 BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
 
@@ -310,6 +332,74 @@ DECLARE_BUILTINS(BooleanConstructor)
         GateRef argv = GetArgv();
         auto args = { glue, nativeCode, func, thisValue, numArgs, argv };
         res = CallBuiltinRuntime(glue, args, true, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(NumberConstructor)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(numberValue, VariableType::JS_ANY(), IntToTaggedPtr(IntPtr(0)));
+    Label thisCollectionObj(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    Label hasArg(env);
+    Label numberCreate(env);
+    Branch(Int64GreaterThan(numArgs, IntPtr(0)), &hasArg, &numberCreate);
+    Bind(&hasArg);
+    {
+        GateRef value = GetArgNCheck(Int32(0));
+        Label number(env);
+        Branch(TaggedIsNumber(value), &number, &slowPath);
+        Bind(&number);
+        {
+            numberValue = value;
+            res = value;
+            Jump(&numberCreate);
+        }
+    }
+
+    Bind(&numberCreate);
+    Label newObj(env);
+    Label newTargetIsHeapObject(env);
+    Label newTargetIsJSFunction(env);
+    Branch(TaggedIsUndefined(newTarget), &exit, &newObj);
+    Bind(&newObj);
+    {
+        Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+        Bind(&newTargetIsHeapObject);
+        Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+        Bind(&newTargetIsJSFunction);
+        {
+            Label intialHClassIsHClass(env);
+            GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+            Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+            Bind(&intialHClassIsHClass);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                Label afterNew(env);
+                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+                Bind(&afterNew);
+                {
+                    GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
+                    Store(VariableType::INT64(), glue, *res, valueOffset, *numberValue);
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -555,7 +645,6 @@ DECLARE_BUILTINS(type##method)                                                  
 {                                                                                                   \
     auto env = GetEnvironment();                                                                    \
     DEFVARIABLE(res, retType, retDefaultValue);                                                     \
-    Label thisCollectionObj(env);                                                                   \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
     BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                \
@@ -601,4 +690,27 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Delete, VariableType::JS_ANY(), Un
 // Map.protetype.Has
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Has, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
+
+#define DECLARE_BUILTINS_NUMBER_STUB_BUILDER(type, method, retType, retDefaultValue)                \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs);                              \
+    builder.method(&res, &exit, &slowPath);                                                         \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
+// Number.ParseFloat
+DECLARE_BUILTINS_NUMBER_STUB_BUILDER(Number, ParseFloat, VariableType::JS_ANY(), Undefined());
+#undef DECLARE_BUILTINS_NUMBER_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

@@ -37,13 +37,14 @@ enum class MemAlignmentLog2 : uint8_t {
     MEM_ALIGN_REGION_LOG2 = 4,
 };
 
-static constexpr size_t MAX_HUGE_OBJECT_CAPACITY = 1024_MB;
+static constexpr size_t INITIAL_HUGE_OBJECT_CAPACITY = 1024_MB;
+static constexpr size_t INCREMENT_HUGE_OBJECT_CAPACITY = 128_MB;
 static constexpr size_t LARGE_POOL_SIZE = 480_MB;
 static constexpr size_t MEDIUM_POOL_SIZE = 256_MB;
 static constexpr size_t LOW_POOL_SIZE = 64_MB;
 static constexpr size_t MIN_MEM_POOL_CAPACITY = 64_MB;
-static constexpr size_t PHY_SIZE_MULTIPLE = 4;
-static constexpr size_t WORKER_NUM = 7;
+static constexpr size_t WORKER_NUM = 8;
+static constexpr size_t PHY_SIZE_MULTIPLE = WORKER_NUM + 1;
 static constexpr size_t STANDARD_POOL_SIZE = WORKER_NUM * DEFAULT_WORKER_HEAP_SIZE + DEFAULT_HEAP_SIZE;
 
 static constexpr size_t MIN_OLD_SPACE_LIMIT = 2_MB;

@@ -1340,9 +1340,10 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(constantStringClass.GetTaggedObject()));
             std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindMergedJSPandaFile();
             auto constantStr = ConstantString::Cast(str);
-            uint32_t id = constantStr->GetEntityId();
+            uint32_t id = constantStr->GetEntityIdU32();
             auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
             constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
+            constantStr->SetRelocatedData(vm_->GetJSThread(), JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
         } else {
             ASSERT(index == 0);
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
@@ -1572,7 +1573,7 @@ void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Spac
                 stringTable->InsertStringIfNotExist(str);
                 if (JSType(objType) == JSType::CONSTANT_STRING) {
                     auto constantStr = ConstantString::Cast(str);
-                    uint32_t id = constantStr->GetEntityId();
+                    uint32_t id = constantStr->GetEntityIdU32();
                     auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
                     constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
                 }
@@ -1678,11 +1679,11 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
         auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
-        object->SetClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
+        object->SynchronizedSetClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
-    object->SetClass(reinterpret_cast<JSHClass *>(hclassAddr));
+    object->SynchronizedSetClass(reinterpret_cast<JSHClass *>(hclassAddr));
 }
 
 void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)

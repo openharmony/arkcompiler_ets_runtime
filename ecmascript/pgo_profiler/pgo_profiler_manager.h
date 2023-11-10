@@ -45,9 +45,7 @@ public:
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
         // For FA jsvm, merge with existed output file
-        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::OVERWRITE);
-        // InitData in appspawn
-        encoder_->InitializeData();
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::MERGE);
     }
 
     void SetBundleName(const std::string &bundleName)
@@ -55,6 +53,14 @@ public:
         if (encoder_) {
             encoder_->SetBundleName(bundleName);
         }
+    }
+
+    const std::string GetBundleName()
+    {
+        if (encoder_) {
+            encoder_->GetBundleName();
+        }
+        return "";
     }
 
     void SetRequestAotCallback(const RequestAotCallback &cb)
@@ -81,12 +87,17 @@ public:
     }
 
     // Factory
-    PGOProfiler *Build(EcmaVM *vm, bool isEnable)
+    std::shared_ptr<PGOProfiler> Build(EcmaVM *vm, bool isEnable)
     {
         if (isEnable) {
             isEnable = InitializeData();
         }
-        return new PGOProfiler(vm, isEnable);
+        auto profiler = std::make_shared<PGOProfiler>(vm, isEnable);
+        {
+            os::memory::LockHolder lock(mutex_);
+            profilers_.insert(profiler);
+        }
+        return profiler;
     }
 
     bool IsEnable() const
@@ -94,17 +105,21 @@ public:
         return encoder_ && encoder_->IsInitialized();
     }
 
-    void Destroy(PGOProfiler *profiler)
+    void Destroy(std::shared_ptr<PGOProfiler> &profiler)
     {
         if (profiler != nullptr) {
             profiler->HandlePGOPreDump();
             profiler->WaitPGODumpFinish();
-            Merge(profiler);
-            delete profiler;
+            Merge(profiler.get());
+            {
+                os::memory::LockHolder lock(mutex_);
+                profilers_.erase(profiler);
+            }
+            profiler.reset();
         }
     }
 
-    void Reset(PGOProfiler *profiler, bool isEnable)
+    void Reset(const std::shared_ptr<PGOProfiler>& profiler, bool isEnable)
     {
         if (isEnable) {
             isEnable = InitializeData();
@@ -168,6 +183,15 @@ public:
         }
     }
 
+    void ForceSave()
+    {
+        os::memory::LockHolder lock(mutex_);
+        for (const auto &profiler : profilers_) {
+            profiler->DumpByForce();
+        }
+        GetInstance()->AsynSave();
+    }
+
     bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold,
                                  ApGenMode mode)
     {
@@ -221,6 +245,8 @@ private:
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
+    os::memory::Mutex mutex_;
+    std::set<std::shared_ptr<PGOProfiler>> profilers_;
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

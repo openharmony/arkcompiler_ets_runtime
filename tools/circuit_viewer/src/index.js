@@ -20,7 +20,7 @@ const { NapiLog } = require('./ir/NapiLog');
 const { MainEditor } = require('./MainEditor');
 
 let canvas = document.getElementById('visual_area');
-const sideWidth = 0;//420;
+const sideWidth = 0; //420;
 canvas.width = window.innerWidth - sideWidth;
 canvas.height = window.innerHeight;
 

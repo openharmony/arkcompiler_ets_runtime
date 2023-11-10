@@ -30,6 +30,10 @@
 
 #include "libpandabase/macros.h"
 
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace panda {
 class JSNApiHelper;
 class EscapeLocalScope;
@@ -568,7 +572,7 @@ public:
 
 class PUBLIC_API SymbolRef : public PrimitiveRef {
 public:
-    static Local<SymbolRef> New(const EcmaVM *vm, Local<StringRef> description);
+    static Local<SymbolRef> New(const EcmaVM *vm, Local<StringRef> description = Local<StringRef>());
     Local<StringRef> GetDescription(const EcmaVM *vm);
 };
 
@@ -1004,6 +1008,7 @@ public:
     static Local<JSValueRef> AggregateError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> EvalError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> OOMError(const EcmaVM *vm, Local<StringRef> message);
+    static Local<JSValueRef> TerminationError(const EcmaVM *vm, Local<StringRef> message);
 };
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
@@ -1384,6 +1389,7 @@ public:
     static void PrintExceptionInfo(const EcmaVM *vm);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
+    static bool IsExecutingPendingJob(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
     static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
@@ -1392,6 +1398,7 @@ public:
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
+    static void NotifyNativeReturnJS(const EcmaVM *vm);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);

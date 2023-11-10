@@ -233,10 +233,8 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
-std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
+std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value)
 {
-    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
-    auto attr = layout->GetAttr(index);
     if (attr.IsDoubleRep()) {
         if (value.IsInt()) {
             double doubleValue = value.GetInt();
@@ -255,6 +253,13 @@ std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(uint32_t index, JST
         }
     }
     return std::pair(true, value);
+}
+
+std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
+{
+    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
+    auto attr = layout->GetAttr(index);
+    return JSObject::ConvertValueWithRep(attr, value);
 }
 
 void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -367,10 +372,10 @@ inline uint32_t JSObject::ComputeElementCapacityHighGrowth(uint32_t oldCapacity)
     return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
 }
 
-inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity,
+inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
                                                              uint32_t maxNonInlinedFastPropsCapacity)
 {
-    uint32_t newCapacity = static_cast<uint32_t>(oldCapacity + PROPERTIES_GROW_SIZE);
+    uint32_t newCapacity = oldCapacity + thread->GetPropertiesGrowStep();
     return newCapacity > maxNonInlinedFastPropsCapacity ? maxNonInlinedFastPropsCapacity : newCapacity;
 }
 

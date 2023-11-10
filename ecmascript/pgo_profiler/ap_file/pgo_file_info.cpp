@@ -18,6 +18,8 @@
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
+bool PGOProfilerHeader::strictMatch_ = true;
+
 bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
 {
     auto *inHeader = reinterpret_cast<PGOProfilerHeaderLegacy *>(buffer);
@@ -60,7 +62,7 @@ bool PGOProfilerHeader::BuildFromElastic(void *buffer, size_t bufferSize, PGOPro
 bool PGOProfilerHeader::ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header)
 {
     auto *inHeaderBase = reinterpret_cast<FileHeaderBase *>(buffer);
-    if (inHeaderBase->VerifyVersion("apPath file", LAST_VERSION, false)) {
+    if (inHeaderBase->VerifyVersion("apPath file", LAST_VERSION, IsStrictMatch())) {
         if (!inHeaderBase->CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
             return BuildFromLegacy(buffer, header);
         }

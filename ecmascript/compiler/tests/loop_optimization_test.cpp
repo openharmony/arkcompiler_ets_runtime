@@ -24,8 +24,9 @@
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/ts_hcr_lowering.h"
-#include "ecmascript/compiler/type_mcr_lowering.h"
+#include "ecmascript/compiler/type_bytecode_lowering.h"
+#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
@@ -52,6 +53,7 @@ using ecmascript::kungfu::LoopPeeling;
 using ecmascript::kungfu::EarlyElimination;
 using ecmascript::kungfu::CombinedPassVisitor;
 using ecmascript::kungfu::TypedBinOp;
+using ecmascript::kungfu::PGOTypeRef;
 using ecmascript::kungfu::PGOSampleType;
 using ecmascript::kungfu::GraphLinearizer;
 HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
@@ -67,9 +69,9 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.SetEnvironment(&env);
     auto array = builder.Arguments(1);
 
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -82,7 +84,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     acc.SetGateType(loadLength, GateType::NJSValue());
     auto cmp = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
         *index, loadLength, GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOSampleType::NoneType());
+        GateType::NJSValue(), PGOTypeRef::NoneType());
     acc.SetMachineType(cmp, MachineType::I1);
     builder.Branch(cmp, &loopBody, &loopExit);
     builder.Bind(&loopBody);
@@ -91,12 +93,12 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto sumAdd = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
         *sum, loadElement, GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOSampleType::NoneType());
+        GateType::NJSValue(), PGOTypeRef::NoneType());
     acc.SetMachineType(sumAdd, MachineType::I32);
     sum = sumAdd;
     auto indexInc = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
         *index, builder.Int32(1), GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOSampleType::NoneType());
+        GateType::NJSValue(), PGOTypeRef::NoneType());
     acc.SetMachineType(indexInc, MachineType::I32);
     index = indexInc;
     builder.LoopEnd(&loopHead);
@@ -104,7 +106,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.LoopExit({&sum});
     auto convert = builder.ConvertInt32ToTaggedInt(*sum);
     builder.Return(convert);
-    LoopAnalysis analysis(&circuit, &chunk);
+    LoopAnalysis analysis(nullptr, &circuit, &chunk);
     ecmascript::kungfu::LoopInfo beforeOpt(&chunk, loopBegin);
     ecmascript::kungfu::LoopInfo afterOpt(&chunk, loopBegin);
     analysis.CollectLoopBody(&beforeOpt);
@@ -147,10 +149,9 @@ HWTEST_F_L0(LoopOptimizationTest, LoopNumberCalculationOptimizationTest)
     builder.SetEnvironment(&env);
     auto arg = builder.Arguments(1);
     acc.SetMachineType(arg, MachineType::I32);
-    
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -195,12 +196,13 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     acc.SetGateType(arg1, GateType::TaggedPointer());
     auto arg2 = builder.Arguments(2);
     acc.SetMachineType(arg2, MachineType::ARCH);
-    GateRef invariant = circuit.NewGate(circuit.Load(), MachineType::I32,
+    auto bits = ecmascript::kungfu::LoadStoreAccessor::ToValue(ecmascript::kungfu::MemoryOrder::NOT_ATOMIC);
+    GateRef invariant = circuit.NewGate(circuit.Load(bits), MachineType::I32,
         { circuit.GetDependRoot(), arg2 }, GateType::NJSValue());
-    
-    DEFVAlUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
-    DEFVAlUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
-    
+
+    DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
+    DEFVALUE(sum, (&builder), VariableType::INT32(), builder.Int32(0));
+
     Label loopHead(&env);
     Label loopBody(&env);
     Label loopExit(&env);
@@ -208,7 +210,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     builder.LoopBegin(&loopHead);
     auto loopBegin = builder.GetState();
     auto loopEntry = acc.GetState(loopBegin);
-    
+
     builder.Branch(builder.Int32LessThan(*index, invariant), &loopBody, &loopExit);
     builder.Bind(&loopBody);
     auto variant = builder.Load(VariableType::INT32(), arg1, builder.PtrAdd(arg2, *index));

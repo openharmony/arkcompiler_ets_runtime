@@ -75,6 +75,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.forEach(TestForEach);
 
+    flag = false;
+    let doublemap = new fastmap();
+    for (let i = 0; i < 10; i++) {
+        doublemap.set(i, i);
+    }
+    let ss = Math.floor(Math.random()*10);
+    flag = doublemap.hasKey(ss);
+    if (flag != true) {
+        print("HashMap hasKey find key error");
+    }
+
     let dmap = new fastmap();
     // test setAll: 3
     dmap.setAll(map);

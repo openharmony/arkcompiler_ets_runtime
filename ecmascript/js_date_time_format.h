@@ -42,6 +42,14 @@ class IcuPatternDesc;
 
 std::vector<IcuPatternDesc> BuildIcuPatternDescs();
 std::vector<IcuPatternDesc> InitializePattern(const IcuPatternDesc &hourData);
+icu::DateFormat::EStyle DateTimeStyleToEStyle(DateTimeStyleOption style);
+HourCycleOption HourCycleFromPattern(const icu::UnicodeString pattern);
+icu::UnicodeString ReplaceSkeleton(const icu::UnicodeString input, HourCycleOption hc);
+std::unique_ptr<icu::SimpleDateFormat> DateTimeStylePattern(DateTimeStyleOption dateStyle,
+                                                            DateTimeStyleOption timeStyle,
+                                                            icu::Locale &icuLocale,
+                                                            HourCycleOption hc,
+                                                            icu::DateTimePatternGenerator *generator);
 
 using IcuPatternDescVect = std::vector<IcuPatternDesc>;
 using IcuPatternEntry = std::pair<std::string, std::string>;

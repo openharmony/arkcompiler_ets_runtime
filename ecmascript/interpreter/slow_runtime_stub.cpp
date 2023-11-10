@@ -796,8 +796,10 @@ JSTaggedValue SlowRuntimeStub::DefineGetterSetterByValue(JSThread *thread, JSTag
     JSHandle<JSTaggedValue> propHandle(thread, prop);
     JSHandle<JSTaggedValue> getterHandle(thread, getter);
     JSHandle<JSTaggedValue> setterHandle(thread, setter);
+    JSHandle<JSTaggedValue> func(thread, JSTaggedValue::Undefined());
     return RuntimeStubs::RuntimeDefineGetterSetterByValue(thread, objHandle, propHandle,
-                                                          getterHandle, setterHandle, flag);
+                                                          getterHandle, setterHandle, flag,
+                                                          func, 0);
 }
 
 JSTaggedValue SlowRuntimeStub::LdObjByIndex(JSThread *thread, JSTaggedValue obj, uint32_t idx, bool callGetter,
@@ -1184,5 +1186,15 @@ JSTaggedValue SlowRuntimeStub::NotifyConcurrentResult(JSThread *thread, JSTagged
 {
     INTERPRETER_TRACE(thread, NotifyConcurrentResult);
     return RuntimeStubs::RuntimeNotifyConcurrentResult(thread, result, hint);
+}
+
+JSTaggedValue SlowRuntimeStub::UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
+                                            JSTaggedValue newjshclass, JSTaggedValue key)
+{
+    INTERPRETER_TRACE(thread, UpdateHClass);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSHClass> oldhclass(thread, jshclass);
+    JSHandle<JSHClass> newhclass(thread, newjshclass);
+    return RuntimeStubs::RuntimeUpdateHClass(thread, oldhclass, newhclass, key);
 }
 }  // namespace panda::ecmascript

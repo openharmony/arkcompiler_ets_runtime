@@ -125,9 +125,11 @@ public:
                                                  std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
                                                      std::string_view entryPoint);
+    static void SetSingleStepStatus(JSDebugger *debugger, bool status);
+    static bool GetSingleStepStatus(JSDebugger *debugger);
 
     // HotReload
-    static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
+    static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);
     static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);
     static std::vector<void *> GetNativePointer(const EcmaVM *ecmaVm);
 

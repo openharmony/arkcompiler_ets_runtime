@@ -60,6 +60,13 @@ PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
     }
 }
 
+void ThroughputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32_t step)
+{
+    // 2 : double
+    thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2),
+                                  step));
+}
+
 Method *ECMAObject::GetCallTarget() const
 {
     const TaggedObject *obj = this;
@@ -89,6 +96,10 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
     JSHandle<TaggedArray> newElements = factory->CopyArray(oldElements, oldLength, newCapacity);
 
     obj->SetElements(thread, newElements);
+    if (thread->IsPGOProfilerEnable() && obj->IsJSArray()) {
+        auto trackInfo = JSHandle<JSArray>(obj)->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackArrayLength(trackInfo, capacity);
+    }
     return newElements;
 }
 
@@ -1244,6 +1255,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
     obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
     return true;
 }
 
@@ -2201,6 +2213,7 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
             break;
         case EnumCacheKind::PROTOCHAIN:
             isEnumCacheValid = IsEnumCacheWithProtoChainInfoValid(obj);
+            break;
         default:
             break;
     }
@@ -2344,7 +2357,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
         JSHClass *oldHC = obj->GetJSHClass();
         ihc->SetPrototype(thread, oldHC->GetPrototype());
-        obj->SetClass(ihc);
+        obj->SynchronizedSetClass(ihc);
         for (size_t i = 0; i < propsLen; i++) {
             auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
             // If value.first is false, indicating that value cannot be converted to the expected value of
@@ -2355,11 +2368,15 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
             }
             obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
         }
+        auto inlineNum = ihc->GetInlinedProperties();
+        for (size_t i = propsLen; i < inlineNum; i++) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, JSTaggedValue::Null());
+        }
         if (isSuccess) {
             return;
         }
         // If conversion fails, it needs to be rolled back to the old HClass and reset the value.
-        obj->SetClass(oldHC);
+        obj->SynchronizedSetClass(oldHC);
     } else if (thread->IsPGOProfilerEnable()) {
         // PGO need to track TrackType
         JSHClass *oldHC = obj->GetJSHClass();

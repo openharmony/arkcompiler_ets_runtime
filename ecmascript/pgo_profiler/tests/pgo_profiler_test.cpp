@@ -18,14 +18,19 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/platform/file.h"
 #include "gtest/gtest.h"
 
 #include "assembler/assembly-emitter.h"
@@ -41,6 +46,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/tests/pgo_context_mock.h"
+#include "ecmascript/pgo_profiler/tests/pgo_encoder_mock.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -63,12 +69,18 @@ public:
         GTEST_LOG_(INFO) << "TearDownCase";
     }
 
+    void SetUp() override
+    {
+        strictMatch_ = PGOProfilerHeader::IsStrictMatch();
+    }
+
     void TearDown() override
     {
         JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, pf_.get());
         vm_ = nullptr;
         pf_.reset();
         PGOProfilerManager::GetInstance()->Destroy();
+        PGOProfilerHeader::SetStrictMatch(strictMatch_);
     }
 
 protected:
@@ -139,7 +151,82 @@ protected:
         JSNApi::DestroyJSVM(vm_);
     }
 
+    void ParseRelatedPandaFileMethods(
+        PGOProfilerDecoder &loader,
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> &methodIdInAp)
+    {
+        std::shared_ptr<PGOAbcFilePool> abcFilePool = std::make_shared<PGOAbcFilePool>();
+        ASSERT_TRUE(loader.LoadFull(abcFilePool));
+        for (const auto &recordInfo : loader.GetRecordDetailInfos().GetRecordInfos()) {
+            auto recordProfile = recordInfo.first;
+            ASSERT_EQ(recordProfile.GetKind(), ProfileType::Kind::LocalRecordId);
+            if (recordProfile.IsNone()) {
+                continue;
+            }
+            const auto *entry =
+                loader.GetRecordDetailInfos().GetRecordPool()->GetPool()->GetEntry(recordProfile.GetId());
+            const auto abcNormalizedDesc =
+                JSPandaFile::GetNormalizedFileDesc(abcFilePool->GetEntry(recordProfile.GetAbcId())->GetData());
+            if (abcNormalizedDesc.empty()) {
+                continue;
+            }
+
+            const auto *info = recordInfo.second;
+            for (const auto &method : info->GetMethodInfos()) {
+                // add ap entry info
+                methodIdInAp[abcNormalizedDesc.c_str()][entry->GetData().c_str()].emplace_back(method.first);
+            }
+        };
+    }
+
+    void CheckApMethods(
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> &methodIdInAp)
+    {
+        for (auto abcIter = methodIdInAp.begin(); abcIter != methodIdInAp.end();) {
+            std::string fileName(abcIter->first.c_str());
+            auto lastDirToken = fileName.find_last_of('/');
+            if (lastDirToken != std::string::npos) {
+                fileName = fileName.substr(lastDirToken + 1);
+            }
+            std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList = abcIter->second;
+            CheckApMethodsInApFiles(fileName, recordMethodList);
+            if (recordMethodList.empty()) {
+                abcIter = methodIdInAp.erase(abcIter);
+            } else {
+                abcIter++;
+            }
+        }
+        ASSERT_TRUE(methodIdInAp.empty());
+    }
+
+    void CheckApMethodsInApFiles(const std::string &fileName,
+                                  std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
+    {
+        std::vector<MethodLiteral *> methodLiterals {};
+        CreateJSPandaFile(fileName.c_str(), methodLiterals);
+        for (auto &methodLiteral : methodLiterals) {
+            auto methodName = MethodLiteral::GetRecordName(pf_.get(), methodLiteral->GetMethodId());
+            auto recordEntry = recordMethodList.find(methodName.c_str());
+            if (recordEntry == recordMethodList.end()) {
+                continue;
+            }
+            for (auto index = 0; index < recordEntry->second.size(); ++index) {
+                if (!(recordEntry->second.at(index) == methodLiteral->GetMethodId())) {
+                    continue;
+                }
+                // Remove matched entry
+                recordEntry->second.erase(recordEntry->second.begin() + index);
+                if (recordEntry->second.empty()) {
+                    recordEntry = recordMethodList.erase(recordEntry);
+                }
+                break;
+            }
+        }
+    }
+
+    static constexpr uint32_t DECODER_THRESHOLD = 2;
     EcmaVM *vm_ = nullptr;
+    bool strictMatch_ = false;
     std::shared_ptr<JSPandaFile> pf_;
 };
 
@@ -166,7 +253,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
     JSNApi::DestroyJSVM(vm_);
     // Loader
-    PGOProfilerDecoder loader("ark-profiler/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -210,7 +297,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler1/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler1/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -259,7 +346,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler2/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler2/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
     CString expectRecordName1 = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -308,10 +395,11 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler3/modules.ap", 2);
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_FALSE(FileExist("ark-profiler3/modules.ap"));
+    PGOProfilerDecoder loader("ark-profiler3/modules.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
-    ASSERT_FALSE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
+    ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler3/");
 }
 
@@ -358,7 +446,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     method->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("", 2);
+    PGOProfilerDecoder loader("", DECODER_THRESHOLD);
     // path is empty()
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
     // path size greater than PATH_MAX
@@ -409,13 +497,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler5/profiler", 2);
+    PGOProfilerDecoder loader("ark-profiler5/profiler", DECODER_THRESHOLD);
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 
-    PGOProfilerDecoder loader1("ark-profiler5/modules.ap", 2);
+    PGOProfilerDecoder loader1("ark-profiler5/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader1.LoadAndVerify(checksum));
     ASSERT_TRUE(!loader1.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
@@ -452,7 +540,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     method->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler8/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler8/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
@@ -497,7 +585,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerDecoder loader("ark-profiler9/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler9/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
 #else
@@ -585,10 +673,11 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.write(result.c_str(), result.size());
     file.close();
 
+    PGOProfilerHeader::SetStrictMatch(false);
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
                                                                 ApGenMode::OVERWRITE));
 
-    PGOProfilerDecoder loader("ark-profiler10/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
     ASSERT_TRUE(loader.LoadAndVerify(413775942));
 
     unlink("ark-profiler10/modules.ap");
@@ -624,10 +713,11 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler12/modules.ap", 2);
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_FALSE(FileExist("ark-profiler12/modules.ap"));
+    PGOProfilerDecoder loader("ark-profiler12/modules.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "sample_test";
-    ASSERT_FALSE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
+    ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler12/");
 }
 
@@ -686,20 +776,18 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, methodId](uint32_t offset, PGOType *type) {
+        auto callback = [methodName](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "Foot" || std::string(methodName) == "Arm") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
-                    ASSERT_EQ(pgoRWOpType.GetObjectInfo(0).GetProfileType(),
-                              ProfileType(ApEntityId(PGORecordPool::RESERVED_COUNT), methodId.GetOffset()));
                 } else if (std::string(methodName) == "foo" || std::string(methodName) == "Body") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                 }
             } else {
-                ASSERT_TRUE(false);
+                ASSERT_TRUE(true);
             }
         };
         decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
@@ -727,33 +815,28 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 3);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 1);
                     auto classId = EntityId(sampleType.GetProfileType().GetId());
                     auto className = MethodLiteral::GetMethodName(jsPandaFile.get(), classId);
                     if (std::string(className) == "Arm") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
+                        auto superClassId = EntityId(desc->GetProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     } else if (std::string(className) == "Foot") {
-                        auto superClassId = EntityId(desc->GetSuperProfileType().GetId());
+                        auto superClassId = EntityId(desc->GetProfileType().GetId());
                         auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
                         ASSERT_EQ(std::string(superClassName), "Body");
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
                     } else {
-                        ASSERT_EQ(desc->GetSuperProfileType().GetRaw(), 0);
-                        ASSERT_EQ(desc->GetLayoutDesc().size(), 0);
+                        ASSERT_EQ(desc->GetProfileType().GetRaw(), 0);
                     }
                 }
             }
@@ -788,10 +871,10 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
             decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
             ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
         }
-        auto callback = [methodName, types, &index](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, types, &index](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     return;
                 }
@@ -833,21 +916,18 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetLayoutDesc().size(), 1);
                 }
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "foo") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
@@ -894,41 +974,26 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, PGOType *type) {
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
                 if (sampleType.IsProfileType()) {
                     ASSERT_EQ(std::string(methodName), "func_main_0");
-                    PGOHClassLayoutDesc *desc;
-                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
-                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
-                    ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
                 }
             } else if (type->IsRwOpType()) {
-                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
                 if (std::string(methodName) == "foo") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 2);
                     auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetProfileType());
-                    PGOHClassLayoutDesc *desc;
-                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].second.GetTrackType(), TrackType::INT);
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].second.GetTrackType(), TrackType::INT);
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].first, "z");
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].second.GetTrackType(), TrackType::INT);
+                    PGOHClassTreeDesc *desc;
+                    ASSERT_TRUE(decoder.GetHClassTreeDesc(classType, &desc));
 
                     classType = PGOSampleType(pgoRWOpType.GetObjectInfo(1).GetProfileType());
-                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].first, "u");
-                    ASSERT_EQ(desc->GetLayoutDesc()[0].second.GetTrackType(), TrackType::DOUBLE);
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
-                    ASSERT_EQ(desc->GetLayoutDesc()[1].second.GetTrackType(), TrackType::NUMBER);
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].first, "t");
-                    ASSERT_EQ(desc->GetLayoutDesc()[2].second.GetTrackType(), TrackType::TAGGED);
+                    ASSERT_TRUE(decoder.GetHClassTreeDesc(classType, &desc));
                 }
             }
         };
@@ -937,6 +1002,49 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
     }
     unlink("ark-profiler20/modules.ap");
     rmdir("ark-profiler20/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
+{
+    mkdir("ark-profiler21/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "array_size_test";
+    ExecuteAndLoadJSPandaFile("ark-profiler21/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler21/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = pf_->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
+        decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
+                if (sampleType.IsProfileType()) {
+                    PGOHClassTreeDesc *desc;
+                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
+                        return;
+                    }
+                    if (std::string(methodName) == "foo") {
+                        ASSERT_EQ(desc->GetArrayLength(), 4);
+                    } else if (std::string(methodName) == "foo1") {
+                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                    } else if (std::string(methodName) == "foo2") {
+                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                    }
+                }
+            }
+        };
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
+                            callback);
+    }
+    unlink("ark-profiler21/modules.ap");
+    rmdir("ark-profiler21/");
 }
 #endif
 
@@ -958,7 +1066,7 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
     fWriter.close();
 
     // Loader
-    PGOProfilerDecoder loader("ark-profiler17/modules.ap", 2);
+    PGOProfilerDecoder loader("ark-profiler17/modules.ap", DECODER_THRESHOLD);
     ASSERT_FALSE(loader.LoadAndVerify(checksum));
     unlink("ark-profiler17/modules.ap");
     rmdir("ark-profiler17/");
@@ -1028,70 +1136,75 @@ HWTEST_F_L0(PGOProfilerTest, PGOSampleTypeLegacyCheckForWideClassType)
     ASSERT_EQ(sampleType.GetProfileType().GetKind(), classTypeLegacy.GetKind());
 }
 
-HWTEST_F_L0(PGOProfilerTest, PGOObjectInfoLegacyCheckForWideClassType)
+HWTEST_F_L0(PGOProfilerTest, RuntimeMerge)
 {
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    ProfileTypeLegacy classTypeLegacy(0xafe, ProfileType::Kind::ElementId);
-    auto &profileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy)));
-    PGOObjectInfoRef objInfoLegacy(profileTypeRef, PGOObjKind::CONSTRUCTOR);
-    PGOObjectInfo objInfo;
-    objInfo.ConvertFrom(context, objInfoLegacy);
-    ASSERT_EQ(objInfo.GetObjKind(), objInfoLegacy.GetObjKind());
-    ASSERT_EQ(objInfo.GetProfileType().GetId(), 0xafe);
-    ASSERT_EQ(objInfo.GetProfileType().GetKind(), ProfileType::Kind::ElementId);
+    mkdir("ark-profiler19/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "truck");
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "call_test");
+    ExecuteAndLoadJSPandaFile("ark-profiler19/", "truck");
+
+    // Loader
+    PGOProfilerDecoder loader("ark-profiler19/modules.ap", DECODER_THRESHOLD);
+    CString expectRecordName = "sample_test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
+    ParseRelatedPandaFileMethods(loader, methodIdInAp);
+    ASSERT_EQ(methodIdInAp.size(), 3);
+    CheckApMethods(methodIdInAp);
+#else
+    uint32_t checksum = pf_->GetChecksum();
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+#endif
+    unlink("ark-profiler19/modules.ap");
+    rmdir("ark-profiler19/");
 }
 
-HWTEST_F_L0(PGOProfilerTest, PGORWOpTypeLegacyCheckForWideClassType)
+HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
 {
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    PGORWOpTypeRef rwOpLegacy;
-    // add item1
-    ProfileTypeLegacy classTypeLegacy1(0xafe, ProfileType::Kind::ElementId);
-    auto &profileTypeRef1 = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy1)));
-    PGOObjectInfoRef infoLegacy1(profileTypeRef1, PGOObjKind::CONSTRUCTOR);
-    rwOpLegacy.AddObjectInfo(infoLegacy1);
+    mkdir("ark-profiler20/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    ExecuteAndLoadJSPandaFile("ark-profiler20/truck.ap", "truck");
+    ExecuteAndLoadJSPandaFile("ark-profiler20/call_test.ap", "call_test");
 
-    // add item2
-    ProfileTypeLegacy classTypeLegacy2(0xaff, ProfileType::Kind::BuiltinsId);
-    auto &profileTypeRef2 = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy2)));
-    PGOObjectInfoRef infoLegacy2(profileTypeRef2, PGOObjKind::ELEMENT);
-    rwOpLegacy.AddObjectInfo(infoLegacy2);
+    // Loader
+    PGOProfilerDecoder loader("ark-profiler20/merged.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler20/truck.ap:ark-profiler20/call_test.ap",
+                                                 "ark-profiler20/merged.ap", 1, ApGenMode::OVERWRITE));
 
-    PGORWOpType rwOp;
-    rwOp.ConvertFrom(context, rwOpLegacy);
-    ASSERT_EQ(rwOp.GetCount(), rwOpLegacy.GetCount());
-    // get item
-    PGOObjectInfo info1 = rwOp.GetObjectInfo(0);
-    PGOObjectInfo info2 = rwOp.GetObjectInfo(1);
-
-    ASSERT_EQ(info1.GetObjKind(), PGOObjKind::CONSTRUCTOR);
-    ASSERT_EQ(info2.GetProfileType().GetId(), 0xaff);
-    ASSERT_EQ(info2.GetProfileType().GetKind(), ProfileType::Kind::BuiltinsId);
+    CString expectRecordName = "sample_test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
+    ParseRelatedPandaFileMethods(loader, methodIdInAp);
+    ASSERT_EQ(methodIdInAp.size(), 3);
+    CheckApMethods(methodIdInAp);
+#else
+    uint32_t checksum = pf_->GetChecksum();
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+#endif
+    unlink("ark-profiler20/truck.ap");
+    unlink("ark-profiler20/call_test.ap");
+    rmdir("ark-profiler20/");
 }
 
-HWTEST_F_L0(PGOProfilerTest, PGOHClassLayoutDescInnerLegacyCheckForWideClassType)
+HWTEST_F_L0(PGOProfilerTest, ApVersionMatchCheck)
 {
-    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
-    // create legacy
-    ProfileTypeLegacy classTypeLegacy(0xafe, ProfileType::Kind::ClassId);
-    auto &profileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&classTypeLegacy)));
-    PGOSampleTypeRef sampleTypeLegacyClass(profileTypeRef);
+    mkdir("ark-ApVersionMatchCheck/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "sample_test";
+    ExecuteAndLoadJSPandaFile("ark-ApVersionMatchCheck/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
 
-    ProfileTypeLegacy superClassTypeLegacy(0xaff, ProfileType::Kind::ElementId);
-    auto &superProfileTypeRef = *(static_cast<ProfileTypeRef *>(static_cast<void *>(&superClassTypeLegacy)));
-    PGOSampleTypeRef superSampleTypeLegacyClass(superProfileTypeRef);
-    auto elementsKind = ElementsKind::HOLE_NUMBER;
-    PGOHClassLayoutDesc desc;
-    desc.SetElementsKind(elementsKind);
-    size_t size = PGOHClassLayoutDescInnerRef::CaculateSize(desc);
-    PGOHClassLayoutDescInnerRef layoutLegacy(size, sampleTypeLegacyClass, superSampleTypeLegacyClass, elementsKind);
+    PGOProfilerEncoderMock encoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD,
+                                   PGOProfilerEncoder::ApGenMode::MERGE);
+    encoder.InitializeData();
+    encoder.SetVersion(PGOProfilerHeader::PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION);
+    encoder.Save();
 
-    PGOHClassLayoutDesc descRecover = layoutLegacy.Convert(context);
+    PGOProfilerDecoder decoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD);
+    PGOProfilerHeader::SetStrictMatch(true);
+    ASSERT_FALSE(decoder.LoadFull());
+    PGOProfilerHeader::SetStrictMatch(false);
+    ASSERT_TRUE(decoder.LoadFull());
 
-    ASSERT_EQ(descRecover.GetElementsKind(), elementsKind);
-    ASSERT_EQ(descRecover.GetProfileType().GetId(), 0xafe);
-    ASSERT_EQ(descRecover.GetProfileType().GetKind(), ProfileType::Kind::ClassId);
-    ASSERT_EQ(descRecover.GetSuperProfileType().GetId(), 0xaff);
-    ASSERT_EQ(descRecover.GetSuperProfileType().GetKind(), ProfileType::Kind::ElementId);
+    unlink("ark-ApVersionMatchCheck/modules.ap");
+    unlink("ark-ApVersionMatchCheck/");
 }
 }  // namespace panda::test

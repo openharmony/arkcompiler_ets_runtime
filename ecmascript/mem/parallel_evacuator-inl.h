@@ -46,7 +46,7 @@ bool ParallelEvacuator::VisitBodyInObj(
         if (markWord.IsForwardingAddress()) {
             dst = markWord.ToForwardingAddress();
         }
-        auto layout = LayoutInfo::Cast(dst);
+        auto layout = LayoutInfo::UncheckCast(dst);
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             callback(slot);
@@ -185,6 +185,33 @@ std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::GetWorkloadSafe(
 void ParallelEvacuator::AddWorkload(std::unique_ptr<Workload> region)
 {
     workloads_.emplace_back(std::move(region));
+}
+
+TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAddress)
+{
+    Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(oldAddress));
+    if (!objectRegion) {
+        return nullptr;
+    }
+    if (objectRegion->InYoungSpaceOrCSet()) {
+        if (objectRegion->InNewToNewSet()) {
+            if (objectRegion->Test(oldAddress)) {
+                return oldAddress;
+            }
+        } else {
+            MarkWord markWord(oldAddress);
+            if (markWord.IsForwardingAddress()) {
+                return markWord.ToForwardingAddress();
+            }
+        }
+        return nullptr;
+    }
+    if (heap_->IsFullMark()) {
+        if (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(oldAddress)) {
+            return nullptr;
+        }
+    }
+    return oldAddress;
 }
 
 int ParallelEvacuator::CalculateEvacuationThreadNum()

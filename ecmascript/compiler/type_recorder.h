@@ -23,6 +23,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+using PGODefineOpType = pgo::PGODefineOpType;
 enum class TypedArgIdx : uint8_t {
     FUNC = 0,
     NEW_TARGET,
@@ -38,13 +39,14 @@ public:
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
-    ElementsKind GetElementsKind(PGOSampleType type) const;
-    PGOSampleType GetOrUpdatePGOType(int32_t offset) const;
+    ElementsKind GetElementsKind(int32_t offset) const;
+    PGOTypeRef GetOrUpdatePGOType(int32_t offset) const;
     PGORWOpType GetRwOpType(int32_t offset) const;
     std::vector<ElementsKind> LoadElementsKinds(int32_t offset) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
     GateType GetCallTargetType(int32_t offset) const;
+    PGOTypeRef GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) const;
     void BindPgoTypeToGateType(const JSPandaFile *jsPandaFile, TSManager *tsManager,
                                const MethodLiteral *methodLiteral) const;
 
@@ -81,8 +83,9 @@ private:
 
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
     std::unordered_map<int32_t, GateType> bcOffsetCallTargetGtMap_ {};
-    std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOOpTypeMap_ {};
-    std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
+    std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
+    std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_ {};
+    std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::vector<GateType> argTypes_;
     PGOProfilerDecoder *decoder_ {nullptr};
     bool enableOptTrackField_ {false};

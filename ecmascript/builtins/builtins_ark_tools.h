@@ -23,22 +23,39 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsArkTools::func refers to the native implementation of ArkTools[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
-#define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                           \
-    V("compareHClass",                CompareHClass,                2, INVALID)         \
-    V("dumpHClass",                   DumpHClass,                   1, INVALID)         \
-    V("excutePendingJob",             ExcutePendingJob,             0, INVALID)         \
-    V("forceFullGC",                  ForceFullGC,                  0, INVALID)         \
-    V("getHClass",                    GetHClass,                    1, INVALID)         \
-    V("getLexicalEnv",                GetLexicalEnv,                1, INVALID)         \
-    V("hasTSSubtyping",               HasTSSubtyping,               1, INVALID)         \
-    V("hiddenStackSourceFile",        HiddenStackSourceFile,        0, INVALID)         \
-    V("isNotHoleProperty",            IsNotHoleProperty,            2, INVALID)         \
-    V("isPrototype",                  IsPrototype,                  1, INVALID)         \
-    V("isRegExpReplaceDetectorValid", IsRegExpReplaceDetectorValid, 0, INVALID)         \
-    V("isTSHClass",                   IsTSHClass,                   1, INVALID)         \
-    V("print",                        ObjectDump,                   0, INVALID)         \
-    V("removeAOTFlag",                RemoveAOTFlag,                1, INVALID)         \
-    V("timeInUs",                     TimeInUs,                     0, INVALID)
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                             \
+    V("compareHClass",                 CompareHClass,                 2, INVALID)         \
+    V("dumpHClass",                    DumpHClass,                    1, INVALID)         \
+    V("excutePendingJob",              ExcutePendingJob,              0, INVALID)         \
+    V("forceFullGC",                   ForceFullGC,                   0, INVALID)         \
+    V("getHClass",                     GetHClass,                     1, INVALID)         \
+    V("getLexicalEnv",                 GetLexicalEnv,                 1, INVALID)         \
+    V("hasTSSubtyping",                HasTSSubtyping,                1, INVALID)         \
+    V("hiddenStackSourceFile",         HiddenStackSourceFile,         0, INVALID)         \
+    V("hintGC",                        HintGC,                        0, INVALID)         \
+    V("isNotHoleProperty",             IsNotHoleProperty,             2, INVALID)         \
+    V("isPrototype",                   IsPrototype,                   1, INVALID)         \
+    V("isRegExpReplaceDetectorValid",  IsRegExpReplaceDetectorValid,  0, INVALID)         \
+    V("isSymbolIteratorDetectorValid", IsSymbolIteratorDetectorValid, 1, INVALID)         \
+    V("isTSHClass",                    IsTSHClass,                    1, INVALID)         \
+    V("pgoAssertType",                 PGOAssertType,                 2, INVALID)         \
+    V("print",                         ObjectDump,                    0, INVALID)         \
+    V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
+    V("timeInUs",                      TimeInUs,                      0, INVALID)
+
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                            \
+    V("prepareFunctionForOptimization",  PrepareFunctionForOptimization,  1, INVALID)     \
+    V("optimizeFunctionOnNextCall",      OptimizeFunctionOnNextCall,      1, INVALID)     \
+    V("optimizeMaglevOnNextCall",        OptimizeMaglevOnNextCall,        1, INVALID)     \
+    V("deoptimizeFunction",              DeoptimizeFunction,              1, INVALID)     \
+    V("optimizeOsr",                     OptimizeOsr,                     1, INVALID)     \
+    V("neverOptimizeFunction",           NeverOptimizeFunction,           1, INVALID)     \
+    V("heapObjectVerify",                HeapObjectVerify,                1, INVALID)     \
+    V("disableOptimizationFinalization", DisableOptimizationFinalization, 0, INVALID)     \
+    V("deoptimizeNow",                   DeoptimizeNow,                   0, INVALID)     \
+    V("deoptimize_now",                  DeoptimizeNow,                   0, INVALID)     \
+    V("waitForBackgroundOptimization",   WaitForBackgroundOptimization,   0, INVALID)     \
+    V("gc",                              Gc,                              0, INVALID)
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -50,7 +67,8 @@
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
-    BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)
+    BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
@@ -78,6 +96,8 @@ public:
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue HintGC(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue HiddenStackSourceFile(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);
@@ -96,7 +116,33 @@ public:
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PrepareFunctionForOptimization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeFunctionOnNextCall(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeMaglevOnNextCall(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DeoptimizeFunction(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeOsr(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue NeverOptimizeFunction(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HeapObjectVerify(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DisableOptimizationFinalization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DeoptimizeNow(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue WaitForBackgroundOptimization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue Gc(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PGOAssertType(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

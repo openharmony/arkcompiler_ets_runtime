@@ -18,6 +18,7 @@
 
 #include <numeric>
 
+#include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -195,6 +196,16 @@ public:
         return depth_;
     }
 
+    void SetLoopIndex(int32_t loopIndex)
+    {
+        loopIndex_ = loopIndex;
+    }
+
+    int32_t GetLoopIndex()
+    {
+        return loopIndex_;
+    }
+
     void SetLoopDepth(size_t loopDepth)
     {
         loopDepth_ = loopDepth;
@@ -205,9 +216,9 @@ public:
         return loopDepth_;
     }
 
-    void SetInnerLoopIndex(size_t innerLoopIndex)
+    void SetInnerLoopIndex(int innerLoopIndex)
     {
-        innerLoopIndex_ = static_cast<int>(innerLoopIndex);
+        innerLoopIndex_ = innerLoopIndex;
     }
 
     int GetInnerLoopIndex()
@@ -229,7 +240,6 @@ private:
     int innerLoopIndex_ {-1}; // number of the innermost loop of this block
     int32_t depth_ {INVALID_DEPTH};
     GateRegion* iDominator_ {nullptr};
-    GateRegion* loopHead_ {nullptr};
     ChunkVector<GateRef> gateList_;
     ChunkVector<GateRegion*> preds_;
     ChunkVector<GateRegion*> succs_;
@@ -237,6 +247,7 @@ private:
     GateRef state_ {Circuit::NullGate()};
     StateKind stateKind_ {StateKind::OTHER};
     int32_t loopNumber_ {INVALID_DEPTH};
+    int32_t loopIndex_ {INVALID_DEPTH};
     friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
     friend class GateScheduler;
@@ -249,11 +260,19 @@ private:
 class GraphLinearizer {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
+    struct LoopInfo {
+        GateRegion* loopHead {nullptr};
+        BitSet* loopBodys {nullptr};
+        ChunkVector<GateRegion*>* loopExits {nullptr};
+        LoopInfo* outer {nullptr};
+        size_t loopIndex {0};
+    };
 
     GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk,
         bool onlyBB = false, bool loopInvariantCodeMotion = false)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit),
-        acc_(circuit), gateIdToGateInfo_(chunk), regionList_(chunk), regionRootList_(chunk),
+        acc_(circuit), gateIdToGateInfo_(chunk), regionList_(chunk),
+        regionRootList_(chunk), loops_(chunk),
         onlyBB_(onlyBB), loopInvariantCodeMotion_(loopInvariantCodeMotion) {}
 
     void Run(ControlFlowGraph &result);
@@ -418,6 +437,16 @@ private:
         return model_ == ScheduleModel::LIR;
     }
 
+    LoopInfo* GetLoopInfo(GateRegion *region)
+    {
+        auto loopIndex = region->GetLoopIndex();
+        if (loopIndex >= 0) {
+            ASSERT(static_cast<size_t>(loopIndex) <= loops_.size());
+            return &loops_[loopIndex];
+        }
+        return nullptr;
+    }
+
     size_t OptimizeCFG();
     size_t OptimizeControls(GateRegion *region);
     void MoveAndClear(GateRegion *from, GateRegion *to);
@@ -435,6 +464,7 @@ private:
     ChunkVector<GateInfo> gateIdToGateInfo_;
     ChunkVector<GateRegion*> regionList_;
     ChunkVector<GateRef> regionRootList_;
+    ChunkVector<LoopInfo> loops_;
 
     bool onlyBB_ {false}; // dont schedule
     bool loopInvariantCodeMotion_ {false};

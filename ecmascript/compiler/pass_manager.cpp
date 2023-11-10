@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/pass_manager.h"
-
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/compiler/pass.h"
@@ -95,6 +94,10 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(&data);
+        if (data.GetMethodLiteral()->HasDebuggerStmt()) {
+            data.AbortCompilation();
+            return;
+        }
         pipeline.RunPass<RunFlowCyclesVerifierPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         if (builder.EnableLoopOptimization()) {
@@ -116,9 +119,9 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             data.AbortCompilation();
             return;
         }
-        pipeline.RunPass<TSHCRLoweringPass>();
+        pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
-        pipeline.RunPass<NTypeHCRLoweringPass>();
+        pipeline.RunPass<NTypeBytecodeLoweringPass>();
         if (data.IsTypeAbort()) {
             data.AbortCompilation();
             return;
@@ -129,28 +132,25 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
-        pipeline.RunPass<NTypeMCRLoweringPass>();
-        pipeline.RunPass<TypeMCRLoweringPass>();
+        pipeline.RunPass<NTypeHCRLoweringPass>();
+        pipeline.RunPass<TypeHCRLoweringPass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<ConstantFoldingPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<ValueNumberingPass>();
+        pipeline.RunPass<InstructionCombinePass>();
+        pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<GraphLinearizerPass>();
         pipeline.RunPass<LLVMIRGenPass>();
     });
 
-    ProcessConstantPool(&collector);
-    return true;
-}
-
-void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
-{
-    LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
+    LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
+    return true;
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const

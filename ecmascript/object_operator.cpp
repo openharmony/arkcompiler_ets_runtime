@@ -214,6 +214,89 @@ void ObjectOperator::FastAdd(JSThread *thread, const JSTaggedValue &receiver, co
     op.AddPropertyInternal(value);
 }
 
+// static
+void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver)
+{
+    // skip env prepare
+    if (!thread->IsReadyToUpdateDetector()) {
+        return;
+    }
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHClass *hclass = receiver.GetTaggedObject()->GetClass();
+    JSType type = hclass->GetObjectType();
+    switch (type) {
+        case JSType::JS_REG_EXP: {
+            if (PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+                PropertyDetector::InvalidateRegExpReplaceDetector(env);
+            }
+            if (PropertyDetector::IsRegExpSplitDetectorValid(env)) {
+                PropertyDetector::InvalidateRegExpSplitDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_MAP: {
+            if (PropertyDetector::IsMapIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateMapIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_SET: {
+            if (PropertyDetector::IsSetIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateSetIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_PRIMITIVE_REF: {
+            if (JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString() &&
+                PropertyDetector::IsStringIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateStringIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_ARRAY: {
+            if (PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateArrayIteratorDetector(env);
+            }
+            return;
+        }
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY:
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY:
+        case JSType::JS_FLOAT32_ARRAY:
+        case JSType::JS_FLOAT64_ARRAY:
+        case JSType::JS_BIGINT64_ARRAY:
+        case JSType::JS_BIGUINT64_ARRAY: {
+            if (PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+                PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+            }
+            return;
+        }
+        default:
+            break;
+    }
+
+    if (hclass->IsPrototype() &&
+        (receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint8ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint8ClampedArrayFunctionPrototype() ||
+         receiver == env->GetTaggedInt16ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint16ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedInt32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedUint32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedFloat32ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
+         receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) &&
+         PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+        PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+        return;
+    }
+}
+
 void ObjectOperator::UpdateDetector()
 {
     if (IsElement()) {
@@ -226,7 +309,7 @@ void ObjectOperator::UpdateDetector()
 void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     // skip env prepare
-    if (!thread->IsAllContextsInitialized()) {
+    if (!thread->IsReadyToUpdateDetector()) {
         return;
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -249,6 +332,46 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
                 return;
             }
             PropertyDetector::InvalidateRegExpSplitDetector(env);
+        }
+    } else if (key == env->GetTaggedIteratorSymbol()) {
+        if (receiver.IsJSMap() || receiver == env->GetTaggedMapPrototype()) {
+            if (!PropertyDetector::IsMapIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateMapIteratorDetector(env);
+        } else if (receiver.IsJSSet() || receiver == env->GetTaggedSetPrototype()) {
+            if (!PropertyDetector::IsSetIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateSetIteratorDetector(env);
+        } else if ((receiver.IsJSPrimitiveRef() && JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString()) ||
+                   receiver == env->GetTaggedStringPrototype()) {
+            if (!PropertyDetector::IsStringIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateStringIteratorDetector(env);
+        } else if (receiver.IsJSArray() || receiver == env->GetTaggedArrayPrototype()) {
+            if (!PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateArrayIteratorDetector(env);
+        } else if (receiver.IsTypedArray() ||
+                   receiver == env->GetTaggedArrayPrototype() ||
+                   receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint8ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint8ClampedArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedInt16ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint16ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedInt32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedUint32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedFloat32ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
+                   receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) {
+            if (!PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
         }
     }
 }
@@ -487,38 +610,6 @@ bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, c
     return UpdateDataValue(receiver, value, isInternalAccessor);
 }
 
-JSTaggedValue ObjectOperator::ConvertOrTransitionWithRep(const JSHandle<JSObject> &receiver,
-    const JSHandle<JSTaggedValue> &value, PropertyAttributes &attr, bool &needBarrier)
-{
-    Representation oldRep = attr.GetRepresentation();
-    if (oldRep == Representation::DOUBLE) {
-        if (value->IsInt()) {
-            double doubleValue = value->GetInt();
-            needBarrier = false;
-            return JSTaggedValue(bit_cast<JSTaggedType>(doubleValue));
-        } else if (value->IsObject()) {
-            // Is Object
-            attributes_.SetRepresentation(Representation::TAGGED);
-            // Transtion
-            JSHClass::TransitionForRepChange(thread_, receiver, key_, attributes_);
-        } else {
-            // Is TaggedDouble
-            needBarrier = false;
-            return JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble()));
-        }
-    } else if (oldRep == Representation::INT) {
-        if (value->IsInt()) {
-            int intValue = value->GetInt();
-            needBarrier = false;
-            return JSTaggedValue(static_cast<JSTaggedType>(intValue));
-        } else {
-            attributes_.SetRepresentation(Representation::TAGGED);
-            JSHClass::TransitionForRepChange(thread_, receiver, key_, attributes_);
-        }
-    }
-    return value.GetTaggedValue();
-}
-
 bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                                      bool isInternalAccessor, bool mayThrow)
 {
@@ -570,33 +661,29 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
 
     JSMutableHandle<TaggedArray> properties(thread_, TaggedArray::Cast(receiver->GetProperties().GetTaggedObject()));
     if (!properties->IsDictionaryMode()) {
-        if (thread_->IsPGOProfilerEnable() && attributes_.UpdateTrackType(value.GetTaggedValue())) {
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(receiver->GetJSHClass()->GetLayout().GetTaggedObject());
-            uint32_t offset = index_;
-            if (!attributes_.IsInlinedProps()) {
-                auto *hclass = receiver_->GetTaggedObject()->GetClass();
-                offset += hclass->GetInlinedProperties();
-            }
-            layoutInfo->SetNormalAttr(thread_, offset, attributes_);
-        }
-        bool needBarrier = true;
-        JSTaggedValue actualValue = value.GetTaggedValue();
-        if (IsTSHClass()) {
-            actualValue = ConvertOrTransitionWithRep(receiver, value, attributes_, needBarrier);
-        }
-
         PropertyAttributes attr = GetAttr();
+        uint32_t offset = index_;
+        if (!attr.IsInlinedProps()) {
+            auto *hclass = receiver_->GetTaggedObject()->GetClass();
+            offset += hclass->GetInlinedProperties();
+        }
+        attr.SetOffset(offset);
+
+        auto actualValue =
+            JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+        attributes_.SetRepresentation(attr.GetRepresentation());
+
         if (attr.IsInlinedProps()) {
-            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), actualValue);
+            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), actualValue.second);
         } else {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 properties.Update(JSHandle<JSArray>(receiver)->GetProperties());
             }
-            if (needBarrier) {
-                properties->Set<true>(thread_, GetIndex(), value.GetTaggedValue());
+            if (actualValue.first) {
+                properties->Set<true>(thread_, GetIndex(), actualValue.second);
             } else {
-                properties->Set<false>(thread_, GetIndex(), actualValue);
+                properties->Set<false>(thread_, GetIndex(), actualValue.second);
             }
         }
     } else {
@@ -689,7 +776,12 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         }
 
         JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>::Cast(accessor);
-        return UpdateValueAndDetails(receiver, value, attr, attrChanged);
+        bool success = UpdateValueAndDetails(receiver, value, attr, attrChanged);
+        if (success) {
+            JSHandle<JSObject> obj(receiver);
+            JSHClass::NotifyAccessorChanged(thread_, JSHandle<JSHClass>(thread_, obj->GetJSHClass()));
+        }
+        return success;
     }
 }
 
@@ -798,6 +890,14 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
     }
     {
         DISALLOW_GARBAGE_COLLECTION;
+        if (obj->IsTypedArray()) {
+            JSTaggedValue val = JSTypedArray::FastElementGet(thread_,
+                JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
+            if (!val.IsHole()) {
+                SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), true);
+            }
+            return;
+        }
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
         if (elements->GetLength() == 0) {
             return;  // Empty Array
@@ -855,20 +955,15 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
     // The property has already existed whose value is hole, initialized by speculative hclass.
     // Not need AddProperty,just SetProperty
     if (receiverHoleEntry_ != -1) {
+        attr.SetOffset(receiverHoleEntry_);
+        auto actualValue =
+            JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+        attributes_.SetRepresentation(attr.GetRepresentation());
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-        attr = layoutInfo->GetAttr(receiverHoleEntry_);
-        if (thread_->IsPGOProfilerEnable() && attr.UpdateTrackType(value.GetTaggedValue())) {
-            layoutInfo->SetNormalAttr(thread_, receiverHoleEntry_, attr);
-        }
-        bool needBarrier = true;
-        JSTaggedValue actualValue = ConvertOrTransitionWithRep(JSHandle<JSObject>(receiver_), value, attr, needBarrier);
-        if (needBarrier) {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(
-                thread_, hclass, attr, value.GetTaggedValue());
+        if (actualValue.first) {
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_, hclass, attr, actualValue.second);
         } else {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(
-                thread_, hclass, attr, actualValue);
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_, hclass, attr, actualValue.second);
         }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();

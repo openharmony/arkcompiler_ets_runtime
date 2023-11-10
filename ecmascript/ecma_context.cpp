@@ -19,6 +19,8 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/ecma_string_table.h"
@@ -32,6 +34,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/log.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -98,13 +101,17 @@ bool EcmaContext::Initialize()
     globalEnv_ = globalEnv.GetTaggedValue();
     Builtins builtins;
     bool builtinsLazyEnabled = vm_->GetJSOptions().IsWorker() && vm_->GetJSOptions().GetEnableBuiltinsLazy();
+    thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
     SetupRegExpResultCache();
     SetupRegExpGlobalResult();
+    SetupNumberToStringResultCache();
+    SetupStringSplitResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
+    ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     initialized_ = true;
     return true;
@@ -201,6 +208,10 @@ EcmaContext::~EcmaContext()
         delete tsManager_;
         tsManager_ = nullptr;
     }
+    if (ptManager_ != nullptr) {
+        delete ptManager_;
+        ptManager_ = nullptr;
+    }
     if (regExpParserCache_ != nullptr) {
         delete regExpParserCache_;
         regExpParserCache_ = nullptr;
@@ -244,20 +255,9 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
     return res;
 }
 
-Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-                                                                std::string_view entryPoint, bool excuteFromJob)
+Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+    std::string_view entryPoint, JSHandle<JSFunction> &func)
 {
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
-    if (program.IsEmpty()) {
-        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
-        return Unexpected(false);
-    }
-    // for debugger
-    vm_->GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
-        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
-
-    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -303,8 +303,52 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+                                                                std::string_view entryPoint, bool excuteFromJob)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
+    if (program.IsEmpty()) {
+        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
+        return Unexpected(false);
+    }
+    // for debugger
+    vm_->GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
+        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+
     // print exception information
     if (!excuteFromJob && thread_->HasPendingException()) {
+        HandleUncaughtException(thread_->GetException());
+    }
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+
+    JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
+    // avoid GC problems.
+    GlobalHandleCollection gloalHandleCollection(thread_);
+    JSHandle<JSTaggedValue> moduleRecordHandle =
+        gloalHandleCollection.NewHandle<JSTaggedValue>(finalModuleRecord->GetRawData());
+    CString recordName = entryPoint.data();
+    AddPatchModule(recordName, moduleRecordHandle);
+
+    // print exception information
+    if (!excuteFromJob && thread_->HasPendingException() &&
+        Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
         HandleUncaughtException(thread_->GetException());
     }
     return result;
@@ -473,6 +517,7 @@ void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
         }
         if (constpools.size() == 0) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            RelocateConstantString(iterator->first);
             JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
@@ -503,12 +548,21 @@ void EcmaContext::ProcessReferences(const WeakRootVisitor &visitor)
         }
         if (constpools.size() == 0) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            RelocateConstantString(iterator->first);
             JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
             ++iterator;
         }
     }
+}
+
+void EcmaContext::RelocateConstantString(const JSPandaFile *jsPandaFile)
+{
+    if (!jsPandaFile->IsFirstMergedAbc()) {
+        return;
+    }
+    vm_->GetEcmaStringTable()->RelocateConstantData(jsPandaFile);
 }
 
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
@@ -579,8 +633,8 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
 
 bool EcmaContext::HasPendingJob()
 {
-    if (isProcessingPendingJob_) {
-        return true;
+    if (UNLIKELY(thread_->HasTerminated())) {
+        return false;
     }
     return job::MicroJobQueue::HasPendingJob(thread_, GetMicroJobQueue());
 }
@@ -673,6 +727,16 @@ void EcmaContext::SetupRegExpGlobalResult()
     regexpGlobal_ = builtins::RegExpGlobalResult::CreateGlobalResultTable(thread_);
 }
 
+void EcmaContext::SetupNumberToStringResultCache()
+{
+    numberToStringResultCache_ = builtins::NumberToStringResultCache::CreateCacheTable(thread_);
+}
+
+void EcmaContext::SetupStringSplitResultCache()
+{
+    stringSplitResultCache_ = builtins::StringSplitResultCache::CreateCacheTable(thread_);
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -681,6 +745,8 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     if (moduleManager_) {
         moduleManager_->Iterate(v);
@@ -688,11 +754,11 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (tsManager_) {
         tsManager_->Iterate(v);
     }
+    if (ptManager_) {
+        ptManager_->Iterate(v);
+    }
     if (aotFileManager_) {
         aotFileManager_->Iterate(v);
-    }
-    if (propertiesCache_ != nullptr) {
-        propertiesCache_->Clear();
     }
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
@@ -788,14 +854,14 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
 {
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
-        LOG_ECMA(ERROR) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
         ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
         return false;
     }
 
     std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
     if (!aotFileManager_->LoadAiFile(aiFile)) {
-        LOG_ECMA(ERROR) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
+        LOG_ECMA(WARN) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
         ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
         return false;
     }

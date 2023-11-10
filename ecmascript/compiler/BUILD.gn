@@ -72,6 +72,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "builtins/builtins_call_signature.cpp",
     "builtins/builtins_collection_stub_builder.cpp",
     "builtins/builtins_function_stub_builder.cpp",
+    "builtins/builtins_number_stub_builder.cpp",
     "builtins/builtins_object_stub_builder.cpp",
     "builtins/builtins_string_stub_builder.cpp",
     "builtins/builtins_stubs.cpp",
@@ -89,6 +90,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "common_stubs.cpp",
     "compilation_driver.cpp",
     "compiler_log.cpp",
+    "constant_folding.cpp",
     "dead_code_elimination.cpp",
     "debug_info.cpp",
     "early_elimination.cpp",
@@ -101,20 +103,23 @@ ohos_source_set("libark_jsoptimizer_set") {
     "hcr_circuit_builder.cpp",
     "hcr_gate_meta_data.cpp",
     "ic_stub_builder.cpp",
+    "instruction_combine.cpp",
     "interpreter_stub.cpp",
     "later_elimination.cpp",
     "lcr_circuit_builder.cpp",
     "lcr_gate_meta_data.cpp",
-    "lcr_lowering.cpp",
+    "lexical_env_specialization.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "loop_analysis.cpp",
     "loop_peeling.cpp",
     "mcr_circuit_builder.cpp",
     "mcr_gate_meta_data.cpp",
+    "mcr_lowering.cpp",
+    "native_inline_lowering.cpp",
     "new_object_stub_builder.cpp",
+    "ntype_bytecode_lowering.cpp",
     "ntype_hcr_lowering.cpp",
-    "ntype_mcr_lowering.cpp",
     "number_speculative_lowering.cpp",
     "number_speculative_retype.cpp",
     "number_speculative_runner.cpp",
@@ -141,16 +146,16 @@ ohos_source_set("libark_jsoptimizer_set") {
     "trampoline/x64/optimized_fast_call.cpp",
     "ts_class_analysis.cpp",
     "ts_hclass_generator.cpp",
-    "ts_hcr_lowering.cpp",
     "ts_hcr_opt_pass.cpp",
     "ts_inline_lowering.cpp",
     "type.cpp",
+    "type_bytecode_lowering.cpp",
+    "type_hcr_lowering.cpp",
     "type_inference/global_type_infer.cpp",
     "type_inference/initialization_analysis.cpp",
     "type_inference/method_type_infer.cpp",
     "type_inference/pgo_type_infer.cpp",
     "type_inference/pgo_type_infer_helper.cpp",
-    "type_mcr_lowering.cpp",
     "type_recorder.cpp",
     "typed_array_stub_builder.cpp",
     "value_numbering.cpp",
@@ -276,7 +281,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   }
   external_deps = []
   deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -358,7 +363,7 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_jsruntime_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]
@@ -406,7 +411,7 @@ ohos_executable("ark_aot_compiler") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [
       "runtime_core:arkfile_header_deps",
       "runtime_core:libarkbase_static",

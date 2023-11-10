@@ -243,6 +243,8 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
             UNREACHABLE();
         }
         pointer->ResetExternalPointer(newData);
+        vm_->GetNativeAreaAllocator()->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
+                                                             NativeFlag::ARRAY_BUFFER);
         return;
     }
 
@@ -252,9 +254,11 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         UNREACHABLE();
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size);
+                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           NativeFlag::ARRAY_BUFFER);
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
+    vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -289,9 +293,11 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
             UNREACHABLE();
         }
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                               vm_->GetNativeAreaAllocator(), false, length);
+                                                               vm_->GetNativeAreaAllocator(), false, length,
+                                                               NativeFlag::ARRAY_BUFFER);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
         arrayBuffer->SetWithNativeAreaAllocator(true);
+        vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
     }
     return arrayBuffer;
 }
@@ -383,9 +389,11 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size);
+                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           NativeFlag::REGEXP_BTYECODE);
     regexp->SetByteCodeBuffer(thread_, pointer.GetTaggedValue());
     regexp->SetLength(static_cast<uint32_t>(size));
+    vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(size, NativeFlag::REGEXP_BTYECODE);
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
@@ -801,7 +809,8 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
                      errorType == ErrorType::SYNTAX_ERROR || errorType == ErrorType::TYPE_ERROR ||
-                     errorType == ErrorType::URI_ERROR || errorType == ErrorType::OOM_ERROR,
+                     errorType == ErrorType::URI_ERROR || errorType == ErrorType::OOM_ERROR ||
+                     errorType == ErrorType::TERMINATION_ERROR,
                  "The error type is not in the valid range.");
     if (data != nullptr) {
         JSHandle<EcmaString> handleMsg = NewFromUtf8(data);
@@ -853,6 +862,9 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
             break;
         case ErrorType::OOM_ERROR:
             nativeConstructor = env->GetOOMErrorFunction();
+            break;
+        case ErrorType::TERMINATION_ERROR:
+            nativeConstructor = env->GetTerminationErrorFunction();
             break;
         default:
             nativeConstructor = env->GetErrorFunction();
@@ -937,6 +949,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ASYNCITERATOR:
         case JSType::JS_ITERATOR: {
             break;
@@ -1643,7 +1656,9 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method = NewMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
     }
-    method->SetModule(thread_, module);
+    if (method->GetModule().IsUndefined()) {
+        method->SetModule(thread_, module);
+    }
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
@@ -2307,17 +2322,26 @@ JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
     return array;
 }
 
-JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size)
+JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size, void *srcData,
+                                                MemSpaceType spaceType)
 {
     size_t byteSize = ByteArray::ComputeSize(size, length);
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetByteArrayClass().GetTaggedObject());
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(arrayClass, byteSize);
+    TaggedObject *header = AllocObjectWithSpaceType(byteSize, arrayClass, spaceType);
     JSHandle<ByteArray> array(thread_, header);
 
     void *data = array->GetData();
-    if (memset_s(data, length * size, 0, length * size) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
+
+    if (srcData != nullptr) {
+        if (memcpy_s(data, length * size, srcData, length * size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+    } else {
+        if (memset_s(data, length * size, 0, length * size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
     }
 
     array->SetArrayLength(length);

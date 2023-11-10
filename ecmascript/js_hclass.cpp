@@ -21,6 +21,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -164,7 +165,8 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
 void JSHClass::InitTSInheritInfo(const JSThread *thread)
 {
     // Supers and Level are used to record the relationship between TSHClass.
-    if (IsECMAObject()) {
+    if (ShouldSetDefaultSupers()) {
+        ASSERT(thread->GlobalConstants()->GetDefaultSupers().IsTaggedArray());
         SetSupers(thread, thread->GlobalConstants()->GetDefaultSupers());
     } else {
         SetSupers(thread, JSTaggedValue::Undefined());
@@ -177,11 +179,11 @@ void JSHClass::InitTSInheritInfo(const JSThread *thread)
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                   bool withoutInlinedProperties)
+                                   bool withoutInlinedProperties, uint32_t incInlinedProperties)
 {
     JSType type = jshclass->GetObjectType();
     uint32_t size = jshclass->GetInlinedPropsStartSize();
-    uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties();
+    uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
     JSHandle<JSHClass> newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
@@ -223,6 +225,7 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
+        newClass->SetPrototype(thread, jshclass->GetPrototype());
         return JSHandle<JSHClass>(thread, newClass);
     }
 
@@ -252,6 +255,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
+        newClass->SetPrototype(thread, jshclass->GetPrototype());
         obj->SynchronizedSetClass(newClass);
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
@@ -300,6 +304,7 @@ JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const J
     {
         auto *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(0));
         if (newClass != nullptr) {
+            newClass->SetPrototype(thread, jshclass->GetPrototype());
             return JSHandle<JSHClass>(thread, newClass);
         }
     }
@@ -421,6 +426,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
 #endif
         JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
         newProtoClass->SetIsPrototype(true);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateProfileType(*hclass, *newProtoClass);
     }
 }
 
@@ -429,6 +435,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
     // 1. new a hclass
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newJsHClass = CloneWithoutInlinedProperties(thread, jshclass);
+    UpdateRootHClass(thread, jshclass, newJsHClass);
 
     {
         DISALLOW_GARBAGE_COLLECTION;
@@ -496,7 +503,7 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        array->SetClass(hclass);
+        array->SynchronizedSetClass(hclass);
     }
 }
 
@@ -522,16 +529,58 @@ bool JSHClass::TransitToElementsKind(
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        object->SetClass(hclass);
+        object->SynchronizedSetClass(hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return true;
         }
         auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, newKind);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
         return true;
     }
     return false;
+}
+
+std::pair<bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
+    const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+    PropertyAttributes &attr)
+{
+    auto hclass = receiver->GetJSHClass();
+    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    attr = layout->GetAttr(attr.GetOffset());
+    if (thread->IsPGOProfilerEnable() && attr.UpdateTrackType(value.GetTaggedValue())) {
+        layout->SetNormalAttr(thread, attr.GetOffset(), attr);
+    }
+
+    if (!hclass->IsTS()) {
+        return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+    }
+    Representation oldRep = attr.GetRepresentation();
+    if (oldRep == Representation::DOUBLE) {
+        if (value->IsInt()) {
+            double doubleValue = value->GetInt();
+            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
+        } else if (value->IsObject()) {
+            // Is Object
+            attr.SetRepresentation(Representation::TAGGED);
+            // Transition
+            JSHClass::TransitionForRepChange(thread, receiver, key, attr);
+            return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+        } else {
+            // Is TaggedDouble
+            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
+        }
+    } else if (oldRep == Representation::INT) {
+        if (value->IsInt()) {
+            int intValue = value->GetInt();
+            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(static_cast<JSTaggedType>(intValue)));
+        } else {
+            attr.SetRepresentation(Representation::TAGGED);
+            JSHClass::TransitionForRepChange(thread, receiver, key, attr);
+            return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+        }
+    }
+    return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -539,8 +588,8 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     JSTaggedValue proto = jshclass->GetPrototype();
     if (!proto.IsECMAObject()) {
         // Return JSTaggedValue directly. No proto check is needed.
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+        LOG_ECMA(INFO) << "proto is not ecmaobject: " << proto.GetRawData();
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
     }
     JSHandle<JSObject> protoHandle(thread, proto);
     JSHandle<JSHClass> protoClass(thread, protoHandle->GetJSHClass());
@@ -553,6 +602,24 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     } else {
         RegisterOnProtoChain(thread, protoClass);
     }
+
+    JSTaggedValue protoChangeMarker = protoClass->GetProtoChangeMarker();
+    if (protoChangeMarker.IsProtoChangeMarker()) {
+        JSHandle<ProtoChangeMarker> markerHandle(thread, ProtoChangeMarker::Cast(protoChangeMarker.GetTaggedObject()));
+        if (!markerHandle->GetHasChanged()) {
+            return JSHandle<JSTaggedValue>(markerHandle);
+        }
+    }
+    JSHandle<ProtoChangeMarker> markerHandle = thread->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
+    markerHandle->SetHasChanged(false);
+    protoClass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
+    return JSHandle<JSTaggedValue>(markerHandle);
+}
+
+JSHandle<JSTaggedValue> JSHClass::EnablePHCProtoChangeMarker(const JSThread *thread,
+    const JSHandle<JSHClass> &protoClass)
+{
+    RegisterOnProtoChain(thread, protoClass);
 
     JSTaggedValue protoChangeMarker = protoClass->GetProtoChangeMarker();
     if (protoChangeMarker.IsProtoChangeMarker()) {
@@ -580,6 +647,32 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     newHclass->SetIsPrototype(true);
     JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
+}
+
+void JSHClass::NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue markerValue = hclass->GetProtoChangeMarker();
+    if (markerValue.IsProtoChangeMarker()) {
+        ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
+        protoChangeMarker->SetAccessorHasChanged(true);
+    }
+
+    JSTaggedValue protoDetailsValue = hclass->GetProtoChangeDetails();
+    if (!protoDetailsValue.IsProtoChangeDetails()) {
+        return;
+    }
+    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
+    if (!listenersValue.IsTaggedArray()) {
+        return;
+    }
+    ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
+    for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
+        JSTaggedValue temp = listeners->Get(i);
+        if (temp.IsJSHClass()) {
+            NotifyAccessorChanged(thread, JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()));
+        }
+    }
 }
 
 void JSHClass::RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -748,14 +841,25 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
     ASSERT(hclass->IsTS());
 
     PropertyLookupResult result;
+    if (hclass->IsDictionaryMode()) {
+        // not fuond
+        result.SetIsFound(false);
+        return result;
+    }
+
     int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
     // found in local
     if (entry != -1) {
         result.SetIsFound(true);
         result.SetIsLocal(true);
-        uint32_t offset = hclass->GetInlinedPropertiesOffset(entry);
-        result.SetOffset(offset);
         PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+        if (attr.IsInlinedProps()) {
+            result.SetIsInlinedProps(true);
+            result.SetOffset(hclass->GetInlinedPropertiesOffset(entry));
+        } else {
+            result.SetIsInlinedProps(false);
+            result.SetOffset(attr.GetOffset() - hclass->GetInlinedProperties());
+        }
         if (attr.IsNotHole()) {
             result.SetIsNotHole(true);
         }
@@ -789,6 +893,47 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
     return result;
 }
 
+PropertyLookupResult JSHClass::LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(hclass->IsTS());
+
+    PropertyLookupResult result;
+    if (hclass->IsDictionaryMode()) {
+        result.SetIsFound(false);
+        return result;
+    }
+
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+    // found in local
+    if (entry != -1) {
+        result.SetIsFound(true);
+        result.SetIsLocal(true);
+        PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+        if (attr.IsInlinedProps()) {
+            result.SetIsInlinedProps(true);
+            result.SetOffset(hclass->GetInlinedPropertiesOffset(entry));
+        } else {
+            result.SetIsInlinedProps(false);
+            result.SetOffset(attr.GetOffset() - hclass->GetInlinedProperties());
+        }
+
+        if (attr.IsNotHole()) {
+            result.SetIsNotHole(true);
+        }
+        if (attr.IsAccessor()) {
+            result.SetIsAccessor(true);
+        }
+        result.SetRepresentation(attr.GetRepresentation());
+        result.SetIsWritable(attr.IsWritable());
+        return result;
+    }
+
+    // not fuond
+    result.SetIsFound(false);
+    return result;
+}
+
 PropertyLookupResult JSHClass::LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
                                                                       JSTaggedValue key)
 {
@@ -796,6 +941,11 @@ PropertyLookupResult JSHClass::LookupPropertyInBuiltinPrototypeHClass(const JSTh
     ASSERT(hclass->IsPrototype());
 
     PropertyLookupResult result;
+    if (hclass->IsDictionaryMode()) {
+        // not fuond
+        result.SetIsFound(false);
+        return result;
+    }
     int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
     // When the property is not found, the value of 'entry' is -1.
     // Currently, not all methods on the prototype of 'builtin' have been changed to inlined.
@@ -807,9 +957,14 @@ PropertyLookupResult JSHClass::LookupPropertyInBuiltinPrototypeHClass(const JSTh
 
     result.SetIsFound(true);
     result.SetIsLocal(true);
-    uint32_t offset = hclass->GetInlinedPropertiesOffset(entry);
-    result.SetOffset(offset);
     PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+    if (attr.IsInlinedProps()) {
+        result.SetIsInlinedProps(true);
+        result.SetOffset(hclass->GetInlinedPropertiesOffset(entry));
+    } else {
+        result.SetIsInlinedProps(false);
+        result.SetOffset(attr.GetOffset() - hclass->GetInlinedProperties());
+    }
     result.SetIsNotHole(true);
     if (attr.IsAccessor()) {
         result.SetIsAccessor(true);
@@ -834,29 +989,148 @@ void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass
     newHClass->SetVTable(thread, copyVtable);
 }
 
-bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjKind kind)
+JSHandle<JSHClass> JSHClass::CreateRootHClass(const JSThread *thread, const HClassLayoutDesc *desc, uint32_t maxNum)
+{
+    auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numOfProps = rootDesc->NumOfProps();
+    uint32_t index = 0;
+    JSType type = rootDesc->GetObjectType();
+    size_t size = rootDesc->GetObjectSize();
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(size, type, maxNum);
+    // Dictionary?
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+    rootDesc->IterateProps([thread, factory, &index, hclass, layout] (const pgo::PropertyDesc &propDesc) {
+        JSHandle<EcmaString> key = factory->NewFromStdString(std::string(propDesc.first));
+        PropertyAttributes attributes = PropertyAttributes::Default();
+        if (propDesc.second.SetAttribute(thread, attributes)) {
+            hclass->SetIsAllTaggedProp(false);
+        }
+        attributes.SetIsInlinedProps(true);
+        attributes.SetOffset(index);
+        layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
+        index++;
+    });
+    hclass->SetLayout(thread, layout);
+    hclass->SetNumberOfProps(numOfProps);
+    hclass->SetTS(true);
+    return hclass;
+}
+
+JSHandle<JSHClass> JSHClass::CreateChildHClass(
+    const JSThread *thread, const JSHandle<JSHClass> &parent, const HClassLayoutDesc *desc)
+{
+    pgo::PropertyDesc propDesc = reinterpret_cast<const pgo::ChildHClassLayoutDesc *>(desc)->GetPropertyDesc();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numOfProps = parent->NumberOfProps();
+
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, parent);
+    newJsHClass->SetTS(true);
+    ASSERT(newJsHClass->GetInlinedProperties() >= (numOfProps + 1));
+    uint32_t offset = numOfProps;
+    {
+        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
+        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
+            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
+            newJsHClass->SetLayout(thread, layoutInfoHandle);
+        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
+            layoutInfoHandle.Update(
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
+            newJsHClass->SetLayout(thread, layoutInfoHandle);
+        }
+        JSHandle<EcmaString> key = factory->NewFromStdString(std::string(propDesc.first));
+        PropertyAttributes attributes = PropertyAttributes::Default();
+        if (propDesc.second.SetAttribute(thread, attributes)) {
+            newJsHClass->SetIsAllTaggedProp(false);
+        }
+        attributes.SetOffset(offset);
+        attributes.SetIsInlinedProps(true);
+        layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attributes);
+        newJsHClass->IncNumberOfProps();
+        AddTransitions(thread, parent, newJsHClass, JSHandle<JSTaggedValue>(key), attributes);
+        JSHClass::NotifyHclassChanged(thread, parent, newJsHClass, key.GetTaggedValue());
+    }
+
+    return newJsHClass;
+}
+
+bool JSHClass::DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-    if (kind == PGOObjKind::ELEMENT) {
-        desc.UpdateElementKind(hclass->GetElementsKind());
-    }
 
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     int element = static_cast<int>(hclass->NumberOfProps());
     for (int i = 0; i < element; i++) {
-        layout->DumpFieldIndexForProfile(i, desc, kind);
+        layout->DumpFieldIndex(i, desc);
     }
     return true;
 }
 
-uint32_t JSHClass::ComputeHashcode(const JSHClass *hclass)
+bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
-        return 0;
+        return false;
+    }
+
+    uint32_t last = hclass->NumberOfProps() - 1;
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    layoutInfo->DumpFieldIndex(last, desc);
+    return true;
+}
+
+bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *childDesc)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (hclass->IsDictionaryMode()) {
+        return false;
+    }
+
+    uint32_t last = hclass->NumberOfProps() - 1;
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    return layoutInfo->UpdateFieldIndex(last, childDesc);
+}
+
+bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeDesc *treeDesc, HClassLayoutDesc *desc)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (hclass->IsDictionaryMode()) {
+        return false;
+    }
+
+    auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
+    int rootPropLen = rootDesc->NumOfProps();
+    int element = static_cast<int>(hclass->NumberOfProps());
+    ASSERT(element >= rootPropLen);
+    LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    for (int i = 0; i < rootPropLen; i++) {
+        layout->UpdateFieldIndex(i, desc);
+    }
+    auto lastDesc = desc;
+    for (int i = rootPropLen; i < element - 1; i++) {
+        if (lastDesc == nullptr || lastDesc->GetChildSize() == 0) {
+            break;
+        }
+        lastDesc->IterateChilds([treeDesc, layout, i, &lastDesc] (const ProfileType &childType) -> bool {
+            lastDesc = treeDesc->GetHClassLayoutDesc(childType);
+            if (lastDesc == nullptr) {
+                return true;
+            }
+            return !layout->UpdateFieldIndex(i, lastDesc);
+        });
+    }
+    return true;
+}
+
+CString JSHClass::DumpToString(JSTaggedType hclassVal)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto hclass = JSHClass::Cast(JSTaggedValue(hclassVal).GetTaggedObject());
+    if (hclass->IsDictionaryMode()) {
+        return "";
     }
 
     CString result;
@@ -868,16 +1142,9 @@ uint32_t JSHClass::ComputeHashcode(const JSHClass *hclass)
             result += EcmaStringAccessor(key).ToCString();
             auto attr = layout->GetAttr(i);
             result += static_cast<int32_t>(attr.GetTrackType());
-            result += attr.IsAccessor();
+            result += attr.GetPropertyMetaData();
         }
     }
-
-    uint32_t hash = 0;
-    Span<const char> sp(result.c_str(), result.size());
-    for (auto c : sp) {
-        constexpr size_t SHIFT = 5;
-        hash = (hash << SHIFT) - hash + c;
-    }
-    return hash;
+    return result;
 }
 }  // namespace panda::ecmascript

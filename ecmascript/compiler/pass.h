@@ -22,30 +22,34 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/dead_code_elimination.h"
+#include "ecmascript/compiler/constant_folding.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
-#include "ecmascript/compiler/lcr_lowering.h"
+#include "ecmascript/compiler/mcr_lowering.h"
+#include "ecmascript/compiler/lexical_env_specialization.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
+#include "ecmascript/compiler/native_inline_lowering.h"
+#include "ecmascript/compiler/ntype_bytecode_lowering.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
-#include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
-#include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/type_bytecode_lowering.h"
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
-#include "ecmascript/compiler/type_mcr_lowering.h"
+#include "ecmascript/compiler/type_hcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
+#include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/js_runtime_options.h"
 
@@ -100,6 +104,11 @@ public:
     TSManager* GetTSManager() const
     {
         return ctx_->GetTSManager();
+    }
+
+    PGOTypeManager* GetPTManager() const
+    {
+        return ctx_->GetPTManager();
     }
 
     const JSPandaFile *GetJSPandaFile() const
@@ -249,11 +258,6 @@ public:
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
                                         enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-        if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
-            InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
-                                                data->GetMethodName(), enableLog);
-            initAnalysis.Run();
-        }
         return true;
     }
 };
@@ -283,7 +287,7 @@ public:
     }
 };
 
-class TSHCRLoweringPass {
+class TypeBytecodeLoweringPass {
 public:
     bool Run(PassData* data)
     {
@@ -291,12 +295,12 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TSHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
+        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
             enableLog, enableTypeLog, data->GetMethodName());
-        bool success = lowering.RunTSHCRLowering();
+        bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
         }
@@ -305,11 +309,55 @@ public:
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
                                   data->GetMethodName());
-        
+
         visitor.AddPass(&optimization);
         visitor.AddPass(&deadCodeElimination);
         visitor.VisitGraph();
         visitor.PrintLog("TSHCROptPass");
+        return true;
+    }
+};
+
+class NTypeBytecodeLoweringPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableTypeLowering()) {
+            return false;
+        }
+        TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
+            enableLog, data->GetMethodName());
+        lowering.RunNTypeBytecodeLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&deadCodeElimination);
+        visitor.VisitGraph();
+        return true;
+    }
+};
+
+class TypeHCRLoweringPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableTypeLowering()) {
+            return false;
+        }
+        TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        TypeHCRLowering lowering(data->GetCircuit(), &visitor,
+                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
+                                 data->GetPassOptions()->EnableOptOnHeapCheck());
+        visitor.AddPass(&lowering);
+        visitor.VisitGraph();
+        visitor.PrintLog("TypeHCRLowering");
         return true;
     }
 };
@@ -324,57 +372,13 @@ public:
         }
         TimeScope timescope("NTypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
-        lowering.RunNTypeHCRLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
-        visitor.AddPass(&deadCodeElimination);
-        visitor.VisitGraph();
-        return true;
-    }
-};
-
-class TypeMCRLoweringPass {
-public:
-    bool Run(PassData* data)
-    {
-        PassOptions *passOptions = data->GetPassOptions();
-        if (!passOptions->EnableTypeLowering()) {
-            return false;
-        }
-        TimeScope timescope("TypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypeMCRLowering lowering(data->GetCircuit(), &visitor,
-                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
-                                 data->GetPassOptions()->EnableOptOnHeapCheck());
-        visitor.AddPass(&lowering);
-        visitor.VisitGraph();
-        visitor.PrintLog("TypeMCRLowering");
-        return true;
-    }
-};
-
-class NTypeMCRLoweringPass {
-public:
-    bool Run(PassData* data)
-    {
-        PassOptions *passOptions = data->GetPassOptions();
-        if (!passOptions->EnableTypeLowering()) {
-            return false;
-        }
-        TimeScope timescope("NTypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NTypeMCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
+        NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
                                   data->GetRecordName(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
-        visitor.PrintLog("NTypeMCRLowering");
+        visitor.PrintLog("NTypeHCRLowering");
         return true;
     }
 };
@@ -391,10 +395,10 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        LCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
+        MCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
-        visitor.PrintLog("LCRLowering");
+        visitor.PrintLog("MCRLowering");
         return true;
     }
 };
@@ -412,6 +416,21 @@ public:
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
+        if (passOptions->EnableLexenvSpecialization()) {
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
+            visitor.AddPass(&lexicalEnvSpecialization);
+            visitor.VisitGraph();
+            visitor.PrintLog("lexicalEnvSpecialization");
+            lexicalEnvSpecialization.PrintSpecializeId();
+        }
+
+        if (passOptions->EnableInlineNative()) {
+            NativeInlineLowering nativeInline(data->GetCircuit(), data->GetPassContext(), enableLog,
+                                              data->GetMethodName());
+            nativeInline.RunNativeInlineLowering();
+        }
         return true;
     }
 };
@@ -476,28 +495,47 @@ public:
     }
 };
 
+class ConstantFoldingPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableOptConstantFolding()) {
+            return false;
+        }
+        TimeScope timescope("ConstantFoldingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        ConstantFolding constantFolding(data->GetCircuit(), &visitor, data->GetCompilerConfig(), enableLog,
+                                        data->GetMethodName(), &chunk);
+        visitor.AddPass(&constantFolding);
+        visitor.VisitGraph();
+        constantFolding.Print();
+        return true;
+    }
+};
+
 class LoopOptimizationPass {
 public:
     bool Run(PassData* data)
     {
         TimeScope timescope("LoopOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
-        const auto& headList = data->GetBuilder()->GetLoopHeads();
-        LoopAnalysis loopAnalysis_(data->GetCircuit(), &chunk);
-        for (auto head : headList) {
-            auto bb = data->GetBuilder()->GetBasicBlockById(head.second);
-            auto loopInfo = new LoopInfo(&chunk, bb.stateCurrent);
-            loopAnalysis_.CollectLoopBody(loopInfo);
-            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        LoopAnalysis loopAnalysis(data->GetBuilder(), data->GetCircuit(), &chunk);
+        loopAnalysis.Run();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        for (auto loopInfo : loopAnalysis.GetLoopTree()) {
+            loopAnalysis.CollectLoopBody(loopInfo);
             if (enableLog) {
-                loopAnalysis_.PrintLoop(loopInfo);
+                loopAnalysis.PrintLoop(loopInfo);
             }
             if (data->GetPassOptions()->EnableOptLoopPeeling()) {
                 LoopPeeling(data->GetBuilder(), data->GetCircuit(), enableLog,
                             data->GetMethodName(), &chunk, loopInfo).Peel();
             }
         }
-        loopAnalysis_.LoopExitElimination();
+        loopAnalysis.LoopExitElimination();
         return true;
     }
 };
@@ -596,6 +634,27 @@ public:
     }
 };
 
+class InstructionCombinePass {
+public:
+    bool Run(PassData *data)
+    {
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        if (runtimeOption.IsEnableInstrcutionCombine()) {
+            TimeScope timescope("InstructionCombinePass", data->GetMethodName(), data->GetMethodOffset(),
+                                data->GetLog());
+            Chunk chunk(data->GetNativeAreaAllocator());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            InstructionCombine instructionCombine(data->GetCircuit(), &visitor, &chunk,
+                                                  runtimeOption.GetTraceInstructionCombine());
+            visitor.AddPass(&instructionCombine);
+            visitor.VisitGraph();
+            visitor.PrintLog("Instruction Combine");
+        }
+        return true;
+    }
+};
+
 class SchedulingPass {
 public:
     bool Run(PassData* data)
@@ -672,11 +731,7 @@ public:
         AsyncFunctionLowering lowering(data->GetBuilder(), data->GetCircuit(), data->GetCompilerConfig(),
                                        enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {
-            if (IsFunctionMain(data)) {
-                lowering.ProcessAll();
-            } else {
-                data->MarkAsTypeAbort();
-            }
+            lowering.ProcessAll();
         }
         return true;
     }

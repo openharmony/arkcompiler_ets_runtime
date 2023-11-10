@@ -21,3 +21,10 @@ class A {
 let a : A = new A();
 print(a.foo(2));
 print(a.bar(2));
+
+function f523() {
+    throw "error";
+    function f537() {}
+}
+f523();
+f523();

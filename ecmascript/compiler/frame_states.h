@@ -27,16 +27,10 @@ namespace panda::ecmascript::kungfu {
 class BytecodeCircuitBuilder;
 struct BytecodeRegion;
 
-class FrameStateInfo {
+class FrameLiveOut {
 public:
-    explicit FrameStateInfo(Chunk* chunk, size_t numVregs)
-        : values_(numVregs, chunk), liveout_(chunk, numVregs) {}
-
-    void SetValuesAt(size_t index, GateRef gate)
-    {
-        ASSERT(index < values_.size());
-        values_[index] = gate;
-    }
+    explicit FrameLiveOut(Chunk* chunk, size_t numVregs)
+        : liveout_(chunk, numVregs), defRegisters_(chunk, numVregs) {}
 
     void SetBit(size_t index)
     {
@@ -48,26 +42,66 @@ public:
         liveout_.ClearBit(index);
     }
 
+    bool TestBit(size_t index) const
+    {
+        return liveout_.TestBit(index);
+    }
+
+    void CopyFrom(FrameLiveOut *other)
+    {
+        liveout_.CopyFrom(other->liveout_);
+    }
+
+    bool MergeLiveout(FrameLiveOut *other)
+    {
+        return liveout_.UnionWithChanged(other->liveout_);
+    }
+
+    void Reset()
+    {
+        return liveout_.Reset();
+    }
+
+private:
+    // [numVRegs_] [extra args] [numArgs_] [accumulator]
+    BitSet liveout_;
+    BitSet defRegisters_;
+    friend class BlockLoopAnalysis;
+    friend class FrameStateBuilder;
+};
+
+class FrameContext {
+public:
+    explicit FrameContext(Chunk* chunk, size_t numVregs)
+        : values_(numVregs, chunk) {}
+
     GateRef ValuesAt(size_t index) const
     {
         ASSERT(index < values_.size());
         return values_[index];
     }
 
-    void CopyFrom(FrameStateInfo *other)
+    void SetValuesAt(size_t index, GateRef gate)
     {
-        values_.assign(other->values_.begin(), other->values_.end());
-        liveout_.CopyFrom(other->liveout_);
+        ASSERT(index < values_.size());
+        values_[index] = gate;
     }
 
-    bool MergeLiveout(FrameStateInfo *other)
+    void CopyCurrentStatus(FrameContext *other)
     {
-        return liveout_.UnionWithChanged(other->liveout_);
+        currentState_ = other->currentState_;
+        currentDepend_ = other->currentDepend_;
+        needStateSplit_ = other->needStateSplit_;
     }
 private:
     // [numVRegs_] [extra args] [numArgs_] [accumulator]
     ChunkVector<GateRef> values_;
-    BitSet liveout_;
+    GateRef currentState_ {Circuit::NullGate()};
+    GateRef currentDepend_ {Circuit::NullGate()};
+    size_t currentIndex_ {0};
+    bool needStateSplit_ {false};
+    friend class FrameStateBuilder;
+    friend class BlockLoopAnalysis;
 };
 
 class FrameStateBuilder {
@@ -76,119 +110,157 @@ public:
         Circuit *circuit, const MethodLiteral *literal);
     ~FrameStateBuilder();
 
-    void BuildFrameState();
+    void DoBytecodeAnalysis();
+    void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
+    void UpdateFrameValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId,
+        GateRef gate);
+    void UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId);
+    void UpdateStateDepend(GateRef state, GateRef depend);
+    FrameLiveOut *GetOrOCreateBCEndLiveOut(uint32_t bcIndex);
+    FrameLiveOut *GetOrOCreateBBLiveOut(size_t bbIndex);
+    GateRef GetCurrentState() const
+    {
+        return liveContext_->currentState_;
+    }
+
+    GateRef GetCurrentDepend() const
+    {
+        return liveContext_->currentDepend_;
+    }
+    void MergeIntoSuccessor(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+    void AdvanceToNextBB(const BytecodeRegion &bb);
+    void InitEntryBB(const BytecodeRegion &bb);
+
+    const ChunkDeque<size_t>& GetRpoList() const
+    {
+        return rpoList_;
+    }
+
+    bool HasLoop() const
+    {
+        return numLoops_ > 0;
+    }
+    void UpdateAccumulator(GateRef gate)
+    {
+        UpdateVirtualRegister(accumulatorIndex_, gate);
+    }
+
 private:
     static constexpr size_t FIXED_ARGS = 2; // ac & env
+    struct LoopInfo {
+        size_t loopIndex {0};
+        size_t loopHeadId {0};
+        size_t numLoopBacks {0};
+        size_t sortIndx {0};
+        LoopInfo* parentInfo {nullptr};
+        BitSet* loopBodys {nullptr};
+        ChunkVector<BytecodeRegion*>* loopExits {nullptr};
+        BitSet* loopAssignment {nullptr};
+        FrameContext* mergedContext {nullptr};
+    };
+
+    void BuildPostOrderList(size_t size);
+    bool ComputeLiveOut(size_t bbId);
+    void ComputeLiveState();
+    void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
+    bool MergeIntoPredBC(uint32_t predPc);
+    bool MergeFromSuccBB(size_t bbId);
+    void MergeFromCatchBB(size_t bbId);
+
+    FrameLiveOut *GetFrameLiveoutAfter(uint32_t bcId)
+    {
+        return bcEndStateLiveouts_[bcId];
+    }
+
+    FrameLiveOut *GetFrameLiveoutBefore(size_t bbId)
+    {
+        return bbBeginStateLiveouts_[bbId];
+    }
+
     GateRef ValuesAt(size_t index) const
     {
-        return liveOutResult_->ValuesAt(index);
+        return liveContext_->ValuesAt(index);
     }
 
     GateRef ValuesAtAccumulator() const
     {
         return ValuesAt(accumulatorIndex_);
     }
+
     void UpdateVirtualRegister(size_t index, GateRef gate)
     {
-        liveOutResult_->SetValuesAt(index, gate);
-        if (gate == Circuit::NullGate()) {
-            liveOutResult_->ClearBit(index);
-        } else {
-            liveOutResult_->SetBit(index);
-        }
+        liveContext_->SetValuesAt(index, gate);
     }
-    void UpdateAccumulator(GateRef gate)
-    {
-        UpdateVirtualRegister(accumulatorIndex_, gate);
-    }
-    GateRef BindStateSplit(GateRef state, GateRef depend, GateRef frameState);
-    void BindStateSplit(GateRef gate, GateRef frameState);
-    void BindBBStateSplit();
-    void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
-    GateRef BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output);
-    GateRef BuildFrameValues(FrameStateInfo *stateInfo);
-    GateRef BuildEmptyFrameValues();
 
-    FrameStateInfo *CreateEmptyStateInfo();
-    void BuildPostOrderList(size_t size);
-    bool ComputeLiveOut(size_t bbId);
-    void ComputeLiveState();
-    void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId);
-    void FindLoopExit(GateRef gate);
-    bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
-    bool MergeIntoPredBC(uint32_t predPc, size_t diff);
-    bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
-    size_t LoopExitCount(BytecodeRegion *bb, BytecodeRegion *bbNext);
-    GateRef TryGetLoopExitValue(GateRef value, size_t diff, size_t reg);
-    FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
+    GateRef GetBcFrameStateCache()
     {
-        auto currentInfo = bcEndStateInfos_[bcIndex];
-        if (currentInfo == nullptr) {
-            currentInfo = CreateEmptyStateInfo();
-            bcEndStateInfos_[bcIndex] = currentInfo;
-        }
-        return currentInfo;
+        ASSERT(frameStateCache_ != Circuit::NullGate());
+        auto cache = frameStateCache_;
+        frameStateCache_ = Circuit::NullGate();
+        return cache;
     }
-    FrameStateInfo *GetOrOCreateLoopExitStateInfo(GateRef gate)
-    {
-        ASSERT(gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT);
-        size_t idx = gateAcc_.GetId(gate);
-        ASSERT(idx < circuit_ -> GetMaxGateId());
-        auto currentInfo = loopExitStateInfos_[idx];
-        if (currentInfo == nullptr) {
-            currentInfo = CreateEmptyStateInfo();
-            loopExitStateInfos_[idx] = currentInfo;
-        }
-        return currentInfo;
-    }
-    FrameStateInfo *GetEntryBBBeginStateInfo()
-    {
-        auto entry = CreateEmptyStateInfo();
-        auto first = bbBeginStateInfos_.at(1);  // 1: first block
-        for (size_t i = 0; i < numVregs_; ++i) {
-            auto value = first->ValuesAt(i);
-            if (value == Circuit::NullGate()) {
-                continue;
-            }
-            if (gateAcc_.IsValueSelector(value)) {
-                value = gateAcc_.GetValueIn(value);
-            }
-            entry->SetValuesAt(i, value);
-        }
-        return entry;
-    }
-    FrameStateInfo *GetBBBeginStateInfo(size_t bbId)
-    {
-        if (bbId == 0) {    // 0: entry block
-            return GetEntryBBBeginStateInfo();
-        }
-        return bbBeginStateInfos_.at(bbId);
-    }
-    void UpdateVirtualRegistersOfSuspend(GateRef gate);
-    void UpdateVirtualRegistersOfResume(GateRef gate);
-    void SaveBBBeginStateInfo(size_t bbId);
-    FrameStateInfo *GetFrameInfoBefore(BytecodeRegion &bb, uint32_t bcId);
-    FrameStateInfo *GetFrameInfoAfter(uint32_t bcId);
-    GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
-    GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
-    void BuildFrameState(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
-    void BuildStateSplitAfter(size_t index, BytecodeRegion& bb);
-    void BuildStateSplitBefore(BytecodeRegion& bb, size_t index);
-    bool ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index);
-    void BuildCallFrameState(size_t index, BytecodeRegion& bb);
-    size_t GetNearestNextIndex(size_t index, BytecodeRegion& bb) const;
-    GateRef GetPredStateGateBetweenBB(BytecodeRegion *bb, BytecodeRegion *predBb);
 
-    BytecodeCircuitBuilder *builder_{nullptr};
-    FrameStateInfo *liveOutResult_{nullptr};
+    FrameContext *GetMergedBbContext(uint32_t bbIndex) const
+    {
+        ASSERT(bbIndex < bbFrameContext_.size());
+        return bbFrameContext_[bbIndex];
+    }
+
+    FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
+    void FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t bcIndex, GateRef gate);
+    void DumpLiveState();
+    GateRef MergeValue(const BytecodeRegion &bb,
+        GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index);
+    void NewMerge(const BytecodeRegion &bbNext);
+    void MergeStateDepend(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+    void CopyLiveoutValues(const BytecodeRegion &bbNext, FrameContext* dest, FrameContext* src);
+    void SaveCurrentContext(const BytecodeRegion &bb);
+
+    void NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAssignment);
+    size_t ComputeLoopDepth(size_t loopHead);
+    void TryInsertLoopExit(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+    void ComputeLoopInfo();
+    void MergeAssignment(const BytecodeRegion &bbNext);
+    BitSet *GetLoopAssignment(const BytecodeRegion &bb);
+    LoopInfo& GetLoopInfo(const BytecodeRegion &bb);
+    LoopInfo& GetLoopInfo(BytecodeRegion &bb);
+    LoopInfo* GetLoopInfoByLoopBody(const BytecodeRegion &bb);
+    bool IsLoopBackEdge(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+
+    GateRef BuildFrameContext(FrameContext* frameContext);
+    void BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
+    void BindStateSplitAfter(const BytecodeInfo &bytecodeInfo, uint32_t bcId, GateRef gate);
+    GateRef BuildFrameValues(FrameContext* frameContext, FrameLiveOut* liveout);
+    GateRef BuildStateSplit(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);
+    GateRef BuildFrameState(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);
+    void AddEmptyBlock(BytecodeRegion* bb);
+    FrameContext *GetCachedContext();
+
+    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
+    TSManager *tsManager_ {nullptr};
+    const TypeRecorder *typeRecorder_ {nullptr};
+    FrameLiveOut *liveOutResult_ {nullptr};
+    FrameLiveOut *currentBBliveOut_ {nullptr};
+    FrameContext *liveContext_ {nullptr};
+    FrameContext *cachedContext_ {nullptr};
+    FrameContext *cachedContextBackup_ {nullptr};
     size_t numVregs_ {0};
     size_t accumulatorIndex_ {0};
+    size_t envIndex_ {0};
+    size_t numLoops_ {0};
+    size_t sortIndx_ {0};
+    GateRef frameStateCache_ {Circuit::NullGate()};
     Circuit *circuit_ {nullptr};
-    GateAccessor gateAcc_;
-    ChunkVector<FrameStateInfo *> bcEndStateInfos_;
-    ChunkVector<FrameStateInfo *> bbBeginStateInfos_;
-    ChunkVector<FrameStateInfo *> loopExitStateInfos_;
+    GateAccessor acc_;
+    ChunkVector<FrameLiveOut *> bcEndStateLiveouts_;
+    ChunkVector<FrameLiveOut *> bbBeginStateLiveouts_;
+    ChunkVector<FrameContext *> bbFrameContext_;
+    ChunkVector<LoopInfo> loops_;
+    ChunkDeque<size_t> rpoList_;
     ChunkVector<size_t> postOrderList_;
+
+    friend class BlockLoopAnalysis;
+    friend class SubContextScope;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_FRAME_STATE_H

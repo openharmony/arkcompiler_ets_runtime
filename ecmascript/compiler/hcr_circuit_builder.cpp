@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -321,7 +322,7 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
 }
 
-GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
@@ -331,7 +332,7 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult };
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder };
     AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset),
                                           MachineType::I64,
@@ -344,7 +345,7 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     return callGate;
 }
 
-GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,
                                    GateRef value, const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
@@ -354,7 +355,7 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, value };
+    std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder, value };
     AppendFrameArgs(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset),
                                           MachineType::I64,
@@ -427,5 +428,33 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
     GateRef propOffset = Int32Mul(Int32Add(inlinedPropsStart, attrOffset),
         Int32(JSTaggedValue::TaggedTypeSize()));
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
+}
+
+GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
+{
+    Label subentry(env_);
+    env_->SubCfgEntry(&subentry);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label exit(env_);
+    Label targetIsHeapObject(env_);
+    Label targetIsStableArray(env_);
+
+    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        Branch(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        Bind(&targetIsStableArray);
+        {
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
+            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env_->SubCfgExit();
+    return res;
 }
 }

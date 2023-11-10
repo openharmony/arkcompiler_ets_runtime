@@ -54,7 +54,17 @@ struct PatchInfo {
     CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
     // save base constpool in global for avoid gc.
     CVector<JSHandle<JSTaggedValue>> baseConstpools;
+    // patch replaced recordNames.
+    CUnorderedSet<CString> replacedRecordNames;
 };
+
+enum class StageOfHotReload : int32_t {
+    BEGIN_EXECUTE_PATCHMAIN = -1, // -1: For intercepting Evaluate()
+    INITIALIZE_STAGE_OF_HOTRELOAD, // 0 : initialize stageOfHotreload_ in ecma_context.h
+    LOAD_END_EXECUTE_PATCHMAIN, // 1: for Interceptint get module var
+    UNLOAD_END_EXECUTE_PATCHMAIN // 2 :for execute abc normally
+};
+
 class PatchLoader {
 public:
     PatchLoader() = default;
@@ -68,6 +78,8 @@ public:
                                               const CString &baseFileName, PatchInfo &patchInfo);
 
     static MethodLiteral *FindSameMethod(PatchInfo &patchInfo, const JSPandaFile *baseFile, EntityId baseMethodId);
+    static void ExecuteFuncOrPatchMain(
+        JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch = true);
 
 private:
     static PatchInfo GeneratePatchInfo(const JSPandaFile *patchFile);
@@ -82,10 +94,9 @@ private:
                               MethodLiteral *srcMethodLiteral,
                               JSTaggedValue srcConstpool);
 
-    static bool ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
-                                 PatchInfo &patchInfo);
-
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
+
+    static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

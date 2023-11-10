@@ -400,7 +400,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
 
 #define DUMP_FOR_HANDLE(dumpHandle)                                                     \
     do {                                                                                \
-        JSTaggedValue dumpValue = dumpHandle.GetTaggedValue();                          \
+        JSTaggedValue dumpValue = (dumpHandle).GetTaggedValue();                         \
         dumpValue.Dump(os);                                                             \
         dumpValue.DumpForSnapshot(snapshotVector);                                      \
         /* Testing runtime stubs: */                                                    \
@@ -432,6 +432,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_ARGUMENTS:
             case JSType::JS_SYNTAX_ERROR:
             case JSType::JS_OOM_ERROR:
+            case JSType::JS_TERMINATION_ERROR:
             case JSType::JS_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);

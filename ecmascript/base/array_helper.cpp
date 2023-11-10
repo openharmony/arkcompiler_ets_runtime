@@ -205,6 +205,13 @@ double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> 
     // 9. If xString < yString, return -1.
     // 10. If xString > yString, return 1.
     // 11. Return +0.
+    if (valueX->IsInt() && valueY->IsInt()) {
+        return JSTaggedValue::IntLexicographicCompare(valueX.GetTaggedValue(), valueY.GetTaggedValue());
+    }
+    if (valueX->IsString() && valueY->IsString()) {
+        return EcmaStringAccessor::Compare(thread->GetEcmaVM(),
+            JSHandle<EcmaString>(valueX), JSHandle<EcmaString>(valueY));
+    }
     JSHandle<JSTaggedValue> xValueHandle(JSTaggedValue::ToString(thread, valueX));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
     JSHandle<JSTaggedValue> yValueHandle(JSTaggedValue::ToString(thread, valueY));

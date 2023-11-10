@@ -155,13 +155,15 @@ public:
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &patten,
                                    const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
                                    CacheType type, const JSHandle<JSTaggedValue> &regexp,
-                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined());
+                                   JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                   bool isIntermediateResult = false);
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                  const JSHandle<JSTaggedValue> &patten, const JSHandle<JSTaggedValue> &flags,
                                  const JSHandle<JSTaggedValue> &input, const JSHandle<JSTaggedValue> &resultArray,
                                  CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
-                                 JSTaggedValue extend = JSTaggedValue::Undefined());
+                                 JSTaggedValue extend = JSTaggedValue::Undefined(),
+                                 bool isIntermediateResult = false);
 
     static void GrowRegexpCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache);
 
@@ -293,8 +295,8 @@ public:
         JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
         int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
         if (res.IsHole() && (N < captureNum)) {
-            uint32_t startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
-            uint32_t endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
+            uint32_t startIndex = static_cast<uint32_t>(globalTable->GetStartOfCaptureIndex(N).GetInt());
+            uint32_t endIndex = static_cast<uint32_t>(globalTable->GetEndOfCaptureIndex(N).GetInt());
             uint32_t len = endIndex - startIndex;
             if (len < 0) {
                 res = JSTaggedValue::Undefined();
@@ -342,22 +344,22 @@ public:
 
     void SetStartOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
-        Set(thread, FIRST_CAPTURE_INDEX + index * 2, value);
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2, value); // 2 : double
     }
 
     void SetEndOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
-        Set(thread, FIRST_CAPTURE_INDEX + index * 2 + 1, value);
+        Set(thread, FIRST_CAPTURE_INDEX + index * 2 + 1, value); // 2 : double
     }
 
     JSTaggedValue GetStartOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2);
+        return Get(FIRST_CAPTURE_INDEX + index * 2); // 2 : double
     }
 
     JSTaggedValue GetEndOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1);
+        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1); // 2 : double
     }
 
     static JSHandle<RegExpGlobalResult> GrowCapturesCapacity(JSThread *thread,

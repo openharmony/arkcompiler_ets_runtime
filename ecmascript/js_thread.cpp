@@ -219,7 +219,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
 
-    EcmaContext *tempContext = currentContext_;
+    EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
         // visit stack roots
         SwitchCurrentContext(context, true);
@@ -232,12 +232,20 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
     } else {
-        globalStorage_->IterateUsageGlobal([visitor](Node *node) {
+        size_t globalCount = 0;
+        globalStorage_->IterateUsageGlobal([visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
                 visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
+            globalCount++;
         });
+        static bool hasCheckedGlobalCount = false;
+        static const size_t WARN_GLOBAL_COUNT = 100000;
+        if (!hasCheckedGlobalCount && globalCount >= WARN_GLOBAL_COUNT) {
+            LOG_ECMA(WARN) << "Global reference count is " << globalCount << ",It exceed the upper limit 100000!";
+            hasCheckedGlobalCount = true;
+        }
     }
 }
 
@@ -336,6 +344,17 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
         globalStorage_->IterateWeakUsageGlobal(callBack);
     } else {
         globalDebugStorage_->IterateWeakUsageGlobal(callBack);
+    }
+}
+
+void JSThread::ClearPropertiesCache()
+{
+    // Hidden class are stored in non movable space, and only full mark and full gc need to clear.
+    for (auto item : contexts_) {
+        PropertiesCache* cache = item->GetPropertiesCache();
+        if (cache != nullptr) {
+            cache->Clear();
+        }
     }
 }
 
@@ -469,9 +488,22 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
+void JSThread::TerminateExecution()
+{
+    // set the TERMINATE_ERROR to exception
+    ObjectFactory *factory = GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR, "Terminate execution!");
+    SetException(error.GetTaggedValue());
+}
+
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
+    if (HasTerminationRequest()) {
+        TerminateExecution();
+        SetVMTerminated(true);
+        SetTerminationRequest(false);
+    }
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
@@ -611,9 +643,9 @@ void JSThread::PushContext(EcmaContext *context)
     const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
     contexts_.emplace_back(context);
 
-    if (!currentContext_) {
+    if (!glueData_.currentContext_) {
         // The first context in ecma vm.
-        currentContext_ = context;
+        glueData_.currentContext_ = context;
         context->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
             const_cast<JSTaggedType *>(GetLastLeaveFrame()),
             const_cast<JSTaggedType *>(GetLastFp()));
@@ -637,21 +669,21 @@ void JSThread::PushContext(EcmaContext *context)
 void JSThread::PopContext()
 {
     contexts_.pop_back();
-    currentContext_ = contexts_.back();
+    glueData_.currentContext_ = contexts_.back();
 }
 
 void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
 
-    currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
+    glueData_.currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
         const_cast<JSTaggedType *>(GetLastLeaveFrame()),
         const_cast<JSTaggedType *>(GetLastFp()));
-    currentContext_->SetFrameBase(glueData_.frameBase_);
-    currentContext_->SetStackLimit(GetStackLimit());
-    currentContext_->SetStackStart(GetStackStart());
-    currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
-    currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    glueData_.currentContext_->SetFrameBase(glueData_.frameBase_);
+    glueData_.currentContext_->SetStackLimit(GetStackLimit());
+    glueData_.currentContext_->SetStackStart(GetStackStart());
+    glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
+    glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
 
     SetCurrentSPFrame(currentContext->GetCurrentFrame());
     SetLastLeaveFrame(currentContext->GetLeaveFrame());
@@ -668,7 +700,7 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
         glueData_.globalConst_ = const_cast<GlobalEnvConstants *>(currentContext->GlobalConstants());
     }
 
-    currentContext_ = currentContext;
+    glueData_.currentContext_ = currentContext;
 }
 
 bool JSThread::EraseContext(EcmaContext *context)
@@ -677,7 +709,7 @@ bool JSThread::EraseContext(EcmaContext *context)
     bool isCurrentContext = false;
     auto iter = std::find(contexts_.begin(), contexts_.end(), context);
     if (*iter == context) {
-        if (currentContext_ == context) {
+        if (glueData_.currentContext_ == context) {
             isCurrentContext = true;
         }
         contexts_.erase(iter);
@@ -691,7 +723,7 @@ bool JSThread::EraseContext(EcmaContext *context)
 
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
-    return currentContext_->GetPropertiesCache();
+    return glueData_.currentContext_->GetPropertiesCache();
 }
 
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
@@ -702,6 +734,11 @@ const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 bool JSThread::IsAllContextsInitialized() const
 {
     return contexts_.back()->IsInitialized();
+}
+
+bool JSThread::IsReadyToUpdateDetector() const
+{
+    return !GetEnableLazyBuiltins() && IsAllContextsInitialized();
 }
 
 Area *JSThread::GetOrCreateRegExpCache()

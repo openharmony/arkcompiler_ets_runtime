@@ -18,6 +18,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
 
@@ -29,8 +30,9 @@ EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
 {
     ASSERT(EcmaStringAccessor(firstString).NotTreeString());
     ASSERT(EcmaStringAccessor(secondString).NotTreeString());
-    uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
-    hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
+    auto [hashCode, isInteger] = EcmaStringAccessor(firstString).ComputeRawHashcode();
+    hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode, isInteger);
+
     auto range = table_.equal_range(hashCode);
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
@@ -233,6 +235,42 @@ void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
         } else {
             ++it;
         }
+    }
+}
+
+void EcmaStringTable::RelocateConstantData(const JSPandaFile *jsPandaFile)
+{
+    auto thread = vm_->GetJSThread();
+    for (auto it = table_.begin(); it != table_.end();) {
+        auto *object = it->second;
+        if (!EcmaStringAccessor(object).IsConstantString()) {
+            ++it;
+            continue;
+        }
+        auto constantStr = ConstantString::Cast(object);
+        if (constantStr->GetEntityId() < 0 || !jsPandaFile->Contain(constantStr->GetConstantData())) {
+            // EntityId is -1, which means this str has been relocated. Or the data is not in pandafile.
+            ++it;
+            continue;
+        }
+        uint32_t id = constantStr->GetEntityIdU32();
+        panda_file::File::StringData sd = jsPandaFile->GetStringData(EntityId(id));
+        if (constantStr->GetConstantData() == sd.data) {
+            uint32_t strLen = sd.utf16_length;
+            if (UNLIKELY(strLen == 0)) {
+                it->second = *(vm_->GetFactory()->GetEmptyString());
+            }
+            size_t byteLength = sd.is_ascii ? 1 : sizeof(uint16_t);
+            JSHandle<ByteArray> newData = vm_->GetFactory()->NewByteArray(
+                strLen, byteLength, reinterpret_cast<void *>(const_cast<uint8_t *>(sd.data)),
+                MemSpaceType::NON_MOVABLE);
+            constantStr->SetRelocatedData(thread, newData.GetTaggedValue());
+            constantStr->SetConstantData(static_cast<uint8_t *>(newData->GetData()));
+            constantStr->SetEntityId(-1);
+        } else {
+            LOG_ECMA(ERROR) << "ConstantString data pointer is inconsistent with sd.data";
+        }
+        ++it;
     }
 }
 

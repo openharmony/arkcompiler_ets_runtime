@@ -30,13 +30,12 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    JSTaggedValue root = tsManager->GetSnapshotData();
+    kungfu::AOTSnapshot &aotSnapshot = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager()->GetAOTSnapshot();
+    JSTaggedValue root = aotSnapshot.GetSnapshotData();
     if (root == JSTaggedValue::Hole()) {
         // root equals hole means no data stored.
         LOG_COMPILER(ERROR) << "error: no data for ai file generation!";
@@ -54,7 +53,8 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaF
     std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
 
     SnapshotProcessor processor(vm_);
@@ -82,7 +82,8 @@ void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileNa
     std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
 
     SnapshotProcessor processor(vm_);
@@ -109,7 +110,8 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
     std::fstream write(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::app);
     if (!write.good()) {
         write.close();
-        LOG_FULL(FATAL) << "snapshot open file failed";
+        LOG_FULL(ERROR) << "snapshot open file failed";
+        return;
     }
     // if builtins.snapshot file has exist, return directly
     if (write.tellg()) {

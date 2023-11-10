@@ -742,6 +742,22 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     return false;
 }
 
+bool Heap::CheckAndTriggerHintGC()
+{
+    if (IsInBackground()) {
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        return true;
+    }
+    if (InSensitiveStatus()) {
+        return false;
+    }
+    if (memController_->GetPredictedSurvivalRate() < SURVIVAL_RATE_THRESHOLD) {
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        return true;
+    }
+    return false;
+}
+
 bool Heap::CheckOngoingConcurrentMarking()
 {
     if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToMark() &&
@@ -870,6 +886,13 @@ void Heap::TryTriggerIncrementalMarking()
     }
 }
 
+bool Heap::CheckCanTriggerConcurrentMarking()
+{
+    return concurrentMarker_->IsEnabled() && thread_->IsReadyToMark() &&
+        !incrementalMarker_->IsTriggeredIncrementalMark() &&
+        (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
+}
+
 void Heap::TryTriggerConcurrentMarking()
 {
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
@@ -880,9 +903,7 @@ void Heap::TryTriggerConcurrentMarking()
     // young mark may not result in the new space reaching its limit, young mark can be triggered.
     // If it spends much time in full mark, the compress full GC will be requested when the spaces reach the limit.
     // If the global space is larger than half max heap size, we will turn to use full mark and trigger partial GC.
-    if (!concurrentMarker_->IsEnabled() || !thread_->IsReadyToMark() ||
-        incrementalMarker_->IsTriggeredIncrementalMark() ||
-        !(idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC)) {
+    if (!CheckCanTriggerConcurrentMarking()) {
         return;
     }
     if (fullMarkRequested_) {
@@ -1129,15 +1150,17 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         }
 
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
-        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        int64_t semiRemainSize =
+            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
+        int64_t overshootSize =
+            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
         onStartupEvent_ = false;
     }
 
-    if (isMainThread) {
+    if (isMainThread && CheckCanTriggerConcurrentMarking()) {
         markType_ = MarkType::MARK_FULL;
         TriggerConcurrentMarking();
     }
@@ -1159,8 +1182,10 @@ void Heap::NotifyHighSensitive(bool isStart)
     onHighSensitiveEvent_ = isStart;
     if (!onHighSensitiveEvent_ && !onStartupEvent_) {
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
-        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        int64_t semiRemainSize =
+            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
+        int64_t overshootSize =
+            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();

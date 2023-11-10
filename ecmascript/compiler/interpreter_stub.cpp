@@ -17,7 +17,6 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
@@ -33,7 +32,6 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -133,12 +131,20 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                    Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                      \
             &callRuntime, &initialized);                                                                       \
         Bind(&callRuntime);                                                                                    \
+        if (!(callback).IsEmpty()) {                                                                           \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });         \
+        } else {                                                                                               \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });                 \
+        }                                                                                                      \
+        Label handleException(env);                                                                            \
+        Label noException(env);                                                                                \
+        Branch(HasPendingException(glue), &handleException, &noException);                                     \
+        Bind(&handleException);                                                                                \
         {                                                                                                      \
-            if (!(callback).IsEmpty()) {                                                                       \
-                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
-            } else {                                                                                           \
-                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
-            }                                                                                                  \
+            DISPATCH_LAST();                                                                                   \
+        }                                                                                                      \
+        Bind(&noException);                                                                                    \
+        {                                                                                                      \
             Jump(&dispatch);                                                                                   \
         }                                                                                                      \
         Bind(&initialized);                                                                                    \
@@ -345,9 +351,56 @@ DECLARE_ASM_HANDLER(HandleGetunmappedargs)
 
 DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
 {
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    auto env = GetEnvironment();
     GateRef restIdx = ZExtInt8ToInt32(ReadInst8_0(pc));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(COPYRESTARGS_IMM8));
+    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, restIdx);
+    GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
+    GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
+    Label dispatch(env);
+    Label slowPath(env);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue, *res, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetExtensibleToBitfield(glue, *res, true);
+    Label setArgumentsBegin(env);
+    Label setArgumentsAgain(env);
+    Label setArgumentsEnd(env);
+    GateRef elements = GetElementsArray(*res);
+    Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
+    LoopBegin(&setArgumentsBegin);
+    {
+        GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
+        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
+        i = Int32Add(*i, Int32(1));
+        Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
+        Bind(&setArgumentsAgain);
+    }
+    LoopEnd(&setArgumentsBegin);
+    Bind(&setArgumentsEnd);
+    Branch(HasPendingException(glue), &slowPath, &dispatch);
+    Bind(&dispatch);
+    {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(COPYRESTARGS_IMM8);
+    }
+
+    Bind(&slowPath);
+    {
+        GateRef result2 = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
+        CHECK_EXCEPTION_WITH_ACC(result2, INT_PTR(COPYRESTARGS_IMM8));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleWideCopyrestargsPrefImm16)
@@ -435,8 +488,15 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef getter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef frame = GetFrame(sp);
+    GateRef func = GetFunctionFromFrame(frame);
+
+    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef firstPC =
+        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    GateRef offset = TaggedPtrToTaggedIntPtr(PtrSub(pc, firstPC));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
-                              { obj, prop, getter, setter, acc }); // acc is flag
+                              { obj, prop, getter, setter, acc, func, offset }); // acc is flag
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 
@@ -497,14 +557,14 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
 DECLARE_ASM_HANDLER(HandleGetiteratorImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
+    GateRef res = GetIterator(glue, *varAcc, callback);
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetiteratorImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
+    GateRef res = GetIterator(glue, *varAcc, callback);
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM16));
 }
 
@@ -3943,66 +4003,26 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
 {
-    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef fixedArray = GetObjectLiteralInfoFromConstPool(glue, constpool, imm, module);
-    GateRef result = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
-    GateRef hasMethod = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_HAS_METHOD_INDEX));
-    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    Label fastpath(env);
-    Label slowpath(env);
-    Label dispatch(env);
-    GateRef flag = BoolOr(IsDictionaryModeByHClass(LoadHClass(result)), TaggedIsTrue(hasMethod));
-    Branch(flag, &slowpath, &fastpath);
-    Bind(&slowpath);
-    {
-        GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-        res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-        Jump(&dispatch);
-    }
-    Bind(&fastpath);
-    {
-        BuiltinsObjectStubBuilder builder(this);
-        res = builder.CloneObjectLiteral(glue, result);
-        Jump(&dispatch);
-    }
-    Bind(&dispatch);
-    callback.ProfileCreateObject(*res);
-    CHECK_EXCEPTION_WITH_ACC(*res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
+    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    callback.ProfileCreateObject(res);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
 {
-    auto env = GetEnvironment();
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef fixedArray = GetObjectLiteralInfoFromConstPool(glue, constpool, imm, module);
-    GateRef result = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_OBJECT_INDEX));
-    GateRef hasMethod = GetValueFromTaggedArray(fixedArray, Int32(ConstantPool::OBJECT_LITERAL_INFO_HAS_METHOD_INDEX));
-    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    Label fastpath(env);
-    Label slowpath(env);
-    Label dispatch(env);
-    GateRef flag = BoolOr(IsDictionaryModeByHClass(LoadHClass(result)), TaggedIsTrue(hasMethod));
-    Branch(flag, &slowpath, &fastpath);
-    Bind(&slowpath);
-    {
-        GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-        res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-        Jump(&dispatch);
-    }
-    Bind(&fastpath);
-    {
-        BuiltinsObjectStubBuilder builder(this);
-        res = builder.CloneObjectLiteral(glue, result);
-        Jump(&dispatch);
-    }
-    Bind(&dispatch);
-    callback.ProfileCreateObject(*res);
-    CHECK_EXCEPTION_WITH_ACC(*res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
+    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    callback.ProfileCreateObject(res);
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)

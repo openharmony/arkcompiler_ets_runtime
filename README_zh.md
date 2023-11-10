@@ -69,7 +69,7 @@ NAPI接口说明参考[NAPI部件](https://gitee.com/openharmony/arkui_napi/blob
 
 ### 使用说明<a name="section129654513264"></a>
 
-ArkTS生成字节码参考[方舟eTS编译器](docs/using-the-toolchain-zh.md)
+ArkTS生成字节码参考[方舟eTS编译器]( https://gitee.com/openharmony/arkcompiler_ets_frontend/blob/master/README_zh.md#%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E)
 
 字节码执行：
 ```

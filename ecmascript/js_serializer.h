@@ -91,6 +91,7 @@ enum class SerializationUID : uint8_t {
     URI_ERROR,
     SYNTAX_ERROR,
     OOM_ERROR,
+    TERMINATION_ERROR,
     ERROR_MESSAGE_BEGIN,
     ERROR_MESSAGE_END,
     // Function begin

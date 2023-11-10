@@ -37,6 +37,8 @@ public:
 
     void ProfileCall(
         GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format);
+    void ProfileNativeCall(
+        GateRef glue, GateRef pc, GateRef func, GateRef target, GateRef profileTypeInfo, SlotIDFormat format);
     void ProfileOpType(
         GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type, SlotIDFormat format);
     void ProfileDefineClass(
@@ -44,6 +46,8 @@ public:
     void ProfileCreateObject(
         GateRef glue, GateRef pc, GateRef func, GateRef newObj, GateRef profileTypeInfo, SlotIDFormat format);
     void ProfileBranch(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, bool isTrue);
+    void ProfileGetIterator(
+        GateRef glue, GateRef pc, GateRef func, GateRef iterator, GateRef profileTypeInfo, SlotIDFormat format);
 
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
@@ -68,6 +72,8 @@ private:
     void SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     void SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
+    GateRef GetIterationFunctionId(GateRef glue, GateRef iterator);
+    GateRef TryGetBuiltinFunctionId(GateRef glue, GateRef target);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

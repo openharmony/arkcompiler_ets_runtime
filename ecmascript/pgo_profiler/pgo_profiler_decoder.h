@@ -41,21 +41,36 @@ public:
 
     bool PUBLIC_API Match(const JSPandaFile *jsPandaFile, const CString &recordName, PGOMethodId methodId);
 
-    bool PUBLIC_API LoadAndVerify(uint32_t checksum);
-    bool PUBLIC_API LoadFull();
+    bool PUBLIC_API LoadAndVerify(uint32_t checksum,
+                                  const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool = nullptr);
+    bool PUBLIC_API LoadFull(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool = nullptr);
     void PUBLIC_API Clear();
 
     bool PUBLIC_API SaveAPTextFile(const std::string &outPath);
 
     void Merge(const PGOProfilerDecoder &decoder);
 
-    void SwapAbcIdPool(PGOProfilerDecoder &decoder);
+    std::shared_ptr<PGOAbcFilePool> GetAbcFilePool() const
+    {
+        return abcFilePool_;
+    }
 
     bool InitMergeData();
+
+    void SetInPath(const std::string &inPath)
+    {
+        LOG_COMPILER(INFO) << "Set Profiler paths: " << inPath;
+        inPath_ = inPath;
+    }
 
     const std::string& GetInPath() const
     {
         return inPath_;
+    }
+
+    void SetHotnessThreshold(uint32_t hotnessThreshold)
+    {
+        hotnessThreshold_ = hotnessThreshold;
     }
 
     uint32_t GetHotnessThreshold() const
@@ -83,7 +98,7 @@ public:
 
     template <typename Callback>
     void GetTypeInfo(const JSPandaFile *jsPandaFile, const CString &recordName, const MethodLiteral *methodLiteral,
-                     Callback callback)
+                     Callback callback) const
     {
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
@@ -117,7 +132,7 @@ public:
         return header_->SupportMethodChecksum();
     }
 
-    bool GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const;
+    bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const;
 
     bool IsLoaded() const
     {
@@ -162,12 +177,14 @@ public:
     }
 
 private:
-    bool Load();
+    bool Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool);
     bool Verify(uint32_t checksum);
 
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
     CString GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
+    void LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool, const PGOContext &context,
+                       void *addr);
 
     bool isLoaded_ {false};
     bool isVerifySuccess_ {false};
@@ -176,6 +193,7 @@ private:
     PGOProfilerHeader *header_ {nullptr};
     PGOPandaFileInfos pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
+    bool externalAbcFilePool_ {false};
     std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;

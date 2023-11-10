@@ -105,6 +105,7 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_002)
     JSHandle<JSTaggedValue> syntaxErrorFunc = env->GetSyntaxErrorFunction();
     JSHandle<JSTaggedValue> referenceErrorFunc = env->GetReferenceErrorFunction();
     JSHandle<JSTaggedValue> aggregateErrorFunc = env->GetAggregateErrorFunction();
+    JSHandle<JSTaggedValue> terminationErrorFunc = env->GetTerminationErrorFunction();
     JSHandle<JSObject> uriErrorObj =
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(uriErrorFunc), uriErrorFunc);
     JSHandle<JSObject> oomErrorObj =
@@ -115,6 +116,8 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_002)
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(referenceErrorFunc), referenceErrorFunc);
     JSHandle<JSObject> aggregateErrorObj =
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(aggregateErrorFunc), aggregateErrorFunc);
+    JSHandle<JSObject> terminationErrorObj =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(terminationErrorFunc), terminationErrorFunc);
 
     EcmaRuntimeCallInfo* argv = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     argv->SetFunction(JSTaggedValue::Undefined());
@@ -126,6 +129,12 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_002)
     argv->SetThis(JSTaggedValue(*oomErrorObj));
     prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> oomError(thread, ErrorHelper::ErrorCommonToString(argv, ErrorType::OOM_ERROR));
+    TestHelper::TearDownFrame(thread, prev);
+
+    argv->SetThis(JSTaggedValue(*terminationErrorObj));
+    prev = TestHelper::SetupFrame(thread, argv);
+    JSHandle<JSTaggedValue> terminationError(thread,
+        ErrorHelper::ErrorCommonToString(argv, ErrorType::TERMINATION_ERROR));
     TestHelper::TearDownFrame(thread, prev);
 
     argv->SetThis(JSTaggedValue(*syntaxErrorObj));

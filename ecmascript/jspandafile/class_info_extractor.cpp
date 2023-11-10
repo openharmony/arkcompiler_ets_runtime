@@ -173,17 +173,13 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
     return withElementsFlag;
 }
 
-JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread,
                                                              JSHandle<TaggedArray> &keys,
                                                              JSHandle<TaggedArray> &properties)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t length = keys->GetLength();
-    if (length == ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH && base->IsHole()) {
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-        return JSHandle<JSHClass>(globalConst->GetHandledClassPrototypeClass());
-    }
     JSHandle<JSHClass> hclass;
     if (LIKELY(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -337,7 +333,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
 
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
-    JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreatePrototypeHClass(thread, base, nonStaticKeys,
+    JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreatePrototypeHClass(thread, nonStaticKeys,
                                                                                    nonStaticProperties);
 
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
@@ -419,7 +415,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
 JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv,
-                                                         const JSHandle<JSHClass> &ihclass,
+                                                         const JSHandle<JSTaggedValue> &prototypeOrHClass,
                                                          const JSHandle<JSHClass> &constructorHClass)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -429,7 +425,13 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
                                                  staticProperties, *constructorHClass);
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
-    JSHandle<JSObject> prototype(thread, ihclass->GetProto());
+    JSHandle<JSObject> prototype;
+    if (prototypeOrHClass->IsJSHClass()) {
+        JSHandle<JSHClass> ihclass(prototypeOrHClass);
+        prototype = JSHandle<JSObject>(thread, ihclass->GetProto());
+    } else {
+        prototype = JSHandle<JSObject>(prototypeOrHClass);
+    }
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
     constructorHClass->SetIsOptimized(method->IsAotWithCallField());
@@ -505,7 +507,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
                                          globalConst->GetHandledConstructorString(), ctorDesc);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSFunction, thread);
     constructor->SetHomeObject(thread, prototype);
-    constructor->SetProtoOrHClass(thread, ihclass);
+    constructor->SetProtoOrHClass(thread, prototypeOrHClass);
 
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
         thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(constructor.GetTaggedType());

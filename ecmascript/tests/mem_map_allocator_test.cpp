@@ -25,7 +25,7 @@ using namespace panda::ecmascript::base;
 
 namespace panda::test {
 
-constexpr size_t HUGE_OBJECT_CAPACITY = 512_KB;
+constexpr size_t HUGE_OBJECT_CAPACITY = 1024_MB;
 
 class MemMapAllocatorTest : public testing::Test {
 public:
@@ -59,20 +59,20 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemFromList)
     MemMap memMap = PageMap(HUGE_OBJECT_CAPACITY, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
     PageRelease(memMap.GetMem(), memMap.GetSize());
     MemMapFreeList memMapFreeList;
-    memMapFreeList.Initialize(memMap);
+    memMapFreeList.Initialize(memMap, memMap.GetSize() * 2);
 
     // From FreeList
-    size_t size1 = 256 * 1024;
+    size_t size1 = 256 * 1024 * 1024;
     auto mem1 = memMapFreeList.GetMemFromList(size1);
     EXPECT_EQ(mem1.GetSize(), size1);
 
     // From FreeList
-    size_t size2 = 128 * 1024;
+    size_t size2 = 512 * 1024 * 1024;
     auto mem2 = memMapFreeList.GetMemFromList(size2);
     EXPECT_EQ(mem2.GetSize(), size2);
 
     // From PageMap
-    size_t size3 = 128 * 1024;
+    size_t size3 = 512 * 1024 * 1024;
     auto mem3 = memMapFreeList.GetMemFromList(size3);
     EXPECT_EQ(mem3.GetSize(), size3);
 

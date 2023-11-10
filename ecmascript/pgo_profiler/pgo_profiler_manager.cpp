@@ -42,7 +42,7 @@ bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::str
             continue;
         }
         PGOProfilerDecoder decoder(fileName, hotnessThreshold);
-        if (!decoder.LoadFull()) {
+        if (!decoder.LoadFull(merger.GetAbcFilePool())) {
             LOG_ECMA(ERROR) << "Fail to load file path(" << fileName << "), skip it.";
             continue;
         }
@@ -78,13 +78,12 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
     std::string firstApFileName;
     for (const auto &fileName : pandaFileNames) {
         PGOProfilerDecoder decoder(fileName, hotnessThreshold);
-        if (!decoder.LoadAndVerify(checksum)) {
+        if (!decoder.LoadAndVerify(checksum, merger.GetAbcFilePool())) {
             LOG_ECMA(ERROR) << "Load and verify file(" << fileName << ") failed, skip it.";
             continue;
         }
         if (isFirstFile) {
             firstApFileName = fileName;
-            merger.SwapAbcIdPool(decoder);
         } else {
             if (!merger.GetPandaFileInfos().VerifyChecksum(decoder.GetPandaFileInfos(), firstApFileName, fileName)) {
                 continue;
@@ -120,6 +119,7 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
     if (signo != PGO_SAVING_SIGNAL) {
         return;
     }
-    PGOProfilerManager::GetInstance()->AsynSave();
+
+    PGOProfilerManager::GetInstance()->ForceSave();
 }
 } // namespace panda::ecmascript::pgo

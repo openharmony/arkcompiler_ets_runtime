@@ -50,6 +50,8 @@ class JSThread;
  */
 class AOTLiteralInfo : public TaggedArray {
 public:
+    static constexpr size_t NO_FUNC_ENTRY_VALUE = -1;
+
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsTaggedArray());

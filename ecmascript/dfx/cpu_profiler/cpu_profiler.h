@@ -22,7 +22,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
-#include "os/mutex.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 const int THRESHOLD_GROWTH_FACTORY = 2; // 2:TimeDelta Threshold Growth Factory
@@ -87,12 +87,14 @@ public:
 
     void StartCpuProfilerForInfo();
     std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
+    uint64_t GetProfileInfoBufferSize() const;
     void StartCpuProfilerForFile(const std::string &fileName);
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
     void RecordCallNapiInfo(const std::string &methodAddr);
     void SetBuildNapiStack(bool flag);
     bool GetBuildNapiStack();
+    bool GetOutToFile();
     explicit CpuProfiler(const EcmaVM *vm, const int interval = CPUPROFILER_DEFAULT_INTERVAL);
     virtual ~CpuProfiler();
 

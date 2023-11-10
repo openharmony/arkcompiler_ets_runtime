@@ -367,7 +367,6 @@ class JSObject : public ECMAObject {
 public:
     static constexpr int MIN_ELEMENTS_LENGTH = 3;
     static constexpr int MIN_PROPERTIES_LENGTH = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
-    static constexpr int PROPERTIES_GROW_SIZE = 4;
     static constexpr int FAST_ELEMENTS_FACTOR = 3;
     static constexpr int MIN_GAP = 256;
     static constexpr int MAX_GAP = 1_KB;
@@ -634,6 +633,8 @@ public:
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 
+    static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
+
     inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(uint32_t index, JSTaggedValue value);
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
@@ -694,7 +695,8 @@ private:
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
-    static uint32_t ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity, uint32_t maxNonInlinedFastPropsCapacity);
+    static uint32_t ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
+                                                       uint32_t maxNonInlinedFastPropsCapacity);
 
     static JSTaggedValue ShouldGetValueFromBox(ObjectOperator *op);
     static std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> GetOwnEnumerableNamesInFastMode(

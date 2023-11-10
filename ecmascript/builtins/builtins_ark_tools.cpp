@@ -189,6 +189,13 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::HintGC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    return JSTaggedValue(const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->
+        CheckAndTriggerHintGC());
+}
+
 JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -327,9 +334,127 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> kind = GetCallArg(info, 0);
+    if (!kind->IsString()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> mapString = factory->NewFromUtf8("Map");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
+        return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> setString = factory->NewFromUtf8("Set");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
+        return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> stringString = factory->NewFromUtf8("String");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
+        return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> arrayString = factory->NewFromUtf8("Array");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
+        return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
+    }
+    JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8("TypedArray");
+    if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
+        return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
+}
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter PrepareFunctionForOptimization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeFunctionOnNextCall()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeMaglevOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeMaglevOnNextCall()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DeoptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DeoptimizeFunction()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeOsr([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter OptimizeOsr()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::NeverOptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter NeverOptimizeFunction()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::HeapObjectVerify([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HeapObjectVerify()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DisableOptimizationFinalization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DisableOptimizationFinalization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DeoptimizeNow([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter DeoptimizeNow()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::WaitForBackgroundOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter WaitForBackgroundOptimization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter Gc()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for pgoAssertType
+JSTaggedValue BuiltinsArkTools::PGOAssertType([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter PGOAssertType";
+    return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript::builtins

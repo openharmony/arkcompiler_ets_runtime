@@ -80,4 +80,11 @@ let v39:any = 129 || C3;
 Math.sign("12");
 v39++;
 
+// case9: this branch is unreachable
+let v:number = [];
+print(Math.abs(--v));
+print(v);
+let u:number[] = [];
+print(--u);
+
 print("compiler success");

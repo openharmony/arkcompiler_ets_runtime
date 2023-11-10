@@ -65,7 +65,7 @@ private:
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
                                      kungfu::BuiltinsStubCSigns::INVALID) const;
 
-    void InitializePropertyDetector(const JSHandle<GlobalEnv> &env) const;
+    void InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const;
 
     void SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
         const JSHandle<AccessorData> &accessor) const;
@@ -282,12 +282,21 @@ private:
                                               kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
-                               const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length);
+                               const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length,
+                               kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID);
 
     template<int type = JSSymbol::SYMBOL_DEFAULT_TYPE>
     void SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                              const JSHandle<JSTaggedValue> &symbol, std::string_view name, EcmaEntrypoint func,
                              int length) const;
+
+    template<int type = JSSymbol::SYMBOL_DEFAULT_TYPE>
+    JSHandle<JSTaggedValue> SetAndReturnFunctionAtSymbol(const JSHandle<GlobalEnv> &env,
+                                                         const JSHandle<JSObject> &obj,
+                                                         const JSHandle<JSTaggedValue> &symbol,
+                                                         std::string_view name,
+                                                         EcmaEntrypoint func,
+                                                         int length) const;
 
     void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                             std::string_view key) const;

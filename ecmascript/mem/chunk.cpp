@@ -27,6 +27,7 @@ Area *Chunk::NewArea(size_t size)
         LOG_ECMA_MEM(FATAL) << "OOM Chunk : NewArea area is nullptr";
         UNREACHABLE();
     }
+    allocator_->IncreaseNativeSizeStats(size, NativeFlag::CHUNK_MEM);
     areaList_.AddNode(area);
     currentArea_ = area;
     return area;

@@ -44,21 +44,26 @@ JSTaggedValue BuiltinsNumber::NumberConstructor(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+
     // 1. If value is present, then a , b , c.
     // 2. Else Let n be +0𝔽.
     JSTaggedNumber numberValue(0);
     if (argv->GetArgsNumber() > 0) {
         JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
         // a. Let prim be ? ToNumeric(value).
-        JSHandle<JSTaggedValue> numericVal = JSTaggedValue::ToNumeric(thread, value);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // b. If Type(prim) is BigInt, let n be 𝔽(ℝ(prim)).
-        if (numericVal->IsBigInt()) {
-            JSHandle<BigInt> bigNumericVal(numericVal);
-            numberValue = BigInt::BigIntToNumber(bigNumericVal);
+        if (!value->IsNumber()) {
+            JSHandle<JSTaggedValue> numericVal = JSTaggedValue::ToNumeric(thread, value);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            // b. If Type(prim) is BigInt, let n be 𝔽(ℝ(prim)).
+            if (numericVal->IsBigInt()) {
+                JSHandle<BigInt> bigNumericVal(numericVal);
+                numberValue = BigInt::BigIntToNumber(bigNumericVal);
+            } else {
+                // c. Otherwise, let n be prim.
+                numberValue = JSTaggedNumber(numericVal.GetTaggedValue());
+            }
         } else {
-            // c. Otherwise, let n be prim.
-            numberValue = JSTaggedNumber(numericVal.GetTaggedValue());
+            numberValue = JSTaggedNumber(value.GetTaggedValue());
         }
     }
     // 3. If NewTarget is undefined, return n.
@@ -309,7 +314,7 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // 1. Let x be ? thisNumberValue(this value).
     [[maybe_unused]] JSHandle<JSTaggedValue> x(thread, ThisNumberValue(thread, argv));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    
+
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     [[maybe_unused]] bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
@@ -437,7 +442,14 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     }
     // 8. If radixNumber = 10, return ToString(x).
     if (radix == base::DECIMAL) {
-        return value.ToString(thread).GetTaggedValue();
+        JSHandle<NumberToStringResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(value);
+        if (cacheResult != JSTaggedValue::Undefined()) {
+            return cacheResult;
+        }
+        JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
+        cacheTable->SetCachedResult(thread, value, resultJSHandle);
+        return resultJSHandle.GetTaggedValue();
     }
 
     double valueNumber = value.GetNumber();
@@ -484,5 +496,33 @@ JSTaggedNumber BuiltinsNumber::ThisNumberValue(JSThread *thread, EcmaRuntimeCall
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "not number type", JSTaggedNumber::Exception());
+}
+
+JSTaggedValue NumberToStringResultCache::CreateCacheTable(const JSThread *thread)
+{
+    int length = INITIAL_CACHE_NUMBER * ENTRY_SIZE;
+    auto table = static_cast<NumberToStringResultCache*>(
+        *thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined()));
+    return JSTaggedValue(table);
+}
+
+JSTaggedValue NumberToStringResultCache::FindCachedResult(JSTaggedValue &number)
+{
+    int entry = NumberToStringResultCache::GetNumberHash(number);
+    uint32_t index = entry * ENTRY_SIZE;
+    JSTaggedValue entryNumber = Get(index + NUMBER_INDEX);
+    if (entryNumber == number) {
+        return Get(index + RESULT_INDEX);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+void NumberToStringResultCache::SetCachedResult(const JSThread *thread, JSTaggedValue &number,
+    JSHandle<EcmaString> &result)
+{
+    int entry = NumberToStringResultCache::GetNumberHash(number);
+    uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
+    Set(thread, index + NUMBER_INDEX, number);
+    Set(thread, index + RESULT_INDEX, result.GetTaggedValue());
 }
 }  // namespace panda::ecmascript::builtins

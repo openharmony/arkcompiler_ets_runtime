@@ -32,6 +32,8 @@ public:
 
     void SetVMNeedSuspension(bool flag);
 
+    void SetTerminationRequest(bool flag);
+
     bool VMNeedSuspension() const;
 
     void SuspendVM();
@@ -39,6 +41,8 @@ public:
     void ResumeVM();
 
     bool NotifyVMThreadSuspension();
+
+    void RequestTerminateExecution();
 
     void SetVMSuspended(bool flag);
 

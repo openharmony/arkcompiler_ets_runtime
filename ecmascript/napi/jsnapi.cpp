@@ -443,6 +443,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     }
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
+        LOG_ECMA(ERROR) << "[StartDebugger] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
 
@@ -451,15 +452,19 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle.Value(), "StartDebug");
     if (!sym) {
-        LOG_ECMA(ERROR) << sym.Error().ToString();
+        LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
         "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
-        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        panda::os::library_loader::LibraryHandle libraryHandle(nullptr);
+        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
     }
     return ret;
 #else
@@ -467,10 +472,12 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
         return false;
     }
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
         DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
     }
     return ret;
 #endif // PANDA_TARGET_IOS
@@ -534,6 +541,16 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
     vm->GetJsDebuggerManager()->GetNotificationManager()->NativeCallingEvent(nativeAddress);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
+void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
 #endif
@@ -655,7 +672,6 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
-    vm->ResetPGOProfiler();
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
@@ -699,9 +715,14 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
     return vm->GetJSThread()->HasPendingException();
 }
 
+bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
+{
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+}
+
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->HasPendingJob();
 }
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
@@ -1311,8 +1332,10 @@ Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-    JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
-    symbol->SetDescription(vm->GetJSThread(), desc);
+    if (!description.IsEmpty()) {
+        JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
+        symbol->SetDescription(vm->GetJSThread(), desc);
+    }
     return JSNApiHelper::ToLocal<SymbolRef>(JSHandle<JSTaggedValue>(symbol));
 }
 
@@ -1769,7 +1792,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     vm->GetHeap()->ClearKeptObjects();
-
+    vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
@@ -3665,10 +3688,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
-    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
     method->SetModule(thread, module);
     return true;
 }

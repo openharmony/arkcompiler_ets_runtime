@@ -544,6 +544,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define UPDATE_HOTNESS_COUNTER(offset)                       \
     do {                                                     \
         if (UpdateHotnessCounter(thread, sp, acc, offset)) { \
+            HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);   \
             RESTORE_ACC();                                   \
         }                                                    \
     } while (false)
@@ -650,6 +651,17 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, Execute);
     if (thread->IsAsmInterpreter()) {
+        // check stack overflow before re-enter asm interpreter
+        if (UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
+            LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
+                            << " limit:" << thread->GetStackLimit();
+            if (LIKELY(!thread->HasPendingException())) {
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
+                thread->SetException(error.GetTaggedValue());
+            }
+            return thread->GetException();
+        }
         return InterpreterAssembly::Execute(info);
     }
 #ifndef EXCLUDE_C_INTERPRETER
@@ -4843,7 +4855,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t length = READ_INST_8_3();
         LOG_INST() << "intrinsics::definefunc length: " << length;
         auto constpool = GetConstantPool(sp);
-        
+
         auto module = GetEcmaModule(sp);
         Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(method != nullptr);

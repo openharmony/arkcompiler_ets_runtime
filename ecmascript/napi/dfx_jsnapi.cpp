@@ -470,6 +470,23 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
 #endif
 }
 
+uint64_t DFXJSNApi::GetProfileInfoBufferSize([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (vm == nullptr) {
+        return 0;
+    }
+    CpuProfiler *profiler = vm->GetProfiler();
+    if (profiler == nullptr) {
+        return 0;
+    }
+    return profiler->GetProfileInfoBufferSize();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    return 0;
+#endif
+}
+
 void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -523,6 +540,12 @@ bool DFXJSNApi::IsSuspended([[maybe_unused]] const EcmaVM *vm)
     LOG_ECMA(ERROR) << "Not support arkcompiler snapshot";
     return false;
 #endif
+}
+
+void DFXJSNApi::TerminateExecution(const EcmaVM *vm)
+{
+    ecmascript::VmThreadControl* vmThreadControl = vm->GetAssociatedJSThread()->GetVmThreadControl();
+    vmThreadControl->RequestTerminateExecution();
 }
 
 bool DFXJSNApi::CheckSafepoint([[maybe_unused]] const EcmaVM *vm)

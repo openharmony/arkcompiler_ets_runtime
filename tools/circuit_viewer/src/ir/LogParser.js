@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-const { XTools } = require("../engine/XTools");
-const { X2DFast } = require("../engine/graphics/X2DFast");
-const { NapiLog } = require("./NapiLog");
+const { XTools } = require('../engine/XTools');
+const { X2DFast } = require('../engine/graphics/X2DFast');
+const { NapiLog } = require('./NapiLog');
 
 class LogParser {
   constructor(result) {
@@ -23,7 +23,7 @@ class LogParser {
     result = result.replace(regexVT100, '');
     result = result.replace(/\t/g, '    ');
     result = result.replace(/\r/g, '');
-    this.logLines_ = result.split("\n");
+    this.logLines_ = result.split('\n');
     this.stat_ = 0;
     this.lineNum_ = 0;
     this.initBlock_ = {
@@ -59,7 +59,7 @@ class LogParser {
         this.stat_ = this.initBlock_.blockType;
         this.procBlock_.blockStat = 0;
         this.procBlock_.blockCollect = {
-          type: "block:" + bt,
+          type: 'block:' + bt,
           func: this.initBlock_.funcPoint,
           file: this.initBlock_.filePoint,
           irList: [],
@@ -72,26 +72,27 @@ class LogParser {
     return false;
   }
   splitLast(s) {
-    let i = s.lastIndexOf("@");
+    let i = s.lastIndexOf('@');
 
     return [s.substring(0, i), s.substring(i + 1)];
   }
   isStart(l) {
     //========= After bytecode2circuit lowering [func_main_0@484@arkcompiler/ets_runtime/sd_test/ttabs.abc] ========
-    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.]+)\] *=+/g
-    //========= After inlining [OthreMath@test@arkcompiler/ets_runtime/sd_test/test.abc] Caller method [func_main_0@641@arkcompiler/ets_runtime/sd_test/test.abc]====================[0m
-    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
+    const regexStart = /=+ *After ([a-zA-Z0-9_ ]+) \[([#a-zA-Z0-9_@/.-]+)\] *=+/g
+    //========= After inlining [OthreMath@test@arkcompiler/ets_runtime/sd_test/test.abc] Caller
+    //method [func_main_0@641@arkcompiler/ets_runtime/sd_test/test.abc]====================[0m
+    const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.-]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
 
-    if (l[11] != '=') {
+    if (l[11] !== '=') {
       return;
     }
     let ret = regexStart.exec(l);
     if (ret) {
       let tt = this.splitLast(ret[2]);
       this.procNormal_ = {
-        type: ret[1],//优化类型
-        func: tt[0],//函数名
-        file: tt[1],//文件名
+        type: ret[1], //优化类型
+        func: tt[0], //函数名
+        file: tt[1], //文件名
         irList: [],
         startLine: l,
       };
@@ -104,11 +105,11 @@ class LogParser {
       if (ret) {
         let tt = this.splitLast(ret[2]);
         let tt2 = this.splitLast(ret[3]);
-        NapiLog.logInfo(tt[0], "Caller method(" + this.lineNum_ + "行)", ret[3]);
+        NapiLog.logInfo(tt[0], 'Caller method(' + this.lineNum_ + '行)', ret[3]);
         this.procNormal_ = {
-          type: ret[1] + " " + tt[0],//优化类型
-          func: tt2[0],//函数名
-          file: tt2[1],//文件名
+          type: ret[1] + ' ' + tt[0], //优化类型
+          func: tt2[0], //函数名
+          file: tt2[1], //文件名
           irList: [],
           startLine: l,
         };
@@ -117,7 +118,7 @@ class LogParser {
         this.initBlock_.blockType = 10;
       }
       else {
-        if (l.search("After") > 0) {
+        if (l.search('After') > 0) {
           alert(l);
         }
       }
@@ -130,34 +131,34 @@ class LogParser {
       let str = l.substring(idx, idx2 + 1);
 
       let ir = JSON.parse(str);
-      {//根据XTools.CONFIG.MTypeField切割MType
+      { //根据XTools.CONFIG.MTypeField切割MType
         let cutPos = [];
         for (let field of XTools.CONFIG.MTypeField) {
-          let idx = ir.MType.indexOf(", " + field);
+          let idx = ir.MType.indexOf(', ' + field);
           if (idx >= 0) {
             cutPos.push(idx);
           }
         }
         cutPos.push(ir.MType.length);
         cutPos.sort((a, b) => { return parseInt(a) - parseInt(b) });
-        if (cutPos[0] == 0) {
+        if (cutPos[0] === 0) {
           cutPos.shift();
         }
         let p = 0;
         let cutResult = [];
         for (let i of cutPos) {
           let tmp = ir.MType.substring(p, i);
-          if (tmp.startsWith(", ")) {
+          if (tmp.startsWith(', ')) {
             tmp = tmp.substring(2);
           }
-          if (tmp.endsWith(", ")) {
+          if (tmp.endsWith(', ')) {
             tmp = tmp.substring(0, tmp.length - 2);
           }
           cutResult.push(tmp);
           p = i;
         }
-        cutResult.push("inNum=[" + ir.in[0].length + "," + ir.in[1].length + "," + ir.in[2].length + "," + ir.in[3].length + "," + ir.in[4].length + "]")
-        cutResult.push("outNum=" + ir.out.length);
+        cutResult.push('inNum=[' + ir.in[0].length + ',' + ir.in[1].length + ',' + ir.in[2].length + ',' + ir.in[3].length + ',' + ir.in[4].length + ']')
+        cutResult.push('outNum=' + ir.out.length);
         ir.maxDetailWidth = 0;
         for (let detail of cutResult) {
           let w = X2DFast.gi().getTextWidth(detail, 14);
@@ -173,7 +174,7 @@ class LogParser {
       //= End typeHitRate: 0.500000 =
       let regexEnd = /=+ End[a-zA-Z:.0-9 ]* =+/g
       let tt = regexEnd.exec(l);
-      if (tt) {//收集结束，入大表l.search('== End ==') > 0
+      if (tt) { //收集结束，入大表l.search('== End ==') > 0
         if (this.procNormal_.irList.length > 0) {
           if (!(this.procNormal_.file in this.output_)) {
             this.output_[this.procNormal_.file] = {};
@@ -184,34 +185,34 @@ class LogParser {
           this.output_[this.procNormal_.file][this.procNormal_.func].push(this.procNormal_);
         }
         else {
-          NapiLog.logError("After和End之间没有指令(" + this.lineNum_ + "行)");
+          NapiLog.logError('After和End之间没有指令(' + this.lineNum_ + '行)');
         }
         this.stat_ = 0;
       }
       else {
-        NapiLog.logError("After和End之间解析失败(" + (this.lineNum_ + 1) + ")行");
+        NapiLog.logError('After和End之间解析失败(' + (this.lineNum_ + 1) + ')行');
         this.stat_ = 0;
       }
     }
   }
   parseLine(l) {
     switch (this.stat_) {
-      case 0://搜索起始
+      case 0: //搜索起始
         if (this.SearchBegin(l) || this.isBlock(l)) {
           return;
         }
         this.isStart(l);
         break;
-      case 1://收集ir表
+      case 1: //收集ir表
         this.collectNormal(l);
         break;
-      case 10://收集block一
+      case 10: //收集block一
         if (this.CollectBlock(l)) {
           this.stat_ = 0;
           this.lineNum_ -= 1;
         }
         break;
-      case 20://收集block二
+      case 20: //收集block二
         if (this.CollectBlock2(l)) {
           this.stat_ = 0;
           this.lineNum_ -= 1;
@@ -234,7 +235,7 @@ class LogParser {
     xhr.send();
   }
   NumberStringToArray(ss) {
-    let outs = ss.split(",");
+    let outs = ss.split(',');
     let ret = []
     for (let s of outs) {
       let ttt = parseInt(s);
@@ -248,8 +249,8 @@ class LogParser {
     let ret;
     let ib = this.initBlock_;
 
-    if (l.startsWith("[compiler] aot method")) {
-      ////[compiler] aot method [func_main_0@b.abc] log:
+    if (l.startsWith('[compiler] aot method')) {
+      //[compiler] aot method [func_main_0@b.abc] log:
       const regexFuncName = /^\[compiler\] aot method \[([#a-zA-Z0-9_@/.]+)\] (recordName \[[a-zA-Z0-9_]*\] )*log:/g
       ret = regexFuncName.exec(l);
       if (ret) {
@@ -258,7 +259,7 @@ class LogParser {
         return true;
       }
     }
-    if (l.startsWith("[compiler] ==================== Before state split")) {
+    if (l.startsWith('[compiler] ==================== Before state split')) {
       const regexFuncName2 = /^\[compiler\] =+ Before state split linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g
       ret = regexFuncName2.exec(l);
       if (ret) {
@@ -267,7 +268,7 @@ class LogParser {
         return true;
       }
     }
-    if (l.startsWith("[compiler] ==================== After graph lineari")) {
+    if (l.startsWith('[compiler] ==================== After graph lineari')) {
       const regexFuncName3 = /^\[compiler\] =+ After graph linearizer \[([#a-zA-Z0-9_@/.]+)\] *=*/g
       ret = regexFuncName3.exec(l);
       if (ret) {
@@ -280,26 +281,26 @@ class LogParser {
   }
   CollectBlock(l) {
     const regexBlock = [
-      /^\[compiler\] B([0-9]+):                               ;preds=([0-9, ]*)$/g,//[compiler] B0:                               ;preds= 
-      /^\[compiler\]  *Succes:([0-9, ]*)$/g,//[compiler] 	Succes: 
-      /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g,//[compiler] 	Bytecode[] = Empty
-      /^\[compiler\]  *Trys:([0-9, ]*)$/g,//[compiler] 	Trys: 
+      /^\[compiler\] B([0-9]+):                               ;preds=([0-9, ]*)$/g, //[compiler] B0:                               ;preds=
+      /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
+      /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
+      /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
     ]
     let ret;
     let pb = this.procBlock_;
-    if (pb.blockStat == 0) {
+    if (pb.blockStat === 0) {
       ret = regexBlock[0].exec(l);
       if (ret) {
         pb.oneBlock = {
           id: ret[1],
-          op: "B" + ret[1],
+          op: 'B' + ret[1],
           detailList: [],
           maxDetailWidth: 0,
         }
         pb.oneBlock.in = [[], [], [], [], this.NumberStringToArray(ret[2])];
         return false;
       }
-      if (!pb.oneBlock) {//完成了一个block的解析
+      if (!pb.oneBlock) { //完成了一个block的解析
         if (!(pb.blockCollect.file in this.output_)) {
           this.output_[pb.blockCollect.file] = {};
         }
@@ -320,11 +321,11 @@ class LogParser {
         return false;
       }
     }
-    else if (pb.blockStat == 1) {//开始记录bytecode，直到空行，结束这个block
-      if (/^\[compiler\] *$/g.test(l)) {//遇到空行，完成block
-        if (pb.oneBlock.maxDetailWidth == 0) {
-          pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth("Empty", 14);
-          pb.oneBlock.detailList.push("Empty");
+    else if (pb.blockStat === 1) { //开始记录bytecode，直到空行，结束这个block
+      if (/^\[compiler\] *$/g.test(l)) { //遇到空行，完成block
+        if (pb.oneBlock.maxDetailWidth === 0) {
+          pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth('Empty', 14);
+          pb.oneBlock.detailList.push('Empty');
         }
         pb.blockCollect.irList.push(pb.oneBlock);
         pb.oneBlock = null;
@@ -332,7 +333,7 @@ class LogParser {
       }
       else {
         let s = l.substring(11);
-        while (s.startsWith(" ")) {
+        while (s.startsWith(' ')) {
           s = s.substring(1);
         }
         let w = X2DFast.gi().getTextWidth(s, 14);
@@ -346,11 +347,11 @@ class LogParser {
   }
   CollectBlock2(l) {
     const regexBlock = [
-      /^\[compiler\] B([0-9]+):/g,//[compiler] B0:                               ;preds= 
+      /^\[compiler\] B([0-9]+):/g, //[compiler] B0:                               ;preds=
       /^\[compiler\]  *Preds:([0-9, ]*)$/g,
-      /^\[compiler\]  *Succes:([0-9, ]*)$/g,//[compiler] 	Succes: 
-      /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g,//[compiler] 	Bytecode[] = Empty
-      /^\[compiler\]  *Trys:([0-9, ]*)$/g,//[compiler] 	Trys: 
+      /^\[compiler\]  *Succes:([0-9, ]*)$/g, //[compiler] 	Succes:
+      /^\[compiler\]  *Bytecode\[\] = *(Empty)*$/g, //[compiler] 	Bytecode[] = Empty
+      /^\[compiler\]  *Trys:([0-9, ]*)$/g, //[compiler] 	Trys:
     ]
     let pb = this.procBlock_;
     let ret;
@@ -360,14 +361,14 @@ class LogParser {
         if (ret) {
           pb.oneBlock = {
             id: ret[1],
-            op: "B" + ret[1],
+            op: 'B' + ret[1],
             detailList: [],
             maxDetailWidth: 0,
           }
           pb.blockStat = 1;
           return false;
         }
-        if (!pb.oneBlock) {//完成了一个block的解析
+        if (!pb.oneBlock) { //完成了一个block的解析
           if (!(pb.blockCollect.file in this.output_)) {
             this.output_[pb.blockCollect.file] = {};
           }
@@ -394,11 +395,11 @@ class LogParser {
           return false;
         }
         break;
-      case 3://开始记录bytecode，直到空行，结束这个block
-        if (/^\[compiler\] *$/g.test(l)) {//遇到空行，完成block
-          if (pb.oneBlock.maxDetailWidth == 0) {
-            pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth("Empty", 14);
-            pb.oneBlock.detailList.push("Empty");
+      case 3: //开始记录bytecode，直到空行，结束这个block
+        if (/^\[compiler\] *$/g.test(l)) { //遇到空行，完成block
+          if (pb.oneBlock.maxDetailWidth === 0) {
+            pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth('Empty', 14);
+            pb.oneBlock.detailList.push('Empty');
           }
           pb.blockCollect.irList.push(pb.oneBlock);
           pb.oneBlock = null;
@@ -406,7 +407,7 @@ class LogParser {
         }
         else {
           let s = l.substring(11);
-          while (s.startsWith(" ")) {
+          while (s.startsWith(' ')) {
             s = s.substring(1);
           }
           let w = X2DFast.gi().getTextWidth(s, 14);

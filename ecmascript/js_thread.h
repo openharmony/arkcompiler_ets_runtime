@@ -25,6 +25,7 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -69,6 +70,8 @@ public:
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
+    using VMNeedTerminationBit = VMHasSuspendedBit::NextFlag;
+    using VMHasTerminatedBit = VMNeedTerminationBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BOOL_BITFIELD_NUM>;
     using ThreadId = uint32_t;
@@ -426,6 +429,16 @@ public:
         return enableStackSourceFile_;
     }
 
+    void SetEnableLazyBuiltins(bool value)
+    {
+        enableLazyBuiltins_ = value;
+    }
+
+    bool GetEnableLazyBuiltins() const
+    {
+        return enableLazyBuiltins_;
+    }
+
     static constexpr size_t GetGlueDataOffset()
     {
         return MEMBER_OFFSET(JSThread, glueData_);
@@ -444,35 +457,67 @@ public:
 
     void SetCheckSafePointStatus()
     {
+        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
         CheckSafePointBit::Set(true, &glueData_.interruptVector_);
     }
 
     void ResetCheckSafePointStatus()
     {
+        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
         CheckSafePointBit::Set(false, &glueData_.interruptVector_);
     }
 
     void SetVMNeedSuspension(bool flag)
     {
+        LockHolder lock(interruptMutex_);
         VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
     }
 
     bool VMNeedSuspension()
     {
+        LockHolder lock(interruptMutex_);
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 
     void SetVMSuspended(bool flag)
     {
+        LockHolder lock(interruptMutex_);
         VMHasSuspendedBit::Set(flag, &glueData_.interruptVector_);
     }
 
     bool IsVMSuspended()
     {
+        LockHolder lock(interruptMutex_);
         return VMHasSuspendedBit::Decode(glueData_.interruptVector_);
     }
+
+    bool HasTerminationRequest() const
+    {
+        LockHolder lock(interruptMutex_);
+        return VMNeedTerminationBit::Decode(glueData_.interruptVector_);
+    }
+
+    void SetTerminationRequest(bool flag)
+    {
+        LockHolder lock(interruptMutex_);
+        VMNeedTerminationBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    void SetVMTerminated(bool flag)
+    {
+        LockHolder lock(interruptMutex_);
+        VMHasTerminatedBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    bool HasTerminated() const
+    {
+        LockHolder lock(interruptMutex_);
+        return VMHasTerminatedBit::Decode(glueData_.interruptVector_);
+    }
+
+    void TerminateExecution();
 
     static uintptr_t GetCurrentStackPosition()
     {
@@ -618,6 +663,16 @@ public:
         return ++globalNumberCount_;
     }
 
+    void SetPropertiesGrowStep(uint32_t step)
+    {
+        glueData_.propertiesGrowStep_ = step;
+    }
+
+    uint32_t GetPropertiesGrowStep() const
+    {
+        return glueData_.propertiesGrowStep_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -644,7 +699,9 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
-                                                 JSTaggedValue> {
+                                                 base::AlignedUint32,
+                                                 JSTaggedValue,
+                                                 base::AlignedPointer> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -671,7 +728,9 @@ public:
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
             IsFrameDroppedIndex,
+            PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
+            CurrentContextIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -806,9 +865,19 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
         }
 
+        static size_t GetPropertiesGrowStepOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::PropertiesGrowStepIndex)>(isArch32);
+        }
+
         static size_t GetEntryFrameDroppedStateOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
+        }
+
+        static size_t GetCurrentContextOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
         }
 
         alignas(EAS) BCStubEntries bcStubEntries_;
@@ -836,7 +905,9 @@ public:
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
+        alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
+        alignas(EAS) EcmaContext *currentContext_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -845,7 +916,7 @@ public:
 
     EcmaContext *GetCurrentEcmaContext() const
     {
-        return currentContext_;
+        return glueData_.currentContext_;
     }
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
 
@@ -855,9 +926,11 @@ public:
     }
 
     bool EraseContext(EcmaContext *context);
+    void ClearPropertiesCache();
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
+    bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCache();
 
 private:
@@ -869,7 +942,7 @@ private:
     }
     void SetCurrentEcmaContext(EcmaContext *context)
     {
-        currentContext_ = context;
+        glueData_.currentContext_ = context;
     }
 
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
@@ -914,6 +987,7 @@ private:
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
+    bool enableLazyBuiltins_ {false};
 
     // CpuProfiler
     bool isProfiling_ {false};
@@ -927,6 +1001,7 @@ private:
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
+    mutable Mutex interruptMutex_;
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;

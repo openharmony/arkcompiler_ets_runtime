@@ -19,8 +19,12 @@
 #include <cstdint>
 #include <string>
 
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
@@ -29,19 +33,23 @@
 namespace panda::ecmascript::pgo {
 class PGOHandler {
 public:
-    using TrackTypeField = BitField<TrackType, 0, PropertyAttributes::TRACK_TYPE_NUM>; // 3 : three binary bits
-    using IsAccessorField = TrackTypeField::NextFlag;
+    using PropertyMetaDataField = BitField<int, 0, 4>;  // 4: property metaData field occupies 4 bits
+    using WritableField = BitField<bool, 0, 1>;
+    using EnumerableField = WritableField::NextFlag;
+    using ConfigurableField = EnumerableField::NextFlag;
+    using IsAccessorField = ConfigurableField::NextFlag;
+    using TrackTypeField = IsAccessorField::NextField<TrackType, PropertyAttributes::TRACK_TYPE_NUM>;
 
     PGOHandler()
     {
         SetTrackType(TrackType::NONE);
-        SetIsAccessor(false);
+        SetPropertyMeta(false);
     }
 
-    PGOHandler(TrackType type, bool isAccessor)
+    PGOHandler(TrackType type, int meta)
     {
         SetTrackType(type);
-        SetIsAccessor(isAccessor);
+        SetPropertyMeta(meta);
     }
 
     uint32_t GetValue() const
@@ -49,25 +57,32 @@ public:
         return value_;
     }
 
-    bool SetAttribute(PropertyAttributes &attr) const
+    bool SetAttribute(const JSThread *thread, PropertyAttributes &attr) const
     {
         bool ret = false;
-        switch (GetTrackType()) {
-            case TrackType::DOUBLE:
-            case TrackType::NUMBER:
-                attr.SetRepresentation(Representation::DOUBLE);
-                ret = true;
-                break;
-            case TrackType::INT:
-                attr.SetRepresentation(Representation::INT);
-                ret = true;
-                break;
-            case TrackType::TAGGED:
-                attr.SetRepresentation(Representation::TAGGED);
-                break;
-            default:
-                break;
+        if (thread->GetEcmaVM()->GetJSOptions().IsEnableOptTrackField()) {
+            switch (GetTrackType()) {
+                case TrackType::DOUBLE:
+                case TrackType::NUMBER:
+                    attr.SetRepresentation(Representation::DOUBLE);
+                    ret = true;
+                    break;
+                case TrackType::INT:
+                    attr.SetRepresentation(Representation::INT);
+                    ret = true;
+                    break;
+                case TrackType::TAGGED:
+                default:
+                    attr.SetRepresentation(Representation::TAGGED);
+                    break;
+            }
+        } else {
+            attr.SetRepresentation(Representation::TAGGED);
         }
+        attr.SetWritable(IsWritable());
+        attr.SetEnumerable(IsEnumerable());
+        attr.SetConfigurable(IsConfigurable());
+        attr.SetIsAccessor(IsAccessor());
         return ret;
     }
 
@@ -81,14 +96,34 @@ public:
         return TrackTypeField::Get(value_);
     }
 
-    void SetIsAccessor(bool accessor)
+    void SetPropertyMeta(int meta)
     {
-        IsAccessorField::Set(accessor, &value_);
+        PropertyMetaDataField::Set(meta, &value_);
+    }
+
+    int GetPropertyMeta() const
+    {
+        return PropertyMetaDataField::Get(value_);
     }
 
     bool IsAccessor() const
     {
         return IsAccessorField::Get(value_);
+    }
+
+    bool IsWritable() const
+    {
+        return WritableField::Get(value_);
+    }
+
+    bool IsEnumerable() const
+    {
+        return EnumerableField::Get(value_);
+    }
+
+    bool IsConfigurable() const
+    {
+        return ConfigurableField::Get(value_);
     }
 
     bool operator!=(const PGOHandler &right) const
@@ -107,20 +142,273 @@ private:
 
 using PropertyDesc = std::pair<CString, PGOHandler>;
 using LayoutDesc = CVector<PropertyDesc>;
+class PGOHClassTreeDesc;
 
-class PGOHClassLayoutDesc {
-public:
-    PGOHClassLayoutDesc() {};
-    explicit PGOHClassLayoutDesc(ProfileType type) : type_(type) {}
-
-    void SetSuperProfileType(ProfileType superType)
+struct ElementsTrackInfo {
+    std::string ToString() const
     {
-        superType_ = superType;
+        std::stringstream stream;
+            stream << "(size: " << arrayLength_ << ", " << ToSpaceTypeName(spaceFlag_) << ")";
+        return stream.str();
     }
 
-    ProfileType GetSuperProfileType() const
+    uint32_t arrayLength_ { 0 };
+    RegionSpaceFlag spaceFlag_ { RegionSpaceFlag::UNINITIALIZED };
+};
+
+class HClassLayoutDesc {
+public:
+    explicit HClassLayoutDesc(ProfileType type) : type_(type) {}
+    HClassLayoutDesc(ProfileType type, const CSet<ProfileType> &childs) : type_(type), childs_(childs) {}
+    virtual ~HClassLayoutDesc() = default;
+
+    virtual void Merge(const HClassLayoutDesc *from);
+    virtual void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) = 0;
+    virtual bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) = 0;
+
+    ProfileType GetProfileType() const
     {
-        return superType_;
+        return type_;
+    }
+
+    void AddChildHClassLayoutDesc(const ProfileType &type)
+    {
+        childs_.emplace(type);
+    }
+
+    inline size_t GetChildSize() const
+    {
+        return childs_.size();
+    }
+
+    template<typename Callback>
+    void IterateChilds(Callback callback) const
+    {
+        for (const auto &type : childs_) {
+            if (!callback(type)) {
+                break;
+            }
+        }
+    }
+
+protected:
+    void InsertKeyAndDesc(const PGOHandler &handler, PropertyDesc &desc);
+
+    ProfileType type_;
+    CSet<ProfileType> childs_;
+};
+
+class RootHClassLayoutDesc final : public HClassLayoutDesc {
+public:
+    explicit RootHClassLayoutDesc(ProfileType type) : HClassLayoutDesc(type) {}
+    RootHClassLayoutDesc(ProfileType type, JSType objType, uint32_t objSize)
+        : HClassLayoutDesc(type), objType_(objType), objSize_(objSize) {}
+    RootHClassLayoutDesc(const RootHClassLayoutDesc &desc)
+        : HClassLayoutDesc(desc.type_, desc.childs_), objType_(desc.objType_), objSize_(desc.objSize_),
+          layoutDesc_(desc.layoutDesc_) {}
+    RootHClassLayoutDesc& operator=(const RootHClassLayoutDesc &desc)
+    {
+        this->type_ = desc.type_;
+        this->childs_ = desc.childs_;
+        this->objType_ = desc.objType_;
+        this->objSize_ = desc.objSize_;
+        this->layoutDesc_ = desc.layoutDesc_;
+        return *this;
+    }
+
+    void Merge(const HClassLayoutDesc *from) override;
+    void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) override;
+    bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) override;
+
+    void SetObjectSize(uint32_t objSize)
+    {
+        objSize_ = objSize;
+    }
+
+    uint32_t GetObjectSize() const
+    {
+        return objSize_;
+    }
+
+    void SetObjectType(JSType objType)
+    {
+        objType_ = objType;
+    }
+
+    JSType GetObjectType() const
+    {
+        return objType_;
+    }
+
+    size_t NumOfProps() const
+    {
+        return layoutDesc_.size();
+    }
+
+    template<typename Callback>
+    void IterateProps(Callback callback) const
+    {
+        for (const auto &iter : layoutDesc_) {
+            callback(iter);
+        }
+    }
+
+private:
+    JSType objType_;
+    uint32_t objSize_;
+    LayoutDesc layoutDesc_;
+};
+
+class ChildHClassLayoutDesc final : public HClassLayoutDesc {
+public:
+    explicit ChildHClassLayoutDesc(ProfileType type) : HClassLayoutDesc(type) {}
+    ChildHClassLayoutDesc(const ChildHClassLayoutDesc &desc)
+        : HClassLayoutDesc(desc.type_, desc.childs_), propertyDesc_(desc.propertyDesc_) {}
+    ChildHClassLayoutDesc& operator=(const ChildHClassLayoutDesc &desc)
+    {
+        this->type_ = desc.type_;
+        this->childs_ = desc.childs_;
+        this->propertyDesc_ = desc.propertyDesc_;
+        return *this;
+    }
+
+    void Merge(const HClassLayoutDesc *from) override;
+    void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) override;
+    bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) override;
+
+    PropertyDesc GetPropertyDesc() const
+    {
+        return propertyDesc_;
+    }
+
+private:
+    PropertyDesc propertyDesc_;
+};
+
+class PGOHClassTreeDesc {
+public:
+    PGOHClassTreeDesc() = default;
+    explicit PGOHClassTreeDesc(ProfileType type) : type_(type) {}
+
+    void Clear();
+
+    ProfileType GetProfileType() const
+    {
+        return type_;
+    }
+
+    void Merge(const PGOHClassTreeDesc &from);
+
+    bool operator<(const PGOHClassTreeDesc &right) const
+    {
+        return type_ < right.type_;
+    }
+
+    ElementsTrackInfo GetElementsTrackInfo() const
+    {
+        return elementTrackInfo_;
+    }
+
+    uint32_t GetArrayLength() const
+    {
+        return elementTrackInfo_.arrayLength_;
+    }
+
+    void UpdateArrayLength(uint32_t size)
+    {
+        elementTrackInfo_.arrayLength_ = size;
+    }
+
+    RegionSpaceFlag GetSpaceFlag() const
+    {
+        return elementTrackInfo_.spaceFlag_;
+    }
+
+    void UpdateSpaceFlag(RegionSpaceFlag spaceFlag)
+    {
+        elementTrackInfo_.spaceFlag_ = spaceFlag;
+    }
+
+    HClassLayoutDesc *GetHClassLayoutDesc(ProfileType type) const;
+    HClassLayoutDesc *GetOrInsertHClassLayoutDesc(ProfileType type, bool root = false);
+
+    bool DumpForRoot(JSTaggedType root, ProfileType rootType);
+    bool DumpForChild(JSTaggedType child, ProfileType childType);
+    bool UpdateForChild(ProfileType rootType, JSTaggedType child, ProfileType childType);
+    bool DumpForTransition(JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
+    bool UpdateLayout(ProfileType rootType, JSTaggedType curHClass, ProfileType curType);
+
+    template<typename Callback>
+    void IterateChilds(Callback callback) const
+    {
+        IterateAll([&callback] (HClassLayoutDesc *desc) {
+            if (desc->GetProfileType().IsRootType()) {
+                return;
+            }
+            callback(reinterpret_cast<ChildHClassLayoutDesc *>(desc));
+        });
+    }
+
+private:
+    template<typename Callback>
+    void IterateAll(Callback callback) const
+    {
+        for (auto iter : transitionLayout_) {
+            callback(iter.second);
+        }
+    }
+
+    ProfileType type_;
+    ElementsTrackInfo elementTrackInfo_;
+    CMap<ProfileType, HClassLayoutDesc *> transitionLayout_;
+};
+
+class PGOLayoutDescInfo {
+public:
+    PGOLayoutDescInfo() = default;
+    PGOLayoutDescInfo(const CString &key, PGOHandler handler) : handler_(handler)
+    {
+        size_t len = key.size();
+        size_ = Size(len);
+        if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
+            LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
+            UNREACHABLE();
+        }
+        *(&key_ + len) = '\0';
+    }
+
+    static int32_t Size(size_t len)
+    {
+        return sizeof(PGOLayoutDescInfo) + AlignUp(len, GetAlignmentInBytes(ALIGN_SIZE));
+    }
+
+    int32_t Size() const
+    {
+        return size_;
+    }
+
+    const char *GetKey() const
+    {
+        return &key_;
+    }
+
+    PGOHandler GetHandler() const
+    {
+        return handler_;
+    }
+
+private:
+    int32_t size_ {0};
+    PGOHandler handler_;
+    char key_ {'\0'};
+};
+
+class HClassLayoutDescInner {
+public:
+    virtual ~HClassLayoutDescInner() = default;
+    int32_t Size() const
+    {
+        return size_;
     }
 
     ProfileType GetProfileType() const
@@ -128,219 +416,256 @@ public:
         return type_;
     }
 
-    LayoutDesc GetLayoutDesc() const
+protected:
+    int32_t size_ { 0 };
+    ProfileType type_;
+};
+
+class RootHClassLayoutDescInner : public HClassLayoutDescInner {
+public:
+    static size_t CaculateSize(const RootHClassLayoutDesc &desc)
     {
-        return layoutDesc_;
+        size_t size = sizeof(RootHClassLayoutDescInner);
+        size += desc.GetChildSize() * sizeof(ProfileType);
+        desc.IterateProps([&size] (const PropertyDesc &propDesc) {
+            auto key = propDesc.first;
+            size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+        });
+        return size;
     }
 
-    void SetLayoutDesc(LayoutDesc &layoutDesc)
+    void Merge(const RootHClassLayoutDesc &desc)
     {
-        layoutDesc_ = layoutDesc;
+        size_ = static_cast<int32_t>(RootHClassLayoutDescInner::CaculateSize(desc));
+        type_ = desc.GetProfileType();
+        childCount_ = 0;
+        desc.IterateChilds([this] (const ProfileType &childType) -> bool {
+            auto newChildType = const_cast<ProfileType *>(GetChildType(childCount_++));
+            new (newChildType) ProfileType(childType);
+            return true;
+        });
+
+        auto current = const_cast<PGOLayoutDescInfo *>(GetFirstProperty());
+        desc.IterateProps([this, &current] (const PropertyDesc &propDesc) {
+            auto key = propDesc.first;
+            auto type = propDesc.second;
+            new (current) PGOLayoutDescInfo(key, type);
+            current = const_cast<PGOLayoutDescInfo *>(GetNextProperty(current));
+            propCount_++;
+        });
     }
 
-    LayoutDesc GetPtLayoutDesc() const
+    void Convert(RootHClassLayoutDesc *desc) const
     {
-        return ptLayoutDesc_;
-    }
-
-    LayoutDesc GetCtorLayoutDesc() const
-    {
-        return ctorLayoutDesc_;
-    }
-
-    ElementsKind GetElementsKind() const
-    {
-        return kind_;
-    }
-
-    void SetElementsKind(ElementsKind kind)
-    {
-        kind_ = kind;
-    }
-
-    bool FindProperty(const CString &key, PropertyDesc &desc) const
-    {
-        for (const auto &iter : layoutDesc_) {
-            if (iter.first == key) {
-                desc = iter;
-                return true;
-            }
+        auto descInfo = GetFirstProperty();
+        for (uint32_t i = 0; i < propCount_; i++) {
+            desc->InsertKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNextProperty(descInfo);
         }
-        return false;
+        for (uint32_t i = 0; i < childCount_; i++) {
+            desc->AddChildHClassLayoutDesc(*GetChildType(i));
+        }
     }
 
-    void AddKeyAndDesc(const CString &key, const PGOHandler &handler)
+    void SetObjectType(JSType objType)
     {
-        layoutDesc_.emplace_back(key, handler);
+        objType_ = objType;
     }
 
-    void AddPtKeyAndDesc(const CString &key, const PGOHandler &handler)
+    JSType GetObjectType() const
     {
-        ptLayoutDesc_.emplace_back(key, handler);
+        return objType_;
     }
 
-    void AddCtorKeyAndDesc(const CString &key, const PGOHandler &handler)
+    void SetObjectSize(uint32_t size)
     {
-        ctorLayoutDesc_.emplace_back(key, handler);
+        objSize_ = size;
     }
 
-    void UpdateElementKind(const ElementsKind kind);
-    void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjKind kind);
-
-    bool FindDescWithKey(const CString &key, PGOHandler &handler) const;
-
-    void Merge(const PGOHClassLayoutDesc &from);
-
-    bool operator<(const PGOHClassLayoutDesc &right) const
+    uint32_t GetObjectSize() const
     {
-        return type_ < right.type_;
+        return objSize_;
     }
 
 private:
-    void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, LayoutDesc &layoutDesc);
+    const ProfileType *GetChildType(uint32_t index) const
+    {
+        return (&childType_) + index;
+    }
 
-    ProfileType type_;
-    ProfileType superType_;
-    ElementsKind kind_;
-    LayoutDesc layoutDesc_;
-    LayoutDesc ptLayoutDesc_;
-    LayoutDesc ctorLayoutDesc_;
+    const PGOLayoutDescInfo *GetFirstProperty() const
+    {
+        return reinterpret_cast<const PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(&childType_ + childCount_));
+    }
+
+    const PGOLayoutDescInfo *GetNextProperty(const PGOLayoutDescInfo *current) const
+    {
+        return reinterpret_cast<const PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+    }
+
+    JSType objType_;
+    uint32_t objSize_;
+    uint32_t propCount_ {0};
+    uint32_t childCount_ {0};
+    ProfileType childType_;
+};
+
+class ChildHClassLayoutDescInner : public HClassLayoutDescInner {
+public:
+    static size_t CaculateSize(const ChildHClassLayoutDesc &desc)
+    {
+        size_t size = sizeof(ChildHClassLayoutDescInner);
+        size += desc.GetChildSize() * sizeof(ProfileType);
+        auto key = desc.GetPropertyDesc().first;
+        size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+        return size;
+    }
+
+    void Merge(const ChildHClassLayoutDesc &desc)
+    {
+        size_ = ChildHClassLayoutDescInner::CaculateSize(desc);
+        type_ = desc.GetProfileType();
+        childCount_ = 0;
+        desc.IterateChilds([this] (const ProfileType &childType) -> bool {
+            auto newChildType = const_cast<ProfileType *>(GetChildType(childCount_++));
+            new (newChildType) ProfileType(childType);
+            return true;
+        });
+
+        auto current = const_cast<PGOLayoutDescInfo *>(GetProperty());
+        auto propDesc = desc.GetPropertyDesc();
+        auto key = propDesc.first;
+        auto type = propDesc.second;
+        new (current) PGOLayoutDescInfo(key, type);
+    }
+
+    void Convert(ChildHClassLayoutDesc *desc) const
+    {
+        auto descInfo = GetProperty();
+        desc->InsertKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+        for (uint32_t i = 0; i < childCount_; i++) {
+            desc->AddChildHClassLayoutDesc(*GetChildType(i));
+        }
+    }
+
+private:
+    const ProfileType *GetChildType(uint32_t index) const
+    {
+        return (&childType_) + index;
+    }
+
+    const PGOLayoutDescInfo *GetProperty() const
+    {
+        return reinterpret_cast<const PGOLayoutDescInfo *>(&childType_ + childCount_);
+    }
+
+    uint32_t childCount_ { 0 };
+    ProfileType childType_;
 };
 
 template <typename SampleType>
-class PGOHClassLayoutTemplate {
+class PGOHClassTreeTemplate {
 public:
-    PGOHClassLayoutTemplate(size_t size, SampleType type, SampleType superType, ElementsKind kind)
-        : size_(size), type_(type), superType_(superType)
+    PGOHClassTreeTemplate(size_t size, SampleType type, ElementsTrackInfo &trackInfo)
+        : size_(size), type_(type)
     {
-        SetElementsKind(kind);
+        SetElementsTrackInfo(trackInfo);
     }
 
-    static size_t CaculateSize(const PGOHClassLayoutDesc &desc)
+    static size_t CaculateSize(const PGOHClassTreeDesc &desc)
     {
-        if (desc.GetLayoutDesc().empty() && desc.GetPtLayoutDesc().empty() && desc.GetCtorLayoutDesc().empty()) {
-            return sizeof(PGOHClassLayoutTemplate<SampleType>);
+        auto rootLayout = desc.GetHClassLayoutDesc(desc.GetProfileType());
+        if (rootLayout == nullptr) {
+            return sizeof(PGOHClassTreeTemplate<SampleType>);
         }
-        size_t size = sizeof(PGOHClassLayoutTemplate<SampleType>) - sizeof(PGOLayoutDescInfo);
-        for (const auto &iter : desc.GetLayoutDesc()) {
-            auto key = iter.first;
-            if (key.size() > 0) {
-                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
-            }
-        }
-        for (const auto &iter : desc.GetPtLayoutDesc()) {
-            auto key = iter.first;
-            if (key.size() > 0) {
-                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
-            }
-        }
-        for (const auto &iter : desc.GetCtorLayoutDesc()) {
-            auto key = iter.first;
-            if (key.size() > 0) {
-                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
-            }
-        }
-        size += sizeof(ElementsKind);
+        size_t size = sizeof(PGOHClassTreeTemplate<SampleType>) - sizeof(RootHClassLayoutDescInner);
+        size += RootHClassLayoutDescInner::CaculateSize(*reinterpret_cast<const RootHClassLayoutDesc *>(rootLayout));
+
+        desc.IterateChilds([&size](ChildHClassLayoutDesc *desc) {
+            size += ChildHClassLayoutDescInner::CaculateSize(*desc);
+        });
+        size += sizeof(ElementsTrackInfo);
         return size;
     }
-    static std::string GetTypeString(const PGOHClassLayoutDesc &desc)
+
+    static std::string GetTypeString(const PGOHClassTreeDesc &desc)
     {
         std::string text;
         text += desc.GetProfileType().GetTypeString();
-        if (!desc.GetSuperProfileType().IsNone()) {
-            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-            text += desc.GetSuperProfileType().GetTypeString();
-        }
-        if (!Elements::IsNone(desc.GetElementsKind())) {
-            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-            text += Elements::GetString(desc.GetElementsKind());
+        if (desc.GetArrayLength() > 0 && desc.GetSpaceFlag() != RegionSpaceFlag::UNINITIALIZED) {
+            text += desc.GetElementsTrackInfo().ToString();
         }
         text += DumpUtils::BLOCK_AND_ARRAY_START;
-        bool isLayoutFirst = true;
-        for (const auto &layoutDesc : desc.GetLayoutDesc()) {
-            if (!isLayoutFirst) {
-                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-            } else {
-                text += DumpUtils::ARRAY_START;
-            }
-            isLayoutFirst = false;
-            text += layoutDesc.first;
-            text += DumpUtils::BLOCK_START;
-            text += std::to_string(layoutDesc.second.GetValue());
-        }
-        if (!isLayoutFirst) {
-            text += DumpUtils::ARRAY_END;
-        }
-        bool isPtLayoutFirst = true;
-        for (const auto &layoutDesc : desc.GetPtLayoutDesc()) {
-            if (!isPtLayoutFirst) {
-                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-            } else {
+        auto layoutDesc = desc.GetHClassLayoutDesc(desc.GetProfileType());
+        if (layoutDesc != nullptr) {
+            bool isLayoutFirst = true;
+            ASSERT(layoutDesc->GetProfileType().IsRootType());
+            auto rootLayoutDesc = reinterpret_cast<RootHClassLayoutDesc *>(layoutDesc);
+            rootLayoutDesc->IterateProps([&text, &isLayoutFirst] (const PropertyDesc &propDesc) {
                 if (!isLayoutFirst) {
                     text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+                } else {
+                    text += DumpUtils::ARRAY_START;
                 }
-                text += DumpUtils::ARRAY_START;
-            }
-            isPtLayoutFirst = false;
-            text += layoutDesc.first;
-            text += DumpUtils::BLOCK_START;
-            text += std::to_string(layoutDesc.second.GetValue());
-        }
-        if (!isPtLayoutFirst) {
-            text += DumpUtils::ARRAY_END;
-        }
-        bool isCtorLayoutFirst = true;
-        for (const auto &layoutDesc : desc.GetCtorLayoutDesc()) {
-            if (!isCtorLayoutFirst) {
-                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-            } else {
-                if (!isLayoutFirst || !isPtLayoutFirst) {
-                    text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-                }
-                text += DumpUtils::ARRAY_START;
-            }
-            isCtorLayoutFirst = false;
-            text += layoutDesc.first;
-            text += DumpUtils::BLOCK_START;
-            text += std::to_string(layoutDesc.second.GetValue());
-        }
-        if (!isCtorLayoutFirst) {
-            text += DumpUtils::ARRAY_END;
+                isLayoutFirst = false;
+                text += propDesc.first;
+                text += DumpUtils::BLOCK_START;
+                text += std::to_string(propDesc.second.GetValue());
+            });
         }
         text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
         return text;
     }
 
-    void Merge(const PGOHClassLayoutDesc &desc)
+    void Merge(const PGOHClassTreeDesc &desc)
     {
-        auto current = const_cast<PGOLayoutDescInfo *>(GetFirst());
-        for (const auto &iter : desc.GetLayoutDesc()) {
-            auto key = iter.first;
-            auto type = iter.second;
-            if (key.size() > 0) {
-                new (current) PGOLayoutDescInfo(key, type);
-                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
-                count_++;
-            }
+        auto root = const_cast<RootHClassLayoutDescInner *>(GetRoot());
+        auto layoutDesc = desc.GetHClassLayoutDesc(desc.GetProfileType());
+        if (layoutDesc == nullptr) {
+            return;
         }
-        for (const auto &iter : desc.GetPtLayoutDesc()) {
-            auto key = iter.first;
-            auto type = iter.second;
-            if (key.size() > 0) {
-                new (current) PGOLayoutDescInfo(key, type);
-                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
-                ptCount_++;
-            }
+        auto rootLayoutDesc = reinterpret_cast<const RootHClassLayoutDesc *>(layoutDesc);
+        root->Merge(*rootLayoutDesc);
+        root->SetObjectType(rootLayoutDesc->GetObjectType());
+        root->SetObjectSize(rootLayoutDesc->GetObjectSize());
+
+        childCount_ = 0;
+        auto last = reinterpret_cast<HClassLayoutDescInner *>(root);
+        desc.IterateChilds([this, &last](ChildHClassLayoutDesc *desc) {
+            auto current = const_cast<ChildHClassLayoutDescInner *>(GetNext(last));
+            new (current) ChildHClassLayoutDescInner();
+            current->Merge(*desc);
+            last = current;
+            childCount_++;
+        });
+    }
+
+    PGOHClassTreeDesc Convert(PGOContext& context)
+    {
+        PGOHClassTreeDesc desc(ProfileType(context, GetType().GetProfileType()));
+        auto root = GetRoot();
+        if (root->GetProfileType().IsNone()) {
+            return desc;
         }
-        for (const auto &iter : desc.GetCtorLayoutDesc()) {
-            auto key = iter.first;
-            auto type = iter.second;
-            if (key.size() > 0) {
-                new (current) PGOLayoutDescInfo(key, type);
-                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
-                ctorCount_++;
-            }
+        auto layoutDesc = desc.GetOrInsertHClassLayoutDesc(root->GetProfileType(), true);
+        auto rootLayoutDesc = reinterpret_cast<RootHClassLayoutDesc *>(layoutDesc);
+        rootLayoutDesc->SetObjectType(root->GetObjectType());
+        rootLayoutDesc->SetObjectSize(root->GetObjectSize());
+        root->Convert(rootLayoutDesc);
+
+        auto last = reinterpret_cast<const HClassLayoutDescInner *>(root);
+        for (int32_t i = 0; i < childCount_; i++) {
+            auto current = GetNext(last);
+            auto childLayoutDesc = desc.GetOrInsertHClassLayoutDesc(current->GetProfileType(), false);
+            current->Convert(reinterpret_cast<ChildHClassLayoutDesc *>(childLayoutDesc));
+            last = current;
         }
+        if (context.SupportElementsTrackInfo()) {
+            auto trackInfo = GetElementsTrackInfo();
+            desc.UpdateArrayLength(trackInfo->arrayLength_);
+            desc.UpdateSpaceFlag(trackInfo->spaceFlag_);
+        }
+        return desc;
     }
 
     int32_t Size() const
@@ -353,93 +678,28 @@ public:
         return type_;
     }
 
-    SampleType GetSuperType() const
-    {
-        return superType_;
-    }
-
-    PGOHClassLayoutDesc Convert(PGOContext& context)
-    {
-        PGOHClassLayoutDesc desc(ProfileType(context, GetType().GetProfileType()));
-        desc.SetSuperProfileType(ProfileType(context, superType_.GetProfileType()));
-        auto descInfo = GetFirst();
-        for (int32_t i = 0; i < count_; i++) {
-            desc.AddKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        for (int32_t i = 0; i < ptCount_; i++) {
-            desc.AddPtKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        for (int32_t i = 0; i < ctorCount_; i++) {
-            desc.AddCtorKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        if (context.SupportElementsKind()) {
-            desc.SetElementsKind(GetElementsKind());
-        }
-        return desc;
-    }
-
-    class PGOLayoutDescInfo {
-    public:
-        PGOLayoutDescInfo() = default;
-        PGOLayoutDescInfo(const CString &key, PGOHandler handler) : handler_(handler)
-        {
-            size_t len = key.size();
-            size_ = Size(len);
-            if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
-                LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
-                UNREACHABLE();
-            }
-            *(&key_ + len) = '\0';
-        }
-
-        static int32_t Size(size_t len)
-        {
-            return sizeof(PGOLayoutDescInfo) + AlignUp(len, GetAlignmentInBytes(ALIGN_SIZE));
-        }
-
-        int32_t Size() const
-        {
-            return size_;
-        }
-
-        const char *GetKey() const
-        {
-            return &key_;
-        }
-
-        PGOHandler GetHandler() const
-        {
-            return handler_;
-        }
-
-    private:
-        int32_t size_ {0};
-        PGOHandler handler_;
-        char key_ {'\0'};
-    };
-
 private:
-    const PGOLayoutDescInfo *GetFirst() const
+    const RootHClassLayoutDescInner *GetRoot() const
     {
-        return &descInfos_;
+        return &rootHClassLayout_;
     }
 
-    const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
+    const ChildHClassLayoutDescInner *GetNext(const HClassLayoutDescInner *current) const
     {
-        return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+        return reinterpret_cast<const ChildHClassLayoutDescInner *>(
+            reinterpret_cast<uintptr_t>(current) + current->Size());
     }
 
-    void SetElementsKind(ElementsKind kind)
+    void SetElementsTrackInfo(ElementsTrackInfo trackInfo)
     {
-        *reinterpret_cast<ElementsKind *>(GetEnd() - sizeof(ElementsKind)) = kind;
+        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo);
+        *reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset) = trackInfo;
     }
 
-    ElementsKind GetElementsKind() const
+    ElementsTrackInfo* GetElementsTrackInfo()
     {
-        return *reinterpret_cast<const ElementsKind *>(GetEnd() - sizeof(ElementsKind));
+        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo);
+        return reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset);
     }
 
     uintptr_t GetEnd() const
@@ -449,14 +709,11 @@ private:
 
     int32_t size_;
     SampleType type_;
-    SampleType superType_;
-    int32_t count_ {0};
-    int32_t ptCount_ {0};
-    int32_t ctorCount_ {0};
-    PGOLayoutDescInfo descInfos_;
+    int32_t childCount_ { 0 };
+    RootHClassLayoutDescInner rootHClassLayout_;
 };
 
-using PGOHClassLayoutDescInner = PGOHClassLayoutTemplate<PGOSampleType>;
-using PGOHClassLayoutDescInnerRef = PGOHClassLayoutTemplate<PGOSampleTypeRef>;
+using PGOHClassTreeDescInner = PGOHClassTreeTemplate<PGOSampleType>;
+using PGOHClassTreeDescInnerRef = PGOHClassTreeTemplate<PGOSampleTypeRef>;
 } // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_PROFILER_LAYOUT_H

@@ -85,6 +85,7 @@ class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
 class EcmaStringTable;
+class JSObjectResizingStrategy;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
@@ -408,7 +409,7 @@ public:
     }
 #endif
 
-    PGOProfiler *GetPGOProfiler() const
+    std::shared_ptr<PGOProfiler> GetPGOProfiler() const
     {
         return pgoProfiler_;
     }
@@ -464,6 +465,11 @@ public:
     bool GetProfilerState()
     {
         return isProfiling_;
+    }
+
+    JSObjectResizingStrategy *GetJSObjectResizingStrategy()
+    {
+        return strategy_;
     }
 
 protected:
@@ -533,6 +539,7 @@ private:
     CpuProfiler *profiler_ {nullptr};
 #endif
     FunctionCallTimer *callTimer_ {nullptr};
+    JSObjectResizingStrategy *strategy_ {nullptr};
 
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
@@ -542,7 +549,7 @@ private:
     QuickFixManager *quickFixManager_ {nullptr};
 
     // PGO Profiler
-    PGOProfiler *pgoProfiler_ {nullptr};
+    std::shared_ptr<PGOProfiler> pgoProfiler_ {nullptr};
     // c++ call js
     size_t callDepth_ {0};
 

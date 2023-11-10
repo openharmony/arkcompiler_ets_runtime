@@ -72,13 +72,13 @@
     /* String.prototype.repeat ( count ) */                                         \
     V("repeat",            Repeat,            1, INVALID)                           \
     /* String.prototype.replace ( searchValue, replaceValue ) */                    \
-    V("replace",           Replace,           2, INVALID)                           \
+    V("replace",           Replace,           2, StringReplace)                     \
     /* String.prototype.replaceAll ( searchValue, replaceValue ) */                 \
     V("replaceAll",        ReplaceAll,        2, INVALID)                           \
     /* String.prototype.search ( regexp ) */                                        \
     V("search",            Search,            1, INVALID)                           \
     /* String.prototype.slice ( start, end ) */                                     \
-    V("slice",             Slice,             2, INVALID)                           \
+    V("slice",             Slice,             2, StringSlice)                       \
     /* String.prototype.split ( separator, limit ) */                               \
     V("split",             Split,             2, INVALID)                           \
     /* String.prototype.startsWith ( searchString [ , position ] ) */               \
@@ -99,7 +99,7 @@
     /* String.prototype.toUpperCase ( ) */                                          \
     V("toUpperCase",       ToUpperCase,       0, INVALID)                           \
     /* String.prototype.trim ( ) */                                                 \
-    V("trim",              Trim,              0, INVALID)                           \
+    V("trim",              Trim,              0, StringTrim)                        \
     /* String.prototype.trimEnd ( ) */                                              \
     V("trimEnd",           TrimEnd,           0, INVALID)                           \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
@@ -159,6 +159,9 @@ public:
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     // 21.1.3.10
     static JSTaggedValue LocaleCompare(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LocaleCompareGC(JSThread *thread, JSHandle<JSTaggedValue> locales,
+                                         JSHandle<EcmaString> thisHandle, JSHandle<EcmaString> thatHandle,
+                                         JSHandle<JSTaggedValue> options, bool cacheable);
     // 21.1.3.11
     static JSTaggedValue Match(EcmaRuntimeCallInfo *argv);
 
@@ -267,6 +270,27 @@ private:
         const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
     // 21.1.3.17.1
+};
+
+class StringSplitResultCache : public TaggedArray {
+public:
+    static StringSplitResultCache *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<StringSplitResultCache*>(object);
+    }
+    static JSTaggedValue CreateCacheTable(const JSThread *thread);
+    static JSTaggedValue FindCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern);
+    static void SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern,
+        const JSHandle<TaggedArray> &result);
+
+private:
+    static constexpr int CACHE_SIZE = 256;
+    static constexpr int STRING_INDEX = 0;
+    static constexpr int PATTERN_INDEX = 1;
+    static constexpr int ARRAY_INDEX = 2;
+    static constexpr int ENTRY_SIZE = 3;
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_STRING_H

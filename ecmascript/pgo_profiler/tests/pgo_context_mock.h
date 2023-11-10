@@ -57,12 +57,34 @@ public:
         return header_->SupportElementsKind();
     }
 
+    bool SupportElementsTrackInfo() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsTrackInfo();
+    }
+
+    void ResetAbcIdRemap() const override
+    {
+        abcIdRemap_.clear();
+    }
+
+    void AddAbcIdRemap(ApEntityId oldId, ApEntityId newId) const override
+    {
+        abcIdRemap_[oldId] = newId;
+    }
+
+    const std::map<ApEntityId, ApEntityId> &GetAbcIdRemap() const override
+    {
+        return abcIdRemap_;
+    }
+
 private:
     NO_COPY_SEMANTIC(PGOContextMock);
     NO_MOVE_SEMANTIC(PGOContextMock);
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     PGOProfilerHeader *header_ {};
     uint32_t threshold_ {};
+    mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
 };
 } // namespace panda::ecmascript::pgo
 #endif

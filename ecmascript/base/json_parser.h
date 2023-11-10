@@ -119,11 +119,13 @@ protected:
             if (isFast) {
                 std::string strNum(current_, end_ + 1);
                 current_ = end_;
+                errno = 0; // reset errno to 0 to avoid errno has been changed
                 double v = std::strtod(strNum.c_str(), nullptr);
                 if (errno == ERANGE) {
                     errno = 0;
                     return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
                 }
+                errno = 0;
                 return JSTaggedValue::TryCastDoubleToInt32(v);
             }
         }
@@ -149,11 +151,13 @@ protected:
 
         std::string strNum(current, end_ + 1);
         current_ = end_;
+        errno = 0; // reset errno to 0 to avoid errno has been changed
         double v = std::strtod(strNum.c_str(), nullptr);
         if (errno == ERANGE) {
             errno = 0;
             return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
         }
+        errno = 0;
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
 

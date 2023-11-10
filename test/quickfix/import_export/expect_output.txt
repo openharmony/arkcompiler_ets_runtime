@@ -14,7 +14,7 @@
 QuickFix Execute start
 QuickFix start load patch
 QuickFix load patch success
-print patch: 100
+print patch: 200
 patch foo
 QuickFix start check exception
 QuickFix have no exception

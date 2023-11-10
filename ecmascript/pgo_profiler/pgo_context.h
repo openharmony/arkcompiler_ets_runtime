@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
@@ -37,6 +38,10 @@ public:
     virtual uint32_t GetHotnessThreshold() const = 0;
     virtual PGOProfilerHeader *GetHeader() const = 0;
     virtual bool SupportElementsKind() const = 0;
+    virtual bool SupportElementsTrackInfo() const = 0;
+    virtual void ResetAbcIdRemap() const = 0;
+    virtual void AddAbcIdRemap(ApEntityId oldId, ApEntityId newId) const = 0;
+    virtual const std::map<ApEntityId, ApEntityId> &GetAbcIdRemap() const = 0;
 
 private:
     NO_COPY_SEMANTIC(PGOContext);

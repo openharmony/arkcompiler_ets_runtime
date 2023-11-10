@@ -54,7 +54,41 @@
     let key7 = "no-schema:" + "/src/instantiated-1af0bf5b.js";
     let key8 = head3 + tail3;
 
-    let keyArray = [key1, key3, key5, key7];
+    // non-intern + non-intern
+    let numhead1 = "12".concat("022");
+    let numtail1 = "4".concat("21");
+    let numkey1 = numhead1 + numtail1;
+    let numkey2 = numhead1 + numtail1;
+
+    // intern + intern
+    let numkey3 = "123420002";
+    let numkey4 = "12342" + "0002";
+
+    // non-intern + intern
+    let numhead2 = "90".concat("88");
+    let numtail2 = "90";
+    let numkey5 = "90" + "8890";
+    let numkey6 = numhead2 + numtail2;
+
+    // intern + non-intern
+    let numhead3 = "90880";
+    let numtail3 = "0".concat("0");
+    let numkey7 = "90880" + "00";
+    let numkey8 = numhead3 + numtail3;
+
+    // intern + intern
+    let numkey9 = "999999999";
+    let numkey10 = "9999".concat("99999");
+
+    // intern + intern
+    let numkey11 = "1000000000";
+    let numkey12 = "10".concat("00000000");
+
+    // intern + intern
+    let numkey13 = "0100000";
+    let numkey14 = "010".concat("0000");
+
+    let keyArray = [key1, key3, key5, key7, numkey1, numkey3, numkey5, numkey7, numkey9, numkey11, numkey13];
     let system = new System();
     for (let i = 0; i < keyArray.length; i++) {
         getOrCreateLoad(system, keyArray[i]);
@@ -68,6 +102,19 @@
     getOrCreateLoad(system, key4);
     getOrCreateLoad(system, key6);
     getOrCreateLoad(system, key8);
+
+    print("numkey1 === numkey2: ", numkey1 === numkey2);
+    print("numkey3 === numkey4: ", numkey3 === numkey4);
+    print("numkey5 === numkey6: ", numkey5 === numkey6);
+    print("numkey7 === numkey8: ", numkey7 === numkey8);
+    print("numkey9 === numkey10: ", numkey9 === numkey10);
+    print("numkey11 === numkey12: ", numkey11 === numkey12);
+    getOrCreateLoad(system, numkey2);
+    getOrCreateLoad(system, numkey4);
+    getOrCreateLoad(system, numkey6);
+    getOrCreateLoad(system, numkey8);
+    getOrCreateLoad(system, numkey10);
+    getOrCreateLoad(system, numkey12);
 }
 
 {

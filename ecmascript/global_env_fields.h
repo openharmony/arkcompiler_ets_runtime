@@ -49,9 +49,24 @@
     V(JSTaggedValue, Float64ArrayFunction, FLOAT64_ARRAY_FUNCTION_INDEX)                            \
     V(JSTaggedValue, BigInt64ArrayFunction, BIGINT64_ARRAY_FUNCTION_INDEX)                          \
     V(JSTaggedValue, BigUint64ArrayFunction, BIGUINT64_ARRAY_FUNCTION_INDEX)                        \
+    V(JSTaggedValue, Int8ArrayFunctionPrototype, INT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)               \
+    V(JSTaggedValue, Uint8ArrayFunctionPrototype, UINT8_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, Uint8ClampedArrayFunctionPrototype, UINT8_CLAMPED_ARRAY_FUNCTION_PROTO_INDEX)  \
+    V(JSTaggedValue, Int16ArrayFunctionPrototype, INT16_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, Uint16ArrayFunctionPrototype, UINT16_ARRAY_FUNCTION_PROTOTYPE_INDEX)           \
+    V(JSTaggedValue, Int32ArrayFunctionPrototype, INT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, Uint32ArrayFunctionPrototype, UINT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)           \
+    V(JSTaggedValue, Float32ArrayFunctionPrototype, FLOAT32_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
+    V(JSTaggedValue, Float64ArrayFunctionPrototype, FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
+    V(JSTaggedValue, BigInt64ArrayFunctionPrototype, BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
+    V(JSTaggedValue, BigUint64ArrayFunctionPrototype, BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
     V(JSTaggedValue, ArrayBufferFunction, ARRAY_BUFFER_FUNCTION_INDEX)                              \
     V(JSTaggedValue, SharedArrayBufferFunction, SHAREDARRAY_BUFFER_FUNCTION_INDEX)                  \
     V(JSTaggedValue, ArrayProtoValuesFunction, ARRAY_PROTO_VALUES_FUNCTION_INDEX)                   \
+    V(JSTaggedValue, SetProtoValuesFunction, SET_PROTO_VALUES_FUNCTION_INDEX)                       \
+    V(JSTaggedValue, MapProtoEntriesFunction, MAP_PROTO_ENTRIES_FUNCTION_INDEX)                     \
+    V(JSTaggedValue, StringProtoIterFunction, STRING_PROTO_ITER_FUNCTION_INDEX)                     \
+    V(JSTaggedValue, TypedArrayProtoValuesFunction, TYPED_ARRAY_PROTO_VALUES_FUNCTION_INDEX)        \
     V(JSTaggedValue, DataViewFunction, DATA_VIEW_FUNCTION_INDEX)                                    \
     V(JSTaggedValue, DataViewPrototype, DATA_VIEW_PROTOTYPE_INDEX)                                  \
     V(JSTaggedValue, SymbolFunction, SYMBOL_FUNCTION_INDEX)                                         \
@@ -63,6 +78,7 @@
     V(JSTaggedValue, SyntaxErrorFunction, SYNTAX_ERROR_FUNCTION_INDEX)                              \
     V(JSTaggedValue, EvalErrorFunction, EVAL_ERROR_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, OOMErrorFunction, OOM_ERROR_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, TerminationErrorFunction, TERMINATION_ERROR_FUNCTION_INDEX)                    \
     V(JSTaggedValue, IntlFunction, INTL_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, LocaleFunction, LOCALE_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, DateTimeFormatFunction, DATE_TIME_FORMAT_FUNCTION_INDEX)                       \
@@ -107,7 +123,6 @@
     V(JSTaggedValue, HasInstanceFunction, HASINSTANCE_FUNCTION_INDEX)                               \
     V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
     V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
     V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
@@ -201,6 +216,7 @@
 #define GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                                                        \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \

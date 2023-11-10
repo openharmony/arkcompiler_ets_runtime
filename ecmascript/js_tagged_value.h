@@ -414,6 +414,7 @@ public:
     static JSTaggedValue ToPrimitive(JSThread *thread, const JSHandle<JSTaggedValue> &tagged,
                                      PreferredPrimitiveType type = NO_PREFERENCE);
     bool ToBoolean() const;
+    static JSTaggedNumber ToNumber(JSThread *thread, JSTaggedValue tagged);
     static JSTaggedNumber ToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedValue ToBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedValue ToBigInt64(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
@@ -435,6 +436,7 @@ public:
     static JSTaggedValue CanonicalNumericIndexString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber ToIndex(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber StringToDouble(JSTaggedValue tagged);
+    static JSTaggedNumber StringToNumber(JSTaggedValue tagged);
 
     static bool ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, uint32_t *output);
     static bool ToElementIndex(JSTaggedValue key, uint32_t *output);
@@ -707,6 +709,7 @@ public:
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                     const JSHandle<JSTaggedValue> &y);
+    static int IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
     static bool StrictIntEquals(int x, int y);

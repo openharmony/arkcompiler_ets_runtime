@@ -63,6 +63,8 @@ public:
         bool excuteFromJob = false);
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
         const CString &recordName, bool excuteFromJob = false);
+    JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMergeForHotReload(const CString &referencingModule,
+        const CString &recordName, bool excuteFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
@@ -111,6 +113,9 @@ private:
     JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile,
         bool excuteFromJob = false);
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+        const CString &recordName, bool excuteFromJob = false);
+
+    JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
         const CString &recordName, bool excuteFromJob = false);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;

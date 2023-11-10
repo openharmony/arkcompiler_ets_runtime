@@ -32,8 +32,6 @@ public:
     void ToString(Variable *result, Label *exit, Label *slowPath);
     void Create(Variable *result, Label *exit, Label *slowPath);
     void Assign(Variable *result, Label *exit, Label *slowPath);
-    GateRef CloneObjectLiteral(GateRef glue, GateRef objLiteral);
-    GateRef CloneProperties(GateRef glue, GateRef old);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);
@@ -47,9 +45,9 @@ private:
     void AssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void Assign(Variable *res, Label *nextIt, Label *funcExit, GateRef toAssign, GateRef source);
 
-    GateRef glue_;
-    GateRef thisValue_;
-    GateRef numArgs_;
+    GateRef glue_ {Circuit::NullGate()};
+    GateRef thisValue_ {Circuit::NullGate()};
+    GateRef numArgs_ {Circuit::NullGate()};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_OBJECT_STUB_BUILDER_H

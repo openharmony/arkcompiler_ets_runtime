@@ -183,6 +183,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Syntax Error";
         case JSType::JS_OOM_ERROR:
             return "OutOfMemory Error";
+        case JSType::JS_TERMINATION_ERROR:
+            return "Termination Error";
         case JSType::JS_REG_EXP:
             return "Regexp";
         case JSType::JS_SET:
@@ -685,6 +687,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ARGUMENTS:
             needDumpHClass = true;
             JSObject::Cast(obj)->Dump(os);
@@ -2389,6 +2392,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetEvalErrorFunction().GetTaggedValue().Dump(os);
     os << " - OOMErrorFunction: ";
     GetOOMErrorFunction().GetTaggedValue().Dump(os);
+    os << " - TerminationErrorFunction: ";
+    GetTerminationErrorFunction().GetTaggedValue().Dump(os);
     os << " - RegExpFunction: ";
     GetRegExpFunction().GetTaggedValue().Dump(os);
     os << " - BuiltinsSetFunction: ";
@@ -3171,6 +3176,7 @@ void GeneratorContext::Dump(std::ostream &os) const
 void ProtoChangeMarker::Dump(std::ostream &os) const
 {
     os << " - HasChanged: " << GetHasChanged() << "\n";
+    os << " - HasAccessorChanged: " << GetAccessorHasChanged() << "\n";
 }
 
 void MarkerCell::Dump(std::ostream &os) const
@@ -3189,6 +3195,8 @@ void ProtoChangeDetails::Dump(std::ostream &os) const
 void TrackInfo::Dump(std::ostream &os) const
 {
     os << " - ElementsKind: " << static_cast<uint32_t>(GetElementsKind()) << "\n";
+    os << " - ArrayLength: " << static_cast<uint32_t>(GetArrayLength()) << "\n";
+    os << " - SpaceFlag: " << static_cast<uint32_t>(GetSpaceFlag()) << "\n";
 }
 
 void MachineCode::Dump(std::ostream &os) const
@@ -3799,6 +3807,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4839,6 +4848,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue());
     vec.emplace_back(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue());
     vec.emplace_back(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue());
+    vec.emplace_back(CString("TerminationErrorFunction"), GetTerminationErrorFunction().GetTaggedValue());
     vec.emplace_back(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue());
     vec.emplace_back(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue());
     vec.emplace_back(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue());

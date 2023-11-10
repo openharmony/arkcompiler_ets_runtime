@@ -143,6 +143,12 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
     return NewGate(meta, machineType, args.size(), args.begin(), type, comment);
 }
 
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
+    const std::vector<GateRef>& inList, GateType type, const char* comment)
+{
+    return NewGate(meta, machineType, inList.size(), inList.data(), type, comment);
+}
+
 GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment)
 {
     return NewGate(meta, machineType, {}, type, comment);
@@ -406,8 +412,11 @@ void Circuit::DeleteIn(GateRef gate, size_t idx)
 
 void Circuit::DeleteGate(GateRef gate)
 {
-    LoadGatePtr(gate)->DeleteGate();
-    LoadGatePtr(gate)->SetMetaData(Nop());
+    // constant in constant cache, dont delete it.
+    if (GetOpCode(gate) != OpCode::CONSTANT) {
+        LoadGatePtr(gate)->DeleteGate();
+        LoadGatePtr(gate)->SetMetaData(Nop());
+    }
 }
 
 void Circuit::DecreaseIn(GateRef gate, size_t idx)

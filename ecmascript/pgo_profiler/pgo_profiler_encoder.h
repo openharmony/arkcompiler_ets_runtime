@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_ENCODER_H
 #define ECMASCRIPT_PGO_PROFILER_ENCODER_H
 
+#include <memory>
 #include <utility>
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
@@ -25,10 +26,19 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
-    enum ApGenMode { OVERWRITE };
+    enum ApGenMode { OVERWRITE, MERGE };
 
     PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold, ApGenMode mode)
-        : outDir_(outDir), hotnessThreshold_(hotnessThreshold), mode_(mode) {}
+        : outDir_(outDir), hotnessThreshold_(hotnessThreshold), mode_(mode)
+    {
+        pandaFileInfos_ = std::make_unique<PGOPandaFileInfos>();
+        abcFilePool_ = std::make_shared<PGOAbcFilePool>();
+    }
+
+    ~PGOProfilerEncoder()
+    {
+        Destroy();
+    }
 
     NO_COPY_SEMANTIC(PGOProfilerEncoder);
     NO_MOVE_SEMANTIC(PGOProfilerEncoder);
@@ -44,9 +54,14 @@ public:
         bundleName_ = bundleName;
     }
 
+    const std::string GetBundleName()
+    {
+        return bundleName_;
+    }
+
     bool IsInitialized() const
     {
-        return isInitialized_;
+        return isProfilingInitialized_;
     }
 
     void SamplePandaFileInfo(uint32_t checksum, const CString &abcName);
@@ -57,6 +72,10 @@ public:
     void Merge(const PGOProfilerEncoder &encoder);
     bool VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                                 const std::string &incoming) const;
+    std::shared_ptr<PGOAbcFilePool> GetAbcFilePool() const
+    {
+        return abcFilePool_;
+    }
     void TerminateSaveTask();
     void PostSaveTask();
     void SetApGenMode(ApGenMode mode)
@@ -70,18 +89,22 @@ public:
 
     bool ResetOutPathByModuleName(const std::string &moduleName);
 
+protected:
+    PGOProfilerHeader *header_ {nullptr};
+
 private:
     void StartSaveTask(const SaveTask *task);
     bool InternalSave(const SaveTask *task = nullptr);
     bool SaveAndRename(const SaveTask *task = nullptr);
+    void MergeWithExistProfile(PGOProfilerEncoder &runtimeEncoder, PGOProfilerDecoder &decoder,
+                               const SaveTask *task = nullptr);
     void RequestAot();
     bool ResetOutPath(const std::string& profileFileName);
 
-    bool isInitialized_ {false};
+    bool isProfilingInitialized_ {false};
     std::string outDir_;
     uint32_t hotnessThreshold_ {2};
     std::string realOutPath_;
-    PGOProfilerHeader *header_ {nullptr};
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;

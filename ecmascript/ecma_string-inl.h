@@ -150,11 +150,13 @@ inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint
     size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
 {
     auto string = ConstantString::Cast(vm->GetFactory()->AllocConstantStringObject(type));
+    auto thread = vm->GetJSThread();
     string->SetLength(length, compressed);
     string->SetRawHashcode(0);
     string->SetConstantData(const_cast<uint8_t *>(utf8Data));
     // The string might be serialized, the const data will be replaced by index in the panda file.
     string->SetEntityId(idOffset);
+    string->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
     return string;
 }
 
@@ -277,6 +279,14 @@ inline uint16_t EcmaString::At(int32_t index) const
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+}
+
+inline Span<const uint8_t> EcmaString::FastToUtf8Span() const
+{
+    uint32_t strLen = GetLength();
+    ASSERT(IsUtf8());
+    const uint8_t *data = GetDataUtf8();
+    return Span<const uint8_t>(data, strLen);
 }
 
 inline void EcmaString::WriteData(uint32_t index, uint16_t src)
@@ -403,6 +413,11 @@ inline void EcmaStringAccessor::ReadData(EcmaString *dst, EcmaString *src,
     uint32_t start, uint32_t destSize, uint32_t length)
 {
     dst->WriteData(src, start, destSize, length);
+}
+
+inline Span<const uint8_t> EcmaStringAccessor::FastToUtf8Span()
+{
+    return string_->FastToUtf8Span();
 }
 }  // namespace panda::ecmascript
 #endif

@@ -17,7 +17,8 @@
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
-void Backtrace([[maybe_unused]] std::ostringstream &stack, [[maybe_unused]] bool enableCache)
+void Backtrace([[maybe_unused]] std::ostringstream &stack, [[maybe_unused]] bool enableCache,
+               [[maybe_unused]] bool jsStack)
 {
     LOG_ECMA(INFO) << "Print backtrace in macos not support";
 }

@@ -595,6 +595,9 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
             JSTaggedValue entryKey = entry.GetTaggedValue();
             handleKey_.Update(entryKey);
             int index = numberDic->FindEntry(entryKey);
+            if (index < 0) {
+                continue;
+            }
             JSTaggedValue value = numberDic->GetValue(index);
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
@@ -669,14 +672,14 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                             JSHandle<JSTaggedValue>(obj));
-                        if (obj->GetProperties().IsDictionary()) {
-                            hasChangedToDictionaryMode = true;
-                            propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
-                        }
-                        jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+                    if (obj->GetProperties().IsDictionary()) {
+                        hasChangedToDictionaryMode = true;
+                        propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties());
+                    }
+                    jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
             } else {
@@ -693,7 +696,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     handleKey_.Update(key);
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
-                                                    JSHandle<JSTaggedValue>(obj));
+                            JSHandle<JSTaggedValue>(obj));
                         jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);

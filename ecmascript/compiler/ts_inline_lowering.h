@@ -51,8 +51,9 @@ private:
 
 class CallGateInfo {
 public:
-    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt, uint32_t type)
-        : call_(call), kind_(kind), gt_(gt), type_(type)
+    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt, uint32_t type,
+                          PropertyLookupResult plr = PropertyLookupResult())
+        : call_(call), kind_(kind), gt_(gt), type_(type), plr_(plr)
     {
     }
 
@@ -82,7 +83,7 @@ public:
     {
         return kind_ == CallKind::CALL_GETTER;
     }
-    
+
     bool IsCallSetter() const
     {
         return kind_ == CallKind::CALL_SETTER;
@@ -98,11 +99,17 @@ public:
         return type_;
     }
 
+    PropertyLookupResult GetPlr() const
+    {
+        return plr_;
+    }
+
 private:
     GateRef call_ {Circuit::NullGate()};
     CallKind kind_ {CallKind::INVALID};
     GlobalTSTypeRef gt_;
     uint32_t type_;
+    PropertyLookupResult plr_;
 };
 
 class TSInlineLowering {
@@ -111,6 +118,7 @@ public:
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
                      NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
+          thread_(ctx->GetEcmaVM()->GetJSThread()),
           acc_(circuit),
           glue_(acc_.GetGlueFromArgList()),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -191,18 +199,17 @@ private:
     void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
     bool IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOffset);
-    bool IsAccessor(GateRef receiver, GateRef constData);
+    PropertyLookupResult IsAccessor(GateRef receiver, GateRef constData);
     GlobalTSTypeRef GetAccessorFuncType(GateRef receiver, GateRef constData);
     void CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
     void CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
-    void InlineAccessorCheck(GateRef gate, GateRef receiver);
+    void InlineAccessorCheck(const CallGateInfo &info);
     void InlineCheck(CallGateInfo &info);
     GateRef GetAccessorReceiver(GateRef gate);
     GateRef GetFrameArgs(CallGateInfo &info);
     void ReplaceAccessorInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
     void ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
     GateRef BuildAccessor(CallGateInfo &info);
-    uint32_t GetPlrData(GateRef receiver, GateRef constData);
     GateRef GetCallSetterValue(GateRef gate);
     GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter);
     GateRef GetFrameState(CallGateInfo &info);
@@ -210,6 +217,7 @@ private:
     void AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets, uint32_t inlineMethodOffset);
 
     Circuit *circuit_ {nullptr};
+    JSThread *thread_ {nullptr};
     GateAccessor acc_;
     GateRef glue_;
     CircuitBuilder builder_;

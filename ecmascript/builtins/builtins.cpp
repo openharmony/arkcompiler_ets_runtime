@@ -93,6 +93,7 @@
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/symbol_table.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 #ifdef ARK_SUPPORT_INTL
@@ -144,6 +145,7 @@ using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
 using OOMError = builtins::BuiltinsOOMError;
+using TerminationError = builtins::BuiltinsTerminationError;
 using ErrorType = base::ErrorType;
 using RandomGenerator = base::RandomGenerator;
 using Global = builtins::BuiltinsGlobal;
@@ -257,15 +259,15 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetObjectFunction(thread_, objectFunction);
     env->SetObjectFunctionPrototype(thread_, objFuncPrototype);
 
-    JSHandle<JSHClass> FunctionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
+    JSHandle<JSHClass> functionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
                                                                      JSType::JS_FUNCTION, env->GetFunctionPrototype());
-    env->SetFunctionClassWithProto(thread_, FunctionClass);
-    FunctionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
+    env->SetFunctionClassWithProto(thread_, functionClass);
+    functionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
                                                   env->GetFunctionPrototype());
-    env->SetFunctionClassWithoutProto(thread_, FunctionClass);
-    FunctionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE,
+    env->SetFunctionClassWithoutProto(thread_, functionClass);
+    functionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE,
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
-    env->SetFunctionClassWithoutName(thread_, FunctionClass);
+    env->SetFunctionClassWithoutName(thread_, functionClass);
 
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
@@ -358,7 +360,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeCjsRequire(env);
     InitializeDefaultExportOfScript(env);
     InitializeFunctionHclassForOptimized(env);
-    InitializePropertyDetector(env);
+    InitializePropertyDetector(env, lazyInit);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -399,10 +401,13 @@ void Builtins::InitializeFunctionHclassForOptimized(const JSHandle<GlobalEnv> &e
 #undef JSFUNCTION_JCLASS_LIST
 }
 
-void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env) const
+void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const
 {
 #define INITIALIZE_PROPERTY_DETECTOR(type, name, index)              \
     JSHandle<MarkerCell> name##detector = factory_->NewMarkerCell(); \
+    if (lazyInit) {                                                  \
+        name##detector->InvalidatePropertyDetector();                \
+    }                                                                \
     env->Set##name(thread_, name##detector);
     GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
 #undef INITIALIZE_PROPERTY_DETECTOR
@@ -596,8 +601,6 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", isConcatSpreadableSymbol);
     JSHandle<JSTaggedValue> toStringTagSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.toStringTag"));
     SetNoneAttributeProperty(symbolFunction, "toStringTag", toStringTagSymbol);
-    JSHandle<JSTaggedValue> iteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.iterator"));
-    SetNoneAttributeProperty(symbolFunction, "iterator", iteratorSymbol);
     JSHandle<JSTaggedValue> asyncIteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.asyncIterator"));
     SetNoneAttributeProperty(symbolFunction, "asyncIterator", asyncIteratorSymbol);
     JSHandle<JSTaggedValue> matchSymbol(factory_->NewPublicSymbolWithChar("Symbol.match"));
@@ -662,7 +665,6 @@ DETECTOR_SYMBOL_LIST(REGISTER_SYMBOL)
     env->SetHasInstanceSymbol(thread_, hasInstanceSymbol);
     env->SetIsConcatSpreadableSymbol(thread_, isConcatSpreadableSymbol);
     env->SetToStringTagSymbol(thread_, toStringTagSymbol);
-    env->SetIteratorSymbol(thread_, iteratorSymbol);
     env->SetAsyncIteratorSymbol(thread_, asyncIteratorSymbol);
     env->SetMatchSymbol(thread_, matchSymbol);
     env->SetMatchAllSymbol(thread_, matchAllSymbol);
@@ -771,7 +773,8 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // Number = new Function()
     JSHandle<JSObject> numFunction(
-        NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE));
+        NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE,
+            BUILTINS_STUB_ID(NumberConstructor)));
     numFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, numFuncInstanceHClass.GetTaggedValue());
 
     // Number.prototype method
@@ -786,7 +789,7 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     }
     for (const base::BuiltinFunctionEntry &entry: Number::GetNumberGlobalFunctions()) {
         SetFuncToObjAndGlobal(env, globalObject, numFunction,
-                              entry.GetName(), entry.GetEntrypoint(), entry.GetLength());
+                              entry.GetName(), entry.GetEntrypoint(), entry.GetLength(), entry.GetBuiltinStubId());
     }
     // Number constant
     for (const base::BuiltinConstantEntry &entry: Number::GetNumberConstants()) {
@@ -1007,6 +1010,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_SYNTAX_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_EVAL_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_OOM_ERROR);
+    InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
@@ -1024,6 +1028,7 @@ void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm)
     SetErrorWithRealm(realm, JSType::JS_SYNTAX_ERROR);
     SetErrorWithRealm(realm, JSType::JS_EVAL_ERROR);
     SetErrorWithRealm(realm, JSType::JS_OOM_ERROR);
+    SetErrorWithRealm(realm, JSType::JS_TERMINATION_ERROR);
 }
 
 void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType &errorTag) const
@@ -1073,6 +1078,11 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             nativeErrorFunction = env->GetOOMErrorFunction();
             nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledOOMErrorString());
             realm->SetOOMErrorFunction(thread_, nativeErrorFunction);
+            break;
+        case JSType::JS_TERMINATION_ERROR:
+            nativeErrorFunction = env->GetTerminationErrorFunction();
+            nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledTerminationErrorString());
+            realm->SetTerminationErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
             break;
@@ -1132,6 +1142,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
             GeneralUpdateError(&errorParameter, OOMError::OOMErrorConstructor, OOMError::ToString,
                                "OutOfMemoryError", JSType::JS_OOM_ERROR);
             break;
+        case JSType::JS_TERMINATION_ERROR:
+            GeneralUpdateError(&errorParameter, TerminationError::TerminationErrorConstructor,
+                               TerminationError::ToString, "TerminationError", JSType::JS_TERMINATION_ERROR);
+            break;
         default:
             break;
     }
@@ -1179,8 +1193,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         env->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
     } else if (errorTag == JSType::JS_EVAL_ERROR) {
         env->SetEvalErrorFunction(thread_, nativeErrorFunction);
-    } else {
+    } else if (errorTag == JSType::JS_OOM_ERROR) {
         env->SetOOMErrorFunction(thread_, nativeErrorFunction);
+    } else {
+        env->SetTerminationErrorFunction(thread_, nativeErrorFunction);
     }
 }  // namespace panda::ecmascript
 
@@ -1261,6 +1277,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
 
     env->SetBuiltinsSetFunction(thread_, setFunction);
     env->SetSetPrototype(thread_, setFuncPrototype);
+    env->SetSetProtoValuesFunction(thread_, valuesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::SET,
         setFunction->GetTaggedObject()->GetClass(),
         setFuncPrototype->GetJSHClass());
@@ -1329,6 +1346,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
 
     env->SetBuiltinsMapFunction(thread_, mapFunction);
     env->SetMapPrototype(thread_, mapFuncPrototype);
+    env->SetMapProtoEntriesFunction(thread_, entriesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::MAP,
         mapFunction->GetTaggedObject()->GetClass(),
         mapFuncPrototype->GetJSHClass());
@@ -1607,8 +1625,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
         SetFunction(env, stringFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
-    SetFunctionAtSymbol(env, stringFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
-                        BuiltinsString::GetStringIterator, FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
+        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO);
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
@@ -1623,6 +1641,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
 
     env->SetStringFunction(thread_, stringFunction);
     env->SetStringPrototype(thread_, stringFuncPrototype);
+    env->SetStringProtoIterFunction(thread_, stringIter);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::STRING,
         stringFunction->GetJSHClass(),
         stringFuncPrototype->GetJSHClass());
@@ -1642,7 +1661,8 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
         factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
     strIterFunction->SetFunctionPrototype(thread_, strIterFuncInstanceHClass.GetTaggedValue());
 
-    SetFunction(env, strIterPrototype, "next", StringIterator::Next, FunctionLength::ZERO);
+    SetFunction(env, strIterPrototype, "next", StringIterator::Next, FunctionLength::ZERO,
+                BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
     SetStringTagSymbol(env, strIterPrototype, "String Iterator");
 
     env->SetStringIterator(thread_, strIterFunction);
@@ -1762,7 +1782,8 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     // SetIterator.prototype
     JSHandle<JSObject> setIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
-    SetFunction(env, setIteratorPrototype, "next", JSSetIterator::Next, FunctionLength::ZERO);
+    SetFunction(env, setIteratorPrototype, "next", JSSetIterator::Next, FunctionLength::ZERO,
+                BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT));
     SetStringTagSymbol(env, setIteratorPrototype, "Set Iterator");
     env->SetSetIteratorPrototype(thread_, setIteratorPrototype);
     JSHandle<JSTaggedValue> protoValue = env->GetSetIteratorPrototype();
@@ -1778,7 +1799,8 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
     // MapIterator.prototype
     JSHandle<JSObject> mapIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
-    SetFunction(env, mapIteratorPrototype, "next", JSMapIterator::Next, FunctionLength::ZERO);
+    SetFunction(env, mapIteratorPrototype, "next", JSMapIterator::Next, FunctionLength::ZERO,
+                BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT));
     SetStringTagSymbol(env, mapIteratorPrototype, "Map Iterator");
     env->SetMapIteratorPrototype(thread_, mapIteratorPrototype);
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
@@ -1794,7 +1816,8 @@ void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
     // ArrayIterator.prototype
     JSHandle<JSObject> arrayIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
-    SetFunction(env, arrayIteratorPrototype, "next", JSArrayIterator::Next, FunctionLength::ZERO);
+    SetFunction(env, arrayIteratorPrototype, "next", JSArrayIterator::Next, FunctionLength::ZERO,
+                BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT));
     SetStringTagSymbol(env, arrayIteratorPrototype, "Array Iterator");
     env->SetArrayIteratorPrototype(thread_, arrayIteratorPrototype);
 }
@@ -2063,6 +2086,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
 
     env->SetTypedArrayFunction(thread_, typedArrayFunction.GetTaggedValue());
     env->SetTypedArrayPrototype(thread_, typedArrFuncPrototype);
+    env->SetTypedArrayProtoValuesFunction(thread_, valuesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPED_ARRAY,
         typedArrayFunction->GetJSHClass(),
         typedArrFuncPrototype->GetJSHClass());
@@ -2115,9 +2139,10 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
+    env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
     /* Initializes HClass record of %TypedArray% */                                                             \
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
-        arrayFunction->GetJSHClass(),                                                                      \
+        arrayFunction->GetJSHClass(),                                                                           \
         arrFuncPrototype->GetJSHClass());                                                                       \
 }
 
@@ -2552,6 +2577,38 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
     JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
 }
 
+template<int flag>
+JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<GlobalEnv> &env,
+                                                               const JSHandle<JSObject> &obj,
+                                                               const JSHandle<JSTaggedValue> &symbol,
+                                                               std::string_view name,
+                                                               EcmaEntrypoint func,
+                                                               int length) const
+{
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
+    JSHandle<JSFunctionBase> baseFunction(function);
+    JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionName(thread_, baseFunction, nameString, handleUndefine);
+    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+    if constexpr (flag == JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE) {
+        PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, true);
+        JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
+        return JSHandle<JSTaggedValue>(function);
+    } else if constexpr (flag == JSSymbol::SYMBOL_HAS_INSTANCE_TYPE) {  // NOLINTE(readability-braces-around-statements)
+        // ecma 19.2.3.6 Function.prototype[@@hasInstance] has the attributes
+        // { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }.
+        PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, false);
+        JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
+        env->SetHasInstanceFunction(thread_, function);
+        return JSHandle<JSTaggedValue>(function);
+    }
+    PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
+    JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
+    return JSHandle<JSTaggedValue>(function);
+}
+
 void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                                   std::string_view key) const
 {
@@ -2643,14 +2700,19 @@ void Builtins::SetNoneAttributeProperty(const JSHandle<JSObject> &obj, std::stri
 
 void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                      const JSHandle<JSObject> &obj, std::string_view key,
-                                     EcmaEntrypoint func, int length)
+                                     EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
+    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+        auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
+    }
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
     JSObject::DefineOwnProperty(thread_, globalObject, keyString, descriptor);

@@ -42,7 +42,10 @@ enum PauseReason {
     OTHER,
     PROMISEREJECTION,
     XHR,
-    BREAK_ON_START
+    BREAK_ON_START,
+    STEP, // single step
+    DEBUGGERSTMT, // debugger stmt
+    NATIVE_OUT
 };
 
 class PtHooks {
@@ -88,6 +91,10 @@ public:
     virtual bool SingleStep(const JSPtLocation &location) = 0;
 
     virtual void NativeCalling(const void *nativeAddress) = 0;
+
+    virtual bool NativeOut() = 0;
+
+    virtual void NativeReturnJS() = 0;
 
     virtual ~PtHooks() = default;
 

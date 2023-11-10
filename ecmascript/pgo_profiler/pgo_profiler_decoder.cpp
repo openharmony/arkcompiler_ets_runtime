@@ -24,7 +24,7 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::pgo {
-bool PGOProfilerDecoder::Load()
+bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
 {
     if (isLoaded_) {
         Clear();
@@ -44,12 +44,7 @@ bool PGOProfilerDecoder::Load()
     if (!recordSimpleInfos_) {
         recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
     }
-    if (!abcFilePool_) {
-        abcFilePool_ = std::make_unique<PGOAbcFilePool>();
-    }
-    if (header_->SupportProfileTypeWithAbcId()) {
-        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePool_->GetPool());
-    }
+    LoadAbcIdPool(externalAbcFilePool, *recordSimpleInfos_, addr);
     recordSimpleInfos_->ParseFromBinary(addr, header_, abcFilePool_);
     UnLoadAPBinaryFile();
 
@@ -71,7 +66,7 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
     return isVerifySuccess_;
 }
 
-bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum)
+bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum, const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
@@ -79,13 +74,13 @@ bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum)
         Clear();
         return true;
     }
-    if (Load() && Verify(checksum)) {
+    if (Load(externalAbcFilePool) && Verify(checksum)) {
         return true;
     }
     return false;
 }
 
-bool PGOProfilerDecoder::LoadFull()
+bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
 {
     if (isLoaded_) {
         Clear();
@@ -106,17 +101,30 @@ bool PGOProfilerDecoder::LoadFull()
         recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
     }
 
-    if (!abcFilePool_) {
+    LoadAbcIdPool(externalAbcFilePool, *recordDetailInfos_, addr);
+    recordDetailInfos_->ParseFromBinary(addr, header_);
+    recordDetailInfos_->ResetAbcIdRemap();
+    isLoaded_ = true;
+    return true;
+}
+
+void PGOProfilerDecoder::LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool,
+                                       const PGOContext &context, void *addr)
+{
+    if (externalAbcFilePool != nullptr) {
+        abcFilePool_ = externalAbcFilePool;
+        externalAbcFilePool_ = true;
+    } else {
         abcFilePool_ = std::make_unique<PGOAbcFilePool>();
+        externalAbcFilePool_ = false;
     }
 
     if (header_->SupportProfileTypeWithAbcId()) {
-        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePool_->GetPool());
+        auto abcFilePoolTemp = std::make_shared<PGOAbcFilePool>();
+        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePoolTemp->GetPool());
+        // step1: [abc pool merge] merge abcFilePool from ap file to memory.
+        abcFilePool_->Merge(context, *abcFilePoolTemp);
     }
-    recordDetailInfos_->ParseFromBinary(addr, header_);
-
-    isLoaded_ = true;
-    return true;
 }
 
 bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
@@ -180,7 +188,7 @@ void PGOProfilerDecoder::Clear()
         hotnessThreshold_ = 0;
         PGOProfilerHeader::Destroy(&header_);
         pandaFileInfos_.Clear();
-        if (abcFilePool_) {
+        if (abcFilePool_ && !externalAbcFilePool_) {
             abcFilePool_->Clear();
         }
         if (recordDetailInfos_) {
@@ -204,12 +212,12 @@ bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &re
     return recordSimpleInfos_->Match(GetNormalizedFileDesc(jsPandaFile), recordName, EntityId(methodId));
 }
 
-bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
+bool PGOProfilerDecoder::GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const
 {
     if (!isLoaded_ || !isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->GetHClassLayoutDesc(profileType, desc);
+    return recordSimpleInfos_->GetHClassTreeDesc(profileType, desc);
 }
 
 void PGOProfilerDecoder::GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount,
@@ -243,17 +251,13 @@ bool PGOProfilerDecoder::InitMergeData()
         PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
         memset_s(header_, sizeof(PGOProfilerHeader), 0, sizeof(PGOProfilerHeader));
     }
+    if (!abcFilePool_) {
+        abcFilePool_ = std::make_shared<PGOAbcFilePool>();
+        externalAbcFilePool_ = false;
+    }
     isLoaded_ = true;
     isVerifySuccess_ = true;
     return true;
-}
-
-void PGOProfilerDecoder::SwapAbcIdPool(PGOProfilerDecoder &decoder)
-{
-    if (abcFilePool_) {
-        abcFilePool_->Clear();
-    }
-    abcFilePool_.swap(decoder.abcFilePool_);
 }
 
 void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
