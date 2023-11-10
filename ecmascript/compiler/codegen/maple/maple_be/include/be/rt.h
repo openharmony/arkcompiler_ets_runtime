@@ -53,40 +53,22 @@ public:
     }
 
 protected:
-    uint64_t kObjectAlignment;  /* Word size. Suitable for all Java types. */
-    uint64_t kObjectHeaderSize; /* java object header used by MM. */
+    constexpr uint64_t kObjectAlignment = 8; /* Word size. Suitable for all Java types. */
 
 #ifdef USE_32BIT_REF
-    uint32_t kRefFieldSize; /* reference field in java object */
-    uint32_t kRefFieldAlign;
+    constexpr uint32_t kRefFieldSize = 4; /* reference field in java object */
+    constexpr uint32_t kRefFieldAlign = 4;
 #else
-    uint32_t kRefFieldSize; /* reference field in java object */
-    uint32_t kRefFieldAlign;
+    constexpr uint32_t kRefFieldSize = 8; /* reference field in java object */
+    constexpr uint32_t kRefFieldAlign = 8;
 #endif /* USE_32BIT_REF */
     /* The array length offset is fixed since CONTENT_OFFSET is fixed to simplify code */
-    int64_t kArrayLengthOffset; /* shadow + monitor + [padding] */
+    constexpr int64_t kArrayLengthOffset = 12; /* shadow + monitor + [padding] */
     /* The array content offset is aligned to 8B to alow hosting of size-8B elements */
-    int64_t kArrayContentOffset; /* fixed */
-    int64_t kGcTibOffset;
-    int64_t kGcTibOffsetAbs;
+    constexpr int64_t kArrayContentOffset = 16; /* fixed */
 
 private:
-    RTSupport()
-    {
-        kObjectAlignment = 8;
-        kObjectHeaderSize = 8;
-#ifdef USE_32BIT_REF
-        kRefFieldSize = 4;
-        kRefFieldAlign = 4;
-#else
-        kRefFieldSize = 8;
-        kRefFieldAlign = 8;
-#endif /* USE_32BIT_REF */
-        kArrayLengthOffset = 12;
-        kArrayContentOffset = 16;
-        kGcTibOffset = -8;
-        kGcTibOffsetAbs = -kGcTibOffset;
-    }
+    RTSupport() {}
     static const std::string kObjectMapSectionName;
     static const std::string kGctibLabelArrayOfObject;
     static const std::string kGctibLabelJavaObject;

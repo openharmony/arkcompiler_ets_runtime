@@ -406,7 +406,8 @@ public:
 
     bool IsPhysicalRegister() const
     {
-        return GetRegisterNumber() > 0 && GetRegisterNumber() < 100 && !IsOfCC();
+        constexpr uint32 maxPhysicalRegisterNumber = 100;
+        return GetRegisterNumber() > 0 && GetRegisterNumber() < maxPhysicalRegisterNumber && !IsOfCC();
     }
 
     bool IsVirtualRegister() const
@@ -1245,7 +1246,7 @@ public:
             return false;
         }
         OfstOperand *ofstOpnd = GetOffsetImmediate();
-        if (ofstOpnd->GetOffsetValue() >= -256 && ofstOpnd->GetOffsetValue() <= 255) {
+        if (ofstOpnd->GetOffsetValue() >= kNegative256BitSize && ofstOpnd->GetOffsetValue() < k256BitSizeInt) {
             return false;
         }
         return ((static_cast<uint32>(ofstOpnd->GetOffsetValue()) &

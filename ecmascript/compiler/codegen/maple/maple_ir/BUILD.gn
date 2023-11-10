@@ -66,9 +66,9 @@ ohos_static_library("libmplir") {
   include_dirs = include_directories
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   deps = [
-    "${MAPLEALL_ROOT}/maple_util:libcommandline",
     "${MAPLEALL_ROOT}/maple_driver:libdriver_option",
     "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+    "${MAPLEALL_ROOT}/maple_util:libcommandline",
     "${MAPLEALL_ROOT}/maple_util:libcommandline",
     "${MAPLEALL_ROOT}/maple_util:libmplutil",
   ]

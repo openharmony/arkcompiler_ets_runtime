@@ -101,7 +101,7 @@ private:
 
 class ImmOperand : public maplebe::OperandVisitable<ImmOperand> {
 public:
-    explicit ImmOperand(int64 val) : OperandVisitable(kOpdImmediate, 32), val(val) {}
+    explicit ImmOperand(int64 val) : OperandVisitable(kOpdImmediate, k32BitSize), val(val) {}
 
     ~ImmOperand() = default;
     using OperandVisitable<ImmOperand>::OperandVisitable;

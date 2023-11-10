@@ -249,7 +249,7 @@ public:
     void AppendTextData(uint64 data, uint32 byteSize)
     {
         for (size_t i = 0; i < byteSize; i++) {
-            textData.push_back(static_cast<uint8>(data >> (i * 8)));
+            textData.push_back(static_cast<uint8>(data >> (i << k8BitShift)));
         }
     }
 

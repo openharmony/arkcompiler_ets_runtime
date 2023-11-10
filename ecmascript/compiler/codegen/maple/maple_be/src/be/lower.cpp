@@ -264,13 +264,13 @@ bool CGLowerer::IsComplexSelect(const TernaryNode &tNode) const
         return true;
     }
     /* Iread may have side effect which may cause correctness issue. */
-    if (HasIreadExpr(tNode.Opnd(1)) || HasIreadExpr(tNode.Opnd(2))) {
+    if (HasIreadExpr(tNode.Opnd(kFirstReg)) || HasIreadExpr(tNode.Opnd(kSecondReg))) {
         return true;
     }
     // it will be generated many insn for complex expr, leading to
     // worse performance than punishment of branch prediction error
     constexpr size_t maxDepth = 3;
-    if (MaxDepth(tNode.Opnd(1)) > maxDepth || MaxDepth(tNode.Opnd(1)) > maxDepth) {
+    if (MaxDepth(tNode.Opnd(kFirstReg)) > maxDepth || MaxDepth(tNode.Opnd(kSecondReg)) > maxDepth) {
         return true;
     }
     return false;
@@ -1745,7 +1745,7 @@ void CGLowerer::SwitchAssertBoundary(StmtNode &stmt, MapleVector<BaseNode *> &ar
     if (kOpcodeInfo.IsAssertLowerBoundary(stmt.GetOpCode())) {
         errMsg = mirBuilder->CreateConstStringSymbol(
             kOpAssertge, "%s:%d error: the pointer < the lower bounds when accessing the memory!\n");
-        AddElemToPrintf(argsPrintf, 3, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
+        AddElemToPrintf(argsPrintf, 3 /* 3 parameters follow */, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
                         mirBuilder->CreateAddrof(*fileNameSym, PTY_a64), lineNum);
     } else {
         if (kOpcodeInfo.IsAssertLeBoundary(stmt.GetOpCode())) {
@@ -1761,7 +1761,7 @@ void CGLowerer::SwitchAssertBoundary(StmtNode &stmt, MapleVector<BaseNode *> &ar
                 funcName = mirBuilder->CreateConstStringSymbol(callStmt.GetFuncName() + kOpCallAssertle,
                                                                callStmt.GetFuncName());
                 paramNum = mirBuilder->CreateConstStringSymbol(kOpCallAssertle + param, param);
-                AddElemToPrintf(argsPrintf, 5, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
+                AddElemToPrintf(argsPrintf, 5 /* 5 parameters follow */, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
                                 mirBuilder->CreateAddrof(*fileNameSym, PTY_a64), lineNum,
                                 mirBuilder->CreateAddrof(*funcName, PTY_a64),
                                 mirBuilder->CreateAddrof(*paramNum, PTY_a64));
@@ -1773,19 +1773,19 @@ void CGLowerer::SwitchAssertBoundary(StmtNode &stmt, MapleVector<BaseNode *> &ar
                     "%s:%d error: return value's bounds does not match the function declaration for %s\n");
                 funcName = mirBuilder->CreateConstStringSymbol(callStmt.GetFuncName() + kOpReturnAssertle,
                                                                callStmt.GetFuncName());
-                AddElemToPrintf(argsPrintf, 4, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
+                AddElemToPrintf(argsPrintf, 4 /* 4 parameters follow */, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
                                 mirBuilder->CreateAddrof(*fileNameSym, PTY_a64), lineNum,
                                 mirBuilder->CreateAddrof(*funcName, PTY_a64));
             } else {
                 errMsg = mirBuilder->CreateConstStringSymbol(
                     kOpAssignAssertle, "%s:%d error: l-value boundary should not be larger than r-value boundary!\n");
-                AddElemToPrintf(argsPrintf, 3, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
+                AddElemToPrintf(argsPrintf, 3 /* 3 parameters follow */, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
                                 mirBuilder->CreateAddrof(*fileNameSym, PTY_a64), lineNum);
             }
         } else {
             errMsg = mirBuilder->CreateConstStringSymbol(
                 kOpAssertlt, "%s:%d error: the pointer >= the upper bounds when accessing the memory!\n");
-            AddElemToPrintf(argsPrintf, 3, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
+            AddElemToPrintf(argsPrintf, 3 /* 3 parameters follow */, mirBuilder->CreateAddrof(*errMsg, PTY_a64),
                             mirBuilder->CreateAddrof(*fileNameSym, PTY_a64), lineNum);
         }
     }
@@ -3834,16 +3834,16 @@ void CGLowerer::LowerGCMalloc(const BaseNode &node, const GCMallocNode &gcmalloc
 
 std::string CGLowerer::GetNewArrayFuncName(const uint32 elemSize, const bool perm) const
 {
-    if (elemSize == 1) {
+    if (elemSize == k1ByteSize) {
         return perm ? "MCC_NewPermArray8" : "MCC_NewArray8";
     }
-    if (elemSize == 2) {
+    if (elemSize == k2ByteSize) {
         return perm ? "MCC_NewPermArray16" : "MCC_NewArray16";
     }
-    if (elemSize == 4) {
+    if (elemSize == k4ByteSize) {
         return perm ? "MCC_NewPermArray32" : "MCC_NewArray32";
     }
-    CHECK_FATAL((elemSize == 8), "Invalid elemSize.");
+    CHECK_FATAL((elemSize == k8ByteSize), "Invalid elemSize.");
     return perm ? "MCC_NewPermArray64" : "MCC_NewArray64";
 }
 

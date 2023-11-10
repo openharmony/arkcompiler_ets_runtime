@@ -601,16 +601,16 @@ void AArch64CallConvImpl::InitReturnInfo(MIRType &retTy, CCLocInfo &ccLocInfo)
             if (classes[0] == kAArch64FloatClass) {
                 switch (ccLocInfo.regCount) {
                     case kFourRegister:
-                        ccLocInfo.reg3 = AArch64Abi::floatReturnRegs[3];
+                        ccLocInfo.reg3 = AArch64Abi::floatReturnRegs[kFourthReg];
                         break;
                     case kThreeRegister:
-                        ccLocInfo.reg2 = AArch64Abi::floatReturnRegs[2];
+                        ccLocInfo.reg2 = AArch64Abi::floatReturnRegs[kThirdReg];
                         break;
                     case kTwoRegister:
-                        ccLocInfo.reg1 = AArch64Abi::floatReturnRegs[1];
+                        ccLocInfo.reg1 = AArch64Abi::floatReturnRegs[kSecondReg];
                         break;
                     case kOneRegister:
-                        ccLocInfo.reg0 = AArch64Abi::floatReturnRegs[0];
+                        ccLocInfo.reg0 = AArch64Abi::floatReturnRegs[kFirstReg];
                         break;
                     default:
                         CHECK_FATAL(0, "AArch64CallConvImpl: unsupported");

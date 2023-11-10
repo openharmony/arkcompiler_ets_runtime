@@ -134,7 +134,7 @@ public:
           id2bb(alloc.Adapter())
     {
         bbSavedRegs.resize(func.NumBBs());
-        regSavedBBs.resize(sizeof(CalleeBitsType) << 3);
+        regSavedBBs.resize(sizeof(CalleeBitsType) << k8BitShift);
         for (size_t i = 0; i < bbSavedRegs.size(); ++i) {
             bbSavedRegs[i] = nullptr;
         }
@@ -233,7 +233,8 @@ public:
 
     regno_t ReverseRegBitMap(uint32 reg) const
     {
-        if (reg < 10) {
+        constexpr uint32 floatRegisterBitOffset = 10;
+        if (reg < floatRegisterBitOffset) {
             return static_cast<AArch64reg>(R19 + reg);
         } else {
             return static_cast<AArch64reg>((V8 + reg) - (R28 - R19 + 1));

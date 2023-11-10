@@ -64,8 +64,8 @@ static uint32 TryAllocInPaddingSlots(std::list<uint32> paddingSlots[], uint32 fi
                                      size_t paddingSlotsLength)
 {
     CHECK_FATAL(paddingSlotsLength > 0, "expect paddingSlotsLength > 0");
-    if (fieldSize > 4) {
-        return 0; /* padding slots are for size 1/2/4 bytes */
+    if (fieldSize > 4) { // padding slots are just for size 1/2/4 bytes
+        return 0;
     }
 
     uint32 fieldOffset = 0;
@@ -259,7 +259,7 @@ void BECommon::ComputeClassTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx, uint
      * a list of un-occupied (small size) slots available for insertion
      * so far, just for 1, 2, 4 bytes types (map to array index 0, 1, 2)
      */
-    std::list<uint32> paddingSlots[3];
+    std::list<uint32> paddingSlots[3]; // padding slots are just 3 types for size 1/2/4 bytes
     /* process fields */
     AppendStructFieldCount(tyIdx, fields.size());
     if (fields.size() == 0 && mirModule.IsCModule()) {
@@ -773,7 +773,7 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
             }
 
             uint32 index = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeTable().at(iNode.GetTyIdx()))
-                           ->GetPointedTyIdx();
+                               ->GetPointedTyIdx();
             MIRType *pointedType = GlobalTables::GetTypeTable().GetTypeTable().at(index);
             std::pair<int32, int32> byteBitOffset =
                 GetFieldOffset(static_cast<MIRStructType &>(*pointedType), iNode.GetFieldID());

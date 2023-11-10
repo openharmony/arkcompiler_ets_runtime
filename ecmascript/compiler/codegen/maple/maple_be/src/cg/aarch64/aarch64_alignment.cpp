@@ -79,8 +79,10 @@ bool AArch64AlignAnalysis::IsInSizeRange(BB &bb)
     if (CGOptions::GetAlignMinBBSize() == 0 || CGOptions::GetAlignMaxBBSize() == 0) {
         return false;
     }
-    targetInfo.alignMinBBSize = (CGOptions::OptimizeForSize()) ? 16 : CGOptions::GetAlignMinBBSize();
-    targetInfo.alignMaxBBSize = (CGOptions::OptimizeForSize()) ? 44 : CGOptions::GetAlignMaxBBSize();
+    constexpr uint32 defaultMinBBSize = 16;
+    constexpr uint32 defaultMaxBBSize = 44;
+    targetInfo.alignMinBBSize = (CGOptions::OptimizeForSize()) ? defaultMinBBSize : CGOptions::GetAlignMinBBSize();
+    targetInfo.alignMaxBBSize = (CGOptions::OptimizeForSize()) ? defaultMaxBBSize : CGOptions::GetAlignMaxBBSize();
     if (size <= targetInfo.alignMinBBSize || size >= targetInfo.alignMaxBBSize) {
         return false;
     }
@@ -136,7 +138,7 @@ void AArch64AlignAnalysis::ComputeJumpAlign()
             return;
         }
         AArch64AlignInfo targetInfo;
-        targetInfo.jumpAlign = (CGOptions::OptimizeForSize()) ? 3 : CGOptions::GetJumpAlignPow();
+        targetInfo.jumpAlign = (CGOptions::OptimizeForSize()) ? kOffsetAlignmentOf64Bit : CGOptions::GetJumpAlignPow();
         if (alignInfos.find(bb) == alignInfos.end()) {
             alignInfos[bb] = targetInfo.jumpAlign;
         } else {

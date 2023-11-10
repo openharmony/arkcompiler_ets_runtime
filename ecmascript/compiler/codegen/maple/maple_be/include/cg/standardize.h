@@ -51,7 +51,8 @@ protected:
     {
         /* Operand number for two addressing mode is 2 */
         /* and 3 for three addressing mode */
-        needAddrMapping = (insn.GetOperandSize() > 2) || (insn.IsUnaryOp());
+        constexpr uint32 operandSizeNeedAddrMapping = 3;
+        needAddrMapping = (insn.GetOperandSize() >= operandSizeNeedAddrMapping) || (insn.IsUnaryOp());
         return needAddrMapping;
     }
 
