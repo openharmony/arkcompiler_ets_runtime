@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ECMASCRIPT_COMPILER_AOT_COMPILER_H
-#define ECMASCRIPT_COMPILER_AOT_COMPILER_H
+#ifndef ECMASCRIPT_COMPILER_AOT_COMPILER_PREPROCESSOR_H
+#define ECMASCRIPT_COMPILER_AOT_COMPILER_PREPROCESSOR_H
 
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
+#include "macros.h"
 
 namespace panda::ecmascript::kungfu {
 class OhosPkgArgs;
@@ -45,6 +46,7 @@ struct CompilationOptions {
     size_t maxMethodsInModule_;
     uint32_t hotnessThreshold_;
     std::string profilerIn_;
+    bool needMerge_;
     bool isEnableArrayBoundsCheckElimination_;
     bool isEnableTypeLowering_;
     bool isEnableEarlyElimination_;
@@ -64,9 +66,9 @@ struct CompilationOptions {
     bool isEnablePGOHCRLowering_;
 };
 
-class CompilationPreprocessor {
+class AotCompilerPreprocessor {
 public:
-    CompilationPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions,
+    AotCompilerPreprocessor(EcmaVM *vm, JSRuntimeOptions &runtimeOptions,
                             std::map<std::string, std::shared_ptr<OhosPkgArgs>> &pkgsArgs,
                             PGOProfilerDecoder &profilerDecoder, arg_list_t &pandaFileNames)
         : vm_(vm),
@@ -75,7 +77,7 @@ public:
           profilerDecoder_(profilerDecoder),
           pandaFileNames_(pandaFileNames) {};
 
-    ~CompilationPreprocessor() = default;
+    ~AotCompilerPreprocessor() = default;
 
     bool HandleTargetCompilerMode(CompilationOptions &cOptions);
 
@@ -104,7 +106,30 @@ public:
         return fileInfos_;
     }
 
+    std::shared_ptr<OhosPkgArgs> GetMainPkgArgs() const
+    {
+        if (pkgsArgs_.empty()) {
+            return nullptr;
+        }
+        return pkgsArgs_.at(mainPkgName_);
+    }
+
+    const std::map<std::string, std::shared_ptr<OhosPkgArgs>> &GetPkgsArgs() const
+    {
+        return pkgsArgs_;
+    }
+
+    static std::string GetHelper()
+    {
+        std::string str;
+        str.append(COMPILER_HELP_HEAD_MSG);
+        str.append(HELP_OPTION_MSG);
+        return str;
+    }
+
 private:
+    NO_COPY_SEMANTIC(AotCompilerPreprocessor);
+    NO_MOVE_SEMANTIC(AotCompilerPreprocessor);
     void HandleTargetModeInfo(CompilationOptions &cOptions);
 
     std::shared_ptr<JSPandaFile> CreateAndVerifyJSPandaFile(const std::string &fileName);
@@ -114,10 +139,11 @@ private:
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> &pkgsArgs_;
+    std::string mainPkgName_;
     PGOProfilerDecoder &profilerDecoder_;
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
     friend class OhosPkgArgs;
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_AOT_COMPILER_H
+#endif  // ECMASCRIPT_COMPILER_AOT_COMPILER_PREPROCESSOR_H

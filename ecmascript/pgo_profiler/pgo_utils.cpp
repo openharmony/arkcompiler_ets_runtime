@@ -33,11 +33,17 @@ const uint32_t DumpUtils::HEX_FORMAT_WIDTH_FOR_32BITS = 10;  // for example, 0xf
 
 const std::string ApNameUtils::AP_SUFFIX = ".ap";
 const std::string ApNameUtils::RUNTIME_AP_PREFIX = "rt_";
+const std::string ApNameUtils::MERGED_AP_PREFIX = "merged_";
 const std::string ApNameUtils::DEFAULT_AP_NAME = "modules" + AP_SUFFIX;
 
 std::string ApNameUtils::GetRuntimeApName(const std::string &ohosModuleName)
 {
     return RUNTIME_AP_PREFIX + GetBriefApName(ohosModuleName);
+}
+
+std::string ApNameUtils::GetMergedApName(const std::string &ohosModuleName)
+{
+    return MERGED_AP_PREFIX + GetBriefApName(ohosModuleName);
 }
 
 std::string ApNameUtils::GetOhosPkgApName(const std::string &ohosModuleName)

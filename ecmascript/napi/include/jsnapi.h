@@ -24,6 +24,7 @@
 #include <vector>
 #include <map>
 
+#include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
@@ -68,6 +69,11 @@ class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
 static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
+namespace base {
+template<size_t ElementAlign, typename... Ts>
+struct AlignedStruct;
+struct AlignedPointer;
+}
 }  // namespace ecmascript
 
 using Deleter = void (*)(void *nativePointer, void *data);
@@ -1483,9 +1489,18 @@ private:
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
-class PUBLIC_API JsiRuntimeCallInfo {
+class PUBLIC_API JsiRuntimeCallInfo : public ecmascript::base::AlignedStruct<ecmascript::base::AlignedPointer::Size(),
+                                                                             ecmascript::base::AlignedPointer,
+                                                                             ecmascript::base::AlignedPointer,
+                                                                             ecmascript::base::AlignedPointer> {
+    enum class Index : size_t {
+        ThreadIndex = 0,
+        NumArgsIndex,
+        StackArgsIndex,
+        NumOfMembers
+    };
 public:
-    JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo, void* data);
+    JsiRuntimeCallInfo() = default;
     ~JsiRuntimeCallInfo() = default;
 
     inline JSThread *GetThread() const
@@ -1497,13 +1512,10 @@ public:
 
     inline uint32_t GetArgsNumber() const
     {
-        return numArgs_;
+        return numArgs_ - FIRST_ARGS_INDEX;
     }
 
-    inline void* GetData() const
-    {
-        return data_;
-    }
+    void* GetData();
 
     inline Local<JSValueRef> GetFunctionRef() const
     {
@@ -1535,17 +1547,16 @@ private:
 
     uintptr_t GetArgAddress(uint32_t idx) const
     {
-        if (idx < static_cast<uint32_t>(numArgs_ + FIRST_ARGS_INDEX)) {
+        if (idx < GetArgsNumber() + FIRST_ARGS_INDEX) {
             return reinterpret_cast<uintptr_t>(&stackArgs_[idx]);
         }
         return 0U;
     }
 
 private:
-    JSThread *thread_ {nullptr};
-    uint32_t numArgs_ = 0;
-    JSTaggedType *stackArgs_ {nullptr};
-    void *data_ {nullptr};
+    alignas(sizeof(JSTaggedType)) JSThread *thread_ {nullptr};
+    alignas(sizeof(JSTaggedType))  uint32_t numArgs_ = 0;
+    __extension__ alignas(sizeof(JSTaggedType)) JSTaggedType stackArgs_[0];
     friend class FunctionRef;
 };
 

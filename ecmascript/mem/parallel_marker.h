@@ -86,6 +86,8 @@ protected:
     Heap *heap_ {nullptr};
     ObjectXRay objXRay_ {nullptr};
     WorkManager *workManager_ {nullptr};
+
+    friend class Heap;
 };
 
 class NonMovableMarker : public Marker {

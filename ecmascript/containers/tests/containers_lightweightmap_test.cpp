@@ -147,8 +147,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, SetAndGet)
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
         EXPECT_EQ(length, i + 1);
@@ -174,8 +173,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, SetAndGet)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(length, NODE_NUMBERS + 1 + i);
     }
 
@@ -221,7 +219,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, Remove)
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
-        EXPECT_EQ(result, JSTaggedValue::True());
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
         EXPECT_EQ(length, i + 1);
@@ -284,8 +282,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, Clear)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(length, i + 1);
     }
 
@@ -318,8 +315,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, ToString)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(length, i + 1);
     }
 
@@ -355,8 +351,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, SetAll)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = oldLightWeightMap->GetLength();
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(length, i + 1);
     }
 
@@ -406,8 +401,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, KeysAndValuesAndEntries)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t length = lightWeightMap->GetLength();
-        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
-                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(length, i + 1);
     }
 
@@ -530,7 +524,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, ForEach)
         JSTaggedValue result = ContainersLightWeightMap::Set(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         uint32_t len = lightWeightMap->GetLength();
-        EXPECT_EQ(result, JSTaggedValue::True());
+        ASSERT_TRUE(result.IsJSAPILightWeightMap());
         EXPECT_EQ(len, i + 1);
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

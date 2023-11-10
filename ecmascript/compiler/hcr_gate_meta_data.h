@@ -19,6 +19,7 @@
 #include <string>
 
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -97,6 +98,11 @@ public:
     std::vector<ElementsKind> GetElementsKinds() const
     {
         return elementsKinds_;
+    }
+
+    std::string Str() const
+    {
+        return GetEcmaOpcodeStr(opcode_);
     }
 
 private:

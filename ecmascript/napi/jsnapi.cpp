@@ -2881,14 +2881,14 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     // callBack
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 
-    JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
+    JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     bool getStackBeforeCallNapiSuccess = false;
     if (thread->GetIsProfiling() && function->IsCallNapi()) {
         getStackBeforeCallNapiSuccess = thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
-    Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
+    Local<JSValueRef> result = nativeFunc(jsiRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling() && function->IsCallNapi() && getStackBeforeCallNapiSuccess) {
         thread->GetEcmaVM()->GetProfiler()->GetStackAfterCallNapi(thread);
@@ -3527,11 +3527,19 @@ bool JSValueRef::IsVector()
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
-JsiRuntimeCallInfo::JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo, void* data)
-    : thread_(ecmaInfo->GetThread()), numArgs_(ecmaInfo->GetArgsNumber())
+void *JsiRuntimeCallInfo::GetData()
 {
-    stackArgs_ = ecmaInfo->GetArgs();
-    data_ = data;
+    JSHandle<JSTaggedValue> constructor = BuiltinsBase::GetConstructor(reinterpret_cast<EcmaRuntimeCallInfo *>(this));
+    if (!constructor->IsJSFunction()) {
+        return nullptr;
+    }
+    JSHandle<JSFunction> function(constructor);
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
+        return nullptr;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
+    return extraInfo->GetData();
 }
 
 EcmaVM *JsiRuntimeCallInfo::GetVM() const

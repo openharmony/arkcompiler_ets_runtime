@@ -22,9 +22,9 @@
 #include <string>
 #include <vector>
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/json_parser.h"
-#include "ecmascript/compiler/aot_compiler.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
@@ -50,7 +50,7 @@ public:
 
     OhosPkgArgs() = default;
 
-    static bool ParseArgs(CompilationPreprocessor &preProcessor, CompilationOptions &cOptions)
+    static bool ParseArgs(AotCompilerPreprocessor &preProcessor, CompilationOptions &cOptions)
     {
         ASSERT(preProcessor.runtimeOptions_.IsTargetCompilerMode());
         std::shared_ptr<OhosPkgArgs> pkgArgs = std::make_shared<OhosPkgArgs>();
@@ -59,7 +59,8 @@ public:
                 return false;
             }
             LOG_COMPILER(INFO) << "Parse main pkg info success.";
-            preProcessor.pkgsArgs_[pkgArgs->GetFullName()] = pkgArgs;
+            preProcessor.mainPkgName_ = pkgArgs->GetFullName();
+            preProcessor.pkgsArgs_[preProcessor.mainPkgName_] = pkgArgs;
             if (!ParseProfilerPath(pkgArgs, preProcessor, cOptions)) {
                 return false;
             }
@@ -119,26 +120,28 @@ public:
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
-        ecmascript::base::Utf8JsonParser parser(vm->GetJSThread());
+        auto *jsThread = vm->GetJSThread();
+        ecmascript::base::Utf8JsonParser parser(jsThread);
 
-        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(jsonInfo.c_str()));
-        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(vm->GetAssociatedJSThread(), handleMsg));  // JSON Object
+        JSHandle<EcmaString> handleStr = factory->NewFromASCII(jsonInfo.c_str());  // JSON Object
         JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
-        if (!resultValue.IsArray(vm->GetJSThread())) {
+        if (!resultValue.IsArray(jsThread)) {
             LOG_COMPILER(ERROR) << "Pkg list info parse failed. result is not an array. jsonData: " << jsonInfo.c_str();
             return false;
         }
-        JSHandle<JSArray> valueHandle(vm->GetJSThread(), resultValue);
-        JSHandle<TaggedArray> elements(vm->GetJSThread(), valueHandle->GetElements());
+        JSHandle<JSArray> valueHandle(jsThread, resultValue);
+        JSHandle<TaggedArray> elements(jsThread, valueHandle->GetElements());
+        JSMutableHandle<JSTaggedValue> entry(jsThread, JSTaggedValue::Undefined());
+        JSMutableHandle<JSObject> entryHandle(jsThread, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < elements->GetLength(); i++) {
-            JSHandle<JSTaggedValue> entry(vm->GetJSThread(), elements->Get(i));
+            entry.Update(elements->Get(i));
             if (entry->IsHole()) {
                 continue;
             }
             std::shared_ptr<OhosPkgArgs> pkgInfo = std::make_shared<OhosPkgArgs>();
             JSTaggedValue entryValue(static_cast<JSTaggedType>(entry->GetRawData()));
-            JSHandle<JSObject> entryHandle(vm->GetJSThread(), entryValue);
+            entryHandle.Update(entryValue);
             if (!pkgInfo->ParseFromJsObject(vm, entryHandle)) {
                 LOG_COMPILER(ERROR) << "Pkg list entry info parse failed. jsonData: " << jsonInfo.c_str();
                 return false;
@@ -152,33 +155,36 @@ public:
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
-        ecmascript::base::Utf8JsonParser parser(vm->GetJSThread());
+        auto *jsThread = vm->GetJSThread();
+        ecmascript::base::Utf8JsonParser parser(jsThread);
 
-        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(jsonInfo.c_str()));
-        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(vm->GetAssociatedJSThread(), handleMsg));  // JSON Object
+        JSHandle<EcmaString> handleStr(factory->NewFromASCII(jsonInfo.c_str()));  // JSON Object
         JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
         if (!resultValue.IsECMAObject()) {
             LOG_COMPILER(ERROR) << "Pkg info parse failed. result is not an object. jsonData: " << jsonInfo.c_str();
             return false;
         }
-        JSHandle<JSObject> valueHandle(vm->GetJSThread(), resultValue);
+        JSHandle<JSObject> valueHandle(jsThread, resultValue);
         return ParseFromJsObject(vm, valueHandle);
     }
 
     bool ParseFromJsObject(EcmaVM *vm, JSHandle<JSObject> &valueHandle)
     {
         LocalScope scope(vm);
-        JSHandle<TaggedArray> nameList(JSObject::EnumerableOwnNames(vm->GetJSThread(), valueHandle));
+        auto *jsThread = vm->GetJSThread();
+        JSHandle<TaggedArray> nameList(JSObject::EnumerableOwnNames(jsThread, valueHandle));
+        JSMutableHandle<JSTaggedValue> key(jsThread, JSTaggedValue::Undefined());
+        JSMutableHandle<JSTaggedValue> value(jsThread, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < nameList->GetLength(); i++) {
-            JSHandle<JSTaggedValue> key(vm->GetJSThread(), nameList->Get(i));
-            JSHandle<JSTaggedValue> value = JSObject::GetProperty(vm->GetJSThread(), valueHandle, key).GetValue();
+            key.Update(nameList->Get(i));
+            value.Update(JSObject::GetProperty(jsThread, valueHandle, key).GetValue());
             if (!key->IsString() || !value->IsString()) {
                 LOG_COMPILER(ERROR) << "Pkg info parse from js object failed. key and value must be string type.";
                 return false;
             }
-            UpdateProperty(ConvertToString(*JSTaggedValue::ToString(vm->GetJSThread(), key)).c_str(),
-                           ConvertToString(*JSTaggedValue::ToString(vm->GetJSThread(), value)).c_str());
+            UpdateProperty(ConvertToString(*JSTaggedValue::ToString(jsThread, key)).c_str(),
+                           ConvertToString(*JSTaggedValue::ToString(jsThread, value)).c_str());
         }
         return Valid();
     }
@@ -267,26 +273,51 @@ public:
         pgoDir_ = pgoDir;
     }
 
-    std::string GetPgoPaths() const
+    void GetPgoPaths(std::string &pgoPaths, bool &needMerge) const
     {
+        pgoPaths.clear();
+        needMerge = false;
         // 1. use target aps when app in white list
         if (WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
-            std::string pgoPaths = GetTargetApPaths();
-            if (!pgoPaths.empty()) {
-                return pgoPaths;
-            }
+            pgoPaths = GetTargetApPaths();
+        }
+        if (!pgoPaths.empty()) {
+            needMerge = true;
+            return;
         }
 
         // 2. use baseline ap if there's no runtime ap
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
         if (FileExist(baselineAp.c_str())) {
-            return baselineAp;
+            pgoPaths = baselineAp;
         }
-        return "";
+    }
+
+    std::string GetRuntimeApPath() const
+    {
+        auto runtimeAp = pgoDir_ + '/' + pgo::ApNameUtils::GetRuntimeApName(moduleName_);
+        if (!FileExist(runtimeAp.c_str())) {
+            return "";
+        }
+        return runtimeAp;
+    }
+
+    std::string GetMergedApPathWithoutCheck() const
+    {
+        return pgoDir_ + '/' + pgo::ApNameUtils::GetMergedApName(moduleName_);
+    }
+
+    std::string GetMergedApPath() const
+    {
+        auto mergedAp = GetMergedApPathWithoutCheck();
+        if (!FileExist(mergedAp.c_str())) {
+            return "";
+        }
+        return mergedAp;
     }
 
 private:
-    static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, CompilationPreprocessor &preProcessor,
+    static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, AotCompilerPreprocessor &preProcessor,
                                   CompilationOptions &cOptions)
     {
         if (!preProcessor.runtimeOptions_.IsPartialCompilerMode()) {
@@ -300,7 +331,7 @@ private:
             pkgArgs->SetPgoDir(ResolveDirPath(pandaFileNames.at(0)));
         }
         // reset profilerIn from pgo dir
-        cOptions.profilerIn_ = pkgArgs->GetPgoPaths();
+        pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
         if (cOptions.profilerIn_.empty()) {
             LOG_COMPILER(ERROR) << "No available ap files found in " << pkgArgs->GetPgoDir();
             return false;
@@ -324,7 +355,8 @@ private:
 
     std::string GetTargetApPaths() const
     {
-        std::string pgoPaths;
+        // handle merged ap
+        std::string pgoPaths = GetMergedApPath();
 
         // handle runtime ap
         auto runtimeAp = GetRuntimeApPath();
@@ -335,15 +367,6 @@ private:
             pgoPaths += runtimeAp;
         }
         return pgoPaths;
-    }
-
-    std::string GetRuntimeApPath() const
-    {
-        auto runtimeAp = pgoDir_ + '/' + pgo::ApNameUtils::GetRuntimeApName(moduleName_);
-        if (!FileExist(runtimeAp.c_str())) {
-            return "";
-        }
-        return runtimeAp;
     }
 
     static constexpr uint32_t INVALID_VALUE = std::numeric_limits<uint32_t>::max();

@@ -639,6 +639,25 @@ void GateAccessor::Print(GateRef gate) const
     gatePtr->Print();
 }
 
+#ifndef NDEBUG
+void GateAccessor::PrintById(size_t id) const
+{
+    GateRef gate = circuit_->GetGateRefById(id);
+    if (gate != Circuit::NullGate()) {
+        Gate *gatePtr = circuit_->LoadGatePtr(gate);
+        gatePtr->PrintWithBytecode();
+    } else {
+        LOG_COMPILER(INFO) << "id overflow!";
+    }
+}
+#endif
+
+void GateAccessor::PrintWithBytecode(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    gatePtr->PrintWithBytecode();
+}
+
 void GateAccessor::ShortPrint(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

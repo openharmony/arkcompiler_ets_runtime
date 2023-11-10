@@ -182,3 +182,14 @@ split = newStr.split("d")
 split[0] = "0"
 print(split)
 print(newStr.split("d"))
+
+var Tag = {
+    t82 : "82"
+}
+var tag1 = "823".substring(0, 2)
+var val = "val";
+var m = new Map();
+m.set(tag1, val);
+m.forEach((a, b)=>{
+  print("Tag.t82 == b : ", Tag.t82 == b);
+})

@@ -665,7 +665,7 @@ public:
         ASSERT(str != nullptr);
         uint32_t len = EcmaStringAccessor(str).GetLength();
         ASSERT(len != UINT32_MAX);
-        CVector<uint8_t> buf(len);
+        CVector<uint8_t> buf(len + 1);
         EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len);
         Text begin = buf.data();
         return Launch(begin, begin + len);

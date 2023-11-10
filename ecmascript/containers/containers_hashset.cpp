@@ -116,7 +116,7 @@ JSTaggedValue ContainersHashSet::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(self);
     JSAPIHashSet::Add(thread, hashSet, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return hashSet.GetTaggedValue();
+    return JSTaggedValue::True();
 }
 
 JSTaggedValue ContainersHashSet::Remove(EcmaRuntimeCallInfo *argv)

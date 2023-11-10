@@ -11,14 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-1,2,3
-1
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-https://www.a.com
-https://www.b.com
-https://www.c.com
-[object Object]
-Infinity
--Infinity
-123
-SyntaxError
+host_pgotypeinfer_test_action("add") {
+  deps = []
+}
