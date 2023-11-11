@@ -276,7 +276,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_FUNCTION_BASE:
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:
-            return GetString(CString(ParseFunctionName(entry)));
+            return GetString(CString("JSFunction"));
         case JSType::JS_ERROR:
             return GetString("Error");
         case JSType::JS_EVAL_ERROR:
@@ -648,7 +648,14 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
                 node = GenerateStringNode(entry, size, isInFinish);
             }
             if (node == nullptr) {
-                LOG_ECMA(DEBUG) << "string node nullptr";
+                LOG_ECMA(ERROR) << "string node nullptr";
+            }
+            return node;
+        }
+        if (entry.IsJSFunction()) {
+            node = GenerateFunctionNode(entry, size, isInFinish);
+            if (node == nullptr) {
+                LOG_ECMA(ERROR) << "function node nullptr";
             }
             return node;
         }
@@ -942,6 +949,33 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
         return nullptr;
     }
     privateStringNode_ = node;
+    return node;
+}
+
+Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish)
+{
+    TaggedObject *obj = entry.GetTaggedObject();
+    Address addr = reinterpret_cast<Address>(obj);
+    Node *existNode = entryMap_.FindEntry(addr);
+    auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+    if (existNode != nullptr) {
+        if (isInFinish) {
+            existNode->SetName(GetString(CString(ParseFunctionName(obj))));
+        }
+        existNode->SetLive(true);
+        return existNode;
+    }
+    size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
+    Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("JSFunction"), NodeType::CLOSURE, selfsize,
+                               obj);
+    if (isInFinish) {
+        node->SetName(GetString(CString(ParseFunctionName(obj))));
+    }
+    if (!idExist) {
+        entryIdMap_->InsertId(addr, sequenceId);
+    }
+    entryMap_.InsertEntry(node);
+    InsertNodeUnique(node);
     return node;
 }
 
