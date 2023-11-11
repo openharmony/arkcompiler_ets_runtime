@@ -106,7 +106,7 @@ public:
         }
     }
 
-    uint32_t ProcessToBinary(std::fstream &stream) override
+    uint32_t ProcessToBinary([[maybe_unused]] PGOContext &context, std::fstream &stream) override
     {
         LOG_ECMA(DEBUG) << "ProcessToBinary. name: " << poolName_ << ", count: " << pool_.size();
         SectionInfo secInfo;
@@ -116,7 +116,7 @@ public:
         stream.seekp(secInfo.offset_, std::ofstream::cur);
         for (auto &entry : pool_) {
             stream.write(reinterpret_cast<const char *>(&(entry.first)), sizeof(ApEntityId));
-            entry.second.ProcessToBinary(stream);
+            entry.second.ProcessToBinary(context, stream);
         }
         secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - static_cast<uint32_t>(secInfoPos);
         auto tail = stream.tellp();
@@ -149,14 +149,15 @@ public:
         return true;
     }
 
-    uint32_t ParseFromBinary(void **buffer, PGOProfilerHeader const *header) override
+    uint32_t ParseFromBinary([[maybe_unused]] PGOContext &context, void **buffer,
+                             PGOProfilerHeader const *header) override
     {
         auto secInfo = base::ReadBuffer<SectionInfo>(buffer);
         for (uint32_t i = 0; i < secInfo.number_; i++) {
             auto entryId = base::ReadBuffer<ApEntityId>(buffer, sizeof(ApEntityId));
             auto result = pool_.try_emplace(entryId);
             result.first->second.SetEntryId(entryId);
-            result.first->second.ParseFromBinary(buffer, header);
+            result.first->second.ParseFromBinary(context, buffer, header);
         }
         return 1;
     }

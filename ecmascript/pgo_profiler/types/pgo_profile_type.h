@@ -43,13 +43,14 @@ public:
         LegacyKind = BuiltinsId,
         MethodId,           // method offset of js function
         BuiltinFunctionId,  // function index of registered function
-        LocalRecordId,
-        ModuleRecordId,
+        RecordClassId,
         PrototypeId,
         ConstructorId,
         TotalKinds,
         UnknowId
     };
+
+    static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
 
     static const ProfileType PROFILE_TYPE_NONE;
 
@@ -202,6 +203,13 @@ private:
     }
 
     uint64_t type_ {0};
+};
+
+struct HashProfileType {
+    uint64_t operator()(const ProfileType &profileType) const
+    {
+        return profileType.GetRaw();
+    }
 };
 
 class ProfileTypeRef {

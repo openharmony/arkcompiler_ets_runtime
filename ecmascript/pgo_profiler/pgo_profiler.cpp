@@ -1292,20 +1292,20 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
         return ProfileType::PROFILE_TYPE_NONE;
     }
     ProfileType recordType {0};
-    if (recordInfo.moduleRecordIdx != -1) {
-        recordType = GetModuleRecordProfileType(abcId, recordInfo.moduleRecordIdx);
-        recordInfos_->GetRecordPool()->AddModuleRecordType(recordType, recordName);
+    if (pf->IsBundlePack()) {
+        ASSERT(recordName == JSPandaFile::ENTRY_FUNCTION_NAME);
+        recordType = CreateRecordProfileType(abcId, ProfileType::RECORD_ID_FOR_BUNDLE);
+        recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;
     }
-    ApEntityId recordId {0};
-    recordInfos_->GetRecordPool()->TryAdd(recordName, recordId);
-    recordType = GetLocalRecordProfileType(abcId, recordId);
-    return recordType;
-}
-
-ProfileType PGOProfiler::GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId)
-{
-    return {abcId, recordId, ProfileType::Kind::LocalRecordId};
+    if (recordInfo.classId != JSPandaFile::CLASSID_OFFSET_NOT_FOUND) {
+        recordType = CreateRecordProfileType(abcId, recordInfo.classId);
+        recordInfos_->GetRecordPool()->Add(recordType, recordName);
+        return recordType;
+    }
+    LOG_ECMA(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo.isCjs
+                    << ", isJson: " << recordInfo.isJson;
+    return ProfileType::PROFILE_TYPE_NONE;
 }
 
 void PGOProfiler::WorkList::PushBack(WorkNode *node)
@@ -1368,8 +1368,8 @@ void PGOProfiler::WorkList::Iterate(Callback callback) const
     }
 }
 
-ProfileType PGOProfiler::GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId)
+ProfileType PGOProfiler::CreateRecordProfileType(ApEntityId abcId, ApEntityId classId)
 {
-    return {abcId, moduleRecordId, ProfileType::Kind::ModuleRecordId};
+    return {abcId, classId, ProfileType::Kind::RecordClassId};
 }
 } // namespace panda::ecmascript::pgo

@@ -42,20 +42,6 @@
 #include "securec.h"
 
 namespace panda::ecmascript::pgo {
-namespace {
-bool ParseSectionsFromBinary(const std::list<std::weak_ptr<PGOFileSectionInterface>> &sectionList, void *buffer,
-                             PGOProfilerHeader const *header)
-{
-    return std::all_of(sectionList.begin(), sectionList.end(), [&](const auto &sectionWeak) {
-        auto section = sectionWeak.lock();
-        if (section == nullptr) {
-            return true;
-        }
-        return PGOFileSectionInterface::ParseSectionFromBinary(buffer, header, *section);
-    });
-}
-}  // namespace
-
 using StringHelper = base::StringHelper;
 void PGOPandaFileInfos::ParseFromBinary(void *buffer, SectionInfo *const info)
 {
@@ -686,29 +672,24 @@ bool PGORecordDetailInfos::AddTransitionLayout(
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 {
-    std::map<ApEntityId, ApEntityId> idMapping;
-    recordPool_->Merge(*recordInfos.recordPool_, idMapping);
     CMap<ProfileType, PGOMethodInfoMap *> methodInfos = recordInfos.recordInfos_;
     for (auto iter = methodInfos.begin(); iter != methodInfos.end(); iter++) {
-        auto oldRecordType = iter->first;
-        auto newIter = idMapping.find(oldRecordType.GetId());
-        if (newIter == idMapping.end()) {
-            continue;
-        }
-        auto newRecordType = PGOProfiler::GetLocalRecordProfileType(oldRecordType.GetAbcId(), newIter->second);
+        auto recordType = iter->first;
         auto fromMethodInfos = iter->second;
 
-        auto recordInfosIter = recordInfos_.find(newRecordType);
+        auto recordInfosIter = recordInfos_.find(recordType);
         PGOMethodInfoMap *toMethodInfos = nullptr;
         if (recordInfosIter == recordInfos_.end()) {
             toMethodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
-            recordInfos_.emplace(newRecordType, toMethodInfos);
+            recordInfos_.emplace(recordType, toMethodInfos);
         } else {
             toMethodInfos = recordInfosIter->second;
         }
 
         toMethodInfos->Merge(chunk_.get(), fromMethodInfos);
     }
+
+    recordPool_->Merge(*recordInfos.recordPool_);
     // Merge global layout desc infos to global method info map
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
     for (auto info = hclassTreeDescInfos.begin(); info != hclassTreeDescInfos.end();
@@ -728,16 +709,13 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
 {
     header_ = header;
-    if (!ParseSectionsFromBinary(apSectionList_, buffer, header)) {
-        return;
-    }
-
+    PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *profileTypePool_->GetPool());
     if (!abcIdRemap_.empty()) {
         // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
         LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
         profileTypePool_->Remap(*this);
     }
-
+    PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *recordPool_);
     SectionInfo *info = header->GetRecordInfoSection();
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
@@ -751,10 +729,10 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
         } else {
             auto *recordName = base::ReadBuffer(&addr);
-            recordPool_->TryAdd(recordName, recordId);
+            recordPool_->Add(ProfileType(recordId), recordName);
         }
         recordType.UpdateId(recordId);
-        recordType.UpdateKind(ProfileType::Kind::LocalRecordId);
+        recordType.UpdateKind(ProfileType::Kind::RecordClassId);
         PGOMethodInfoMap *methodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
         if (methodInfos->ParseFromBinary(chunk_.get(), *this, &addr)) {
             recordInfos_.emplace(recordType, methodInfos);
@@ -818,13 +796,8 @@ void PGORecordDetailInfos::ProcessToBinary(
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
 
-    for (const auto &sectionWeak : apSectionList_) {
-        auto section = sectionWeak.lock();
-        if (section == nullptr) {
-            continue;
-        }
-        PGOFileSectionInterface::ProcessSectionToBinary(fileStream, header, *section);
-    }
+    PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *recordPool_);
+    PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *profileTypePool_->GetPool());
 }
 
 bool PGORecordDetailInfos::ProcessToBinaryForLayout(
@@ -888,8 +861,7 @@ bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
         }
 
         ApEntityId recordId(0);
-        recordPool_->TryAdd(recordName, recordId);
-        ProfileType profileType(0, recordId, ProfileType::Kind::LocalRecordId);
+        ProfileType profileType(0, recordId, ProfileType::Kind::RecordClassId);
         auto methodInfosIter = recordInfos_.find(profileType);
         PGOMethodInfoMap *methodInfos = nullptr;
         if (methodInfosIter == recordInfos_.end()) {
@@ -924,21 +896,19 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
         stream << profilerString;
     }
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
-        auto recordId = ApEntityId(iter->first.GetId());
-        auto recordName = recordPool_->GetEntry(recordId)->GetData();
+        const CString recordName(recordPool_->GetName(iter->first));
+        ASSERT(!recordName.empty());
         auto methodInfos = iter->second;
         methodInfos->ProcessToText(hotnessThreshold_, recordName, stream);
     }
-    recordPool_->GetPool()->ProcessToText(stream);
+    recordPool_->ProcessToText(stream);
     profileTypePool_->GetPool()->ProcessToText(stream);
 }
 
 void PGORecordDetailInfos::InitSections()
 {
     recordPool_ = std::make_unique<PGORecordPool>();
-    apSectionList_.emplace_back(recordPool_->GetPool());
     profileTypePool_ = std::make_unique<PGOProfileTypePool>();
-    apSectionList_.emplace_back(profileTypePool_->GetPool());
 }
 
 void PGORecordDetailInfos::Clear()
@@ -954,7 +924,6 @@ void PGORecordDetailInfos::Clear()
     recordInfos_.clear();
     recordPool_->Clear();
     profileTypePool_->Clear();
-    apSectionList_.clear();
     hclassTreeDescInfos_.clear();
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
@@ -981,11 +950,18 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
                                            std::shared_ptr<PGOAbcFilePool> &abcFilePool)
 {
     header_ = header;
-    ParseSectionsFromBinary(apSectionList_, buffer, header);
+    if (!PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *profileTypePool_->GetPool())) {
+        LOG_ECMA(ERROR) << "Parse from binary failed for profile type pool.";
+        return;
+    }
     if (!abcIdRemap_.empty()) {
         // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
         LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
         profileTypePool_->Remap(*this);
+    }
+    if (!PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *recordPool_)) {
+        LOG_ECMA(ERROR) << "Parse from binary failed for record pool.";
+        return;
     }
     SectionInfo *info = header->GetRecordInfoSection();
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
@@ -996,8 +972,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         if (header->SupportProfileTypeWithAbcId()) {
             auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId)));
             recordType = ProfileType(*this, recordTypeRef);
-            auto recordId = recordType.GetId();
-            recordName = recordPool_->GetEntry(recordId)->GetData();
+            recordName = recordPool_->GetName(recordType);
             auto abcId = recordType.GetAbcId();
             const auto *entry = abcFilePool->GetPool()->GetEntry(abcId);
             if (entry != nullptr) {
@@ -1005,7 +980,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             }
         } else if (header->SupportRecordPool()) {
             auto recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
-            recordName = recordPool_->GetEntry(recordId)->GetData();
+            recordName = recordPool_->GetName(ProfileType(recordId));
         } else {
             recordName = base::ReadBuffer(&addr);
         }
@@ -1027,8 +1002,6 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
 
 void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
 {
-    std::map<ApEntityId, ApEntityId> idMapping;
-    recordPool_->Merge(*simpleInfos.recordPool_, idMapping);
     for (const auto &fromAbcMethodIds : simpleInfos.methodIds_) {
         auto toAbcMethodIds = methodIds_.try_emplace(fromAbcMethodIds.first);
         for (const auto &method : fromAbcMethodIds.second) {
@@ -1042,6 +1015,7 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
             const_cast<PGOMethodIdSet &>(*result->second).Merge(*method.second);
         }
     }
+    recordPool_->Merge(*simpleInfos.recordPool_);
     // Merge global layout desc infos to global method info map
     for (const auto &hclassTreeDescInfo : simpleInfos.hclassTreeDescInfos_) {
         auto result = hclassTreeDescInfos_.find(hclassTreeDescInfo);
@@ -1072,9 +1046,7 @@ bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
 void PGORecordSimpleInfos::InitSections()
 {
     recordPool_ = std::make_unique<PGORecordPool>();
-    apSectionList_.emplace_back(recordPool_->GetPool());
     profileTypePool_ = std::make_unique<PGOProfileTypePool>();
-    apSectionList_.emplace_back(profileTypePool_->GetPool());
 }
 
 void PGORecordSimpleInfos::Clear()
@@ -1092,7 +1064,6 @@ void PGORecordSimpleInfos::Clear()
     methodIds_.clear();
     recordPool_->Clear();
     profileTypePool_->Clear();
-    apSectionList_.clear();
     hclassTreeDescInfos_.clear();
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
