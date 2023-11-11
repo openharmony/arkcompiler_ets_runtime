@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -511,6 +511,11 @@ public:
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
+    static size_t GetFunctionOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::JSFuncIndex)>(isArch32);
+    }
+
     static size_t ComputeReservedJSFuncOffset(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::JSFuncIndex);
@@ -754,6 +759,11 @@ public:
         return sizeof(InterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
+    static size_t GetPcOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::PcIndex)>(isArch32);
+    }
+
     static size_t GetTypeOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
@@ -764,6 +774,11 @@ public:
     {
         return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
             InterpretedFrameBase::GetPrevOffset(isArch32);
+    }
+
+    static size_t GetFunctionOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
@@ -829,6 +844,11 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
     {
         return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
             InterpretedFrameBase::GetPrevOffset(isArch32);
+    }
+
+    static size_t GetFunctionOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
@@ -1347,6 +1367,11 @@ public:
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
     }
 
+    static size_t GetFunctionOffset()
+    {
+        return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argc) + 1;
+    }
+
     const JSTaggedType* GetArgv() const
     {
         return reinterpret_cast<const JSTaggedType *>(&argc + 1);
@@ -1460,6 +1485,11 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+
+    static size_t GetStackArgsOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32);
     }
 
     static size_t GetTypeOffset(bool isArch32 = false)

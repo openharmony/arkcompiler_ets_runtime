@@ -92,6 +92,7 @@
     extern "C" {
       get_ark_js_heap_crash_info;
       step_ark_managed_native_frame;
+      get_ark_native_frame_info;
     };
   local:
     *;
