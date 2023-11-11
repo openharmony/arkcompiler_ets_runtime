@@ -16,6 +16,7 @@
 #include "ecmascript/weak_vector.h"
 
 #include "ecmascript/object_factory.h"
+#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacity, MemSpaceType type)
@@ -25,8 +26,8 @@ JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacit
     uint32_t length = VectorToArrayIndex(capacity);
     JSHandle<WeakVector> vector;
     if (type == MemSpaceType::NON_MOVABLE) {
-        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length,
-            JSTaggedValue::Hole(), true));
+        vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()
+                                      ->NewTaggedArray(length, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE));
     } else {
         vector = JSHandle<WeakVector>(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length));
     }
