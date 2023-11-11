@@ -1911,6 +1911,33 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
     return method->IsNativeWithCallField();
 }
 
+void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
+{
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    function->SetCallNapi(callNapi);
+}
+
+void* FunctionRef::GetData(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    if (!function->IsCallNapi()) {
+        return nullptr;
+    }
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsNativePointer()) {
+        return nullptr;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
+    return extraInfo->GetData();
+}
+
 // ----------------------------------- ArrayRef ----------------------------------------
 Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
 {
