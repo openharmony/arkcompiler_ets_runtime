@@ -771,6 +771,8 @@ public:
     Local<StringRef> GetName(const EcmaVM *vm);
     Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
+    void SetData(const EcmaVM *vm, void *data, Deleter deleter = nullptr, bool callNapi = false);
+    void* GetData(const EcmaVM *vm);
 };
 
 class PUBLIC_API ArrayRef : public ObjectRef {
