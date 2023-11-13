@@ -34,7 +34,8 @@ namespace panda::ecmascript::kungfu {
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                    \
-    V(ArrayConstructor, ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)
+    V(ArrayConstructor, ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)            \
+    V(ObjectConstructor, OBJECT_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
     V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)

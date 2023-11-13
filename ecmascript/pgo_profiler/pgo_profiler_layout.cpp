@@ -45,6 +45,7 @@ void PGOHClassTreeDesc::Merge(const PGOHClassTreeDesc &from)
             curLayoutDesc->Merge(fromDesc);
         }
     });
+    elementTrackInfo_ = from.GetElementsTrackInfo();
 }
 
 HClassLayoutDesc *PGOHClassTreeDesc::GetHClassLayoutDesc(ProfileType type) const
