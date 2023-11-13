@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+ ADDTARGETPHASE("layoutstackframe", true);
+ ADDTARGETPHASE("createstartendlabel", true);
+ ADDTARGETPHASE("buildehfunc", true);
+ ADDTARGETPHASE("handlefunction", true);
+ ADDTARGETPHASE("moveargs", true);
+ if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
+   /* SSA PHASES */
+   ADDTARGETPHASE("cgssaconstruct", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgcopyprop", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgpeephole", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgvalidbitopt", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgtargetprop", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgdeadcodeelimination", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgsplitcriticaledge", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgphielimination", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgregcoalesce", CGOptions::DoCGSSA());
+ }
+ /* Normal OPT PHASES */
+ ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
+ ADDTARGETPHASE("ebo", CGOptions::DoEBO());
+ ADDTARGETPHASE("prepeephole", CGOptions::DoPrePeephole())
+ ADDTARGETPHASE("ico", CGOptions::DoICO())
+ ADDTARGETPHASE("cfgo", !GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
+
+ if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
+   ADDTARGETPHASE("storeloadopt", CGOptions::DoStoreLoadOpt() && !CGOptions::DoCGSSA());
+   ADDTARGETPHASE("globalopt", CGOptions::DoGlobalOpt());
+ }
+ ADDTARGETPHASE("clearrdinfo", (CGOptions::DoStoreLoadOpt()) || CGOptions::DoGlobalOpt());
+
+ ADDTARGETPHASE("prepeephole1", CGOptions::DoPrePeephole());
+ ADDTARGETPHASE("ebo1", CGOptions::DoEBO());
+ ADDTARGETPHASE("prescheduling", !GetMIRModule()->IsJavaModule() && CGOptions::DoPreSchedule());
+ ADDTARGETPHASE("raopt", CGOptions::DoPreLSRAOpt());
+ ADDTARGETPHASE("cgsplitcriticaledge", GetMIRModule()->IsCModule());
+ ADDTARGETPHASE("regalloc", true);
+ ADDTARGETPHASE("regsaves", GetMIRModule()->IsCModule() && CGOptions::DoRegSavesOpt());
+ if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
+   ADDTARGETPHASE("storeloadopt", GetMIRModule()->IsCModule() && CGOptions::DoStoreLoadOpt());
+   ADDTARGETPHASE("globalopt", CGOptions::DoCGSSA());
+ }
+ ADDTARGETPHASE("clearrdinfo", GetMIRModule()->IsCModule() && (CGOptions::DoStoreLoadOpt() || CGOptions::DoGlobalOpt()));
+ ADDTARGETPHASE("generateproepilog", true);
+ ADDTARGETPHASE("framefinalize", true);
+ ADDTARGETPHASE("dbgfixcallframeoffsets", true);
+ ADDTARGETPHASE("cfgo", GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
+ ADDTARGETPHASE("peephole0", CGOptions::DoPeephole())
+ ADDTARGETPHASE("postebo", CGOptions::DoEBO());
+ ADDTARGETPHASE("postcfgo", CGOptions::DoCFGO());
+ ADDTARGETPHASE("cgpostpeephole", CGOptions::DoPeephole())
+ ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
+ ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
+ ADDTARGETPHASE("yieldpoint", GetMIRModule()->IsJavaModule() && CGOptions::IsInsertYieldPoint());
+ ADDTARGETPHASE("scheduling", CGOptions::DoSchedule());
+ ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
+ ADDTARGETPHASE("fixshortbranch", true);
+ ADDTARGETPHASE("cgemit", true);
