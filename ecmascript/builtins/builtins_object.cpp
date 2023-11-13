@@ -720,10 +720,12 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     JSHandle<JSTaggedValue> prop = GetCallArg(argv, 0);
 
-    JSTaggedValue result = ObjectFastOperator::HasOwnProperty(thread, thisValue.GetTaggedValue(),
+    std::pair<JSTaggedValue, bool> result = ObjectFastOperator::HasOwnProperty(thread, thisValue.GetTaggedValue(),
         prop.GetTaggedValue());
-    if (!result.IsHole()) {
+    if (!result.first.IsHole()) {
         return GetTaggedBoolean(true);
+    } else if (result.second) {
+        return GetTaggedBoolean(false);
     }
 
     JSHandle<JSTaggedValue> property = JSTaggedValue::ToPropertyKey(thread, prop);

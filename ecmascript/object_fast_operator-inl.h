@@ -18,6 +18,7 @@
 
 #include "ecmascript/object_fast_operator.h"
 
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -42,28 +43,56 @@ namespace panda::ecmascript {
         return JSTaggedValue::Hole();                 \
     }
 
-JSTaggedValue ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
-    if (!receiver.IsHeapObject() ||
-        !(receiver.GetTaggedObject()->GetClass()->GetObjectType() == JSType::JS_OBJECT)) {
-        return JSTaggedValue::Hole();
+    if (!receiver.IsHeapObject() || !(receiver.IsRegularObject())) {
+        return std::make_pair(JSTaggedValue::Hole(), false);
     }
-    if (!key.IsString() || !EcmaStringAccessor(key).IsInternString()) {
-        return JSTaggedValue::Hole();
+    if (!key.IsString())
+    {
+        return std::make_pair(JSTaggedValue::Hole(), false);
     }
 
+    uint32_t index = 0;
+    if (JSTaggedValue::ToElementIndex(key, &index)) {
+        ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
+        TaggedArray *elements = TaggedArray::Cast(JSObject::Cast(receiver)->GetElements().GetTaggedObject());
+        if (elements->GetLength() == 0) {
+            return std::make_pair(JSTaggedValue::Hole(), true);  // Empty Array
+        }
+
+        if (!elements->IsDictionaryMode()) {
+            if (elements->GetLength() <= index) {
+                return std::make_pair(JSTaggedValue::Hole(), true);
+            }
+            JSTaggedValue value = elements->Get(index);
+            return std::make_pair(value, true);
+        } else {
+            NumberDictionary *dictionary =
+                NumberDictionary::Cast(JSObject::Cast(receiver)->GetElements().GetTaggedObject());
+            int entry = dictionary->FindEntry(JSTaggedValue(static_cast<int>(index)));
+            if (entry == -1) {
+                return std::make_pair(JSTaggedValue::Hole(), true);
+            }
+            return std::make_pair(JSTaggedValue::Undefined(), true);
+        }
+    }
+
+    if (!EcmaStringAccessor(key).IsInternString()) {
+        EcmaString *str =
+            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(EcmaString::Cast(key.GetTaggedObject()));
+        if (str == nullptr) {
+            return std::make_pair(JSTaggedValue::Hole(), true);
+        }
+        key = JSTaggedValue(str);
+    }
     auto *hclass = receiver.GetTaggedObject()->GetClass();
     if (LIKELY(!hclass->IsDictionaryMode())) {
         ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
-
         int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
         if (entry != -1) {
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-            PropertyAttributes attr(layoutInfo->GetAttr(entry));
-            ASSERT(static_cast<int>(attr.GetOffset()) == entry);
-            auto value = JSObject::Cast(receiver)->GetProperty(hclass, attr);
-            return value;
+            return std::make_pair(JSTaggedValue::Undefined(), true);
         }
     } else {
         TaggedArray *array = TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject());
@@ -71,12 +100,10 @@ JSTaggedValue ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue
         NameDictionary *dict = NameDictionary::Cast(array);
         int entry = dict->FindEntry(key);
         if (entry != -1) {
-            auto value = dict->GetValue(entry);
-            return value;
+            return std::make_pair(JSTaggedValue::Undefined(), true);
         }
     }
-    // not found
-    return JSTaggedValue::Hole();
+    return std::make_pair(JSTaggedValue::Hole(), true);
 }
 
 template<bool UseOwn>
