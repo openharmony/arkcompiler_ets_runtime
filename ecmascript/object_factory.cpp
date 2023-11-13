@@ -4254,6 +4254,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
             break;
         }
         case FunctionKind::CONCURRENT_FUNCTION:
+        case FunctionKind::ASYNC_ARROW_FUNCTION:
         case FunctionKind::ASYNC_FUNCTION: {
             if (methodHandle->IsAotWithCallField()) {
                 if (methodHandle->IsFastCall()) {
@@ -4275,18 +4276,6 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
                 }
             } else {
                 hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
-            }
-            break;
-        }
-        case FunctionKind::ASYNC_ARROW_FUNCTION: {
-            if (methodHandle->IsAotWithCallField()) {
-                if (methodHandle->IsFastCall()) {
-                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimizedWithFastCall());
-                } else {
-                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimized());
-                }
-            } else {
-                hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
             }
             break;
         }

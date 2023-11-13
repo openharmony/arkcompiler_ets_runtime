@@ -51,6 +51,9 @@ class JSThread;
 class AOTLiteralInfo : public TaggedArray {
 public:
     static constexpr size_t NO_FUNC_ENTRY_VALUE = -1;
+    static constexpr size_t AOT_CHC_INDEX = 1;
+    static constexpr size_t AOT_IHC_INDEX = 2;
+    static constexpr size_t RESERVED_LENGTH = AOT_IHC_INDEX;
 
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
@@ -105,9 +108,6 @@ public:
         return Get(index);
     }
 private:
-    static constexpr size_t AOT_CHC_INDEX = 1;
-    static constexpr size_t AOT_IHC_INDEX = 2;
-    static constexpr size_t RESERVED_LENGTH = AOT_IHC_INDEX;
 
     inline size_t GetIhcOffset() const
     {

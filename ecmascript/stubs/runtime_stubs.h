@@ -349,7 +349,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LocaleCompareWithGc)                \
     V(ArrayForEachContinue)               \
     V(NumberDictionaryPut)                \
-    V(ThrowRangeError)
+    V(ThrowRangeError)                    \
+    V(InitializeGeneratorFunction)        \
+    V(FunctionDefineOwnProperty)          \
+    V(AOTEnableProtoChangeMarker)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

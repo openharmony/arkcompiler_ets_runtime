@@ -109,6 +109,7 @@ public:
     GateRef Undefined();
     GateRef Hole();
     GateRef Null();
+    GateRef NullPtr();
     GateRef Exception();
     // parameter
     GateRef Argument(size_t index);
@@ -604,6 +605,10 @@ public:
     GateRef GetCallFieldFromMethod(GateRef method);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
+    void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
@@ -628,6 +633,7 @@ public:
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
+    void SetCallableToBitfield(GateRef glue, GateRef obj, bool isCallable);
 
     // fast path
     GateRef FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
@@ -682,6 +688,18 @@ public:
     GateRef IsBoundFunction(GateRef obj);
     GateRef GetMethodFromJSFunction(GateRef jsfunc);
     GateRef IsNativeMethod(GateRef method);
+    GateRef GetFuncKind(GateRef method);
+    GateRef HasPrototype(GateRef kind);
+    GateRef HasAccessor(GateRef kind);
+    GateRef IsClassConstructorKind(GateRef kind);
+    GateRef IsGeneratorKind(GateRef kind);
+    GateRef IsBaseKind(GateRef kind);
+
+    GateRef IsAOTLiteralInfo(GateRef info);
+    GateRef GetIhcFromAOTLiteralInfo(GateRef info);
+    GateRef IsAotWithCallField(GateRef method);
+    GateRef IsFastCall(GateRef method);
+    GateRef GetFunctionHClass(GateRef glue, GateRef method, size_t idx1, size_t idx2, size_t idx3);
     GateRef IsOptimizedWithBitField(GateRef bitfield);
     GateRef CanFastCallWithBitField(GateRef bitfield);
     GateRef GetExpectedNumOfArgs(GateRef method);

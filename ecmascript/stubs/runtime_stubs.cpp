@@ -109,6 +109,34 @@ DEF_RUNTIME_STUBS(AddElementInternal)
     return JSTaggedValue(result).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(InitializeGeneratorFunction)
+{
+    RUNTIME_STUBS_HEADER(InitializeGeneratorFunction);
+    FunctionKind kind = static_cast<FunctionKind>(GetTArg(argv, argc, 0)); // 1: means the first parameter
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
+    if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
+        JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
+    } else if (kind == FunctionKind::GENERATOR_FUNCTION) {
+        JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
+    }
+    return initialGeneratorFuncPrototype.GetTaggedType();
+}
+
+DEF_RUNTIME_STUBS(FunctionDefineOwnProperty)
+{
+    RUNTIME_STUBS_HEADER(FunctionDefineOwnProperty);
+    JSHandle<JSFunction> func(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSTaggedValue> accessor = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    FunctionKind kind = static_cast<FunctionKind>(GetTArg(argv, argc, 2)); // 2: means the second parameter
+    PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
+    JSObject::DefineOwnProperty(thread, JSHandle<JSObject>(func),
+                                thread->GlobalConstants()->GetHandledPrototypeString(), desc);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(AllocateInYoung)
 {
     RUNTIME_STUBS_HEADER(AllocateInYoung);
@@ -2991,6 +3019,24 @@ DEF_RUNTIME_STUBS(ArrayForEachContinue)
     }
 
     return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
+{
+    RUNTIME_STUBS_HEADER(AOTEnableProtoChangeMarker);
+    JSHandle<JSFunction> result(GetHArg<JSTaggedValue>(argv, argc, 0)); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> ihc = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
+    result->SetProtoOrHClass(thread, ihc);
+    JSHandle<JSObject> clsPrototype(thread, result->GetFunctionPrototype());
+    clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+    JSHClass::EnableProtoChangeMarker(thread,
+        JSHandle<JSHClass>(thread, result->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
+    }
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)
