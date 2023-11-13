@@ -356,10 +356,10 @@ public:
             return;
         }
 
-        // 2. use baseline ap if there's no runtime ap
+        // 2. do not baseline ap until new format supported
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
         if (FileExist(baselineAp.c_str())) {
-            pgoPaths = baselineAp;
+            LOG_COMPILER(ERROR) << "Do not support base line ap now, please waiting. baseline ap: " << baselineAp;
         }
     }
 
@@ -395,10 +395,10 @@ private:
         }
         if (pkgArgs->GetPgoDir().empty() && !cOptions.profilerIn_.empty()) {
             // try get pgo dir from --compiler-pgo-profiler-path
-            arg_list_t pandaFileNames = base::StringHelper::SplitString(cOptions.profilerIn_, GetFileDelimiter());
-            ASSERT(!pandaFileNames.empty());
+            arg_list_t apFileNames = base::StringHelper::SplitString(cOptions.profilerIn_, GetFileDelimiter());
+            ASSERT(!apFileNames.empty());
             // just parse the first ap's dir
-            pkgArgs->SetPgoDir(ResolveDirPath(pandaFileNames.at(0)));
+            pkgArgs->SetPgoDir(ResolveDirPath(apFileNames.at(0)));
         }
         // reset profilerIn from pgo dir
         pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
