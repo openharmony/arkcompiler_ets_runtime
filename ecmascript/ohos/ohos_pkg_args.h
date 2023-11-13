@@ -87,10 +87,10 @@ public:
 #if defined(CODE_ENCRYPTION_ENABLE)
     void DecryptSetKey(int fd) const
     {
-        if (ohos::setKey(fd, static_cast<int>(GetBundleUid())) < 0) {
+        if (ohos::DecryptSetKey(fd, static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "set key error!";
         }
-        if (ohos::associateKey(fd, static_cast<int>(GetProcessUid()),
+        if (ohos::DecryptAssociateKey(fd, static_cast<int>(GetProcessUid()),
                          static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "associate key error!";
         }
@@ -98,8 +98,8 @@ public:
 
     void DecryptRemoveKey(int fd) const
     {
-        if (ohos::removeKey(fd, static_cast<int>(GetProcessUid())) < 0
-         || ohos::removeKey(fd, static_cast<int>(GetBundleUid())) < 0) {
+        if (ohos::DecrypRemoveKey(fd, static_cast<int>(GetProcessUid())) < 0
+         || ohos::DecrypRemoveKey(fd, static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "remove key error!";
         }
     }
