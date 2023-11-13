@@ -948,6 +948,11 @@ public:
         return GetObjectType() >= JSType::JS_API_ARRAY_LIST && GetObjectType() <= JSType::JS_API_QUEUE;
     }
 
+    inline bool IsRegularObject() const
+    {
+        return GetObjectType() < JSType::JS_API_ARRAY_LIST;
+    }
+
     inline bool IsJSAPIArrayList() const
     {
         return GetObjectType() == JSType::JS_API_ARRAY_LIST;

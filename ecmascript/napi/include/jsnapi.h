@@ -84,6 +84,7 @@ using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using DeviceDisconnectCallback = std::function<bool()>;
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
@@ -771,6 +772,8 @@ public:
     Local<StringRef> GetName(const EcmaVM *vm);
     Local<StringRef> GetSourceCode(const EcmaVM *vm, int lineNumber);
     bool IsNative(const EcmaVM *vm);
+    void SetData(const EcmaVM *vm, void *data, Deleter deleter = nullptr, bool callNapi = false);
+    void* GetData(const EcmaVM *vm);
 };
 
 class PUBLIC_API ArrayRef : public ObjectRef {
@@ -1361,7 +1364,7 @@ public:
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
-
+    static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     // secure memory check
     static bool CheckSecureMem(uintptr_t mem);
 
@@ -1405,6 +1408,7 @@ public:
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturnJS(const EcmaVM *vm);
+    static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);

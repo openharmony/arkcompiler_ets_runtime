@@ -185,6 +185,11 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     return strFlat;
 }
 
+EcmaString *EcmaStringTable::TryGetInternString(EcmaString *string)
+{
+    return GetString(string);
+}
+
 EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len,
                                                             bool canBeCompress, MemSpaceType type,
                                                             bool isConstantString, uint32_t idOffset)

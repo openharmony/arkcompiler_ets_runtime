@@ -72,6 +72,8 @@ private:
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);
+    template<TypedBinOp Op>
+    void VisitStringAdd(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
@@ -89,8 +91,6 @@ private:
     GateRef MonocularInt(GateRef gate);
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
-
-    GateRef VisitStringEqual(GateRef left, GateRef right);
 
     TypeInfo GetOutputType(GateRef gate) const
     {

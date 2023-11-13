@@ -464,6 +464,7 @@ private:
     V(GetSingleCharCodeByIndex)             \
     V(CreateStringBySingleCharCode)         \
     V(FastStringEqual)                      \
+    V(FastStringAdd)                        \
     V(Getpropiterator)                      \
     V(Getnextpropname)                      \
     V(CreateJSSetIterator)                  \

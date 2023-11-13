@@ -482,6 +482,15 @@ config("ark_jsruntime_common_config") {
   if (is_asan) {
     defines += [ "ECMASCRIPT_ENABLE_DFX_CONFIG" ]
   }
+
+  code_encrypto_enable = true
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_crypto_metadata_process)) {
+    code_encrypto_enable = false
+  }
+  if (code_encrypto_enable) {
+    defines += [ "CODE_ENCRYPTION_ENABLE" ]
+  }
 }
 
 # ecmascript unit testcase config

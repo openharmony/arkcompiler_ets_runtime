@@ -185,8 +185,13 @@ private:
     void LowerLoadSetter(GateRef gate);
     void LowerInlineAccessorCheck(GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
+    void LowerStringAdd(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
+    void LowerArrayConstructorCheck(GateRef gate, GateRef glue);
+    void NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
+    void LowerArrayConstructor(GateRef gate, GateRef glue);
+    void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

@@ -48,6 +48,8 @@ public:
     GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen);
+    GateRef ExtendArray(GateRef glue, GateRef elements, GateRef newLen);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);

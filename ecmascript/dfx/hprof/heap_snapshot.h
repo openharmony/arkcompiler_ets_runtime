@@ -500,6 +500,7 @@ private:
     Node *GenerateNode(JSTaggedValue entry, size_t size = 0, bool isInFinish = false);
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
