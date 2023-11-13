@@ -1479,6 +1479,36 @@ void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
             return;
         }
     }
+
+    auto sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (!sampleType->IsProfileType()) {
+        return;
+    }
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return;
+    }
+
+    AddProfiling(gate);
+
+    GateRef stateSplit = acc_.GetDep(gate);
+
+    GateRef frameState = acc_.FindNearestFrameState(stateSplit);
+    GateRef thisObj = builder_.TypedNewAllocateThis(ctor, builder_.IntPtr(hclassIndex), frameState);
+
+    // call constructor
+    size_t range = acc_.GetNumValueIn(gate);
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range,
+        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+    std::vector<GateRef> args { glue_, actualArgc, ctor, ctor, thisObj };
+    for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
+        args.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef constructGate = builder_.Construct(gate, args);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
 bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
@@ -1494,6 +1524,11 @@ bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
             }
             constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
         }
+    } else if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::OBJECT, ctorGT)) {
+        if (!Uncheck()) {
+            builder_.ObjectConstructorCheck(ctor);
+        }
+        constructGate = builder_.BuiltinConstructor(BuiltinTypeId::OBJECT, gate);
     }
     if (constructGate == Circuit::NullGate()) {
         return false;

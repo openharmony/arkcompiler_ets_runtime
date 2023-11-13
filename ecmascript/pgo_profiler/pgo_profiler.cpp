@@ -581,8 +581,16 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
-            case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+            case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpNewObjRange(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8: {
+                uint16_t slotId = READ_INST_16_0();
+                DumpNewObjRange(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8: {
                 break;
             }
@@ -1035,6 +1043,19 @@ void PGOProfiler::DumpGetIterator(ApEntityId abcId, const CString &recordName, E
     ASSERT(iterKind <= 0);
     ProfileType::Kind pgoKind = ProfileType::Kind::BuiltinFunctionId;
     PGOSampleType type = PGOSampleType::CreateProfileType(abcId, std::abs(iterKind), pgoKind);
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
+}
+
+void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+{
+    JSTaggedValue slotValue = profileTypeInfo->Get(slotId);
+    if (!slotValue.IsInt()) {
+        return;
+    }
+    int ctorMethodId = slotValue.GetInt();
+    auto type = PGOSampleType::CreateProfileType(abcId, ctorMethodId, ProfileType::Kind::ClassId, true);
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }

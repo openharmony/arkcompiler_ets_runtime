@@ -191,6 +191,9 @@ private:
     void LowerArrayConstructorCheck(GateRef gate, GateRef glue);
     void NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
     void LowerArrayConstructor(GateRef gate, GateRef glue);
+    void LowerObjectConstructorCheck(GateRef gate, GateRef glue);
+    void LowerObjectConstructor(GateRef gate, GateRef glue);
+    GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,

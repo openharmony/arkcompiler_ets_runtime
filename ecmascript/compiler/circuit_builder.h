@@ -461,6 +461,7 @@ public:
     GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
     GateRef ArrayConstructorCheck(GateRef gate);
+    GateRef ObjectConstructorCheck(GateRef gate);
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
                                 GateType gateType, PGOTypeRef pgoType, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
