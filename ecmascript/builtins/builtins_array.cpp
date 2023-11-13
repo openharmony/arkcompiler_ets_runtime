@@ -120,12 +120,15 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     //   d. Assert: defineStatus is true.
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> itemK(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < argc; k++) {
         key.Update(JSTaggedValue(k));
-        JSHandle<JSTaggedValue> itemK = GetCallArg(argv, k);
+        itemK.Update(GetCallArg(argv, k));
+        if (itemK.GetTaggedValue().IsHole()) {
+            itemK.Update(JSTaggedValue::Undefined());
+        }
         JSObject::CreateDataProperty(thread, newArrayHandle, key, itemK);
     }
-
     // 11. Assert: the value of array’s length property is numberOfArgs.
     // 12. Return array.
     JSArray::Cast(*newArrayHandle)->SetArrayLength(thread, argc);

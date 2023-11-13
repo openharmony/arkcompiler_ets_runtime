@@ -81,7 +81,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue> value = GetCallArg(argv, i);
             JSTaggedNumber res = JSTaggedValue::ToNumber(thread, value);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            double temp = res.GetNumber();
+            double temp = JSDate::TimeClip(res.GetNumber());
             if (std::isnan(temp) || !std::isfinite(temp)) {  // Check the double value is finite.
                 break;
             }

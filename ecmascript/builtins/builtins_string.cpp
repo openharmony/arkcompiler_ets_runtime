@@ -757,7 +757,7 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
 
     std::u16string u16strThis = EcmaStringAccessor(thisHandle).ToU16String();
     const char16_t *constChar16tData = u16strThis.data();
-    icu::UnicodeString src(constChar16tData);
+    icu::UnicodeString src(constChar16tData, u16strThis.size());
     icu::UnicodeString res;
     UErrorCode errorCode = U_ZERO_ERROR;
     int32_t option = 0;

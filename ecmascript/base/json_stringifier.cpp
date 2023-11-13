@@ -138,15 +138,16 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
 
 void JsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property)
 {
-    uint32_t propLen = propList_.size();
-    for (uint32_t i = 0; i < propLen; i++) {
-        if (JSTaggedValue::SameValue(propList_[i], property)) {
-            return;
-        }
-    }
     JSHandle<EcmaString> primString = JSTaggedValue::ToString(thread_, property);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
     JSHandle<JSTaggedValue> addVal(thread_, *primString);
+
+    uint32_t propLen = propList_.size();
+    for (uint32_t i = 0; i < propLen; i++) {
+        if (JSTaggedValue::SameValue(propList_[i], addVal)) {
+            return;
+        }
+    }
     propList_.emplace_back(addVal);
 }
 
