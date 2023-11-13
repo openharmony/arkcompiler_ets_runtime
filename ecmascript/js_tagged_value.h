@@ -680,6 +680,7 @@ public:
     bool IsTrackInfoObject() const;
     bool IsSpecialKeysObject() const;
     bool IsSlowKeysObject() const;
+    bool IsRegularObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
     bool IsTSType() const;

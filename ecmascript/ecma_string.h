@@ -143,9 +143,9 @@ private:
         return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED;
     }
 
-    inline bool IsInteger() const
+    inline bool IsInteger()
     {
-        return (GetMixHashcode() & IS_INTEGER_MASK) == IS_INTEGER_MASK;
+        return (GetHashcode() & IS_INTEGER_MASK) == IS_INTEGER_MASK;
     }
 
     // require is LineString
