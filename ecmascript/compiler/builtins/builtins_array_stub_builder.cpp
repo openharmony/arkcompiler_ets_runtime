@@ -297,23 +297,18 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
     Label isObject(env);
-    Label atLeastOneArg(env);
     Label notFound(env);
     Label thisLenNotZero(env);
     Branch(TaggedIsObject(thisValue), &isObject, slowPath);
     Bind(&isObject);
-    Branch(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
-    Bind(&atLeastOneArg);
-    GateRef thisLen = GetArrayLength(thisValue);
-    Branch(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
+    GateRef thisLen = SExtInt32ToInt64(GetArrayLength(thisValue));
+    Branch(Int64Equal(thisLen, Int64(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
     {
-        DEFVARIABLE(fromIndex, VariableType::INT32(), Int32(0));
+        DEFVARIABLE(fromIndex, VariableType::INT64(), Int64(0));
         Label getArgTwo(env);
         Label nextProcess(env);
-        Label nextCheck(env);
         Branch(Int64Equal(numArgs, IntPtr(2)), &getArgTwo, &nextProcess); // 2: 2 parameters
         Bind(&getArgTwo);
         {
@@ -321,51 +316,52 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
             GateRef fromIndexTemp = GetCallArg1(numArgs);
             Branch(TaggedIsNumber(fromIndexTemp), &secondArgIsNumber, slowPath);
             Bind(&secondArgIsNumber);
-            fromIndex = GetInt32OfTInt(fromIndexTemp);
+            fromIndex = GetInt64OfTInt(fromIndexTemp);
             Jump(&nextProcess);
         }
         Bind(&nextProcess);
         {
+            Label atLeastOneArg(env);
             Label setBackZero(env);
             Label calculateFrom(env);
-            Branch(Int32GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
+            Label nextCheck(env);
+            Branch(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
+            Bind(&atLeastOneArg);
+            Branch(Int64GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
             Bind(&nextCheck);
-            Branch(Int32LessThan(*fromIndex, Int32(0)), &setBackZero, &calculateFrom);
+            Branch(Int64LessThan(*fromIndex, Int64Not(thisLen)), &setBackZero, &calculateFrom);
             Bind(&setBackZero);
             {
-                fromIndex = Int32(0);
+                fromIndex = Int64(0);
                 Jump(&calculateFrom);
             }
             Bind(&calculateFrom);
             {
-                DEFVARIABLE(from, VariableType::INT32(), Int32(0));
-                Label isFromIndex(env);
-                Label notOnlyFromIndex(env);
+                DEFVARIABLE(from, VariableType::INT64(), Int64(0));
+                Label fromIndexGreaterOrEqualZero(env);
+                Label fromIndexLessThanZero(env);
                 Label startLoop(env);
-                Branch(Int32GreaterThanOrEqual(*fromIndex, Int32(0)), &isFromIndex, &notOnlyFromIndex);
-                Bind(&isFromIndex);
+                Branch(Int64GreaterThanOrEqual(*fromIndex, Int64(0)),
+                    &fromIndexGreaterOrEqualZero, &fromIndexLessThanZero);
+                Bind(&fromIndexGreaterOrEqualZero);
                 {
                     from = *fromIndex;
                     Jump(&startLoop);
                 }
-                Bind(&notOnlyFromIndex); 
+                Bind(&fromIndexLessThanZero);
                 {
                     Label isLenFromIndex(env);
-                    Label isZero(env);
-                    Branch(Int32GreaterThanOrEqual(Int32Add(thisLen, *fromIndex), Int32(0)), &isLenFromIndex, &isZero);
+                    GateRef lenFromIndexSum = Int64Add(thisLen, *fromIndex);
+                    Branch(Int64GreaterThanOrEqual(lenFromIndexSum, Int64(0)), &isLenFromIndex, &startLoop);
                     Bind(&isLenFromIndex);
                     {
-                        from = Int32Add(thisLen, *fromIndex);
-                        Jump(&startLoop);
-                    }
-                    Bind(&isZero);
-                    {
-                        from = Int32(0);
+                        from = lenFromIndexSum;
                         Jump(&startLoop);
                     }
                 }
                 Bind(&startLoop);
                 {
+                    DebugPrint(glue, {Int32(GET_MESSAGE_STRING_ID(INT32_VALUE)), *from});
                     GateRef searchElement = GetCallArg0(numArgs);
                     GateRef elements = GetElementsArray(thisValue);
                     Label loopHead(env);
@@ -375,11 +371,12 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                     Jump(&loopHead);
                     LoopBegin(&loopHead);
                     {
-                        Branch(Int32LessThan(*from, thisLen), &next, &loopExit);
+                        Branch(Int64LessThan(*from, thisLen), &next, &loopExit);
                         Bind(&next);
                         {
                             Label notHoleOrUndefValue(env);
                             GateRef value = GetValueFromTaggedArray(elements, *from);
+                            //DebugPrint(glue, {Int32(GET_MESSAGE_STRING_ID(STRING)), value});
                             Branch(BoolOr(TaggedIsHole(value), TaggedIsUndefined(value)), slowPath,
                                 &notHoleOrUndefValue);
                             Bind(&notHoleOrUndefValue);
@@ -396,7 +393,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                         }
                     }
                     Bind(&loopEnd);
-                    from = Int32Add(*from, Int32(1));
+                    from = Int64Add(*from, Int64(1));
                     LoopEnd(&loopHead);
                     Bind(&loopExit);
                     Jump(&notFound);
