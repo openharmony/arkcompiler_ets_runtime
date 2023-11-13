@@ -15,10 +15,6 @@
 #ifndef ECMASCRIPT_COMPILER_APP_CRYPTO_H
 #define ECMASCRIPT_COMPILER_APP_CRYPTO_H
 
-#include <sys/ioctl.h>
-#include <linux/ioctl.h>
-#include <linux/types.h>
-
 namespace panda::ecmascript::ohos {
 // After referencing the kernel header file, need to remove it
 #define PAGE_SIZE 0x1000
@@ -39,46 +35,11 @@ struct code_decrypto_arg
     void *arg1;
     void *arg2;
 };
-
-int setKey(int fd, int srcAppId)
-{
-    struct code_decrypto_arg arg;
-    arg.arg1_len = sizeof(srcAppId);
-    arg.arg1 = reinterpret_cast<void*>(&srcAppId);
-    arg.arg2_len = 0;
-    arg.arg2 = nullptr;
-    return ioctl(fd, CODE_DECRYPT_CMD_SET_KEY, &arg);
-}
-
-int removeKey(int fd, int srcAppId)
-{
-    struct code_decrypto_arg arg;
-    arg.arg1_len = sizeof(srcAppId);
-    arg.arg1 = reinterpret_cast<void*>(&srcAppId);
-    arg.arg2_len = 0;
-    arg.arg2 = nullptr;
-    return ioctl(fd, CODE_DECRYPT_CMD_REMOVE_KEY, &arg);
-}
-
-int associateKey(int fd, int dstAppId, int srcAppId)
-{
-    struct code_decrypto_arg arg;
-    arg.arg1_len = sizeof(dstAppId);
-    arg.arg1 = reinterpret_cast<void*>(&dstAppId);
-    arg.arg2_len = sizeof(srcAppId);
-    arg.arg2 = reinterpret_cast<void*>(&srcAppId);
-    return ioctl(fd, CODE_DECRYPT_CMD_SET_ASSOCIATE_KEY, &arg);
-    
-}
-
-int removeAssociateKey(int fd, int dstAppId, int srcAppId)
-{
-    struct code_decrypto_arg arg;
-    arg.arg1_len = sizeof(dstAppId);
-    arg.arg1 = reinterpret_cast<void*>(&dstAppId);
-    arg.arg2_len = sizeof(srcAppId);
-    arg.arg2 = reinterpret_cast<void*>(&srcAppId);
-    return ioctl(fd, CODE_DECRYPT_CMD_REMOVE_ASSOCIATE_KEY, &arg);
-}
+#if defined(CODE_ENCRYPTION_ENABLE)
+int DecryptSetKey(int fd, int srcAppId);
+int DecrypRemoveKey(int fd, int srcAppId);
+int DecryptAssociateKey(int fd, int dstAppId, int srcAppId);
+int DecrypRemoveAssociateKey(int fd, int dstAppId, int srcAppId);
+#endif
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_APP_CRYPTO_H

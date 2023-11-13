@@ -586,6 +586,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_weak_ref.cpp",
   "ecmascript/builtins/builtins_weak_set.cpp",
   "ecmascript/byte_array.cpp",
+  "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
