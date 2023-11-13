@@ -808,6 +808,7 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
+    vm->CheckThread();
     vm->GetJSThread()->DisposeGlobalHandle(addr);
 }
 
