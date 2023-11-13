@@ -158,6 +158,7 @@ group("ark_aot_ts_test") {
     "lexenv_specialization",
     "lexenv_specialization",
     "lexenv_specialization_noopt",
+    "load_local_module_var",
     "logic_op",
     "loop_peeling",
     "loop_phi",

@@ -87,6 +87,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::TYPE_OF_CHECK:
+        case OpCode::ARRAY_CONSTRUCTOR_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -364,6 +365,10 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             }
             break;
         }
+        case OpCode::ARRAY_CONSTRUCTOR_CHECK:
+            if (acc_.GetValueIn(lhs) != acc_.GetValueIn(rhs)) {
+                return false;
+            }
         default:
             break;
     }

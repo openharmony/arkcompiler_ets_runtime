@@ -457,4 +457,70 @@ GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
     env_->SubCfgExit();
     return res;
 }
+
+GateRef CircuitBuilder::StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->StoreModuleVar(), MachineType::I64,
+        { currentControl, currentDepend, jsFunc, index, value }, GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::LdLocalModuleVar(GateRef jsFunc, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->LdLocalModuleVar(), MachineType::I64,
+                                            { currentControl, currentDepend, jsFunc, index}, GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = Circuit::NullGate();
+    switch (id) {
+        case BuiltinTypeId::ARRAY: {
+            if (acc_.GetNumValueIn(gate) == 1) {
+                newGate = GetCircuit()->NewGate(circuit_->ArrayConstructor(1), MachineType::I64,
+                                                { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
+                                                GateType::TaggedValue());
+            } else {
+                ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: num value in
+                newGate = GetCircuit()->NewGate(circuit_->ArrayConstructor(2), MachineType::I64,
+                    { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
+                    GateType::TaggedValue());
+            }
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+    }
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+void CircuitBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
+{
+    GateRef jsHclass = LoadHClass(obj);
+    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef boolVal = Boolean(isExtensible);
+    GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
+    GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
+    GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
 }

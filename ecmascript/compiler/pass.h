@@ -299,7 +299,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, data->GetMethodName());
+            enableLog, enableTypeLog, data->GetMethodName(), passOptions->EnableFastModule());
         bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -329,7 +329,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            enableLog, data->GetMethodName());
+            enableLog, data->GetMethodName(), passOptions->EnableFastModule());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);

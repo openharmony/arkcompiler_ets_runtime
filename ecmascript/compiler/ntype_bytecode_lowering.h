@@ -26,7 +26,7 @@ namespace panda::ecmascript::kungfu {
 class NTypeBytecodeLowering {
 public:
     NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
-                          bool enableLog, const std::string& name)
+                          bool enableLog, const std::string& name, bool fastModule)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -37,7 +37,9 @@ public:
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
-          glue_(acc_.GetGlueFromArgList()) {}
+          glue_(acc_.GetGlueFromArgList()),
+          argAcc_(circuit),
+          fastModule_(fastModule) {}
 
     ~NTypeBytecodeLowering() = default;
 
@@ -50,6 +52,8 @@ private:
     void LowerLdLexVar(GateRef gate);
     void LowerStLexVar(GateRef gate);
     void LowerThrowUndefinedIfHoleWithName(GateRef gate);
+    void LowerLdLocalMoudleVar(GateRef gate);
+    void LowerStModuleVar(GateRef gate);
 
     bool IsLogEnabled() const
     {
@@ -64,6 +68,11 @@ private:
     bool IsTraceBC() const
     {
         return traceBc_;
+    }
+
+    bool IsFastModule() const
+    {
+        return fastModule_;
     }
 
     const std::string& GetMethodName() const
@@ -83,6 +92,8 @@ private:
     bool traceBc_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
+    ArgumentAccessor argAcc_;
+    bool fastModule_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H
