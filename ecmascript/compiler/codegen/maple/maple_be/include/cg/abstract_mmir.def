@@ -1,0 +1,122 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+ /* Abstract Maple Machine IR */
+ /* {mop, opnds, prop, latency, name, format, length} */
+ DEFINE_MOP(MOP_undef, {}, ISABSTRACT,0,"","",0)
+
+ /* conversion between all types and registers */
+ DEFINE_MOP(MOP_copy_ri_8, {&OpndDesc::Reg8ID,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_ri_8","",1)
+ DEFINE_MOP(MOP_copy_rr_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS},ISABSTRACT|ISMOVE,0,"copy_rr_8","",1)
+ DEFINE_MOP(MOP_copy_ri_16, {&OpndDesc::Reg16ID,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_ri_16","",1)
+ DEFINE_MOP(MOP_copy_rr_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS},ISABSTRACT|ISMOVE,0,"copy_rr_16","",1)
+ DEFINE_MOP(MOP_copy_ri_32, {&OpndDesc::Reg32ID,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_ri_32","",1)
+ DEFINE_MOP(MOP_copy_rr_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},ISABSTRACT|ISMOVE,0,"copy_rr_32","",1)
+ DEFINE_MOP(MOP_copy_ri_64, {&OpndDesc::Reg64ID,&OpndDesc::Imm64},ISABSTRACT|ISMOVE,0,"copy_ri_64","",1)
+ DEFINE_MOP(MOP_copy_rr_64, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS},ISABSTRACT|ISMOVE,0,"copy_rr_64","",1)
+
+ DEFINE_MOP(MOP_copy_fi_8, {&OpndDesc::Reg8FD,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_fi_8","",1)
+ DEFINE_MOP(MOP_copy_ff_8, {&OpndDesc::Reg8FD,&OpndDesc::Reg8FS},ISABSTRACT|ISMOVE,0,"copy_ff_8","",1)
+ DEFINE_MOP(MOP_copy_fi_16, {&OpndDesc::Reg16FD,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_fi_16","",1)
+ DEFINE_MOP(MOP_copy_ff_16, {&OpndDesc::Reg16FD,&OpndDesc::Reg16FS},ISABSTRACT|ISMOVE,0,"copy_ff_16","",1)
+ DEFINE_MOP(MOP_copy_fi_32, {&OpndDesc::Reg32FD,&OpndDesc::Imm32},ISABSTRACT|ISMOVE,0,"copy_fi_32","",1)
+ DEFINE_MOP(MOP_copy_ff_32, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},ISABSTRACT|ISMOVE,0,"copy_ff_32","",1)
+ DEFINE_MOP(MOP_copy_fi_64, {&OpndDesc::Reg64FD,&OpndDesc::Imm64},ISABSTRACT|ISMOVE,0,"copy_fi_64","",1)
+ DEFINE_MOP(MOP_copy_ff_64, {&OpndDesc::Reg64FD, &OpndDesc::Reg64FS},ISABSTRACT|ISMOVE,0,"copy_ff_64","",1)
+
+ /* register extend */
+ DEFINE_MOP(MOP_zext_rr_16_8,  {&OpndDesc::Reg16ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"zext_r16_r8","",1)
+ DEFINE_MOP(MOP_sext_rr_16_8,  {&OpndDesc::Reg16ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"sext_r16_r8","",1)
+ DEFINE_MOP(MOP_zext_rr_32_8,  {&OpndDesc::Reg32ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"zext_r32_r8","",1)
+ DEFINE_MOP(MOP_sext_rr_32_8,  {&OpndDesc::Reg32ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"sext_r32_r8","",1)
+ DEFINE_MOP(MOP_zext_rr_32_16,  {&OpndDesc::Reg32ID,&OpndDesc::Reg16IS},ISABSTRACT|ISCONVERSION,0,"zext_r32_r16","",1)
+ DEFINE_MOP(MOP_sext_rr_32_16,  {&OpndDesc::Reg32ID,&OpndDesc::Reg16IS},ISABSTRACT|ISCONVERSION,0,"sext_r32_r16","",1)
+
+ DEFINE_MOP(MOP_zext_rr_64_8,  {&OpndDesc::Reg64ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"zext_r64_r8","",1)
+ DEFINE_MOP(MOP_sext_rr_64_8,  {&OpndDesc::Reg64ID,&OpndDesc::Reg8IS},ISABSTRACT|ISCONVERSION,0,"sext_r64_r8","",1)
+ DEFINE_MOP(MOP_zext_rr_64_16,  {&OpndDesc::Reg64ID,&OpndDesc::Reg16IS},ISABSTRACT|ISCONVERSION,0,"zext_r64_r16","",1)
+ DEFINE_MOP(MOP_sext_rr_64_16,  {&OpndDesc::Reg64ID,&OpndDesc::Reg16IS},ISABSTRACT|ISCONVERSION,0,"sext_r64_r16","",1)
+ DEFINE_MOP(MOP_zext_rr_64_32,  {&OpndDesc::Reg64ID,&OpndDesc::Reg32IS},ISABSTRACT|ISCONVERSION,0,"zext_r64_r32","",1)
+ DEFINE_MOP(MOP_sext_rr_64_32,  {&OpndDesc::Reg64ID,&OpndDesc::Reg32IS},ISABSTRACT|ISCONVERSION,0,"sext_r64_r32","",1)
+
+ /* conversion between different kinds of registers */
+ DEFINE_MOP(MOP_cvt_rf_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32FS},ISABSTRACT|ISCONVERSION,0,"cvt_rf_32","",1)
+
+ /* Support transformation between memory and registers */
+ DEFINE_MOP(MOP_str_8, {&OpndDesc::Reg8IS,&OpndDesc::Mem8D},ISABSTRACT|ISSTORE,0,"str_8","",1)
+ DEFINE_MOP(MOP_str_16, {&OpndDesc::Reg16IS,&OpndDesc::Mem16D},ISABSTRACT|ISSTORE,0,"str_16","",1)
+ DEFINE_MOP(MOP_str_32, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISABSTRACT|ISSTORE,0,"str_32","",1)
+ DEFINE_MOP(MOP_str_64, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISABSTRACT|ISSTORE,0,"str_64","",1)
+ DEFINE_MOP(MOP_load_8, {&OpndDesc::Reg8ID,&OpndDesc::Mem8S},ISABSTRACT|ISLOAD,0,"load_8","",1)
+ DEFINE_MOP(MOP_load_16, {&OpndDesc::Reg16ID,&OpndDesc::Mem16S},ISABSTRACT|ISLOAD,0,"load_16","",1)
+ DEFINE_MOP(MOP_load_32, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISABSTRACT|ISLOAD,0,"load_32","",1)
+ DEFINE_MOP(MOP_load_64, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISABSTRACT|ISLOAD,0,"load_64","",1)
+ DEFINE_MOP(MOP_str_f_8, {&OpndDesc::Reg8FS,&OpndDesc::Mem8D},ISABSTRACT|ISSTORE,0,"str_f_8","",1)
+ DEFINE_MOP(MOP_str_f_16, {&OpndDesc::Reg16FS,&OpndDesc::Mem16D},ISABSTRACT|ISSTORE,0,"str_f_16","",1)
+ DEFINE_MOP(MOP_str_f_32, {&OpndDesc::Reg32FS,&OpndDesc::Mem32D},ISABSTRACT|ISSTORE,0,"str_f_32","",1)
+ DEFINE_MOP(MOP_str_f_64, {&OpndDesc::Reg64FS,&OpndDesc::Mem64D},ISABSTRACT|ISSTORE,0,"str_f_64","",1)
+ DEFINE_MOP(MOP_load_f_8, {&OpndDesc::Reg8FD,&OpndDesc::Mem8S},ISABSTRACT|ISLOAD,0,"load_f_8","",1)
+ DEFINE_MOP(MOP_load_f_16, {&OpndDesc::Reg16FD,&OpndDesc::Mem16S},ISABSTRACT|ISLOAD,0,"load_f_16","",1)
+ DEFINE_MOP(MOP_load_f_32, {&OpndDesc::Reg32FD,&OpndDesc::Mem32S},ISABSTRACT|ISLOAD,0,"load_f_32","",1)
+ DEFINE_MOP(MOP_load_f_64, {&OpndDesc::Reg64FD,&OpndDesc::Mem64S},ISABSTRACT|ISLOAD,0,"load_f_64","",1)
+
+ /* Support three address basic operations */
+ DEFINE_MOP(MOP_add_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISBASICOP,0,"add_8","",1)
+ DEFINE_MOP(MOP_add_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISBASICOP,0,"add_16","",1)
+ DEFINE_MOP(MOP_add_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISBASICOP,0,"add_32","",1)
+ DEFINE_MOP(MOP_add_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISBASICOP,0,"add_64","",1)
+ DEFINE_MOP(MOP_sub_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISBASICOP,0,"sub_8","",1)
+ DEFINE_MOP(MOP_sub_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISBASICOP,0,"sub_16","",1)
+ DEFINE_MOP(MOP_sub_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISBASICOP,0,"sub_32","",1)
+ DEFINE_MOP(MOP_sub_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISBASICOP,0,"sub_64","",1)
+ DEFINE_MOP(MOP_or_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISBASICOP,0,"or_8","",1)
+ DEFINE_MOP(MOP_or_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISBASICOP,0,"or_16","",1)
+ DEFINE_MOP(MOP_or_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISBASICOP,0,"or_32","",1)
+ DEFINE_MOP(MOP_or_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISBASICOP,0,"or_64","",1)
+ DEFINE_MOP(MOP_xor_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISBASICOP,0,"xor_8","",1)
+ DEFINE_MOP(MOP_xor_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISBASICOP,0,"xor_16","",1)
+ DEFINE_MOP(MOP_xor_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISBASICOP,0,"xor_32","",1)
+ DEFINE_MOP(MOP_xor_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISBASICOP,0,"xor_64","",1)
+ DEFINE_MOP(MOP_and_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISBASICOP,0,"and_8","",1)
+ DEFINE_MOP(MOP_and_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISBASICOP,0,"and_16","",1)
+ DEFINE_MOP(MOP_and_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISBASICOP,0,"and_32","",1)
+ DEFINE_MOP(MOP_and_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISBASICOP,0,"and_64","",1)
+
+ /* shift -- shl/ashr/lshr */
+ DEFINE_MOP(MOP_shl_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISSHIFT,0,"shl_8","",1)
+ DEFINE_MOP(MOP_shl_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISSHIFT,0,"shl_16","",1)
+ DEFINE_MOP(MOP_shl_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISSHIFT,0,"shl_32","",1)
+ DEFINE_MOP(MOP_shl_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISSHIFT,0,"shl_64","",1)
+ DEFINE_MOP(MOP_ashr_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISSHIFT,0,"ashr_8","",1)
+ DEFINE_MOP(MOP_ashr_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISSHIFT,0,"ashr_16","",1)
+ DEFINE_MOP(MOP_ashr_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISSHIFT,0,"ashr_32","",1)
+ DEFINE_MOP(MOP_ashr_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISSHIFT,0,"ashr_64","",1)
+ DEFINE_MOP(MOP_lshr_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS, &OpndDesc::Reg8IS},ISABSTRACT|ISSHIFT,0,"lshr_8","",1)
+ DEFINE_MOP(MOP_lshr_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS, &OpndDesc::Reg16IS},ISABSTRACT|ISSHIFT,0,"lshr_16","",1)
+ DEFINE_MOP(MOP_lshr_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS, &OpndDesc::Reg32IS},ISABSTRACT|ISSHIFT,0,"lshr_32","",1)
+ DEFINE_MOP(MOP_lshr_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISABSTRACT|ISSHIFT,0,"lshr_64","",1)
+
+ /* Support two address basic operations */
+ DEFINE_MOP(MOP_neg_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS},ISABSTRACT|ISUNARYOP,0,"neg_8","",1)
+ DEFINE_MOP(MOP_neg_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS},ISABSTRACT|ISUNARYOP,0,"neg_16","",1)
+ DEFINE_MOP(MOP_neg_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},ISABSTRACT|ISUNARYOP,0,"neg_32","",1)
+ DEFINE_MOP(MOP_neg_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},ISABSTRACT|ISUNARYOP,0,"neg_64","",1)
+ DEFINE_MOP(MOP_not_8, {&OpndDesc::Reg8ID,&OpndDesc::Reg8IS},ISABSTRACT|ISUNARYOP,0,"not_8","",1)
+ DEFINE_MOP(MOP_not_16, {&OpndDesc::Reg16ID,&OpndDesc::Reg16IS},ISABSTRACT|ISUNARYOP,0,"not_16","",1)
+ DEFINE_MOP(MOP_not_32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},ISABSTRACT|ISUNARYOP,0,"not_32","",1)
+ DEFINE_MOP(MOP_not_64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},ISABSTRACT|ISUNARYOP,0,"not_64","",1)
+
+ /* MOP_comment */
+ DEFINE_MOP(MOP_comment, {&OpndDesc::String0S},ISABSTRACT,0,"//","0", 0)

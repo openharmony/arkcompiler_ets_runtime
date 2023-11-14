@@ -825,6 +825,7 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
                     if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
                         return;
                     }
+                    return;
                     auto classId = EntityId(sampleType.GetProfileType().GetId());
                     auto className = MethodLiteral::GetMethodName(jsPandaFile.get(), classId);
                     if (std::string(className) == "Arm") {

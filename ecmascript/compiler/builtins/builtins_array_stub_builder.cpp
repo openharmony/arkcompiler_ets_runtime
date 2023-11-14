@@ -361,7 +361,6 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                 }
                 Bind(&startLoop);
                 {
-                    DebugPrint(glue, {Int32(GET_MESSAGE_STRING_ID(INT32_VALUE)), *from});
                     GateRef searchElement = GetCallArg0(numArgs);
                     GateRef elements = GetElementsArray(thisValue);
                     Label loopHead(env);
@@ -374,21 +373,14 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                         Branch(Int64LessThan(*from, thisLen), &next, &loopExit);
                         Bind(&next);
                         {
-                            Label notHoleOrUndefValue(env);
                             GateRef value = GetValueFromTaggedArray(elements, *from);
-                            //DebugPrint(glue, {Int32(GET_MESSAGE_STRING_ID(STRING)), value});
-                            Branch(BoolOr(TaggedIsHole(value), TaggedIsUndefined(value)), slowPath,
-                                &notHoleOrUndefValue);
-                            Bind(&notHoleOrUndefValue);
+                            Label valueFound(env);
+                            GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
+                            Branch(valueEqual, &valueFound, &loopEnd);
+                            Bind(&valueFound);
                             {
-                                Label valueFound(env);
-                                GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
-                                Branch(valueEqual, &valueFound, &loopEnd);
-                                Bind(&valueFound);
-                                {
-                                    result->WriteVariable(TaggedTrue());
-                                    Jump(exit);
-                                }
+                                result->WriteVariable(TaggedTrue());
+                                Jump(exit);
                             }
                         }
                     }

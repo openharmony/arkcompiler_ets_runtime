@@ -1,0 +1,68 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+src_libmplutil = [
+  "src/mpl_logging.cpp",
+  "src/muid.cpp",
+  "src/namemangler.cpp",
+  "src/literalstrname.cpp",
+  "src/file_layout.cpp",
+  "src/file_utils.cpp",
+  "src/mpl_scheduler.cpp",
+  "src/itab_util.cpp",
+  "src/mpl_timer.cpp",
+  "src/profile.cpp",
+  "src/string_utils.cpp",
+  "src/error_code.cpp",
+  "src/thread_env.cpp",
+  "src/mpl_int_val.cpp",
+]
+
+src_libcommandline = [
+  "src/cl_option.cpp",
+  "src/cl_option_parser.cpp",
+  "src/cl_parser.cpp",
+]
+
+include_libmplutil = [
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/maple_ir/include",
+  "${MAPLEALL_ROOT}/mempool/include",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
+]
+
+include_libcommandline = [ "${MAPLEALL_ROOT}/maple_util/include" ]
+
+ohos_static_library("libmplutil") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libmplutil
+  include_dirs = include_libmplutil
+  libs = [ "pthread" ]
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_static_library("libcommandline") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcommandline
+  include_dirs = include_libcommandline
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

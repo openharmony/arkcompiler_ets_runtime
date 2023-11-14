@@ -655,6 +655,7 @@ public:
     static bool IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver);
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
+    static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
@@ -669,6 +670,9 @@ public:
 
     static JSHandle<JSTaggedValue> IterableToList(JSThread *thread, const JSHandle<JSTaggedValue> &items,
                                                   JSTaggedValue method = JSTaggedValue::Undefined());
+
+    static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);

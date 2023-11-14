@@ -1,0 +1,99 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Mapping between abstract maple machine IR and machine operation code of X86_64*/
+/* {mmir, mop} */
+DEFINE_MAPPING(abstract::MOP_undef, x64::MOP_begin)
+
+/* Mov */
+DEFINE_MAPPING(abstract::MOP_copy_ri_8,   x64::MOP_movb_i_r)
+DEFINE_MAPPING(abstract::MOP_copy_ri_16,  x64::MOP_movw_i_r)
+DEFINE_MAPPING(abstract::MOP_copy_ri_32,  x64::MOP_movl_i_r)
+DEFINE_MAPPING(abstract::MOP_copy_ri_64,  x64::MOP_movq_i_r)
+DEFINE_MAPPING(abstract::MOP_copy_rr_8,   x64::MOP_movb_r_r)
+DEFINE_MAPPING(abstract::MOP_copy_rr_16,  x64::MOP_movw_r_r)
+DEFINE_MAPPING(abstract::MOP_copy_rr_32,  x64::MOP_movl_r_r)
+DEFINE_MAPPING(abstract::MOP_copy_rr_64,  x64::MOP_movq_r_r)
+
+/* str/load */
+DEFINE_MAPPING(abstract::MOP_str_8,       x64::MOP_movb_r_m)
+DEFINE_MAPPING(abstract::MOP_str_16,      x64::MOP_movw_r_m)
+DEFINE_MAPPING(abstract::MOP_str_32,      x64::MOP_movl_r_m)
+DEFINE_MAPPING(abstract::MOP_str_64,      x64::MOP_movq_r_m)
+DEFINE_MAPPING(abstract::MOP_load_8,      x64::MOP_movb_m_r)
+DEFINE_MAPPING(abstract::MOP_load_16,     x64::MOP_movw_m_r)
+DEFINE_MAPPING(abstract::MOP_load_32,     x64::MOP_movl_m_r)
+DEFINE_MAPPING(abstract::MOP_load_64,     x64::MOP_movq_m_r)
+
+/* shift -- shl/ashr/lshr */
+DEFINE_MAPPING(abstract::MOP_shl_8,       x64::MOP_shlb_r_r)
+DEFINE_MAPPING(abstract::MOP_shl_16,      x64::MOP_shlw_r_r)
+DEFINE_MAPPING(abstract::MOP_shl_32,      x64::MOP_shll_r_r)
+DEFINE_MAPPING(abstract::MOP_shl_64,      x64::MOP_shlq_r_r)
+DEFINE_MAPPING(abstract::MOP_ashr_8,      x64::MOP_sarb_r_r)
+DEFINE_MAPPING(abstract::MOP_ashr_16,     x64::MOP_sarw_r_r)
+DEFINE_MAPPING(abstract::MOP_ashr_32,     x64::MOP_sarl_r_r)
+DEFINE_MAPPING(abstract::MOP_ashr_64,     x64::MOP_sarq_r_r)
+DEFINE_MAPPING(abstract::MOP_lshr_8,      x64::MOP_shrb_r_r)
+DEFINE_MAPPING(abstract::MOP_lshr_16,     x64::MOP_shrw_r_r)
+DEFINE_MAPPING(abstract::MOP_lshr_32,     x64::MOP_shrl_r_r)
+DEFINE_MAPPING(abstract::MOP_lshr_64,     x64::MOP_shrq_r_r)
+
+/* BasicOp */
+DEFINE_MAPPING(abstract::MOP_and_8,       x64::MOP_andb_r_r)
+DEFINE_MAPPING(abstract::MOP_and_16,      x64::MOP_andw_r_r)
+DEFINE_MAPPING(abstract::MOP_and_32,      x64::MOP_andl_r_r)
+DEFINE_MAPPING(abstract::MOP_and_64,      x64::MOP_andq_r_r)
+DEFINE_MAPPING(abstract::MOP_or_8,        x64::MOP_orb_r_r)
+DEFINE_MAPPING(abstract::MOP_or_16,       x64::MOP_orw_r_r)
+DEFINE_MAPPING(abstract::MOP_or_32,       x64::MOP_orl_r_r)
+DEFINE_MAPPING(abstract::MOP_or_64,       x64::MOP_orq_r_r)
+DEFINE_MAPPING(abstract::MOP_xor_8,       x64::MOP_xorb_r_r)
+DEFINE_MAPPING(abstract::MOP_xor_16,      x64::MOP_xorw_r_r)
+DEFINE_MAPPING(abstract::MOP_xor_32,      x64::MOP_xorl_r_r)
+DEFINE_MAPPING(abstract::MOP_xor_64,      x64::MOP_xorq_r_r)
+DEFINE_MAPPING(abstract::MOP_add_8,       x64::MOP_addb_r_r)
+DEFINE_MAPPING(abstract::MOP_add_16,      x64::MOP_addw_r_r)
+DEFINE_MAPPING(abstract::MOP_add_32,      x64::MOP_addl_r_r)
+DEFINE_MAPPING(abstract::MOP_add_64,      x64::MOP_addq_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_8,       x64::MOP_subb_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_16,      x64::MOP_subw_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_32,      x64::MOP_subl_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_64,      x64::MOP_subq_r_r)
+
+/* UnaryOp */
+DEFINE_MAPPING(abstract::MOP_not_8,       x64::MOP_notb_r)
+DEFINE_MAPPING(abstract::MOP_not_16,      x64::MOP_notw_r)
+DEFINE_MAPPING(abstract::MOP_not_32,      x64::MOP_notl_r)
+DEFINE_MAPPING(abstract::MOP_not_64,      x64::MOP_notq_r)
+DEFINE_MAPPING(abstract::MOP_neg_8,       x64::MOP_negb_r)
+DEFINE_MAPPING(abstract::MOP_neg_16,      x64::MOP_negw_r)
+DEFINE_MAPPING(abstract::MOP_neg_32,      x64::MOP_negl_r)
+DEFINE_MAPPING(abstract::MOP_neg_64,      x64::MOP_negq_r)
+
+/* CvtOp */
+DEFINE_MAPPING(abstract::MOP_zext_rr_16_8,      x64::MOP_movzbw_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_16_8,      x64::MOP_movsbw_r_r)
+DEFINE_MAPPING(abstract::MOP_zext_rr_32_8,      x64::MOP_movzbl_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_32_8,      x64::MOP_movsbl_r_r)
+DEFINE_MAPPING(abstract::MOP_zext_rr_32_16,     x64::MOP_movzwl_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_32_16,     x64::MOP_movswl_r_r)
+DEFINE_MAPPING(abstract::MOP_zext_rr_64_8,      x64::MOP_movzbl_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_64_8,      x64::MOP_movsbq_r_r)
+DEFINE_MAPPING(abstract::MOP_zext_rr_64_16,     x64::MOP_movzwl_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_64_16,     x64::MOP_movswq_r_r)
+DEFINE_MAPPING(abstract::MOP_zext_rr_64_32,     x64::MOP_movl_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_64_32,     x64::MOP_movslq_r_r)
+DEFINE_MAPPING(abstract::MOP_sext_rr_64_32,     x64::MOP_movslq_r_r)
