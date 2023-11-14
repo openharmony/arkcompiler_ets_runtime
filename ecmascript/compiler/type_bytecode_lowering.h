@@ -29,7 +29,7 @@ class TypeBytecodeLowering {
 public:
     TypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, bool enableTypeLog,
-                   const std::string& name, bool enableNewArrayInline)
+                   const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -45,8 +45,7 @@ public:
           argAcc_(circuit),
           pgoTypeLog_(circuit),
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()),
-          enableNewArrayInline_(enableNewArrayInline) {}
+          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
 
     ~TypeBytecodeLowering() = default;
 
@@ -204,7 +203,6 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
     const JSThread *thread_ {nullptr};
-    bool enableNewArrayInline_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
