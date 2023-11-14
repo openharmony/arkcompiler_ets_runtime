@@ -60,7 +60,8 @@ public:
     void ProfileDefineClass(JSTaggedType ctor);
     void ProfileDefineGetterSetter(
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
-    void ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue);
+    void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
+                                ProfileType::Kind kind = ProfileType::Kind::ClassId);
     void UpdateProfileType(JSHClass *oldHClass, JSHClass *newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)

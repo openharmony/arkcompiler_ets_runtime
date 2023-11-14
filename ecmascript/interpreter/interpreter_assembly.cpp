@@ -264,7 +264,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     }
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
-    
+
     if (thread->IsEntryFrameDroppedTrue()) {
         thread->PendingEntryFrameDroppedState();
         return JSTaggedValue::Hole();
@@ -6644,11 +6644,7 @@ void InterpreterAssembly::HandleDefinefuncImm16Id16Imm8(
     LOG_INST() << "intrinsics::definefunc length: " << length;
 
     constpool = GetConstantPool(sp);
-    Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
-    ASSERT(method != nullptr);
-
-    auto res = SlowRuntimeStub::DefineFunc(thread, method);
+    auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, GetModule(sp));
     JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
@@ -6671,12 +6667,9 @@ void InterpreterAssembly::HandleDefinefuncImm8Id16Imm8(
     uint16_t methodId = READ_INST_16_1();
     uint16_t length = READ_INST_8_3();
     LOG_INST() << "intrinsics::definefunc length: " << length;
-    constpool = GetConstantPool(sp);
-    Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
-    ASSERT(method != nullptr);
 
-    auto res = SlowRuntimeStub::DefineFunc(thread, method);
+    constpool = GetConstantPool(sp);
+    auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, GetModule(sp));
     JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));

@@ -438,6 +438,17 @@ public:
         }
     }
 
+    static bool IsDefineFunc(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+            case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
 private:
     static uint8_t ReadByte(const uint8_t *pc)
     {
@@ -844,7 +855,7 @@ public:
     {
         return (idx <= end_) && (idx >= start_);
     }
-    
+
     bool InRange() const
     {
         return (index_ <= end_) && (index_ >= start_);

@@ -97,6 +97,8 @@ void MethodSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaFile *js
                                                const std::set<uint32_t> &skippedMethods)
 {
     JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    PGOTypeManager *ptManager = thread->GetCurrentEcmaContext()->GetPTManager();
     for (auto item : info_) {
         const ItemData &data = item.second;
         JSHandle<ConstantPool> cp(thread,
@@ -106,10 +108,20 @@ void MethodSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaFile *js
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread, globalData.GetCurSnapshotCpArray());
         JSHandle<ConstantPool> snapshotCp(thread, snapshotCpArr->Get(snapshotCpArrIdx));
+
+        PGOTypeLocation loc(jsPandaFile, data.methodOffset_, data.bcIndex_);
+        ProfileType pt = ptManager->GetRootIdByLocation(loc);
+        JSHandle<JSTaggedValue> ihc = JSHandle<JSTaggedValue>(thread, ptManager->QueryHClass(pt, pt));
+        JSHandle<AOTLiteralInfo> aotLiteralInfo = factory->NewAOTLiteralInfo(1); // 1: only one method
+        aotLiteralInfo->SetObjectToCache(thread, 0, JSTaggedValue(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE));
+        if (!ihc->IsUndefined()) {
+            aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
+        }
         if (skippedMethods.find(methodOffset) == skippedMethods.end()) {
-            globalData.RecordReviseData(SnapshotReviseInfo::Type::METHOD,
-                BaseReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
-            snapshotCp->SetObjectToCache(thread, data.constantPoolIdx_, JSTaggedValue(methodOffset));
+            aotLiteralInfo->SetObjectToCache(thread, 0, JSTaggedValue(methodOffset));
+            snapshotCp->SetObjectToCache(thread, data.constantPoolIdx_, aotLiteralInfo.GetTaggedValue());
+            globalData.RecordReviseData(
+                ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
         }
     }
 }
@@ -140,8 +152,8 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaFi
         JSHandle<JSTaggedValue> chc = JSHandle<JSTaggedValue>(thread, ptManager->QueryHClass(ctorPt, ctorPt));
 
         CollectLiteralInfo(vm, arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
-        globalData.RecordReviseData(SnapshotReviseInfo::Type::LITERAL,
-            BaseReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+        globalData.RecordReviseData(
+            ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
 }
 
@@ -174,8 +186,8 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaF
         JSHandle<JSTaggedValue> chc = JSHandle<JSTaggedValue>(thread, ptManager->QueryHClass(ctorPt, ctorPt));
 
         CollectLiteralInfo(vm, properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
-        globalData.RecordReviseData(SnapshotReviseInfo::Type::LITERAL,
-            BaseReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+        globalData.RecordReviseData(
+            ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
 }
 
@@ -198,8 +210,8 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaFi
         JSHandle<JSTaggedValue> ihc = thread->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread->GlobalConstants()->GetHandledUndefined();
         CollectLiteralInfo(vm, literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
-        globalData.RecordReviseData(SnapshotReviseInfo::Type::LITERAL,
-            BaseReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+        globalData.RecordReviseData(
+            ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
 }
 

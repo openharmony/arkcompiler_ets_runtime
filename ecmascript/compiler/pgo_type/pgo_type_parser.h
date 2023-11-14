@@ -77,6 +77,14 @@ private:
     virtual void GenerateHClass(const PGOHClassGenerator &generator, const PGOTypeLocation &loc) override;
 };
 
+class FunctionParser final : public BaseParser {
+public:
+    FunctionParser(PGOTypeManager *ptManager) : BaseParser(ptManager, PGOBCInfo::Type::FUNCTION) {}
+private:
+    virtual bool RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLocation &loc) override;
+    virtual void GenerateHClass(const PGOHClassGenerator &generator, const PGOTypeLocation &loc) override;
+};
+
 class PGOTypeParser {
 public:
     explicit PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *ptManager);

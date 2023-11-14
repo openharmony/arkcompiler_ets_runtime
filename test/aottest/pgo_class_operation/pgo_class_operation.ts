@@ -94,3 +94,9 @@ function getPrototypeOf(a)
 
 getPrototypeOf(A);
 getPrototypeOf(B);
+
+A.prototype.foo = function() {
+    print("foo");
+}
+
+a.foo();

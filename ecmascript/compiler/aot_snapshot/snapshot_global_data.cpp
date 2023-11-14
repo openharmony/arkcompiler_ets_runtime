@@ -20,36 +20,16 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::kungfu {
-JSHandle<ConstantPool> BaseReviseData::GetConstantPoolFromSnapshotData(JSThread *thread,
-                                                                       const SnapshotGlobalData *globalData,
-                                                                       uint32_t dataIdx, uint32_t cpArrayIdx)
+JSHandle<ConstantPool> ReviseData::GetConstantPoolFromSnapshotData(JSThread *thread,
+                                                                   const SnapshotGlobalData *globalData,
+                                                                   uint32_t dataIdx, uint32_t cpArrayIdx)
 {
     JSHandle<TaggedArray> data(thread, globalData->GetData());
     JSHandle<TaggedArray> cpArr(thread, data->Get(dataIdx + SnapshotGlobalData::CP_ARRAY_OFFSET));
     return JSHandle<ConstantPool>(thread, cpArr->Get(cpArrayIdx));
 }
 
-void MethodReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
-    const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap)
-{
-    for (auto &item: data_) {
-        JSHandle<ConstantPool> newCP = GetConstantPoolFromSnapshotData(thread, globalData,
-                                                                       item.dataIdx_, item.cpArrayIdx_);
-        JSTaggedValue val = newCP->GetObjectFromCache(item.constpoolIdx_);
-        uint32_t methodOffset = static_cast<uint32_t>(val.GetInt());
-        if (thread->GetEcmaVM()->GetJSOptions().IsEnableCompilerLogSnapshot()) {
-            LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: " << methodOffset << ") ";
-        }
-        std::string name = globalData->GetFileNameByDataIdx(item.dataIdx_).c_str();
-        AnFileInfo::FuncEntryIndexKey key = std::make_pair(name, methodOffset);
-        if (methodToEntryIndexMap.find(key) != methodToEntryIndexMap.end()) {
-            uint32_t entryIndex = methodToEntryIndexMap.at(key);
-            newCP->SetObjectToCache(thread, item.constpoolIdx_, JSTaggedValue(entryIndex));
-        }
-    }
-}
-
-void LiteralReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
+void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
     const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap)
 {
     for (auto &item: data_) {
