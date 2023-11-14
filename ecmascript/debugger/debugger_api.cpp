@@ -822,10 +822,10 @@ bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
     return false;
 }
 
-DebugInfoExtractor *DebuggerApi::GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url)
+std::vector<DebugInfoExtractor *> DebuggerApi::GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url)
 {
     const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
-    return hotReloadManager->GetPatchExtractor(url);
+    return hotReloadManager->GetPatchExtractors(url);
 }
 
 const JSPandaFile *DebuggerApi::GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile)

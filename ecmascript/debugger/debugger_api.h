@@ -127,7 +127,7 @@ public:
                                                      std::string_view entryPoint);
 
     // HotReload
-    static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
+    static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);
     static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);
     static std::vector<void *> GetNativePointer(const EcmaVM *ecmaVm);
 
