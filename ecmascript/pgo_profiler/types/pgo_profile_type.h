@@ -47,6 +47,7 @@ public:
         ModuleRecordId,
         PrototypeId,
         ConstructorId,
+        MegaStateKinds,
         TotalKinds,
         UnknowId
     };
@@ -76,6 +77,13 @@ public:
             UpdateKind(kind);
             UpdateIsRootFlag(root);
         }
+    }
+
+    static ProfileType CreateMegeType()
+    {
+        ProfileType type;
+        type.UpdateKind(Kind::MegaStateKinds);
+        return type;
     }
 
     ProfileType &Remap(const PGOContext &context);
@@ -133,6 +141,11 @@ public:
     bool IsPrototype() const
     {
         return GetKind() == Kind::PrototypeId;
+    }
+
+    bool IsMegaStateType() const
+    {
+        return GetKind() == Kind::MegaStateKinds;
     }
 
     uint32_t GetId() const
@@ -227,6 +240,11 @@ public:
     }
 
     bool IsConstructor() const
+    {
+        return false;
+    }
+
+    bool IsMegaStateType() const
     {
         return false;
     }

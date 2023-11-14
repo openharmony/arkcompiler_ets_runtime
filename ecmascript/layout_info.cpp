@@ -221,7 +221,7 @@ bool LayoutInfo::IsUninitializedProperty(const JSObject *object, uint32_t index)
         return false;
     }
 
-    JSTaggedValue val = object->GetPropertyInlinedProps(attr.GetOffset());
+    JSTaggedValue val = object->GetPropertyInlinedPropsWithRep(attr.GetOffset(), attr);
     return val.IsHole();
 }
 

@@ -141,6 +141,7 @@ private:
 
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
+    void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
     void AddElementInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver);
 
