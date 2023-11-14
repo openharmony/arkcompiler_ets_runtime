@@ -42,7 +42,8 @@ namespace panda::ecmascript {
     V(LenGreaterThanMax, "len is bigger than 2^32 - 1")                                      \
     V(ElementTypeNoElementTypes, "CreateListFromArrayLike: not an element of elementTypes")  \
     V(TargetIsDetachedBuffer, "Is Detached Buffer")                                          \
-    V(ThisBranchIsUnreachable, "this branch is unreachable")
+    V(ThisBranchIsUnreachable, "this branch is unreachable")                                 \
+    V(InvalidStringLength, "Invalid string length")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
