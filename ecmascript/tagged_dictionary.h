@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_TAGGED_DICTIONARY_H
 #define ECMASCRIPT_TAGGED_DICTIONARY_H
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_hash_table.h"
@@ -75,6 +74,11 @@ public:
                                const std::pair<JSTaggedValue, PropertyAttributes> &b)
     {
         return a.second.GetDictionaryOrder() < b.second.GetDictionaryOrder();
+    }
+    static inline bool CompIndex(const PropertyAttributes &a,
+                                 const PropertyAttributes &b)
+    {
+        return a.GetDictionaryOrder() < b.GetDictionaryOrder();
     }
     DECL_DUMP()
 

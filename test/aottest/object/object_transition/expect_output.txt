@@ -11,18 +11,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("object_test") {
-  testonly = true
-
-  test_list = [
-    "object_assign",
-    "object_hasOwnProperty",
-    "object_toString",
-    "object_transition",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
-}
+TestSample:
+1
+TestArrayWithElementsAndProperties:
+000
+000
+1
+2
+3
+4
+5
+2047
+TestFullArrayWithElementsAndProperties:
+0
+0
+0
+0
+0
+0
+0
+undefined
+undefined
+1
+2
+3
+4
+5
+2047
+TestShouldNotOptimizeAsFastElements:
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+1
+2
+3
+4
+5
+0
+TestStringArrayWithElementsAndProperties:
+ark
+ark
+b
+TestSpecialCase:

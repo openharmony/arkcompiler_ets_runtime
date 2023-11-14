@@ -11,18 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("object_test") {
-  testonly = true
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-  test_list = [
-    "object_assign",
-    "object_hasOwnProperty",
-    "object_toString",
-    "object_transition",
-  ]
-
+host_aot_test_action("object_transition") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
 }
