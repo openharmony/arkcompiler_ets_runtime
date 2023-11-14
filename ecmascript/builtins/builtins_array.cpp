@@ -746,12 +746,14 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
 
-    bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
-    if (isDictionary && thisObjHandle->IsJSArray()) {
-        uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
-        uint32_t size = thisObjHandle->GetNumberOfElements();
-        if (length - size > JSObject::MAX_GAP) {
-            JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
+    if (thisHandle->IsJSArray()) {
+        bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
+        if (isDictionary) {
+            uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
+            uint32_t size = thisObjHandle->GetNumberOfElements();
+            if (length - size > JSObject::MAX_GAP) {
+                JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
+            }
         }
     }
 
