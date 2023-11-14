@@ -1,0 +1,50 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+
+cflags_cc -= [ "-Werror" ]
+
+include_directories = [
+  "${MAPLE_ROOT}/tools/gtest_lib/include",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+]
+src_mapleallUT = [
+  "cl_ut_test.cpp",
+  "triple_ut_test.cpp",
+]
+
+executable("mapleallUT") {
+  sources = src_mapleallUT
+  include_dirs = include_directories
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+
+  deps = [
+    "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
+    "${MAPLEALL_ROOT}/maple_ir:libmplir",
+    "${MAPLEALL_ROOT}/maple_util:libcommandline",
+    "${MAPLEALL_ROOT}/maple_util:libmplutil",
+    "${MAPLEALL_ROOT}/mempool:libmempool",
+    "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function:libsec_static",
+  ]
+
+  libs = [
+    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgmock.a",
+    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgmock_main.a",
+    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgtest.a",
+    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgtest_main.a",
+    "pthread",
+  ]
+}

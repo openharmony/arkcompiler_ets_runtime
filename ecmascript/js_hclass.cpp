@@ -30,6 +30,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/weak_vector.h"
 
 namespace panda::ecmascript {
@@ -212,10 +213,24 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     // property transition to slow first
     if (!obj->GetJSHClass()->IsDictionaryMode()) {
         JSObject::TransitionToDictionary(thread, obj);
+    } else {
+        TransitionToDictionary(thread, obj);
     }
     obj->GetJSHClass()->SetIsDictionaryElement(true);
     obj->GetJSHClass()->SetIsStableElements(false);
     obj->GetJSHClass()->SetElementsKind(ElementsKind::GENERIC);
+}
+
+void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    if (obj->GetJSHClass()->IsDictionaryMode()) {
+        JSObject::OptimizeAsFastProperties(thread, obj);
+    } else {
+        OptimizeAsFastProperties(thread, obj);
+    }
+    obj->GetJSHClass()->SetIsDictionaryElement(false);
+    obj->GetJSHClass()->SetIsStableElements(true);
+    obj->GetJSHClass()->SetElementsKind(ElementsKind::HOLE_TAGGED);
 }
 
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
@@ -445,6 +460,52 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
         ASSERT(newJsHClass->GetInlinedProperties() == 0);
 
         // 3. Add newJsHClass to ?
+#if ECMASCRIPT_ENABLE_IC
+        JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
+#endif
+        obj->SynchronizedSetClass(*newJsHClass);
+    }
+}
+
+void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                        const std::vector<int> &indexOrder, bool isDictionary)
+{
+    // 1. new a hclass
+    JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
+    JSHandle<JSHClass> newJsHClass = Clone(thread, jshclass, isDictionary);
+    UpdateRootHClass(thread, jshclass, newJsHClass);
+
+    // 2. If it is dictionary, migrate should change layout. otherwise, copy the hclass only.
+    JSHandle<NameDictionary> properties(thread, obj->GetProperties());
+    int numberOfProperties = properties->EntriesCount();
+    if (isDictionary) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(numberOfProperties);
+        int numberOfInlinedProps = newJsHClass->GetInlinedProperties();
+        for (int i = 0; i < numberOfProperties; i++) {
+            JSTaggedValue key = properties->GetKey(indexOrder[i]);
+            PropertyAttributes attributes = properties->GetAttributes(indexOrder[i]);
+            if (i < numberOfInlinedProps) {
+                attributes.SetIsInlinedProps(true);
+            } else {
+                attributes.SetIsInlinedProps(false);
+            }
+            attributes.SetOffset(i);
+            layoutInfoHandle->AddKey(thread, i, key, attributes);
+        }
+
+        {
+            DISALLOW_GARBAGE_COLLECTION;
+            newJsHClass->SetNumberOfProps(numberOfProperties);
+            newJsHClass->SetLayout(thread, layoutInfoHandle);
+        }
+    }
+
+    {
+        DISALLOW_GARBAGE_COLLECTION;
+        // 3. Copy
+        newJsHClass->SetIsDictionaryMode(false);
+        // 4. Add newJsHClass to ?
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif

@@ -1311,6 +1311,11 @@ inline bool JSTaggedValue::IsSlowKeysObject() const
     return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject();
 }
 
+inline bool JSTaggedValue::IsRegularObject() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsRegularObject();
+}
+
 inline bool JSTaggedValue::IsMachineCodeObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsMachineCodeObject();

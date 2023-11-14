@@ -239,6 +239,82 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSHClass::TransitionElementsToDictionary(thread, obj);
 }
 
+inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    JSHandle<NumberDictionary> elements(thread, obj->GetElements());
+    uint32_t size = elements->Size();
+    for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = elements->GetKey(hashIndex);
+        if (key.IsUndefined() || key.IsHole()) {
+            continue;
+        }
+        PropertyAttributes attr = elements->GetAttributes(hashIndex);
+        if (!attr.IsDefaultAttributes()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    ASSERT(obj->GetJSHClass()->IsDictionaryElement() && obj->IsJSArray());
+    if (ShouldOptimizeAsFastElements(thread, obj)) {
+        uint32_t length = JSArray::Cast(*obj)->GetLength();
+        JSHandle<NumberDictionary> elements(thread, obj->GetElements());
+        uint32_t size = elements->Size();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(length);
+        for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+            JSTaggedValue key = elements->GetKey(hashIndex);
+            JSTaggedValue value = elements->GetValue(hashIndex);
+            if (key.IsUndefined() || key.IsHole()) {
+                continue;
+            }
+            array->Set(thread, key.GetNumber(), value);
+        }
+        obj->SetElements(thread, array);
+        JSHClass::OptimizeAsFastElements(thread, obj);
+    }
+}
+
+void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    ASSERT(obj->GetJSHClass()->IsDictionaryMode());
+    // 1. Get NameDictionary properties
+    JSHandle<NameDictionary> properties(thread, obj->GetProperties());
+
+    int numberOfProperties = properties->EntriesCount();
+    // Make sure we preserve enough capacity
+    if (numberOfProperties > static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
+        return ;
+    }
+    
+    // 2. iteration indices
+    std::vector<int> indexOrder = properties->GetEnumerationOrder();
+    ASSERT(static_cast<int>(indexOrder.size()) == numberOfProperties);
+
+    // 3. Change Hclass
+    int numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
+    JSHClass::OptimizeAsFastProperties(thread, obj, indexOrder, true);
+    
+    // 4. New out-properties
+    int numberOfOutProperties = numberOfProperties - numberOfInlinedProps;
+    ASSERT(numberOfOutProperties >= 0);
+    JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(numberOfOutProperties);
+
+    // 5. Fill properties
+    for (int i = 0; i < numberOfProperties; i++) {
+        JSTaggedValue value = properties->GetValue(indexOrder[i]);
+        if (i < numberOfInlinedProps) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
+        } else {
+            array->Set(thread, i - numberOfInlinedProps, value);
+        }
+    }
+    obj->SetProperties(thread, array);
+}
+
 bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver)
 {
     auto *hclass = receiver->GetJSHClass();

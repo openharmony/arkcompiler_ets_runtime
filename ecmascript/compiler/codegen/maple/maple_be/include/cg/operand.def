@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+DEFINE_MOP(Mem8S, {Operand::kOpdMem, operand::kIsUse, 8})
+DEFINE_MOP(Mem8D, {Operand::kOpdMem, operand::kIsDef, 8})
+DEFINE_MOP(Mem16S, {Operand::kOpdMem, operand::kIsUse, 16})
+DEFINE_MOP(Mem16D, {Operand::kOpdMem, operand::kIsDef, 16})
+DEFINE_MOP(Mem32D, {Operand::kOpdMem, operand::kIsDef, 32})
+DEFINE_MOP(Mem32S, {Operand::kOpdMem, operand::kIsUse, 32})
+DEFINE_MOP(Mem64D, {Operand::kOpdMem, operand::kIsDef, 64})
+DEFINE_MOP(Mem64S, {Operand::kOpdMem, operand::kIsUse, 64})
+DEFINE_MOP(Mem128D, {Operand::kOpdMem, operand::kIsDef, 128})
+DEFINE_MOP(Mem128S, {Operand::kOpdMem, operand::kIsUse, 128})
+
+DEFINE_MOP(Reg8IS, {Operand::kOpdRegister, operand::kIsUse | operand::kInt, 8})
+DEFINE_MOP(Reg8ID, {Operand::kOpdRegister, operand::kIsDef | operand::kInt, 8})
+DEFINE_MOP(Reg8IDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kInt, 8})
+DEFINE_MOP(Reg16ID, {Operand::kOpdRegister, operand::kIsDef | operand::kInt, 16})
+DEFINE_MOP(Reg16IS, {Operand::kOpdRegister, operand::kIsUse | operand::kInt, 16})
+DEFINE_MOP(Reg16IDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kInt, 16})
+DEFINE_MOP(Reg32ID, {Operand::kOpdRegister, operand::kIsDef | operand::kInt, 32})
+DEFINE_MOP(Reg32IS, {Operand::kOpdRegister, operand::kIsUse | operand::kInt, 32})
+DEFINE_MOP(Reg32IDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kInt, 32})
+DEFINE_MOP(Reg64ID, {Operand::kOpdRegister, operand::kIsDef | operand::kInt, 64})
+DEFINE_MOP(Reg64IS, {Operand::kOpdRegister, operand::kIsUse | operand::kInt, 64})
+DEFINE_MOP(Reg64IDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kInt, 64})
+
+DEFINE_MOP(Reg8FS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 8})
+DEFINE_MOP(Reg8FD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 8})
+DEFINE_MOP(Reg16FD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 16})
+DEFINE_MOP(Reg16FS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 16})
+DEFINE_MOP(Reg16FDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 16})
+DEFINE_MOP(Reg32FD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 32})
+DEFINE_MOP(Reg32FS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 32})
+DEFINE_MOP(Reg32FDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 32})
+DEFINE_MOP(Reg64FD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 64})
+DEFINE_MOP(Reg64FS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 64})
+DEFINE_MOP(Reg64FDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 64})
+DEFINE_MOP(Reg128ID, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 128})
+DEFINE_MOP(Reg128IS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 128})
+DEFINE_MOP(Reg128IDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 128})
+
+DEFINE_MOP(Reg64VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat | operand::kIsVector, 64})
+DEFINE_MOP(Reg64VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat | operand::kIsVector, 64})
+DEFINE_MOP(Reg64VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat | operand::kIsVector, 64})
+DEFINE_MOP(Reg128VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat | operand::kIsVector, 128})
+DEFINE_MOP(Reg128VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat | operand::kIsVector, 128})
+DEFINE_MOP(Reg128VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat | operand::kIsVector, 128})
+
+DEFINE_MOP(CCD, {Operand::kOpdRegister, operand::kRegTyCc | operand::kIsDef, 1})
+DEFINE_MOP(CCS, {Operand::kOpdRegister, operand::kRegTyCc | operand::kIsUse, 1})
+DEFINE_MOP(Cond, {Operand::kOpdCond, operand::kRegTyCc | operand::kIsUse, 4})
+
+DEFINE_MOP(Imm4, {Operand::kOpdImmediate, operand::kIsUse, 4})
+DEFINE_MOP(Imm5, {Operand::kOpdImmediate, operand::kIsUse, 5})
+DEFINE_MOP(Imm6, {Operand::kOpdImmediate, operand::kIsUse, 6})
+DEFINE_MOP(Imm8, {Operand::kOpdImmediate, operand::kIsUse, 8})
+DEFINE_MOP(Imm12, {Operand::kOpdImmediate, operand::kIsUse, 12})
+DEFINE_MOP(Imm13, {Operand::kOpdImmediate, operand::kIsUse, 13})
+DEFINE_MOP(Imm16, {Operand::kOpdImmediate, operand::kIsUse, 16})
+DEFINE_MOP(Imm32, {Operand::kOpdImmediate, operand::kIsUse, 32})
+DEFINE_MOP(Imm64, {Operand::kOpdImmediate, operand::kIsUse, 64})
+DEFINE_MOP(StImm32, {Operand::kOpdStImmediate, operand::kIsUse, 32})
+DEFINE_MOP(StImm64, {Operand::kOpdStImmediate, operand::kIsUse, 64})
+DEFINE_MOP(FpImm8, {Operand::kOpdFPImmediate, operand::kIsUse, 8})
+DEFINE_MOP(LiteralSrc, {Operand::kOpdStImmediate, operand::kIsUse, 64})
+DEFINE_MOP(Literal12Src, {Operand::kOpdStImmediate, operand::kLiteralLow12, 12})
+
+/* for movk */
+DEFINE_MOP(Lsl4, {Operand::kOpdShift, operand::kIsUse, 4})
+DEFINE_MOP(Lsl6, {Operand::kOpdShift, operand::kIsUse, 6})
+DEFINE_MOP(Lsl12, {Operand::kOpdShift, operand::kIsUse, 12})
+/* for shift */
+DEFINE_MOP(Bitshift32, {Operand::kOpdShift, operand::kIsUse, 5})
+DEFINE_MOP(Bitshift64, {Operand::kOpdShift, operand::kIsUse, 6})
+DEFINE_MOP(Extendshift64, {Operand::kOpdExtend, operand::kIsUse, 3})
+
+DEFINE_MOP(ListSrc, {Operand::kOpdList, operand::kIsUse, 1})
+DEFINE_MOP(ListDest, {Operand::kOpdList, operand::kIsDef, 1})
+DEFINE_MOP(String0S, {Operand::kOpdString, operand::kIsUse, 0})
+DEFINE_MOP(AddressName, {Operand::kOpdBBAddress, operand::kIsUse, 64})
+
+DEFINE_MOP(Lbl64, {Operand::kOpdBBAddress, operand::kIsUse, 64})

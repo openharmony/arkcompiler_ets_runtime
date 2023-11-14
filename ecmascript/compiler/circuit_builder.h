@@ -327,6 +327,9 @@ public:
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef ToLength(GateRef receiver);
+    GateRef StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value);
+    GateRef LdLocalModuleVar(GateRef jsFunc, GateRef index);
+    GateRef BuiltinConstructor(BuiltinTypeId id, GateRef gate);
 
     inline GateRef GetMethodId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
@@ -397,6 +400,7 @@ public:
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     GateRef IsStabelArray(GateRef glue, GateRef obj);
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
+    void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // WeakRef
     inline GateRef CreateWeakRef(GateRef x);
@@ -456,6 +460,8 @@ public:
     GateRef InsertStableArrayCheck(GateRef array);
     GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
+    GateRef ArrayConstructorCheck(GateRef gate);
+    GateRef ObjectConstructorCheck(GateRef gate);
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
                                 GateType gateType, PGOTypeRef pgoType, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
@@ -527,6 +533,7 @@ public:
         MemoryOrder order = MemoryOrder::NOT_ATOMIC);
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
+    GateRef StringAdd(GateRef x, GateRef y);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);

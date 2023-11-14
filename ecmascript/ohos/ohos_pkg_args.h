@@ -21,6 +21,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <fcntl.h>
 
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
@@ -36,6 +37,9 @@
 #include "ecmascript/ohos/white_list_helper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
+#if defined(CODE_ENCRYPTION_ENABLE)
+#include "ecmascript/ohos/code_decrypt.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 class OhosPkgArgs {
@@ -47,6 +51,9 @@ public:
     constexpr static const char *const KEY_ABC_OFFSET = "abcOffset";
     constexpr static const char *const KEY_ABC_SIZE = "abcSize";
     constexpr static const char *const KEY_PGO_DIR = "pgoDir";
+    constexpr static const char *const KEY_PROCESS_UID = "processUid";
+    constexpr static const char *const KEY_BUNDLE_UID = "bundleUid";
+    constexpr static const char *const IS_ENCRYPTED_BUNDLE = "isEncryptedBundle";
 
     OhosPkgArgs() = default;
 
@@ -77,7 +84,26 @@ public:
         }
         return true;
     }
+#if defined(CODE_ENCRYPTION_ENABLE)
+    void DecryptSetKey(int fd) const
+    {
+        if (ohos::DecryptSetKey(fd, static_cast<int>(GetBundleUid())) < 0) {
+            LOG_ECMA(ERROR) << "set key error!";
+        }
+        if (ohos::DecryptAssociateKey(fd, static_cast<int>(GetProcessUid()),
+                         static_cast<int>(GetBundleUid())) < 0) {
+            LOG_ECMA(ERROR) << "associate key error!";
+        }
+    }
 
+    void DecryptRemoveKey(int fd) const
+    {
+        if (ohos::DecrypRemoveKey(fd, static_cast<int>(GetProcessUid())) < 0
+         || ohos::DecrypRemoveKey(fd, static_cast<int>(GetBundleUid())) < 0) {
+            LOG_ECMA(ERROR) << "remove key error!";
+        }
+    }
+#endif
     bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
     {
         std::string hapPath;
@@ -102,7 +128,19 @@ public:
             LOG_ECMA(ERROR) << "realpath for hap path failed!";
             return false;
         }
-        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+#if defined(CODE_ENCRYPTION_ENABLE)
+        int fd = open(DEV_APP_CRYPTO_PATH, O_RDONLY);
+        if (GetIsEncryptedBundle() > 0) {
+            DecryptSetKey(fd);
+        }
+        uint32_t offStart = offset;
+        offStart &= -PAGE_SIZE;
+        MemMap fileMapMem = FileMapForAlignAddress(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ,
+                                                   offset, offStart);
+        offset = offset - offStart;
+#else
+        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);   
+#endif
         if (fileMapMem.GetOriginAddr() == nullptr) {
             LOG_ECMA(ERROR) << "File mmap failed";
             return false;
@@ -112,6 +150,11 @@ public:
         pf = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, GetFullName().c_str());
         FileUnMap(fileMapMem);
         fileMapMem.Reset();
+#if defined(CODE_ENCRYPTION_ENABLE)
+        if (GetIsEncryptedBundle() > 0) {
+            DecryptRemoveKey(fd);
+        }
+#endif
         return true;
     }
 
@@ -207,6 +250,15 @@ public:
             abcSize_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else if (strcmp(key, KEY_PGO_DIR) == 0) {
             pgoDir_ = value;
+        } else if (strcmp(key, KEY_BUNDLE_UID) == 0) {
+            char *str = nullptr;
+            bundleUid_ = static_cast<uint32_t>(strtol(value, &str, 0));
+        } else if (strcmp(key, KEY_PROCESS_UID) == 0) {
+            char *str = nullptr;
+            processUid_ = static_cast<uint32_t>(strtol(value, &str, 0));
+        } else if (strcmp(key, IS_ENCRYPTED_BUNDLE) == 0) {
+            char *str = nullptr;
+            IsEncryptedBundle_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else {
             LOG_COMPILER(ERROR) << "Unknown keyword when parse pkg info. key: " << key << ", value: " << value;
         }
@@ -230,7 +282,10 @@ public:
                            << KEY_PKG_PATH << ": " << pkgPath_ << ", "
                            << KEY_ABC_OFFSET << ": " << std::hex << abcOffset_ << ", "
                            << KEY_ABC_SIZE << ": " << abcSize_ << ", "
-                           << KEY_PGO_DIR << ": " << pgoDir_;
+                           << KEY_PGO_DIR << ": " << pgoDir_ << ", "
+                           << KEY_BUNDLE_UID << ": " << bundleUid_ << ", "
+                           << KEY_PROCESS_UID << ": " << processUid_ << ", "
+                           << IS_ENCRYPTED_BUNDLE << ": " << IsEncryptedBundle_ ;
     }
 
     const std::string &GetBundleName() const
@@ -263,6 +318,21 @@ public:
         return abcSize_;
     }
 
+    uint32_t GetBundleUid() const
+    {
+        return bundleUid_;
+    }
+
+    uint32_t GetProcessUid() const
+    {
+        return processUid_;
+    }
+
+    bool GetIsEncryptedBundle() const
+    {
+        return IsEncryptedBundle_;
+    }
+
     const std::string &GetPgoDir() const
     {
         return pgoDir_;
@@ -286,10 +356,10 @@ public:
             return;
         }
 
-        // 2. use baseline ap if there's no runtime ap
+        // 2. do not baseline ap until new format supported
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
         if (FileExist(baselineAp.c_str())) {
-            pgoPaths = baselineAp;
+            LOG_COMPILER(ERROR) << "Do not support base line ap now, please waiting. baseline ap: " << baselineAp;
         }
     }
 
@@ -325,10 +395,10 @@ private:
         }
         if (pkgArgs->GetPgoDir().empty() && !cOptions.profilerIn_.empty()) {
             // try get pgo dir from --compiler-pgo-profiler-path
-            arg_list_t pandaFileNames = base::StringHelper::SplitString(cOptions.profilerIn_, GetFileDelimiter());
-            ASSERT(!pandaFileNames.empty());
+            arg_list_t apFileNames = base::StringHelper::SplitString(cOptions.profilerIn_, GetFileDelimiter());
+            ASSERT(!apFileNames.empty());
             // just parse the first ap's dir
-            pkgArgs->SetPgoDir(ResolveDirPath(pandaFileNames.at(0)));
+            pkgArgs->SetPgoDir(ResolveDirPath(apFileNames.at(0)));
         }
         // reset profilerIn from pgo dir
         pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
@@ -370,13 +440,16 @@ private:
     }
 
     static constexpr uint32_t INVALID_VALUE = std::numeric_limits<uint32_t>::max();
-    std::string bundleName_;
-    std::string moduleName_;
-    std::string pkgPath_;
-    std::string abcName_;
-    std::string pgoDir_;
+    std::string bundleName_{""};
+    std::string moduleName_{""};
+    std::string pkgPath_{""};
+    std::string abcName_{""};
+    std::string pgoDir_{""};
     uint32_t abcOffset_ {INVALID_VALUE};
     uint32_t abcSize_ {INVALID_VALUE};
+    uint32_t bundleUid_ {INVALID_VALUE};
+    uint32_t processUid_ {INVALID_VALUE};
+    bool IsEncryptedBundle_{false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif

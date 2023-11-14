@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,18 @@
  * @tc.name:async
  * @tc.desc:test async function
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI5NO8G issueI8FBM3
  */
 const input = [1, [2], [[3]]];
 print(input.flat(undefined));
+
+{
+    class MyArray extends Array {
+        static get [Symbol.species]() {
+            return this;
+        }
+    }
+    const wannabe = new MyArray();
+    const flattened = wannabe.flat(Infinity);
+    print(flattened instanceof MyArray);
+}

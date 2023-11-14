@@ -556,6 +556,11 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
+{
+    vm->SetDeviceDisconnectCallback(cb);
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
@@ -808,6 +813,7 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
+    vm->CheckThread();
     vm->GetJSThread()->DisposeGlobalHandle(addr);
 }
 
@@ -990,6 +996,15 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     JSHandle<JSTaggedValue> exportObj(thread, result);
+    return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
+Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
+{   
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
@@ -1909,6 +1924,33 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
     JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method(thread, func->GetMethod());
     return method->IsNativeWithCallField();
+}
+
+void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
+{
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    function->SetCallNapi(callNapi);
+}
+
+void* FunctionRef::GetData(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    if (!function->IsCallNapi()) {
+        return nullptr;
+    }
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsNativePointer()) {
+        return nullptr;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
+    return extraInfo->GetData();
 }
 
 // ----------------------------------- ArrayRef ----------------------------------------

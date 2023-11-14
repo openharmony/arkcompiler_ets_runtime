@@ -15,11 +15,14 @@ group("ark_js_moduletest") {
   testonly = true
 
   test_list = [
+    "addelementinternal",
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
     "arrayflat",
+    "arrayflatmap",
     "arrayfindindex",
+    "arrayfindlastindex",
     "arrayforeach",
     "arrayjoin",
     "arraypop",
@@ -110,6 +113,7 @@ group("ark_js_moduletest") {
     "spreadoperator",
     "stackoverflow",
     "storeicbyname",
+    "storeicbyvalue",
     "string",
     "stringreplace",
     "stubbuilder",
@@ -161,10 +165,13 @@ group("ark_asm_test") {
   testonly = true
 
   test_list = [
+    "addelementinternal",
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
     "arrayflat",
+    "arrayflatmap",
+    "arrayfindlastindex",
     "arrayfindindex",
     "arrayforeach",
     "arrayjoin",
@@ -286,10 +293,13 @@ group("ark_asm_single_step_test") {
   testonly = true
 
   test_list = [
+    "addelementinternal",
     "allocatearraybuffer",
     "arrayfindindex",
     "arrayfindlast",
     "arrayflat",
+    "arrayflatmap",
+    "arrayfindlastindex",
     "arrayforeach",
     "arrayjoin",
     "arraypop",

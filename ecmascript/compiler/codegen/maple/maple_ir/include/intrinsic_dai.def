@@ -1,0 +1,20 @@
+DEF_MIR_INTRINSIC(MCC_DeferredConstClass,\
+                  "MCC_DeferredConstClass", INTRNISJAVA, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredInstanceOf,\
+                  "MCC_DeferredInstanceOf", INTRNISJAVA, kArgTyU1, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredCheckCast,\
+                  "MCC_DeferredCheckCast", INTRNISJAVA, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredNewInstance,\
+                  "MCC_DeferredNewInstance", INTRNISJAVA, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredNewArray,\
+                  "MCC_DeferredNewArray", INTRNISJAVA, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyI32)
+DEF_MIR_INTRINSIC(MCC_DeferredFillNewArray,\
+                  "MCC_DeferredFillNewArray", INTRNISJAVA, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyI32, kArgTyDynany, kArgTyDynany)
+DEF_MIR_INTRINSIC(MCC_DeferredLoadField,\
+                  "MCC_DeferredLoadField", INTRNISJAVA, kArgTyDynany, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredStoreField,\
+                  "MCC_DeferredStoreField", INTRNISJAVA, kArgTyVoid, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredInvoke,\
+                  "MCC_DeferredInvoke", INTRNISJAVA, kArgTyDynany, kArgTyRef, kArgTyI32, kArgTyRef, kArgTyRef, kArgTyRef, kArgTyRef)
+DEF_MIR_INTRINSIC(MCC_DeferredClinitCheck,\
+                  "MCC_DeferredClinitCheck", INTRNISJAVA, kArgTyVoid, kArgTyRef, kArgTyRef, kArgTyRef)

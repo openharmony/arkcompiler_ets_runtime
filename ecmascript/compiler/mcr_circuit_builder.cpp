@@ -181,6 +181,18 @@ GateRef CircuitBuilder::StringEqual(GateRef x, GateRef y)
     return ret;
 }
 
+GateRef CircuitBuilder::StringAdd(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->StringAdd(), MachineType::I64,
+                                     { currentControl, currentDepend, x, y }, GateType::BooleanType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1184,6 +1196,32 @@ GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
     Bind(&exit);
     auto ret = *result;
     SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayConstructorCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayConstructorCheck(),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ObjectConstructorCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectConstructorCheck(),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 }

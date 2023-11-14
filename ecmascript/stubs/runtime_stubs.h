@@ -341,6 +341,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(HClassCloneWithAddProto)            \
     V(LocaleCompareWithGc)                \
     V(ArrayForEachContinue)               \
+    V(NumberDictionaryPut)                \
     V(ThrowRangeError)
 
 #define RUNTIME_STUB_LIST(V)                     \

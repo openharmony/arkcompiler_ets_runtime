@@ -277,6 +277,29 @@ DEF_RUNTIME_STUBS(NameDictPutIfAbsent)
     }
 }
 
+DEF_RUNTIME_STUBS(NumberDictionaryPut)
+{
+    RUNTIME_STUBS_HEADER(NumberDictionaryPut);
+    JSTaggedType receiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedType array = GetTArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue attr = GetArg(argv, argc, 4);   // 4: means the fourth parameter
+    JSTaggedValue needTransToDict = GetArg(argv, argc, 5);  // 5: means the fifth parameter
+
+    JSHandle<JSTaggedValue> keyHandle(thread, key);
+    PropertyAttributes propAttr(attr.GetInt());
+    JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
+    if (needTransToDict.IsTrue()) {
+        JSObject::ElementsToDictionary(thread, objHandle);
+        JSHandle<NumberDictionary> dict(thread, objHandle->GetElements());
+        return NumberDictionary::Put(thread, dict, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
+    } else {
+        JSHandle<NumberDictionary> dict(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(array)));
+        return NumberDictionary::Put(thread, dict, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
+    }
+}
+
 DEF_RUNTIME_STUBS(PropertiesSetValue)
 {
     RUNTIME_STUBS_HEADER(PropertiesSetValue);

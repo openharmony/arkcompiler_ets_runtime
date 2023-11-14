@@ -129,7 +129,8 @@ private:
                           uint32_t slotId, ProfileTypeInfo *profileTypeInfo, int32_t traceId);
     void DumpCall(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                   ProfileTypeInfo *profileTypeInfo);
-
+    void DumpNewObjRange(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
     void DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 

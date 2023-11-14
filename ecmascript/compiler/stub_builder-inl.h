@@ -200,7 +200,7 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::init
     SavePcIfNeeded(glue);
     const std::string name = RuntimeStubCSigns::GetRTName(index);
     GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
-                                                     Circuit::NullGate(), name.c_str());
+                                                     glue, name.c_str());
     return result;
 }
 
@@ -1373,6 +1373,15 @@ inline GateRef StubBuilder::IsWritable(GateRef attr)
         Int32And(
             Int32LSR(attr, Int32(PropertyAttributes::WritableField::START_BIT)),
             Int32((1LLU << PropertyAttributes::WritableField::SIZE) - 1)),
+        Int32(0));
+}
+
+inline GateRef StubBuilder::IsDefaultAttribute(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(
+            Int32LSR(attr, Int32(PropertyAttributes::DefaultAttributesField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::DefaultAttributesField::SIZE) - 1)),
         Int32(0));
 }
 

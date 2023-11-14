@@ -509,6 +509,7 @@ public:
     }
 
     bool PUBLIC_API IsBuiltinObjectMethod(BuiltinTypeId id, kungfu::GateType funcType) const;
+    bool PUBLIC_API IsBuiltinConstructor(BuiltinTypeId id, GlobalTSTypeRef ctorType) const;
 
     inline const JSPandaFile *GetBuiltinPandaFile() const
     {

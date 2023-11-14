@@ -121,16 +121,17 @@ HWTEST_F_L0(OhosTest, AotWhiteListTest)
 HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
 {
     const char *pgoDir = "ohos-OhosPkgArgsParse";
-    std::string baselineAp = std::string(pgoDir) + "/entry.ap";
+    std::string runtimeAp = std::string(pgoDir) + "/rt_entry.ap";
     mkdir(pgoDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream file(baselineAp);
+    std::ofstream file(runtimeAp);
     file.close();
+    AddWhiteList();
 
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
 
-    runtimeOptions_.SetPGOProfilerPath(baselineAp);
+    runtimeOptions_.SetPGOProfilerPath(runtimeAp);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(""));
 
     CompilationOptions cOptions(vm_, runtimeOptions_);
@@ -146,7 +147,7 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
 
     ASSERT_EQ(preProcessor.GetPkgsArgs().size(), 3);
 
-    unlink(baselineAp.c_str());
+    unlink(runtimeAp.c_str());
     rmdir(pgoDir);
 }
 
@@ -166,18 +167,23 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
 {
     const char *pgoDir = "ohos-UseBaselineApFromPgoDir";
     std::string baselineAp = std::string(pgoDir) + "/entry.ap";
+    std::string runtimeAp = std::string(pgoDir) + "/rt_entry.ap";
     mkdir(pgoDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream file(baselineAp);
     file.close();
+    file.open(runtimeAp);
+    file.close();
+    // do not add to white list
+
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
     CompilationOptions cOptions(vm_, runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
-    ASSERT_TRUE(preProcessor.HandleTargetCompilerMode(cOptions));
+    ASSERT_FALSE(preProcessor.HandleTargetCompilerMode(cOptions));
 
-    ASSERT_EQ(cOptions.profilerIn_, baselineAp);
+    ASSERT_TRUE(cOptions.profilerIn_.empty());
     unlink(baselineAp.c_str());
     rmdir(pgoDir);
 }

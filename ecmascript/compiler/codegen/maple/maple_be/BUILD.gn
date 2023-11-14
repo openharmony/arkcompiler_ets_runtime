@@ -1,0 +1,365 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+include_directories = [
+  "${MAPLEALL_ROOT}/maple_be/include/cg",
+  "${MAPLEALL_ROOT}/maple_be/include/litecg",
+  "${MAPLEALL_ROOT}/maple_be/include/ad",
+  "${MAPLEALL_ROOT}/maple_be/include/ad/target",
+  "${MAPLEALL_ROOT}/maple_be/include/be",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/maple_ir/include",
+  "${MAPLEALL_ROOT}/maple_me/include",
+  "${MAPLEALL_ROOT}/mpl2mpl/include",
+  "${MAPLEALL_ROOT}/mempool/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include/old",
+  "${MAPLEALL_ROOT}/maple_phase/include",
+  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
+]
+
+deps_libcg = [
+  ":libmplbe",
+  ":libmplad",
+  "${MAPLEALL_ROOT}/mempool:libmempool",
+  "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+  "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+  "${MAPLEALL_ROOT}/maple_ir:libmplir",
+  "${MAPLEALL_ROOT}/maple_util:libmplutil",
+  "${MAPLEALL_ROOT}/maple_me:libmplme",
+]
+
+deps_libmplbe = [ ":libcglowerer" ]
+
+if (TARGET == "aarch64") {
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
+  ]
+  deps_libcg += [
+    ":libcgaarch64",
+    ":libcgphases",
+    "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
+  ]
+}
+
+if (TARGET == "x86_64") {
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/x86_64",
+  ]
+  deps_libcg += [
+    ":libcgx8664",
+    ":libcgx86phases",
+  ]
+}
+
+if (TARGET == "riscv64") {
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/riscv64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/riscv64",
+  ]
+  deps_libcg += [ ":libcgriscv64" ]
+}
+
+if (TARGET == "ark") {
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/be/ark",
+  ]
+  deps_libcg += [ ":libcgark" ]
+}
+
+src_libmplad = [ "src/ad/mad.cpp" ]
+
+src_libcglowerer = [
+  "src/be/bbt.cpp",
+  "src/be/trycatchblockslower.cpp",
+  "src/be/lower.cpp",
+]
+
+src_libmplbe = [
+  "src/be/becommon.cpp",
+  "src/be/switch_lowerer.cpp",
+  "src/be/rt.cpp",
+]
+
+src_libcgaarch64 = [
+  "src/cg/aarch64/aarch64_abi.cpp",
+  "src/cg/aarch64/aarch64_call_conv.cpp",
+  "src/cg/aarch64/mpl_atomic.cpp",
+  "src/cg/aarch64/aarch64_cgfunc.cpp",
+  "src/cg/aarch64/aarch64_dependence.cpp",
+  "src/cg/aarch64/aarch64_ebo.cpp",
+  "src/cg/aarch64/aarch64_emitter.cpp",
+  "src/cg/aarch64/aarch64_obj_emitter.cpp",
+  "src/cg/aarch64/aarch64_fixshortbranch.cpp",
+  "src/cg/aarch64/aarch64_global.cpp",
+  "src/cg/aarch64/aarch64_proepilog.cpp",
+  "src/cg/aarch64/aarch64_operand.cpp",
+  "src/cg/aarch64/aarch64_color_ra.cpp",
+  "src/cg/aarch64/aarch64_reg_info.cpp",
+  "src/cg/aarch64/aarch64_ssa.cpp",
+  "src/cg/aarch64/aarch64_prop.cpp",
+  "src/cg/aarch64/aarch64_dce.cpp",
+  "src/cg/aarch64/aarch64_phi_elimination.cpp",
+  "src/cg/aarch64/aarch64_reg_coalesce.cpp",
+  "src/cg/aarch64/aarch64_ico.cpp",
+  "src/cg/aarch64/aarch64_insn.cpp",
+  "src/cg/aarch64/aarch64_isa.cpp",
+  "src/cg/aarch64/aarch64_memlayout.cpp",
+  "src/cg/aarch64/aarch64_args.cpp",
+  "src/cg/aarch64/aarch64_live.cpp",
+  "src/cg/aarch64/aarch64_yieldpoint.cpp",
+  "src/cg/aarch64/aarch64_offset_adjust.cpp",
+  "src/cg/aarch64/aarch64_optimize_common.cpp",
+  "src/cg/aarch64/aarch64_peep.cpp",
+  "src/cg/aarch64/aarch64_reaching.cpp",
+  "src/cg/aarch64/aarch64_schedule.cpp",
+  "src/cg/aarch64/aarch64_strldr.cpp",
+  "src/cg/aarch64/aarch64_ra_opt.cpp",
+  "src/cg/aarch64/aarch64_alignment.cpp",
+  "src/cg/aarch64/aarch64_regsaves.cpp",
+  "src/cg/aarch64/aarch64_utils.cpp",
+  "src/cg/aarch64/aarch64_cg.cpp",
+  "src/cg/aarch64/aarch64_validbit_opt.cpp",
+  "src/cg/aarch64/aarch64_cfgo.cpp",
+]
+
+src_libcgx86phases = [
+  "src/cg/peep.cpp",
+  "src/cg/alignment.cpp",
+  "src/cg/reaching.cpp",
+  "src/cg/local_opt.cpp",
+  "src/cg/cfgo.cpp",
+]
+
+src_libcgx8664 = [
+  "src/cg/x86_64/x64_cg.cpp",
+  "src/cg/x86_64/x64_MPIsel.cpp",
+  "src/cg/x86_64/x64_cgfunc.cpp",
+  "src/cg/x86_64/x64_memlayout.cpp",
+  "src/cg/x86_64/x64_emitter.cpp",
+  "src/cg/x86_64/x64_abi.cpp",
+  "src/cg/x86_64/x64_call_conv.cpp",
+  "src/cg/x86_64/x64_standardize.cpp",
+  "src/cg/x86_64/x64_live.cpp",
+  "src/cg/x86_64/x64_reg_info.cpp",
+  "src/cg/x86_64/x64_proepilog.cpp",
+  "src/cg/x86_64/x64_args.cpp",
+  "src/cg/x86_64/x64_peep.cpp",
+  "src/cg/x86_64/x64_reaching.cpp",
+  "src/cg/x86_64/x64_local_opt.cpp",
+  "src/cg/x86_64/x64_cfgo.cpp",
+  "src/cg/x86_64/x64_isa.cpp",
+  "src/cg/x86_64/x64_optimize_common.cpp",
+  "src/cg/x86_64/elf_assembler.cpp",
+  "src/cg/x86_64/asm_assembler.cpp",
+]
+
+src_libcgriscv64 = [
+  "src/cg/riscv64/mpl_atomic.cpp",
+  "src/cg/riscv64/riscv64_abi.cpp",
+  "src/cg/riscv64/riscv64_args.cpp",
+  "src/cg/riscv64/riscv64_cg.cpp",
+  "src/cg/riscv64/riscv64_cgfunc.cpp",
+  "src/cg/riscv64/riscv64_color_ra.cpp",
+  "src/cg/riscv64/riscv64_dependence.cpp",
+  "src/cg/riscv64/riscv64_ebo.cpp",
+  "src/cg/riscv64/riscv64_emitter.cpp",
+  "src/cg/riscv64/riscv64_fixshortbranch.cpp",
+  "src/cg/riscv64/riscv64_global.cpp",
+  "src/cg/riscv64/riscv64_ico.cpp",
+  "src/cg/riscv64/riscv64_immediate.cpp",
+  "src/cg/riscv64/riscv64_insn.cpp",
+  "src/cg/riscv64/riscv64_isa.cpp",
+  "src/cg/riscv64/riscv64_live.cpp",
+  "src/cg/riscv64/riscv64_lsra.cpp",
+  "src/cg/riscv64/riscv64_memlayout.cpp",
+  "src/cg/riscv64/riscv64_offset_adjust.cpp",
+  "src/cg/riscv64/riscv64_operand.cpp",
+  "src/cg/riscv64/riscv64_optimize_common.cpp",
+  "src/cg/riscv64/riscv64_peep.cpp",
+  "src/cg/riscv64/riscv64_proepilog.cpp",
+  "src/cg/riscv64/riscv64_reaching.cpp",
+  "src/cg/riscv64/riscv64_reg_alloc.cpp",
+  "src/cg/riscv64/riscv64_schedule.cpp",
+  "src/cg/riscv64/riscv64_strldr.cpp",
+  "src/cg/riscv64/riscv64_yieldpoint.cpp",
+  "src/cg/riscv64/riscv64_ra_opt.cpp",
+]
+
+src_libcgark = [ "src/cg/ark/foo.cpp" ]
+
+src_libcgphases = [
+  "src/cg/cfgo.cpp",
+  "src/cg/local_opt.cpp",
+  "src/cg/ebo.cpp",
+  "src/cg/ra_opt.cpp",
+  "src/cg/cg_ssa.cpp",
+  "src/cg/cg_prop.cpp",
+  "src/cg/cg_dce.cpp",
+  "src/cg/cg_phi_elimination.cpp",
+  "src/cg/reg_coalesce.cpp",
+  "src/cg/global.cpp",
+  "src/cg/ico.cpp",
+  "src/cg/peep.cpp",
+  "src/cg/pressure.cpp",
+  "src/cg/reaching.cpp",
+  "src/cg/schedule.cpp",
+  "src/cg/strldr.cpp",
+  "src/cg/cg_dominance.cpp",
+  "src/cg/cg_pre.cpp",
+  "src/cg/cg_occur.cpp",
+  "src/cg/cg_ssu_pre.cpp",
+  "src/cg/cg_ssa_pre.cpp",
+  "src/cg/regsaves.cpp",
+  "src/cg/cg_critical_edge.cpp",
+  "src/cg/alignment.cpp",
+  "src/cg/cg_validbit_opt.cpp",
+]
+
+src_libcg = [
+  "src/cg/args.cpp",
+  "src/cg/cg_irbuilder.cpp",
+  "src/cg/cfi.cpp",
+  "src/cg/cgbb.cpp",
+  "src/cg/operand.cpp",
+  "src/cg/cgfunc.cpp",
+  "src/cg/cg_cfg.cpp",
+  "src/cg/cg_option.cpp",
+  "src/cg/cg_options.cpp",
+  "src/cg/dbg.cpp",
+  "src/cg/optimize_common.cpp",
+  "src/cg/eh_func.cpp",
+  "src/cg/emit.cpp",
+  "src/cg/obj_emit.cpp",
+  "src/cg/ifile.cpp",
+  "src/cg/live.cpp",
+  "src/cg/loop.cpp",
+  "src/cg/isel.cpp",
+  "src/cg/standardize.cpp",
+  "src/cg/memlayout.cpp",
+  "src/cg/yieldpoint.cpp",
+  "src/cg/label_creation.cpp",
+  "src/cg/offset_adjust.cpp",
+  "src/cg/reg_alloc.cpp",
+  "src/cg/reg_alloc_basic.cpp",
+  "src/cg/reg_alloc_lsra.cpp",
+  "src/cg/proepilog.cpp",
+  "src/cg/cg.cpp",
+  "src/cg/isa.cpp",
+  "src/cg/insn.cpp",
+  "src/cg/cg_phasemanager.cpp",
+  "src/litecg/litecg.cpp",
+  "src/litecg/lmir_builder.cpp",
+]
+
+ohos_static_library("libmplad") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libmplad
+  include_dirs = include_directories
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcglowerer") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcglowerer
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_static_library("libmplbe") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libmplbe
+  deps = deps_libmplbe
+  include_dirs = include_directories
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcgaarch64") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgaarch64
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcgx8664") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgx8664
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcgx86phases") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgx86phases
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcgriscv64") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgriscv64
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_static_library("libcgark") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgark
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_source_set("libcgphases") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcgphases
+  include_dirs = include_directories
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_static_library("libcg") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcg
+  include_dirs = include_directories
+  deps = deps_libcg
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

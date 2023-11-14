@@ -1434,4 +1434,22 @@ int TSModuleTable::GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiP
     }
     return NOT_FOUND;
 }
+
+bool TSManager::IsBuiltinConstructor(BuiltinTypeId id, GlobalTSTypeRef ctorGT) const
+{
+    ASSERT(ctorGT.IsBuiltinModule());
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(id);
+        const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
+        uint32_t builtinOffset = GetBuiltinOffset(idx);
+        GlobalTypeID gId(builtinPandaFile, builtinOffset);
+        bool hasCreatedGT = HasCreatedGT(gId);
+        if (hasCreatedGT) {
+            auto gt = GetGTByGlobalTypeID(gId);
+            return ctorGT == gt;
+        }
+    }
+
+    return false;
+}
 } // namespace panda::ecmascript

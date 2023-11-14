@@ -347,6 +347,8 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         default:
             break;
     }
+    std::string typeStr = ConvertToStdString(JSHClass::DumpJSType(type));
+    LOG_ECMA(ERROR) << "serialized unsupported type which JSType is: " << typeStr;
     return false;
 }
 
