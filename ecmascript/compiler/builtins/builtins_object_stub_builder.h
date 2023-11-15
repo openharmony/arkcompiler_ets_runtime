@@ -32,6 +32,7 @@ public:
     void ToString(Variable *result, Label *exit, Label *slowPath);
     void Create(Variable *result, Label *exit, Label *slowPath);
     void Assign(Variable *result, Label *exit, Label *slowPath);
+    void HasOwnProperty(Variable *result, Label *exit, Label *slowPath);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);

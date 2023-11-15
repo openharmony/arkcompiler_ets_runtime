@@ -2321,6 +2321,25 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
+JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString)
+{
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t index = 0;
+    if (EcmaStringAccessor(string).ToElementIndex(&index)) {
+        return JSTaggedValue(index).GetRawData();
+    }
+    if (!EcmaStringAccessor(string).IsInternString()) {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        EcmaString *str =
+            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
+        if (str == nullptr) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
+        return JSTaggedValue::Cast(static_cast<void *>(str));
+    }
+    return ecmaString;
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
                                                JSTaggedValue *argvPtr)
 {

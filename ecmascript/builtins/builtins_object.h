@@ -77,7 +77,7 @@
 #define BUILTIN_OBJECT_PROTOTYPE_FUNCTIONS(V)                                       \
     V("createRealm",          CreateRealm,          0, INVALID)                     \
     /* Object.prototype.hasOwnProperty ( V ) */                                     \
-    V("hasOwnProperty",       HasOwnProperty,       1, INVALID)                     \
+    V("hasOwnProperty",       HasOwnProperty,       1, ObjectHasOwnProperty)        \
     /* Object.prototype.isPrototypeOf ( V ) */                                      \
     V("isPrototypeOf",        IsPrototypeOf,        1, INVALID)                     \
     /* Object.prototype.propertyIsEnumerable ( V ) */                               \
