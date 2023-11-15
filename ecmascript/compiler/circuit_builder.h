@@ -334,6 +334,7 @@ public:
     GateRef BuiltinConstructor(BuiltinTypeId id, GateRef gate);
 
     inline GateRef GetMethodId(GateRef func);
+    inline GateRef GetBuiltinsId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
 
     // call operation

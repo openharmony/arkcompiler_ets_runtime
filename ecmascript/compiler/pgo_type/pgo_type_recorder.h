@@ -24,20 +24,17 @@ using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
 using PGOHClassTreeDesc = pgo::PGOHClassTreeDesc;
 using PGODefineOpType = pgo::PGODefineOpType;
 using RootHClassLayoutDesc = pgo::RootHClassLayoutDesc;
+using PGORWOpType = pgo::PGORWOpType;
 
 class PGOTypeRecorder {
 public:
     PGOTypeRecorder(const PGOProfilerDecoder &decoder, const JSPandaFile *jsPandaFile, uint32_t methodOffset);
     ~PGOTypeRecorder() = default;
 
-    inline PGOSampleType GetPGOOpType(int32_t bcOffset) const
-    {
-        auto typeIter = bcOffsetPGOOpTypeMap_.find(bcOffset);
-        if (typeIter == bcOffsetPGOOpTypeMap_.end()) {
-            return PGOSampleType::NoneType();
-        }
-        return *(typeIter->second);
-    }
+    std::vector<ElementsKind> GetElementsKindsForUser(int32_t offset) const;
+    ElementsKind GetElementsKindForCreater(int32_t offset) const;
+
+    PGOTypeRef GetPGOType(int32_t offset) const;
 
     inline PGODefineOpType GetPGODefOpType(int32_t bcOffset) const
     {
@@ -55,7 +52,8 @@ public:
 
 private:
     const PGOProfilerDecoder &decoder_;
-    std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_;
+    std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
+    std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_;
 };
 }  // panda::ecmascript::kungfu

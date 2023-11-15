@@ -39,14 +39,9 @@ public:
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
-    ElementsKind GetElementsKind(int32_t offset) const;
-    PGOTypeRef GetOrUpdatePGOType(int32_t offset) const;
-    PGORWOpType GetRwOpType(int32_t offset) const;
-    std::vector<ElementsKind> LoadElementsKinds(int32_t offset) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
     GateType GetCallTargetType(int32_t offset) const;
-    PGOTypeRef GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) const;
     void BindPgoTypeToGateType(const JSPandaFile *jsPandaFile, TSManager *tsManager,
                                const MethodLiteral *methodLiteral) const;
 

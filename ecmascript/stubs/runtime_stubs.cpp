@@ -2063,6 +2063,18 @@ DEF_RUNTIME_STUBS(ToNumeric)
     return RuntimeToNumeric(thread, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ToNumericConvertBigInt)
+{
+    RUNTIME_STUBS_HEADER(ToNumericConvertBigInt);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> numericVal(thread, RuntimeToNumeric(thread, value));
+    if (numericVal->IsBigInt()) {
+        JSHandle<BigInt> bigNumericVal(numericVal);
+        return BigInt::BigIntToNumber(bigNumericVal).GetRawData();
+    }
+    return numericVal->GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DynamicImport)
 {
     RUNTIME_STUBS_HEADER(DynamicImport);

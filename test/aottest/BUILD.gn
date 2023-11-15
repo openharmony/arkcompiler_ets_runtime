@@ -183,6 +183,7 @@ group("ark_aot_ts_test") {
     "or",
     "pgo_call",
     "pgo_class_operation",
+    "pgo_constructor_number",
     "pgo_forof_array",
     "pgo_forof_map",
     "pgo_forof_set",

@@ -73,7 +73,7 @@ private:
     void SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
     GateRef GetIterationFunctionId(GateRef glue, GateRef iterator);
-    GateRef TryGetBuiltinFunctionId(GateRef glue, GateRef target);
+    GateRef TryGetBuiltinFunctionId(GateRef target);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

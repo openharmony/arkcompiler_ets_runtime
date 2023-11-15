@@ -307,56 +307,20 @@ void ProfilerStubBuilder::ProfileCall(
     env->SubCfgExit();
 }
 
-GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef glue, GateRef target)
+GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label targetIsFunction(env);
     Label exit(env);
 
     DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
-    DEFVARIABLE(maybeFunc, VariableType::JS_ANY(), Undefined());
-    Label isArrayIterProtoNext(env);
-    Label notArrayIterProtoNext(env);
-    Label isMapIterProtoNext(env);
-    Label notMapIterProtoNext(env);
-    Label isSetIterProtoNext(env);
-    Label notSetIterProtoNext(env);
-    Label isStringIterProtoNext(env);
-
-    maybeFunc = GetGlobalConstantValue(
-        VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX);
-    Branch(Int64Equal(target, *maybeFunc), &isArrayIterProtoNext, &notArrayIterProtoNext);
-    Bind(&isArrayIterProtoNext);
+    Branch(IsJSFunction(target), &targetIsFunction, &exit);
+    Bind(&targetIsFunction);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT));
-        Jump(&exit);
-    }
-    Bind(&notArrayIterProtoNext);
-    maybeFunc = GetGlobalConstantValue(
-        VariableType::JS_ANY(), glue, ConstantIndex::MAP_ITERATOR_PROTO_NEXT_INDEX);
-    Branch(Int64Equal(target, *maybeFunc), &isMapIterProtoNext, &notMapIterProtoNext);
-    Bind(&isMapIterProtoNext);
-    {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT));
-        Jump(&exit);
-    }
-    Bind(&notMapIterProtoNext);
-    maybeFunc = GetGlobalConstantValue(
-        VariableType::JS_ANY(), glue, ConstantIndex::SET_ITERATOR_PROTO_NEXT_INDEX);
-    Branch(Int64Equal(target, *maybeFunc), &isSetIterProtoNext, &notSetIterProtoNext);
-    Bind(&isSetIterProtoNext);
-    {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT));
-        Jump(&exit);
-    }
-    Bind(&notSetIterProtoNext);
-    maybeFunc = GetGlobalConstantValue(
-        VariableType::JS_ANY(), glue, ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX);
-    Branch(Int64Equal(target, *maybeFunc), &isStringIterProtoNext, &exit);
-    Bind(&isStringIterProtoNext);
-    {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
+        auto builtinsId = env->GetBuilder()->GetBuiltinsId(target);
+        functionId = Int32Mul(TruncInt64ToInt32(builtinsId), Int32(-1));
         Jump(&exit);
     }
     Bind(&exit);
@@ -395,7 +359,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
         Branch(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);
         Bind(&sameValueCheck);
         {
-            GateRef newId = TryGetBuiltinFunctionId(glue, target);
+            GateRef newId = TryGetBuiltinFunctionId(target);
             Branch(Int32Equal(oldId, newId), &exit, &invalidate);
         }
         Bind(&invalidate);
@@ -407,7 +371,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
         }
         Bind(&initSlot);
         {
-            GateRef newId = TryGetBuiltinFunctionId(glue, target);
+            GateRef newId = TryGetBuiltinFunctionId(target);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
