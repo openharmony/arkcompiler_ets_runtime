@@ -43,9 +43,9 @@ private:
     void VisitTypedConditionJump(GateRef gate);
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
-    void VisitUndefinedStrictEq(GateRef gate);
-    void VisitUndefinedEq(GateRef gate);
-    void VisitEqual(GateRef gate);
+    void VisitUndefinedStrictEqOrUndefinedStrictNotEq(GateRef gate);
+    void VisitUndefinedEqOrUndefinedNotEq(GateRef gate);
+    void VisitEqualOrNotEqual(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitRangeGuard(GateRef gate);
     void VisitRangeCheckPredicate(GateRef gate);
@@ -70,7 +70,7 @@ private:
     void VisitNumberMod(GateRef gate);
     void VisitBooleanJump(GateRef gate);
     void VisitIsTrueOrFalse(GateRef gate, bool flag);
-    void VisitStrictEqual(GateRef gate);
+    void VisitStrictEqualOrStrictNotEqual(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);

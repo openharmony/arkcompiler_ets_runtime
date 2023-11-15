@@ -185,13 +185,16 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_EQ>(gate);
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_EQ>(gate);
             break;
         case EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_STRICTEQ>(gate);
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate, false);
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_NOTEQ>(gate);
+            break;
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTNOTEQ>(gate);
             break;
         case EcmaOpcode::SHL2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_SHL>(gate);
@@ -371,7 +374,7 @@ void TypeBytecodeLowering::LowerTypedUnOp(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TypeBytecodeLowering::LowerTypedEqOrStrictEq(GateRef gate)
+void TypeBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -1600,7 +1603,7 @@ void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 }
 
 void TypeBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-    BuiltinsStubCSigns::ID id, bool isThrow)
+                                                BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
@@ -1828,7 +1831,7 @@ bool TypeBytecodeLowering::CanOptimizeAsFastCall(GateRef func)
 }
 
 void TypeBytecodeLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-    GateType funcType, bool isNoGC)
+                                                       GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;
