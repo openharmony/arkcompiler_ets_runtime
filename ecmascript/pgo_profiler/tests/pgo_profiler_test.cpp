@@ -23,6 +23,7 @@
 
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
@@ -159,12 +160,14 @@ protected:
         ASSERT_TRUE(loader.LoadFull(abcFilePool));
         for (const auto &recordInfo : loader.GetRecordDetailInfos().GetRecordInfos()) {
             auto recordProfile = recordInfo.first;
-            ASSERT_EQ(recordProfile.GetKind(), ProfileType::Kind::LocalRecordId);
+            ASSERT_EQ(recordProfile.GetKind(), ProfileType::Kind::RecordClassId);
             if (recordProfile.IsNone()) {
                 continue;
             }
-            const auto *entry =
-                loader.GetRecordDetailInfos().GetRecordPool()->GetPool()->GetEntry(recordProfile.GetId());
+            LOG_ECMA(ERROR) << "recordProfile: " << recordProfile.GetTypeString();
+            const auto *recordName =
+                loader.GetRecordDetailInfos().GetRecordPool()->GetName(recordProfile);
+            ASSERT(recordName != nullptr);
             const auto abcNormalizedDesc =
                 JSPandaFile::GetNormalizedFileDesc(abcFilePool->GetEntry(recordProfile.GetAbcId())->GetData());
             if (abcNormalizedDesc.empty()) {
@@ -174,7 +177,7 @@ protected:
             const auto *info = recordInfo.second;
             for (const auto &method : info->GetMethodInfos()) {
                 // add ap entry info
-                methodIdInAp[abcNormalizedDesc.c_str()][entry->GetData().c_str()].emplace_back(method.first);
+                methodIdInAp[abcNormalizedDesc.c_str()][recordName].emplace_back(method.first);
             }
         };
     }
@@ -638,15 +641,15 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
         Method::Cast(vm_->GetFactory()->NewMethod(methodLiteral.get(), MemSpaceType::NON_MOVABLE).GetTaggedValue());
 
     ApEntityId recordId(0);
-    recordInfos->GetRecordPool()->TryAdd("test", recordId);
-    ProfileType recordType(0, recordId, ProfileType::Kind::LocalRecordId);
+    ProfileType recordType(0, recordId, ProfileType::Kind::RecordClassId);
+    recordInfos->GetRecordPool()->Add(recordType, "test");
     ASSERT_TRUE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
     ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
     ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
-    PGOFileSectionInterface::ProcessSectionToBinary(file, header, *abcFilePool->GetPool());
+    PGOFileSectionInterface::ProcessSectionToBinary(*recordInfos, file, header, *abcFilePool->GetPool());
     header->SetFileSize(static_cast<uint32_t>(file.tellp()));
     header->ProcessToBinary(file);
     PGOProfilerEncoder::AddChecksum(file);

@@ -109,7 +109,7 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
 }
 
 void PGOProfilerDecoder::LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool,
-                                       const PGOContext &context, void *addr)
+                                       PGOContext &context, void *addr)
 {
     if (externalAbcFilePool != nullptr) {
         abcFilePool_ = externalAbcFilePool;
@@ -121,7 +121,7 @@ void PGOProfilerDecoder::LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &ex
 
     if (header_->SupportProfileTypeWithAbcId()) {
         auto abcFilePoolTemp = std::make_shared<PGOAbcFilePool>();
-        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePoolTemp->GetPool());
+        PGOFileSectionInterface::ParseSectionFromBinary(context, addr, header_, *abcFilePoolTemp->GetPool());
         // step1: [abc pool merge] merge abcFilePool from ap file to memory.
         abcFilePool_->Merge(context, *abcFilePoolTemp);
     }

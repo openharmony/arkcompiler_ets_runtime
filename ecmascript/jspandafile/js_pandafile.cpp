@@ -147,11 +147,13 @@ void JSPandaFile::InitializeUnMergedPF()
                 CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (fieldName != desc_) {
                     info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+                    info.classId = index;
                     return;
                 }
             });
         }
         if (!info.isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
+            info.classId = index;
             info.isCjs = true;
         }
     }
@@ -172,6 +174,7 @@ void JSPandaFile::InitializeMergedPF()
         numMethods_ += cda.GetMethodsNumber();
         // get record info
         JSRecordInfo info;
+        info.classId = index;
         bool hasCjsFiled = false;
         bool hasJsonFiled = false;
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {

@@ -54,8 +54,7 @@ public:
 
     virtual ~PGOProfiler();
 
-    static ProfileType GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId);
-    static ProfileType GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId);
+    static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
     void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
     void ProfileDefineGetterSetter(
