@@ -5089,14 +5089,16 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
         {
             DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
             Label rightIsUndefinedOrNull(env);
-            Label leftOrRightNotUndefinedOrNull(env);
-            Branch(TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull, &leftOrRightNotUndefinedOrNull);
+            Label rightIsNotUndefinedOrNull(env);
+            Branch(TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull, &rightIsNotUndefinedOrNull);
+            // if (right == undefined/null)
             Bind(&rightIsUndefinedOrNull);
             {
                 curType = Int32(PGOSampleType::UndefineOrNullType());
                 Label leftIsHeapObject(env);
                 Label leftNotHeapObject(env);
                 Branch(TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
+                // if (left is heapobj)
                 Bind(&leftIsHeapObject);
                 {
                     GateRef type = Int32(PGOSampleType::HeapObjectType());
@@ -5104,57 +5106,85 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                     result = TaggedFalse();
                     Jump(&exit);
                 }
+                // if (left is not heapobj)
                 Bind(&leftNotHeapObject);
                 {
                     Label leftIsUndefinedOrNull(env);
-                    Branch(TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull, &leftOrRightNotUndefinedOrNull);
+                    Label leftIsNotUndefinedOrNull(env);
+                    // if left is undefined or null, then result is true, otherwise result is false
+                    Branch(TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull, &leftIsNotUndefinedOrNull);
+                    // if (left == undefined/null)
                     Bind(&leftIsUndefinedOrNull);
                     {
                         callback.ProfileOpType(*curType);
                         result = TaggedTrue();
                         Jump(&exit);
                     }
+                    // if (left != undefined&null)
+                    Bind(&leftIsNotUndefinedOrNull);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
+                        result = TaggedFalse();
+                        Jump(&exit);
+                    }
                 }
             }
-            Bind(&leftOrRightNotUndefinedOrNull);
+            // if (right != undefined&null)
+            Bind(&rightIsNotUndefinedOrNull);
             {
-                Label leftIsBool(env);
-                Label leftNotBoolOrRightNotSpecial(env);
-                Branch(TaggedIsBoolean(left), &leftIsBool, &leftNotBoolOrRightNotSpecial);
-                Bind(&leftIsBool);
+                Label leftIsUndefinedOrNull(env);
+                Label leftIsNotUndefinedOrNull(env);
+                Branch(TaggedIsUndefinedOrNull(right), &leftIsUndefinedOrNull, &leftIsNotUndefinedOrNull);
+                // If left is undefined or null, result will always be false
+                // because we can ensure that right is not null here.
+                // if (left == undefined/null)
+                Bind(&leftIsUndefinedOrNull);
                 {
-                    curType = Int32(PGOSampleType::BooleanType());
-                    Label rightIsSpecial(env);
-                    Branch(TaggedIsSpecial(right), &rightIsSpecial, &leftNotBoolOrRightNotSpecial);
-                    Bind(&rightIsSpecial);
-                    {
-                        GateRef type = Int32(PGOSampleType::SpecialType());
-                        COMBINE_TYPE_CALL_BACK(curType, type);
-                        result = TaggedFalse();
-                        Jump(&exit);
-                    }
-                }
-                Bind(&leftNotBoolOrRightNotSpecial);
-                {
-                    Label bothString(env);
-                    Label eitherNotString(env);
-                    Branch(BothAreString(left, right), &bothString, &eitherNotString);
-                    Bind(&bothString);
-                    {
-                        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
-                        Label stringEqual(env);
-                        Label stringNotEqual(env);
-                        Branch(FastStringEqual(glue, left, right), &stringEqual, &stringNotEqual);
-                        Bind(&stringEqual);
-                        result = TaggedTrue();
-                        Jump(&exit);
-                        Bind(&stringNotEqual);
-                        result = TaggedFalse();
-                        Jump(&exit);
-                    }
-                    Bind(&eitherNotString);
                     callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
+                    result = TaggedFalse();
                     Jump(&exit);
+                }
+                // if (left != undefined&null)
+                Bind(&leftIsNotUndefinedOrNull);
+                {
+                    Label leftIsBool(env);
+                    Label leftNotBoolOrRightNotSpecial(env);
+                    Branch(TaggedIsBoolean(left), &leftIsBool, &leftNotBoolOrRightNotSpecial);
+                    Bind(&leftIsBool);
+                    {
+                        curType = Int32(PGOSampleType::BooleanType());
+                        Label rightIsSpecial(env);
+                        Branch(TaggedIsSpecial(right), &rightIsSpecial, &leftNotBoolOrRightNotSpecial);
+                        Bind(&rightIsSpecial);
+                        {
+                            GateRef type = Int32(PGOSampleType::SpecialType());
+                            COMBINE_TYPE_CALL_BACK(curType, type);
+                            result = TaggedFalse();
+                            Jump(&exit);
+                        }
+                    }
+                    Bind(&leftNotBoolOrRightNotSpecial);
+                    {
+                        Label bothString(env);
+                        Label eitherNotString(env);
+                        Branch(BothAreString(left, right), &bothString, &eitherNotString);
+                        Bind(&bothString);
+                        {
+                            callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+                            Label stringEqual(env);
+                            Label stringNotEqual(env);
+                            Branch(FastStringEqual(glue, left, right), &stringEqual, &stringNotEqual);
+                            Bind(&stringEqual);
+                            result = TaggedTrue();
+                            Jump(&exit);
+                            Bind(&stringNotEqual);
+                            result = TaggedFalse();
+                            Jump(&exit);
+                        }
+                        Bind(&eitherNotString);
+                        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
+                        Jump(&exit);
+                    }
                 }
             }
         }

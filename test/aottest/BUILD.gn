@@ -27,6 +27,7 @@ group("ark_aot_js_test") {
     "cjs",
     "for_await_of",
     "dead_code_elimination",
+    "equal",
   ]
 
   deps = []
