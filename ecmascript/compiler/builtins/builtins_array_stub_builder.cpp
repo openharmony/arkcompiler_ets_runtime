@@ -302,21 +302,21 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Label thisLenNotZero(env);
     Branch(TaggedIsObject(thisValue), &isObject, slowPath);
     Bind(&isObject);
-    GateRef thisLen = SExtInt32ToInt64(GetArrayLength(thisValue));
-    Branch(Int64Equal(thisLen, Int64(0)), &notFound, &thisLenNotZero);
+    GateRef thisLen = GetArrayLength(thisValue);
+    Branch(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
     {
-        DEFVARIABLE(fromIndex, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(fromIndex, VariableType::INT32(), Int32(0));
         Label getArgTwo(env);
         Label nextProcess(env);
         Branch(Int64Equal(numArgs, IntPtr(2)), &getArgTwo, &nextProcess); // 2: 2 parameters
         Bind(&getArgTwo);
         {
-            Label secondArgIsNumber(env);
+            Label secondArgIsInt(env);
             GateRef fromIndexTemp = GetCallArg1(numArgs);
-            Branch(TaggedIsNumber(fromIndexTemp), &secondArgIsNumber, slowPath);
-            Bind(&secondArgIsNumber);
-            fromIndex = GetInt64OfTInt(fromIndexTemp);
+            Branch(TaggedIsInt(fromIndexTemp), &secondArgIsInt, slowPath);
+            Bind(&secondArgIsInt);
+            fromIndex = GetInt32OfTInt(fromIndexTemp);
             Jump(&nextProcess);
         }
         Bind(&nextProcess);
@@ -327,68 +327,76 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
             Label nextCheck(env);
             Branch(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
             Bind(&atLeastOneArg);
-            Branch(Int64GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
+            Branch(Int32GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
             Bind(&nextCheck);
-            Branch(Int64LessThan(*fromIndex, Int64Not(thisLen)), &setBackZero, &calculateFrom);
-            Bind(&setBackZero);
             {
-                fromIndex = Int64(0);
-                Jump(&calculateFrom);
-            }
-            Bind(&calculateFrom);
-            {
-                DEFVARIABLE(from, VariableType::INT64(), Int64(0));
-                Label fromIndexGreaterOrEqualZero(env);
-                Label fromIndexLessThanZero(env);
-                Label startLoop(env);
-                Branch(Int64GreaterThanOrEqual(*fromIndex, Int64(0)),
-                    &fromIndexGreaterOrEqualZero, &fromIndexLessThanZero);
-                Bind(&fromIndexGreaterOrEqualZero);
+                GateRef negThisLen = Int32Sub(Int32(0), thisLen);
+                Branch(Int32LessThan(*fromIndex, negThisLen), &setBackZero, &calculateFrom);
+                Bind(&setBackZero);
                 {
-                    from = *fromIndex;
-                    Jump(&startLoop);
+                    fromIndex = Int32(0);
+                    Jump(&calculateFrom);
                 }
-                Bind(&fromIndexLessThanZero);
+                Bind(&calculateFrom);
                 {
-                    Label isLenFromIndex(env);
-                    GateRef lenFromIndexSum = Int64Add(thisLen, *fromIndex);
-                    Branch(Int64GreaterThanOrEqual(lenFromIndexSum, Int64(0)), &isLenFromIndex, &startLoop);
-                    Bind(&isLenFromIndex);
+                    DEFVARIABLE(from, VariableType::INT32(), Int32(0));
+                    Label fromIndexGreaterOrEqualZero(env);
+                    Label fromIndexLessThanZero(env);
+                    Label startLoop(env);
+                    Branch(Int32GreaterThanOrEqual(*fromIndex, Int32(0)),
+                        &fromIndexGreaterOrEqualZero, &fromIndexLessThanZero);
+                    Bind(&fromIndexGreaterOrEqualZero);
                     {
-                        from = lenFromIndexSum;
+                        from = *fromIndex;
                         Jump(&startLoop);
                     }
-                }
-                Bind(&startLoop);
-                {
-                    GateRef searchElement = GetCallArg0(numArgs);
-                    GateRef elements = GetElementsArray(thisValue);
-                    Label loopHead(env);
-                    Label loopEnd(env);
-                    Label next(env);
-                    Label loopExit(env);
-                    Jump(&loopHead);
-                    LoopBegin(&loopHead);
+                    Bind(&fromIndexLessThanZero);
                     {
-                        Branch(Int64LessThan(*from, thisLen), &next, &loopExit);
-                        Bind(&next);
+                        Label isLenFromIndex(env);
+                        GateRef lenFromIndexSum = Int32Add(thisLen, *fromIndex);
+                        Branch(Int32GreaterThanOrEqual(lenFromIndexSum, Int32(0)), &isLenFromIndex, &startLoop);
+                        Bind(&isLenFromIndex);
                         {
-                            GateRef value = GetValueFromTaggedArray(elements, *from);
-                            Label valueFound(env);
-                            GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
-                            Branch(valueEqual, &valueFound, &loopEnd);
-                            Bind(&valueFound);
-                            {
-                                result->WriteVariable(TaggedTrue());
-                                Jump(exit);
-                            }
+                            from = lenFromIndexSum;
+                            Jump(&startLoop);
                         }
                     }
-                    Bind(&loopEnd);
-                    from = Int64Add(*from, Int64(1));
-                    LoopEnd(&loopHead);
-                    Bind(&loopExit);
-                    Jump(&notFound);
+                    Bind(&startLoop);
+                    {
+                        GateRef searchElement = GetCallArg0(numArgs);
+                        GateRef elements = GetElementsArray(thisValue);
+                        Label loopHead(env);
+                        Label loopEnd(env);
+                        Label next(env);
+                        Label loopExit(env);
+                        Jump(&loopHead);
+                        LoopBegin(&loopHead);
+                        {
+                            Branch(Int32LessThan(*from, thisLen), &next, &loopExit);
+                            Bind(&next);
+                            {
+                                Label notHoleOrUndefValue(env);
+                                Label valueFound(env);
+                                GateRef value = GetValueFromTaggedArray(elements, *from);
+                                GateRef isHole = TaggedIsHole(value);
+                                GateRef isUndef = TaggedIsUndefined(value);
+                                Branch(BoolOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
+                                Bind(&notHoleOrUndefValue);
+                                GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
+                                Branch(valueEqual, &valueFound, &loopEnd);
+                                Bind(&valueFound);
+                                {
+                                    result->WriteVariable(TaggedTrue());
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                        Bind(&loopEnd);
+                        from = Int32Add(*from, Int32(1));
+                        LoopEnd(&loopHead);
+                        Bind(&loopExit);
+                        Jump(&notFound);
+                    }
                 }
             }
         }
