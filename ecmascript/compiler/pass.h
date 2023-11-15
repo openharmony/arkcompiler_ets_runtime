@@ -303,7 +303,8 @@ public:
                                       enableLog,
                                       enableTypeLog,
                                       data->GetMethodName(),
-                                      passOptions->EnableLoweringBuiltin());
+                                      passOptions->EnableLoweringBuiltin(),
+                                      data->GetRecordName());
         bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();

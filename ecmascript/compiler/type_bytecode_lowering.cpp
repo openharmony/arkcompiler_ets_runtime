@@ -19,6 +19,8 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -335,6 +337,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::INSTANCEOF_IMM8_V8:
             LowerInstanceOf(gate);
+            break;
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+            LowerCreateObjectWithBuffer(gate);
             break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
@@ -2174,5 +2180,73 @@ void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
 
     result = builder_.OrdinaryHasInstance(obj, target);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+}
+
+void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
+{
+    auto sampleType = acc_.TryGetPGOType(gate).GetPGODefineOpType();
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return;
+    }
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of value ins
+    GateRef index = acc_.GetValueIn(gate, 0);
+    auto imm = acc_.GetConstantValue(index);
+    JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        tsManager_->GetEcmaVM()->GetJSThread(), tsManager_->GetConstantPool().GetTaggedValue(), imm, recordName_);
+    JSHandle<JSObject> objhandle = JSHandle<JSObject>(thread_, obj);
+    JSHandle<TaggedArray> properties = JSHandle<TaggedArray>(thread_, objhandle->GetProperties());
+    if (properties->GetLength() > 0) {
+        return;
+    }
+    JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread_, objhandle->GetElements());
+    if (elements->GetLength() > 0) {
+        return;
+    }
+    std::vector<uint64_t> inlinedProps;
+    JSHandle<JSHClass> newClass = JSHandle<JSHClass>(thread_, ptManager->QueryHClass(type.first, type.second));
+    JSHandle<JSHClass> oldClass = JSHandle<JSHClass>(thread_, objhandle->GetClass());
+    if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
+        return;
+    }
+    auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
+    for (uint32_t i = 0; i < oldClass->GetInlinedProperties(); i++) {
+        auto attr = layout->GetAttr(i);
+        JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
+        if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
+            value.IsNumber() || value.IsBoolean() || value.IsException()) {
+            auto converted = JSObject::ConvertValueWithRep(attr, value);
+            if (!converted.first) {
+                return;
+            }
+            inlinedProps.emplace_back(converted.second.GetRawData());
+        } else {
+            return;
+        }
+    }
+
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef oldObj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
+        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    builder_.StartAllocate();
+    auto size = newClass->GetObjectSize();
+    GateRef newObj = builder_.HeapAlloc(builder_.IntPtr(size),
+        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), newObj,
+        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+        builder_.StoreConstOffset(VariableType::INT64(), newObj, newClass->GetInlinedPropertiesOffset(i),
+            builder_.Int64(inlinedProps.at(i)));
+    }
+    builder_.FinishAllocate();
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), newObj);
 }
 }  // namespace panda::ecmascript
