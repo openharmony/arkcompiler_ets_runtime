@@ -1262,7 +1262,7 @@ DECLARE_ASM_HANDLER(HandleDelobjpropV8)
     GateRef v0 = ReadInst8_0(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef prop = acc;
-    GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
+    GateRef result = DeletePropertyOrThrow(glue, obj, prop);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DELOBJPROP_V8));
 }
 
