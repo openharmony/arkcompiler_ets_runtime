@@ -28,32 +28,18 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/compiler/ir_builder.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "llvm-c/DebugInfo.h"
 #include "llvm-c/Core.h"
 
 namespace panda::ecmascript::kungfu {
-using OperandsVector = std::set<int>;
 class BasicBlock;
 class DebugInfo;
 using BasicBlockMap = std::map<int, std::unique_ptr<BasicBlock>>;
 class LLVMIRBuilder;
 using HandleType = void(LLVMIRBuilder::*)(GateRef gate);
-
-enum class MachineRep {
-    K_NONE,
-    K_BIT,
-    K_WORD8,
-    K_WORD16,
-    K_WORD32,
-    K_WORD64,
-    // FP representations must be last, and in order of increasing size.
-    K_FLOAT32,
-    K_FLOAT64,
-    K_SIMD128,
-    K_PTR_1, // Tagged Pointer
-    K_META,
-};
 
 class BasicBlock {
 public:
@@ -111,7 +97,7 @@ struct BasicBlockImpl {
     std::vector<NotMergedPhiDesc> unmergedPhis_;
 };
 
-class LLVMModule {
+class LLVMModule : public IRModule {
 public:
     LLVMModule(NativeAreaAllocator* allocator, const std::string &name, bool logDbg, const std::string &triple);
     ~LLVMModule();
@@ -132,6 +118,11 @@ public:
         funcIndexMap_.emplace_back(std::make_tuple(index, func, isFastCall));
     }
 
+    ModuleKind GetModuleKind() const override
+    {
+        return MODULE_LLVM;
+    }
+
     LLVMValueRef GetFunction(size_t index)
     {
         // next optimization can be performed
@@ -141,16 +132,6 @@ public:
             }
         }
         return nullptr;
-    }
-
-    bool Is64Bit() const
-    {
-        return is64Bit_;
-    }
-
-    bool Is32Bit() const
-    {
-        return !is64Bit_;
     }
 
     size_t GetFuncCount() const
@@ -170,11 +151,6 @@ public:
     const CallSignature *GetCSign(size_t index) const
     {
         return callSigns_[index];
-    }
-
-    const std::string &GetTripleStr() const
-    {
-        return tripleStr_;
     }
 
     const std::vector<const CallSignature*> &GetCSigns() const
@@ -198,18 +174,6 @@ public:
     }
 
     LLVMValueRef GetDeoptFunction();
-
-    DebugInfo* GetDebugInfo() const
-    {
-        return debugInfo_;
-    }
-
-    Triple GetTriple() const
-    {
-        return triple_;
-    }
-
-    std::string GetFuncName(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
 
     static constexpr int kDeoptEntryOffset = 0;
 
@@ -282,7 +246,6 @@ private:
     LLVMMetadataRef dFileMD_ {nullptr};
     LLVMMetadataRef dUnitMD_ {nullptr};
     LLVMDIBuilderRef dBuilder_ {nullptr};
-    DebugInfo* debugInfo_ {nullptr};
 
     LLVMTypeRef voidT_ {nullptr};
     LLVMTypeRef int1T_ {nullptr};
@@ -295,69 +258,7 @@ private:
     LLVMTypeRef taggedHPtrT_ {nullptr};
     LLVMTypeRef taggedPtrT_ {nullptr};
     LLVMTypeRef rawPtrT_ {nullptr};
-
-    std::string tripleStr_;
-    bool is64Bit_ {false};
-    Triple triple_;
 };
-
-
-#define OPCODES(V)                                                                        \
-    V(Call, (GateRef gate, const std::vector<GateRef> &inList, OpCode op))                \
-    V(RuntimeCall, (GateRef gate, const std::vector<GateRef> &inList))                    \
-    V(RuntimeCallWithArgv, (GateRef gate, const std::vector<GateRef> &inList))            \
-    V(NoGcRuntimeCall, (GateRef gate, const std::vector<GateRef> &inList))                \
-    V(BytecodeCall, (GateRef gate, const std::vector<GateRef> &inList))                   \
-    V(Alloca, (GateRef gate))                                                             \
-    V(Block, (int id, const OperandsVector &predecessors))                                \
-    V(Goto, (int block, int bbout))                                                       \
-    V(Parameter, (GateRef gate))                                                          \
-    V(Constant, (GateRef gate, std::bitset<64> value))                                    \
-    V(ConstString, (GateRef gate, const ChunkVector<char> &str))                          \
-    V(RelocatableData, (GateRef gate, uint64_t value))                                    \
-    V(ZExtInt, (GateRef gate, GateRef e1))                                                \
-    V(SExtInt, (GateRef gate, GateRef e1))                                                \
-    V(FPExt, (GateRef gate, GateRef e1))                                                  \
-    V(FPTrunc, (GateRef gate, GateRef e1))                                                \
-    V(Load, (GateRef gate, GateRef base))                                                 \
-    V(Store, (GateRef gate, GateRef base, GateRef value))                                 \
-    V(IntRev, (GateRef gate, GateRef e1))                                                 \
-    V(Add, (GateRef gate, GateRef e1, GateRef e2))                                        \
-    V(Sub, (GateRef gate, GateRef e1, GateRef e2))                                        \
-    V(Mul, (GateRef gate, GateRef e1, GateRef e2))                                        \
-    V(FloatDiv, (GateRef gate, GateRef e1, GateRef e2))                                   \
-    V(IntDiv, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(UDiv, (GateRef gate, GateRef e1, GateRef e2))                                       \
-    V(IntOr, (GateRef gate, GateRef e1, GateRef e2))                                      \
-    V(IntAnd, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(IntXor, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(IntLsr, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(IntAsr, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(Int32LessThanOrEqual, (GateRef gate, GateRef e1, GateRef e2))                       \
-    V(Cmp, (GateRef gate, GateRef e1, GateRef e2))                                        \
-    V(Branch, (GateRef gate, GateRef cmp, GateRef btrue, GateRef bfalse))                 \
-    V(Switch, (GateRef gate, GateRef input, const std::vector<GateRef> &outList))         \
-    V(SwitchCase, (GateRef gate, GateRef switchBranch, GateRef out))                      \
-    V(Phi, (GateRef gate, const std::vector<GateRef> &srcGates))                          \
-    V(Return, (GateRef gate, GateRef popCount, const std::vector<GateRef> &operands))     \
-    V(ReturnVoid, (GateRef gate))                                                         \
-    V(CastIntXToIntY, (GateRef gate, GateRef e1))                                         \
-    V(ChangeInt32ToDouble, (GateRef gate, GateRef e1))                                    \
-    V(ChangeUInt32ToDouble, (GateRef gate, GateRef e1))                                   \
-    V(ChangeDoubleToInt32, (GateRef gate, GateRef e1))                                    \
-    V(BitCast, (GateRef gate, GateRef e1))                                                \
-    V(IntLsl, (GateRef gate, GateRef e1, GateRef e2))                                     \
-    V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
-    V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
-    V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
-    V(DeoptCheck, (GateRef gate))                                                         \
-    V(TruncFloatToInt, (GateRef gate, GateRef e1))                                        \
-    V(AddWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
-    V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
-    V(MulWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
-    V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
-    V(Sqrt, (GateRef gate, GateRef e1))                                                   \
-    V(ReadSp, (GateRef gate))
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
@@ -486,17 +387,6 @@ private:
     }
 
 private:
-    enum class CallInputs : size_t {
-        DEPEND = 0,
-        TARGET,
-        GLUE,
-        FIRST_PARAMETER
-    };
-    enum class CallExceptionKind : bool {
-        HAS_PC_OFFSET = true,
-        NO_PC_OFFSET = false
-    };
-
     LLVMDIBuilderRef GetDIBuilder() const
     {
         return llvmModule_ == nullptr ? nullptr : llvmModule_->GetDIBuilder();

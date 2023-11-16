@@ -50,11 +50,8 @@ public:
 
     void PUBLIC_API CalculateFuncFpDelta(LLVMStackMapType::Func2FpDelta info, uint32_t moduleIndex);
 
-    LLVMStackMapParser(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallSiteInfoVec,
-                       std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
-                       bool enableLog = false)
-        : pc2CallSiteInfoVec_(pc2CallSiteInfoVec),
-          pc2DeoptVec_(pc2DeoptVec),
+    LLVMStackMapParser(LLVMStackMapInfo &stackMapInfo, bool enableLog = false)
+        : stackMapInfo(stackMapInfo),
           enableLog_(enableLog)
     {
         fun2RecordNum_.clear();
@@ -74,8 +71,7 @@ private:
     void CalcCallSite();
     struct LLVMStackMap llvmStackMap_;
     // use reference here to avoid extra copy
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallSiteInfoVec_;
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec_;
+    LLVMStackMapInfo &stackMapInfo;
     std::vector<std::pair<uintptr_t, uint64_t>> fun2RecordNum_;
     std::unique_ptr<DataInfo> dataInfo_;
     bool enableLog_ {false};

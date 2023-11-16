@@ -106,8 +106,8 @@ void LLVMStackMapParser::CalcCallSite()
         }
         recordNum += recordCount;
     }
-    pc2CallSiteInfoVec_.emplace_back(pc2CallSiteInfo);
-    pc2DeoptVec_.emplace_back(deoptbundles);
+    stackMapInfo.AppendCallSiteInfo(pc2CallSiteInfo);
+    stackMapInfo.AppendDeoptInfo(deoptbundles);
 }
 
 bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr)
@@ -193,8 +193,8 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
         OPTIONAL_LOG_COMPILER(DEBUG) << std::dec << i << "th function " << std::hex << hostAddr << " ---> "
                                      << " offset:" << offset;
     }
-    pc2CallSiteInfoVec_.pop_back();
-    pc2DeoptVec_.pop_back();
+    stackMapInfo.PopCallSiteInfo();
+    stackMapInfo.PopDeoptInfo();
     fun2RecordNum_.clear();
     CalcCallSite();
     return true;

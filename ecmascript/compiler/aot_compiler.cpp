@@ -149,7 +149,8 @@ int Main(const int argc, const char **argv)
                                 profilerDecoder,
                                 &passOptions);
 
-        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_);
+        bool isEnableLiteCG = runtimeOptions.IsEnableLiteCG();
+        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
         const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
         CompileValidFiles(passManager, generator, ret, fileInfos);
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);

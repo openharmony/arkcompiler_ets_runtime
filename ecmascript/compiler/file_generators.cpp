@@ -20,6 +20,12 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#ifdef COMPILE_MAPLE
+#include "ecmascript/compiler/litecg_ir_builder.h"
+#include "ecmascript/compiler/litecg_codegen.h"
+#include "ecmascript/stackmap/litecg_stackmap_type.h"
+#include "litecg.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 void Module::CollectStackMapDes(ModuleSectionDes& des) const
@@ -38,16 +44,24 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     ArkStackMapBuilder builder;
-    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr, llvmModule_->GetTriple());
+    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr, irModule_->GetTriple());
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
 }
 
 void Module::CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const
+                                  CGStackMapInfo &stackMapInfo) const
 {
+#ifdef COMPILE_MAPLE
+    if (GetModule()->GetModuleKind() != MODULE_LLVM) {
+        auto &liteCGStackMapInfo = static_cast<LiteCGStackMapInfo&>(stackMapInfo);
+        const auto &codeInfo = assembler_->GetCodeInfo();
+        liteCGStackMapInfo.AppendCallSiteInfo(codeInfo.GetPC2CallsiteInfo());
+        liteCGStackMapInfo.AppendDeoptInfo(codeInfo.GetPC2DeoptInfo());
+        return;
+    }
+#endif
     uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
     std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
     uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
@@ -60,39 +74,45 @@ void Module::CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
         UNREACHABLE();
     }
     ArkStackMapBuilder builder;
-    builder.Collect(std::move(stackmapPtr), textAddr, textOffset, pc2CallsiteInfoVec, pc2DeoptVec);
+    builder.Collect(std::move(stackmapPtr), textAddr, textOffset, stackMapInfo);
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
 }
 
 void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
                                   uint32_t moduleIndex, const CompilerLog &log)
 {
-    auto engine = assembler_->GetEngine();
-    auto callSigns = llvmModule_->GetCSigns();
+    if (irModule_->GetModuleKind() != MODULE_LLVM) {
+        std::cout << "CollectFuncEntryInfo is not supported for litecg currently" << std::endl;
+        return;
+    }
+    LLVMModule *llvmModule = static_cast<LLVMModule*>(irModule_);
+    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    auto engine = assembler->GetEngine();
+    auto callSigns = llvmModule->GetCSigns();
     std::vector<uintptr_t> entrys;
-    for (size_t j = 0; j < llvmModule_->GetFuncCount(); j++) {
-        LLVMValueRef func = llvmModule_->GetFunction(j);
+    for (size_t j = 0; j < llvmModule->GetFuncCount(); j++) {
+        LLVMValueRef func = llvmModule->GetFunction(j);
         ASSERT(func != nullptr);
         uintptr_t entry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
         entrys.push_back(entry);
     }
-    auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
-    const size_t funcCount = llvmModule_->GetFuncCount();
+    auto codeBuff = assembler->GetSectionAddr(ElfSecName::TEXT);
+    const size_t funcCount = llvmModule->GetFuncCount();
     funcCount_ = funcCount;
     startIndex_ = stubInfo.GetEntrySize();
     for (size_t j = 0; j < funcCount; j++) {
         auto cs = callSigns[j];
-        LLVMValueRef func = llvmModule_->GetFunction(j);
+        LLVMValueRef func = llvmModule->GetFunction(j);
         ASSERT(func != nullptr);
-        int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
+        int delta = assembler->GetFpDeltaPrevFramSp(func, log);
         ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
         uint32_t funcSize = 0;
         if (j < funcCount - 1) {
             funcSize = entrys[j + 1] - entrys[j];
         } else {
-            funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
+            funcSize = codeBuff + assembler->GetSectionSize(ElfSecName::TEXT) - entrys[j];
         }
-        kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
+        kungfu::CalleeRegAndOffsetVec info = assembler->GetCalleeReg2Offset(func, log);
         stubInfo.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
                           funcSize, info);
         ASSERT(!cs->GetName().empty());
@@ -103,20 +123,86 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, S
 void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
                                   uint32_t moduleIndex, const CompilerLog &log)
 {
-    auto engine = assembler_->GetEngine();
+#ifdef COMPILE_MAPLE
+    if (irModule_->GetModuleKind() != MODULE_LLVM) {
+        std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
+        std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
+        // 1.Compile all functions and collect function infos
+        LMIRModule *lmirModule = static_cast<LMIRModule*>(irModule_);
+        LiteCGAssembler *assembler = static_cast<LiteCGAssembler*>(assembler_);
+        const auto &func2Addr = assembler->GetCodeInfo().GetFuncInfos();
+        lmirModule->IteratefuncIndexMap([&](size_t idx, std::string funcName, bool isFastCall) {
+            auto itr = func2Addr.find(funcName);
+            if (itr == func2Addr.end()) {
+                LOG_COMPILER(FATAL) << "get function address from emitter failed";
+                UNREACHABLE();
+            }
+            uint64_t funcEntry = itr->second.addr;
+            addr2name[funcEntry] = funcName;
+            int delta = itr->second.fp2PrevFrameSpDelta;
+            ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
+            funcInfo.emplace_back(std::tuple(funcEntry, idx, delta, isFastCall));
+            kungfu::CalleeRegAndOffsetVec info = itr->second.calleeRegInfo;
+            calleeSaveRegisters.emplace_back(info);
+        });
+        // 2.After all functions compiled, the module sections would be fixed
+        uintptr_t textAddr = GetTextAddr();
+        uint32_t textSize = GetTextSize();
+        uint32_t rodataSizeBeforeText = 0;
+        uint32_t rodataSizeAfterText = 0;
+
+        aotInfo.AlignTextSec(AOTFileInfo::PAGE_ALIGN);
+        if (rodataSizeBeforeText != 0) {
+            aotInfo.UpdateCurTextSecOffset(rodataSizeBeforeText);
+            aotInfo.AlignTextSec(AOTFileInfo::TEXT_SEC_ALIGN);
+        }
+
+        const size_t funcCount = funcInfo.size();
+        funcCount_ = funcCount;
+        startIndex_ = aotInfo.GetEntrySize();
+        // 3.Add function entries based on the module sections
+        for (size_t i = 0; i < funcInfo.size(); i++) {
+            uint64_t funcEntry = 0;
+            size_t idx;
+            int delta;
+            bool isFastCall;
+            uint32_t funcSize;
+            std::tie(funcEntry, idx, delta, isFastCall) = funcInfo[i];
+            if (i < funcCount - 1) {
+                funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
+            } else {
+                funcSize = textAddr + textSize - funcEntry;
+            }
+            auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
+            bool isMainFunc = found != std::string::npos;
+            uint64_t offset = funcEntry;
+            aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
+                             offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+        }
+        aotInfo.UpdateCurTextSecOffset(textSize);
+        if (rodataSizeAfterText != 0) {
+            aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+            aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
+        }
+        return;
+    }
+#endif
+    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    auto engine = assembler->GetEngine();
     std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
     std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
     // 1.Compile all functions and collect function infos
-    llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func, bool isFastCall) {
+    LLVMModule *llvmModule = static_cast<LLVMModule*>(irModule_);
+    llvmModule->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func, bool isFastCall) {
         uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
         uint64_t length = 0;
         std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
         ASSERT(length != 0);
         addr2name[funcEntry] = funcName;
-        int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
+        int delta = assembler->GetFpDeltaPrevFramSp(func, log);
         ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
         funcInfo.emplace_back(std::tuple(funcEntry, idx, delta, isFastCall));
-        kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
+        kungfu::CalleeRegAndOffsetVec info = assembler->GetCalleeReg2Offset(func, log);
         calleeSaveRegisters.emplace_back(info);
     });
     // 2.After all functions compiled, the module sections would be fixed
@@ -165,8 +251,13 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
 
 void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
 {
+    if (irModule_->GetModuleKind() != MODULE_LLVM) {
+        std::cout << "CollectModuleSectionDes is not supported for litecg currently" << std::endl;
+        return;
+    }
     ASSERT(assembler_ != nullptr);
-    assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
+    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    assembler->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
         auto curSec = ElfSection(i);
         ElfSecName sec = curSec.GetElfEnumValue();
         if (IsRelaSection(sec)) {
@@ -181,8 +272,7 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
 }
 
 void Module::CollectAnModuleSectionDes(ModuleSectionDes &moduleDes, uint64_t textOffset,
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const
+                                       CGStackMapInfo &stackMapInfo) const
 {
     ASSERT(assembler_ != nullptr);
     assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
@@ -193,7 +283,7 @@ void Module::CollectAnModuleSectionDes(ModuleSectionDes &moduleDes, uint64_t tex
         moduleDes.SetStartIndex(startIndex_);
         moduleDes.SetFuncCount(funcCount_);
     });
-    CollectAnStackMapDes(moduleDes, textOffset, pc2CallsiteInfoVec, pc2DeoptVec);
+    CollectAnStackMapDes(moduleDes, textOffset, stackMapInfo);
 }
 
 uint32_t Module::GetSectionSize(ElfSecName sec) const
@@ -214,14 +304,19 @@ void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode)
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                               const CompilerLog &log, const MethodLogList &logList, std::ostringstream &codeStream)
 {
-    assembler_->Disassemble(addr2name, textOffset, log, logList, codeStream);
+    if (irModule_->GetModuleKind() != MODULE_LLVM) {
+        std::cout << "DisassemblerFunc is not supported for litecg currently" << std::endl;
+        return;
+    }
+    auto *assembler = static_cast<LLVMAssembler*>(assembler_);
+    assembler->Disassemble(addr2name, textOffset, log, logList, codeStream);
 }
 
 void Module::DestroyModule()
 {
-    if (llvmModule_ != nullptr) {
-        delete llvmModule_;
-        llvmModule_ = nullptr;
+    if (irModule_ != nullptr) {
+        delete irModule_;
+        irModule_ = nullptr;
     }
     if (assembler_ != nullptr) {
         delete assembler_;
@@ -281,8 +376,10 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
     uint32_t rodataSizeBeforeText = 0;
     uint64_t rodataAddrAfterText = 0;
     uint32_t rodataSizeAfterText = 0;
-    std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
-        module->GetMergedRODataAddrAndSize(textAddr);
+    if (module->GetModule()->GetModuleKind() == MODULE_LLVM) {
+        std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+            module->GetMergedRODataAddrAndSize(textAddr);
+    }
     uint64_t textStart = 0;
     if (rodataSizeAfterText == 0) {
         textStart = aotInfo_.GetCurTextSecOffset() - textSize;
@@ -301,9 +398,14 @@ void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
     aotInfo_.MappingEntryFuncsToAbcFiles(curCompileFileName_, lastEntryIdx, aotInfo_.GetEntrySize());
     ModuleSectionDes des;
     uint64_t textOffset = RollbackTextSize(module);
-    module->CollectAnModuleSectionDes(des, textOffset, pc2CallSiteInfoVec_, pc2DeoptVec_);
+    if (stackMapInfo_ == nullptr) {
+        LOG_ECMA(FATAL) << "stackMapInfo_ isn't be initialized";
+        UNREACHABLE();
+    }
+    module->CollectAnModuleSectionDes(des, textOffset, *stackMapInfo_);
+
     aotInfo_.AddModuleDes(des);
-    if (log_->OutputASM()) {
+    if ((module->GetModule()->GetModuleKind() == MODULE_LLVM) && log_->OutputASM()) {
         module->DisassemblerFunc(addr2name, textOffset, *(log_), *(logList_), codeStream_);
     }
 }
@@ -318,11 +420,26 @@ uint32_t AOTFileGenerator::GetModuleVecSize() const
     return modulePackage_.size();
 }
 
-Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug)
+Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple,
+                                    [[maybe_unused]] LOptions option, bool logDebug)
 {
+#ifdef COMPILE_MAPLE
+    if (useLiteCG_) {
+        LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+        LiteCGAssembler* ass = new LiteCGAssembler(*irModule);
+        modulePackage_.emplace_back(Module(irModule, ass));
+        if (stackMapInfo_ == nullptr) {
+            stackMapInfo_ = new LiteCGStackMapInfo();
+        }
+        return &modulePackage_.back();
+    }
+#endif
     LLVMModule* m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
     LLVMAssembler* ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
+    if (stackMapInfo_ == nullptr) {
+        stackMapInfo_ = new LLVMStackMapInfo();
+    }
     return &modulePackage_.back();
 }
 
@@ -385,8 +502,9 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
 
 void AOTFileGenerator::DestroyCollectedStackMapInfo()
 {
-    pc2CallSiteInfoVec_.clear();
-    pc2DeoptVec_.clear();
+    if (stackMapInfo_ != nullptr) {
+        delete stackMapInfo_;
+    }
 }
 
 void AOTFileGenerator::GenerateMergedStackmapSection()
@@ -394,7 +512,11 @@ void AOTFileGenerator::GenerateMergedStackmapSection()
     ArkStackMapBuilder builder;
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
-    std::tie(ptr, size) = builder.GenerateArkStackMap(pc2CallSiteInfoVec_, pc2DeoptVec_, cfg_.GetTriple());
+    if (stackMapInfo_ == nullptr) {
+        LOG_ECMA(FATAL) << "stackMapInfo_ isn't be initialized";
+        UNREACHABLE();
+    }
+    std::tie(ptr, size) = builder.GenerateArkStackMap(*stackMapInfo_, cfg_.GetTriple());
     aotInfo_.UpdateStackMap(ptr, size, 0);
     DestroyCollectedStackMapInfo();
 }

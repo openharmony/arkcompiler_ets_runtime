@@ -17,11 +17,128 @@
 #define ECMASCRIPT_COMPILER_CODE_GENERATOR_H
 
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
 using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 class CompilationConfig;
+class CompilerLog;
+
+struct CodeInfo {
+    using sectionInfo = std::pair<uint8_t *, size_t>;
+    CodeInfo();
+
+    ~CodeInfo();
+
+    class CodeSpace {
+    public:
+        static CodeSpace *GetInstance();
+
+        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
+
+    private:
+        CodeSpace();
+        ~CodeSpace();
+
+        static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
+        static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
+
+        // start point of the buffer reserved for sections required in executing phase
+        uint8_t *reqSecs_ {nullptr};
+        size_t reqBufPos_ {0};
+        // start point of the buffer reserved for sections not required in executing phase
+        uint8_t *unreqSecs_ {nullptr};
+        size_t unreqBufPos_ {0};
+    };
+
+    struct FuncInfo {
+        uint32_t addr = 0;
+        int32_t fp2PrevFrameSpDelta = 0;
+        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+    };
+
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0);
+
+    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize = 0);
+
+    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName);
+
+    uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName);
+
+    void SaveFunc2Addr(std::string funcName, uint32_t address);
+
+    void SaveFunc2FPtoPrevSPDelta(std::string funcName, int32_t fp2PrevSpDelta);
+
+    void SaveFunc2CalleeOffsetInfo(std::string funcName, kungfu::CalleeRegAndOffsetVec calleeRegInfo);
+
+    void SavePC2DeoptInfo(uint64_t pc, std::vector<uint64_t> pc2DeoptInfo);
+
+    void SavePC2CallSiteInfo(uint64_t pc, std::vector<uint64_t> callSiteInfo);
+
+    const std::map<std::string, FuncInfo> &GetFuncInfos() const;
+
+    const std::map<uint64_t, std::vector<uint64_t>> &GetPC2DeoptInfo() const;
+
+    const std::map<uint64_t, std::vector<uint64_t>> &GetPC2CallsiteInfo() const;
+
+    void Reset();
+
+    uint8_t *GetSectionAddr(ElfSecName sec) const;
+
+    size_t GetSectionSize(ElfSecName sec) const;
+
+    std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const;
+
+    template <class Callback>
+    void IterateSecInfos(const Callback &cb) const
+    {
+        for (size_t i = 0; i < secInfos_.size(); i++) {
+            if (secInfos_[i].second == 0) {
+                continue;
+            }
+            cb(i, secInfos_[i]);
+        }
+    }
+
+private:
+    std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
+    std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
+    std::map<std::string, FuncInfo> func2FuncInfo;
+    std::map<uint64_t, std::vector<uint64_t>> pc2DeoptInfo;
+    std::map<uint64_t, std::vector<uint64_t>> pc2CallsiteInfo;
+    bool alreadyPageAlign_ {false};
+};
+
+class Assembler {
+public:
+    explicit Assembler() = default;
+    virtual ~Assembler() = default;
+    virtual void Run(const CompilerLog &log, bool fastCompileMode) = 0;
+
+    uintptr_t GetSectionAddr(ElfSecName sec) const
+    {
+        return reinterpret_cast<uintptr_t>(codeInfo_.GetSectionAddr(sec));
+    }
+
+    uint32_t GetSectionSize(ElfSecName sec) const
+    {
+        return static_cast<uint32_t>(codeInfo_.GetSectionSize(sec));
+    }
+
+    template <class Callback>
+    void IterateSecInfos(const Callback &cb) const
+    {
+        codeInfo_.IterateSecInfos(cb);
+    }
+
+    const CodeInfo &GetCodeInfo() const
+    {
+        return codeInfo_;
+    }
+protected:
+    CodeInfo codeInfo_ {};
+};
 
 class CodeGeneratorImpl {
 public:

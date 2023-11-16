@@ -68,14 +68,11 @@ public:
     std::pair<std::shared_ptr<uint8_t>, uint32_t> PUBLIC_API Run(std::unique_ptr<uint8_t []> stackMapAddr,
         uintptr_t hostCodeSectionAddr, Triple triple);
     std::pair<std::shared_ptr<uint8_t>, uint32_t> GenerateArkStackMap(
-        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
-        Triple triple);
+        CGStackMapInfo &stackMapInfo, Triple triple);
     void Collect(std::unique_ptr<uint8_t []> stackMapAddr,
                  uintptr_t hostCodeSectionAddr,
                  uintptr_t hostCodeSectionOffset,
-                 std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-                 std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec);
+                 CGStackMapInfo &stackMapInfo);
     void SetTraceStackMap(bool flag)
     {
         traceStackMap_ = flag;
@@ -86,16 +83,17 @@ private:
     StackMapDumper dumper_;
 
     template <class Vec>
-    void SortCallSite(std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
+    void SortCallSite(const std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
         std::vector<std::pair<uintptr_t, Vec>>& result);
     void CalcCallsitePc(std::vector<std::pair<uintptr_t, LLVMStackMapType::DeoptInfoType>> &pc2Deopt,
                         std::vector<std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>> &pc2StackMap,
                         std::vector<intptr_t> &callsitePcs);
-    void GenArkCallsiteAOTFileInfo(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2StackMaps,
-        std::vector<LLVMStackMapType::Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result, Triple triple);
+    void GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMapInfo,
+                                   ARKCallsiteAOTFileInfo &result, Triple triple);
     void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
     void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
-    void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info, Triple triple);
+    void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
+                                    const ARKCallsiteAOTFileInfo& info, Triple triple);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
     void GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt,
         std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple);

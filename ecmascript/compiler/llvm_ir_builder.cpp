@@ -768,7 +768,7 @@ void LLVMIRBuilder::ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValue
     }
 }
 
-LLVMIRBuilder::CallExceptionKind LLVMIRBuilder::GetCallExceptionKind(size_t index, OpCode op) const
+CallExceptionKind LLVMIRBuilder::GetCallExceptionKind(size_t index, OpCode op) const
 {
     bool hasPcOffset = IsOptimizedJSFunction() &&
                        ((op == OpCode::NOGC_RUNTIME_CALL && (kungfu::RuntimeStubCSigns::IsAsmStub(index))) ||
@@ -1678,20 +1678,6 @@ void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     }
 }
 
-bool IsAddIntergerType(MachineType machineType)
-{
-    switch (machineType) {
-        case MachineType::I8:
-        case MachineType::I16:
-        case MachineType::I32:
-        case MachineType::I64:
-        case MachineType::ARCH:
-            return true;
-        default:
-            return false;
-    }
-}
-
 void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = GetLValue(e1);
@@ -1759,18 +1745,6 @@ void LLVMIRBuilder::HandleMul(GateRef gate)
     auto g0 = acc_.GetIn(gate, 0);
     auto g1 = acc_.GetIn(gate, 1);
     VisitMul(gate, g0, g1);
-}
-
-bool IsMulIntergerType(MachineType machineType)
-{
-    switch (machineType) {
-        case MachineType::I32:
-        case MachineType::I64:
-        case MachineType::ARCH:
-            return true;
-        default:
-            return false;
-    }
 }
 
 void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
@@ -2623,11 +2597,8 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
 }
 
 LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name, bool logDbg, const std::string &triple)
+    : IRModule(allocator, logDbg, triple)
 {
-    tripleStr_ = triple;
-    CompilationConfig cfg(tripleStr_);
-    is64Bit_ = cfg.Is64Bit();
-    triple_ = cfg.GetTriple();
     context_ = LLVMContextCreate();
     module_ = LLVMModuleCreateWithNameInContext(name.c_str(), context_);
     LLVMSetTarget(module_, triple.c_str());
@@ -2636,7 +2607,6 @@ LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name, 
     dUnitMD_ = LLVMDIBuilderCreateCompileUnit(dBuilder_, LLVMDWARFSourceLanguageC_plus_plus, dFileMD_, "ArkCompiler",
                                               0, 0, NULL, 0, 0, NULL, 0, LLVMDWARFEmissionFull,
                                               0, 0, 0, "/", 1, "", 0);
-    debugInfo_ = new DebugInfo(allocator, logDbg);
 
     voidT_ = LLVMVoidTypeInContext(context_);
     int1T_ = LLVMInt1TypeInContext(context_);
@@ -2664,10 +2634,6 @@ LLVMModule::~LLVMModule()
     if (dBuilder_ != nullptr) {
         LLVMDisposeDIBuilder(dBuilder_);
         dBuilder_ = nullptr;
-    }
-    if (debugInfo_ != nullptr) {
-        delete debugInfo_;
-        debugInfo_ = nullptr;
     }
 }
 
@@ -2756,16 +2722,6 @@ LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
         {VariableType::JS_ANY(), GetTaggedHPtrT()},
     };
     return machineTypeMap[type];
-}
-
-std::string LLVMModule::GetFuncName(const panda::ecmascript::MethodLiteral *methodLiteral,
-                                    const JSPandaFile *jsPandaFile)
-{
-    auto offset = methodLiteral->GetMethodId().GetOffset();
-    std::string fileName = jsPandaFile->GetFileName();
-    std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
-    name += std::string("@") + std::to_string(offset) + std::string("@") + fileName;
-    return name;
 }
 
 LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)

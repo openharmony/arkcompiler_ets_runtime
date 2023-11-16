@@ -661,6 +661,7 @@ private:
 
     friend class Circuit;
     friend class LLVMIRBuilder;
+    friend class LiteCGIRBuilder;
     friend class Scheduler;
     friend class LoopPeeling;
 };

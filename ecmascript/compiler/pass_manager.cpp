@@ -145,7 +145,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<GraphLinearizerPass>();
-        pipeline.RunPass<LLVMIRGenPass>();
+        pipeline.RunPass<CGIRGenPass>();
     });
 
     LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
