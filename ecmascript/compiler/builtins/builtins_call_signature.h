@@ -44,6 +44,7 @@ namespace panda::ecmascript::kungfu {
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \
+    V(ObjectHasOwnProperty)                         \
     V(VectorForEach)                                \
     V(VectorReplaceAllElements)                     \
     V(StackForEach)                                 \

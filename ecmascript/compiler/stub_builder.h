@@ -206,6 +206,7 @@ public:
     GateRef TaggedIsUndefined(GateRef x);
     GateRef TaggedIsException(GateRef x);
     GateRef TaggedIsSpecial(GateRef x);
+    GateRef TaggedIsRegularObject(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
@@ -233,6 +234,7 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
+    GateRef NumberGetInt(GateRef glue, GateRef x);
     GateRef TaggedGetNumber(GateRef x);
     GateRef Int8ToTaggedInt(GateRef x);
     GateRef Int16ToTaggedInt(GateRef x);

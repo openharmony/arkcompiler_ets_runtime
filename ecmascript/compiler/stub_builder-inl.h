@@ -632,6 +632,12 @@ inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
     return env_->GetBuilder()->TaggedIsSpecial(x);
 }
 
+inline GateRef StubBuilder::TaggedIsRegularObject(GateRef x)
+{
+    GateRef objectType = GetObjectType(LoadHClass(x));
+    return Int32LessThan(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+}
+
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsHeapObject(x);

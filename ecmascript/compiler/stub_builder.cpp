@@ -7438,6 +7438,33 @@ GateRef StubBuilder::TaggedGetNumber(GateRef x)
     return ret;
 }
 
+GateRef StubBuilder::NumberGetInt(GateRef glue, GateRef x)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    Label exit(env);
+    env->SubCfgEntry(&subentry);
+
+    Label targetIsInt(env);
+    Label targetIsDouble(env);
+    DEFVALUE(number, env_, VariableType::INT32(), Int32(0));
+    Branch(TaggedIsInt(x), &targetIsInt, &targetIsDouble);
+    Bind(&targetIsInt);
+    {
+        number = TaggedGetInt(x);
+        Jump(&exit);
+    }
+    Bind(&targetIsDouble);
+    {
+        number = DoubleToInt(glue, GetDoubleOfTDouble(x));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *number;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
