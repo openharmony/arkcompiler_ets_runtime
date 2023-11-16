@@ -168,17 +168,45 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
 }
 
 // Note: unused arguments are reserved for further development
-void BuiltinsArrayStubBuilder::Reverse([[maybe_unused]] GateRef glue, GateRef thisValue,
-    [[maybe_unused]] GateRef numArgs,
+void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label thisIsEmpty(env);
-    // Fast path is this is an array of length 0 or 1
-    JsArrayRequirements req;
-    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ONE, req), &thisIsEmpty, slowPath);
-    Bind(&thisIsEmpty);
-    // Returns thisValue on fast path
+    Label stableJSArray(env);
+    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+    Branch(isThisStableJSArray, &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef elements = GetElementsArray(thisValue);
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label arrayValue(env);
+        Label valueEqual(env);
+        Branch(Int64LessThan(*i, *j), &next, &loopExit);
+        Bind(&next);
+        {
+            GateRef lower = GetValueFromTaggedArray(elements, *i);
+            GateRef upper = GetValueFromTaggedArray(elements, *j);
+
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, upper);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *j, lower);
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Add(*i, Int64(1));
+    j = Int64Sub(*j, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
     result->WriteVariable(thisValue);
     Jump(exit);
 }
@@ -292,4 +320,17 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     result->WriteVariable(IntToTaggedPtr(newLength));
     Jump(exit);
 }
+
+void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, [[maybe_unused]] Variable *result, [[maybe_unused]] Label *exit,  Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    GateRef iter = GetIterator(glue, thisValue, ProfileOperation());
+    result->WriteVariable(iter);
+    Jump(exit);
+}
+
 }  // namespace panda::ecmascript::kungfu
