@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "ecmascript/byte_array.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
@@ -91,11 +92,11 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_typed_array.h"
-#include "ecmascript/byte_array.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_weak_ref.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/slots.h"
@@ -139,170 +140,170 @@ public:
             case JSType::JS_TERMINATION_ERROR:
             case JSType::JS_ASYNCITERATOR:
             case JSType::JS_ITERATOR:
-                JSObject::Cast(object)->VisitRangeSlot(visitor);
+                JSObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
-                JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_GLOBAL_OBJECT:
-                JSGlobalObject::Cast(object)->VisitRangeSlot(visitor);
+                JSGlobalObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_FUNCTION_BASE: {
                 auto jsFunctionBase = JSFunctionBase::Cast(object);
-                jsFunctionBase->VisitRangeSlot(visitor);
+                jsFunctionBase->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_FUNCTION: {
                 auto jsFunction = JSFunction::Cast(object);
-                jsFunction->VisitRangeSlot(visitor);
+                jsFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_GENERATOR_FUNCTION: {
                 auto jsGeneratorFunction = JSGeneratorFunction::Cast(object);
-                jsGeneratorFunction->VisitRangeSlot(visitor);
+                jsGeneratorFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_GENERATOR_FUNCTION: {
                 auto jsGeneratorFunction = JSAsyncGeneratorFunction::Cast(object);
-                jsGeneratorFunction->VisitRangeSlot(visitor);
+                jsGeneratorFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROXY_REVOC_FUNCTION: {
                 auto jsProxyRevocFunction = JSProxyRevocFunction::Cast(object);
-                jsProxyRevocFunction->VisitRangeSlot(visitor);
+                jsProxyRevocFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_REACTIONS_FUNCTION: {
                 auto jsPromiseReactionsFunction = JSPromiseReactionsFunction::Cast(object);
-                jsPromiseReactionsFunction->VisitRangeSlot(visitor);
+                jsPromiseReactionsFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_EXECUTOR_FUNCTION: {
                 auto jsPromiseExecutorFunction = JSPromiseExecutorFunction::Cast(object);
-                jsPromiseExecutorFunction->VisitRangeSlot(visitor);
+                jsPromiseExecutorFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION: {
                 auto jsAsyncFromSyncIterUnwarpFunction = JSAsyncFromSyncIterUnwarpFunction::Cast(object);
-                jsAsyncFromSyncIterUnwarpFunction->VisitRangeSlot(visitor);
+                jsAsyncFromSyncIterUnwarpFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION: {
                 auto jsPromiseAllResolveElementFunction = JSPromiseAllResolveElementFunction::Cast(object);
-                jsPromiseAllResolveElementFunction->VisitRangeSlot(visitor);
+                jsPromiseAllResolveElementFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
                 auto jsAsyGeneratorRseNextRtnProRstFtn = JSAsyncGeneratorResNextRetProRstFtn::Cast(object);
-                jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlot(visitor);
+                jsAsyGeneratorRseNextRtnProRstFtn->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION: {
                 auto jsPromiseAnyRejectElementFunction = JSPromiseAnyRejectElementFunction::Cast(object);
-                jsPromiseAnyRejectElementFunction->VisitRangeSlot(visitor);
+                jsPromiseAnyRejectElementFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION: {
                 auto jsPromiseAllSettledElementFunction = JSPromiseAllSettledElementFunction::Cast(object);
-                jsPromiseAllSettledElementFunction->VisitRangeSlot(visitor);
+                jsPromiseAllSettledElementFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_FINALLY_FUNCTION: {
                 auto jsPromiseFinallyFunction = JSPromiseFinallyFunction::Cast(object);
-                jsPromiseFinallyFunction->VisitRangeSlot(visitor);
+                jsPromiseFinallyFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION: {
                 auto jsPromiseValueThunkOrThrowerFunction = JSPromiseValueThunkOrThrowerFunction::Cast(object);
-                jsPromiseValueThunkOrThrowerFunction->VisitRangeSlot(visitor);
+                jsPromiseValueThunkOrThrowerFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_FUNCTION: {
                 auto jsAsyncFunction = JSAsyncFunction::Cast(object);
-                jsAsyncFunction->VisitRangeSlot(visitor);
+                jsAsyncFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION: {
                 auto jsAsyncAwaitStatusFunction = JSAsyncAwaitStatusFunction::Cast(object);
-                jsAsyncAwaitStatusFunction->VisitRangeSlot(visitor);
+                jsAsyncAwaitStatusFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_REG_EXP:
-                JSRegExp::Cast(object)->VisitRangeSlot(visitor);
+                JSRegExp::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_SET:
-                JSSet::Cast(object)->VisitRangeSlot(visitor);
+                JSSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_MAP:
-                JSMap::Cast(object)->VisitRangeSlot(visitor);
+                JSMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_WEAK_MAP:
-                JSWeakMap::Cast(object)->VisitRangeSlot(visitor);
+                JSWeakMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_WEAK_SET:
-                JSWeakSet::Cast(object)->VisitRangeSlot(visitor);
+                JSWeakSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_WEAK_REF:
-                JSWeakRef::Cast(object)->VisitRangeSlot(visitor);
+                JSWeakRef::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_FINALIZATION_REGISTRY:
-                JSFinalizationRegistry::Cast(object)->VisitRangeSlot(visitor);
+                JSFinalizationRegistry::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::CELL_RECORD:
-                CellRecord::Cast(object)->VisitRangeSlot(visitor);
+                CellRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_DATE:
-                JSDate::Cast(object)->VisitRangeSlot(visitor);
+                JSDate::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_FORIN_ITERATOR:
-                JSForInIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSForInIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_MAP_ITERATOR:
-                JSMapIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_SET_ITERATOR:
-                JSSetIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_REG_EXP_ITERATOR:
-                JSRegExpIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSRegExpIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ARRAY_ITERATOR:
-                JSArrayIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSArrayIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_STRING_ITERATOR:
-                JSStringIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSStringIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ARRAY_BUFFER:
-                JSArrayBuffer::Cast(object)->VisitRangeSlot(visitor);
+                JSArrayBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_SHARED_ARRAY_BUFFER:
-                JSArrayBuffer::Cast(object)->VisitRangeSlot(visitor);
+                JSArrayBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_PROMISE:
-                JSPromise::Cast(object)->VisitRangeSlot(visitor);
+                JSPromise::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_DATA_VIEW:
-                JSDataView::Cast(object)->VisitRangeSlot(visitor);
+                JSDataView::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_BOUND_FUNCTION: {
                 auto jsBoundFunction = JSBoundFunction::Cast(object);
-                jsBoundFunction->VisitRangeSlot(visitor);
+                jsBoundFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ARGUMENTS:
-                JSArguments::Cast(object)->VisitRangeSlot(visitor);
+                JSArguments::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_GENERATOR_OBJECT:
-                JSGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
+                JSGeneratorObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ASYNC_GENERATOR_OBJECT:
-                JSAsyncGeneratorObject::Cast(object)->VisitRangeSlot(visitor);
+                JSAsyncGeneratorObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ASYNC_FUNC_OBJECT:
-                JSAsyncFuncObject::Cast(object)->VisitRangeSlot(visitor);
+                JSAsyncFuncObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ARRAY:
-                JSArray::Cast(object)->VisitRangeSlot(visitor);
+                JSArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_TYPED_ARRAY:
             case JSType::JS_INT8_ARRAY:
@@ -316,36 +317,46 @@ public:
             case JSType::JS_FLOAT64_ARRAY:
             case JSType::JS_BIGINT64_ARRAY:
             case JSType::JS_BIGUINT64_ARRAY:
-                JSTypedArray::Cast(object)->VisitRangeSlot(visitor);
+                JSTypedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::BYTE_ARRAY:
+                if (visitType == VisitType::ALL_VISIT) {
+                    ByteArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::JS_PRIMITIVE_REF:
-                JSPrimitiveRef::Cast(object)->VisitRangeSlot(visitor);
+                JSPrimitiveRef::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_PROXY: {
                 auto jsProxy = JSProxy::Cast(object);
-                jsProxy->VisitRangeSlot(visitor);
+                jsProxy->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::HCLASS:
                 // semi gc is not needed to visit hclass
                 if (visitType != VisitType::SEMI_GC_VISIT) {
-                    JSHClass::Cast(object)->VisitRangeSlot(visitor);
+                    JSHClass::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::LINE_STRING:
+                if (visitType == VisitType::ALL_VISIT) {
+                    LineEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                break;
             case JSType::CONSTANT_STRING:
+                if (visitType == VisitType::ALL_VISIT) {
+                    ConstantString::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::TREE_STRING:
-                TreeEcmaString::Cast(object)->VisitRangeSlot(visitor);
+                TreeEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::SLICED_STRING:
-                SlicedString::Cast(object)->VisitRangeSlot(visitor);
+                SlicedString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_NATIVE_POINTER:
-                if (visitType == VisitType::SNAPSHOT_VISIT) {
-                    JSNativePointer::Cast(object)->VisitRangeSlotForNative(visitor);
+                if ((visitType == VisitType::SNAPSHOT_VISIT) || (visitType == VisitType::ALL_VISIT)) {
+                    JSNativePointer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::TAGGED_ARRAY:
@@ -355,282 +366,297 @@ public:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
-                TaggedArray::Cast(object)->VisitRangeSlot(visitor);
+                TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::CONSTANT_POOL:
-                ConstantPool::Cast(object)->VisitRangeSlot(visitor);
+                ConstantPool::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROFILE_TYPE_INFO:
-                ProfileTypeInfo::Cast(object)->VisitRangeSlot(visitor);
+                ProfileTypeInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::GLOBAL_ENV:
-                GlobalEnv::Cast(object)->VisitRangeSlot(visitor);
+                GlobalEnv::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::ACCESSOR_DATA:
             case JSType::INTERNAL_ACCESSOR:
-                AccessorData::Cast(object)->VisitRangeSlot(visitor);
+                AccessorData::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::SYMBOL:
-                JSSymbol::Cast(object)->VisitRangeSlot(visitor);
+                JSSymbol::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_GENERATOR_CONTEXT:
-                GeneratorContext::Cast(object)->VisitRangeSlot(visitor);
+                GeneratorContext::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROTOTYPE_HANDLER:
-                PrototypeHandler::Cast(object)->VisitRangeSlot(visitor);
+                PrototypeHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TRANSITION_HANDLER:
-                TransitionHandler::Cast(object)->VisitRangeSlot(visitor);
+                TransitionHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TRANS_WITH_PROTO_HANDLER:
-                TransWithProtoHandler::Cast(object)->VisitRangeSlot(visitor);
+                TransWithProtoHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::STORE_TS_HANDLER:
-                StoreTSHandler::Cast(object)->VisitRangeSlot(visitor);
+                StoreTSHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROPERTY_BOX:
-                PropertyBox::Cast(object)->VisitRangeSlot(visitor);
+                PropertyBox::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROTO_CHANGE_MARKER:
+                if (visitType == VisitType::ALL_VISIT) {
+                    ProtoChangeMarker::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::MARKER_CELL:
+                if (visitType == VisitType::ALL_VISIT) {
+                    MarkerCell::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::TRACK_INFO:
-                TrackInfo::Cast(object)->VisitRangeSlot(visitor);
+                TrackInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROTOTYPE_INFO:
-                ProtoChangeDetails::Cast(object)->VisitRangeSlot(visitor);
+                ProtoChangeDetails::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROMISE_CAPABILITY:
-                PromiseCapability::Cast(object)->VisitRangeSlot(visitor);
+                PromiseCapability::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::ASYNC_GENERATOR_REQUEST:
-                AsyncGeneratorRequest::Cast(object)->VisitRangeSlot(visitor);
+                AsyncGeneratorRequest::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::ASYNC_ITERATOR_RECORD:
-                AsyncIteratorRecord::Cast(object)->VisitRangeSlot(visitor);
+                AsyncIteratorRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROMISE_RECORD:
-                PromiseRecord::Cast(object)->VisitRangeSlot(visitor);
+                PromiseRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RESOLVING_FUNCTIONS_RECORD:
-                ResolvingFunctionsRecord::Cast(object)->VisitRangeSlot(visitor);
+                ResolvingFunctionsRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROMISE_REACTIONS:
-                PromiseReaction::Cast(object)->VisitRangeSlot(visitor);
+                PromiseReaction::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROMISE_ITERATOR_RECORD:
-                PromiseIteratorRecord::Cast(object)->VisitRangeSlot(visitor);
+                PromiseIteratorRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::MICRO_JOB_QUEUE:
-                job::MicroJobQueue::Cast(object)->VisitRangeSlot(visitor);
+                job::MicroJobQueue::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PENDING_JOB:
-                job::PendingJob::Cast(object)->VisitRangeSlot(visitor);
+                job::PendingJob::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::COMPLETION_RECORD:
-                CompletionRecord::Cast(object)->VisitRangeSlot(visitor);
+                CompletionRecord::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROGRAM:
-                Program::Cast(object)->VisitRangeSlot(visitor);
+                Program::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_INTL:
-                JSIntl::Cast(object)->VisitRangeSlot(visitor);
+                JSIntl::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_NUMBER_FORMAT:
-                JSNumberFormat::Cast(object)->VisitRangeSlot(visitor);
+                JSNumberFormat::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_LOCALE:
-                JSLocale::Cast(object)->VisitRangeSlot(visitor);
+                JSLocale::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_DATE_TIME_FORMAT:
-                JSDateTimeFormat::Cast(object)->VisitRangeSlot(visitor);
+                JSDateTimeFormat::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_RELATIVE_TIME_FORMAT:
-                JSRelativeTimeFormat::Cast(object)->VisitRangeSlot(visitor);
+                JSRelativeTimeFormat::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_INTL_BOUND_FUNCTION: {
                 auto jsIntlBoundFunction = JSIntlBoundFunction::Cast(object);
-                jsIntlBoundFunction->VisitRangeSlot(visitor);
+                jsIntlBoundFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_REALM:
-                JSRealm::Cast(object)->VisitRangeSlot(visitor);
+                JSRealm::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_COLLATOR:
-                JSCollator::Cast(object)->VisitRangeSlot(visitor);
+                JSCollator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_PLURAL_RULES:
-                JSPluralRules::Cast(object)->VisitRangeSlot(visitor);
+                JSPluralRules::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_DISPLAYNAMES:
-                JSDisplayNames::Cast(object)->VisitRangeSlot(visitor);
+                JSDisplayNames::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_LIST_FORMAT:
-                JSListFormat::Cast(object)->VisitRangeSlot(visitor);
+                JSListFormat::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::MACHINE_CODE_OBJECT:
-                MachineCode::Cast(object)->VisitRangeSlot(visitor);
+                MachineCode::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::CLASS_INFO_EXTRACTOR: {
                 auto classInfoExtractor = ClassInfoExtractor::Cast(object);
-                classInfoExtractor->VisitRangeSlot(visitor);
+                classInfoExtractor->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_API_QUEUE:
-                JSAPIQueue::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIQueue::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_QUEUE_ITERATOR:
-                JSAPIQueueIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIQueueIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_ARRAY_LIST:
-                JSAPIArrayList::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIArrayList::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_ARRAYLIST_ITERATOR:
-                JSAPIArrayListIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIArrayListIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIGHT_WEIGHT_MAP:
-                JSAPILightWeightMap::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILightWeightMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIGHT_WEIGHT_MAP_ITERATOR:
-                JSAPILightWeightMapIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILightWeightMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIGHT_WEIGHT_SET:
-                JSAPILightWeightSet::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILightWeightSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
-                JSAPILightWeightSetIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILightWeightSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_OBJECT_TYPE:
-                TSObjectType::Cast(object)->VisitRangeSlot(visitor);
+                TSObjectType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_CLASS_TYPE:
-                TSClassType::Cast(object)->VisitRangeSlot(visitor);
+                TSClassType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_UNION_TYPE:
-                TSUnionType::Cast(object)->VisitRangeSlot(visitor);
+                TSUnionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_INTERFACE_TYPE:
-                TSInterfaceType::Cast(object)->VisitRangeSlot(visitor);
+                TSInterfaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_CLASS_INSTANCE_TYPE:
                 break;
             case JSType::TS_FUNCTION_TYPE:
-                TSFunctionType::Cast(object)->VisitRangeSlot(visitor);
+                TSFunctionType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::TS_ARRAY_TYPE:
+                if (visitType == VisitType::ALL_VISIT) {
+                    TSArrayType::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::TS_ITERATOR_INSTANCE_TYPE:
+                if (visitType == VisitType::ALL_VISIT) {
+                    TSIteratorInstanceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::TS_NAMESPACE_TYPE:
-                TSNamespaceType::Cast(object)->VisitRangeSlot(visitor);
+                TSNamespaceType::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RB_TREENODE:
-                RBTreeNode::Cast(object)->VisitRangeSlot(visitor);
+                RBTreeNode::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::LINKED_NODE:
-                LinkedNode::Cast(object)->VisitRangeSlot(visitor);
+                LinkedNode::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_HASH_MAP:
-                JSAPIHashMap::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIHashMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_HASH_SET:
-                JSAPIHashSet::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIHashSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_HASHMAP_ITERATOR:
-                JSAPIHashMapIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIHashMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_HASHSET_ITERATOR:
-                JSAPIHashSetIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIHashSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_TREE_MAP:
-                JSAPITreeMap::Cast(object)->VisitRangeSlot(visitor);
+                JSAPITreeMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_TREE_SET:
-                JSAPITreeSet::Cast(object)->VisitRangeSlot(visitor);
+                JSAPITreeSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_TREEMAP_ITERATOR:
-                JSAPITreeMapIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPITreeMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_TREESET_ITERATOR:
-                JSAPITreeSetIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPITreeSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_PLAIN_ARRAY:
-                JSAPIPlainArray::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIPlainArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_PLAIN_ARRAY_ITERATOR:
-                JSAPIPlainArrayIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIPlainArrayIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_DEQUE:
-                JSAPIDeque::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIDeque::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_DEQUE_ITERATOR:
-                JSAPIDequeIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIDequeIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_STACK:
-                JSAPIStack::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIStack::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_STACK_ITERATOR:
-                JSAPIStackIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIStackIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_VECTOR:
-                JSAPIVector::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIVector::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_VECTOR_ITERATOR:
-                JSAPIVectorIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIVectorIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIST:
-                JSAPIList::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIList::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LINKED_LIST:
-                JSAPILinkedList::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILinkedList::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIST_ITERATOR:
-                JSAPIListIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPIListIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LINKED_LIST_ITERATOR:
-                JSAPILinkedListIterator::Cast(object)->VisitRangeSlot(visitor);
+                JSAPILinkedListIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::BIGINT:
+                if (visitType == VisitType::ALL_VISIT) {
+                    BigInt::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::SOURCE_TEXT_MODULE_RECORD:
-                SourceTextModule::Cast(object)->VisitRangeSlot(visitor);
+                SourceTextModule::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::IMPORTENTRY_RECORD:
-                ImportEntry::Cast(object)->VisitRangeSlot(visitor);
+                ImportEntry::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::LOCAL_EXPORTENTRY_RECORD:
-                LocalExportEntry::Cast(object)->VisitRangeSlot(visitor);
+                LocalExportEntry::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::INDIRECT_EXPORTENTRY_RECORD:
-                IndirectExportEntry::Cast(object)->VisitRangeSlot(visitor);
+                IndirectExportEntry::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::STAR_EXPORTENTRY_RECORD:
-                StarExportEntry::Cast(object)->VisitRangeSlot(visitor);
+                StarExportEntry::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RESOLVEDBINDING_RECORD:
-                ResolvedBinding::Cast(object)->VisitRangeSlot(visitor);
+                ResolvedBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::RESOLVEDINDEXBINDING_RECORD:
-                ResolvedIndexBinding::Cast(object)->VisitRangeSlot(visitor);
+                ResolvedIndexBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_MODULE_NAMESPACE:
-                ModuleNamespace::Cast(object)->VisitRangeSlot(visitor);
+                ModuleNamespace::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_CJS_EXPORTS:
-                CjsExports::Cast(object)->VisitRangeSlot(visitor);
+                CjsExports::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_CJS_MODULE:
-                CjsModule::Cast(object)->VisitRangeSlot(visitor);
+                CjsModule::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_CJS_REQUIRE:
-                CjsRequire::Cast(object)->VisitRangeSlot(visitor);
+                CjsRequire::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::METHOD:
-                Method::Cast(object)->VisitRangeSlot(visitor);
+                Method::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::CLASS_LITERAL:
-                ClassLiteral::Cast(object)->VisitRangeSlot(visitor);
+                ClassLiteral::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);

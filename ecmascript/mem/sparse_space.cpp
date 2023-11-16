@@ -50,6 +50,11 @@ void SparseSpace::Reset()
     liveObjectSize_ = 0;
 }
 
+void SparseSpace::ResetTopPointer(uintptr_t top)
+{
+    allocator_->ResetTopPointer(top);
+}
+
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
     auto object = allocator_->Allocate(size);
