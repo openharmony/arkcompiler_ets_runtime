@@ -76,7 +76,8 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, ui
 {
     ASSERT(bcOffset < method->GetCodeSize() && "code size of current Method less then bcOffset");
     HandleExceptionThrowEvent(thread, method, bcOffset);
-
+    // clear singlestep flag
+    singleStepOnDebuggerStmt_ = false;
     if (ecmaVm_->GetJsDebuggerManager()->IsMixedDebugEnabled()) {
         if (!HandleBreakpoint(method, bcOffset)) {
             HandleNativeOut();
