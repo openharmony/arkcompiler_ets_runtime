@@ -159,36 +159,36 @@ GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
         return VisitStringBinaryOp(gate);
     }
 
-    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ) {
+    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ &&
+        acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_EQ) {
         if (acc_.HasPrimitiveNumberType(gate)) {
             return VisitNumberBinaryOp(gate);
         }
     }
 
-    return VisitStrictEqual(gate);
+    return VisitEqualOrStrictEqual(gate);
 }
 
-GateRef NumberSpeculativeRetype::VisitStrictEqual(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitEqualOrStrictEqual(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
         return VisitNumberBinaryOp(gate);
     } else {
-        [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
-        [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
-        ASSERT((acc_.IsConstantUndefined(left)) || (acc_.IsConstantUndefined(right)));
-        ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ);
-        return VisitUndefinedStrictEq(gate);
+        return VisitUndefinedEqOrStrictEq(gate);
     }
 }
 
-GateRef NumberSpeculativeRetype::VisitUndefinedStrictEq(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitUndefinedEqOrStrictEq(GateRef gate)
 {
+    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ ||
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    ASSERT((acc_.IsUndefinedOrNull(left)) || (acc_.IsUndefinedOrNull(right)));
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
     }
     if (IsConvert()) {
-        GateRef left = acc_.GetValueIn(gate, 0);
-        GateRef right = acc_.GetValueIn(gate, 1);
         acc_.ReplaceValueIn(gate, ConvertToTagged(left), 0);
         acc_.ReplaceValueIn(gate, ConvertToTagged(right), 1);
     }

@@ -183,10 +183,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_EQ>(gate, false);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_EQ>(gate);
             break;
         case EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerTypedStrictEq(gate);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate, false);
@@ -355,7 +355,8 @@ void TypeBytecodeLowering::LowerTypedUnOp(GateRef gate)
     }
 }
 
-void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
+template<TypedBinOp Op>
+void TypeBytecodeLowering::LowerTypedEqOrStrictEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -363,10 +364,13 @@ void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
     PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
-    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right, false)) {
-        GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
+    if (acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right) || HasNumberType(gate, left, right, false)) {
+        AddProfiling(gate);
+        GateRef result = builder_.TypedBinaryOp<Op>(
             left, right, leftType, rightType, gateType, pgoType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    } else if (HasStringType(gate, left, right)) {
+        SpeculateStrings<Op>(gate);
     }
 }
 

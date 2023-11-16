@@ -44,6 +44,8 @@ private:
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
+    void VisitUndefinedEq(GateRef gate);
+    void VisitEqual(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitRangeGuard(GateRef gate);
     void VisitRangeCheckPredicate(GateRef gate);

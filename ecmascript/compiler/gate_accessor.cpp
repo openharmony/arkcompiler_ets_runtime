@@ -912,6 +912,12 @@ bool GateAccessor::IsConstantUndefined(GateRef gate) const
     return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED);
 }
 
+bool GateAccessor::IsUndefinedOrNull(GateRef gate) const
+{
+    return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED) ||
+           IsConstantValue(gate, JSTaggedValue::VALUE_NULL);
+}
+
 bool GateAccessor::IsTypedOperator(GateRef gate) const
 {
     return GetMetaData(gate)->IsTypedOperator();
