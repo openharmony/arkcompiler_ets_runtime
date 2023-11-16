@@ -183,7 +183,7 @@ private:
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
     CString GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
-    void LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool, const PGOContext &context,
+    void LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool, PGOContext &context,
                        void *addr);
 
     bool isLoaded_ {false};

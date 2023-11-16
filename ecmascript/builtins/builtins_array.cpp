@@ -746,12 +746,14 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
 
-    bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
-    if (isDictionary && thisObjHandle->IsJSArray()) {
-        uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
-        uint32_t size = thisObjHandle->GetNumberOfElements();
-        if (length - size > JSObject::MAX_GAP) {
-            JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
+    if (thisHandle->IsJSArray()) {
+        bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
+        if (isDictionary) {
+            uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
+            uint32_t size = thisObjHandle->GetNumberOfElements();
+            if (length - size > JSObject::MAX_GAP) {
+                JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
+            }
         }
     }
 
@@ -1846,10 +1848,6 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // Fast path for stable array. Returns thisValue.
-    if (thisObjVal->IsStableJSArray(thread)) {
-        return JSStableArray::Reverse(thread, thisObjHandle, len);
-    }
 
     // 5. Let middle be floor(len/2).
     int64_t middle = std::floor(len / 2);
@@ -1893,6 +1891,10 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
+
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSStableArray::Reverse(thread, thisObjHandle, lower, len);
+    }
     while (lower != middle) {
         int64_t upper = len - lower - 1;
         lowerP.Update(JSTaggedValue(lower));

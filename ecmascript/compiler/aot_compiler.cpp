@@ -131,8 +131,7 @@ int Main(const int argc, const char **argv)
                                 cOptions.isEnableCollectLiteralInfo_,
                                 cOptions.isEnableOptConstantFolding_,
                                 cOptions.isEnableLexenvSpecialization_,
-                                cOptions.isEnableNativeInline_,
-                                cOptions.isEnableFastModule_);
+                                cOptions.isEnableNativeInline_);
 
         PassManager passManager(vm,
                                 cOptions.triple_,

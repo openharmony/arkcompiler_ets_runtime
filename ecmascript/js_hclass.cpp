@@ -422,26 +422,31 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
-        // If the objcet should be changed to the proto of an object,
-        // the original hclass cannot be shared.
-        JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
-        JSTaggedValue layout = newProtoClass->GetLayout();
-        // If the type of object is JSObject, the layout info value is initialized to the default value,
-        // if the value is not JSObject, the layout info value is initialized to null.
-        if (!layout.IsNull()) {
-            JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, layout);
-            layoutInfoHandle.Update(
-                thread->GetEcmaVM()->GetFactory()->CopyLayoutInfo(layoutInfoHandle).GetTaggedValue());
-            newProtoClass->SetLayout(thread, layoutInfoHandle);
-        }
+        // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
+        if (!hclass->IsTS()) {
+            // If the objcet should be changed to the proto of an object,
+            // the original hclass cannot be shared.
+            JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
+            JSTaggedValue layout = newProtoClass->GetLayout();
+            // If the type of object is JSObject, the layout info value is initialized to the default value,
+            // if the value is not JSObject, the layout info value is initialized to null.
+            if (!layout.IsNull()) {
+                JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, layout);
+                layoutInfoHandle.Update(
+                    thread->GetEcmaVM()->GetFactory()->CopyLayoutInfo(layoutInfoHandle).GetTaggedValue());
+                newProtoClass->SetLayout(thread, layoutInfoHandle);
+            }
 
 #if ECMASCRIPT_ENABLE_IC
-        // After the hclass is updated, check whether the proto chain status of ic is updated.
-        NotifyHclassChanged(thread, hclass, newProtoClass);
+            // After the hclass is updated, check whether the proto chain status of ic is updated.
+            NotifyHclassChanged(thread, hclass, newProtoClass);
 #endif
-        JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
-        newProtoClass->SetIsPrototype(true);
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateProfileType(*hclass, *newProtoClass);
+            JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
+            newProtoClass->SetIsPrototype(true);
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateProfileType(*hclass, *newProtoClass);
+        } else {
+            hclass->SetIsPrototype(true);
+        }
     }
 }
 

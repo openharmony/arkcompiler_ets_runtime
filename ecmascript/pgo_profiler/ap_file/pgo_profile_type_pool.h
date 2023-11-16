@@ -62,14 +62,15 @@ public:
             return type_;
         }
 
-        uint32_t ProcessToBinary(std::fstream &stream) override
+        uint32_t ProcessToBinary([[maybe_unused]] PGOContext &context, std::fstream &stream) override
         {
             auto profileType = type_.GetRaw();
             stream.write(reinterpret_cast<const char *>(&(profileType)), sizeof(ProfileType));
             return 1;
         }
 
-        uint32_t ParseFromBinary(void **buffer, [[maybe_unused]] PGOProfilerHeader const *header) override
+        uint32_t ParseFromBinary([[maybe_unused]] PGOContext &context, void **buffer,
+                                 [[maybe_unused]] PGOProfilerHeader const *header) override
         {
             type_ = base::ReadBuffer<ProfileType>(buffer, sizeof(ProfileType));
             return 1;

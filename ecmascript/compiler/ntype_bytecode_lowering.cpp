@@ -245,9 +245,6 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
 
 void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
 {
-    if (!IsFastModule()) {
-        return;
-    }
     AddProfiling(gate);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);
@@ -257,9 +254,6 @@ void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
 
 void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)
 {
-    if (!IsFastModule()) {
-        return;
-    }
     AddProfiling(gate);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);

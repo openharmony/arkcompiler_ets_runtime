@@ -202,11 +202,7 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
     auto result = elements->Get(0);
     for (uint32_t k = 1; k < length; k++) {
         auto kValue = elements->Get(k);
-        if (kValue.IsHole()) {
-            elements->Set(thread, k - 1, JSTaggedValue::Undefined());
-        } else {
-            elements->Set(thread, k - 1, kValue);
-        }
+        elements->Set(thread, k - 1, kValue);
     }
     uint32_t capacity = elements->GetLength();
     uint32_t index = length - 1;
@@ -789,19 +785,33 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
     return base::BuiltinsBase::GetTaggedDouble(true);
 }
 
-JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len)
+JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                     int64_t &lower, uint32_t len)
 {
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     if (thisObjHandle->IsJSArray()) {
         JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
     }
-    DISALLOW_GARBAGE_COLLECTION;
-    JSHandle<TaggedArray> elements(thread, thisObjHandle->GetElements());
-    JSTaggedType *data = elements->GetData();
-    ASSERT_PRINT(len <= elements->GetLength(), "Length exceeds capacity of contiguous array container.");
-    // Reversing raw data in-place is OK since no object is created or deleted,
-    // only pointers swapping for objects or values swapping for primitive types.
-    std::reverse(data, data + len);
-    return thisObjHandle.GetTaggedValue(); // Returns the address of thisValue
+    JSHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> lowerP(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
+    int64_t middle = std::floor(len / 2);
+    while (lower != middle) {
+        if (array->GetLength() != len) {
+            break;
+        }
+        int64_t upper = static_cast<int64_t>(len) - lower - 1;
+        lowerP.Update(JSTaggedValue(lower));
+        upperP.Update(JSTaggedValue(upper));
+        lowerValueHandle.Update(array->Get(lower));
+        upperValueHandle.Update(array->Get(upper));
+        array->Set(thread, lower, upperValueHandle.GetTaggedValue());
+        array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
+        lower++;
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
 }
 
 JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,

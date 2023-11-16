@@ -620,6 +620,14 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetElements())->Set(thread_,
                     GetIndex(), value.GetTaggedValue());
+            } else if (receiver->IsTypedArray()) {
+                JSTaggedValue holder = receiver.GetTaggedValue();
+                JSType jsType = holder.GetTaggedObject()->GetClass()->GetObjectType();
+                JSTaggedValue typedArrayProperty = JSTypedArray::FastSetPropertyByIndex(thread_,
+                    receiver.GetTaggedValue(), GetIndex(), value.GetTaggedValue(), jsType);
+                if (typedArrayProperty.IsHole()) {
+                    return false;
+                }
             } else {
                 elements->Set(thread_, GetIndex(), value.GetTaggedValue());
             }
