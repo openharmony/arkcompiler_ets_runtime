@@ -712,7 +712,8 @@ void Heap::RecomputeLimits()
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(GetGlobalNativeSize(), MIN_HEAP_SIZE,
-                                                                  maxGlobalSize, newSpaceCapacity, growingFactor);
+                                                                  MAX_GLOBAL_NATIVE_LIMIT, newSpaceCapacity,
+                                                                  growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
@@ -1289,6 +1290,16 @@ size_t Heap::GetArrayBufferSize() const
         result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;
     });
     return result;
+}
+
+size_t Heap::GetLiveObjectSize() const
+{
+    size_t objectSize = 0;
+    sweeper_->EnsureAllTaskFinished();
+    this->IterateOverObjects([&objectSize]([[maybe_unused]] TaggedObject *obj) {
+        objectSize += obj->GetClass()->SizeFromJSHClass(obj);
+    });
+    return objectSize;
 }
 
 size_t Heap::GetHeapLimitSize() const
