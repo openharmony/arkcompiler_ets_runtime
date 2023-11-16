@@ -327,6 +327,12 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
+            if (enableLoweringBuiltin_) {
+                LowerTypedTryLdGlobalByName(gate);
+            }
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -2076,5 +2082,21 @@ void TypeBytecodeLowering::LowerGetIterator(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     AddProfiling(gate);
     SpeculateCallBuiltin(gate, obj, { obj }, id, true);
+}
+
+void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto value = acc_.GetValueIn(gate, 1);
+    auto idx = acc_.GetConstantValue(value);
+    auto key = tsManager_->GetStringFromConstantPool(idx);
+    auto builtinIndex = builtinIndex_.GetBuiltinIndex(key);
+    if (builtinIndex == builtinIndex_.NOT_FOUND) {
+        return;
+    }
+    AddProfiling(gate);
+    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtinIndex_.GetBuiltinBoxOffset(key)));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    DeleteConstDataIfNoUser(value);
 }
 }  // namespace panda::ecmascript

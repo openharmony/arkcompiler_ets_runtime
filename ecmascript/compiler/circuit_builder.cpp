@@ -837,4 +837,16 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     return same;
 }
 
+GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->LoadBuiltinObject(offset), MachineType::I64, { currentControl, currentDepend }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 }  // namespace panda::ecmascript::kungfu

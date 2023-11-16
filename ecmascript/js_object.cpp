@@ -25,7 +25,9 @@
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
@@ -383,6 +385,8 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
 
     if (obj->IsJSGlobalObject()) {
         JSHandle<GlobalDictionary> dictHandle(thread, obj->GetProperties());
+        PropertyBox* box = dictHandle->GetBox(index);
+        box->Clear(thread);
         JSHandle<GlobalDictionary> newDict = GlobalDictionary::Remove(thread, dictHandle, index);
         obj->SetProperties(thread, newDict);
         return;
@@ -1008,6 +1012,24 @@ OperationResult JSObject::GetPropertyFromGlobal(JSThread *thread, const JSHandle
 
     ObjectOperator op(thread, key);
     return OperationResult(thread, GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
+}
+
+PropertyBox* JSObject::GetGlobalPropertyBox(JSTaggedValue key)
+{
+    ASSERT(IsJSGlobalObject());
+    auto dict = GlobalDictionary::Cast(GetProperties().GetTaggedObject());
+    auto entry = dict->FindEntry(key);
+    if (entry == -1) {
+        return nullptr;
+    }
+    return dict->GetBox(entry);
+}
+
+PropertyBox* JSObject::GetGlobalPropertyBox(JSThread *thread, const std::string& key)
+{
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto keyValue = factory->NewFromUtf8(key).GetTaggedValue();
+    return GetGlobalPropertyBox(keyValue);
 }
 
 JSTaggedValue JSObject::GetProperty(JSThread *thread, ObjectOperator *op)

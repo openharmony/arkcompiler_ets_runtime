@@ -18,14 +18,17 @@
 
 #include <atomic>
 #include <sstream>
+#include <string>
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/builtin_entries.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/js_object_resizing_strategy.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
-#include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -701,7 +704,8 @@ public:
                                                  base::AlignedBool,
                                                  base::AlignedUint32,
                                                  JSTaggedValue,
-                                                 base::AlignedPointer> {
+                                                 base::AlignedPointer,
+                                                 BuiltinEntries> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -731,6 +735,7 @@ public:
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
             CurrentContextIndex,
+            BuiltinEntriesIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -880,6 +885,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
         }
 
+        static size_t GetBuiltinEntriesOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BuiltinEntriesIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -908,6 +918,7 @@ public:
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
+        alignas(EAS) BuiltinEntries builtinEntries_;
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -932,6 +943,9 @@ public:
     bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCache();
+
+    void InitializeBuiltinObject(const std::string& key);
+    void InitializeBuiltinObject();
 
 private:
     NO_COPY_SEMANTIC(JSThread);
@@ -1002,6 +1016,7 @@ private:
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
     mutable Mutex interruptMutex_;
+
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;

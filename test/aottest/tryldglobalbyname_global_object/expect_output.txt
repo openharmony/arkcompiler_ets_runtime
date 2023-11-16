@@ -1,0 +1,178 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+function Function() { [native code] }
+Function
+ReferenceError: Function is not defined
+function RangeError() { [native code] }
+RangeError
+ReferenceError: RangeError is not defined
+function Error() { [native code] }
+Error
+ReferenceError: Error is not defined
+function Object() { [native code] }
+Object
+ReferenceError: Object is not defined
+function SyntaxError() { [native code] }
+SyntaxError
+ReferenceError: SyntaxError is not defined
+function TypeError() { [native code] }
+TypeError
+ReferenceError: TypeError is not defined
+function ReferenceError() { [native code] }
+ReferenceError
+ReferenceError: ReferenceError is not defined
+function URIError() { [native code] }
+URIError
+ReferenceError: URIError is not defined
+function Symbol() { [native code] }
+Symbol
+ReferenceError: Symbol is not defined
+function EvalError() { [native code] }
+EvalError
+ReferenceError: EvalError is not defined
+function Number() { [native code] }
+Number
+ReferenceError: Number is not defined
+function parseFloat() { [native code] }
+parseFloat
+ReferenceError: parseFloat is not defined
+function Date() { [native code] }
+Date
+ReferenceError: Date is not defined
+function Boolean() { [native code] }
+Boolean
+ReferenceError: Boolean is not defined
+function BigInt() { [native code] }
+BigInt
+ReferenceError: BigInt is not defined
+function parseInt() { [native code] }
+parseInt
+ReferenceError: parseInt is not defined
+function WeakMap() { [native code] }
+WeakMap
+ReferenceError: WeakMap is not defined
+function RegExp() { [native code] }
+RegExp
+ReferenceError: RegExp is not defined
+function Set() { [native code] }
+Set
+ReferenceError: Set is not defined
+function Map() { [native code] }
+Map
+ReferenceError: Map is not defined
+function WeakRef() { [native code] }
+WeakRef
+ReferenceError: WeakRef is not defined
+function WeakSet() { [native code] }
+WeakSet
+ReferenceError: WeakSet is not defined
+function FinalizationRegistry() { [native code] }
+FinalizationRegistry
+ReferenceError: FinalizationRegistry is not defined
+function Array() { [native code] }
+Array
+ReferenceError: Array is not defined
+function Uint8ClampedArray() { [native code] }
+Uint8ClampedArray
+ReferenceError: Uint8ClampedArray is not defined
+function Uint8Array() { [native code] }
+Uint8Array
+ReferenceError: Uint8Array is not defined
+function TypedArray() { [native code] }
+TypedArray
+ReferenceError: TypedArray is not defined
+function Int8Array() { [native code] }
+Int8Array
+ReferenceError: Int8Array is not defined
+function Uint16Array() { [native code] }
+Uint16Array
+ReferenceError: Uint16Array is not defined
+function Uint32Array() { [native code] }
+Uint32Array
+ReferenceError: Uint32Array is not defined
+function Int16Array() { [native code] }
+Int16Array
+ReferenceError: Int16Array is not defined
+function Int32Array() { [native code] }
+Int32Array
+ReferenceError: Int32Array is not defined
+function Float32Array() { [native code] }
+Float32Array
+ReferenceError: Float32Array is not defined
+function Float64Array() { [native code] }
+Float64Array
+ReferenceError: Float64Array is not defined
+function BigInt64Array() { [native code] }
+BigInt64Array
+ReferenceError: BigInt64Array is not defined
+function BigUint64Array() { [native code] }
+BigUint64Array
+ReferenceError: BigUint64Array is not defined
+function SharedArrayBuffer() { [native code] }
+SharedArrayBuffer
+ReferenceError: SharedArrayBuffer is not defined
+function DataView() { [native code] }
+DataView
+ReferenceError: DataView is not defined
+function String() { [native code] }
+String
+ReferenceError: String is not defined
+function ArrayBuffer() { [native code] }
+ArrayBuffer
+ReferenceError: ArrayBuffer is not defined
+function eval() { [native code] }
+eval
+ReferenceError: eval is not defined
+function isFinite() { [native code] }
+isFinite
+ReferenceError: isFinite is not defined
+function decodeURI() { [native code] }
+decodeURI
+ReferenceError: decodeURI is not defined
+function decodeURIComponent() { [native code] }
+decodeURIComponent
+ReferenceError: decodeURIComponent is not defined
+function isNaN() { [native code] }
+isNaN
+ReferenceError: isNaN is not defined
+function encodeURI() { [native code] }
+encodeURI
+ReferenceError: encodeURI is not defined
+function encodeURIComponent() { [native code] }
+encodeURIComponent
+ReferenceError: encodeURIComponent is not defined
+[object Math]
+Math
+ReferenceError: Math is not defined
+[object JSON]
+JSON
+ReferenceError: JSON is not defined
+[object Atomics]
+Atomics
+ReferenceError: Atomics is not defined
+[object Reflect]
+Reflect
+ReferenceError: Reflect is not defined
+function Promise() { [native code] }
+Promise
+ReferenceError: Promise is not defined
+function Proxy() { [native code] }
+Proxy
+ReferenceError: Proxy is not defined
+function GeneratorFunction() { [native code] }
+GeneratorFunction
+ReferenceError: GeneratorFunction is not defined
+[object Intl]
+Intl
+ReferenceError: Intl is not defined

@@ -221,6 +221,8 @@ public:
     inline GateRef Undefined();
     inline GateRef Hole();
 
+    GateRef LoadBuiltinObject(size_t offset);
+
     // Get
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);

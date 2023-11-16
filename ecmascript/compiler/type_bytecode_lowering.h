@@ -16,20 +16,24 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
 #define ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
 
+#include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/enum_conversion.h"
 #include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/enum_conversion.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeBytecodeLowering {
 public:
-    TypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
-                   bool enableLog, bool enableTypeLog,
-                   const std::string& name)
+    TypeBytecodeLowering(Circuit* circuit,
+                         PassContext* ctx,
+                         bool enableLog,
+                         bool enableTypeLog,
+                         const std::string& name,
+                         bool enableLoweringBuiltin)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -45,7 +49,10 @@ public:
           argAcc_(circuit),
           pgoTypeLog_(circuit),
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          enableLoweringBuiltin_(enableLoweringBuiltin)
+    {
+    }
 
     ~TypeBytecodeLowering() = default;
 
@@ -92,6 +99,8 @@ private:
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate, bool flag);
+
+    void LowerTypedTryLdGlobalByName(GateRef gate);
 
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
@@ -204,6 +213,8 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
     const JSThread *thread_ {nullptr};
+    bool enableLoweringBuiltin_ {false};
+    BuiltinIndex builtinIndex_ {};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H

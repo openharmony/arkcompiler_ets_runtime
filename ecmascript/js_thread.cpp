@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/js_thread.h"
+#include "ecmascript/builtin_entries.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/runtime_call_id.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -36,6 +39,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/builtin_entries.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -218,6 +222,10 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (!glueData_.exception_.IsHole()) {
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
+
+    auto num = static_cast<size_t>(BuiltinType::NUMBER_OF_BUILTINS);
+    rangeVisitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.builtinEntries_.builtin_[0])),
+        ObjectSlot(ToUintPtr(&glueData_.builtinEntries_.builtin_[num - 1])));
 
     EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
@@ -748,4 +756,30 @@ Area *JSThread::GetOrCreateRegExpCache()
     }
     return regExpCache_;
 }
+
+void JSThread::InitializeBuiltinObject(const std::string& key)
+{
+    BuiltinIndex builtins_;
+    auto index = builtins_.GetBuiltinIndex(key);
+    ASSERT(index != BuiltinIndex::NOT_FOUND);
+    auto globalObject = GetEcmaVM()->GetGlobalEnv()->GetGlobalObject();
+    auto jsObject = JSHandle<JSObject>(this, globalObject);
+    auto box = jsObject->GetGlobalPropertyBox(this, key);
+    if (box == nullptr) {
+        return;
+    }
+    auto entry = glueData_.builtinEntries_.builtin_[index];
+    entry.box_ = JSTaggedValue::Cast(box);
+    auto builtin = JSHandle<JSObject>(this, box->GetValue());
+    auto hclass = builtin->GetJSHClass();
+    entry.hClass_ = JSTaggedValue::Cast(hclass);
+}
+
+#define INITIALIZE_BUILTIN_OBJECT(name, type)   \
+    InitializeBuiltinObject(name);
+void JSThread::InitializeBuiltinObject()
+{
+    BUILTIN_LIST(INITIALIZE_BUILTIN_OBJECT)
+}
+#undef INITIALIZE_BUILTIN_OBJECT
 }  // namespace panda::ecmascript

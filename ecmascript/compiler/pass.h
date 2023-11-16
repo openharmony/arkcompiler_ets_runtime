@@ -298,8 +298,12 @@ public:
         TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, data->GetMethodName());
+        TypeBytecodeLowering lowering(data->GetCircuit(),
+                                      data->GetPassContext(),
+                                      enableLog,
+                                      enableTypeLog,
+                                      data->GetMethodName(),
+                                      passOptions->EnableLoweringBuiltin());
         bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -352,9 +356,13 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypeHCRLowering lowering(data->GetCircuit(), &visitor,
-                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
-                                 data->GetPassOptions()->EnableOptOnHeapCheck());
+        TypeHCRLowering lowering(data->GetCircuit(),
+                                 &visitor,
+                                 data->GetCompilerConfig(),
+                                 data->GetTSManager(),
+                                 &chunk,
+                                 data->GetPassOptions()->EnableOptOnHeapCheck(),
+                                 passOptions->EnableLoweringBuiltin());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("TypeHCRLowering");

@@ -15,18 +15,19 @@
 
 #include "ecmascript/compiler/type_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
-#include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
 GateRef TypeHCRLowering::VisitGate(GateRef gate)
 {
@@ -144,6 +145,11 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_CONSTRUCTOR:
             LowerArrayConstructor(gate, glue);
+            break;
+        case OpCode::LOAD_BUILTIN_OBJECT:
+            if (enableLoweringBuiltin_) {
+                LowerLoadBuiltinObject(gate);
+            }
             break;
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
             LowerObjectConstructorCheck(gate, glue);
@@ -2137,5 +2143,20 @@ void TypeHCRLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate
     StateDepend success(ifFalse, sDepend);
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
+}
+
+void TypeHCRLowering::LowerLoadBuiltinObject(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef glue = acc_.GetGlueFromArgList();
+    auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
+    auto boxOffset = builtinEntriesOffset + acc_.GetIndex(gate);
+    GateRef box = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, boxOffset);
+    GateRef builtin = builder_.LoadConstOffset(VariableType::JS_POINTER(), box, PropertyBox::VALUE_OFFSET);
+    auto frameState = GetFrameState(gate);
+    auto isHole = builder_.TaggedIsHole(builtin);
+    // 更新 globalThis 上属性的 attribute 和 value 的时候，会重新 new PropertyBox() 导致老的老的 Box 被弃用，从老的 Box 读取会错误，所以得 deopt
+    builder_.DeoptCheck(isHole, frameState, DeoptType::LOADBUILTINOBJECTFAIL);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builtin);
 }
 }  // namespace panda::ecmascript::kungfu
