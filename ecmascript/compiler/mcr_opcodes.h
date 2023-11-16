@@ -80,7 +80,7 @@ namespace panda::ecmascript::kungfu {
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
     V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \
-    V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::NO_WRITE,  1, 1, 0)
+    V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                       \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)
