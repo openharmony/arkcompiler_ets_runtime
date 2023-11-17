@@ -258,7 +258,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "COWArray[");
         case JSType::HCLASS:
             return GetString("HiddenClass");
-        case JSType::LINKED_NODE:     
+        case JSType::LINKED_NODE:
             return GetString("LinkedNode");
         case JSType::TRACK_INFO:
             return GetString("TrackInfo");
