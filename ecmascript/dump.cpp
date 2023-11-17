@@ -1038,7 +1038,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::LINKED_NODE:
             LinkedNode::Cast(obj)->Dump(os);
-			return;
+            break;
         case JSType::RB_TREENODE:
             break;
         case JSType::JS_API_HASH_MAP:
