@@ -42,6 +42,7 @@
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/platform/log.h"
+#include "ecmascript/global_index_map.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -748,6 +749,8 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
+
     if (moduleManager_) {
         moduleManager_->Iterate(v);
     }
