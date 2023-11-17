@@ -3039,7 +3039,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
         GateRef elements = GetElementsArray(receiver);
         Label isDicMode(env);
         Label notDicMode(env);
-        Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+        Branch(IsDictionaryElement(hclass), &isDicMode, &notDicMode);
         Bind(&isDicMode);
         {
             GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
