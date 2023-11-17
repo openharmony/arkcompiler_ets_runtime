@@ -1037,6 +1037,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             TSNamespaceType::Cast(obj)->Dump(os);
             break;
         case JSType::LINKED_NODE:
+            LinkedNode::Cast(obj)->Dump(os);
+			return;
         case JSType::RB_TREENODE:
             break;
         case JSType::JS_API_HASH_MAP:
@@ -1520,6 +1522,13 @@ void Program::Dump(std::ostream &os) const
 {
     os << " - MainFunction: ";
     GetMainFunction().Dump(os);
+    os << "\n";
+}
+
+void LinkedNode::Dump(std::ostream &os) const
+{
+    os << " - Next: ";
+    
     os << "\n";
 }
 
@@ -4051,6 +4060,8 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             JSAPIArrayListIterator::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::LINKED_NODE:
+            LinkedNode::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::RB_TREENODE:
             return;
         case JSType::JS_API_HASH_MAP:
@@ -4498,6 +4509,11 @@ void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("MainFunction"), GetMainFunction());
+}
+
+void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Next"), GetNext());
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5378,6 +5394,10 @@ void MachineCode::DumpForSnapshot(std::vector<Reference> &vec) const
 void TrackInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back("ElementsKind", JSTaggedValue(static_cast<uint32_t>(GetElementsKind())));
+    
+    vec.emplace_back(CString("CachedHClass"), GetCachedHClass());
+    vec.emplace_back(CString("CachedFunc"), GetCachedFunc());
+    vec.emplace_back(CString("ArrayLength"), JSTaggedValue(GetArrayLength()));
 }
 
 void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const
