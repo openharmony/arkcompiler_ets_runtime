@@ -26,10 +26,10 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
             const std::vector<uint64_t> &litecgCallSiteInfo = elem.second;
             LLVMStackMapType::CallSiteInfo llvmCallSiteInfo;
             // parse std::vector<uint64_t>
-            for (size_t i = 0; i < litecgCallSiteInfo.size(); i += 2) {
+            for (size_t i = 0; i < litecgCallSiteInfo.size(); i += 2) { // add 2 each time for kind and value
                 uint64_t kind = litecgCallSiteInfo[i];
                 uint64_t value = litecgCallSiteInfo[i + 1];
-                if (kind == 2) { // register
+                if (kind == 2) {  // kind is 2 means register
                     llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
                 } else if (kind == 1) { // stack
                     llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));
@@ -38,7 +38,7 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
                     UNREACHABLE();
                 }
 
-                if (kind == 2) { // register
+                if (kind == 2) { // kind is 2 means register
                     llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
                 } else if (kind == 1) { // stack
                     llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));
@@ -58,12 +58,12 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
             const std::vector<uint64_t> &litecgDeoptInfo = elem.second;
             LLVMStackMapType::DeoptInfoType llvmDeoptInfo;
             // parse std::vector<uint64_t>
-            for (size_t i = 0; i < litecgDeoptInfo.size(); i += 3) {
+            for (size_t i = 0; i < litecgDeoptInfo.size(); i += 3) { // add 3 each time for deoptVreg, kind and value
                 uint64_t deoptVreg = litecgDeoptInfo[i];
                 uint64_t kind = litecgDeoptInfo[i + 1];
                 uint64_t value = litecgDeoptInfo[i + 2];
                 llvmDeoptInfo.push_back(static_cast<int32_t>(deoptVreg));
-                if (kind == 2) { // register
+                if (kind == 2) { // kind is 2 means register
                     llvmDeoptInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
                 } else if (kind == 1) { // stack
                     llvmDeoptInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));

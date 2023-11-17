@@ -307,7 +307,7 @@ void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr)
         gate2Expr_[gate] = value;
         return;
     }
-    // TODO: check expr is not agg
+    // check expr is not agg
     BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
     PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
     lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
@@ -317,9 +317,9 @@ void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr)
     gate2Expr_[gate] = value;
 }
 
-Expr LiteCGIRBuilder::GetConstant(GateRef gate)  // 64: bit width
+Expr LiteCGIRBuilder::GetConstant(GateRef gate)
 {
-    std::bitset<64> value = acc_.GetConstantValue(gate);
+    std::bitset<64> value = acc_.GetConstantValue(gate); // 64 for bit width
     auto machineType = acc_.GetMachineType(gate);
     if (machineType == MachineType::ARCH) {
         ASSERT(compCfg_->Is64Bit());
@@ -377,7 +377,6 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::RETURN, &LiteCGIRBuilder::HandleReturn},
         {OpCode::RETURN_VOID, &LiteCGIRBuilder::HandleReturnVoid},
         {OpCode::IF_BRANCH, &LiteCGIRBuilder::HandleBranch},
-        // {OpCode::SWITCH_BRANCH, &LiteCGIRBuilder::HandleSwitch},
         {OpCode::ORDINARY_BLOCK, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_TRUE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_FALSE, &LiteCGIRBuilder::HandleGoto},
@@ -393,15 +392,10 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
         {OpCode::FAST_CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
         {OpCode::CALL, &LiteCGIRBuilder::HandleCall},
-        // {OpCode::BYTECODE_CALL, &LiteCGIRBuilder::HandleBytecodeCall},
-        // {OpCode::DEBUGGER_BYTECODE_CALL, &LiteCGIRBuilder::HandleBytecodeCall},
         {OpCode::BUILTINS_CALL, &LiteCGIRBuilder::HandleCall},
         {OpCode::BUILTINS_CALL_WITH_ARGV, &LiteCGIRBuilder::HandleCall},
-        // {OpCode::ALLOCA, &LiteCGIRBuilder::HandleAlloca},
         {OpCode::ARG, &LiteCGIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LiteCGIRBuilder::HandleConstant},
-        // {OpCode::CONSTSTRING, &LiteCGIRBuilder::HandleConstString},
-        // {OpCode::RELOCATABLE_DATA, &LiteCGIRBuilder::HandleRelocatableData},
         {OpCode::ZEXT, &LiteCGIRBuilder::HandleZExtInt},
         {OpCode::SEXT, &LiteCGIRBuilder::HandleSExtInt},
         {OpCode::TRUNC, &LiteCGIRBuilder::HandleCastIntXToIntY},
@@ -560,10 +554,6 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
         auto e1TypeKind = lmirBuilder_->LiteCGGetTypeKind(e1Type);
         auto e2Type = ConvertLiteCGTypeFromGate(e2);
         if (e1TypeKind == maple::litecg::kLiteCGTypePointer) {
-            // LOG_ECMA(FATAL) << "not supported VectorType in VisitAdd currently";
-            // UNREACHABLE();
-            // result = PointerAdd(e1Value, e2Value, returnType);
-            // Fixme:
             Expr tmp1 = lmirBuilder_->Cvt(e1Type, lmirBuilder_->i64Type, e1Value);
             Expr tmp2 =
                 (e2Type == lmirBuilder_->i64Type) ? e2Value : lmirBuilder_->Cvt(e2Type, lmirBuilder_->i64Type, e2Value);
@@ -685,7 +675,6 @@ void LiteCGIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    // SaveGate2Expr(gate, result);
 }
 
 void LiteCGIRBuilder::HandleBranch(GateRef gate)
@@ -904,10 +893,6 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
     if (!returnVoid) {
         SaveGate2Expr(gate, lmirBuilder_->Regread(returnPregIdx));
     }
-
-    // if (IsLogEnabled()) {
-    //     SetDebugInfo(gate, runtimeCall);
-    // }
 }
 
 void LiteCGIRBuilder::HandleZExtInt(GateRef gate)
@@ -1006,11 +991,6 @@ void LiteCGIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<G
     if (returnVar != nullptr) {
         SaveGate2Expr(gate, lmirBuilder_->Dread(*returnVar));
     }
-
-    // TODO:
-    // if (IsLogEnabled()) {
-    //     SetDebugInfo(gate, runtimeCall);
-    // }
 }
 
 void LiteCGIRBuilder::HandleCall(GateRef gate)
@@ -1130,11 +1110,6 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
     if (!returnVoid) {
         SaveGate2Expr(gate, lmirBuilder_->Regread(returnPregIdx));
     }
-
-    // TODO:
-    // if (IsLogEnabled()) {
-    //     SetDebugInfo(gate, call);
-    // }
 }
 
 void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
@@ -1223,13 +1198,7 @@ bool LiteCGIRBuilder::IsInterpreted() const
 
 Expr LiteCGIRBuilder::CallingFp(bool /*isCaller*/)
 {
-    // TODO:
     ASSERT(!IsInterpreted());
-    // if (IsInterpreted()) {
-    //     return LLVMGetParam(function_, static_cast<unsigned>(InterpreterHandlerInputs::SP));
-    // }
-
-    /* 0:calling 1:its caller */
     Function &func = lmirBuilder_->GetCurFunction();
     return lmirBuilder_->LiteCGGetPregFP(func);
 }
@@ -1387,10 +1356,7 @@ void LiteCGIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     Expr result;
     if (machineType == MachineType::I32) {
         result = lmirBuilder_->SRem(type, e1Value, e2Value);
-    } else if (machineType == MachineType::F64) {
-        // TODO: FRem or SRem ???
-        // result = lmirBuilder_->FRem(type, e1Value, e2Value);
-    } else {
+    } else if (machineType != MachineType::F64) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
@@ -1531,7 +1497,6 @@ void LiteCGIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
         result = lmirBuilder_->Mul(returnType, e1Value, e2Value);
     } else if (machineType == MachineType::F64) {
         result = lmirBuilder_->Mul(returnType, e1Value, e2Value);
-        // result = LLVMBuildFMul(builder_, e1Value, e2Value, "");
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -1577,9 +1542,7 @@ void LiteCGIRBuilder::VisitFloatDiv(GateRef gate, GateRef e1, GateRef e2)
 {
     Expr e1Value = GetExprFromGate(e1);
     Expr e2Value = GetExprFromGate(e2);
-    // TODO:??? Is float operator equals to sint ???
     Expr result = lmirBuilder_->SDiv(ConvertLiteCGTypeFromGate(gate), e1Value, e2Value);
-    // Expr result = LLVMBuildFDiv(builder_, e1Value, e2Value, "");
     SaveGate2Expr(gate, result);
 }
 
@@ -1595,9 +1558,8 @@ void LiteCGIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     auto machineType = acc_.GetMachineType(e1);
     Expr result;
     if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
-        // TODO: ?? I32 or I64 equals to SI in LLVM ??
+        // ?? I32 or I64 equals to SI in LLVM ??
         result = lmirBuilder_->Trunc(ConvertLiteCGTypeFromGate(e1), lmirBuilder_->i64Type, e1Value);
-        // result = LLVMBuildFPToSI(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -1616,7 +1578,7 @@ void LiteCGIRBuilder::HandleAddWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitAddWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // FIXME: need use different symbol name?
+    // need use different symbol name?
     // get return type {i32 res, u1 carry}
     auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
     retType = retType ? retType
@@ -1648,7 +1610,7 @@ void LiteCGIRBuilder::HandleSubWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitSubWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // FIXME: need use different symbol name?
+    // need use different symbol name?
     // get return type {i32 res, u1 carry}
     auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
     retType = retType ? retType
@@ -1680,7 +1642,7 @@ void LiteCGIRBuilder::HandleMulWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitMulWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // FIXME: need use different symbol name?
+    // need use different symbol name?
     // get return type {i32 res, u1 carry}
     auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
     retType = retType ? retType
@@ -1715,8 +1677,6 @@ void LiteCGIRBuilder::VisitSExtInt(GateRef gate, GateRef e1)
     LiteCGType *toType = ConvertLiteCGTypeFromGate(gate);
     Expr result = lmirBuilder_->SExt(fromType, toType, e1Value);
     SaveGate2Expr(gate, result);
-    // TODO: ??? WHY llvm don't need totype ???
-    // Expr result = lmirBuilder_->SExt(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
 }
 
 void LiteCGIRBuilder::HandleSqrt(GateRef gate)
@@ -1868,13 +1828,6 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
                 PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
                 AddPhiDesc(curBBId, desc);
             }
-            // TODO:
-            // BasicBlockImpl *impl = bb->GetImpl<BasicBlockImpl>();
-            // if (impl == nullptr) {
-            //     OPTIONAL_LOG_COMPILER(ERROR) << "VisitPhi failed impl nullptr";
-            //     return;
-            // }
-            // LLVMBasicBlockRef llvmBB = EnsureLBB(bb);  // The llvm bb
         } else {
             PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
             AddPhiDesc(curBBId, desc);
@@ -1913,7 +1866,6 @@ void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector
     }
     Stmt &switchStmt = builder.Done();
     lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), switchStmt);
-    // TODO: 待确认
     lmirBuilder_->AppendBB(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]));
 }
 
@@ -1983,15 +1935,7 @@ void LiteCGIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef>
         SaveGate2Expr(gate, lmirBuilder_->Dread(*returnVar));
     }
 
-    // TODO:
-    // SetGCLeafFunction(call);
-    // LLVMSetTailCall(call, true);
     lmirBuilder_->SetStmtCallConv(callNode, maple::litecg::GHC_Call);
-
-    // TODO：
-    // if (IsLogEnabled()) {
-    //     SetDebugInfo(gate, call);
-    // }
 }
 
 void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
@@ -2012,17 +1956,12 @@ void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
 
     VisitDeoptCheck(gate);
     Expr returnValue = GetExprFromGate(gate);
-
-    // TODO:
-    // if (IsLogEnabled()) {
-    //     SetDebugInfo(gate, returnValue);
-    // }
     lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Return(returnValue));
 }
 
 LiteCGType *LiteCGIRBuilder::GetExperimentalDeoptTy()
 {
-    // TODO: GetTaggedHPtrT() == lmirBuilder_->i64RefType ???
+    // GetTaggedHPtrT() == lmirBuilder_->i64RefType ???
     std::vector<LiteCGType *> paramTys = {lmirBuilder_->i64Type, lmirBuilder_->i64RefType, lmirBuilder_->i64RefType};
     LiteCGType *functionType = lmirBuilder_->CreateFuncType(paramTys, lmirBuilder_->i64RefType, false);
     return functionType;
@@ -2351,9 +2290,6 @@ LiteCGType *LiteCGIRBuilder::GetMachineRepType(MachineRep rep) const
             dstType = lmirBuilder_->i64RefType;
             break;
         case MachineRep::K_META:
-            // TODO: 待实现
-            // dstType = LLVMMetadataTypeInContext(context_);
-
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
