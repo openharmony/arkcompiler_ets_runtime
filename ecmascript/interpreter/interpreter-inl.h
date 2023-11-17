@@ -653,6 +653,9 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     if (thread->IsAsmInterpreter()) {
         // check stack overflow before re-enter asm interpreter
         if (UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
+            // Multi-thread could cause stack-overflow-check failed too,
+            // so check thread here to distinguish it with the actual stack overflow.
+            thread->GetEcmaVM()->CheckThread();
             LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
                             << " limit:" << thread->GetStackLimit();
             if (LIKELY(!thread->HasPendingException())) {
