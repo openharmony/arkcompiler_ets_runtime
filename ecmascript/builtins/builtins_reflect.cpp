@@ -275,7 +275,7 @@ JSTaggedValue BuiltinsReflect::ReflectSet(EcmaRuntimeCallInfo *argv)
     // 1. If Type(target) is not Object, throw a TypeError exception.
     JSHandle<JSTaggedValue> targetVal = GetCallArg(argv, 0);
     if (!targetVal->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Reflect.get target is not object", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Reflect.set target is not object", JSTaggedValue::Exception());
     }
     // 2. Let key be ? ToPropertyKey(propertyKey).
     JSHandle<JSTaggedValue> key = JSTaggedValue::ToPropertyKey(thread, GetCallArg(argv, 1));
@@ -284,10 +284,10 @@ JSTaggedValue BuiltinsReflect::ReflectSet(EcmaRuntimeCallInfo *argv)
     // 3. If receiver is not present, then
     //     a. Set receiver to target.
     // 4. Return ? target.[[Set]](key, receiver).
-    if (argv->GetArgsNumber() == 3) {  // 3: 3 means that there are three args in total
+    if (argv->GetArgsNumber() <= BuiltinsBase::ArgsPosition::FOURTH) {
         return GetTaggedBoolean(JSTaggedValue::SetProperty(thread, targetVal, key, value));
     }
-    JSHandle<JSTaggedValue> receiver = GetCallArg(argv, 3);  // 3: 3 means the third arg
+    JSHandle<JSTaggedValue> receiver = GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     return GetTaggedBoolean(JSTaggedValue::SetProperty(thread, targetVal, key, value, receiver));
 }
 
