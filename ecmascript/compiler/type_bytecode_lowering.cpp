@@ -424,8 +424,9 @@ bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef 
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
-    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
-    if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
+    if (sampleType->IsString()) {
+        return true;
+    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
         return true;
     }
     return false;

@@ -329,11 +329,12 @@ bool GateAccessor::HasNumberType(GateRef gate) const
 
 bool GateAccessor::HasStringType(GateRef gate) const
 {
-    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
     GateType leftType = GetLeftType(gate);
     GateType rightType = GetRightType(gate);
     const PGOSampleType *sampleType = TryGetPGOType(gate).GetPGOSampleType();
-    if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
+    if (sampleType->IsString()) {
+        return true;
+    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
         return true;
     }
     return false;
