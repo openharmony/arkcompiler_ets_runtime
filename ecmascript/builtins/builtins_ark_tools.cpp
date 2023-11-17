@@ -326,6 +326,19 @@ JSTaggedValue BuiltinsArkTools::IsPrototype(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(objHclass->IsPrototype());
 }
 
+// It is used to check whether a function is aot compiled.
+JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
+    Method *method = func->GetCallTarget();
+    return JSTaggedValue(method->IsAotWithCallField());
+}
+
 JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

@@ -298,8 +298,8 @@ public:
         TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        TypeBytecodeLowering lowering(data->GetCircuit(),
-                                      data->GetPassContext(),
+        Chunk chunk(data->GetNativeAreaAllocator());
+        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
                                       enableLog,
                                       enableTypeLog,
                                       data->GetMethodName(),
@@ -308,7 +308,6 @@ public:
         if (!success) {
             data->MarkAsTypeAbort();
         }
-        Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,

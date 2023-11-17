@@ -954,7 +954,7 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
         return result;
     }
 
-    // not fuond
+    // not found
     result.SetIsFound(false);
     return result;
 }

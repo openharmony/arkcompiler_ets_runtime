@@ -536,4 +536,20 @@ void CircuitBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isE
     bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
     Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
 }
+
+GateRef CircuitBuilder::OrdinaryHasInstance(GateRef obj, GateRef target)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef frameState = acc_.FindNearestFrameState(currentDepend);
+    auto ret = GetCircuit()->NewGate(circuit_->OrdinaryHasInstance(),
+                                     MachineType::I64,
+                                     {currentControl, currentDepend, obj, target, frameState},
+                                     GateType::TaggedNPointer());
+    acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
 }

@@ -30,6 +30,7 @@ class TypeBytecodeLowering {
 public:
     TypeBytecodeLowering(Circuit* circuit,
                          PassContext* ctx,
+                         Chunk* chunk,
                          bool enableLog,
                          bool enableTypeLog,
                          const std::string& name,
@@ -39,6 +40,7 @@ public:
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
+          chunk_(chunk),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
@@ -150,6 +152,7 @@ private:
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
     void LowerTypedTypeOf(GateRef gate);
+    void LowerInstanceOf(GateRef gate);
     void LowerGetIterator(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
@@ -184,6 +187,7 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
 
+    void FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types);
     void AddProfiling(GateRef gate);
 
     bool Uncheck() const
@@ -196,6 +200,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
+    Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
     bool profiling_ {false};

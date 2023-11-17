@@ -635,6 +635,12 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
+            // Others
+            case EcmaOpcode::INSTANCEOF_IMM8_V8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpInstanceof(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             default:
                 break;
@@ -1068,6 +1074,37 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }
 
+void PGOProfiler::DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+{
+    JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
+    if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
+        return;
+    }
+    if (firstValue.IsWeak()) {
+        TaggedObject *object = firstValue.GetWeakReferentUnChecked();
+        if (object->GetClass()->IsHClass()) {
+            JSHClass *hclass = JSHClass::Cast(object);
+            // Since pgo does not support symbol, we choose to return if hclass having @@hasInstance
+            JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+            JSTaggedValue key = env->GetHasInstanceSymbol().GetTaggedValue();
+            JSHClass *functionPrototypeHC = JSObject::Cast(env->GetFunctionPrototype().GetTaggedValue())->GetClass();
+            JSTaggedValue foundHClass = TryFindKeyInPrototypeChain(object, hclass, key);
+            if (!foundHClass.IsUndefined() && JSHClass::Cast(foundHClass.GetTaggedObject()) != functionPrototypeHC) {
+                return;
+            }
+            AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
+        }
+        return;
+    }
+    // Poly Not Consider now
+    return;
+}
+
 void PGOProfiler::UpdateLayout(JSHClass *hclass)
 {
     auto rootHClass = JSTaggedType(JSHClass::FindRootHClass(hclass));
@@ -1409,5 +1446,31 @@ void PGOProfiler::WorkList::Iterate(Callback callback) const
 ProfileType PGOProfiler::CreateRecordProfileType(ApEntityId abcId, ApEntityId classId)
 {
     return {abcId, classId, ProfileType::Kind::RecordClassId};
+}
+
+JSTaggedValue PGOProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key)
+{
+    while (!JSTaggedValue(currHC).IsUndefinedOrNull()) {
+        if (LIKELY(!currHC->IsDictionaryMode())) {
+            int entry = JSHClass::FindPropertyEntry(vm_->GetJSThread(), currHC, key);
+            if (entry != -1) {
+                return JSTaggedValue(currHC);
+            }
+        } else {
+            TaggedArray *array = TaggedArray::Cast(JSObject::Cast(currObj)->GetProperties().GetTaggedObject());
+            ASSERT(array->IsDictionaryMode());
+            NameDictionary *dict = NameDictionary::Cast(array);
+            int entry = dict->FindEntry(key);
+            if (entry != -1) {
+                return JSTaggedValue(currHC);
+            }
+        }
+        currObj = currHC->GetProto().GetTaggedObject();
+        if (JSTaggedValue(currObj).IsUndefinedOrNull()) {
+            break;
+        }
+        currHC = currObj->GetClass();
+    }
+    return JSTaggedValue::Undefined();
 }
 } // namespace panda::ecmascript::pgo
