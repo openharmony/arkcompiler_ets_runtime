@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BUILTIN_ENTRIES_H
 
 #include <atomic>
+#include <cstdint>
 #include <sstream>
 #include <string>
 
@@ -96,6 +97,16 @@ struct BuiltinEntries {
         JSTaggedValue box_ {JSTaggedValue::Hole()};
         JSTaggedValue hClass_ {JSTaggedValue::Hole()};
     } builtin_[COUNT];
+
+    uintptr_t Begin()
+    {
+        return reinterpret_cast<uintptr_t>(builtin_);
+    }
+
+    uintptr_t End()
+    {
+        return reinterpret_cast<uintptr_t>(builtin_ + COUNT);
+    }
 
     static constexpr size_t SizeArch32 = sizeof(uint64_t) * 2 * COUNT;
     static constexpr size_t SizeArch64 = sizeof(uint64_t) * 2 * COUNT;

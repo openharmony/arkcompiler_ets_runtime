@@ -223,9 +223,8 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
 
-    auto num = static_cast<size_t>(BuiltinType::NUMBER_OF_BUILTINS);
-    rangeVisitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.builtinEntries_.builtin_[0])),
-        ObjectSlot(ToUintPtr(&glueData_.builtinEntries_.builtin_[num - 1])));
+    rangeVisitor(
+        Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
     EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
@@ -768,7 +767,7 @@ void JSThread::InitializeBuiltinObject(const std::string& key)
     if (box == nullptr) {
         return;
     }
-    auto entry = glueData_.builtinEntries_.builtin_[index];
+    auto& entry = glueData_.builtinEntries_.builtin_[index];
     entry.box_ = JSTaggedValue::Cast(box);
     auto builtin = JSHandle<JSObject>(this, box->GetValue());
     auto hclass = builtin->GetJSHClass();
