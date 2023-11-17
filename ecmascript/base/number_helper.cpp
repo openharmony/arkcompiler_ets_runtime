@@ -499,7 +499,7 @@ int NumberHelper::StringToInt(const uint8_t *start, const uint8_t *end)
 {
     int num = *start - '0';
     for (int i = 1; i < (end - start); i++) {
-        num = 10 * num + (*(start + i) - '0');
+        num = 10 * num + (*(start + i) - '0'); // 10 : 10 represents the base of the decimal system
     }
     return num;
 }

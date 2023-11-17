@@ -295,7 +295,8 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(),
+            data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
@@ -326,7 +327,8 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(),
+            data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
             enableLog, data->GetMethodName());

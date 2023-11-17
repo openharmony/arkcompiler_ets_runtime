@@ -54,7 +54,7 @@ class FlatStringInfo;
 class EcmaString : public TaggedObject {
     /* Mix Hash Code: --   { 0 | [31 bits raw hash code] }     computed through string
                       \    { 1 | [31 bits integer numbers] }   fastpath for string to number
-    */ 
+    */
 public:
     CAST_CHECK(EcmaString, IsString);
 

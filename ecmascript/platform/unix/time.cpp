@@ -46,7 +46,8 @@ bool IsDst(int64_t timeMs)
     time_t tv = timeMs;
     struct tm tm {
     };
-    struct tm *t = localtime_r(&tv, &tm);
-    return t->tm_isdst;
+    struct tm *t = nullptr;
+    t = localtime_r(&tv, &tm);
+    return (t != nullptr) && t->tm_isdst;
 }
 }  // namespace panda::ecmascript

@@ -1570,7 +1570,7 @@ void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 }
 
 void TypeBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                                         BuiltinsStubCSigns::ID id, bool isThrow)
+    BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
@@ -1793,7 +1793,7 @@ bool TypeBytecodeLowering::CanOptimizeAsFastCall(GateRef func)
 }
 
 void TypeBytecodeLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;

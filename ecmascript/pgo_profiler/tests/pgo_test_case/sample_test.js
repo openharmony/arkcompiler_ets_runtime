@@ -26,9 +26,9 @@ class Test {
 
 let a = new Test(1, 2, 3);
 
-function foo1(p) { return p.x }
-function foo2(p) { return p.y }
-function foo3(p) { return p.z }
+function foo1(p) { return p.x };
+function foo2(p) { return p.y };
+function foo3(p) { return p.z };
 
 for (let i = 0; i < 5; i++) {
   foo1(a);

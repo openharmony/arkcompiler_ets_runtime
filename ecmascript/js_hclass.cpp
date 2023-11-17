@@ -1168,7 +1168,7 @@ bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeD
     }
 
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
-    int rootPropLen = rootDesc->NumOfProps();
+    int rootPropLen = static_cast<size_t>(rootDesc->NumOfProps());
     int element = static_cast<int>(hclass->NumberOfProps());
     ASSERT(element >= rootPropLen);
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
