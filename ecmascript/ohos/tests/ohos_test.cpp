@@ -118,6 +118,20 @@ HWTEST_F_L0(OhosTest, AotWhiteListTest)
     rmdir(whiteListTestDir);
 }
 
+HWTEST_F_L0(OhosTest, AotWhiteListPassBy)
+{
+    const char *whiteListName = "ohos-AotWhiteListPassBy/app_aot_white_list.conf";
+    std::string bundleScope = "com.bundle.scope.test";
+    std::string moduleScope = "com.module.scope.test";
+
+    auto helper = std::make_unique<WhiteListHelper>(whiteListName);
+    ASSERT_TRUE(helper->IsEnable(bundleScope));
+    ASSERT_TRUE(helper->IsEnable(bundleScope, "entry"));
+    ASSERT_TRUE(helper->IsEnable(moduleScope, "entry"));
+    ASSERT_TRUE(helper->IsEnable(moduleScope, "entry1"));
+    ASSERT_TRUE(helper->IsEnable(moduleScope, "entryCommentNotExist"));
+}
+
 HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
 {
     const char *pgoDir = "ohos-OhosPkgArgsParse";
