@@ -134,6 +134,7 @@ group("ark_js_moduletest") {
     "esmnestedimportcjs",
     "regexp",
     "deregistermodule",
+    "getpropertybyic",
   ]
 
   deps = []
@@ -264,6 +265,7 @@ group("ark_asm_test") {
     "yieldstar",
     "regexp",
     "deregistermodule",
+    "getpropertybyic",
   ]
 
   deps = []
@@ -381,6 +383,7 @@ group("ark_asm_single_step_test") {
     "watch",
     "weakcollectionswithsymbol",
     "yieldstar",
+    "getpropertybyic",
   ]
 
   deps = []
