@@ -26,10 +26,11 @@
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
-#include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
 
-#include "libpandabase/macros.h"
+#ifndef NDEBUG
+#include "libpandabase/utils/debug.h"
+#endif
 
 #ifdef ERROR
 #undef ERROR
@@ -99,8 +100,26 @@ static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
     className(className &&) = delete; \
     className &operator=(className &&) = delete
 
+#ifdef PANDA_TARGET_WINDOWS
+#define ECMA_PUBLIC_API __declspec(dllexport)
+#else
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ECMA_PUBLIC_API __attribute__((visibility ("default")))
+#endif
+
+#ifndef NDEBUG
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ECMA_ASSERT(cond) \
+    if (!(cond)) { \
+        panda::debug::AssertionFail(#cond, __FILE__, __LINE__, __FUNCTION__); \
+    }
+#else
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ECMA_ASSERT(cond) static_cast<void>(0)
+#endif
+
 template<typename T>
-class PUBLIC_API Local {  // NOLINT(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
+class ECMA_PUBLIC_API Local {  // NOLINT(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
 public:
     inline Local() = default;
 
@@ -159,7 +178,7 @@ private:
  *        a value passing return value and so on.
  */
 template<typename T>
-class PUBLIC_API CopyableGlobal {
+class ECMA_PUBLIC_API CopyableGlobal {
 public:
     inline CopyableGlobal() = default;
     ~CopyableGlobal()
@@ -261,7 +280,7 @@ private:
 };
 
 template<typename T>
-class PUBLIC_API Global {  // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions
+class ECMA_PUBLIC_API Global {  // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions
 public:
     inline Global() = default;
 
@@ -350,7 +369,7 @@ private:
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
-class PUBLIC_API LocalScope {
+class ECMA_PUBLIC_API LocalScope {
 public:
     explicit LocalScope(const EcmaVM *vm);
     virtual ~LocalScope();
@@ -365,7 +384,7 @@ private:
     void *thread_ = nullptr;
 };
 
-class PUBLIC_API EscapeLocalScope final : public LocalScope {
+class ECMA_PUBLIC_API EscapeLocalScope final : public LocalScope {
 public:
     explicit EscapeLocalScope(const EcmaVM *vm);
     ~EscapeLocalScope() override = default;
@@ -376,7 +395,7 @@ public:
     template<typename T>
     inline Local<T> Escape(Local<T> current)
     {
-        ASSERT(!alreadyEscape_);
+        ECMA_ASSERT(!alreadyEscape_);
         alreadyEscape_ = true;
         *(reinterpret_cast<T *>(escapeHandle_)) = **current;
         return Local<T>(escapeHandle_);
@@ -387,7 +406,7 @@ private:
     uintptr_t escapeHandle_ = 0U;
 };
 
-class PUBLIC_API JSExecutionScope {
+class ECMA_PUBLIC_API JSExecutionScope {
 public:
     explicit JSExecutionScope(const EcmaVM *vm);
     ~JSExecutionScope();
@@ -399,7 +418,7 @@ private:
     bool isRevert_ = false;
 };
 
-class PUBLIC_API JSValueRef {
+class ECMA_PUBLIC_API JSValueRef {
 public:
     static Local<PrimitiveRef> Undefined(const EcmaVM *vm);
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
@@ -520,19 +539,19 @@ private:
     friend class Local;
 };
 
-class PUBLIC_API PrimitiveRef : public JSValueRef {
+class ECMA_PUBLIC_API PrimitiveRef : public JSValueRef {
 public:
     Local<JSValueRef> GetValue(const EcmaVM *vm);
 };
 
-class PUBLIC_API IntegerRef : public PrimitiveRef {
+class ECMA_PUBLIC_API IntegerRef : public PrimitiveRef {
 public:
     static Local<IntegerRef> New(const EcmaVM *vm, int input);
     static Local<IntegerRef> NewFromUnsigned(const EcmaVM *vm, unsigned int input);
     int Value();
 };
 
-class PUBLIC_API NumberRef : public PrimitiveRef {
+class ECMA_PUBLIC_API NumberRef : public PrimitiveRef {
 public:
     static Local<NumberRef> New(const EcmaVM *vm, double input);
     static Local<NumberRef> New(const EcmaVM *vm, int32_t input);
@@ -542,7 +561,7 @@ public:
     double Value();
 };
 
-class PUBLIC_API BigIntRef : public PrimitiveRef {
+class ECMA_PUBLIC_API BigIntRef : public PrimitiveRef {
 public:
     static Local<BigIntRef> New(const EcmaVM *vm, uint64_t input);
     static Local<BigIntRef> New(const EcmaVM *vm, int64_t input);
@@ -553,13 +572,13 @@ public:
     uint32_t GetWordsArraySize();
 };
 
-class PUBLIC_API BooleanRef : public PrimitiveRef {
+class ECMA_PUBLIC_API BooleanRef : public PrimitiveRef {
 public:
     static Local<BooleanRef> New(const EcmaVM *vm, bool input);
     bool Value();
 };
 
-class PUBLIC_API StringRef : public PrimitiveRef {
+class ECMA_PUBLIC_API StringRef : public PrimitiveRef {
 public:
     static inline StringRef *Cast(JSValueRef *value)
     {
@@ -577,14 +596,14 @@ public:
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
 };
 
-class PUBLIC_API SymbolRef : public PrimitiveRef {
+class ECMA_PUBLIC_API SymbolRef : public PrimitiveRef {
 public:
     static Local<SymbolRef> New(const EcmaVM *vm, Local<StringRef> description = Local<StringRef>());
     Local<StringRef> GetDescription(const EcmaVM *vm);
 };
 
 using NativePointerCallback = void (*)(void* value, void* hint);
-class PUBLIC_API NativePointerRef : public JSValueRef {
+class ECMA_PUBLIC_API NativePointerRef : public JSValueRef {
 public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack,
@@ -593,7 +612,7 @@ public:
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
-class PUBLIC_API PropertyAttribute {
+class ECMA_PUBLIC_API PropertyAttribute {
 public:
     static PropertyAttribute Default()
     {
@@ -708,7 +727,7 @@ private:
     bool hasConfigurable_ = false;
 };
 
-class PUBLIC_API ObjectRef : public JSValueRef {
+class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
     static inline ObjectRef *Cast(JSValueRef *value)
     {
@@ -753,7 +772,7 @@ public:
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
-class PUBLIC_API FunctionRef : public ObjectRef {
+class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
@@ -776,7 +795,7 @@ public:
     void* GetData(const EcmaVM *vm);
 };
 
-class PUBLIC_API ArrayRef : public ObjectRef {
+class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
@@ -784,7 +803,7 @@ public:
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
 };
 
-class PUBLIC_API PromiseRef : public ObjectRef {
+class ECMA_PUBLIC_API PromiseRef : public ObjectRef {
 public:
     Local<PromiseRef> Catch(const EcmaVM *vm, Local<FunctionRef> handler);
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> handler);
@@ -792,7 +811,7 @@ public:
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> onFulfilled, Local<FunctionRef> onRejected);
 };
 
-class PUBLIC_API PromiseCapabilityRef : public ObjectRef {
+class ECMA_PUBLIC_API PromiseCapabilityRef : public ObjectRef {
 public:
     static Local<PromiseCapabilityRef> New(const EcmaVM *vm);
     bool Resolve(const EcmaVM *vm, Local<JSValueRef> value);
@@ -800,7 +819,7 @@ public:
     Local<PromiseRef> GetPromise(const EcmaVM *vm);
 };
 
-class PUBLIC_API ArrayBufferRef : public ObjectRef {
+class ECMA_PUBLIC_API ArrayBufferRef : public ObjectRef {
 public:
     static Local<ArrayBufferRef> New(const EcmaVM *vm, int32_t length);
     static Local<ArrayBufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
@@ -813,7 +832,7 @@ public:
     bool IsDetach();
 };
 
-class PUBLIC_API BufferRef : public ObjectRef {
+class ECMA_PUBLIC_API BufferRef : public ObjectRef {
 public:
     static Local<BufferRef> New(const EcmaVM *vm, int32_t length);
     static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
@@ -824,7 +843,7 @@ public:
     static ecmascript::JSTaggedValue BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 
-class PUBLIC_API DataViewRef : public ObjectRef {
+class ECMA_PUBLIC_API DataViewRef : public ObjectRef {
 public:
     static Local<DataViewRef> New(const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset,
                                   uint32_t byteLength);
@@ -833,7 +852,7 @@ public:
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
 };
 
-class PUBLIC_API TypedArrayRef : public ObjectRef {
+class ECMA_PUBLIC_API TypedArrayRef : public ObjectRef {
 public:
     uint32_t ByteLength(const EcmaVM *vm);
     uint32_t ByteOffset(const EcmaVM *vm);
@@ -841,69 +860,69 @@ public:
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
 };
 
-class PUBLIC_API Int8ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Int8ArrayRef : public TypedArrayRef {
 public:
     static Local<Int8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
-class PUBLIC_API Uint8ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Uint8ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
-class PUBLIC_API Uint8ClampedArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Uint8ClampedArrayRef : public TypedArrayRef {
 public:
     static Local<Uint8ClampedArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                            int32_t length);
 };
 
-class PUBLIC_API Int16ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Int16ArrayRef : public TypedArrayRef {
 public:
     static Local<Int16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
-class PUBLIC_API Uint16ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Uint16ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                      int32_t length);
 };
 
-class PUBLIC_API Int32ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Int32ArrayRef : public TypedArrayRef {
 public:
     static Local<Int32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
 };
 
-class PUBLIC_API Uint32ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Uint32ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                      int32_t length);
 };
 
-class PUBLIC_API Float32ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Float32ArrayRef : public TypedArrayRef {
 public:
     static Local<Float32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
-class PUBLIC_API Float64ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API Float64ArrayRef : public TypedArrayRef {
 public:
     static Local<Float64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
-class PUBLIC_API BigInt64ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API BigInt64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigInt64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
-class PUBLIC_API BigUint64ArrayRef : public TypedArrayRef {
+class ECMA_PUBLIC_API BigUint64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigUint64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
-class PUBLIC_API RegExpRef : public ObjectRef {
+class ECMA_PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
     std::string GetOriginalFlags();
@@ -915,21 +934,21 @@ public:
     Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
-class PUBLIC_API DateRef : public ObjectRef {
+class ECMA_PUBLIC_API DateRef : public ObjectRef {
 public:
     static Local<DateRef> New(const EcmaVM *vm, double time);
     Local<StringRef> ToString(const EcmaVM *vm);
     double GetTime();
 };
 
-class PUBLIC_API ProxyRef : public ObjectRef {
+class ECMA_PUBLIC_API ProxyRef : public ObjectRef {
 public:
     Local<JSValueRef> GetHandler(const EcmaVM *vm);
     Local<JSValueRef> GetTarget(const EcmaVM *vm);
     bool IsRevoked();
 };
 
-class PUBLIC_API MapRef : public ObjectRef {
+class ECMA_PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
     int32_t GetTotalElements();
@@ -940,7 +959,7 @@ public:
     void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
 };
 
-class PUBLIC_API WeakMapRef : public ObjectRef {
+class ECMA_PUBLIC_API WeakMapRef : public ObjectRef {
 public:
     int32_t GetSize();
     int32_t GetTotalElements();
@@ -948,66 +967,66 @@ public:
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
 };
 
-class PUBLIC_API SetRef : public ObjectRef {
+class ECMA_PUBLIC_API SetRef : public ObjectRef {
 public:
     int32_t GetSize();
     int32_t GetTotalElements();
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
 };
 
-class PUBLIC_API WeakSetRef : public ObjectRef {
+class ECMA_PUBLIC_API WeakSetRef : public ObjectRef {
 public:
     int32_t GetSize();
     int32_t GetTotalElements();
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
 };
 
-class PUBLIC_API MapIteratorRef : public ObjectRef {
+class ECMA_PUBLIC_API MapIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
 };
 
-class PUBLIC_API SetIteratorRef : public ObjectRef {
+class ECMA_PUBLIC_API SetIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
 };
 
-class PUBLIC_API GeneratorFunctionRef : public ObjectRef {
+class ECMA_PUBLIC_API GeneratorFunctionRef : public ObjectRef {
 public:
     bool IsGenerator();
 };
 
-class PUBLIC_API GeneratorObjectRef : public ObjectRef {
+class ECMA_PUBLIC_API GeneratorObjectRef : public ObjectRef {
 public:
     Local<JSValueRef> GetGeneratorState(const EcmaVM *vm);
     Local<JSValueRef> GetGeneratorFunction(const EcmaVM *vm);
     Local<JSValueRef> GetGeneratorReceiver(const EcmaVM *vm);
 };
 
-class PUBLIC_API CollatorRef : public ObjectRef {
+class ECMA_PUBLIC_API CollatorRef : public ObjectRef {
 public:
     Local<JSValueRef> GetCompareFunction(const EcmaVM *vm);
 };
 
-class PUBLIC_API DataTimeFormatRef : public ObjectRef {
+class ECMA_PUBLIC_API DataTimeFormatRef : public ObjectRef {
 public:
     Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
 };
 
-class PUBLIC_API NumberFormatRef : public ObjectRef {
+class ECMA_PUBLIC_API NumberFormatRef : public ObjectRef {
 public:
     Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
 };
 
-class PUBLIC_API JSON {
+class ECMA_PUBLIC_API JSON {
 public:
     static Local<JSValueRef> Parse(const EcmaVM *vm, Local<StringRef> string);
     static Local<JSValueRef> Stringify(const EcmaVM *vm, Local<JSValueRef> json);
 };
 
-class PUBLIC_API Exception {
+class ECMA_PUBLIC_API Exception {
 public:
     static Local<JSValueRef> Error(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> RangeError(const EcmaVM *vm, Local<StringRef> message);
@@ -1022,10 +1041,10 @@ public:
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
 
-class PUBLIC_API RuntimeOption {
+class ECMA_PUBLIC_API RuntimeOption {
 public:
-    enum class PUBLIC_API GC_TYPE : uint8_t { EPSILON, GEN_GC, STW };
-    enum class PUBLIC_API LOG_LEVEL : uint8_t {
+    enum class ECMA_PUBLIC_API GC_TYPE : uint8_t { EPSILON, GEN_GC, STW };
+    enum class ECMA_PUBLIC_API LOG_LEVEL : uint8_t {
         DEBUG = 3,
         INFO = 4,
         WARN = 5,
@@ -1151,7 +1170,7 @@ private:
                 gcType = "epsilon";
                 break;
             default:
-                UNREACHABLE();
+                break;
         }
         return gcType;
     }
@@ -1269,9 +1288,9 @@ private:
     friend JSNApi;
 };
 
-class PUBLIC_API PromiseRejectInfo {
+class ECMA_PUBLIC_API PromiseRejectInfo {
 public:
-    enum class PUBLIC_API PROMISE_REJECTION_EVENT : uint32_t { REJECT = 0, HANDLE };
+    enum class ECMA_PUBLIC_API PROMISE_REJECTION_EVENT : uint32_t { REJECT = 0, HANDLE };
     PromiseRejectInfo(Local<JSValueRef> promise, Local<JSValueRef> reason,
                       PromiseRejectInfo::PROMISE_REJECTION_EVENT operation, void* data);
     ~PromiseRejectInfo() {}
@@ -1290,7 +1309,7 @@ private:
 /**
  * An external exception handler.
  */
-class PUBLIC_API TryCatch {
+class ECMA_PUBLIC_API TryCatch {
 public:
     explicit TryCatch(const EcmaVM *ecmaVm) : ecmaVm_(ecmaVm) {};
 
@@ -1303,8 +1322,8 @@ public:
     void Rethrow();
     Local<ObjectRef> GetAndClearException();
 
-    NO_COPY_SEMANTIC(TryCatch);
-    NO_MOVE_SEMANTIC(TryCatch);
+    ECMA_DISALLOW_COPY(TryCatch);
+    ECMA_DISALLOW_MOVE(TryCatch);
 
 private:
     // Disable dynamic allocation
@@ -1317,7 +1336,7 @@ private:
     bool rethrow_ {false};
 };
 
-class PUBLIC_API JSNApi {
+class ECMA_PUBLIC_API JSNApi {
 public:
     struct DebugOption {
         const char *libraryPath;
@@ -1328,7 +1347,7 @@ public:
 
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
-    enum class PUBLIC_API TRIGGER_GC_TYPE : uint8_t { SEMI_GC, OLD_GC, FULL_GC };
+    enum class ECMA_PUBLIC_API TRIGGER_GC_TYPE : uint8_t { SEMI_GC, OLD_GC, FULL_GC };
 
     enum class PatchErrorCode : uint8_t {
         SUCCESS = 0,
@@ -1493,10 +1512,10 @@ private:
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
-class PUBLIC_API JsiRuntimeCallInfo : public ecmascript::base::AlignedStruct<ecmascript::base::AlignedPointer::Size(),
-                                                                             ecmascript::base::AlignedPointer,
-                                                                             ecmascript::base::AlignedPointer,
-                                                                             ecmascript::base::AlignedPointer> {
+class ECMA_PUBLIC_API JsiRuntimeCallInfo : public ecmascript::base::AlignedStruct<ecmascript::base::AlignedPointer::Size(),
+                                                                                  ecmascript::base::AlignedPointer,
+                                                                                  ecmascript::base::AlignedPointer,
+                                                                                  ecmascript::base::AlignedPointer> {
     enum class Index : size_t {
         ThreadIndex = 0,
         NumArgsIndex,
@@ -1564,7 +1583,7 @@ private:
     friend class FunctionRef;
 };
 
-class PUBLIC_API FunctionCallScope {
+class ECMA_PUBLIC_API FunctionCallScope {
 public:
     FunctionCallScope(EcmaVM *vm);
     ~FunctionCallScope();
@@ -1614,7 +1633,7 @@ void CopyableGlobal<T>::Copy(const CopyableGlobal &that)
     Free();
     vm_ = that.vm_;
     if (!that.IsEmpty()) {
-        ASSERT(vm_ != nullptr);
+        ECMA_ASSERT(vm_ != nullptr);
         address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
     }
 }
@@ -1626,7 +1645,7 @@ void CopyableGlobal<T>::Copy(const CopyableGlobal<S> &that)
     Free();
     vm_ = that.GetEcmaVM();
     if (!that.IsEmpty()) {
-        ASSERT(vm_ != nullptr);
+        ECMA_ASSERT(vm_ != nullptr);
         address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
     }
 }
@@ -1733,4 +1752,9 @@ Local<T>::Local(const EcmaVM *vm, const Global<T> &current)
     address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
 }
 }  // namespace panda
+
+#undef ECMA_ASSERT
+#undef ECMA_DISALLOW_COPY
+#undef ECMA_DISALLOW_MOVE
+#undef ECMA_PUBLIC_API
 #endif  // ECMASCRIPT_NAPI_INCLUDE_JSNAPI_H
