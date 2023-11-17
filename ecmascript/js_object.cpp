@@ -1051,9 +1051,8 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 2. Let desc be O.[[GetOwnProperty]](P).
-
     ObjectOperator op(thread, JSHandle<JSTaggedValue>(obj), key, OperatorType::OWN);
-
+    
     // 4. If desc is undefined, return true.
     if (!op.IsFound()) {
         return true;
@@ -1100,6 +1099,12 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
                                       const JSHandle<JSTaggedValue> &key, PropertyDescriptor &desc)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
+    JSHandle<TaggedArray> array(thread, obj->GetElements());
+    for (uint32_t i = 0; i < array->GetLength(); i++) {
+        if (array->Get(i).IsHole()) {
+            array->Set(thread, i, JSTaggedValue::Undefined());
+        }
+    }
     ObjectOperator op(thread, JSHandle<JSTaggedValue>(obj), key, OperatorType::OWN);
 
     if (!op.IsFound()) {
