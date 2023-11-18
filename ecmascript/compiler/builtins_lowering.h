@@ -43,10 +43,12 @@ private:
                              bool useLabel = false);
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     GateRef LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerTypedStringify(GateRef gate);
     void LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id);
+    void LowerNumberConstructor(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;

@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/global_env_fields.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 namespace panda::ecmascript::kungfu {
@@ -51,6 +52,17 @@ void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
     const size_t firstStubId = BUILTINS_STUB_ID(NONE) + 1;
     for (size_t i = firstStubId; i < NUM_OF_BUILTINS_STUBS; i++) {
         outCSigns.push_back(&callSigns_[i]);
+    }
+}
+
+size_t BuiltinsStubCSigns::GetGlobalEnvIndex(ID builtinId)
+{
+    switch (builtinId) {
+        case BuiltinsStubCSigns::ID::NumberConstructor:
+            return static_cast<size_t>(GlobalEnvField::NUMBER_FUNCTION_INDEX);
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
 }
 }  // namespace panda::ecmascript::kungfu

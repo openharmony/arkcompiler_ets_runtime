@@ -179,7 +179,7 @@ void PGOTypeInfer::InferCreateArray(GateRef gate)
         return;
     }
 
-    ElementsKind kind = builder_->GetArrayElementsKind(gate);
+    ElementsKind kind = builder_->GetElementsKindForCreater(gate);
     if (Elements::IsGeneric(kind)) {
         return;
     }
@@ -222,10 +222,11 @@ void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
 void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIndex)
 {
     GateType tsType = acc_.GetGateType(receiver);
-    PGORWOpType pgoTypes = builder_->GetPGOType(gate);
+    auto pgoTypes = acc_.TryGetPGOType(gate);
+    const PGORWOpType *pgoRwTypes = pgoTypes.GetPGORWOpType();
 
     CollectedType types(chunk_);
-    helper_.CollectGateType(types, tsType, pgoTypes);
+    helper_.CollectGateType(types, tsType, *pgoRwTypes);
 
     // polymorphism is not currently supported,
     // all types must in the same kind
@@ -239,7 +240,7 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t pr
         prop = tsManager_->GetStringFromConstantPool(propIndex);
     }
     ChunkSet<GateType> inferTypes = helper_.GetInferTypes(chunk_, types, prop);
-    AddProfiler(gate, tsType, pgoTypes, inferTypes);
+    AddProfiler(gate, tsType, *pgoRwTypes, inferTypes);
     if (!IsMonoTypes(inferTypes)) {
         return;
     }
@@ -249,7 +250,7 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t pr
 
 void PGOTypeInfer::TrySetElementsKind(GateRef gate)
 {
-    auto kinds = builder_->LoadElementsKinds(gate);
+    auto kinds = builder_->GetElementsKindsForUser(gate);
     if (kinds.empty()) {
         return;
     }
@@ -260,9 +261,10 @@ void PGOTypeInfer::TrySetElementsKind(GateRef gate)
 
 void PGOTypeInfer::TrySetPropKeyKind(GateRef gate, GateRef propKey)
 {
-    PGORWOpType pgoTypes = builder_->GetPGOType(gate);
+    auto pgoTypes = acc_.TryGetPGOType(gate);
+    const PGORWOpType *pgoRwTypes = pgoTypes.GetPGORWOpType();
     GateType oldType = acc_.GetGateType(propKey);
-    if (oldType.IsAnyType() && IsMonoNumberType(pgoTypes)) {
+    if (oldType.IsAnyType() && IsMonoNumberType(*pgoRwTypes)) {
         acc_.SetGateType(propKey, GateType::NumberType());
     }
 }

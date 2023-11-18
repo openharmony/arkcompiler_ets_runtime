@@ -1606,8 +1606,10 @@ BuiltinsStubCSigns::ID TypeBytecodeLowering::GetPGOBuiltinId(GateRef gate)
     if (sampleType.GetPGOSampleType()->IsNone()) {
         return BuiltinsStubCSigns::ID::NONE;
     }
-    ASSERT(sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId());
-    return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    if (sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId()) {
+        return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    }
+    return BuiltinsStubCSigns::ID::NONE;
 }
 
 void TypeBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
@@ -1692,17 +1694,20 @@ void TypeBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 void TypeBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 1);
-    GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return;
-    }
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateType a0Type = acc_.GetGateType(a0Value);
-    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
+    BuiltinsStubCSigns::ID id = GetPGOBuiltinId(gate);
+    if ((IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType())) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { a0Value }, id, false);
+    } else if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
     } else {
+        GateType funcType = acc_.GetGateType(func);
+        if (!tsManager_->IsFunctionTypeKind(funcType)) {
+            return;
+        }
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
         LowerTypedCall(gate, func, actualArgc, funcType, 1);
@@ -1857,7 +1862,7 @@ void TypeBytecodeLowering::LowerTypedCallthis0(GateRef gate)
         return;
     }
     BuiltinsStubCSigns::ID pgoFuncId = GetPGOBuiltinId(gate);
-    if (pgoFuncId != BuiltinsStubCSigns::ID::NONE) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { thisObj }, pgoFuncId, true);
         return;
@@ -1917,7 +1922,7 @@ void TypeBytecodeLowering::LowerTypedCallthis3(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef func = acc_.GetValueIn(gate, 4); // 4: func
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::STRING, func);
-    if (id == BuiltinsStubCSigns::ID::LocaleCompare) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS3(id)) {
         AddProfiling(gate);
         GateRef thisObj = acc_.GetValueIn(gate, 0);
         GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para

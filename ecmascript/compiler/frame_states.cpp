@@ -23,6 +23,7 @@ FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
     : bcBuilder_(builder),
       tsManager_(builder->GetTSManager()),
       typeRecorder_(builder->GetTypeRecorder()),
+      pgoTypeRecorder_(builder->GetPGOTypeRecorder()),
       numVregs_(literal->GetNumberVRegs() + FIXED_ARGS),
       accumulatorIndex_(literal->GetNumberVRegs() + 1), // 1: acc
       envIndex_(literal->GetNumberVRegs()),
@@ -254,7 +255,7 @@ void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t 
     auto type = typeRecorder_->GetType(bcIndex);
     acc_.SetGateType(gate, type);
     EcmaOpcode opcode = bytecodeInfo.GetOpcode();
-    auto pgoType = typeRecorder_->GetPGOTypeInfo(acc_.TryGetPcOffset(gate), opcode);
+    auto pgoType = pgoTypeRecorder_->GetPGOType(acc_.TryGetPcOffset(gate));
     acc_.TrySetPGOType(gate, pgoType);
 
     auto valueCount = acc_.GetInValueCount(gate);

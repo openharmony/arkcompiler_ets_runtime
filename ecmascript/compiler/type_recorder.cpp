@@ -307,106 +307,12 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
     return type;
 }
 
-ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
-{
-    if (bcOffsetPGODefOpTypeMap_.find(offset) != bcOffsetPGODefOpTypeMap_.end()) {
-        const auto iter = bcOffsetPGODefOpTypeMap_.at(offset);
-        return iter->GetElementsKind();
-    }
-    return ElementsKind::NONE;
-}
-
-PGOTypeRef TypeRecorder::GetOrUpdatePGOType(int32_t offset) const
-{
-    if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
-        return PGOTypeRef(bcOffsetPGOOpTypeMap_.at(offset));
-    } else if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
-        return PGOTypeRef(bcOffsetPGORwTypeMap_.at(offset));
-    } else if (bcOffsetPGODefOpTypeMap_.find(offset) != bcOffsetPGODefOpTypeMap_.end()) {
-        return PGOTypeRef(bcOffsetPGODefOpTypeMap_.at(offset));
-    }
-    return PGOTypeRef::NoneType();
-}
-
-PGOTypeRef TypeRecorder::GetPGOTypeInfo(int32_t offset, EcmaOpcode opcode) const
-{
-    switch (opcode) {
-        case EcmaOpcode::GETITERATOR_IMM8:
-        case EcmaOpcode::GETITERATOR_IMM16:
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
-            if (bcOffsetPGOOpTypeMap_.find(offset) == bcOffsetPGOOpTypeMap_.end()) {
-                return PGOTypeRef::NoneType();
-            }
-            const auto sampleType = bcOffsetPGOOpTypeMap_.at(offset);
-            ASSERT(sampleType->IsProfileType());
-            if (!sampleType->GetProfileType().IsBuiltinFunctionId()) {
-                return PGOTypeRef::NoneType();
-            }
-            return PGOTypeRef(sampleType);
-        }
-        default:
-            break;
-    }
-    return GetOrUpdatePGOType(offset);
-}
-
 GateType TypeRecorder::GetCallTargetType(int32_t offset) const
 {
     if (bcOffsetCallTargetGtMap_.find(offset) != bcOffsetCallTargetGtMap_.end()) {
         return bcOffsetCallTargetGtMap_.at(offset);
     }
     return GateType::AnyType();
-}
-
-PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
-{
-    if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
-        return *(bcOffsetPGORwTypeMap_.at(offset));
-    }
-    return PGORWOpType();
-}
-
-std::vector<ElementsKind> TypeRecorder::LoadElementsKinds(int32_t offset) const
-{
-    std::vector<ElementsKind> elementsKinds;
-    if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
-        elementsKinds.emplace_back(ElementsKind::GENERIC);
-        return elementsKinds;
-    }
-
-    PGORWOpType rwType = *(bcOffsetPGORwTypeMap_.at(offset));
-    if (rwType.GetCount() == 0) {
-        elementsKinds.emplace_back(ElementsKind::GENERIC);
-        return elementsKinds;
-    }
-    for (uint32_t i = 0; i < rwType.GetCount(); i++) {
-        PGOObjectInfo info = rwType.GetObjectInfo(i);
-        auto profileType = info.GetProfileType();
-        if (profileType.IsElementType()) {
-            elementsKinds.emplace_back(ElementsKind(profileType.GetId()));
-            continue;
-        }
-    }
-
-    // fiterate ElementsKind::None
-    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
-        if (elementsKinds[i] == ElementsKind::NONE) {
-            elementsKinds[i] = ElementsKind::GENERIC;
-        }
-    }
-
-    return elementsKinds;
 }
 
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const
