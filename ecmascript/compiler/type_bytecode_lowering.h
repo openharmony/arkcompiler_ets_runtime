@@ -34,7 +34,8 @@ public:
                          bool enableLog,
                          bool enableTypeLog,
                          const std::string& name,
-                         bool enableLoweringBuiltin)
+                         bool enableLoweringBuiltin,
+                         const CString& recordName)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -52,7 +53,8 @@ public:
           pgoTypeLog_(circuit),
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
           thread_(ctx->GetEcmaVM()->GetJSThread()),
-          enableLoweringBuiltin_(enableLoweringBuiltin)
+          enableLoweringBuiltin_(enableLoweringBuiltin),
+          recordName_(recordName)
     {
     }
 
@@ -123,6 +125,7 @@ private:
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
 
     void LowerTypedNewObjRange(GateRef gate);
+    void LowerCreateObjectWithBuffer(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);
 
     void LowerTypedCallArg0(GateRef gate);
@@ -220,6 +223,7 @@ private:
     const JSThread *thread_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     BuiltinIndex builtinIndex_ {};
+    const CString &recordName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
