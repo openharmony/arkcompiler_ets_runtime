@@ -515,16 +515,17 @@ void RuntimeStubs::DumpToStreamWithHint(std::ostream &out, std::string_view hint
 
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
-    std::string format = MessageString::GetMessageString(fmtMessageId);
-    va_list args;
-    va_start(args, fmtMessageId);
-    std::string result = base::StringHelper::Vformat(format.c_str(), args);
-    if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
-        LOG_BUILTINS(DEBUG) << result;
-    } else {
-        LOG_ECMA(DEBUG) << result;
-    }
-    va_end(args);
+    // std::string format = MessageString::GetMessageString(fmtMessageId);
+    // va_list args;
+    // va_start(args, fmtMessageId);
+    // std::string result = base::StringHelper::Vformat(format.c_str(), args);
+    // if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
+    //     LOG_BUILTINS(DEBUG) << result;
+    // } else {
+    //     LOG_ECMA(DEBUG) << result;
+    // }
+    // va_end(args);
+    std::cout << fmtMessageId << std::endl;
 }
 
 void RuntimeStubs::DebugPrintCustom(uintptr_t fmt, ...)
@@ -2848,6 +2849,14 @@ JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType lo
         result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
     }
     return result;
+}
+
+void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t length = static_cast<uint32_t>(newLength);
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    array->Trim(thread, length);
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
