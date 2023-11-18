@@ -1078,19 +1078,23 @@ public:
         debuggerLibraryPath_ = path;
     }
 
-    void SetEnableArkTools(bool value) {
+    void SetEnableArkTools(bool value)
+    {
         enableArkTools_ = value;
     }
 
-    void SetEnableCpuprofiler(bool value) {
+    void SetEnableCpuprofiler(bool value)
+    {
         enableCpuprofiler_ = value;
     }
 
-    void SetArkProperties(int prop) {
+    void SetArkProperties(int prop)
+    {
         arkProperties_ = prop;
     }
 
-    void SetArkBundleName(const std::string &bundleName) {
+    void SetArkBundleName(const std::string &bundleName)
+    {
         arkBundleName_ = bundleName;
     }
 
@@ -1512,10 +1516,11 @@ private:
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
-class ECMA_PUBLIC_API JsiRuntimeCallInfo : public ecmascript::base::AlignedStruct<ecmascript::base::AlignedPointer::Size(),
-                                                                                  ecmascript::base::AlignedPointer,
-                                                                                  ecmascript::base::AlignedPointer,
-                                                                                  ecmascript::base::AlignedPointer> {
+class ECMA_PUBLIC_API JsiRuntimeCallInfo
+    : public ecmascript::base::AlignedStruct<ecmascript::base::AlignedPointer::Size(),
+                                             ecmascript::base::AlignedPointer,
+                                             ecmascript::base::AlignedPointer,
+                                             ecmascript::base::AlignedPointer> {
     enum class Index : size_t {
         ThreadIndex = 0,
         NumArgsIndex,
