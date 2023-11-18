@@ -85,6 +85,8 @@ public:
     void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
 
+    JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
+
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
     static constexpr uint32_t MS_PRE_SECOND = 1000;
@@ -131,6 +133,8 @@ private:
     void DumpNewObjRange(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
     void DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+    void DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 
     void UpdateLayout(JSHClass *hclass);

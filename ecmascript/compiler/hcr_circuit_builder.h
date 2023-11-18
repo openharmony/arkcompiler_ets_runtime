@@ -84,6 +84,12 @@ GateRef CircuitBuilder::IsProtoTypeHClass(GateRef hClass)
         Int32((1LU << JSHClass::IsPrototypeBit::SIZE) - 1)));
 }
 
+GateRef CircuitBuilder::IsJsProxy(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
 GateRef CircuitBuilder::IsTreeString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

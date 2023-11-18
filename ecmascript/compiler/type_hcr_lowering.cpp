@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
@@ -156,6 +157,9 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::OBJECT_CONSTRUCTOR:
             LowerObjectConstructor(gate, glue);
+            break;
+        case OpCode::ORDINARY_HAS_INSTANCE:
+            LowerOrdinaryHasInstance(gate, glue);
             break;
         default:
             break;
@@ -418,16 +422,7 @@ void TypeHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 void TypeHCRLowering::LowerObjectTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateType type = acc_.GetObjectTypeAccessor(gate).GetType();
-    if (tsManager_->IsClassInstanceTypeKind(type)) {
-        LowerTSSubtypingCheck(gate);
-    } else if (tsManager_->IsClassTypeKind(type) ||
-               tsManager_->IsObjectTypeKind(type)) {
-        LowerSimpleHClassCheck(gate);
-    } else {
-        LOG_COMPILER(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
+    LowerSimpleHClassCheck(gate);
 }
 
 void TypeHCRLowering::LowerTSSubtypingCheck(GateRef gate)
@@ -2159,5 +2154,110 @@ void TypeHCRLowering::LowerLoadBuiltinObject(GateRef gate)
     // so we need deopt
     builder_.DeoptCheck(isHole, frameState, DeoptType::LOADBUILTINOBJECTFAIL);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builtin);
+}
+
+void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef target = acc_.GetValueIn(gate, 1);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_NOT_POINTER(), builder_.TaggedFalse());
+    DEFVALUE(object, (&builder_), VariableType::JS_ANY(), obj);
+    Label exit(&builder_);
+
+    // 3. If Type(O) is not Object, return false
+    Label objIsHeapObject(&builder_);
+    Label objIsEcmaObject(&builder_);
+    Label objNotEcmaObject(&builder_);
+    builder_.Branch(builder_.TaggedIsHeapObject(obj), &objIsHeapObject, &objNotEcmaObject);
+    builder_.Bind(&objIsHeapObject);
+    builder_.Branch(builder_.TaggedObjectIsEcmaObject(obj), &objIsEcmaObject, &objNotEcmaObject);
+    builder_.Bind(&objNotEcmaObject);
+    {
+        result = builder_.TaggedFalse();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&objIsEcmaObject);
+    {
+        // 4. Let P be Get(C, "prototype").
+        // target must be a builtin function
+        GateRef ctorHClass = builder_.LoadConstOffset(VariableType::JS_POINTER(), target,
+                                                      JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+        GateRef constructorPrototype = builder_.LoadPrototype(ctorHClass);
+
+        // 7. Repeat
+        //    a.Let O be O.[[GetPrototypeOf]]().
+        //    b.ReturnIfAbrupt(O).
+        //    c.If O is null, return false.
+        //    d.If SameValue(P, O) is true, return true.
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        Label afterLoop(&builder_);
+        Label strictEqual1(&builder_);
+        Label notStrictEqual1(&builder_);
+        Label shouldReturn(&builder_);
+        Label shouldContinue(&builder_);
+
+        builder_.Branch(builder_.TaggedIsNull(*object), &afterLoop, &loopHead);
+        builder_.LoopBegin(&loopHead);
+        {
+            GateRef isEqual = builder_.Equal(*object, constructorPrototype);
+
+            builder_.Branch(isEqual, &strictEqual1, &notStrictEqual1);
+            builder_.Bind(&strictEqual1);
+            {
+                result = builder_.TaggedTrue();
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&notStrictEqual1);
+            {
+                Label objectIsHeapObject(&builder_);
+                Label objectIsEcmaObject(&builder_);
+                Label objectNotEcmaObject(&builder_);
+
+                builder_.Branch(builder_.TaggedIsHeapObject(*object), &objectIsHeapObject, &objectNotEcmaObject);
+                builder_.Bind(&objectIsHeapObject);
+                builder_.Branch(builder_.TaggedObjectIsEcmaObject(*object), &objectIsEcmaObject, &objectNotEcmaObject);
+                builder_.Bind(&objectNotEcmaObject);
+                {
+                    GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
+                    builder_.CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef,
+                                                  { builder_.Int32ToTaggedInt(taggedId) }, gate);
+                    result = builder_.ExceptionConstant();
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&objectIsEcmaObject);
+                {
+                    Label objectIsJsProxy(&builder_);
+                    Label objectNotIsJsProxy(&builder_);
+                    builder_.Branch(builder_.IsJsProxy(*object), &objectIsJsProxy, &objectNotIsJsProxy);
+                    builder_.Bind(&objectIsJsProxy);
+                    {
+                        result = builder_.CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef,
+                                                      { *object }, gate);
+                        builder_.Jump(&shouldContinue);
+                    }
+                    builder_.Bind(&objectNotIsJsProxy);
+                    {
+                        GateRef objHClass = builder_.LoadHClass(*object);
+                        object = builder_.LoadPrototype(objHClass);
+                        builder_.Jump(&shouldContinue);
+                    }
+                }
+            }
+            builder_.Bind(&shouldContinue);
+            builder_.Branch(builder_.TaggedIsNull(*object), &afterLoop, &loopEnd);
+        }
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+        builder_.Bind(&afterLoop);
+        {
+            result = builder_.TaggedFalse();
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 }  // namespace panda::ecmascript::kungfu

@@ -145,4 +145,18 @@ bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
 
     return (plr.IsFound() && !plr.IsFunction());
 }
+
+bool PGOObjectAccessHelper::ClassInstanceIsCallable(PGOObjectAccessInfo &info)
+{
+    auto type = info.Type();
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return false;
+    }
+
+    JSHClass *hclass = JSHClass::Cast(ptManager->QueryHClass(type.first, type.second).GetTaggedObject());
+
+    return hclass->IsCallable();
+}
 }  // namespace panda::ecmascript::kungfu

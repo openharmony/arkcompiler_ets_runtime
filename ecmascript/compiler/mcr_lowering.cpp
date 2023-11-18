@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -40,6 +41,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
+            break;
+        case OpCode::PROTO_CHANGE_MARKER_CHECK:
+            LowerProtoChangeMarkerCheck(gate);
             break;
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
@@ -171,6 +175,19 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
 
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef marker = acc_.GetValueIn(gate, 0);
+
+    auto hasChanged = builder_.GetHasChanged(marker);
+    builder_.DeoptCheck(builder_.BoolNot(hasChanged), frameState,
+        DeoptType::PROTOTYPECHANGED);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }

@@ -69,6 +69,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(InconsistentType,               INCONSISTENTTYPE)             \
     V(NotNull,                        NOTNULL)                      \
     V(BuiltinPrototypeHClassMismatch, BUILTINPROTOHCLASSMISMATCH)   \
+    V(BuiltinCtorProtoMismatch,       BUILTINCTORPROTOMISMATCH)     \
     V(IteratorFunctionDisMactch,      ITERATORFUNCTIONDISMATCH)     \
     V(NativeCallTargetDisMatch,       NATIVECALLTARGETDISMATCH)     \
     V(ProtoTypeChanged,               PROTOTYPECHANGED)             \

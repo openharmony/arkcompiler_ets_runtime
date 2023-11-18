@@ -333,6 +333,9 @@ void TypeBytecodeLowering::Lower(GateRef gate)
                 LowerTypedTryLdGlobalByName(gate);
             }
             break;
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+            LowerInstanceOf(gate);
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -557,15 +560,8 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     }
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
-    std::vector<std::pair<ProfileTyper, ProfileTyper>> types;
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
-    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
-        auto temp = pgoTypes->GetObjectInfo(i);
-        types.emplace_back(std::make_pair(
-            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
-        ));
-    }
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
     // get types from pgo
 
     if (types.size() == 0) {
@@ -639,9 +635,7 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
                 builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
             auto marker =
                 builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-            auto hasChanged = builder_.GetHasChanged(marker);
-            builder_.DeoptCheck(builder_.BoolNot(hasChanged), acc_.FindNearestFrameState(builder_.GetDepend()),
-                DeoptType::PROTOTYPECHANGED);
+            builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
 
             // lookup from receiver for holder
             auto holderHC = builder_.GetHClassGateFromIndex(gate, accessInfos[i].HClassIndex());
@@ -2025,6 +2019,18 @@ void TypeBytecodeLowering::AddProfiling(GateRef gate)
     }
 }
 
+void TypeBytecodeLowering::FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types)
+{
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types.emplace_back(std::make_pair(
+            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
+        ));
+    }
+}
+
 void TypeBytecodeLowering::AddBytecodeCount(EcmaOpcode op)
 {
     currentOp_ = op;
@@ -2098,5 +2104,75 @@ void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtinIndex_.GetBuiltinBoxOffset(key)));
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     DeleteConstDataIfNoUser(value);
+}
+
+void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
+    GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+
+    // CompilerCheck - pgo.hclass having [hasInstance] property
+    // if true -> slowthPath
+    // if false -> lowering
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    auto hasInstanceEnvIndex =static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
+    JSTaggedValue key = globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
+
+    if (types.size() == 0) {
+        return;
+    }
+
+    // Instanceof does not support Poly for now
+    ASSERT(types.size() == 1);
+
+    ChunkVector<PGOObjectAccessHelper> accessHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> accessInfos(chunk_);
+    ChunkVector<PGOObjectAccessHelper> checkerHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> checkerInfos(chunk_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper targetPgoType = types[i].first;
+        accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+            target, targetPgoType, key, Circuit::NullGate()));
+        accessInfos.emplace_back(PGOObjectAccessInfo(targetPgoType));
+        // If @@hasInstance is found on prototype Chain of ctor -> slowpath
+        // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass
+        // Current temporary solution:
+        // Try searching @@hasInstance in pgo dump stage,
+        // If found, pgo dump no types and we go slowpath in aot
+        accessHelpers[i].ComputeForClassInstance(accessInfos[i]);
+        if (accessInfos[i].HClassIndex() == -1 || !accessHelpers[i].ClassInstanceIsCallable(accessInfos[i])) {
+            return;
+        }
+        checkerHelpers.emplace_back(accessHelpers[i]);
+        checkerInfos.emplace_back(accessInfos[i]);
+    }
+
+    AddProfiling(gate);
+
+    std::vector<GateRef> expectedHCIndexes;
+    for (size_t i = 0; i < types.size(); ++i) {
+        GateRef temp = builder_.Int32(checkerInfos[i].HClassIndex());
+        expectedHCIndexes.emplace_back(temp);
+    }
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    // RuntimeCheck -
+    // 1. pgo.hclass == ctor.hclass
+    // 2. ctor.hclass has a prototype chain up to Function.prototype
+    builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, target, expectedHCIndexes[0]);
+    auto ctorHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), ctorHC, JSHClass::PROTOTYPE_OFFSET);
+    auto protoHClass =
+        builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+    auto marker =
+        builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
+
+    result = builder_.OrdinaryHasInstance(obj, target);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
 }
 }  // namespace panda::ecmascript
