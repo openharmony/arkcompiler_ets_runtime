@@ -124,9 +124,11 @@ private:
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedStObjByValue(GateRef gate);
+    void LowerTypedStOwnByValue(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
 
     void LowerTypedNewObjRange(GateRef gate);
+    void LowerCreateEmptyObject(GateRef gate);
     void LowerCreateObjectWithBuffer(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);
 
