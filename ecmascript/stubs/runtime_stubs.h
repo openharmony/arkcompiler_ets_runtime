@@ -649,7 +649,8 @@ private:
     static inline JSTaggedValue RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                    const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                    uint16_t length);
-    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle);
+    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
+                                                  uint16_t methodId, const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -727,6 +728,8 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline bool IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                                 JSTaggedValue key);
     static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
         const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);

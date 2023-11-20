@@ -25,11 +25,7 @@ class SnapshotGlobalData;
  * The information that needs to be revised before saving the 'ai' file is recorded in SnapshotReviseData.
  * Currently, the revised information includes the entry index of each method in the 'an' file.
  */
-#define REVISE_DATA_TYPE_LIST(V) \
-    V(METHOD, Method)            \
-    V(LITERAL, Literal)
-
-class BaseReviseData {
+class ReviseData {
 public:
     struct ItemData {
         uint32_t dataIdx_;
@@ -37,69 +33,42 @@ public:
         int32_t constpoolIdx_;
     };
 
-    BaseReviseData() = default;
-    virtual ~BaseReviseData() = default;
+    ReviseData() = default;
+    virtual ~ReviseData() = default;
 
     void Record(ItemData data)
     {
         data_.emplace_back(data);
     }
 
-    virtual void Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
-                         const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap) = 0;
+    void Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
+                 const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap);
 
 protected:
     JSHandle<ConstantPool> GetConstantPoolFromSnapshotData(JSThread *thread, const SnapshotGlobalData *globalData,
                                                            uint32_t dataIdx, uint32_t cpArrayIdx);
-
-    using ReviseData = std::vector<ItemData>;
-    ReviseData data_ {};
+    std::vector<ItemData> data_;
 };
-
-#define DEFINE_REVISE_CLASS(V, name)                                                                 \
-    class name##ReviseData final : public BaseReviseData {                                           \
-    public:                                                                                          \
-        virtual void Resolve(JSThread *thread, const SnapshotGlobalData *globalData,                 \
-            const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap) override; \
-    };
-
-    REVISE_DATA_TYPE_LIST(DEFINE_REVISE_CLASS)
-#undef DEFINE_REVISE_CLASS
 
 class SnapshotReviseInfo {
 public:
-    enum class Type {
-#define DEFINE_TYPE(type, ...) type,
-    REVISE_DATA_TYPE_LIST(DEFINE_TYPE)
-#undef DEFINE_TYPE
-    };
-
-    SnapshotReviseInfo()
-    {
-#define ADD_REVISE_DATA(V, name)                                   \
-    reviseData_.emplace_back(std::make_unique<name##ReviseData>());
-    REVISE_DATA_TYPE_LIST(ADD_REVISE_DATA)
-#undef ADD_REVISE_DATA
-    }
+    SnapshotReviseInfo() = default;
     ~SnapshotReviseInfo() = default;
 
-    void Record(Type type, BaseReviseData::ItemData data)
+    void Record(ReviseData::ItemData data)
     {
-        size_t reviseDataIdx = static_cast<size_t>(type);
-        reviseData_.at(reviseDataIdx)->Record(data);
+        reviseData_.Record(data);
     }
 
     void ResolveData(JSThread *thread, const SnapshotGlobalData *globalData,
                      const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap)
     {
-        for (auto &data : reviseData_) {
-            data->Resolve(thread, globalData, methodToEntryIndexMap);
-        }
+        reviseData_.Resolve(thread, globalData, methodToEntryIndexMap);
     }
+
 private:
-    CVector<std::unique_ptr<BaseReviseData>> reviseData_ {};
+    ReviseData reviseData_ {};
 };
-#undef REVISE_DATA_TYPE_LIST
 
 class SnapshotGlobalData {
 public:
@@ -141,9 +110,9 @@ public:
 
     CString GetFileNameByDataIdx(uint32_t dataIdx) const;
 
-    void RecordReviseData(SnapshotReviseInfo::Type type, BaseReviseData::ItemData data)
+    void RecordReviseData(ReviseData::ItemData data)
     {
-        reviseInfo_.Record(type, data);
+        reviseInfo_.Record(data);
     }
 
     void ResolveSnapshotData(JSThread *thread,

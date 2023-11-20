@@ -1890,8 +1890,10 @@ DEF_RUNTIME_STUBS(NewObjRange)
 DEF_RUNTIME_STUBS(DefineFunc)
 {
     RUNTIME_STUBS_HEADER(DefineFunc);
-    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefunc(thread, method).GetRawData();
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeDefinefunc(thread, constpool, static_cast<uint16_t>(methodId.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)

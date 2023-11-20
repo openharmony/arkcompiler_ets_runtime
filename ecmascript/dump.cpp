@@ -524,6 +524,37 @@ static void DumpPropertyKey(JSTaggedValue key, std::ostream &os)
     }
 }
 
+static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream &os)
+{
+    if (attr.IsAccessor()) {
+        os << "(Accessor) ";
+    }
+
+    os << "Attr(";
+    if (attr.IsNoneAttributes()) {
+        os << "NONE";
+    }
+    if (attr.IsWritable()) {
+        os << "W";
+    }
+    if (attr.IsEnumerable()) {
+        os << "E";
+    }
+    if (attr.IsConfigurable()) {
+        os << "C";
+    }
+    os << ")";
+
+    os << " InlinedProps: " << attr.IsInlinedProps();
+
+    if (fastMode) {
+        os << " Order: " << std::dec << attr.GetOffset();
+        os << " SortedIndex: " << std::dec << attr.GetSortedIndex();
+    } else {
+        os << " Order: " << std::dec << attr.GetDictionaryOrder();
+    }
+}
+
 static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDetail)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -538,8 +569,18 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     attrs.DumpTaggedValue(os);
     os << "\n";
     if (withDetail && !attrs.IsNull()) {
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
-        layoutInfo->Dump(os);
+        LayoutInfo *layout = LayoutInfo::Cast(jshclass->GetLayout().GetTaggedObject());
+        int element = static_cast<int>(jshclass->NumberOfProps());
+        for (int i = 0; i < element; i++) {
+            JSTaggedValue key = layout->GetKey(i);
+            PropertyAttributes attr = layout->GetAttr(i);
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
+            os << "[" << i << "]: ";
+            DumpPropertyKey(key, os);
+            os << " : ";
+            DumpAttr(attr, true, os);
+            os << "\n";
+        }
     }
 
     os << " - Transitions :" << std::setw(DUMP_TYPE_OFFSET);
@@ -607,37 +648,6 @@ static void DumpClass(TaggedObject *obj, std::ostream &os)
 {
     ASSERT(obj->GetClass()->GetObjectType() == JSType::HCLASS);
     DumpHClass(JSHClass::Cast(obj), os, true);
-}
-
-static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream &os)
-{
-    if (attr.IsAccessor()) {
-        os << "(Accessor) ";
-    }
-
-    os << "Attr(";
-    if (attr.IsNoneAttributes()) {
-        os << "NONE";
-    }
-    if (attr.IsWritable()) {
-        os << "W";
-    }
-    if (attr.IsEnumerable()) {
-        os << "E";
-    }
-    if (attr.IsConfigurable()) {
-        os << "C";
-    }
-    os << ")";
-
-    os << " InlinedProps: " << attr.IsInlinedProps();
-
-    if (fastMode) {
-        os << " Order: " << std::dec << attr.GetOffset();
-        os << " SortedIndex: " << std::dec << attr.GetSortedIndex();
-    } else {
-        os << " Order: " << std::dec << attr.GetDictionaryOrder();
-    }
 }
 
 static void DumpObject(TaggedObject *obj, std::ostream &os)

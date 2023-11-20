@@ -11,6 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-5
-5
-foo
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_test_action("pgo_function_prototype") {
+  deps = []
+  is_only_typed_path = true
+  is_enable_pgo = true
+}

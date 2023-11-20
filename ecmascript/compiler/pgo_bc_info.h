@@ -28,10 +28,11 @@ public:
         EMPTY_ARRAY,
         CALL_TARGET,
         CLASS,
+        FUNCTION,
 
         TYPE_NUM,
         TYPE_FIRST = OBJ_LITERAL,
-        TYPE_LAST = CLASS,
+        TYPE_LAST = FUNCTION,
     };
 
     struct InfoDetail {

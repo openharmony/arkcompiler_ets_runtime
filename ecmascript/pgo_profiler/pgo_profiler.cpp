@@ -96,7 +96,7 @@ void PGOProfiler::ProfileDefineClass(JSTaggedType ctor)
     }
 }
 
-void PGOProfiler::ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue)
+void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue, ProfileType::Kind kind)
 {
     if (!isEnable_) {
         return;
@@ -114,11 +114,11 @@ void PGOProfiler::ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue)
     auto ctorMethod = Method::Cast(ctorMethodValue);
     auto entityId = ctorMethod->GetMethodId().GetOffset();
 
-    auto ihc = JSHClass::Cast(JSTaggedValue(ihcValue).GetTaggedObject());
-    ihc->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-    if (GetProfileType(ihcValue, ihcValue).IsNone()) {
-        ProfileType ihcProfileType(GetMethodAbcId(ctorFunc), entityId, ProfileType::Kind::ClassId, true);
-        InsertProfileType(ihcValue, ihcValue, ihcProfileType);
+    auto rootHc = JSHClass::Cast(JSTaggedValue(rootHcValue).GetTaggedObject());
+    rootHc->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
+    if (GetProfileType(rootHcValue, rootHcValue).IsNone()) {
+        ProfileType ihcProfileType(GetMethodAbcId(ctorFunc), entityId, kind, true);
+        InsertProfileType(rootHcValue, rootHcValue, ihcProfileType);
     }
 }
 
@@ -605,6 +605,16 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
+            case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
+                uint16_t slotId = READ_INST_16_0();
+                DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM8: {
@@ -977,12 +987,14 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         objDefType.SetCtorPt(ctorType);
         recordInfos_->AddRootLayout(ctorRootHClass, ctorType);
 
-        auto prototypeObj = JSObject::Cast(protoOrHClass);
-        auto prototypeHClass = prototypeObj->GetClass();
-        auto prototypeRootHClass = JSTaggedType(JSHClass::FindRootHClass(prototypeHClass));
-        auto prototypeType = GetProfileType(prototypeRootHClass, prototypeRootHClass);
-        objDefType.SetProtoTypePt(prototypeType);
-        recordInfos_->AddRootLayout(prototypeRootHClass, prototypeType);
+        if (protoOrHClass.IsJSObject()) {
+            auto prototypeObj = JSObject::Cast(protoOrHClass);
+            auto prototypeHClass = prototypeObj->GetClass();
+            auto prototypeRootHClass = JSTaggedType(JSHClass::FindRootHClass(prototypeHClass));
+            auto prototypeType = GetProfileType(prototypeRootHClass, prototypeRootHClass);
+            objDefType.SetProtoTypePt(prototypeType);
+            recordInfos_->AddRootLayout(prototypeRootHClass, prototypeType);
+        }
 
         recordInfos_->AddDefine(recordType, methodId, bcOffset, objDefType);
     }

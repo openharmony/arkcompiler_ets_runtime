@@ -2504,14 +2504,16 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
-    auto method = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, methodId, ConstPoolType::METHOD);
+    GateRef constPool = builder_.GetConstPoolFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
 
     Label defaultLabel(&builder_);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineFunc), { method });
+    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineFunc),
+        { constPool, builder_.ToTaggedInt(methodId), module });
     builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &defaultLabel);
     builder_.Bind(&defaultLabel);
     {

@@ -223,8 +223,9 @@ public:
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         bool hasEntryIndex = false;
         uint32_t entryIndex = 0;
-        if (isLoadedAOT && val.IsInt()) {
-            entryIndex = static_cast<uint32_t>(val.GetInt());
+        if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+            JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
+            entryIndex = static_cast<uint32_t>(entryIndexes->GetObjectFromCache(0).GetInt()); // 0: only one method
             hasEntryIndex = true;
             val = JSTaggedValue::Hole();
         }

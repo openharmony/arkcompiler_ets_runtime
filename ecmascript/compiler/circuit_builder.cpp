@@ -697,9 +697,9 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Bind(&cache);
     {
         if (type == ConstPoolType::METHOD) {
-            Label isInt(env_);
-            Branch(TaggedIsInt(*result), &isInt, &exit);
-            Bind(&isInt);
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
                     { constPool, Int32ToTaggedInt(index), module }, hirGate);

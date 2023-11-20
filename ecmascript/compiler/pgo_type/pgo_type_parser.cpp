@@ -130,6 +130,57 @@ void ObjectLiteralParser::GenerateHClass(const PGOHClassGenerator &generator, co
     generator.GenerateHClass(rootSampleType);
 }
 
+bool FunctionParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLocation &loc)
+{
+    auto rootType = defType.GetProfileType();
+    auto ctorPt = defType.GetCtorPt();
+    if (ctorPt.IsNone()) {
+        return false;
+    }
+    PGOSampleType ctorSampleType(ctorPt);
+
+    auto protoPt = defType.GetProtoTypePt();
+    if (protoPt.IsNone()) {
+        return false;
+    }
+    PGOSampleType protoSampleType(protoPt);
+
+    ptManager_->RecordLocationToRootType(loc, rootType);
+    auto ctorLoc = loc.ChangeType(PGOTypeLocation::Type::CONSTRUCTOR);
+    ptManager_->RecordLocationToRootType(ctorLoc, ctorPt);
+
+    auto protoLoc = loc.ChangeType(PGOTypeLocation::Type::PROTOTYPE);
+    ptManager_->RecordLocationToRootType(protoLoc, protoPt);
+    return true;
+}
+
+void FunctionParser::GenerateHClass(const PGOHClassGenerator &generator, const PGOTypeLocation &loc)
+{
+    auto thread = ptManager_->GetJSThread();
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    auto rootType = ptManager_->GetRootIdByLocation(loc);
+    PGOSampleType iSampleType(rootType);
+
+    auto ctorLoc = loc.ChangeType(PGOTypeLocation::Type::CONSTRUCTOR);
+    auto ctorPt = ptManager_->GetRootIdByLocation(ctorLoc);
+    PGOSampleType ctorSampleType(ctorPt);
+
+    auto protoLoc = loc.ChangeType(PGOTypeLocation::Type::PROTOTYPE);
+    auto protoPt = ptManager_->GetRootIdByLocation(protoLoc);
+    PGOSampleType protoSampleType(protoPt);
+
+    // testcase: propertyaccessor2.ts. protoSampleType not find desc
+    if (generator.FindHClassLayoutDesc(ctorSampleType) && generator.FindHClassLayoutDesc(protoSampleType)) {
+        generator.GenerateHClass(protoSampleType);
+
+        auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
+        JSHandle<JSHClass> phclass(thread, phValue);
+        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+        generator.GenerateIHClass(iSampleType, prototype);
+    }
+}
+
 PGOTypeParser::PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *ptManager)
     : decoder_(decoder), ptManager_(ptManager)
 {
@@ -137,6 +188,7 @@ PGOTypeParser::PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *
     parsers_.emplace_back(std::make_unique<EmptyArrayParser>(ptManager));
     parsers_.emplace_back(std::make_unique<ArrayLiteralParser>(ptManager));
     parsers_.emplace_back(std::make_unique<ObjectLiteralParser>(ptManager));
+    parsers_.emplace_back(std::make_unique<FunctionParser>(ptManager));
 }
 
 void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
