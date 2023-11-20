@@ -1936,6 +1936,10 @@ bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &objec
 // ecma6.0 6.2.4.4
 JSHandle<JSTaggedValue> JSObject::FromPropertyDescriptor(JSThread *thread, const PropertyDescriptor &desc)
 {
+    // 1. If Desc is undefined, return undefined
+    if (desc.IsEmpty()) {
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+    }
 
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();

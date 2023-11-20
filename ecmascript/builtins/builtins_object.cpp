@@ -371,16 +371,21 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptor(EcmaRuntimeCallInfo *argv
 
     // 5.Let desc be obj.[[GetOwnProperty]](key).
     PropertyDescriptor desc(thread);
-    JSHandle<TaggedArray> array(thread, JSHandle<JSTaggedValue>::Cast(handle)->GetElements());
     JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(handle), key, desc);
-    if (desc.IsEmpty() && array->GetLength() == 0) {
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
-    }
+
     // 6.ReturnIfAbrupt(desc).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 7.Return FromPropertyDescriptor(desc).
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> objFunc(env->GetObjectFunction());
+    JSHandle<JSObject> objHandle = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFunc);
     JSHandle<JSTaggedValue> res = JSObject::FromPropertyDescriptor(thread, desc);
+    JSHandle<TaggedArray> handleKeys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>::Cast(handle));
+    uint32_t length = handleKeys->GetLength();
+    if (desc.IsEmpty() && length > 0) {
+        return JSHandle<JSTaggedValue>(objHandle).GetTaggedValue();
+    } 
     return res.GetTaggedValue();
 }
 
