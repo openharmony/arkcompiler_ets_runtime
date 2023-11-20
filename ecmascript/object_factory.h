@@ -537,6 +537,7 @@ public:
 
     JSHandle<EcmaString> NewFromUtf8Literal(const uint8_t *utf8Data, uint32_t utf8Len);
     JSHandle<EcmaString> NewFromUtf8LiteralCompress(const uint8_t *utf8Data, uint32_t utf8Len);
+    JSHandle<EcmaString> NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
 
     JSHandle<EcmaString> NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16LiteralCompress(const uint16_t *utf16Data, uint32_t utf16Len);
