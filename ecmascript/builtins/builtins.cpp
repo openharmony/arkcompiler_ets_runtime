@@ -621,10 +621,8 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "toPrimitive", toPrimitiveSymbol);
     JSHandle<JSTaggedValue> unscopablesSymbol(factory_->NewPublicSymbolWithChar("Symbol.unscopables"));
     SetNoneAttributeProperty(symbolFunction, "unscopables", unscopablesSymbol);
-    JSHandle<JSTaggedValue> attachSymbol(factory_->NewPublicSymbolWithChar("Symbol.attach"));
-    SetNoneAttributeProperty(symbolFunction, "attach", attachSymbol);
-    JSHandle<JSTaggedValue> detachSymbol(factory_->NewPublicSymbolWithChar("Symbol.detach"));
-    SetNoneAttributeProperty(symbolFunction, "detach", detachSymbol);
+    JSHandle<JSTaggedValue> nativeBindingSymbol(factory_->NewPublicSymbolWithChar("Symbol.nativeBinding"));
+    SetNoneAttributeProperty(symbolFunction, "nativeBinding", nativeBindingSymbol);
 
     // Symbol attributes with detectors
     // Create symbol string before create symbol to allocate symbol continuously
@@ -678,8 +676,7 @@ DETECTOR_SYMBOL_LIST(REGISTER_SYMBOL)
     env->SetSpeciesSymbol(thread_, speciesSymbol);
     env->SetToPrimitiveSymbol(thread_, toPrimitiveSymbol);
     env->SetUnscopablesSymbol(thread_, unscopablesSymbol);
-    env->SetAttachSymbol(thread_, attachSymbol);
-    env->SetDetachSymbol(thread_, detachSymbol);
+    env->SetNativeBindingSymbol(thread_, nativeBindingSymbol);
 
     // Setup %SymbolPrototype%
     SetStringTagSymbol(env, symbolFuncPrototype, "Symbol");

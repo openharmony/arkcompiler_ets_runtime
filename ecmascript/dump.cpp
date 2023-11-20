@@ -2473,10 +2473,8 @@ void GlobalEnv::Dump(std::ostream &os) const
     GetUnscopablesSymbol().GetTaggedValue().Dump(os);
     os << " - HoleySymbol: ";
     GetHoleySymbol().GetTaggedValue().Dump(os);
-    os << " - AttachSymbol: ";
-    GetAttachSymbol().GetTaggedValue().Dump(os);
-    os << " - DetachSymbol: ";
-    GetDetachSymbol().GetTaggedValue().Dump(os);
+    os << " - NativeBindingSymbol: ";
+    GetNativeBindingSymbol().GetTaggedValue().Dump(os);
     os << " - ConstructorString: ";
     globalConst->GetConstructorString().Dump(os);
     os << " - IteratorPrototype: ";
@@ -4900,8 +4898,7 @@ void GlobalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("ToPrimitiveSymbol"), GetToPrimitiveSymbol().GetTaggedValue());
     vec.emplace_back(CString("UnscopablesSymbol"), GetUnscopablesSymbol().GetTaggedValue());
     vec.emplace_back(CString("HoleySymbol"), GetHoleySymbol().GetTaggedValue());
-    vec.emplace_back(CString("AttachSymbol"), GetAttachSymbol().GetTaggedValue());
-    vec.emplace_back(CString("DetachSymbol"), GetDetachSymbol().GetTaggedValue());
+    vec.emplace_back(CString("NativeBindingSymbol"), GetNativeBindingSymbol().GetTaggedValue());
     vec.emplace_back(CString("ConstructorString"), globalConst->GetConstructorString());
     vec.emplace_back(CString("IteratorPrototype"), GetIteratorPrototype().GetTaggedValue());
     vec.emplace_back(CString("ForinIteratorPrototype"), GetForinIteratorPrototype().GetTaggedValue());

@@ -332,10 +332,28 @@ void attach([[maybe_unused]] void* buffer)
     GTEST_LOG_(INFO) << "attach is running";
 }
 
+static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
+{
+    GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
+    panda::JSNApi::NativeBindingInfo* info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
+    info->attachData = attach;
+    info->detachData = detach;
+    return info;
+}
+
 HWTEST_F_L0(JSNApiTests, CreateNativeObject)
 {
     LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void*>(detach), reinterpret_cast<void*>(attach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
+        [](void* data, [[maybe_unused]] void* info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+            delete externalInfo;
+        }, nullptr, nativeBindingSize);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
+    ASSERT_TRUE(result);
     Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
     Local<JSValueRef> value = ObjectRef::New(vm_);
     PropertyAttribute attribute(value, true, true, true);
@@ -397,8 +415,16 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 
-    Local<FunctionRef> native = ObjectRef::New(vm_, reinterpret_cast<void*>(detach), reinterpret_cast<void*>(attach));
-    protoType = native->GetPrototype(vm_);
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
+        [](void* data, [[maybe_unused]] void* info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+            delete externalInfo;
+        }, nullptr, nativeBindingSize);
+    bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
+    ASSERT_TRUE(result);
+    protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 }
 
@@ -1240,16 +1266,6 @@ HWTEST_F_L0(JSNApiTests, NumberRef_New)
     Local<NumberRef> res1 = NumberRef::New(vm_, input1);
     ASSERT_TRUE(res->IsNumber());
     ASSERT_TRUE(res1->IsNumber());
-}
-
-HWTEST_F_L0(JSNApiTests, ObjectRef_Set)
-{
-    LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_);
-    void *data1 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
-    void *data2 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
-    bool res = object->Set(vm_, data1, data2);
-    ASSERT_TRUE(res);
 }
 
 HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)

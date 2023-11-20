@@ -1395,38 +1395,16 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
-Local<ObjectRef> ObjectRef::New(const EcmaVM *vm, void *detach, void *attach)
-{
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSFunction> constructor(env->GetObjectFunction());
-    JSHandle<JSTaggedValue> object(factory->NewJSObjectByConstructor(constructor));
-    JSHandle<JSTaggedValue> detachKey = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attachKey = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> detachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, detach));
-    JSHandle<JSTaggedValue> attachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, attach));
-    JSTaggedValue::SetProperty(vm->GetJSThread(), object, detachKey, detachValue);
-    JSTaggedValue::SetProperty(vm->GetJSThread(), object, attachKey, attachValue);
-    RETURN_VALUE_IF_ABRUPT(vm->GetJSThread(), JSValueRef::Undefined(vm));
-    return JSNApiHelper::ToLocal<ObjectRef>(object);
-}
-
-bool ObjectRef::Set(const EcmaVM *vm, void *detach, void *attach)
+bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
-    JSHandle<JSTaggedValue> detachKey = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attachKey = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> detachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, detach));
-    JSHandle<JSTaggedValue> attachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, attach));
-    bool detachResult = JSTaggedValue::SetProperty(vm->GetJSThread(), object, detachKey, detachValue);
-    bool attachResult = JSTaggedValue::SetProperty(vm->GetJSThread(), object, attachKey, attachValue);
-    RETURN_VALUE_IF_ABRUPT(vm->GetJSThread(), false);
-    return detachResult && attachResult;
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
+    return JSTaggedValue::SetProperty(vm->GetJSThread(), object, keyValue, valueValue);
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)

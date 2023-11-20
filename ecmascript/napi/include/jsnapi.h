@@ -735,8 +735,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
-    static Local<ObjectRef> New(const EcmaVM *vm, void *attach, void *detach);
-    bool Set(const EcmaVM *vm, void *attach, void *detach);
+    bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
     bool SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
@@ -1344,6 +1343,17 @@ public:
         int port = -1;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
+
+    struct NativeBindingInfo {
+        static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
+        void *env = nullptr;
+        void *nativeValue = nullptr;
+        void *attachFunc = nullptr;
+        void *attachData = nullptr;
+        void *detachFunc = nullptr;
+        void *detachData = nullptr;
+        void *hint = nullptr;
+    };
 
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
