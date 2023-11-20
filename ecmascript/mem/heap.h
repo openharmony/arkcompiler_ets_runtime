@@ -541,12 +541,7 @@ public:
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
 
-    void TryTriggerConcurrentMarkingByNativeSize()
-    {
-        if (GlobalNativeSizeLargerThanLimit()) {
-            TryTriggerConcurrentMarking();
-        }
-    }
+    void TryTriggerFullMarkByNativeSize();
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
     {
