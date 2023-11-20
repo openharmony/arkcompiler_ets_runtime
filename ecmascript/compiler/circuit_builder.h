@@ -322,7 +322,7 @@ public:
     }
 
     // ************************************************************* High IR **********************************************************************************
-    GateRef CreateArray(ElementsKind kind, uint32_t arraySize);
+    GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
     GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode,
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);

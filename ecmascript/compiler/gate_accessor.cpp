@@ -590,6 +590,25 @@ void GateAccessor::TrySetPGOType(GateRef gate, PGOTypeRef type)
     }
 }
 
+uint32_t GateAccessor::TryGetArrayElementsLength(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetElementsLength();
+    }
+    return 0;
+}
+
+void GateAccessor::TrySetArrayElementsLength(GateRef gate, uint32_t length)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsLength(length);
+    }
+}
+
 ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

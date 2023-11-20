@@ -1026,22 +1026,16 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
-        auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
-            if (type->IsScalarOpType()) {
-                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
-                if (sampleType.IsProfileType()) {
-                    PGOHClassTreeDesc *desc;
-                    if (!decoder.GetHClassTreeDesc(sampleType, &desc)) {
-                        return;
-                    }
+        auto callback = [methodName, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
+            if (type->IsDefineOpType()) {
+                auto defineOptype = reinterpret_cast<const PGODefineOpType *>(type);
                     if (std::string(methodName) == "foo") {
-                        ASSERT_EQ(desc->GetArrayLength(), 4);
+                        ASSERT_EQ(defineOptype->GetElementsLength(), 4);
                     } else if (std::string(methodName) == "foo1") {
-                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                        ASSERT_EQ(defineOptype->GetElementsLength(), 12);
                     } else if (std::string(methodName) == "foo2") {
-                        ASSERT_EQ(desc->GetArrayLength(), 8);
+                        ASSERT_EQ(defineOptype->GetElementsLength(), 12);
                     }
-                }
             }
         };
         decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,

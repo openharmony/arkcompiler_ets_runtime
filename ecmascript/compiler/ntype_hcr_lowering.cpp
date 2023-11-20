@@ -46,17 +46,23 @@ void NTypeHCRLowering::LowerCreateArray(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     if (acc_.GetArraySize(gate) == 0) {
-        LowerCreateEmptyArray(gate);
+        LowerCreateEmptyArray(gate, glue);
     } else {
         LowerCreateArrayWithOwn(gate, glue);
     }
 }
 
-void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate)
+void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
 {
     GateRef length = builder_.Int32(0);
-    GateRef elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-
+    GateRef elements = Circuit::NullGate();
+    GateRef value = acc_.GetValueIn(gate, 0);
+    auto elementsLength = static_cast<uint32_t>(acc_.GetConstantValue(value));
+    if (elementsLength > 0) {
+        elements = CreateElementsWithLength(gate, glue, elementsLength);
+    } else {
+        elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    }
     auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }

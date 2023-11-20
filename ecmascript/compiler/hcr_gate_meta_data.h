@@ -100,6 +100,16 @@ public:
         return elementsKinds_;
     }
 
+    void SetElementsLength(uint32_t length)
+    {
+        elementsLength_ = length;
+    }
+
+    uint32_t GetElementsLength() const
+    {
+        return elementsLength_;
+    }
+
     std::string Str() const
     {
         return GetEcmaOpcodeStr(opcode_);
@@ -108,6 +118,7 @@ public:
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
+    uint32_t elementsLength_ { 0 };
     PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};
 };
