@@ -371,8 +371,12 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptor(EcmaRuntimeCallInfo *argv
 
     // 5.Let desc be obj.[[GetOwnProperty]](key).
     PropertyDescriptor desc(thread);
+    JSHandle<JSObject>  obj = JSHandle<JSTaggedValue>::Cast(handle);
+    JSHandle<TaggedArray> array(thread, obj->GetElements());
     JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(handle), key, desc);
-
+    if (desc.IsEmpty() && array->GetLength() == 0) {
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+    }
     // 6.ReturnIfAbrupt(desc).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
