@@ -1893,7 +1893,10 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
-    if (!ihc->IsUndefined()) {
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    if (!ihc->IsUndefined() &&
+        kind == FunctionKind::NORMAL_FUNCTION &&
+        kind == FunctionKind::BASE_CONSTRUCTOR) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
         result->SetProtoOrHClass(thread, ihc);
@@ -2720,8 +2723,8 @@ JSTaggedValue RuntimeStubs::RuntimeUpdateHClass(JSThread *thread,
     if (IsNeedNotifyHclassChangedForAotTransition(thread, oldhclass, key)) {
         JSHClass::NotifyHclassChanged(thread, oldhclass, newhclass, key);
     }
-    JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
     JSHClass::RefreshUsers(thread, oldhclass, newhclass);
+    JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
 #endif
     return JSTaggedValue::Undefined();
 }
