@@ -68,6 +68,7 @@ namespace panda::ecmascript::kungfu {
     V(ArraySlice)                                   \
     V(ArrayReverse)                                 \
     V(ArrayPush)                                    \
+    V(ArrayIncludes)                                \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \
