@@ -248,7 +248,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
         Jump(&loopHead1);
         LoopBegin(&loopHead1);
         {
-            Branch(Int32UnsignedLessThan(*index, oldL), &storeValue1, &afterLoop1);
+            Branch(Int32UnsignedLessThan(*index, newLen), &storeValue1, &afterLoop1);
             Bind(&storeValue1);
             {
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, Hole());

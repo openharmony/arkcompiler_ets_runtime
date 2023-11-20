@@ -21,3 +21,8 @@ value 3
 4
 value 4
 5
+value 0
+value 1
+value 2
+undefined
+value 4
