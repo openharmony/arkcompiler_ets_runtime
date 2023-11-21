@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/stub_builder-inl.h"
-
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
@@ -5942,6 +5941,216 @@ GateRef StubBuilder::GetFunctionPrototype(GateRef glue, size_t index)
     Bind(&isJSHclass);
     {
         result = GetPrototypeFromHClass(protoOrHclass);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), obj);
+    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(0));
+    Label isNumber(env);
+    Label notNumber(env);
+    Label isBoolean(env);
+    Label notBoolean(env);
+    Label isString(env);
+    Label notString(env);
+    Label isECMAObject(env);
+    Label notIsECMAObject(env);
+    Label isSymbol(env);
+    Label notSymbol(env);
+    Label isUndefined(env);
+    Label notIsUndefined(env);
+    Label isNull(env);
+    Label notIsNull(env);
+    Label isHole(env);
+    Label notIsHole(env);
+    Label isBigInt(env);
+    Label notIsBigInt(env);
+    Label throwError(env);
+    Branch(IsEcmaObject(obj), &isECMAObject, &notIsECMAObject);
+    Bind(&isECMAObject);
+    {
+        result = obj;
+        Jump(&exit);
+    }
+    Bind(&notIsECMAObject);
+    Branch(TaggedIsNumber(obj), &isNumber, &notNumber);
+    Bind(&isNumber);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::NUMBER_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notNumber);
+    Branch(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
+    Bind(&isBoolean);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::BOOLEAN_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notBoolean);
+    Branch(TaggedIsString(obj), &isString, &notString);
+    Bind(&isString);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::STRING_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notString);
+    Branch(TaggedIsSymbol(obj), &isSymbol, &notSymbol);
+    Bind(&isSymbol);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::SYMBOL_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notSymbol);
+    Branch(TaggedIsUndefined(obj), &isUndefined, &notIsUndefined);
+    Bind(&isUndefined);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotUndefinedObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsUndefined);
+    Branch(TaggedIsHole(obj), &isHole, &notIsHole);
+    Bind(&isHole);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotHoleObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsHole);
+    Branch(TaggedIsNull(obj), &isNull, &notIsNull);
+    Bind(&isNull);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotNullObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsNull);
+    Branch(TaggedIsBigInt(obj), &isBigInt, &notIsBigInt);
+    Bind(&isBigInt);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::BIGINT_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notIsBigInt);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotNullObject));
+        Jump(&throwError);
+    }
+    Bind(&throwError);
+    {
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(*taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj)
+{
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(env_);
+    GateRef newObj  = newBuilder.NewJSObject(glue, protoOrHclass);
+    GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
+    Store(VariableType::JS_ANY(), glue, newObj, valueOffset, obj);
+    return newObj;
+}
+
+GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label toObject(env);
+    Label isException(env);
+    Label isNotExceptiont(env);
+    Label objectIsEcmaObject(env);
+    Label objectIsHeapObject(env);
+    GateRef object = ToObject(glue, obj);
+    Branch(HasPendingException(glue), &isException, &isNotExceptiont);
+    Bind(&isNotExceptiont);
+    Branch(TaggedIsHeapObject(object), &objectIsHeapObject, &isException);
+    Bind(&objectIsHeapObject);
+    Branch(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &isException);
+    Bind(&objectIsEcmaObject);
+    {
+        result = DeleteProperty(glue, obj, value);
+        Jump(&exit);
+    }
+    Bind(&isException);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotValidObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::DeleteProperty(GateRef glue, GateRef obj, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label objectIsJsProxy(env);
+    Label objectIsNotJsProxy(env);
+    Label objectIsModuleNamespace(env);
+    Label objectIsNotModuleNamespace(env);
+    Label objectIsTypedArray(env);
+    Label objectIsNotTypedArray(env);
+    Label objectIsSpecialContainer(env);
+    Label objectIsNotSpecialContainer(env);
+    Branch(IsJsProxy(obj), &objectIsJsProxy, &objectIsNotJsProxy);
+    Bind(&objectIsJsProxy);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CallJSDeleteProxyPrototype), { obj, value});
+        Jump(&exit);
+    }
+    Bind(&objectIsNotJsProxy);
+    Branch(IsModuleNamespace(obj), &objectIsModuleNamespace, &objectIsNotModuleNamespace);
+    Bind(&objectIsModuleNamespace);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CallModuleNamespaceDeletePrototype), { obj, value});
+        Jump(&exit);
+    }
+    Bind(&objectIsNotModuleNamespace);
+    Branch(IsTypedArray(obj), &objectIsTypedArray, &objectIsNotTypedArray);
+    Bind(&objectIsTypedArray);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CallTypedArrayDeletePrototype), { obj, value});
+        Jump(&exit);
+    }
+    Bind(&objectIsNotTypedArray);
+    Branch(ObjIsSpecialContainer(obj), &objectIsSpecialContainer, &objectIsNotSpecialContainer);
+    Bind(&objectIsSpecialContainer);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertContainerObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&objectIsNotSpecialContainer);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CallJSObjDeletePrototype), { obj, value});
         Jump(&exit);
     }
     Bind(&exit);

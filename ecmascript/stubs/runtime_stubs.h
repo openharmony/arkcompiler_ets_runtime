@@ -140,6 +140,11 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
+    V(CallJSDeleteProxyPrototype)         \
+    V(CallModuleNamespaceDeletePrototype) \
+    V(CallTypedArrayDeletePrototype)      \
+    V(CallJSObjDeletePrototype)           \
+    V(NewJSPrimitiveRef)                  \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
