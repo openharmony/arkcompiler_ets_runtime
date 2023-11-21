@@ -75,7 +75,7 @@
     /* Array.prototype.map ( callbackfn [ , thisArg ] ) */                  \
     V("map",            Map,              1, INVALID)                       \
     /* Array.prototype.pop ( ) */                                           \
-    V("pop",            Pop,              0, INVALID)                       \
+    V("pop",            Pop,              0, ArrayPop)                      \
     /* Array.prototype.push ( ...items ) */                                 \
     V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \

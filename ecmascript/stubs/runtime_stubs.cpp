@@ -515,17 +515,16 @@ void RuntimeStubs::DumpToStreamWithHint(std::ostream &out, std::string_view hint
 
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
-    // std::string format = MessageString::GetMessageString(fmtMessageId);
-    // va_list args;
-    // va_start(args, fmtMessageId);
-    // std::string result = base::StringHelper::Vformat(format.c_str(), args);
-    // if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
-    //     LOG_BUILTINS(DEBUG) << result;
-    // } else {
-    //     LOG_ECMA(DEBUG) << result;
-    // }
-    // va_end(args);
-    std::cout << fmtMessageId << std::endl;
+    std::string format = MessageString::GetMessageString(fmtMessageId);
+    va_list args;
+    va_start(args, fmtMessageId);
+    std::string result = base::StringHelper::Vformat(format.c_str(), args);
+    if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
+        LOG_BUILTINS(DEBUG) << result;
+    } else {
+        LOG_ECMA(DEBUG) << result;
+    }
+    va_end(args);
 }
 
 void RuntimeStubs::DebugPrintCustom(uintptr_t fmt, ...)

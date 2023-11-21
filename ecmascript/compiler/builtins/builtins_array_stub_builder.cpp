@@ -218,6 +218,84 @@ void BuiltinsArrayStubBuilder::LastIndexOf([[maybe_unused]] GateRef glue, GateRe
     }
 }
 
+void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label stableJSArray(env);
+    Label isDeufaltConstructor(env);
+    Branch(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
+    Bind(&isDeufaltConstructor);
+    GateRef isThisEcmaObject = IsEcmaObject(thisValue);
+    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+    Branch(BoolAnd(isThisEcmaObject, isThisStableJSArray), &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+
+    Label notZeroLen(env);
+    Branch(Int64Equal(thisLen, Int64(0)), exit, &notZeroLen);
+    Bind(&notZeroLen);
+    Label isJsCOWArray(env);
+    Label isNotJsCOWArray(env);
+    Label getElements(env);
+    Branch(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+    Bind(&isJsCOWArray);
+    {
+        CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), { thisValue });
+        Jump(&getElements);
+    }
+    Bind(&getElements);
+    GateRef elements = GetElementsArray(thisValue);
+    GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(elements));
+    GateRef index = Int64Sub(thisLen, Int64(1));
+
+    Label inRange(env);
+    Label trimCheck(env);
+    Label noTrimCheck(env);
+    Label setNewLen(env);
+    Label isHole(env);
+    DEFVARIABLE(element, VariableType::JS_ANY(), Hole());
+    Branch(Int64LessThan(index, capacity), &inRange, &trimCheck);
+    Bind(&inRange);
+    {
+        element = GetValueFromTaggedArray(elements, index);
+        Jump(&isHole);
+    }
+    Bind(&isHole);
+    Branch(TaggedIsHole(*element), &noTrimCheck, &trimCheck);
+    Bind(&noTrimCheck);
+    element = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(index), ProfileOperation());
+    Jump(&setNewLen);
+    Bind(&trimCheck);
+    // ShouldTrim check
+    // (oldLength - newLength > MAX_END_UNUSED)
+    Label noTrim(env);
+    Label needTrim(env);
+    GateRef unused = Int64Sub(capacity, index);
+    Branch(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+    Bind(&needTrim);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, elements, index});
+        Jump(&setNewLen);
+    }
+    Bind(&noTrim);
+    {
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, Hole());
+        Jump(&setNewLen);
+    }
+    Bind(&setNewLen);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, thisValue, lengthOffset, TruncInt64ToInt32(index));
+
+    Label isNotHole(env);
+    Branch(TaggedIsHole(*element), exit, &isNotHole);
+    Bind(&isNotHole);
+    {
+        result->WriteVariable(*element);
+        Jump(exit);
+    }
+}
+
 void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {

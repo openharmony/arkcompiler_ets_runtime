@@ -45,6 +45,9 @@ public:
     void LastIndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
+    void Pop(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
     void Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
