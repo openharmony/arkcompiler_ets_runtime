@@ -761,7 +761,12 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
     while (k < len) {
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());
-        kValue.Update(array->Get(k));
+        JSTaggedValue value = array->Get(k);
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        kValue.Update(value);
         if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
