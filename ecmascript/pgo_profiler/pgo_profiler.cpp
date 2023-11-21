@@ -1087,7 +1087,7 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
 }
 
 void PGOProfiler::DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+                                 uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
 {
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {

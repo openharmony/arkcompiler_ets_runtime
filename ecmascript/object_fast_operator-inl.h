@@ -19,6 +19,7 @@
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/element_accessor.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -303,17 +304,17 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
             }
             return JSTaggedValue::Hole();
         }
-        TaggedArray *elements = TaggedArray::Cast(JSObject::Cast(holder)->GetElements().GetTaggedObject());
-
+        JSHandle<JSObject> currentHolder(thread, holder);
         if (!hclass->IsDictionaryElement()) {
-            ASSERT(!elements->IsDictionaryMode());
-            if (index < elements->GetLength()) {
-                JSTaggedValue value = elements->Get(index);
+            ASSERT(!ElementAccessor::IsDictionaryMode(currentHolder));
+            if (index < ElementAccessor::GetElementsLength(currentHolder)) {
+                JSTaggedValue value = ElementAccessor::Get(currentHolder, index);
                 if (!value.IsHole()) {
                     return value;
                 }
             }
         } else {
+            TaggedArray *elements = TaggedArray::Cast(currentHolder->GetElements().GetTaggedObject());
             NumberDictionary *dict = NumberDictionary::Cast(elements);
             int entry = dict->FindEntry(JSTaggedValue(static_cast<int>(index)));
             if (entry != -1) {
