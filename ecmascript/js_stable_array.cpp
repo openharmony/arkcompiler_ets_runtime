@@ -1049,6 +1049,7 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> srcElements(thread, thisObjHandle->GetElements());
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     int64_t len = static_cast<int64_t>(srcElements->GetLength());
     int64_t oldLen;
     if (len > k + count) {
@@ -1057,6 +1058,13 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
         oldLen = len - k;
     }
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, count, oldLen, k);
+    for (int i = 0; i < count; i++) {
+        JSTaggedValue value = dstElements->Get(thread, i);
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i).GetTaggedValue();
+            dstElements->Set(thread, i, value);
+        }
+    }
     return factory->NewJSStableArrayWithElements(dstElements).GetTaggedValue();
 }
 
