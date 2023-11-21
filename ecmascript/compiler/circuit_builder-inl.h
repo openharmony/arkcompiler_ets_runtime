@@ -77,7 +77,7 @@ GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)
     Label exit(env_);
     Label isX(env_);
     Label notX(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), x);
+    DEFVALUE(result, env_, VariableType::BOOL(), x);
     Branch(x, &isX, &notX);
     Bind(&isX);
     {
@@ -101,7 +101,7 @@ GateRef CircuitBuilder::LogicOr(GateRef x, GateRef y)
     Label exit(env_);
     Label isX(env_);
     Label notX(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), x);
+    DEFVALUE(result, env_, VariableType::BOOL(), x);
     Branch(x, &isX, &notX);
     Bind(&isX);
     {

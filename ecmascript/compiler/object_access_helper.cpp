@@ -50,7 +50,7 @@ bool ObjectAccessHelper::ComputeForClassInstance(ObjectAccessInfo &info)
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetAOTHClassInfoByIndex(hclassIndex).GetTaggedObject());
     if (!hclass->HasTSSubtyping()) {
         return false;
     }
@@ -79,7 +79,7 @@ bool ObjectAccessHelper::ComputeForClassOrObject(ObjectAccessInfo &info)
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetAOTHClassInfoByIndex(hclassIndex).GetTaggedObject());
     PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, key_);
     info.Set(hclassIndex, plr);
 
@@ -123,5 +123,40 @@ bool ObjectAccessHelper::ComputePolymorphism(ChunkVector<ObjectAccessInfo> &info
     }
 
     return infos.size() <= POLYMORPHIC_MAX_SIZE;
+}
+
+bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
+{
+    auto type = info.Type();
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return false;
+    }
+
+    JSHClass *hclass = JSHClass::Cast(ptManager->QueryHClass(type.first, type.second).GetTaggedObject());
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(thread_, hclass, key_);
+    info.Set(hclassIndex, plr);
+
+    if (IsLoading()) {
+        return plr.IsFound();
+    }
+
+    return (plr.IsFound() && !plr.IsFunction());
+}
+
+bool PGOObjectAccessHelper::ClassInstanceIsCallable(PGOObjectAccessInfo &info)
+{
+    auto type = info.Type();
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return false;
+    }
+
+    JSHClass *hclass = JSHClass::Cast(ptManager->QueryHClass(type.first, type.second).GetTaggedObject());
+
+    return hclass->IsCallable();
 }
 }  // namespace panda::ecmascript::kungfu

@@ -46,8 +46,10 @@ class ApNameUtils {
 public:
     static const std::string AP_SUFFIX;
     static const std::string RUNTIME_AP_PREFIX;
+    static const std::string MERGED_AP_PREFIX;
     static const std::string DEFAULT_AP_NAME;
     static std::string GetRuntimeApName(const std::string &ohosModuleName);
+    static std::string GetMergedApName(const std::string &ohosModuleName);
     static std::string GetOhosPkgApName(const std::string &ohosModuleName);
 
 private:

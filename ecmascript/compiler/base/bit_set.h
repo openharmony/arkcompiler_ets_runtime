@@ -115,6 +115,17 @@ public:
         }
     }
 
+    void Intersect(const BitSet &bitset)
+    {
+        if (!UseWords()) {
+            data_.inlineWord_ &= bitset.data_.inlineWord_;
+        } else {
+            for (size_t i = 0; i < wordCount_; i++) {
+                data_.words_[i] &= bitset.data_.words_[i];
+            }
+        }
+    }
+
     void CopyFrom(const BitSet &other)
     {
         ASSERT(wordCount_ == other.wordCount_);

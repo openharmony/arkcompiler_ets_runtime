@@ -143,9 +143,9 @@ private:
         return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED;
     }
 
-    inline bool IsInteger() const
+    inline bool IsInteger()
     {
-        return (GetMixHashcode() & IS_INTEGER_MASK) == IS_INTEGER_MASK;
+        return (GetHashcode() & IS_INTEGER_MASK) == IS_INTEGER_MASK;
     }
 
     // require is LineString
@@ -226,7 +226,7 @@ private:
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
         if (hashcode == 0 && GetLength() != 0) {
             hashcode = ComputeHashcode();
-            SetRawHashcode(hashcode);
+            SetMixHashcode(hashcode);
         }
         return hashcode;
     }
@@ -449,7 +449,7 @@ private:
             }
             return length;
         }
-        
+
         CVector<uint16_t> tmpBuf;
         const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
         if (length > maxLength) {
@@ -973,7 +973,7 @@ public:
     {
         string_ = string;
     }
-    
+
     uint32_t GetStartIndex() const
     {
         return startIndex_;

@@ -43,27 +43,32 @@ public:
         LegacyKind = BuiltinsId,
         MethodId,           // method offset of js function
         BuiltinFunctionId,  // function index of registered function
-        LocalRecordId,
-        ModuleRecordId,
+        RecordClassId,
+        PrototypeId,
+        ConstructorId,
+        MegaStateKinds,
         TotalKinds,
         UnknowId
     };
 
+    static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
+
     static const ProfileType PROFILE_TYPE_NONE;
 
-    static constexpr uint32_t ID_BITFIELD_NUM = 29;
+    static constexpr uint32_t ID_BITFIELD_NUM = 32;
     static constexpr uint32_t ABC_ID_BITFIELD_NUM = 20;
-    static constexpr uint32_t KIND_BITFIELD_NUM = 15;
+    static constexpr uint32_t KIND_BITFIELD_NUM = 11;
     using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
     using AbcIdBits = IdBits::NextField<uint32_t, ABC_ID_BITFIELD_NUM>;
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
+    using IsRootBits = KindBits::NextFlag;
 
     static_assert(KindBits::IsValid(Kind::TotalKinds));
 
     ProfileType() = default;
     explicit ProfileType(uint64_t rawType) : type_(rawType) {};
     ProfileType(PGOContext &context, ProfileTypeRef typeRef);
-    ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId)
+    ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId, bool root = false)
     {
         if (UNLIKELY(!IdBits::IsValid(type))) {
             type_ = 0;
@@ -71,7 +76,15 @@ public:
             UpdateAbcId(abcId);
             UpdateId(type);
             UpdateKind(kind);
+            UpdateIsRootFlag(root);
         }
+    }
+
+    static ProfileType CreateMegeType()
+    {
+        ProfileType type;
+        type.UpdateKind(Kind::MegaStateKinds);
+        return type;
     }
 
     ProfileType &Remap(const PGOContext &context);
@@ -84,6 +97,11 @@ public:
     uint64_t GetRaw() const
     {
         return type_;
+    }
+
+    bool IsRootType() const
+    {
+        return IsRootBits::Decode(type_);
     }
 
     bool IsBuiltinsType() const
@@ -109,6 +127,26 @@ public:
     bool IsBuiltinFunctionId() const
     {
         return GetKind() == Kind::BuiltinFunctionId;
+    }
+
+    bool IsLiteralType() const
+    {
+        return GetKind() == Kind::LiteralId;
+    }
+
+    bool IsConstructor() const
+    {
+        return GetKind() == Kind::ConstructorId;
+    }
+
+    bool IsPrototype() const
+    {
+        return GetKind() == Kind::PrototypeId;
+    }
+
+    bool IsMegaStateType() const
+    {
+        return GetKind() == Kind::MegaStateKinds;
     }
 
     uint32_t GetId() const
@@ -149,8 +187,8 @@ public:
     std::string GetTypeString() const
     {
         std::stringstream stream;
-        stream << "type: " << std::showbase << std::hex << type_ <<
-                "(kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
+        stream << "Type: " << "(isRoot: " << IsRootType() <<
+                ", kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
                 ", abcId: " << GetAbcId() <<
                 ", id: " << GetId() << ")";
         return stream.str();
@@ -166,6 +204,11 @@ public:
         type_ = KindBits::Update(type_, kind);
     }
 
+    void UpdateIsRootFlag(bool root)
+    {
+        type_ = IsRootBits::Update(type_, root);
+    }
+
 private:
     void UpdateId(uint64_t type)
     {
@@ -175,6 +218,13 @@ private:
     uint64_t type_ {0};
 };
 
+struct HashProfileType {
+    uint64_t operator()(const ProfileType &profileType) const
+    {
+        return profileType.GetRaw();
+    }
+};
+
 class ProfileTypeRef {
 public:
     ProfileTypeRef() = default;
@@ -182,6 +232,7 @@ public:
     {
         UpdateId(type);
     }
+
     ProfileTypeRef(PGOContext &context, const ProfileType &type);
 
     ProfileTypeRef &Remap(const PGOContext &context);
@@ -189,6 +240,21 @@ public:
     bool IsNone() const
     {
         return typeId_ == 0;
+    }
+
+    bool IsElementType() const
+    {
+        return false;
+    }
+
+    bool IsConstructor() const
+    {
+        return false;
+    }
+
+    bool IsMegaStateType() const
+    {
+        return false;
     }
 
     ApEntityId GetId() const
@@ -229,7 +295,6 @@ public:
     using KindBits = IdBits::NextField<ProfileType::Kind, KIND_BITFIELD_NUM>;
 
     // legacy size check. for version lower than WIDE_CLASS_TYPE_MINI_VERSION, we should consider the legacy scenario.
-    static_assert(ID_BITFIELD_NUM == ProfileType::ID_BITFIELD_NUM);
     static_assert(KindBits::IsValid(ProfileType::Kind::LegacyKind));
 
     explicit ProfileTypeLegacy(uint32_t type, ProfileType::Kind kind = ProfileType::Kind::ClassId)
@@ -275,6 +340,15 @@ private:
         type_ = KindBits::Update(type_, kind);
     }
     uint32_t type_ {0};
+};
+
+class TraProfileType {
+public:
+    TraProfileType(ProfileType root, ProfileType child) : root_(root), child_(child) {}
+
+private:
+    ProfileType root_;
+    ProfileType child_;
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILE_TYPE_H

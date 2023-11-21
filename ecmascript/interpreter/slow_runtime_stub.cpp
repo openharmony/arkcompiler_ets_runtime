@@ -796,8 +796,10 @@ JSTaggedValue SlowRuntimeStub::DefineGetterSetterByValue(JSThread *thread, JSTag
     JSHandle<JSTaggedValue> propHandle(thread, prop);
     JSHandle<JSTaggedValue> getterHandle(thread, getter);
     JSHandle<JSTaggedValue> setterHandle(thread, setter);
+    JSHandle<JSTaggedValue> func(thread, JSTaggedValue::Undefined());
     return RuntimeStubs::RuntimeDefineGetterSetterByValue(thread, objHandle, propHandle,
-                                                          getterHandle, setterHandle, flag);
+                                                          getterHandle, setterHandle, flag,
+                                                          func, 0);
 }
 
 JSTaggedValue SlowRuntimeStub::LdObjByIndex(JSThread *thread, JSTaggedValue obj, uint32_t idx, bool callGetter,
@@ -963,12 +965,14 @@ JSTaggedValue SlowRuntimeStub::StArraySpread(JSThread *thread, JSTaggedValue dst
     return RuntimeStubs::RuntimeStArraySpread(thread, dstHandle, index, srcHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, Method *method)
+JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId,
+                                          JSTaggedValue module)
 {
     INTERPRETER_TRACE(thread, DefineFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<Method> methodHandle(thread, method);
-    return RuntimeStubs::RuntimeDefinefunc(thread, methodHandle);
+    JSHandle<JSTaggedValue> constpoolHandle(thread, constPool);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    return RuntimeStubs::RuntimeDefinefunc(thread, constpoolHandle, methodId, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)
@@ -1184,5 +1188,15 @@ JSTaggedValue SlowRuntimeStub::NotifyConcurrentResult(JSThread *thread, JSTagged
 {
     INTERPRETER_TRACE(thread, NotifyConcurrentResult);
     return RuntimeStubs::RuntimeNotifyConcurrentResult(thread, result, hint);
+}
+
+JSTaggedValue SlowRuntimeStub::UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
+                                            JSTaggedValue newjshclass, JSTaggedValue key)
+{
+    INTERPRETER_TRACE(thread, UpdateHClass);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSHClass> oldhclass(thread, jshclass);
+    JSHandle<JSHClass> newhclass(thread, newjshclass);
+    return RuntimeStubs::RuntimeUpdateHClass(thread, oldhclass, newhclass, key);
 }
 }  // namespace panda::ecmascript

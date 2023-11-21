@@ -54,6 +54,11 @@ public:
         bundleName_ = bundleName;
     }
 
+    const std::string GetBundleName()
+    {
+        return bundleName_;
+    }
+
     bool IsInitialized() const
     {
         return isProfilingInitialized_;

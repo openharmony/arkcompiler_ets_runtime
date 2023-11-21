@@ -73,7 +73,8 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
                                                             const DeleteEntryPoint &callBack,
                                                             void *data,
                                                             bool nonMovable,
-                                                            size_t nativeBindingsize)
+                                                            size_t nativeBindingsize,
+                                                            NativeFlag flag)
 {
     NewObjectHook();
     TaggedObject *header;
@@ -88,10 +89,16 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetDeleter(callBack);
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
-
+    obj->SetNativeFlag(flag);
+    
     if (callBack != nullptr) {
-        heap_->IncreaseNativeBindingSize(nativeBindingsize);
+        if (flag == NativeFlag::NO_DIV) {
+            heap_->IncreaseNativeBindingSize(nativeBindingsize);
+        }
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
+        // In some cases, the size of JS/TS object is too small and the native binding size is too large.
+        // Check and try trigger concurrent mark here.
+        heap_->TryTriggerFullMarkByNativeSize();
     }
     return obj;
 }

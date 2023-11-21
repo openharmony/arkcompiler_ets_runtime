@@ -98,10 +98,23 @@ namespace panda::ecmascript::kungfu {
 
 class TypeHCRLowering : public PassVisitor {
 public:
-    TypeHCRLowering(Circuit *circuit, RPOVisitor *visitor,
-                    CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk, bool onHeapCheck)
-        : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager), onHeapCheck_(onHeapCheck) {}
+    TypeHCRLowering(Circuit* circuit,
+                    RPOVisitor* visitor,
+                    CompilationConfig* cmpCfg,
+                    TSManager* tsManager,
+                    Chunk* chunk,
+                    bool onHeapCheck,
+                    bool enableLoweringBuiltin)
+        : PassVisitor(circuit, chunk, visitor),
+          circuit_(circuit),
+          acc_(circuit),
+          builder_(circuit, cmpCfg),
+          dependEntry_(circuit->GetDependRoot()),
+          tsManager_(tsManager),
+          onHeapCheck_(onHeapCheck),
+          enableLoweringBuiltin_(enableLoweringBuiltin)
+    {
+    }
 
     ~TypeHCRLowering() = default;
 
@@ -148,6 +161,7 @@ private:
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerRangeCheckPredicate(GateRef gate);
     void LowerBuiltinPrototypeHClassCheck(GateRef gate);
+    void LowerLoadBuiltinObject(GateRef gate);
 
     enum class ArrayState : uint8_t {
         PACKED = 0,
@@ -185,8 +199,17 @@ private:
     void LowerLoadSetter(GateRef gate);
     void LowerInlineAccessorCheck(GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
+    void LowerStringAdd(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
+    void LowerArrayConstructorCheck(GateRef gate, GateRef glue);
+    void NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
+    void LowerArrayConstructor(GateRef gate, GateRef glue);
+    void LowerObjectConstructorCheck(GateRef gate, GateRef glue);
+    void LowerObjectConstructor(GateRef gate, GateRef glue);
+    GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
+    void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
+    void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -220,7 +243,7 @@ private:
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
 
@@ -230,6 +253,7 @@ private:
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool onHeapCheck_ {false};
+    bool enableLoweringBuiltin_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H

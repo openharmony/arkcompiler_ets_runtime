@@ -55,13 +55,14 @@ public:
             return name_;
         }
 
-        uint32_t ProcessToBinary(std::fstream &stream) override
+        uint32_t ProcessToBinary([[maybe_unused]] PGOContext &context, std::fstream &stream) override
         {
             stream << name_ << '\0';
             return 1;
         }
 
-        uint32_t ParseFromBinary(void **buffer, [[maybe_unused]] PGOProfilerHeader const *header) override
+        uint32_t ParseFromBinary([[maybe_unused]] PGOContext &context, void **buffer,
+                                 [[maybe_unused]] PGOProfilerHeader const *header) override
         {
             name_ = base::ReadBuffer(buffer);
             return 1;
@@ -119,76 +120,107 @@ protected:
     std::shared_ptr<PoolType> pool_;
 };
 
-class PGORecordPool : public PGOStringPool {
+class PGORecordPool : public PGOFileSectionInterface {
 public:
-    enum class ReservedType : uint8_t { EMPTY_RECORD_ID = 0, END };
-    static constexpr uint32_t RESERVED_COUNT = 64;
-    static_assert(static_cast<uint32_t>(ReservedType::END) < RESERVED_COUNT);
-
-    static bool IsReserved(const CString &value)
-    {
-        return value.empty();
-    }
-
-    static ApEntityId GetReservedId([[maybe_unused]] const CString &value)
-    {
-        ASSERT(value.empty());
-        return ApEntityId(static_cast<uint32_t>(ReservedType::EMPTY_RECORD_ID));
-    }
-
-    static bool Support(PGOProfilerHeader const *header)
+    PGORecordPool() = default;
+    bool Support(PGOProfilerHeader const *header) const override
     {
         return header->SupportRecordPool();
     }
 
-    static SectionInfo *GetSection(PGOProfilerHeader const *header)
+    SectionInfo *GetSection(PGOProfilerHeader const *header) const override
     {
         return header->GetRecordPoolSection();
     }
 
-    PGORecordPool() : PGOStringPool("RecordPool", RESERVED_COUNT)
+    uint32_t ProcessToBinary(PGOContext &context, std::fstream &stream) override
     {
-        pool_->SetIsReservedCb(IsReserved);
-        pool_->SetGetReservedIdCb(GetReservedId);
-        pool_->SetGetSectionCb(GetSection);
-        pool_->SetSupportCb(Support);
+        LOG_ECMA(DEBUG) << "[PGORecordPool] ProcessToBinary, count: " << pool_.size();
+        SectionInfo secInfo;
+        secInfo.number_ = pool_.size();
+        secInfo.offset_ = sizeof(SectionInfo);
+        auto secInfoPos = stream.tellp();
+        stream.seekp(secInfo.offset_, std::ofstream::cur);
+        for (auto &entry : pool_) {
+            ProfileTypeRef profileTypeRef(context, entry.first);
+            stream.write(reinterpret_cast<const char *>(&(profileTypeRef)), sizeof(ApEntityId));
+            stream.write(entry.second.c_str(), entry.second.length() + 1);
+        }
+        secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - static_cast<uint32_t>(secInfoPos);
+        auto tail = stream.tellp();
+        stream.seekp(secInfoPos, std::ofstream::beg);
+        stream.write(reinterpret_cast<const char *>(&(secInfo)), sizeof(SectionInfo));
+        stream.seekp(tail, std::ofstream::beg);
+        return 1;
     }
 
-    void Merge(const PGORecordPool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
+    uint32_t ParseFromBinary(PGOContext &context, void **buffer,
+                             [[maybe_unused]] PGOProfilerHeader const *header) override
     {
-        if (!recordPool.ModuleRecordTypeEmpty()) {
-            MergeWithModuleRecordType(recordPool, idMapping);
-        } else {
-            pool_->Merge(*recordPool.pool_,
-                         [&](ApEntityId oldId, ApEntityId newId) { idMapping.try_emplace(oldId, newId); });
+        auto secInfo = base::ReadBuffer<SectionInfo>(buffer);
+        for (uint32_t i = 0; i < secInfo.number_; i++) {
+            ProfileTypeRef profileTypeRef(base::ReadBuffer<ApEntityId>(buffer, sizeof(ApEntityId)));
+            ProfileType profileType(context, profileTypeRef);
+            pool_.try_emplace(profileType, base::ReadBuffer(buffer));
+        }
+        return 1;
+    }
+
+    bool ProcessToText(std::ofstream &stream) override
+    {
+        bool isFirst = true;
+        for (auto &entry : pool_) {
+            if (isFirst) {
+                stream << DumpUtils::NEW_LINE;
+                stream << "RecordPool";
+                stream << DumpUtils::BLOCK_START;
+                isFirst = false;
+            }
+            stream << DumpUtils::NEW_LINE;
+            stream << entry.first.GetTypeString();
+            stream << DumpUtils::SPACE;
+            stream << DumpUtils::ARRAY_START;
+            stream << entry.second;
+            stream << DumpUtils::ARRAY_END;
+        }
+        if (!isFirst) {
+            stream << (DumpUtils::SPACE + DumpUtils::NEW_LINE);
+        }
+        return true;
+    }
+
+    void Merge(const PGORecordPool &recordPool)
+    {
+        for (const auto &entry : recordPool.pool_) {
+            Add(ProfileType(entry.first), entry.second);
         }
     }
 
-    void AddModuleRecordType(ProfileType profileType, const CString &recordName)
+    void Add(ProfileType profileType, const CString &recordName)
     {
-        ASSERT(profileType.GetKind() == ProfileType::Kind::ModuleRecordId);
-        LOG_ECMA(DEBUG) << "Add profileType: " << profileType.GetTypeString() << ", recordName: " << recordName;
-        moduleRecordTypeToName_.try_emplace(profileType.GetRaw(), recordName);
+        ASSERT(profileType.GetKind() == ProfileType::Kind::RecordClassId);
+        auto result = pool_.try_emplace(profileType, recordName);
+        if (result.second) {
+            LOG_ECMA(DEBUG) << "Add Record. profile: " << profileType.GetTypeString() << ", recordName: " << recordName;
+        }
     }
 
-    bool ModuleRecordTypeEmpty() const
+    const char *GetName(ProfileType profileType) const
     {
-        return moduleRecordTypeToName_.empty();
+        auto iter = pool_.find(profileType);
+        if (iter == pool_.end()) {
+            return "";
+        }
+        return iter->second.c_str();
+    }
+
+    void Clear()
+    {
+        pool_.clear();
     }
 
 private:
-    void MergeWithModuleRecordType(const PGORecordPool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
-    {
-        for (const auto &entry : recordPool.moduleRecordTypeToName_) {
-            ApEntityId id {0};
-            pool_->TryAdd(entry.second, id);
-            LOG_ECMA(DEBUG) << "MergeWithModuleRecordType. recordName: " << entry.second.c_str()
-                            << ", id: " << ProfileType(entry.first).GetId() << " -> " << id;
-            idMapping.emplace(ProfileType(entry.first).GetId(), id);
-        }
-    }
-
-    std::unordered_map<uint64_t, CString> moduleRecordTypeToName_;
+    std::unordered_map<ProfileType, CString, HashProfileType> pool_;
 };
 
 class PGOAbcFilePool : public PGOStringPool {

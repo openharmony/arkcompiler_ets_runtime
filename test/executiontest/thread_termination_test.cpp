@@ -23,7 +23,7 @@ namespace panda::test {
 using namespace panda;
 using namespace panda::ecmascript;
 using FunctionCallbackInfo = Local<JSValueRef>(*)(JsiRuntimeCallInfo *);
-std::condition_variable semaphore;
+std::condition_variable g_semaphore;
 
 class ThreadTerminationTest : public testing::Test {
 public:
@@ -79,7 +79,7 @@ public:
     {
         thread_ = std::thread([this]() {
             std::unique_lock<std::mutex> lock(mutex_);
-            semaphore.wait(lock);
+            g_semaphore.wait(lock);
             DFXJSNApi::TerminateExecution(vm_);
         });
     }
@@ -118,7 +118,7 @@ Local<JSValueRef> ThreadTerminationTest::Fail([[maybe_unused]]JsiRuntimeCallInfo
 Local<JSValueRef> ThreadTerminationTest::Signal(JsiRuntimeCallInfo *runtimeCallInfo)
 {
     EcmaVM *vm = runtimeCallInfo->GetVM();
-    semaphore.notify_one();
+    g_semaphore.notify_one();
     return JSValueRef::Undefined(vm);
 }
 

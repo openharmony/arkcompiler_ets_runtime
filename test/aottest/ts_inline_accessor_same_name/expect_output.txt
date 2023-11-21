@@ -11,8 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: #5592482324218508596#Name@ts_inline_accessor_same_name caller function name: func_main_0@ts_inline_accessor_same_name
 xiaoming
-[trace] aot inline function name: Name@ts_inline_accessor_same_name caller function name: func_main_0@ts_inline_accessor_same_name
-[trace] aot inline function name: #5592482324218508596#Name@ts_inline_accessor_same_name caller function name: func_main_0@ts_inline_accessor_same_name
 xiaohong

@@ -41,8 +41,8 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
+#include "ecmascript/ts_types/global_type_info.h"
 #include "macros.h"
-
 
 namespace panda::ecmascript::pgo {
 class SaveTask;
@@ -280,7 +280,7 @@ public:
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
-    bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGODefineOpType type);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, PGOContext &context, void **buffer);
@@ -463,10 +463,15 @@ public:
     bool AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
-    bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type,
-                   PGOSampleType superType);
-    bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
-    bool UpdateElements(PGOSampleType type, ElementsKind kind, uint32_t size, RegionSpaceFlag spaceFlag);
+    bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGODefineOpType type);
+
+    bool AddRwUseInfo(ProfileType rootType);
+    bool AddRootLayout(JSTaggedType hclass, ProfileType rootType);
+    bool AddTransitionLayout(ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child,
+        ProfileType childType);
+    bool UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType);
+    bool UpdateElements(PGOSampleType type, uint32_t size, RegionSpaceFlag spaceFlag);
+
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void UpdateLayout();
@@ -541,9 +546,8 @@ private:
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
     CMap<ProfileType, PGOMethodInfoMap *> recordInfos_;
-    std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
+    std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;
     PGOProfilerHeader *header_ {nullptr};
-    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
@@ -623,11 +627,11 @@ public:
         }
     }
 
-    bool GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
+    bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const
     {
-        auto iter = moduleLayoutDescInfos_.find(PGOHClassLayoutDesc(profileType.GetProfileType()));
-        if (iter != moduleLayoutDescInfos_.end()) {
-            *desc = &(const_cast<PGOHClassLayoutDesc &>(*iter));
+        auto iter = hclassTreeDescInfos_.find(PGOHClassTreeDesc(profileType.GetProfileType()));
+        if (iter != hclassTreeDescInfos_.end()) {
+            *desc = &(const_cast<PGOHClassTreeDesc &>(*iter));
             return true;
         }
         return false;
@@ -716,10 +720,10 @@ private:
     std::unique_ptr<Chunk> chunk_;
     CUnorderedMap<CString, CUnorderedMap<CString, PGOMethodIdSet *>> methodIds_;
     PGOProfilerHeader *header_ {nullptr};
-    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
+    // std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
-    std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
+    std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
 };
 } // namespace panda::ecmascript::pgo

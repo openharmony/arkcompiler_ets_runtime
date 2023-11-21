@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/file.h"
 #include "macros.h"
 
 class WhiteListHelper {
@@ -41,9 +42,9 @@ public:
 
     ~WhiteListHelper() = default;
 
-    bool IsEnable(const std::string &bundleName)
+    bool IsEnable(const std::string &candidate)
     {
-        return whiteList_.find(bundleName) != whiteList_.end();
+        return passBy_ || whiteList_.find(candidate) != whiteList_.end();
     }
 
     bool IsEnable(const std::string &bundleName, const std::string &moduleName)
@@ -51,7 +52,18 @@ public:
         if (IsEnable(bundleName)) {
             return true;
         }
-        return whiteList_.find(bundleName + ":" + moduleName) != whiteList_.end();
+        return IsEnable(bundleName + ":" + moduleName);
+    }
+
+    void AddWhiteListEntry(const std::string &entry)
+    {
+        whiteList_.insert(entry);
+    }
+
+    void Clear()
+    {
+        passBy_ = false;
+        whiteList_.clear();
     }
 
 private:
@@ -68,10 +80,15 @@ private:
 
     void ReadWhiteList(const std::string &whiteListName)
     {
+        if (!panda::ecmascript::FileExist(whiteListName.c_str())) {
+            LOG_ECMA(INFO) << "bundle white list not exist and will pass by all. file: " << whiteListName;
+            passBy_ = true;
+        }
+
         std::ifstream inputFile(whiteListName);
 
         if (!inputFile.is_open()) {
-            LOG_ECMA(ERROR) << "bundle white list not exist! file: " << whiteListName;
+            LOG_ECMA(ERROR) << "bundle white list open failed! file: " << whiteListName << ", errno: " << errno;
             return;
         }
 
@@ -84,12 +101,13 @@ private:
                 continue;
             }
             // skip comment line
-            if (appName.find_first_of('#') == 0) {
+            if (appName.at(0) == '#') {
                 continue;
             }
-            whiteList_.insert(appName);
+            AddWhiteListEntry(appName);
         }
     }
+    bool passBy_ {false};
     std::set<std::string> whiteList_ {};
 };
 

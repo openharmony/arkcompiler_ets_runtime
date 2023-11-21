@@ -865,7 +865,7 @@ bool EcmaString::ToInt(int32_t *index)
         loopStart = 1;
     }
 
-    if (ToUInt64FromLoopStart(&n, loopStart, data) && n <= base::MAX_INT_VALUE) {
+    if (ToUInt64FromLoopStart(&n, loopStart, data) && n <= std::numeric_limits<int32_t>::max()) {
         *index = negative ? -n : n;
         return true;
     }

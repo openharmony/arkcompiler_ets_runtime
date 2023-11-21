@@ -352,6 +352,17 @@ public:
         }
     }
 
+    static bool IsCreateEmptyArrayOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+            case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     static bool IsCreateArrayWithBufferOp(EcmaOpcode opcode)
     {
         switch (opcode) {
@@ -368,6 +379,70 @@ public:
         switch (opcode) {
             case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
             case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsLdLexVarOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+            case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+            case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsStLexVarOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::STLEXVAR_IMM4_IMM4:
+            case EcmaOpcode::STLEXVAR_IMM8_IMM8:
+            case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsCallOrAccessorOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CALLARG0_IMM8:
+            case EcmaOpcode::CALLARG1_IMM8_V8:
+            case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+            case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+            case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+            case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+            case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsDefineFunc(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+            case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
                 return true;
             default:
                 return false;
@@ -732,6 +807,7 @@ private:
 
 class BytecodeIterator {
 public:
+    static constexpr int INVALID_INDEX = -1;
     BytecodeIterator() = default;
     BytecodeIterator(BytecodeCircuitBuilder *builder,
         uint32_t start, uint32_t end)
@@ -740,8 +816,8 @@ public:
         uint32_t start, uint32_t end)
     {
         builder_ = builder;
-        start_ = start;
-        end_ = end;
+        start_ = static_cast<int32_t>(start);
+        end_ = static_cast<int32_t>(end);
     }
 
     BytecodeIterator& operator++()
@@ -761,19 +837,23 @@ public:
 
     void Goto(uint32_t i)
     {
-        index_ = i;
+        index_ = static_cast<int32_t>(i);
     }
 
     void GotoStart()
     {
         index_ = start_;
-        ASSERT(InRange());
     }
 
     void GotoEnd()
     {
         index_ = end_;
         ASSERT(InRange());
+    }
+
+    bool IsInRange(int idx) const
+    {
+        return (idx <= end_) && (idx >= start_);
     }
 
     bool InRange() const
@@ -788,7 +868,7 @@ public:
 
     uint32_t Index() const
     {
-        return index_;
+        return static_cast<uint32_t>(index_);
     }
 
     const BytecodeInfo &GetBytecodeInfo() const;
@@ -797,9 +877,9 @@ public:
 
 private:
     BytecodeCircuitBuilder *builder_ {nullptr};
-    uint32_t start_ {0};
-    uint32_t end_ {0};
-    uint32_t index_{ INVALID_INDEX };
+    int32_t start_ {0};
+    int32_t end_ {0};
+    int32_t index_{ INVALID_INDEX };
 };
 
 class BytecodeCallArgc {

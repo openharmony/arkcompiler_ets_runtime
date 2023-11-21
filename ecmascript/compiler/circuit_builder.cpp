@@ -17,19 +17,21 @@
 
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/mcr_circuit_builder.h"
-#include "ecmascript/compiler/hcr_circuit_builder.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_for_in_iterator.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
+#include "ecmascript/js_array_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -104,7 +106,7 @@ GateRef CircuitBuilder::Goto(GateRef state)
 GateRef CircuitBuilder::LoopBegin(GateRef state)
 {
     auto nullGate = Circuit::NullGate();
-    return circuit_->NewGate(circuit_->LoopBegin(), { state, nullGate });
+    return circuit_->NewGate(circuit_->LoopBegin(2), { state, nullGate }); // 2: entry&back
 }
 
 GateRef CircuitBuilder::LoopEnd(GateRef state)
@@ -183,6 +185,11 @@ GateRef CircuitBuilder::GetElementsArray(GateRef object)
 {
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
     return Load(VariableType::JS_POINTER(), object, elementsOffset);
+}
+
+GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
 void CircuitBuilder::Jump(Label *label)
@@ -295,10 +302,11 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, currentDepend, condition,
+        MachineType::I1, { currentControl, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
+    auto dependRelay = DependRelay(ret, currentDepend);
     currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
+    currentLabel->SetDepend(dependRelay);
     return ret;
 }
 
@@ -387,6 +395,18 @@ GateRef CircuitBuilder::ExceptionConstant()
 GateRef CircuitBuilder::NanValue()
 {
     return Double(std::numeric_limits<double>::quiet_NaN());
+}
+
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+{
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
+}
+
+GateRef CircuitBuilder::IsAccessorInternal(GateRef accessor)
+{
+    return Int32Equal(GetObjectType(LoadHClass(accessor)),
+                      Int32(static_cast<int32_t>(JSType::INTERNAL_ACCESSOR)));
 }
 
 void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate)
@@ -594,6 +614,24 @@ void CircuitBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, 
     Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
 }
 
+void CircuitBuilder::SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex)
+{
+    GateRef offset = IntPtr(JSArrayIterator::NEXT_INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, nextIndex);
+}
+
+void CircuitBuilder::SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray)
+{
+    GateRef offset = IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, iteratedArray);
+}
+
+void CircuitBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind)
+{
+    GateRef offset = IntPtr(JSArrayIterator::BIT_FIELD_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, kind);
+}
+
 void CircuitBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
 {
     GateRef newIndex = Int32Add(index, Int32(1));
@@ -609,6 +647,16 @@ GateRef CircuitBuilder::GetHasChanged(GateRef object)
     return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
 }
 
+GateRef CircuitBuilder::GetAccessorHasChanged(GateRef object)
+{
+    GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), object, bitfieldOffset);
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(ProtoChangeMarker::AccessorHasChangedBits::START_BIT)),
+                 Int32((1LLU << ProtoChangeMarker::AccessorHasChangedBits::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::HasDeleteProperty(GateRef hClass)
 {
     GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
@@ -622,7 +670,7 @@ GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
 {
     Label entryPass(env_);
     SubCfgEntry(&entryPass);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label heapObj(env_);
     Label exit(env_);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
@@ -646,7 +694,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label cache(env_);
 
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
-    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
     Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
@@ -668,9 +716,9 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Bind(&cache);
     {
         if (type == ConstPoolType::METHOD) {
-            Label isInt(env_);
-            Branch(TaggedIsInt(*result), &isInt, &exit);
-            Bind(&isInt);
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
                     { constPool, Int32ToTaggedInt(index), module }, hirGate);
@@ -731,6 +779,14 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef method)
 {
     auto codeAddOffset = IntPtr(Method::CODE_ENTRY_OFFSET);
     return Load(VariableType::NATIVE_POINTER(), method, codeAddOffset);
+}
+
+GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
+{
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef constPool = GetConstPool(jsFunc);
+    return LoadHClassFromConstpool(constPool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
@@ -798,6 +854,21 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->LoadBuiltinObject(offset),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 
 }  // namespace panda::ecmascript::kungfu

@@ -376,12 +376,13 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
     Label setArgumentsEnd(env);
+    GateRef elements = GetElementsArray(*res);
     Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
         GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
-        SetPropertyByIndex(glue, *res, *i, receiver, true);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
         Bind(&setArgumentsAgain);
@@ -487,8 +488,15 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef getter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef frame = GetFrame(sp);
+    GateRef func = GetFunctionFromFrame(frame);
+
+    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef firstPC =
+        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    GateRef offset = TaggedPtrToTaggedIntPtr(PtrSub(pc, firstPC));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
-                              { obj, prop, getter, setter, acc }); // acc is flag
+                              { obj, prop, getter, setter, acc, func, offset }); // acc is flag
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 
@@ -1254,7 +1262,7 @@ DECLARE_ASM_HANDLER(HandleDelobjpropV8)
     GateRef v0 = ReadInst8_0(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef prop = acc;
-    GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
+    GateRef result = DeletePropertyOrThrow(glue, obj, prop);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DELOBJPROP_V8));
 }
 
@@ -4245,7 +4253,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
+    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { constpool, Int16ToTaggedInt(methodId), GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4258,6 +4266,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
+        callback.ProfileDefineClass(*result);
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -4271,7 +4280,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
+    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { constpool, Int16ToTaggedInt(methodId), GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4285,6 +4294,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
+        callback.ProfileDefineClass(*result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }
 }

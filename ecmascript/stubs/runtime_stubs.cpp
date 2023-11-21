@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
@@ -158,6 +159,14 @@ DEF_RUNTIME_STUBS(GetHash32)
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ComputeHashcode)
+{
+    JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode();
+    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
+}
+
 void RuntimeStubs::PrintHeapReginInfo(uintptr_t argGlue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -265,6 +274,29 @@ DEF_RUNTIME_STUBS(NameDictPutIfAbsent)
         JSHandle<NameDictionary> dictHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(array)));
         return NameDictionary::
             PutIfAbsent(thread, dictHandle, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
+    }
+}
+
+DEF_RUNTIME_STUBS(NumberDictionaryPut)
+{
+    RUNTIME_STUBS_HEADER(NumberDictionaryPut);
+    JSTaggedType receiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedType array = GetTArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue attr = GetArg(argv, argc, 4);   // 4: means the fourth parameter
+    JSTaggedValue needTransToDict = GetArg(argv, argc, 5);  // 5: means the fifth parameter
+
+    JSHandle<JSTaggedValue> keyHandle(thread, key);
+    PropertyAttributes propAttr(attr.GetInt());
+    JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
+    if (needTransToDict.IsTrue()) {
+        JSObject::ElementsToDictionary(thread, objHandle);
+        JSHandle<NumberDictionary> dict(thread, objHandle->GetElements());
+        return NumberDictionary::Put(thread, dict, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
+    } else {
+        JSHandle<NumberDictionary> dict(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(array)));
+        return NumberDictionary::Put(thread, dict, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
     }
 }
 
@@ -425,7 +457,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
-        array->SetClass(hclass);
+        array->SynchronizedSetClass(hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
@@ -568,8 +600,67 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 {
     RUNTIME_STUBS_HEADER(CallGetPrototype);
     JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-
     return JSProxy::GetPrototype(thread, proxy).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSDeleteProxyPrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSDeleteProxyPrototype);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSProxy::DeleteProperty(thread, proxy, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallModuleNamespaceDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallModuleNamespaceDeletePrototype);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = ModuleNamespace::DeleteProperty(thread, obj, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallTypedArrayDeletePrototype);
+    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSTypedArray::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSObject::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(Exp)
@@ -1500,6 +1591,25 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(NewJSPrimitiveRef)
+{
+    RUNTIME_STUBS_HEADER(NewJSPrimitiveRef);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue> (argv, argc, 1);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewJSPrimitiveRef(thisFunc, obj).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ThrowRangeError)
+{
+    RUNTIME_STUBS_HEADER(ThrowRangeError);
+    JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);
+    std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str());
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
+}
+
 DEF_RUNTIME_STUBS(LoadMiss)
 {
     RUNTIME_STUBS_HEADER(LoadMiss);
@@ -1848,8 +1958,10 @@ DEF_RUNTIME_STUBS(NewObjRange)
 DEF_RUNTIME_STUBS(DefineFunc)
 {
     RUNTIME_STUBS_HEADER(DefineFunc);
-    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefunc(thread, method).GetRawData();
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeDefinefunc(thread, constpool, static_cast<uint16_t>(methodId.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -1913,8 +2025,10 @@ DEF_RUNTIME_STUBS(DefineGetterSetterByValue)
     JSHandle<JSTaggedValue> getter = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> setter = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue flag = GetArg(argv, argc, 4);  // 4: means the fourth parameter
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the sixth parameter
+    int32_t pcOffset = GetArg(argv, argc, 6).GetInt();  // 6: means the seventh parameter
     bool bFlag = flag.ToBoolean();
-    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag).GetRawData();
+    return RuntimeDefineGetterSetterByValue(thread, obj, prop, getter, setter, bFlag, func, pcOffset).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SuperCall)
@@ -2019,6 +2133,18 @@ DEF_RUNTIME_STUBS(ToNumeric)
     return RuntimeToNumeric(thread, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ToNumericConvertBigInt)
+{
+    RUNTIME_STUBS_HEADER(ToNumericConvertBigInt);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> numericVal(thread, RuntimeToNumeric(thread, value));
+    if (numericVal->IsBigInt()) {
+        JSHandle<BigInt> bigNumericVal(numericVal);
+        return BigInt::BigIntToNumber(bigNumericVal).GetRawData();
+    }
+    return numericVal->GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DynamicImport)
 {
     RUNTIME_STUBS_HEADER(DynamicImport);
@@ -2102,9 +2228,11 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
     int ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     int path = GetArg(argv, argc, 1).GetInt();
-    std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     std::string pathStr = path == 0 ? "slow path  " : "TYPED path ";
-    LOG_ECMA(INFO) << "AOT " << pathStr << result;
+
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, true);
+    std::string opcode = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
+    LOG_ECMA(INFO) << "AOT " << pathStr << ": " << opcode << "@ " << data;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -2229,6 +2357,17 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
     return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(UpdateHClass)
+{
+    RUNTIME_STUBS_HEADER(UpdateHClass);
+    JSTaggedValue oldhc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue newhc = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSHClass> oldhclass(thread, oldhc);
+    JSHandle<JSHClass> newhclass(thread, newhc);
+    return RuntimeUpdateHClass(thread, oldhclass, newhclass, key).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
 {
     RUNTIME_STUBS_HEADER(ContainerRBTreeForEach);
@@ -2272,6 +2411,25 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     RUNTIME_STUBS_HEADER(SlowFlattenString);
     JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString)
+{
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t index = 0;
+    if (EcmaStringAccessor(string).ToElementIndex(&index)) {
+        return JSTaggedValue(index).GetRawData();
+    }
+    if (!EcmaStringAccessor(string).IsInternString()) {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        EcmaString *str =
+            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
+        if (str == nullptr) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
+        return JSTaggedValue::Cast(static_cast<void *>(str));
+    }
+    return ecmaString;
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
@@ -2715,32 +2873,27 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
     callTimer->StopCount(method);
 }
 
-uint32_t RuntimeStubs::ComputeHashcode(JSTaggedType ecmaString)
-{
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    return EcmaStringAccessor(string).ComputeHashcode();
-}
-
-int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length)
+int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     }
 }
 
-int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length)
+int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString,
+    int32_t start, int32_t length, int32_t startIndex)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8(), length);
+        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16(), length);
+        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     }
 }

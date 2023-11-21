@@ -1243,11 +1243,12 @@ DEF_CALL_SIGNATURE(BigIntSameValueZero)
 
 DEF_CALL_SIGNATURE(StringGetStart)
 {
-    CallSignature stringGetStart("StringGetStart", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetStart("StringGetStart", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetStart;
-    std::array<VariableType, 3> params = { // 3 : three input parameters
+    std::array<VariableType, 4> params = { // 4 : four input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
@@ -1257,11 +1258,12 @@ DEF_CALL_SIGNATURE(StringGetStart)
 
 DEF_CALL_SIGNATURE(StringGetEnd)
 {
-    CallSignature stringGetEnd("StringGetEnd", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    CallSignature stringGetEnd("StringGetEnd", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = stringGetEnd;
-    std::array<VariableType, 4> params = { // 4 : four input parameters
+    std::array<VariableType, 5> params = { // 5 : five input parameters
         VariableType::BOOL(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32(),
     };
@@ -1808,20 +1810,6 @@ DEF_CALL_SIGNATURE(DoubleToLength)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(ComputeHashcode)
-{
-    // 1 : 1 input parameters
-    CallSignature index("ComputeHashcode", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters
@@ -1997,6 +1985,22 @@ DEF_CALL_SIGNATURE(JsBoundCallInternal)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::COMMON_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(TryToElementsIndexOrFindInStringTable)
+{
+    // 2 : 2 input parameters
+    CallSignature tryToElementsIndexOrFindInStringTable("TryToElementsIndexOrFindInStringTable", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = tryToElementsIndexOrFindInStringTable;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
 DEF_CALL_SIGNATURE(CreateArrayFromList)
@@ -2188,6 +2192,22 @@ DEF_CALL_SIGNATURE(FastStringEqual)
     // 3 : 3 input parameters
     CallSignature signature("FastStringEqual", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ecmaString1
+        VariableType::JS_ANY(),          // ecmaString2
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(FastStringAdd)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("FastStringAdd", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {

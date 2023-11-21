@@ -12,5 +12,23 @@
 # limitations under the License.
 
 stack overflow2!
+stack overflow!
 proxy stackoverflow!
 proxy stackoverflow2!
+callarg0 stackoverflow
+callarg1 stackoverflow
+callarg2 stackoverflow
+callarg3 stackoverflow
+callrange stackoverflow
+callthis0 stackoverflow
+callthis1 stackoverflow
+callthis2 stackoverflow
+callthis3 stackoverflow
+callthisrange stackoverflow
+callstatic0 stackoverflow
+callstatic1 stackoverflow
+callstatic2 stackoverflow
+callstatic3 stackoverflow
+callstaticrange stackoverflow
+callnew stackoverflow
+callnew stackoverflow2

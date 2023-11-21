@@ -11,12 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: GetName@ts_inline_accessor caller function name: func_main_0@ts_inline_accessor
 xiaoming
-[trace] aot inline function name: SetName@ts_inline_accessor caller function name: func_main_0@ts_inline_accessor
-[trace] aot inline function name: GetName@ts_inline_accessor caller function name: func_main_0@ts_inline_accessor
 xiaohong
-[trace] aot inline function name: SetAge@ts_inline_accessor caller function name: func_main_0@ts_inline_accessor
+[trace] aot inline function name: foo@ts_inline_accessor caller function name: SetAge@ts_inline_accessor
 foo
-[trace] aot inline function name: GetAge@ts_inline_accessor caller function name: func_main_0@ts_inline_accessor
 20

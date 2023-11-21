@@ -111,7 +111,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSTaggedValue resolvedModule = binding->GetModule();
         ASSERT(resolvedModule.IsSourceTextModule());
         SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
-        
+
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
@@ -729,5 +729,39 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const JSPandaFi
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
     return ResolveModule(thread, jsPandaFile);
+}
+
+JSHandle<JSTaggedValue> ModuleManager::LoadNativeModule(JSThread *thread, const std::string &key)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+    JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+    if (IsImportedModuleLoaded(keyHandle.GetTaggedValue())) {
+        JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(keyHandle.GetTaggedValue());
+        requiredModule.Update(moduleRecord);
+    } else {
+        CString requestPath = ConvertToString(keyHandle.GetTaggedValue());
+        CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
+        auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
+        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, moduleType);
+        JSHandle<SourceTextModule> nativeModule = 
+            JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
+        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, JSHandle<JSTaggedValue>(keyHandle), moduleType)) {
+            LOG_FULL(ERROR) << "loading native module " << requestPath << " failed";
+        }
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+        requiredModule.Update(nativeModule);
+    }
+
+    JSHandle<SourceTextModule> ecmaModule = JSHandle<SourceTextModule>::Cast(requiredModule);
+    if (ecmaModule->GetIsNewBcVersion()) {
+        int index = GetExportObjectIndex(vm_, ecmaModule, key);
+        JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
+        return JSHandle<JSTaggedValue>(thread, result);
+    }
+
+    JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
+    return JSHandle<JSTaggedValue>(thread, result);
 }
 } // namespace panda::ecmascript

@@ -45,6 +45,7 @@ public:
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
     static void SynchronizedSetClass(void *obj, JSTaggedType value);
+    static void SynchronizedSetObject(void *obj, size_t offset, JSTaggedType value, bool isPrimitive = false);
 
     template<class T>
     static inline T GetValue(const void *obj, size_t offset)

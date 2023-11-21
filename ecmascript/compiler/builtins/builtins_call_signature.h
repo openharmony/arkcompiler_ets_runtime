@@ -44,6 +44,7 @@ namespace panda::ecmascript::kungfu {
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \
+    V(ObjectHasOwnProperty)                         \
     V(VectorForEach)                                \
     V(VectorReplaceAllElements)                     \
     V(StackForEach)                                 \
@@ -68,6 +69,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayValues)                                  \
     V(ArrayReverse)                                 \
     V(ArrayPush)                                    \
+    V(ArrayIncludes)                                \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \
@@ -178,6 +180,34 @@ public:
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_LAST);
     }
 
+    static bool IsTypedBuiltinNumber(ID builtinId)
+    {
+        return BuiltinsStubCSigns::ID::NumberConstructor == builtinId;
+    }
+
+    static bool IsTypedBuiltinCallThis0(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsTypedBuiltinCallThis3(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::LocaleCompare:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     static ConstantIndex GetConstantIndex(ID builtinId)
     {
         switch (builtinId) {
@@ -214,6 +244,8 @@ public:
                 UNREACHABLE();
         }
     }
+
+    static size_t GetGlobalEnvIndex(ID builtinId);
 
     static ID GetBuiltinId(std::string idStr)
     {
@@ -259,6 +291,10 @@ enum class BuiltinsArgs : size_t {
 #define PGO_BUILTINS_STUB_ID(name) ((-1) * kungfu::BuiltinsStubCSigns::name)
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
 #define IS_TYPED_BUILTINS_MATH_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinMath(id)
+#define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)
+#define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)
+#define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
+#define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

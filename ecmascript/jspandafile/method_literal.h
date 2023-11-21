@@ -341,6 +341,8 @@ public:
         return extraLiteralInfo_;
     }
 
+    std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(const JSPandaFile *jsPandaFile) const;
+
 private:
     enum class Index : size_t {
         CALL_FIELD_INDEX = 0,

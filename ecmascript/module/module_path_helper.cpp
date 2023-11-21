@@ -182,12 +182,8 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CString currentModuleName = currentVec[1];
         PathHelper::DeleteNamespace(currentModuleName);
         if (bundleName != vm->GetBundleName()) {
-            entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
-            if (vm->EnableReportModuleResolvingFailure()) {
-                CString msg = "[ArkRuntime Log] Cannot preview this HSP module as " \
-                    "it is imported from outside the current application.";
-                LOG_NO_TAG(ERROR) << msg;
-            }
+            baseFileName = BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
+                           PathHelper::SLASH_TAG + moduleName + MERGE_ABC_ETS_MODULES;
         } else if (currentModuleName != vm->GetModuleName()) {
             baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
         }

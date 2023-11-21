@@ -859,7 +859,6 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
         }
     }
 
-    auto pStart = p;
     // 5. skip leading '0'
     while (*p == '0') {
         if (++p == end) {
@@ -868,21 +867,21 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
     }
     // 6. parse to bigint
     CString buffer;
-    if (sign == Sign::NEG) {
-        buffer += "-";
-    }
     do {
         uint8_t c = ToDigit(*p);
-        if (c >= radix) {
-            if (pStart != p && !NumberHelper::GotoNonspace(&p, end)) {
-                break;
-            }
+        if (c < radix) {
+            buffer += *p;
+        } else if (NumberHelper::GotoNonspace(&p, end)) {
+            // illegal character
             return JSTaggedValue(NAN_VALUE);
         }
-        buffer += *p;
-    } while (++p != end);
+        // tail of string is space
+    } while (++p < end);
     if (buffer.size() == 0) {
         return BigInt::Uint32ToBigInt(thread, 0).GetTaggedValue();
+    }
+    if (sign == Sign::NEG) {
+        return BigIntHelper::SetBigInt(thread, "-" + buffer, radix).GetTaggedValue();
     }
     return BigIntHelper::SetBigInt(thread, buffer, radix).GetTaggedValue();
 }

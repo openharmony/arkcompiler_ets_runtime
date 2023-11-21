@@ -58,6 +58,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   stack_protector_ret = false
   sources = [
     "access_object_stub_builder.cpp",
+    "aot_compiler_preprocessor.cpp",
     "argument_accessor.cpp",
     "array_bounds_check_elimination.cpp",
     "assembler/aarch64/assembler_aarch64.cpp",
@@ -108,7 +109,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "later_elimination.cpp",
     "lcr_circuit_builder.cpp",
     "lcr_gate_meta_data.cpp",
-    "lexical_env_specialization.cpp",
+    "lexical_env_specialization_pass.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "loop_analysis.cpp",
@@ -281,7 +282,7 @@ ohos_source_set("libark_jsoptimizer_set") {
   }
   external_deps = []
   deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -363,7 +364,7 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_jsruntime_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]
@@ -411,7 +412,7 @@ ohos_executable("ark_aot_compiler") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [
       "runtime_core:arkfile_header_deps",
       "runtime_core:libarkbase_static",

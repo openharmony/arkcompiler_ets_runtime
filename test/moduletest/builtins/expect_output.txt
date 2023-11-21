@@ -34,6 +34,16 @@ NaN
 -1
 -1
 Bill Gates,1,2
+1
+1
+1
+1
+1
+NaN
+false
+false
+false
+false
 builtins ir end
 builtins number start
 parseInt result = 16947500000

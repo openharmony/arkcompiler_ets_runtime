@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_ECMA_VM_H
 #define ECMASCRIPT_ECMA_VM_H
 
-#include <cstdint>
 #include <mutex>
 
 #include "ecmascript/base/config.h"
@@ -24,7 +23,6 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
@@ -93,6 +91,7 @@ using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
+using DeviceDisconnectCallback = std::function<bool()>;
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
@@ -231,6 +230,16 @@ public:
     tooling::JsDebuggerManager *GetJsDebuggerManager() const
     {
         return debuggerManager_;
+    }
+
+    void SetDeviceDisconnectCallback(DeviceDisconnectCallback cb)
+    {
+        deviceDisconnectCallback_ = cb;
+    }
+
+    DeviceDisconnectCallback GetDeviceDisconnectCallback() const
+    {
+        return deviceDisconnectCallback_;
     }
 
     void SetEnableForceGC(bool enable)
@@ -554,6 +563,8 @@ private:
     size_t callDepth_ {0};
 
     bool isProfiling_ {false};
+
+    DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
 
     friend class Snapshot;
     friend class SnapshotProcessor;

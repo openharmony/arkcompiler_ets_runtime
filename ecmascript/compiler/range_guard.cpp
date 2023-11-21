@@ -90,7 +90,7 @@ GateRef RangeGuard::TraverseDependSelector(GateRef gate)
 GateRef RangeGuard::TryApplyRangeGuardForLength(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    uint32_t length = dependChain->FoundIndexCheckedForLength(this, input);
+    uint32_t length = FoundIndexCheckedForLength(dependChain, input);
     if (length) { // when length not equal to 0, then Found the IndexCheck Success
         Environment env(gate, circuit_, &builder_);
         // If the IndexCheck before the ArrayLength used, the ArrayLength must start by 1.
@@ -103,7 +103,7 @@ GateRef RangeGuard::TryApplyRangeGuardForLength(DependChains* dependChain, GateR
 GateRef RangeGuard::TryApplyRangeGuardForIndex(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    uint32_t length = dependChain->FoundIndexCheckedForIndex(this, input);
+    uint32_t length = FoundIndexCheckedForIndex(dependChain, input);
     if (length) { // when length not equal to 0, then Found the IndexCheck Success
         Environment env(gate, circuit_, &builder_);
         // If the IndexCheck used in the Array, the index must in the Array range.
@@ -162,7 +162,7 @@ GateRef RangeGuard::UpdateDependChain(GateRef gate, DependChains* dependChain)
     return gate;
 }
 
-uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
+uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs) const
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {
@@ -177,7 +177,7 @@ uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
     return 0;
 }
 
-uint32_t RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs)
+uint32_t RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs) const
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {

@@ -200,7 +200,7 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::init
     SavePcIfNeeded(glue);
     const std::string name = RuntimeStubCSigns::GetRTName(index);
     GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
-                                                     Circuit::NullGate(), name.c_str());
+                                                     glue, name.c_str());
     return result;
 }
 
@@ -632,6 +632,12 @@ inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
     return env_->GetBuilder()->TaggedIsSpecial(x);
 }
 
+inline GateRef StubBuilder::TaggedIsRegularObject(GateRef x)
+{
+    GateRef objectType = GetObjectType(LoadHClass(x));
+    return Int32LessThan(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+}
+
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsHeapObject(x);
@@ -1032,6 +1038,11 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
+inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
+{
+    return env_->GetBuilder()->StorePrototype(glue, hclass, prototype);
+}
+
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 {
     return env_->GetBuilder()->GetObjectType(hClass);
@@ -1371,6 +1382,15 @@ inline GateRef StubBuilder::IsWritable(GateRef attr)
         Int32(0));
 }
 
+inline GateRef StubBuilder::IsDefaultAttribute(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(
+            Int32LSR(attr, Int32(PropertyAttributes::DefaultAttributesField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::DefaultAttributesField::SIZE) - 1)),
+        Int32(0));
+}
+
 inline GateRef StubBuilder::IsConfigable(GateRef attr)
 {
     return Int32NotEqual(
@@ -1523,6 +1543,21 @@ inline void StubBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef it
 inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
 {
     env_->GetBuilder()->IncreaseInteratorIndex(glue, iter, index);
+}
+
+inline void StubBuilder::SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex)
+{
+    env_->GetBuilder()->SetNextIndexOfArrayIterator(glue, iter, nextIndex);
+}
+
+inline void StubBuilder::SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray)
+{
+    env_->GetBuilder()->SetIteratedArrayOfArrayIterator(glue, iter, iteratedArray);
+}
+
+inline void StubBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind)
+{
+    env_->GetBuilder()->SetBitFieldOfArrayIterator(glue, iter, kind);
 }
 
 inline GateRef StubBuilder::IsField(GateRef attr)

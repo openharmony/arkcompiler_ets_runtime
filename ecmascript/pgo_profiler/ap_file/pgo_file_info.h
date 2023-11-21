@@ -322,8 +322,8 @@ class PGOFileDataInterface {
 public:
     PGOFileDataInterface() = default;
     virtual ~PGOFileDataInterface() = default;
-    virtual uint32_t ProcessToBinary(std::fstream &stream) = 0;
-    virtual uint32_t ParseFromBinary(void **buffer, PGOProfilerHeader const *header) = 0;
+    virtual uint32_t ProcessToBinary(PGOContext &context, std::fstream &stream) = 0;
+    virtual uint32_t ParseFromBinary(PGOContext &context, void **buffer, PGOProfilerHeader const *header) = 0;
     virtual bool ProcessToText(std::ofstream &stream) = 0;
     // not support yet
     virtual bool ParseFromText([[maybe_unused]] std::ifstream &stream)
@@ -343,7 +343,8 @@ public:
     virtual bool Support(PGOProfilerHeader const *header) const = 0;
     virtual SectionInfo *GetSection(PGOProfilerHeader const *header) const = 0;
 
-    static bool ParseSectionFromBinary(void *buffer, PGOProfilerHeader const *header, PGOFileSectionInterface &section)
+    static bool ParseSectionFromBinary(PGOContext &context, void *buffer, PGOProfilerHeader const *header,
+                                       PGOFileSectionInterface &section)
     {
         if (section.Support(header)) {
             SectionInfo *info = section.GetSection(header);
@@ -351,12 +352,12 @@ public:
                 return false;
             }
             void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
-            section.ParseFromBinary(&addr, header);
+            section.ParseFromBinary(context, &addr, header);
         }
         return true;
     }
 
-    static bool ProcessSectionToBinary(std::fstream &fileStream, PGOProfilerHeader *const header,
+    static bool ProcessSectionToBinary(PGOContext &context, std::fstream &fileStream, PGOProfilerHeader *const header,
                                        PGOFileSectionInterface &section)
     {
         auto *info = section.GetSection(header);
@@ -364,7 +365,7 @@ public:
             return false;
         }
         info->offset_ = static_cast<uint32_t>(fileStream.tellp());
-        info->number_ = section.ProcessToBinary(fileStream);
+        info->number_ = section.ProcessToBinary(context, fileStream);
         info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
         return true;
     }

@@ -143,6 +143,12 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
     return NewGate(meta, machineType, args.size(), args.begin(), type, comment);
 }
 
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
+    const std::vector<GateRef>& inList, GateType type, const char* comment)
+{
+    return NewGate(meta, machineType, inList.size(), inList.data(), type, comment);
+}
+
 GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment)
 {
     return NewGate(meta, machineType, {}, type, comment);
@@ -162,71 +168,7 @@ void Circuit::PrintAllGatesWithBytecode() const
     std::vector<GateRef> gateList;
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto opcode = GetOpCode(gate);
-        switch (opcode) {
-            case OpCode::JS_BYTECODE: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto bytecode = gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
-                std::string bytecodeStr = GetEcmaOpcodeStr(bytecode);
-                gatePtr->PrintGateWithAdditionOp(bytecodeStr);
-                break;
-            }
-            case OpCode::TYPED_BINARY_OP: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = gatePtr->GetTypedBinaryMetaData()->GetTypedBinaryOp();
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::TYPED_UNARY_OP: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue()).GetTypedUnOp();
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::TYPED_CONDITION_JUMP: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = TypedJumpAccessor(gatePtr->GetOneParameterMetaData()->GetValue()).GetTypedJumpOp();
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::LOAD_ELEMENT: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = static_cast<TypedLoadOp>(gatePtr->GetOneParameterMetaData()->GetValue());
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::STORE_ELEMENT: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = static_cast<TypedStoreOp>(gatePtr->GetOneParameterMetaData()->GetValue());
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::TYPED_CALLTARGETCHECK_OP: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                auto typedOp = gatePtr->GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
-                std::string typedOpStr = GateMetaData::Str(typedOp);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            case OpCode::CONVERT:
-            case OpCode::CHECK_AND_CONVERT: {
-                const Gate *gatePtr = LoadGatePtrConst(gate);
-                ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
-                auto srcType = accessor.GetSrcType();
-                auto dstType = accessor.GetDstType();
-                std::string typedOpStr = GateMetaData::Str(srcType) + "_TO_" + GateMetaData::Str(dstType);
-                gatePtr->PrintGateWithAdditionOp(typedOpStr);
-                break;
-            }
-            default:
-                LoadGatePtrConst(gate)->Print();
-                break;
-        }
+        LoadGatePtrConst(gate)->PrintWithBytecode();
     }
 }
 
@@ -406,8 +348,11 @@ void Circuit::DeleteIn(GateRef gate, size_t idx)
 
 void Circuit::DeleteGate(GateRef gate)
 {
-    LoadGatePtr(gate)->DeleteGate();
-    LoadGatePtr(gate)->SetMetaData(Nop());
+    // constant in constant cache, dont delete it.
+    if (GetOpCode(gate) != OpCode::CONSTANT) {
+        LoadGatePtr(gate)->DeleteGate();
+        LoadGatePtr(gate)->SetMetaData(Nop());
+    }
 }
 
 void Circuit::DecreaseIn(GateRef gate, size_t idx)

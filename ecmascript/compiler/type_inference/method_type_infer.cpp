@@ -45,12 +45,14 @@ MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circu
     }
     // init jsgateToBytecode
     BytecodeIterator iterator(builder_, 0, builder_->GetLastBcIndex());
-    for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
+    iterator.GotoStart();
+    while (!iterator.Done()) {
         auto index = iterator.Index();
         auto gates = builder_->GetGatesByBcIndex(index);
         for (auto gate : gates) {
             jsgateToBytecode_[gate] = index;
         }
+        ++iterator;
     }
 }
 
@@ -69,6 +71,15 @@ void MethodTypeInfer::CheckAndPrint()
     }
 }
 
+void MethodTypeInfer::Enqueue(GateRef gate)
+{
+    auto gateId = gateAccessor_.GetId(gate);
+    if (!inQueue_[gateId]) {
+        inQueue_[gateId] = true;
+        pendingQueue_.push(gate);
+    }
+}
+
 std::pair<GateType, uint32_t> MethodTypeInfer::TraverseInfer()
 {
     // main type infer for all gates
@@ -78,10 +89,8 @@ std::pair<GateType, uint32_t> MethodTypeInfer::TraverseInfer()
         pendingQueue_.pop();
         auto uses = gateAccessor_.ConstUses(curGate);
         for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-            auto gateId = gateAccessor_.GetId(*useIt);
-            if (Infer(*useIt) && !inQueue_[gateId]) {
-                inQueue_[gateId] = true;
-                pendingQueue_.push(*useIt);
+            if (Infer(*useIt)) {
+                Enqueue(*useIt);
             }
             if (enableGlobalTypeInfer_ && IsNamespace(*useIt)) {
                 return SetAndReturnNamespaceObjType(*useIt);
@@ -651,7 +660,7 @@ bool MethodTypeInfer::InferLdObjByIndex(GateRef gate)
         auto type = tsManager_->GetArrayParameterTypeGT(inValueType);
         return UpdateType(gate, type);
     }
-    
+
     if (tsManager_->IsIntTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::IntType());
     }
@@ -771,7 +780,9 @@ bool MethodTypeInfer::InferStObjByName(GateRef gate)
     uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));  // 1: index of key
     JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
     if (tsManager_->IsNamespaceTypeKind(receiverType)) {
-        tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
+        if (tsManager_->AddNamespacePropType(receiverType, propKey, valueType)) {
+            Enqueue(receiver);
+        }
         return true;
     }
 
@@ -1501,8 +1512,8 @@ void MethodTypeInfer::PGOTypeCheck(GateRef gate) const
         auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId); // expected type
         // 5. pgo type
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
-        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type
-        auto pgoTypeStr = pgoType.ToString();
+        auto pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type
+        auto pgoTypeStr = pgoType.GetPGOSampleType()->ToString();
         // 6. compare expected type and pgo type
         if (expectedTypeStr != pgoTypeStr) {
             const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
@@ -1564,8 +1575,8 @@ std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtra
             log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
         }
     } else {
-        PGOSampleType pgoType = gateAccessor_.TryGetPGOType(gate); // pgo type
-        log += "pgoType: " + pgoType.ToString() + ", ";
+        auto pgoType = gateAccessor_.TryGetPGOType(gate); // pgo type
+        log += "pgoType: " + pgoType.GetPGOSampleType()->ToString() + ", ";
     }
 
     log += "\n[compiler] ";

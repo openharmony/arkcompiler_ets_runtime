@@ -37,7 +37,9 @@ public:
 
     // define BitField
     static constexpr size_t HAS_CHANGED_BITS = 1;
+    static constexpr size_t ACCESSOR_HAS_CHANGED_BITS = 1;
     FIRST_BIT_FIELD(BitField, HasChanged, bool, HAS_CHANGED_BITS);
+    NEXT_BIT_FIELD(BitField, AccessorHasChanged, bool, ACCESSOR_HAS_CHANGED_BITS, HasChanged);
 
     DECL_DUMP()
 };

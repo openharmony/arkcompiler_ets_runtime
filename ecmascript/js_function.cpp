@@ -104,6 +104,10 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> proto;
     if (!fun->HasFunctionPrototype()) {
         proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, fun));
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(fun.GetTaggedType(),
+                JSTaggedType(proto->GetTaggedObject()->GetClass()), pgo::ProfileType::Kind::PrototypeId);
+        }
     } else {
         proto = JSHandle<JSTaggedValue>(thread, fun->GetProtoOrHClass());
     }
@@ -111,6 +115,9 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
     fun->SetProtoOrHClass(thread, hclass);
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(fun.GetTaggedType(), hclass.GetTaggedType());
+    }
     return *hclass;
 }
 
@@ -118,7 +125,11 @@ JSTaggedValue JSFunction::PrototypeGetter(JSThread *thread, const JSHandle<JSObj
 {
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(self);
     if (!func->HasFunctionPrototype()) {
-        NewJSFunctionPrototype(thread, func);
+        JSHandle<JSTaggedValue> proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, func));
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(func.GetTaggedType(),
+                JSTaggedType(proto->GetTaggedObject()->GetClass()), pgo::ProfileType::Kind::PrototypeId);
+        }
     }
     return JSFunction::Cast(*self)->GetFunctionPrototype();
 }
@@ -138,6 +149,10 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         func->SetProtoOrHClass(thread, newClass);
     } else {
         func->SetFunctionPrototype(thread, value.GetTaggedValue());
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler() && value->IsECMAObject()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(func.GetTaggedType(),
+                JSTaggedType(value->GetTaggedObject()->GetClass()), pgo::ProfileType::Kind::PrototypeId);
+        }
     }
     return true;
 }
@@ -711,6 +726,12 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     ASSERT(!prototype->IsHole());
     newJSHClass->SetPrototype(thread, prototype);
     derived->SetProtoOrHClass(thread, newJSHClass);
+
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(derived.GetTaggedType(),
+            newJSHClass.GetTaggedType());
+    }
+
     return newJSHClass;
 }
 

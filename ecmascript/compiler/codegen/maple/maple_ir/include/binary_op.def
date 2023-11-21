@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+BINARYOP(add)
+BINARYOP(ashr)
+BINARYOP(band)
+BINARYOP(bior)
+BINARYOP(bxor)
+BINARYOP(cand)
+BINARYOP(cior)
+BINARYOP(cmp)
+BINARYOP(cmpl)
+BINARYOP(cmpg)
+BINARYOP(div)
+BINARYOP(eq)
+BINARYOP(gt)
+BINARYOP(land)
+BINARYOP(lior)
+BINARYOP(le)
+BINARYOP(lshr)
+BINARYOP(lt)
+BINARYOP(max)
+BINARYOP(min)
+BINARYOP(mul)
+BINARYOP(ne)
+BINARYOP(ge)
+BINARYOP(rem)
+BINARYOP(shl)
+BINARYOP(ror)
+BINARYOP(sub)
+BINARYOP(CG_array_elem_add)
+

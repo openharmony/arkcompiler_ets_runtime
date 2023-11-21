@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -172,6 +173,11 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isJSArray(env);
+    GateRef jsCOWArray = IsJsCOWArray(thisValue);
+    GateRef jsJSArray = IsJsArray(thisValue);
+    Branch(BoolAnd(jsJSArray, BoolNot(jsCOWArray)), &isJSArray, slowPath);
+    Bind(&isJSArray);
     Label stableJSArray(env);
     GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
     Branch(isThisStableJSArray, &stableJSArray, slowPath);
@@ -249,6 +255,31 @@ GateRef BuiltinsArrayStubBuilder::IsJsArrayWithLengthLimit(GateRef glue, GateRef
     return ret;
 }
 
+void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    ConstantIndex iterClassIdx = ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX;
+    GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, iterClassIdx);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef prototype = GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv,
+                                          GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+    SetPrototypeToHClass(VariableType::JS_POINTER(), glue, iteratorHClass, prototype);
+    GateRef iter = newBuilder.NewJSObject(glue, iteratorHClass);
+    SetIteratedArrayOfArrayIterator(glue, iter, thisValue);
+    SetNextIndexOfArrayIterator(glue, iter, Int32(0));
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
+    SetBitFieldOfArrayIterator(glue, iter, kind);
+    result->WriteVariable(iter);
+    Jump(exit);
+}
+
 void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
@@ -321,16 +352,118 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     Jump(exit);
 }
 
-void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
-    [[maybe_unused]] GateRef numArgs, [[maybe_unused]] Variable *result, [[maybe_unused]] Label *exit,  Label *slowPath)
+void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
-    GateRef iter = GetIterator(glue, thisValue, ProfileOperation());
-    result->WriteVariable(iter);
-    Jump(exit);
+    Label isObject(env);
+    Label notFound(env);
+    Label thisLenNotZero(env);
+    Branch(TaggedIsObject(thisValue), &isObject, slowPath);
+    Bind(&isObject);
+    GateRef thisLen = GetArrayLength(thisValue);
+    Branch(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
+    Bind(&thisLenNotZero);
+    {
+        DEFVARIABLE(fromIndex, VariableType::INT32(), Int32(0));
+        Label getArgTwo(env);
+        Label nextProcess(env);
+        Branch(Int64Equal(numArgs, IntPtr(2)), &getArgTwo, &nextProcess); // 2: 2 parameters
+        Bind(&getArgTwo);
+        {
+            Label secondArgIsInt(env);
+            GateRef fromIndexTemp = GetCallArg1(numArgs);
+            Branch(TaggedIsInt(fromIndexTemp), &secondArgIsInt, slowPath);
+            Bind(&secondArgIsInt);
+            fromIndex = GetInt32OfTInt(fromIndexTemp);
+            Jump(&nextProcess);
+        }
+        Bind(&nextProcess);
+        {
+            Label atLeastOneArg(env);
+            Label setBackZero(env);
+            Label calculateFrom(env);
+            Label nextCheck(env);
+            Branch(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
+            Bind(&atLeastOneArg);
+            Branch(Int32GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextCheck);
+            Bind(&nextCheck);
+            {
+                GateRef negThisLen = Int32Sub(Int32(0), thisLen);
+                Branch(Int32LessThan(*fromIndex, negThisLen), &setBackZero, &calculateFrom);
+                Bind(&setBackZero);
+                {
+                    fromIndex = Int32(0);
+                    Jump(&calculateFrom);
+                }
+                Bind(&calculateFrom);
+                {
+                    DEFVARIABLE(from, VariableType::INT32(), Int32(0));
+                    Label fromIndexGreaterOrEqualZero(env);
+                    Label fromIndexLessThanZero(env);
+                    Label startLoop(env);
+                    Branch(Int32GreaterThanOrEqual(*fromIndex, Int32(0)),
+                        &fromIndexGreaterOrEqualZero, &fromIndexLessThanZero);
+                    Bind(&fromIndexGreaterOrEqualZero);
+                    {
+                        from = *fromIndex;
+                        Jump(&startLoop);
+                    }
+                    Bind(&fromIndexLessThanZero);
+                    {
+                        Label isLenFromIndex(env);
+                        GateRef lenFromIndexSum = Int32Add(thisLen, *fromIndex);
+                        Branch(Int32GreaterThanOrEqual(lenFromIndexSum, Int32(0)), &isLenFromIndex, &startLoop);
+                        Bind(&isLenFromIndex);
+                        {
+                            from = lenFromIndexSum;
+                            Jump(&startLoop);
+                        }
+                    }
+                    Bind(&startLoop);
+                    {
+                        GateRef searchElement = GetCallArg0(numArgs);
+                        GateRef elements = GetElementsArray(thisValue);
+                        Label loopHead(env);
+                        Label loopEnd(env);
+                        Label next(env);
+                        Label loopExit(env);
+                        Jump(&loopHead);
+                        LoopBegin(&loopHead);
+                        {
+                            Branch(Int32LessThan(*from, thisLen), &next, &loopExit);
+                            Bind(&next);
+                            {
+                                Label notHoleOrUndefValue(env);
+                                Label valueFound(env);
+                                GateRef value = GetValueFromTaggedArray(elements, *from);
+                                GateRef isHole = TaggedIsHole(value);
+                                GateRef isUndef = TaggedIsUndefined(value);
+                                Branch(BoolOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
+                                Bind(&notHoleOrUndefValue);
+                                GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
+                                Branch(valueEqual, &valueFound, &loopEnd);
+                                Bind(&valueFound);
+                                {
+                                    result->WriteVariable(TaggedTrue());
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                        Bind(&loopEnd);
+                        from = Int32Add(*from, Int32(1));
+                        LoopEnd(&loopHead);
+                        Bind(&loopExit);
+                        Jump(&notFound);
+                    }
+                }
+            }
+        }
+    }
+    Bind(&notFound);
+    {
+        result->WriteVariable(TaggedFalse());
+        Jump(exit);
+    }
 }
-
 }  // namespace panda::ecmascript::kungfu

@@ -316,6 +316,7 @@ void Heap::EnableParallelGC()
                            << "totalThreadNum(taskpool): " << (maxEvacuateTaskCount_ + 1);
         delete workManager_;
         workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
+        UpdateWorkManager(workManager_);
     }
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
                                          maxEvacuateTaskCount_ - 1);
@@ -528,7 +529,7 @@ void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
         double averageSurvivalRate = memController_->GetAverageSurvivalRate();
         // 2 means half
         if ((averageSurvivalRate / 2) > survivalRate && averageSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
-            fullMarkRequested_ = true;
+            SetFullMarkRequestedState(true);
             OPTIONAL_LOG(ecmaVm_, INFO) << " Current survival rate: " << survivalRate
                 << " is less than half the average survival rates: " << averageSurvivalRate
                 << ". Trigger full mark next time.";
@@ -711,7 +712,8 @@ void Heap::RecomputeLimits()
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(GetGlobalNativeSize(), MIN_HEAP_SIZE,
-                                                                  maxGlobalSize, newSpaceCapacity, growingFactor);
+                                                                  MAX_GLOBAL_NATIVE_LIMIT, newSpaceCapacity,
+                                                                  growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
@@ -971,6 +973,18 @@ void Heap::TryTriggerConcurrentMarking()
     }
 }
 
+void Heap::TryTriggerFullMarkByNativeSize()
+{
+    if (GlobalNativeSizeLargerThanLimit()) {
+        if (concurrentMarker_->IsEnabled()) {
+            SetFullMarkRequestedState(true);
+            TryTriggerConcurrentMarking();
+        } else {
+            CheckAndTriggerOldGC();
+        }
+    }
+}
+
 void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 {
     size_t size = object->GetBindingSize();
@@ -1158,6 +1172,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
         onStartupEvent_ = false;
+        LOG_GC(INFO) << "SmartGC: exit app cold start";
     }
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
@@ -1181,6 +1196,7 @@ void Heap::NotifyHighSensitive(bool isStart)
 {
     onHighSensitiveEvent_ = isStart;
     if (!onHighSensitiveEvent_ && !onStartupEvent_) {
+        LOG_GC(DEBUG) << "SmartGC: exit high sensitive scene";
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
@@ -1193,7 +1209,9 @@ void Heap::NotifyHighSensitive(bool isStart)
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
         TryTriggerConcurrentMarking();
+        return;
     }
+    LOG_GC(DEBUG) << "SmartGC: enter high sensitive scene";
 }
 
 bool Heap::NeedStopCollection()
@@ -1206,7 +1224,7 @@ bool Heap::NeedStopCollection()
         ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) {
         return true;
     }
-
+    LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
     GetNewSpace()->SetOverShootSize(
         GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
         ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
@@ -1284,6 +1302,16 @@ size_t Heap::GetArrayBufferSize() const
         result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;
     });
     return result;
+}
+
+size_t Heap::GetLiveObjectSize() const
+{
+    size_t objectSize = 0;
+    sweeper_->EnsureAllTaskFinished();
+    this->IterateOverObjects([&objectSize]([[maybe_unused]] TaggedObject *obj) {
+        objectSize += obj->GetClass()->SizeFromJSHClass(obj);
+    });
+    return objectSize;
 }
 
 size_t Heap::GetHeapLimitSize() const
@@ -1404,4 +1432,17 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
     }
 #endif
 }
+
+void Heap::UpdateWorkManager(WorkManager *workManager)
+{
+    concurrentMarker_->workManager_ = workManager;
+    fullGC_->workManager_ = workManager;
+    stwYoungGC_->workManager_ = workManager;
+    incrementalMarker_->workManager_ = workManager;
+    nonMovableMarker_->workManager_ = workManager;
+    semiGCMarker_->workManager_ = workManager;
+    compressGCMarker_->workManager_ = workManager;
+    partialGC_->workManager_ = workManager;
+}
+
 }  // namespace panda::ecmascript

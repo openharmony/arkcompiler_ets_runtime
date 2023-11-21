@@ -15,17 +15,18 @@
 
 #include <chrono>
 #include <iostream>
-#include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <memory>
+#include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
-#include "ecmascript/compiler/aot_compiler.h"
-
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -35,25 +36,6 @@
 
 namespace panda::ecmascript::kungfu {
 namespace {
-using PGOProfilerManager = pgo::PGOProfilerManager;
-
-std::string GetHelper()
-{
-    std::string str;
-    str.append(COMPILER_HELP_HEAD_MSG);
-    str.append(HELP_OPTION_MSG);
-    return str;
-}
-
-std::string GetEntryPoint(const JSRuntimeOptions &runtimeOptions)
-{
-    std::string entrypoint = "init::func_main_0";
-    if (runtimeOptions.WasSetEntryPoint()) {
-        entrypoint = runtimeOptions.GetEntryPoint();
-    }
-    return entrypoint;
-}
-
 void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
                        const CVector<AbcFileInfo> &fileInfos)
 {
@@ -70,195 +52,6 @@ void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bo
 }
 } // namespace
 
-CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions)
-{
-    triple_ = runtimeOptions.GetTargetTriple();
-    if (runtimeOptions.GetAOTOutputFile().empty()) {
-        runtimeOptions.SetAOTOutputFile("aot_file");
-    }
-    outputFileName_ = runtimeOptions.GetAOTOutputFile();
-    optLevel_ = runtimeOptions.GetOptLevel();
-    relocMode_ = runtimeOptions.GetRelocMode();
-    logOption_ = runtimeOptions.GetCompilerLogOption();
-    logMethodsList_ = runtimeOptions.GetMethodsListForLog();
-    compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
-    maxAotMethodSize_ = runtimeOptions.GetMaxAotMethodSize();
-    maxMethodsInModule_ = runtimeOptions.GetCompilerModuleMethods();
-    hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
-    profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
-    isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
-    isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
-    isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
-    isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
-    isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
-    isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
-    isEnableTypeInfer_ = isEnableTypeLowering_ ||
-        vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
-    isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
-    isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
-    isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
-    isEnableOptOnHeapCheck_ = runtimeOptions.IsEnableOptOnHeapCheck();
-    isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
-    isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
-    isEnableCollectLiteralInfo_ = false;
-    isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
-    isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
-}
-
-bool CompilationPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)
-{
-    if (runtimeOptions_.IsTargetCompilerMode()) {
-        if (!OhosPkgArgs::ParseArgs(*this, cOptions)) {
-            LOG_COMPILER(ERROR) << GetHelper();
-            LOG_COMPILER(ERROR) << "Parse pkg info failed, exit.";
-            return false;
-        }
-        HandleTargetModeInfo(cOptions);
-    }
-    return true;
-}
-
-void CompilationPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
-{
-    JSRuntimeOptions &vmOpt = vm_->GetJSOptions();
-    ASSERT(vmOpt.IsTargetCompilerMode());
-    // target need fast compiler mode
-    vmOpt.SetFastAOTCompileMode(true);
-    vmOpt.SetOptLevel(3);  // 3: default opt level
-    cOptions.optLevel_ = 3;
-    vmOpt.SetEnableOptOnHeapCheck(false);
-    cOptions.isEnableOptOnHeapCheck_ = false;
-}
-
-bool CompilationPreprocessor::HandlePandaFileNames(const int argc, const char **argv)
-{
-    if (runtimeOptions_.GetCompilerPkgJsonInfo().empty() || pkgsArgs_.empty()) {
-        // if no pkgArgs, last param must be abc file
-        std::string files = argv[argc - 1];
-        if (!base::StringHelper::EndsWith(files, ".abc")) {
-            LOG_COMPILER(ERROR) << "The last argument must be abc file" << std::endl;
-            LOG_COMPILER(ERROR) << GetHelper();
-            return false;
-        }
-        std::string delimiter = GetFileDelimiter();
-        pandaFileNames_ = base::StringHelper::SplitString(files, delimiter);
-    }
-    return true;
-}
-
-void CompilationPreprocessor::AOTInitialize()
-{
-    BytecodeStubCSigns::Initialize();
-    CommonStubCSigns::Initialize();
-    RuntimeStubCSigns::Initialize();
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
-}
-
-void CompilationPreprocessor::SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log)
-{
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    cOptions.isEnableCollectLiteralInfo_ = cOptions.isEnableTypeInfer_ &&
-        (profilerDecoder_.IsLoaded() || tsManager->AssertTypes() || log->OutputType());
-}
-
-bool CompilationPreprocessor::GenerateAbcFileInfos()
-{
-    size_t size = pandaFileNames_.size();
-    uint32_t checksum = 0;
-    for (size_t i = 0; i < size; ++i) {
-        const auto &fileName = pandaFileNames_.at(i);
-        auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
-        std::shared_ptr<JSPandaFile> jsPandaFile = CreateAndVerifyJSPandaFile(extendedFilePath);
-        AbcFileInfo fileInfo(extendedFilePath, jsPandaFile);
-        if (jsPandaFile == nullptr) {
-            LOG_COMPILER(ERROR) << "Cannot execute panda file '" << extendedFilePath << "'";
-            continue;
-        }
-        checksum = jsPandaFile->GetChecksum();
-        ResolveModule(jsPandaFile.get(), extendedFilePath);
-        fileInfos_.emplace_back(fileInfo);
-    }
-
-    return PGOProfilerManager::MergeApFiles(checksum, profilerDecoder_);
-}
-
-std::shared_ptr<JSPandaFile> CompilationPreprocessor::CreateAndVerifyJSPandaFile(const std::string &fileName)
-{
-    JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
-    std::shared_ptr<JSPandaFile> jsPandaFile = nullptr;
-    if (runtimeOptions_.IsTargetCompilerMode()) {
-        auto pkgArgsIter = pkgsArgs_.find(fileName);
-        if (pkgArgsIter == pkgsArgs_.end()) {
-            LOG_COMPILER(ERROR) << "Can not find file in ohos pkgs args. file name: " << fileName;
-            return nullptr;
-        }
-        if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
-            return nullptr;
-        }
-    } else {
-        jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
-    }
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open file " << fileName << " error";
-        return nullptr;
-    }
-
-    if (!jsPandaFile->IsNewVersion()) {
-        LOG_COMPILER(ERROR) << "AOT only support panda file with new ISA, while the '" <<
-            fileName << "' file is the old version";
-        return nullptr;
-    }
-
-    jsPandaFileManager->AddJSPandaFileVm(vm_, jsPandaFile);
-    return jsPandaFile;
-}
-
-void CompilationPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)
-{
-    const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
-    JSThread *thread = vm_->GetJSThread();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    [[maybe_unused]] EcmaHandleScope scope(thread);
-    for (auto info: recordInfo) {
-        if (jsPandaFile->IsModule(info.second)) {
-            auto recordName = info.first;
-            JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
-                recordName);
-            SourceTextModule::Instantiate(thread, moduleRecord);
-        }
-    }
-}
-
-void CompilationPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOptions)
-{
-    for (const AbcFileInfo &fileInfo : fileInfos_) {
-        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-        BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
-                                        cOptions.isEnableCollectLiteralInfo_);
-        BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
-        const auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
-        auto &methodList = bytecodeInfo.GetMethodList();
-        for (const auto &method : methodList) {
-            uint32_t methodOffset = method.first;
-            tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
-            CString recordName = MethodLiteral::GetRecordName(jsPandaFile, EntityId(methodOffset));
-            auto methodLiteral = jsPandaFile->FindMethodLiteral(methodOffset);
-            auto &methodInfo = methodList.at(methodOffset);
-            auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-            TypeRecorder typeRecorder(jsPandaFile, methodLiteral, tsManager, recordName, &profilerDecoder_,
-                                      methodPcInfo, collector.GetByteCodes(), cOptions.isEnableOptTrackField_);
-            typeRecorder.BindPgoTypeToGateType(jsPandaFile, tsManager, methodLiteral);
-        }
-    }
-}
-
-void CompilationPreprocessor::SnapshotInitialize()
-{
-    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
-    tsManager->SnapshotInit(fileInfos_.size());
-}
-
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -270,14 +63,14 @@ int Main(const int argc, const char **argv)
     }
 
     if (argc < 2) { // 2: at least have two arguments
-        LOG_COMPILER(ERROR) << GetHelper();
+        LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
         return -1;
     }
 
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(argc, argv);
     if (!retOpt) {
-        LOG_COMPILER(ERROR) << GetHelper();
+        LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
         return 1;
     }
 
@@ -307,7 +100,7 @@ int Main(const int argc, const char **argv)
         AotMethodLogList logList(cOptions.logMethodsList_);
         PGOProfilerDecoder profilerDecoder;
 
-        CompilationPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
+        AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) ||
             !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return 1;
@@ -320,28 +113,32 @@ int Main(const int argc, const char **argv)
             return 1;
         }
         cPreprocessor.GenerateGlobalTypes(cOptions);
+        cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();
         ret = cPreprocessor.GetCompilerResult();
 
-        PassOptions passOptions(cOptions.isEnableArrayBoundsCheckElimination_,
-                                cOptions.isEnableTypeLowering_,
-                                cOptions.isEnableEarlyElimination_,
-                                cOptions.isEnableLaterElimination_,
-                                cOptions.isEnableValueNumbering_,
-                                cOptions.isEnableTypeInfer_,
-                                cOptions.isEnableOptInlining_,
-                                cOptions.isEnableOptPGOType_,
-                                cOptions.isEnableOptTrackField_,
-                                cOptions.isEnableOptLoopPeeling_,
-                                cOptions.isEnableOptOnHeapCheck_,
-                                cOptions.isEnableOptLoopInvariantCodeMotion_,
-                                cOptions.isEnableCollectLiteralInfo_,
-                                cOptions.isEnableOptConstantFolding_,
-                                cOptions.isEnableLexenvSpecialization_,
-                                cOptions.isEnableNativeInline_);
-        std::string entrypoint = GetEntryPoint(runtimeOptions);
+        PassOptions::Builder optionsBuilder;
+        PassOptions passOptions =
+            optionsBuilder.EnableArrayBoundsCheckElimination(cOptions.isEnableArrayBoundsCheckElimination_)
+                .EnableTypeLowering(cOptions.isEnableTypeLowering_)
+                .EnableEarlyElimination(cOptions.isEnableEarlyElimination_)
+                .EnableLaterElimination(cOptions.isEnableLaterElimination_)
+                .EnableValueNumbering(cOptions.isEnableValueNumbering_)
+                .EnableTypeInfer(cOptions.isEnableTypeInfer_)
+                .EnableOptInlining(cOptions.isEnableOptInlining_)
+                .EnableOptPGOType(cOptions.isEnableOptPGOType_)
+                .EnableOptTrackField(cOptions.isEnableOptTrackField_)
+                .EnableOptLoopPeeling(cOptions.isEnableOptLoopPeeling_)
+                .EnableOptOnHeapCheck(cOptions.isEnableOptOnHeapCheck_)
+                .EnableOptLoopInvariantCodeMotion(cOptions.isEnableOptLoopInvariantCodeMotion_)
+                .EnableCollectLiteralInfo(cOptions.isEnableCollectLiteralInfo_)
+                .EnableOptConstantFolding(cOptions.isEnableOptConstantFolding_)
+                .EnableLexenvSpecialization(cOptions.isEnableLexenvSpecialization_)
+                .EnableInlineNative(cOptions.isEnableNativeInline_)
+                .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
+                .Build();
+
         PassManager passManager(vm,
-                                entrypoint,
                                 cOptions.triple_,
                                 cOptions.optLevel_,
                                 cOptions.relocMode_,
@@ -351,6 +148,7 @@ int Main(const int argc, const char **argv)
                                 cOptions.maxMethodsInModule_,
                                 profilerDecoder,
                                 &passOptions);
+
         AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_);
         const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
         CompileValidFiles(passManager, generator, ret, fileInfos);

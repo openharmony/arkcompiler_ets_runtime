@@ -27,6 +27,7 @@
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
@@ -53,10 +54,14 @@ public:
 
     virtual ~PGOProfiler();
 
-    static ProfileType GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId);
-    static ProfileType GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId);
+    static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
     void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
+    void ProfileDefineGetterSetter(
+        JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
+    void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
+                                ProfileType::Kind kind = ProfileType::Kind::ClassId);
+    void UpdateProfileType(JSHClass *oldHClass, JSHClass *newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
@@ -80,9 +85,8 @@ public:
     void UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag);
     void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
-    ProfileType InsertLiteralTraceId(JSTaggedType hclass, ApEntityId abcId, int32_t traceId,
-                                     ProfileType::Kind typeKind = ProfileType::Kind::LiteralId);
-    ProfileType InsertTraceId(JSTaggedType hclass, ProfileType traceType);
+
+    JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
@@ -127,15 +131,27 @@ private:
                           uint32_t slotId, ProfileTypeInfo *profileTypeInfo, int32_t traceId);
     void DumpCall(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                   ProfileTypeInfo *profileTypeInfo);
-
+    void DumpNewObjRange(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
     void DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+    void DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+
+    void UpdateLayout(JSHClass *hclass);
+    void AddTranstionLayout(JSHClass *parent, JSHClass *child);
+    void AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
+        JSHClass *hold, JSHClass *holdTra);
 
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                       JSHClass *hclass, PGOObjKind kind);
-    bool AddObjectInfoByTraceId(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                                JSHClass *hclass, ProfileType::Kind classKind, PGOObjKind kind,
-                                JSHClass *receiverClass = nullptr);
+                       JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
+    void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
+    void AddElementInfo(
+        ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver);
+
+    ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
+    ProfileType GetOrInsertProfileType(JSTaggedType root, JSTaggedType child);
+    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType traceType);
 
     JSTaggedValue PopFromProfileQueue();
 
@@ -150,7 +166,7 @@ private:
             profiler_->HandlePGODump(profiler_->isForce_);
             return true;
         }
-        
+
         NO_COPY_SEMANTIC(PGOProfilerTask);
         NO_MOVE_SEMANTIC(PGOProfilerTask);
     private:
@@ -247,7 +263,7 @@ private:
     ConditionVariable condition_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;
-    CMap<JSTaggedType, ProfileType> tracedProfiles_;
+    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };

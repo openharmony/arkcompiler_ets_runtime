@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/js_thread.h"
+#include "ecmascript/builtin_entries.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/runtime_call_id.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -36,6 +39,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/builtin_entries.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -219,6 +223,9 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
 
+    rangeVisitor(
+        Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
+
     EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
         // visit stack roots
@@ -232,12 +239,20 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
     } else {
-        globalStorage_->IterateUsageGlobal([visitor](Node *node) {
+        size_t globalCount = 0;
+        globalStorage_->IterateUsageGlobal([visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
                 visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
+            globalCount++;
         });
+        static bool hasCheckedGlobalCount = false;
+        static const size_t WARN_GLOBAL_COUNT = 100000;
+        if (!hasCheckedGlobalCount && globalCount >= WARN_GLOBAL_COUNT) {
+            LOG_ECMA(WARN) << "Global reference count is " << globalCount << ",It exceed the upper limit 100000!";
+            hasCheckedGlobalCount = true;
+        }
     }
 }
 
@@ -740,4 +755,30 @@ Area *JSThread::GetOrCreateRegExpCache()
     }
     return regExpCache_;
 }
+
+void JSThread::InitializeBuiltinObject(const std::string& key)
+{
+    BuiltinIndex builtins_;
+    auto index = builtins_.GetBuiltinIndex(key);
+    ASSERT(index != BuiltinIndex::NOT_FOUND);
+    auto globalObject = GetEcmaVM()->GetGlobalEnv()->GetGlobalObject();
+    auto jsObject = JSHandle<JSObject>(this, globalObject);
+    auto box = jsObject->GetGlobalPropertyBox(this, key);
+    if (box == nullptr) {
+        return;
+    }
+    auto& entry = glueData_.builtinEntries_.builtin_[index];
+    entry.box_ = JSTaggedValue::Cast(box);
+    auto builtin = JSHandle<JSObject>(this, box->GetValue());
+    auto hclass = builtin->GetJSHClass();
+    entry.hClass_ = JSTaggedValue::Cast(hclass);
+}
+
+#define INITIALIZE_BUILTIN_OBJECT(name, type)   \
+    InitializeBuiltinObject(name);
+void JSThread::InitializeBuiltinObject()
+{
+    BUILTIN_LIST(INITIALIZE_BUILTIN_OBJECT)
+}
+#undef INITIALIZE_BUILTIN_OBJECT
 }  // namespace panda::ecmascript

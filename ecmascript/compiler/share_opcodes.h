@@ -49,8 +49,7 @@ namespace panda::ecmascript::kungfu {
     V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                               \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
-    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                                    \
-    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                                       \
+    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 0, 3)                                    \
     V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                         \
     V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                             \
     V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                                    \
@@ -62,6 +61,7 @@ namespace panda::ecmascript::kungfu {
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)
 
 #define SHARE_GATE_META_DATA_LIST_WITH_SIZE(V)                                 \
+    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, value, 0, 0)                  \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                           \
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)          \
     SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

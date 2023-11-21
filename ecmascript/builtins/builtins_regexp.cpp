@@ -1893,6 +1893,12 @@ JSTaggedValue BuiltinsRegExp::RegExpExecForTestFast(JSThread *thread, JSHandle<J
         if (global || sticky) {
             object->SetPropertyInlinedPropsWithRep(thread, LAST_INDEX_OFFSET, JSTaggedValue(0));
         }
+        if (useCache) {
+            RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flags, inputStr,
+                                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue(matchResult)),
+                                                    RegExpExecResultCache::TEST_TYPE,
+                                                    lastIndexInput, 0); // 0: match fail so lastIndex is 0
+        }
         return JSTaggedValue::False();
     }
     JSHandle<RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());

@@ -60,9 +60,7 @@ GateRef DeadCodeElimination::EliminateDependSelector(GateRef gate)
     for (size_t i = 0; i < dependCount; i++) {
         auto depend = acc_.GetDep(gate, i);
         if (acc_.IsDead(depend)) {
-            GateRef correspondingState = acc_.GetState(stateInput, i);
-            acc_.ReplaceDependIn(depend, i, deadGate_);
-            acc_.ReplaceStateIn(correspondingState, i, deadGate_);
+            acc_.ReplaceStateIn(stateInput, deadGate_, i);
             visitor_->ReVisitGate(stateInput);
             result = gate;
         }

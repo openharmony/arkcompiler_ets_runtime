@@ -11,10 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: GetName@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
 xiaoming
-[trace] aot inline function name: SetName@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
-[trace] aot inline function name: GetName@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
 xiaohong
 foo
+[trace] aot inline function name: bar@ts_inline_accessor_deopt caller function name: func_main_0@ts_inline_accessor_deopt
 bar

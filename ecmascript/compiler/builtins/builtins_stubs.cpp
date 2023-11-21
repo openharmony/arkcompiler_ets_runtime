@@ -286,7 +286,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(LastIndexOf,  JS_ANY)                 \
     V(Slice,        JS_POINTER)             \
     V(Reverse,      JS_POINTER)             \
-    V(Push,         JS_ANY)
+    V(Push,         JS_ANY)                 \
+    V(Includes,     JS_ANY)
 
 BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)
 
@@ -301,9 +302,10 @@ DECLARE_BUILTINS(BooleanConstructor)
     Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -335,6 +337,12 @@ DECLARE_BUILTINS(BooleanConstructor)
         res = CallBuiltinRuntime(glue, args, true, name.c_str());
         Jump(&exit);
     }
+    Bind(&slowPath1);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
     Bind(&exit);
     Return(*res);
 }
@@ -346,10 +354,14 @@ DECLARE_BUILTINS(NumberConstructor)
     DEFVARIABLE(numberValue, VariableType::JS_ANY(), IntToTaggedPtr(IntPtr(0)));
     Label thisCollectionObj(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
     Label hasArg(env);
     Label numberCreate(env);
+    Label newTargetIsHeapObject(env);
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    Bind(&newTargetIsHeapObject);
     Branch(Int64GreaterThan(numArgs, IntPtr(0)), &hasArg, &numberCreate);
     Bind(&hasArg);
     {
@@ -366,13 +378,10 @@ DECLARE_BUILTINS(NumberConstructor)
 
     Bind(&numberCreate);
     Label newObj(env);
-    Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Branch(TaggedIsUndefined(newTarget), &exit, &newObj);
     Bind(&newObj);
     {
-        Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
-        Bind(&newTargetIsHeapObject);
         Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
         Bind(&newTargetIsJSFunction);
         {
@@ -403,6 +412,12 @@ DECLARE_BUILTINS(NumberConstructor)
         res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
         Jump(&exit);
     }
+    Bind(&slowPath1);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
     Bind(&exit);
     Return(*res);
 }
@@ -415,9 +430,10 @@ DECLARE_BUILTINS(DateConstructor)
     Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
@@ -486,6 +502,12 @@ DECLARE_BUILTINS(DateConstructor)
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
         GateRef argv = GetArgv();
         res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&slowPath1);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -639,6 +661,8 @@ DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, ToString, VariableType::JS_ANY(), U
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Create, VariableType::JS_ANY(), Undefined());
 // Object.protetype.Assign
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Assign, VariableType::JS_ANY(), Undefined());
+// Object.protetype.HasOwnProperty
+DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, HasOwnProperty, VariableType::JS_ANY(), TaggedFalse());
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
 #define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \

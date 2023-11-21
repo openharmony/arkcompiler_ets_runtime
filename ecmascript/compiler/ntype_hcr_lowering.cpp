@@ -30,6 +30,12 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             LowerCreateArrayWithBuffer(gate, glue);
             break;
+        case OpCode::STORE_MODULE_VAR:
+            LowerStoreModuleVar(gate, glue);
+            break;
+        case OpCode::LD_LOCAL_MODULE_VAR:
+            LowerLdLocalModuleVar(gate);
+            break;
         default:
             break;
     }
@@ -77,7 +83,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex);
+    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
@@ -104,10 +110,13 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
-    return builder_.LoadFromTaggedArray(constPool, index);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
+    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    return builder_.LoadFromTaggedArray(valVec, index);
 }
 
 GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength)
@@ -195,5 +204,127 @@ GateRef NTypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int in
         GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
         return result;
     }
+}
+
+void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    GateRef method = builder_.GetMethodFromFunction(jsFunc);
+    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef localExportEntriesOffset = builder_.IntPtr(SourceTextModule::LOCAL_EXPORT_ENTTRIES_OFFSET);
+    GateRef localExportEntries = builder_.Load(VariableType::JS_ANY(), module, localExportEntriesOffset);
+    GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
+    GateRef data = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+    DEFVALUE(array, (&builder_), VariableType::JS_ANY(), data);
+
+    Label dataIsUndefined(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsUndefined(data), &dataIsUndefined, &exit);
+    builder_.Bind(&dataIsUndefined);
+    {
+        GateRef size = builder_.GetLengthOfTaggedArray(localExportEntries);
+        Label fastpath(&builder_);
+        Label slowPath(&builder_);
+        Label finishNew(&builder_);
+        builder_.Branch(builder_.Int32LessThan(size, builder_.Int32(MAX_TAGGED_ARRAY_LENGTH)), &fastpath, &slowPath);
+        builder_.Bind(&fastpath);
+        {
+            array = NewTaggedArray(size);
+            builder_.Jump(&finishNew);
+        }
+        builder_.Bind(&slowPath);
+        {
+            array = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(size) }, true);
+            builder_.Jump(&finishNew);
+        }
+        builder_.Bind(&finishNew);
+        {
+            builder_.StoreConstOffset(VariableType::JS_ANY(), module, SourceTextModule::NAME_DICTIONARY_OFFSET, *array);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
+    GateRef indexOffset = builder_.Int32Mul(index, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef offset = builder_.Int32Add(indexOffset, dataOffset);
+    builder_.Store(VariableType::JS_ANY(), glue_, *array, offset, value);
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+GateRef NTypeHCRLowering::NewTaggedArray(GateRef length)
+{
+    Label subentry(&builder_);
+    builder_.SubCfgEntry(&subentry);
+    Label exit(&builder_);
+    DEFVALUE(array, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    GateRef hclass = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_CLASS_INDEX);
+    GateRef size = builder_.ComputeTaggedArraySize(builder_.ZExtInt32ToPtr(length));
+    builder_.StartAllocate();
+    array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), *array, 0, hclass);
+    builder_.StoreConstOffset(VariableType::JS_ANY(), *array, TaggedArray::LENGTH_OFFSET,
+        builder_.Int32ToTaggedInt(length));
+    GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
+    GateRef offset = builder_.Int32Mul(length, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef endOffset = builder_.Int32Add(offset, builder_.Int32(TaggedArray::DATA_OFFSET));
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    DEFVALUE(startOffset, (&builder_), VariableType::INT32(), dataOffset);
+    builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, endOffset), &loopHead, &exit);
+    builder_.LoopBegin(&loopHead);
+    builder_.Store(VariableType::INT64(), glue_, *array, *startOffset, builder_.Hole());
+    startOffset = builder_.Int32Add(*startOffset, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
+    builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, endOffset), &loopEnd, &exit);
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&exit);
+    builder_.FinishAllocate();
+    auto ret = *array;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef method = builder_.GetMethodFromFunction(jsFunc);
+    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
+    GateRef dictionary = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    Label dataIsNotUndefined(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
+    builder_.Bind(&dataIsNotUndefined);
+    {
+        GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
+        GateRef indexOffset = builder_.Int32Mul(index, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
+        GateRef offset = builder_.Int32Add(indexOffset, dataOffset);
+        result = builder_.Load(VariableType::JS_ANY(), dictionary, offset);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void NTypeHCRLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto condition = builder_.HasPendingException(glue_);
+    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
 }
 }
