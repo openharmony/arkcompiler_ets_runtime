@@ -25,6 +25,9 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/property_detector-inl.h"
+#include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "builtins_typedarray.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
@@ -470,4 +473,154 @@ JSTaggedValue BuiltinsArkTools::PGOAssertType([[maybe_unused]] EcmaRuntimeCallIn
     LOG_ECMA(INFO) << "Enter PGOAssertType";
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsArkTools::ToLength([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter ToLength()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
+    return JSTaggedValue::ToLength(thread, key);
+}
+
+JSTaggedValue BuiltinsArkTools::HasHoleyElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HasHoleyElements()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
+    if (!array->IsJSArray()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
+    for (uint32_t i = 0; i < len; i++) {
+        if (elements->Get(i).IsHole()) {
+            return JSTaggedValue::True();
+        }
+    }
+    return JSTaggedValue::False();
+}
+
+JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HasDictionaryElements()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> objValue = GetCallArg(info, 0);
+    JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
+    return JSTaggedValue(obj->GetJSHClass()->IsDictionaryMode());
+}
+
+JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HasSmiElements()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
+    if (!array->IsJSArray()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
+    for (uint32_t i = 0; i < len; i++) {
+        if (elements->Get(i).IsInt()) {
+            return JSTaggedValue::True();
+        }
+    }
+    return JSTaggedValue::False();
+}
+
+JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HasDoubleElements()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
+    if (!array->IsJSArray()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
+    for (uint32_t i = 0; i < len; i++) {
+        if (elements->Get(i).IsDouble() && !elements->Get(i).IsZero()) {
+            return JSTaggedValue::True();
+        }
+    }
+    return JSTaggedValue::False();
+}
+
+JSTaggedValue BuiltinsArkTools::HasObjectElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HasObjectElements()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
+    if (!array->IsJSArray()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
+    for (uint32_t i = 0; i < len; i++) {
+        if (elements->Get(i).IsObject()) {
+            return JSTaggedValue::True();
+        }
+    }
+    return JSTaggedValue::False();
+}
+
+JSTaggedValue BuiltinsArkTools::ArrayBufferDetach([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter ArrayBufferDetach()";
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
+    JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(obj1);
+    arrBuf->Detach(thread);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::HaveSameMap([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(INFO) << "Enter HaveSameMap()";
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
+    JSHandle<JSTaggedValue> obj2 = GetCallArg(info, 1);
+    JSHClass *obj1Hclass = obj1->GetTaggedObject()->GetClass();
+    JSHClass *obj2Hclass = obj2->GetTaggedObject()->GetClass();
+    bool res = (obj1Hclass == obj2Hclass);
+    if (!res) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSObject> jsobj1(obj1);
+    JSHandle<JSObject> jsobj2(obj2);
+    JSHandle<TaggedArray> nameList1 = JSObject::EnumerableOwnNames(thread, jsobj1);
+    JSHandle<TaggedArray> nameList2 = JSObject::EnumerableOwnNames(thread, jsobj2);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint32_t len1 = nameList1->GetLength();
+    uint32_t len2 = nameList2->GetLength();
+    if (len1 != len2) {
+        return JSTaggedValue::False();
+    }
+    for (uint32_t i = 0; i < len1; i++) {
+        if (obj1->IsJSArray()) {
+            JSTaggedValue objTagged1 = JSObject::GetProperty(thread, obj1, i).GetValue().GetTaggedValue();
+            JSTaggedValue objTagged2 = JSObject::GetProperty(thread, obj2, i).GetValue().GetTaggedValue();
+            if (FastRuntimeStub::FastTypeOf(thread, objTagged1) !=
+                FastRuntimeStub::FastTypeOf(thread, objTagged2)) {
+                return JSTaggedValue::False();
+            }
+        } else if (JSObject::GetProperty(thread, obj1, i).GetValue() !=
+            JSObject::GetProperty(thread, obj2, i).GetValue()) {
+            return JSTaggedValue::False();
+        }
+    }
+    return JSTaggedValue::True();
+}
+
 }  // namespace panda::ecmascript::builtins
