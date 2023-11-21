@@ -65,7 +65,7 @@ HWTEST_F_L0(ICHandlerTest, LoadElement)
     JSHandle<JSTaggedValue> handleKey(factory->NewFromASCII("key"));
     ObjectOperator handleOp(thread, handleKey);
     JSTaggedValue result = LoadHandler::LoadElement(thread, handleOp).GetTaggedValue();
-    EXPECT_TRUE(HandlerBase::IsElement(result.GetInt()));
+    EXPECT_TRUE(HandlerBase::IsNormalElement(result.GetInt()));
     EXPECT_EQ(HandlerBase::GetKind(result.GetInt()), HandlerKind::ELEMENT);
 }
 

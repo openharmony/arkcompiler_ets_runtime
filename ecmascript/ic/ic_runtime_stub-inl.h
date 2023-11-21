@@ -113,7 +113,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByValue(JSThread *thread, JSTag
     if (receiver.IsHeapObject()) {
         auto hclass = receiver.GetTaggedObject()->GetClass();
         if (firstValue.GetWeakReferentUnChecked() == hclass) {
-            if (HandlerBase::IsElement(secondValue.GetInt())) {
+            if (HandlerBase::IsNormalElement(secondValue.GetInt())) {
                 return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
             } else if (HandlerBase::IsTypedArrayElement(secondValue.GetInt())) {
                 return LoadTypedArrayElement(thread, receiver, key);

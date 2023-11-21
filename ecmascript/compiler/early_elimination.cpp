@@ -324,7 +324,6 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::INDEX_CHECK:
         case OpCode::TYPE_OF_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
                 return false;

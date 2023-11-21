@@ -234,13 +234,13 @@ GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId 
     return ret;
 }
 
-GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
+GateRef CircuitBuilder::IndexCheck(GateRef gate, GateRef index)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
+    GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(),
         MachineType::I64, {currentControl, currentDepend, gate, index, frameState}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

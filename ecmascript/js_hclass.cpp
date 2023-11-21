@@ -443,7 +443,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
             newProtoClass->SetIsPrototype(true);
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateProfileType(*hclass, *newProtoClass);
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
         } else {
             hclass->SetIsPrototype(true);
         }

@@ -463,7 +463,7 @@ public:
 
     bool InElement() const
     {
-        return receiverType_.IsElementType();
+        return receiverType_.IsBuiltinsArray();
     }
 
     bool operator<(const PGOObjectTemplate &right) const
