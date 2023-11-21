@@ -689,7 +689,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     vm->PostFork();
 }
 
-void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+void JSNApi::AddWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     if (hostVm != nullptr && workerVm != nullptr) {
         hostVm->WorkersetInfo(workerVm);
@@ -3823,6 +3823,29 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
 {
     vm->SetSourceMapTranslateCallback(callback);
 }
+
+
+void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
+                                           [[maybe_unused]] bool &getStackBeforeCallNapiSuccess)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    JSThread *thread = vm->GetJSThread();
+    if (thread->GetIsProfiling()) {
+        getStackBeforeCallNapiSuccess = vm->GetProfiler()->GetStackBeforeCallNapi(thread);
+    }
+#endif
+}
+
+void JSNApi::GetStackAfterCallNapi([[maybe_unused]] EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    JSThread *thread = vm->GetJSThread();
+    if (thread->GetIsProfiling()) {
+        vm->GetProfiler()->GetStackAfterCallNapi(thread);
+    }
+#endif
+}
+
 
 TryCatch::~TryCatch()
 {

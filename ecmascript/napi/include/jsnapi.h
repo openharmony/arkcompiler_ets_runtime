@@ -1452,8 +1452,10 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
-    static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
+    static void GetStackAfterCallNapi(EcmaVM *vm);
 
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static PatchErrorCode LoadPatch(EcmaVM *vm,

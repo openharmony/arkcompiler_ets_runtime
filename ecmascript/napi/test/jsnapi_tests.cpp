@@ -1073,7 +1073,7 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
     JSRuntimeOptions option;
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
-    JSNApi::addWorker(vm_, workerVm);
+    JSNApi::AddWorker(vm_, workerVm);
     bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
     EXPECT_TRUE(hasDeleted);
 
