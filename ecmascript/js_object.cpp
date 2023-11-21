@@ -25,7 +25,9 @@
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
@@ -239,6 +241,82 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSHClass::TransitionElementsToDictionary(thread, obj);
 }
 
+inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    JSHandle<NumberDictionary> elements(thread, obj->GetElements());
+    uint32_t size = elements->Size();
+    for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = elements->GetKey(hashIndex);
+        if (key.IsUndefined() || key.IsHole()) {
+            continue;
+        }
+        PropertyAttributes attr = elements->GetAttributes(hashIndex);
+        if (!attr.IsDefaultAttributes()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    ASSERT(obj->GetJSHClass()->IsDictionaryElement() && obj->IsJSArray());
+    if (ShouldOptimizeAsFastElements(thread, obj)) {
+        uint32_t length = JSArray::Cast(*obj)->GetLength();
+        JSHandle<NumberDictionary> elements(thread, obj->GetElements());
+        uint32_t size = elements->Size();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(length);
+        for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+            JSTaggedValue key = elements->GetKey(hashIndex);
+            JSTaggedValue value = elements->GetValue(hashIndex);
+            if (key.IsUndefined() || key.IsHole()) {
+                continue;
+            }
+            array->Set(thread, key.GetNumber(), value);
+        }
+        obj->SetElements(thread, array);
+        JSHClass::OptimizeAsFastElements(thread, obj);
+    }
+}
+
+void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    ASSERT(obj->GetJSHClass()->IsDictionaryMode());
+    // 1. Get NameDictionary properties
+    JSHandle<NameDictionary> properties(thread, obj->GetProperties());
+
+    int numberOfProperties = properties->EntriesCount();
+    // Make sure we preserve enough capacity
+    if (numberOfProperties > static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
+        return ;
+    }
+    
+    // 2. iteration indices
+    std::vector<int> indexOrder = properties->GetEnumerationOrder();
+    ASSERT(static_cast<int>(indexOrder.size()) == numberOfProperties);
+
+    // 3. Change Hclass
+    int numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
+    JSHClass::OptimizeAsFastProperties(thread, obj, indexOrder, true);
+    
+    // 4. New out-properties
+    int numberOfOutProperties = numberOfProperties - numberOfInlinedProps;
+    ASSERT(numberOfOutProperties >= 0);
+    JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(numberOfOutProperties);
+
+    // 5. Fill properties
+    for (int i = 0; i < numberOfProperties; i++) {
+        JSTaggedValue value = properties->GetValue(indexOrder[i]);
+        if (i < numberOfInlinedProps) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
+        } else {
+            array->Set(thread, i - numberOfInlinedProps, value);
+        }
+    }
+    obj->SetProperties(thread, array);
+}
+
 bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver)
 {
     auto *hclass = receiver->GetJSHClass();
@@ -307,6 +385,8 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
 
     if (obj->IsJSGlobalObject()) {
         JSHandle<GlobalDictionary> dictHandle(thread, obj->GetProperties());
+        PropertyBox* box = dictHandle->GetBox(index);
+        box->Clear(thread);
         JSHandle<GlobalDictionary> newDict = GlobalDictionary::Remove(thread, dictHandle, index);
         obj->SetProperties(thread, newDict);
         return;
@@ -932,6 +1012,24 @@ OperationResult JSObject::GetPropertyFromGlobal(JSThread *thread, const JSHandle
 
     ObjectOperator op(thread, key);
     return OperationResult(thread, GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
+}
+
+PropertyBox* JSObject::GetGlobalPropertyBox(JSTaggedValue key)
+{
+    ASSERT(IsJSGlobalObject());
+    auto dict = GlobalDictionary::Cast(GetProperties().GetTaggedObject());
+    auto entry = dict->FindEntry(key);
+    if (entry == -1) {
+        return nullptr;
+    }
+    return dict->GetBox(entry);
+}
+
+PropertyBox* JSObject::GetGlobalPropertyBox(JSThread *thread, const std::string& key)
+{
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto keyValue = factory->NewFromUtf8(key).GetTaggedValue();
+    return GetGlobalPropertyBox(keyValue);
 }
 
 JSTaggedValue JSObject::GetProperty(JSThread *thread, ObjectOperator *op)
@@ -2357,7 +2455,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
         JSHClass *oldHC = obj->GetJSHClass();
         ihc->SetPrototype(thread, oldHC->GetPrototype());
-        obj->SetClass(ihc);
+        obj->SynchronizedSetClass(ihc);
         for (size_t i = 0; i < propsLen; i++) {
             auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
             // If value.first is false, indicating that value cannot be converted to the expected value of
@@ -2368,11 +2466,15 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
             }
             obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
         }
+        auto inlineNum = ihc->GetInlinedProperties();
+        for (size_t i = propsLen; i < inlineNum; i++) {
+            obj->SetPropertyInlinedPropsWithRep(thread, i, JSTaggedValue::Null());
+        }
         if (isSuccess) {
             return;
         }
         // If conversion fails, it needs to be rolled back to the old HClass and reset the value.
-        obj->SetClass(oldHC);
+        obj->SynchronizedSetClass(oldHC);
     } else if (thread->IsPGOProfilerEnable()) {
         // PGO need to track TrackType
         JSHClass *oldHC = obj->GetJSHClass();

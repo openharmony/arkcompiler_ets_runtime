@@ -29,7 +29,7 @@
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/mcr_lowering.h"
-#include "ecmascript/compiler/lexical_env_specialization.h"
+#include "ecmascript/compiler/lexical_env_specialization_pass.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
@@ -104,6 +104,11 @@ public:
     TSManager* GetTSManager() const
     {
         return ctx_->GetTSManager();
+    }
+
+    PGOTypeManager* GetPTManager() const
+    {
+        return ctx_->GetPTManager();
     }
 
     const JSPandaFile *GetJSPandaFile() const
@@ -253,11 +258,6 @@ public:
                                         data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
                                         enableLog, data->HasTypes());
         globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-        if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
-            InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
-                                                data->GetMethodName(), enableLog);
-            initAnalysis.Run();
-        }
         return true;
     }
 };
@@ -298,18 +298,22 @@ public:
         TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, data->GetMethodName());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
+                                      enableLog,
+                                      enableTypeLog,
+                                      data->GetMethodName(),
+                                      passOptions->EnableLoweringBuiltin(),
+                                      data->GetRecordName());
         bool success = lowering.RunTypeBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
         }
-        Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
                                   data->GetMethodName());
-        
+
         visitor.AddPass(&optimization);
         visitor.AddPass(&deadCodeElimination);
         visitor.VisitGraph();
@@ -329,7 +333,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
+            enableLog, data->GetMethodName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -352,9 +356,13 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypeHCRLowering lowering(data->GetCircuit(), &visitor,
-                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
-                                 data->GetPassOptions()->EnableOptOnHeapCheck());
+        TypeHCRLowering lowering(data->GetCircuit(),
+                                 &visitor,
+                                 data->GetCompilerConfig(),
+                                 data->GetTSManager(),
+                                 &chunk,
+                                 data->GetPassOptions()->EnableOptOnHeapCheck(),
+                                 passOptions->EnableLoweringBuiltin());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("TypeHCRLowering");
@@ -418,12 +426,22 @@ public:
         inlining.RunTSInlineLowering();
         if (passOptions->EnableLexenvSpecialization()) {
             Chunk chunk(data->GetNativeAreaAllocator());
-            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-            LexicalEnvSpecialization lexicalEnvSpecialization(data->GetCircuit(), &visitor, &chunk, enableLog);
-            visitor.AddPass(&lexicalEnvSpecialization);
-            visitor.VisitGraph();
-            visitor.PrintLog("lexicalEnvSpecialization");
-            lexicalEnvSpecialization.PrintSpecializeId();
+            {
+                CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+                GetEnvSpecializationPass getEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk);
+                visitor.AddPass(&getEnvSpecializationPass);
+                visitor.VisitGraph();
+                visitor.PrintLog("getEnvSpecializationPass");
+            }
+            {
+                CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+                LexicalEnvSpecializationPass lexicalEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk,
+                                                                          enableLog);
+                visitor.AddPass(&lexicalEnvSpecializationPass);
+                visitor.VisitGraph();
+                visitor.PrintLog("lexicalEnvSpecialization");
+                lexicalEnvSpecializationPass.PrintSpecializeId();
+            }
         }
 
         if (passOptions->EnableInlineNative()) {
@@ -522,22 +540,20 @@ public:
     {
         TimeScope timescope("LoopOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
-        const auto& headList = data->GetBuilder()->GetLoopHeads();
-        LoopAnalysis loopAnalysis_(data->GetCircuit(), &chunk);
-        for (auto head : headList) {
-            auto bb = data->GetBuilder()->GetBasicBlockById(head.second);
-            auto loopInfo = new LoopInfo(&chunk, bb.stateCurrent);
-            loopAnalysis_.CollectLoopBody(loopInfo);
-            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        LoopAnalysis loopAnalysis(data->GetBuilder(), data->GetCircuit(), &chunk);
+        loopAnalysis.Run();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        for (auto loopInfo : loopAnalysis.GetLoopTree()) {
+            loopAnalysis.CollectLoopBody(loopInfo);
             if (enableLog) {
-                loopAnalysis_.PrintLoop(loopInfo);
+                loopAnalysis.PrintLoop(loopInfo);
             }
             if (data->GetPassOptions()->EnableOptLoopPeeling()) {
                 LoopPeeling(data->GetBuilder(), data->GetCircuit(), enableLog,
                             data->GetMethodName(), &chunk, loopInfo).Peel();
             }
         }
-        loopAnalysis_.LoopExitElimination();
+        loopAnalysis.LoopExitElimination();
         return true;
     }
 };

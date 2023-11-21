@@ -706,8 +706,7 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_003)
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newValue);
     }
     EXPECT_TRUE(objectOperator.UpdateDataValue(handleObject, handleValue1, false));
-    TaggedArray *resultElements1 = TaggedArray::Cast(handleObject->GetProperties().GetTaggedObject());
-    EXPECT_EQ(resultElements1->Get(objectOperator.GetIndex()).GetInt(), 3);
+    EXPECT_EQ(handleObject->GetPropertyInlinedProps(objectOperator.GetIndex()).GetInt(), 3);
 
     // object is DictionaryMode
     JSObject::DeleteProperty(thread, handleObject, handleKey2);

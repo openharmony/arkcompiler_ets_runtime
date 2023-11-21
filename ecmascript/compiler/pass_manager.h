@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -49,6 +50,11 @@ public:
     TSManager* GetTSManager() const
     {
         return tsManager_;
+    }
+
+    PGOTypeManager* GetPTManager() const
+    {
+        return vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     }
 
     Bytecodes* GetByteCodes()
@@ -124,73 +130,12 @@ private:
     PGOProfilerDecoder *decoder_ {nullptr};
 };
 
-class PassOptions {
-public:
-    PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
-                bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
-                bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
-                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion, bool enableCollectLiteralInfo,
-                bool enableOptConstantFolding, bool enableLexenvSpecialization, bool enableInlineNative)
-        : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
-          enableTypeLowering_(enableTypeLowering),
-          enableEarlyElimination_(enableEarlyElimination),
-          enableLaterElimination_(enableLaterElimination),
-          enableValueNumbering_(enableValueNumbering),
-          enableTypeInfer_(enableTypeInfer),
-          enableOptInlining_(enableOptInlining),
-          enableOptPGOType_(enableOptPGOType),
-          enableOptTrackField_(enableOptTrackField),
-          enableOptLoopPeeling_(enableOptLoopPeeling),
-          enableOptOnHeapCheck_(enableOptOnHeapCheck),
-          enableOptLoopInvariantCodeMotion_(enableOptLoopInvariantCodeMotion),
-          enableCollectLiteralInfo_(enableCollectLiteralInfo),
-          enableOptConstantFolding_(enableOptConstantFolding),
-          enableLexenvSpecialization_(enableLexenvSpecialization),
-          enableInlineNative_(enableInlineNative)
-        {
-        }
-
-#define OPTION_LIST(V)                      \
-    V(ArrayBoundsCheckElimination, true)    \
-    V(TypeLowering, true)                   \
-    V(EarlyElimination, true)               \
-    V(LaterElimination, true)               \
-    V(ValueNumbering, false)                \
-    V(TypeInfer, false)                     \
-    V(OptInlining, false)                   \
-    V(OptNoGCCall, false)                   \
-    V(OptPGOType, false)                    \
-    V(NoCheck, false)                       \
-    V(OptTrackField, false)                 \
-    V(OptLoopPeeling, false)                \
-    V(OptOnHeapCheck, false)                \
-    V(OptLoopInvariantCodeMotion, false)    \
-    V(CollectLiteralInfo, false)            \
-    V(OptConstantFolding, true)             \
-    V(LexenvSpecialization, false)          \
-    V(InlineNative, false)
-
-#define DECL_OPTION(NAME, DEFAULT)    \
-public:                               \
-    bool Enable##NAME() const         \
-    {                                 \
-        return enable##NAME##_;       \
-    }                                 \
-                                      \
-private:                              \
-    bool enable##NAME##_ {DEFAULT};
-
-    OPTION_LIST(DECL_OPTION)
-#undef ENABLE_OPTION
-#undef OPTION_LIST
-};
-
 class PassManager {
 public:
-    explicit PassManager(EcmaVM* vm, std::string &entry, std::string &triple, size_t optLevel, size_t relocMode,
+    explicit PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+        : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerDecoder_(profilerDecoder), passOptions_(passOptions) {};
     ~PassManager() = default;
@@ -198,12 +143,9 @@ public:
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
 
 private:
-    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
-    void ProcessConstantPool(BytecodeInfoCollector *collector);
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
 
     EcmaVM *vm_ {nullptr};
-    std::string entry_ {};
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC

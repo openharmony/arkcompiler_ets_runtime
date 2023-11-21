@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,9 +19,13 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/platform/os.h"
+#if defined(PANDA_TARGET_OHOS)
+#include "ecmascript/extractortool/src/extractor.h"
+#endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif
@@ -127,7 +131,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     if (data.empty()) {
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
         std::ostringstream stack;
-        Backtrace(stack);
+        Backtrace(stack, false, true);
         data = stack.str();
 #endif
     }
@@ -374,8 +378,393 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
     return true;
 }
 
-bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
-                               [[maybe_unused]] char *buf, [[maybe_unused]] size_t bufSize)
+#if defined(PANDA_TARGET_OHOS)
+uintptr_t ArkGetFunction(int pid, uintptr_t currentPtr, uintptr_t frameType)
+{
+    FrameType type = static_cast<FrameType>(frameType);
+    uintptr_t funcAddr = currentPtr;
+    switch (type) {
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
+            funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
+            break;
+        }
+        case FrameType::ASM_INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
+            funcAddr -= AsmInterpretedFrame::GetTypeOffset();
+            funcAddr += AsmInterpretedFrame::GetFunctionOffset(false);
+            break;
+        }
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
+            funcAddr -= InterpretedFrame::GetTypeOffset();
+            funcAddr += InterpretedFrame::GetFunctionOffset();
+            break;
+        }
+        case FrameType::INTERPRETER_BUILTIN_FRAME: {
+            funcAddr -= InterpretedBuiltinFrame::GetTypeOffset();
+            funcAddr += InterpretedBuiltinFrame::GetFunctionOffset();
+            break;
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV: {
+            funcAddr += sizeof(FrameType);
+            auto topAddress = funcAddr + (static_cast<int>(BuiltinWithArgvFrame::Index::StackArgsTopIndex) * sizeof(uintptr_t));
+            uintptr_t argcAddress = static_cast<uintptr_t>(funcAddr + (static_cast<int>
+                                    (BuiltinWithArgvFrame::Index::NumArgsIndex) * sizeof(uintptr_t)));
+            if (!ReadUintptrFromAddr(pid, argcAddress, argcAddress, true)) {
+                return 0;
+            }
+            auto numberArgs = argcAddress + NUM_MANDATORY_JSFUNC_ARGS;
+            funcAddr = topAddress - static_cast<uint32_t>(numberArgs) * sizeof(uintptr_t);
+            break;
+        }
+        case FrameType::BUILTIN_ENTRY_FRAME:
+        case FrameType::BUILTIN_FRAME: {
+            funcAddr -= BuiltinFrame::GetTypeOffset();
+            funcAddr += BuiltinFrame::GetStackArgsOffset();
+            break;
+        }
+        case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
+            funcAddr -= OptimizedBuiltinLeaveFrame::GetTypeOffset();
+            funcAddr += OptimizedBuiltinLeaveFrame::GetFunctionOffset();
+            break;
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
+        case FrameType::OPTIMIZED_FRAME:
+        case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::ASM_BRIDGE_FRAME:
+        case FrameType::LEAVE_FRAME:
+        case FrameType::LEAVE_FRAME_WITH_ARGV:
+        case FrameType::INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            return 0;
+        }
+        default: {
+            LOG_FULL(FATAL) << "Unknown frame type: " << static_cast<uintptr_t>(type);
+            UNREACHABLE();
+        }
+    }
+    uintptr_t function = 0;
+    if (!ReadUintptrFromAddr(pid, funcAddr, function, true)) {
+        return 0;
+    }
+    return function;
+}
+
+bool ArkCheckIsJSFunctionBaseOrJSProxy(int pid, uintptr_t objAddr, bool &isJSFunctionBase)
+{
+    bool isHeapObj = ((objAddr & JSTaggedValue::TAG_HEAPOBJECT_MASK) == 0U);
+    bool isInvalidValue = (objAddr <= JSTaggedValue::INVALID_VALUE_LIMIT);
+    if (isHeapObj && !isInvalidValue) {
+        ASSERT_PRINT(((objAddr & JSTaggedValue::TAG_WEAK) == 0U),
+                     "can not convert JSTaggedValue to HeapObject :" << std::hex << objAddr);
+        uintptr_t hclassAddr = objAddr + TaggedObject::HCLASS_OFFSET;
+        uintptr_t hclass = 0;
+        if (!ReadUintptrFromAddr(pid, hclassAddr, hclass, true)) {
+            return false;
+        }
+        if (hclass != 0) {
+            uintptr_t bitsAddr = reinterpret_cast<uintptr_t>(hclass + JSHClass::BIT_FIELD_OFFSET);
+            uintptr_t bits = 0;
+            if (!ReadUintptrFromAddr(pid, bitsAddr, bits, true)) {
+                return false;
+            }
+            JSType jsType = JSHClass::ObjectTypeBits::Decode(bits);
+            isJSFunctionBase = (jsType >= JSType::JS_FUNCTION_BASE && jsType <= JSType::JS_BOUND_FUNCTION);
+            bool isJSProxy = (jsType == JSType::JS_PROXY);
+            return isJSFunctionBase || isJSProxy;
+        }
+    }
+    return false;
+}
+
+uintptr_t ArkCheckAndGetMethod(int pid, uintptr_t value)
+{
+    bool isJSFunctionBase = 0;
+    if (ArkCheckIsJSFunctionBaseOrJSProxy(pid, value, isJSFunctionBase)) {
+        if (isJSFunctionBase) {
+            value += JSFunctionBase::METHOD_OFFSET;
+        } else {
+            value += JSProxy::METHOD_OFFSET;
+        }
+        uintptr_t method = 0;
+        if(!ReadUintptrFromAddr(pid, value, method, true)) {
+            return 0;
+        }
+        return method;
+    }
+    return 0;
+}
+
+bool ArkGetMethodIdandJSPandaFileAddr(int pid, uintptr_t method, uintptr_t &methodId, uintptr_t &jsPandaFileAddr)
+{
+    uintptr_t methodLiteralAddr = method + Method::LITERAL_INFO_OFFSET;
+    uintptr_t methodLiteral = 0;
+    if (!ReadUintptrFromAddr(pid, methodLiteralAddr, methodLiteral, true)) {
+            return false;
+    }
+    methodId = MethodLiteral::MethodIdBits::Decode(methodLiteral);
+    uintptr_t constantpoolAddr = method + Method::CONSTANT_POOL_OFFSET;
+    uintptr_t constantpool = 0;
+    if (!ReadUintptrFromAddr(pid, constantpoolAddr, constantpool, true)) {
+        return false;
+    }
+    if (constantpool == JSTaggedValue::VALUE_UNDEFINED) {
+        return false;
+    }
+    uintptr_t lengthAddr = constantpool + TaggedArray::LENGTH_OFFSET;
+    uintptr_t length = 0;
+    if (!ReadUintptrFromAddr(pid, lengthAddr, length, true)) {
+        return false;
+    }
+    jsPandaFileAddr = constantpool + TaggedArray::DATA_OFFSET +
+                    JSTaggedValue::TaggedTypeSize() * (length - ConstantPool::JS_PANDA_FILE_INDEX);
+    if (!ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFileAddr, true)) {
+        return false;
+    }
+    return true;
+}
+
+uint32_t ArkGetBytecodeOffset(int pid, uintptr_t method, uintptr_t frameType, uintptr_t currentPtr)
+{
+    FrameType type = static_cast<FrameType>(frameType);
+    switch (type) {
+        case FrameType::ASM_INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
+            currentPtr -= AsmInterpretedFrame::GetTypeOffset();
+            currentPtr += AsmInterpretedFrame::GetPcOffset(false);
+            uintptr_t pc = 0;
+            if (!ReadUintptrFromAddr(pid, currentPtr, pc, true)) {
+                return 0;
+            }
+            uintptr_t byteCodeArrayAddr = method + Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET;
+            uintptr_t byteCodeArray = 0;
+            if (!ReadUintptrFromAddr(pid, byteCodeArrayAddr, byteCodeArray, true)) {
+                return 0;
+            }
+            uintptr_t offset = pc - byteCodeArray;
+            return static_cast<uint32_t>(offset);
+        }
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
+            currentPtr -= InterpretedFrame::GetTypeOffset();
+            currentPtr += InterpretedFrame::GetPcOffset(false);
+            uintptr_t pc = 0;
+            if (!ReadUintptrFromAddr(pid, currentPtr, pc, true)) {
+                return 0;
+            }
+            uintptr_t byteCodeArrayAddr = method + Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET;
+            uintptr_t byteCodeArray = 0;
+            if (!ReadUintptrFromAddr(pid, byteCodeArrayAddr, byteCodeArray, true)) {
+                return 0;
+            }
+            uintptr_t offset = pc - byteCodeArray;
+            return static_cast<uint32_t>(offset);
+        }
+        // ato need stackmaps
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return 0;
+}
+
+bool ArkReadData(const std::string &hapPath, const std::string &sourceMapPath, char **data, size_t &dataSize)
+{
+    // Source map relative path, FA: "/assets/js", Stage: "/ets"
+    if (hapPath.empty()) {
+        LOG_ECMA(ERROR) << "hapPath is empty";
+        return false;
+    }
+    bool newCreate = false;
+    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(
+        ExtractorUtil::GetLoadFilePath(hapPath), newCreate);
+    if (extractor == nullptr) {
+        LOG_ECMA(ERROR) << "hap's path: " << hapPath;
+        return false;
+    }
+    std::unique_ptr<uint8_t[]> dataPtr = nullptr;
+    if (!extractor->ExtractToBufByName(sourceMapPath, dataPtr, dataSize)) {
+        LOG_ECMA(DEBUG) << "can't find source map, and switch to stage model.";
+        return false;
+    }
+    *data = (char*)malloc(sizeof(char)*dataSize);
+    if (memcpy_s(*data, dataSize, dataPtr.get(), dataSize) != EOK) {
+        LOG_COMPILER(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
+    return true;
+}
+
+std::string ArkGetHapName(int pid, std::string filename)
+{
+    auto found = filename.find(JSPandaFile::BUNDLE_INSTALL_PATH);
+    if (found == std::string::npos) {
+        return "";
+    }
+
+    std::string subPath = filename.substr(sizeof(JSPandaFile::BUNDLE_INSTALL_PATH) - 1);
+    auto endPos = subPath.find("/");
+    if (endPos == std::string::npos) {
+        return "";
+    }
+
+    std::string sandbox = "proc/" + std::to_string(pid) + "/root";
+    std::string hapSource = sandbox + JSPandaFile::BUNDLE_INSTALL_PATH + subPath.substr(0, endPos) + ".hap";
+
+    return hapSource;
+}
+
+bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrameList)
+{
+    constexpr size_t FP_SIZE = 8;
+    constexpr size_t LR_SIZE = 8;
+    uintptr_t currentPtr = *fp;
+    if (currentPtr == 0) {
+        LOG_ECMA(ERROR) << "fp is nullptr in GetArkNativeFrameInfo()!";
+        return false;
+    }
+    if (pid == getpid() && JsStackInfo::loader != nullptr &&
+        !JsStackInfo::loader->InsideStub(*pc) && !JsStackInfo::loader->InsideAOT(*pc)) {
+        LOG_ECMA(ERROR) << "invalid pc in GetArkNativeFrameInfo()!";
+        return false;
+    }
+    while (true) {
+        currentPtr -= sizeof(FrameType);
+        uintptr_t frameType = 0;
+        if (!ReadUintptrFromAddr(pid, currentPtr, frameType, true)) {
+            return false;
+        }
+        uintptr_t typeOffset = 0;
+        uintptr_t prevOffset = 0;
+        if (!GetTypeOffsetAndPrevOffsetFromFrameType(frameType, typeOffset, prevOffset)) {
+            LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
+            return false;
+        }
+        if (static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
+            static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME ||
+            static_cast<FrameType>(frameType) == FrameType::BUILTIN_ENTRY_FRAME) {
+            break;
+        }
+        uintptr_t function = ArkGetFunction(pid, currentPtr, frameType);
+        if (function != 0) {
+            uintptr_t method = ArkCheckAndGetMethod(pid, function);
+            uintptr_t callFieldAddr = method + Method::CALL_FIELD_OFFSET;
+            uintptr_t callField = 0;
+            if (!ReadUintptrFromAddr(pid, callFieldAddr, callField, true)) {
+                return false;
+            }
+
+            bool isNativeWithCallField = Method::IsNativeBit::Decode(callField);
+            if (!isNativeWithCallField) {
+                uintptr_t jsPandaFileAddr = 0;
+                uintptr_t preMethodId = 0;
+                ArkGetMethodIdandJSPandaFileAddr(pid, method, preMethodId, jsPandaFileAddr);
+                uintptr_t offset = ArkGetBytecodeOffset(pid, method, frameType, currentPtr);
+                if (offset) {
+                    size_t count = sizeof(JSPandaFile) / sizeof(long);
+                    uintptr_t *jsPandaFilePart = new uintptr_t[count];
+                    for (size_t i = 0; i < count; i++) {
+                        ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], true);
+                        jsPandaFileAddr += sizeof(long);
+                    }
+                    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(jsPandaFilePart);
+                    uintptr_t desc = 0;
+                    uintptr_t descAddr = reinterpret_cast<uintptr_t>(const_cast<char *>(jsPandaFile->GetJSPandaFileDesc().c_str()));
+                    std::string fileName = {};
+                    while(true) {
+                        ReadUintptrFromAddr(pid, descAddr, desc, true);
+                        bool key = 1;
+                        size_t shiftAmount = 8;
+                        for (size_t i = 0; i < sizeof(long); i++) {
+                            char bottomEightBits = desc;
+                            desc = desc >> shiftAmount;
+                            if (!bottomEightBits) {
+                                key = 0;
+                                break;
+                            }
+                            fileName += bottomEightBits;
+                        }
+                        if (!key) {
+                            break;
+                        }
+                        descAddr += sizeof(long);
+                    }
+                    std::string hapPath = ArkGetHapName(pid, fileName);
+                    std::string sourceMapPath = "ets/modules.abc";
+                    char *data = nullptr;
+                    size_t dataSize = 0;
+                    ArkReadData(hapPath, sourceMapPath, &data, dataSize);
+                    auto pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
+                    std::shared_ptr<JSPandaFile> newJsPandaFile =
+                        JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.get(), fileName.c_str());
+                    auto extractorPtr = std::make_unique<DebugInfoExtractor>(newJsPandaFile.get());
+                    DebugInfoExtractor *debugExtractor = extractorPtr.get();
+                    auto methodId = EntityId(preMethodId);
+                    std::string name = MethodLiteral::ParseFunctionName(newJsPandaFile.get(), methodId);
+                    name = name.size() ? name : "?";
+                    std::string url = debugExtractor->GetSourceFile(methodId);
+                    // line number and column number
+                    int lineNumber = 0;
+                    int columnNumber = 0;
+                    auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+                        lineNumber = line + 1;
+                        return true;
+                    };
+                    auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+                        columnNumber = column + 1;
+                        return true;
+                    };
+                    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
+                        !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+                        lineNumber = 0;
+                        columnNumber = 0;
+                    }
+                    JsFrame jsFrame;
+                    if (strcpy_s(jsFrame.url, url.size(), url.c_str()) != EOK &&
+                            strcpy_s(jsFrame.functionName, name.size(), name.c_str()) != EOK) {
+                        LOG_FULL(FATAL) << "strcpy_s failed";
+                        UNREACHABLE();
+                    }
+                    jsFrame.line = lineNumber;
+                    jsFrame.column = columnNumber;
+                    *jsFrameList++ = jsFrame;
+                    delete []jsPandaFilePart;
+                    free(data);
+                }
+            }
+        }
+        currentPtr -= typeOffset;
+        currentPtr += prevOffset;
+        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr, true)) {
+            return false;
+        }
+        if (currentPtr == 0) {
+            LOG_ECMA(ERROR) << "currentPtr is nullptr in GetArkNativeFrameInfo()!";
+            return false;
+        }
+    }
+    currentPtr += sizeof(FrameType);
+    *fp = currentPtr;
+    currentPtr += FP_SIZE;
+    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
+        return false;
+    }
+    currentPtr += LR_SIZE;
+    *sp = currentPtr;
+    return true;
+}
+#endif
+
+bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
 {
     constexpr size_t FP_SIZE = 8;
     constexpr size_t LR_SIZE = 8;
@@ -546,3 +935,14 @@ __attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
     }
     return -1;
 }
+
+#if defined(PANDA_TARGET_OHOS)
+__attribute__((visibility("default"))) int get_ark_native_frame_info(
+    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrameList)
+{
+    if (GetArkNativeFrameInfo(pid, pc, fp, sp, jsFrameList)) {
+        return 1;
+    }
+    return -1;
+}
+#endif

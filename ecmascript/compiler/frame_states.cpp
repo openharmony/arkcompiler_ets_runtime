@@ -14,19 +14,26 @@
  */
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/frame_states.h"
+#include "ecmascript/ts_types/ts_manager.h"
 #include <cstddef>
 
 namespace panda::ecmascript::kungfu {
 FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
     Circuit *circuit, const MethodLiteral *literal)
-    : builder_(builder),
+    : bcBuilder_(builder),
+      tsManager_(builder->GetTSManager()),
+      typeRecorder_(builder->GetTypeRecorder()),
+      pgoTypeRecorder_(builder->GetPGOTypeRecorder()),
       numVregs_(literal->GetNumberVRegs() + FIXED_ARGS),
       accumulatorIndex_(literal->GetNumberVRegs() + 1), // 1: acc
+      envIndex_(literal->GetNumberVRegs()),
       circuit_(circuit),
-      gateAcc_(circuit),
-      bcEndStateInfos_(circuit->chunk()),
-      bbBeginStateInfos_(circuit->chunk()),
-      loopExitStateInfos_(circuit->chunk()),
+      acc_(circuit),
+      bcEndStateLiveouts_(circuit->chunk()),
+      bbBeginStateLiveouts_(circuit->chunk()),
+      bbFrameContext_(circuit->chunk()),
+      loops_(circuit->chunk()),
+      rpoList_(circuit->chunk()),
       postOrderList_(circuit->chunk())
 {
 }
@@ -34,82 +41,10 @@ FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
 FrameStateBuilder::~FrameStateBuilder()
 {
     liveOutResult_ = nullptr;
-    bcEndStateInfos_.clear();
-    bbBeginStateInfos_.clear();
-    loopExitStateInfos_.clear();
-    builder_ = nullptr;
-}
-
-GateRef FrameStateBuilder::BuildFrameValues(FrameStateInfo *stateInfo)
-{
-    size_t frameStateInputs = numVregs_;
-    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
-    auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
-                                                   JSTaggedValue::VALUE_OPTIMIZED_OUT,
-                                                   GateType::TaggedValue());
-    for (size_t i = 0; i < numVregs_; i++) {
-        auto value = stateInfo->ValuesAt(i);
-        if (value == Circuit::NullGate()) {
-            value = optimizedGate;
-        }
-        inList[i] = value;
-    }
-    return circuit_->NewGate(circuit_->FrameValues(frameStateInputs), inList);
-}
-
-GateRef FrameStateBuilder::BuildEmptyFrameValues()
-{
-    return circuit_->NewGate(circuit_->FrameValues(0), {});
-}
-
-GateRef FrameStateBuilder::BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output)
-{
-    GateRef frameArgs = builder_->GetFrameArgs();
-    GateRef preFrameState = builder_->GetPreFrameState();
-    UInt32PairAccessor accessor(static_cast<uint32_t>(pcOffset), output.GetValue());
-    return circuit_->NewGate(circuit_->FrameState(accessor.ToValue()),
-        {frameArgs, frameValues, preFrameState});
-}
-
-GateRef FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend, GateRef frameState)
-{
-    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
-    auto uses = gateAcc_.Uses(depend);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        if (gateAcc_.IsDependIn(useIt) && *useIt != stateSplit) {
-            useIt = gateAcc_.ReplaceIn(useIt, stateSplit);
-        } else {
-            useIt++;
-        }
-    }
-    if (builder_->IsLogEnabled()) {
-        gateAcc_.ShortPrint(frameState);
-    }
-    return stateSplit;
-}
-
-void FrameStateBuilder::BindStateSplit(GateRef gate, GateRef frameState)
-{
-    auto state = gateAcc_.GetState(gate);
-    auto depend = gateAcc_.GetDep(gate);
-    if (gateAcc_.GetOpCode(state) == OpCode::IF_SUCCESS) {
-        state = gateAcc_.GetState(state);
-    }
-    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
-    gateAcc_.ReplaceDependIn(gate, stateSplit);
-    if (builder_->IsLogEnabled()) {
-        gateAcc_.ShortPrint(frameState);
-    }
-}
-
-FrameStateInfo *FrameStateBuilder::CreateEmptyStateInfo()
-{
-    auto chunk = circuit_->chunk();
-    auto frameInfo = chunk->New<FrameStateInfo>(chunk, numVregs_);
-    for (size_t i = 0; i < numVregs_; i++) {
-        frameInfo->SetValuesAt(i, Circuit::NullGate());
-    }
-    return frameInfo;
+    bcEndStateLiveouts_.clear();
+    bbBeginStateLiveouts_.clear();
+    bbFrameContext_.clear();
+    bcBuilder_ = nullptr;
 }
 
 void FrameStateBuilder::BuildPostOrderList(size_t size)
@@ -126,7 +61,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
         visited[curBlockId] = true;
 
         bool change = false;
-        auto &bb = builder_->GetBasicBlockById(curBlockId);
+        auto &bb = bcBuilder_->GetBasicBlockById(curBlockId);
         for (const auto &succBlock: bb.succs) {
             if (!visited[succBlock->id]) {
                 pendingList.emplace_back(succBlock->id);
@@ -137,7 +72,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
         if (change) {
             continue;
         }
-        for (const auto &succBlock: bb.catchs) {
+        for (const auto &succBlock: bb.catches) {
             if (!visited[succBlock->id]) {
                 pendingList.emplace_back(succBlock->id);
                 change = true;
@@ -151,263 +86,68 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
     }
 }
 
-bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc, size_t diff)
+bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
 {
     // liveout next
-    auto frameInfo = GetOrOCreateBCEndStateInfo(predPc);
-    FrameStateInfo *predFrameInfo = liveOutResult_;
-    bool changed = frameInfo->MergeLiveout(predFrameInfo);
-    if (!changed) {
-        return changed;
-    }
-    for (size_t i = 0; i < numVregs_; i++) {
-        auto predValue = predFrameInfo->ValuesAt(i);
-        auto value = frameInfo->ValuesAt(i);
-        // if value not null, merge pred
-        if (value == Circuit::NullGate() && predValue != Circuit::NullGate()) {
-            predValue = TryGetLoopExitValue(predValue, diff, i);
-            frameInfo->SetValuesAt(i, predValue);
-            changed = true;
-        }
-    }
-    return changed;
+    auto liveout = GetOrOCreateBCEndLiveOut(predPc);
+    FrameLiveOut *predliveOut = liveOutResult_;
+    return liveout->MergeLiveout(predliveOut);
 }
 
-GateRef FrameStateBuilder::GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb,
-                                         size_t bcId, GateRef gate, bool useBCId)
+bool FrameStateBuilder::MergeFromSuccBB(size_t bbId)
 {
-    if (gateAcc_.GetOpCode(gate) == OpCode::VALUE_SELECTOR) {
-        return GetPhiComponent(bb, predBb, bcId, gate, useBCId);
-    }
-    return gate;
+    // liveout next
+    auto liveout = GetOrOCreateBBLiveOut(bbId);
+    return liveOutResult_->MergeLiveout(liveout);
 }
 
-GateRef FrameStateBuilder::GetPredStateGateBetweenBB(BytecodeRegion *bb, BytecodeRegion *predBb)
+void FrameStateBuilder::MergeFromCatchBB(size_t bbId)
 {
-    GateRef gate = bb->stateCurrent;
-    if (bb->numOfLoopBacks != 0) {
-        ASSERT(bb->loopbackBlocks.size() != 0);
-        ASSERT(gateAcc_.GetStateCount(gate) > 1);
-        auto forwardState = gateAcc_.GetState(gate, 0); // 0: fowward
-        auto loopBackState = gateAcc_.GetState(gate, 1); // 1: back
-        size_t backIndex = 0;
-        size_t forwardIndex = 0;
-        for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-            auto predId = std::get<0>(bb->expandedPreds.at(i));
-            if (bb->loopbackBlocks.count(predId)) {
-                if (predId == predBb->id) {
-                    if (bb->numOfLoopBacks == 1) {
-                        return loopBackState;
-                    }
-                    if (backIndex == 0) {
-                        return gateAcc_.GetState(loopBackState);
-                    } else {
-                        auto loopBackMerge = gateAcc_.GetState(loopBackState);
-                        return gateAcc_.GetState(loopBackMerge, backIndex);
-                    }
-                }
-                backIndex++;
-            } else {
-                if (predId == predBb->id) {
-                    auto mergeCount = bb->numOfStatePreds - bb->numOfLoopBacks;
-                    if (mergeCount == 1) {
-                        return forwardState;
-                    }
-                    return gateAcc_.GetState(forwardState, forwardIndex);
-                }
-                forwardIndex++;
-            }
-        }
-        UNREACHABLE();
-        return Circuit::NullGate();
-    }
-
-    ASSERT(gateAcc_.GetStateCount(gate) == bb->numOfStatePreds);
-    // The phi input nodes need to be traversed in reverse order, because there is a bb with multiple def points
-    for (size_t i = bb->numOfStatePreds - 1; i >= 0; --i) {
-        auto predId = std::get<0>(bb->expandedPreds.at(i));
-        if (predId == predBb->id) {
-            return gateAcc_.GetState(gate, i);
-        }
-    }
-    UNREACHABLE();
-    return Circuit::NullGate();
-}
-
-GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb,
-                                           size_t bcId, GateRef phi, bool useBCId)
-{
-    ASSERT(gateAcc_.GetOpCode(phi) == OpCode::VALUE_SELECTOR);
-
-    if (bb->phiGate.find(phi) == bb->phiGate.end()) {
-        return Circuit::NullGate();
-    }
-
-    if (bb->numOfLoopBacks != 0) {
-        ASSERT(bb->loopbackBlocks.size() != 0);
-        auto forwardValue = gateAcc_.GetValueIn(phi, 0); // 0: fowward
-        auto loopBackValue = gateAcc_.GetValueIn(phi, 1); // 1: back
-        size_t backIndex = 0;
-        size_t forwardIndex = 0;
-        for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-            auto predId = std::get<0>(bb->expandedPreds.at(i));
-            if (bb->loopbackBlocks.count(predId)) {
-                if (predId == predBb->id) {
-                    if (bb->numOfLoopBacks == 1) {
-                        return loopBackValue;
-                    }
-                    return gateAcc_.GetValueIn(loopBackValue, backIndex);
-                }
-                backIndex++;
-            } else {
-                if (predId == predBb->id) {
-                    auto mergeCount = bb->numOfStatePreds - bb->numOfLoopBacks;
-                    if (mergeCount == 1) {
-                        return forwardValue;
-                    }
-                    return gateAcc_.GetValueIn(forwardValue, forwardIndex);
-                }
-                forwardIndex++;
-            }
-        }
-        return Circuit::NullGate();
-    }
-
-    ASSERT(gateAcc_.GetNumValueIn(phi) == bb->numOfStatePreds);
-    // The phi input nodes need to be traversed in reverse order, because there is a bb with multiple def points
-    for (size_t i = bb->numOfStatePreds - 1; i >= 0; --i) {
-        size_t predId;
-        if (useBCId) {
-            predId = std::get<1>(bb->expandedPreds.at(i));
-        } else {
-            predId = std::get<0>(bb->expandedPreds.at(i));
-        }
-        size_t curId = useBCId ? bcId : predBb->id;
-        if (predId == curId) {
-            return gateAcc_.GetValueIn(phi, i);
-        }
-    }
-    return Circuit::NullGate();
-}
-
-bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb)
-{
-    bool changed = MergeIntoPredBC(predBb->end, LoopExitCount(predBb, bb));
-    if (!changed) {
-        return changed;
-    }
-    auto predLiveout = GetOrOCreateBCEndStateInfo(predBb->end);
-    // replace phi
-    if (bb->valueSelectorAccGate != Circuit::NullGate()) {
-        auto phi = bb->valueSelectorAccGate;
-        auto value = predLiveout->ValuesAt(accumulatorIndex_);
-        if (value == phi) {
-            auto target = GetPreBBInput(bb, predBb, 0, phi, false);
-            if (target != Circuit::NullGate()) {
-                auto diff = LoopExitCount(predBb, bb);
-                target = TryGetLoopExitValue(target, diff, accumulatorIndex_);
-                predLiveout->SetValuesAt(accumulatorIndex_, target);
-            }
-        }
-    }
-    for (auto &it : bb->vregToValueGate) {
-        auto reg = it.first;
-        auto gate = it.second;
-        auto value = predLiveout->ValuesAt(reg);
-        if (value == gate) {
-            auto target = GetPreBBInput(bb, predBb, 0, gate, false);
-            if (target == Circuit::NullGate()) {
-                continue;
-            }
-            auto diff = LoopExitCount(predBb, bb);
-            target = TryGetLoopExitValue(target, diff, reg);
-            predLiveout->SetValuesAt(reg, target);
-        }
-    }
-    return changed;
-}
-
-void FrameStateBuilder::MergeFromCatchBB(size_t curBC, size_t curId, size_t bbId)
-{
+    // liveout next
     bool accumulatorIsLive = liveOutResult_->TestBit(accumulatorIndex_);
-    auto liveout = GetBBBeginStateInfo(bbId);
+    auto liveout = GetOrOCreateBBLiveOut(bbId);
     liveOutResult_->MergeLiveout(liveout);
-    auto &bb = builder_->GetBasicBlockById(bbId);
-    auto &predBb = builder_->GetBasicBlockById(curId);
-    for (size_t i = 0; i < numVregs_; i++) {
-        auto predValue = liveout->ValuesAt(i);
-        auto value = liveOutResult_->ValuesAt(i);
-        if (value == Circuit::NullGate() && predValue != Circuit::NullGate()) {
-            predValue = TryGetLoopExitValue(predValue, LoopExitCount(&predBb, &bb), i);
-            liveOutResult_->SetValuesAt(i, predValue);
-        }
-    }
     // accumulatorIndex_ is exeception object
     if (!accumulatorIsLive) {
         liveOutResult_->ClearBit(accumulatorIndex_);
-        UpdateAccumulator(Circuit::NullGate());
-    }
-    
-    for (auto &it : bb.vregToValueGate) {
-        auto reg = it.first;
-        auto gate = it.second;
-        auto value = liveOutResult_->ValuesAt(reg);
-        if (value == gate) {
-            auto target = GetPreBBInput(&bb, &predBb, curBC, gate, true);
-            if (target == Circuit::NullGate()) {
-                continue;
-            }
-            auto diff = LoopExitCount(&predBb, &bb);
-            target = TryGetLoopExitValue(target, diff, reg);
-            liveOutResult_->SetValuesAt(reg, target);
-        }
     }
 }
 
 bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
 {
-    auto &bb = builder_->GetBasicBlockById(bbId);
+    auto &bb = bcBuilder_->GetBasicBlockById(bbId);
     bool changed = false;
-    ASSERT(!bb.isDead);
     // iterator bc
     auto &iterator = bb.GetBytecodeIterator();
     iterator.GotoEnd();
     ASSERT(bb.end == iterator.Index());
-    auto liveout = GetOrOCreateBCEndStateInfo(bb.end);
+    auto bbLiveout = GetOrOCreateBBLiveOut(bb.id);
+    auto liveout = GetOrOCreateBCEndLiveOut(bb.end);
     liveOutResult_->CopyFrom(liveout);
+    // init frameContext
+    currentBBliveOut_ = bbLiveout;
     while (true) {
         auto &bytecodeInfo = iterator.GetBytecodeInfo();
-        if (!bb.catchs.empty() && !bytecodeInfo.NoThrow()) {
-            ASSERT(bb.catchs.size() == 1); // 1: one catch
-            MergeFromCatchBB(iterator.Index(), bbId, bb.catchs.at(0)->id);
+        if (!bb.catches.empty() && !bytecodeInfo.NoThrow()) {
+            ASSERT(bb.catches.size() == 1); // 1: one catch
+            MergeFromCatchBB(bb.catches.at(0)->id);
         }
-        ComputeLiveOutBC(iterator.Index(), bytecodeInfo, bbId);
+        ComputeLiveOutBC(bytecodeInfo);
         --iterator;
         if (iterator.Done()) {
             break;
         }
         auto prevPc = iterator.Index();
-        changed |= MergeIntoPredBC(prevPc, 0);
-    }
-
-    SaveBBBeginStateInfo(bbId);
-
-    bool defPhi = bb.valueSelectorAccGate != Circuit::NullGate() ||
-        bb.vregToValueGate.size() != 0;
-    // merge current into pred bb
-    for (auto bbPred : bb.preds) {
-        if (bbPred->isDead) {
-            continue;
-        }
-        if (defPhi) {
-            changed |= MergeIntoPredBB(&bb, bbPred);
-        } else {
-            changed |= MergeIntoPredBC(bbPred->end, LoopExitCount(bbPred, &bb));
-        }
+        changed |= MergeIntoPredBC(prevPc);
     }
     if (!bb.trys.empty()) {
         // clear GET_EXCEPTION gate if this is a catch block
-        UpdateAccumulator(Circuit::NullGate());
+        liveOutResult_->ClearBit(accumulatorIndex_);
+    }
+    bbLiveout->CopyFrom(liveOutResult_);
+    // merge current into pred bb
+    for (auto bbPred : bb.preds) {
+        changed |= MergeIntoPredBC(bbPred->end);
     }
 
     return changed;
@@ -425,326 +165,1040 @@ void FrameStateBuilder::ComputeLiveState()
     }
 }
 
-void FrameStateBuilder::BuildFrameState()
+void FrameStateBuilder::DoBytecodeAnalysis()
 {
-    bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
-    auto size = builder_->GetBasicBlockCount();
-    bbBeginStateInfos_.resize(size, nullptr);
-    loopExitStateInfos_.resize(circuit_->GetMaxGateId() + 1, nullptr);
-    liveOutResult_ = CreateEmptyStateInfo();
-    BuildPostOrderList(size);
+    auto bcSize = bcBuilder_->GetLastBcIndex() + 1; // 1: +1 pcOffsets size
+    auto bbSize = bcBuilder_->GetBasicBlockCount();
+    bcEndStateLiveouts_.resize(bcSize, nullptr);
+    bbBeginStateLiveouts_.resize(bbSize, nullptr);
+    auto chunk = circuit_->chunk();
+    liveOutResult_ = chunk->New<FrameLiveOut>(chunk, numVregs_);
+    bbFrameContext_.resize(bbSize, nullptr);
+    BuildPostOrderList(bbSize);
     ComputeLiveState();
-    BindBBStateSplit();
+    if (bcBuilder_->IsLogEnabled()) {
+        DumpLiveState();
+    }
+    ComputeLoopInfo();
 }
 
-void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId)
+void FrameStateBuilder::ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo)
 {
-    if (bytecodeInfo.IsMov()) {
-        auto gate = Circuit::NullGate();
-        // variable kill
-        if (bytecodeInfo.AccOut()) {
-            gate = ValuesAtAccumulator();
-            UpdateAccumulator(Circuit::NullGate());
-        } else if (bytecodeInfo.vregOut.size() != 0) {
-            auto out = bytecodeInfo.vregOut[0];
-            gate = ValuesAt(out);
-            UpdateVirtualRegister(out, Circuit::NullGate());
-        }
-        // variable use
-        // when alive gate is null, find def
-        if (bytecodeInfo.AccIn()) {
-            if (gate == Circuit::NullGate()) {
-                gate = builder_->ResolveDef(bbId, index, 0, true);
-            }
-            UpdateAccumulator(gate);
-        } else if (bytecodeInfo.inputs.size() != 0) {
-            auto vreg = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
-            if (gate == Circuit::NullGate()) {
-                gate = builder_->ResolveDef(bbId, index, vreg, false);
-            }
-            UpdateVirtualRegister(vreg, gate);
-        }
-        return;
+    if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
+        currentBBliveOut_->defRegisters_.Union(liveOutResult_->liveout_);
     }
-    if (!bytecodeInfo.IsGeneral() && !bytecodeInfo.IsReturn() && !bytecodeInfo.IsCondJump()) {
-        return;
-    }
-    GateRef gate = builder_->GetGateByBcIndex(index);
     // variable kill
     if (bytecodeInfo.AccOut()) {
-        UpdateAccumulator(Circuit::NullGate());
+        liveOutResult_->ClearBit(accumulatorIndex_);
+        currentBBliveOut_->defRegisters_.SetBit(accumulatorIndex_);
     }
     for (const auto &out: bytecodeInfo.vregOut) {
-        UpdateVirtualRegister(out, Circuit::NullGate());
-    }
-    if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
-        UpdateVirtualRegistersOfResume(gate);
+        liveOutResult_->ClearBit(out);
+        currentBBliveOut_->defRegisters_.SetBit(out);
     }
 
     // variable use
     if (bytecodeInfo.AccIn()) {
-        auto id = bytecodeInfo.inputs.size();
-        GateRef def = gateAcc_.GetValueIn(gate, id);
-        UpdateAccumulator(def);
+        liveOutResult_->SetBit(accumulatorIndex_);
     }
     for (size_t i = 0; i < bytecodeInfo.inputs.size(); i++) {
         auto in = bytecodeInfo.inputs[i];
         if (std::holds_alternative<VirtualRegister>(in)) {
             auto vreg = std::get<VirtualRegister>(in).GetId();
-            GateRef def = gateAcc_.GetValueIn(gate, i);
-            UpdateVirtualRegister(vreg, def);
+            liveOutResult_->SetBit(vreg);
         }
-    }
-    if (IsAsyncResolveOrSusp(bytecodeInfo)) {
-        UpdateVirtualRegistersOfSuspend(gate);
     }
 }
 
-bool FrameStateBuilder::IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo)
+FrameLiveOut *FrameStateBuilder::GetOrOCreateBCEndLiveOut(uint32_t bcIndex)
 {
+    auto liveout = bcEndStateLiveouts_[bcIndex];
+    if (liveout == nullptr) {
+        auto chunk = circuit_->chunk();
+        liveout = chunk->New<FrameLiveOut>(chunk, numVregs_);
+        bcEndStateLiveouts_[bcIndex] = liveout;
+    }
+    return liveout;
+}
+
+FrameLiveOut *FrameStateBuilder::GetOrOCreateBBLiveOut(size_t bbIndex)
+{
+    // As BB0 is empty, its bbBeginStateLiveouts is the same as BB1.
+    if (bbIndex == 0) {
+        bbIndex = 1;
+    }
+    auto liveout = bbBeginStateLiveouts_[bbIndex];
+    if (liveout == nullptr) {
+        auto chunk = circuit_->chunk();
+        liveout = chunk->New<FrameLiveOut>(chunk, numVregs_);
+        bbBeginStateLiveouts_[bbIndex] = liveout;
+    }
+    return liveout;
+}
+
+FrameContext *FrameStateBuilder::GetOrOCreateMergedContext(uint32_t bbIndex)
+{
+    auto context = bbFrameContext_[bbIndex];
+    if (context == nullptr) {
+        auto chunk = circuit_->chunk();
+        context = chunk->New<FrameContext>(chunk, numVregs_);
+        for (size_t i = 0; i < numVregs_; i++) {
+            context->SetValuesAt(i, Circuit::NullGate());
+        }
+        bbFrameContext_[bbIndex] = context;
+    }
+    return context;
+}
+
+void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t bcIndex, GateRef gate)
+{
+    auto type = typeRecorder_->GetType(bcIndex);
+    acc_.SetGateType(gate, type);
     EcmaOpcode opcode = bytecodeInfo.GetOpcode();
-    return opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
-}
+    auto pgoType = pgoTypeRecorder_->GetPGOType(acc_.TryGetPcOffset(gate));
+    acc_.TrySetPGOType(gate, pgoType);
 
-void FrameStateBuilder::BuildStateSplitAfter(size_t index, BytecodeRegion& bb)
-{
-    auto gate = builder_->GetGateByBcIndex(index);
-    ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
-    auto nextIndex = GetNearestNextIndex(index, bb);
-    if (builder_->GetBytecodeInfo(nextIndex).IsCall()) {
-        return;
-    }
-    auto pcOffset = builder_->GetPcOffset(nextIndex);
-    auto stateInfo = GetFrameInfoAfter(nextIndex - 1); // 1: after prev bc
-    GateRef frameValues = BuildFrameValues(stateInfo);
-    GateRef frameStateAfter = BuildFrameStateGate(
-        pcOffset, frameValues, FrameStateOutput::Invalid());
-    BindStateSplit(gate, gate, frameStateAfter);
-}
-
-size_t FrameStateBuilder::GetNearestNextIndex(size_t index, BytecodeRegion& bb) const
-{
-    index++;
-    auto gate = builder_->GetGateByBcIndex(index);
-    while ((gate == Circuit::NullGate() || gateAcc_.IsConstant(gate)) && index < bb.end) {
-        index++;
-        gate = builder_->GetGateByBcIndex(index);
-    }
-    return index;
-}
-
-void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
-{
-    auto pcOffset = builder_->GetPcOffset(index);
-    auto stateInfo = GetFrameInfoBefore(bb, index);
-    GateRef frameValues = BuildFrameValues(stateInfo);
-    GateRef frameStateBefore = BuildFrameStateGate(
-        pcOffset, frameValues, FrameStateOutput::Invalid());
-    if (index == bb.start) {
-        BindStateSplit(bb.stateCurrent, bb.dependCurrent, frameStateBefore);
-    } else {
-        auto gate = builder_->GetGateByBcIndex(index);
-        BindStateSplit(gate, frameStateBefore);
-    }
-}
-
-void FrameStateBuilder::FindLoopExit(GateRef gate)
-{
-    // if find the bytecode gate, return.
-    if (builder_->IsBcIndexByGate(gate)) {
-        return;
-    }
-
-    // if find the loopExit, do process.
-    if (gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT) {
-        GateRef findBefore = gateAcc_.GetState(gate);
-        while (!builder_->IsBcIndexByGate(findBefore)) {
-            findBefore = gateAcc_.GetState(findBefore);
+    auto valueCount = acc_.GetInValueCount(gate);
+    [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
+    [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();
+    // RETURNUNDEFINED has value input, but not from acc
+    ASSERT(numValueInputs == valueCount || bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED);
+    ASSERT(numValueOutputs <= 1 + (bytecodeInfo.EnvOut() ? 1 : 0));
+    auto valueStarts = acc_.GetInValueStarts(gate);
+    for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
+        auto inIdx = valueIdx + valueStarts;
+        if (!acc_.IsInGateNull(gate, inIdx)) {
+            continue;
         }
-
-        // Build stateSplit After
-        size_t index = builder_->GetBcIndexByGate(findBefore);
-        auto pcOffset = builder_->GetPcOffset(index);
-        auto stateInfo = GetOrOCreateLoopExitStateInfo(gate);
-        ASSERT(stateInfo != nullptr);
-        GateRef frameValues = BuildFrameValues(stateInfo);
-        GateRef frameStateAfter = BuildFrameStateGate(
-            pcOffset, frameValues, FrameStateOutput::Invalid());
-
-        GateRef stateIn = gate; // stateIn - LoopExit
-        GateRef dependIn = Circuit::NullGate(); // dependIn - LoopExitDepend
-        auto uses = gateAcc_.Uses(gate);
-        for (auto useIt = uses.begin(); useIt != uses.end();) {
-            if (gateAcc_.GetOpCode(*useIt) == OpCode::LOOP_EXIT_DEPEND) {
-                dependIn = *useIt;
-            }
-            useIt++;
-        }
-        ASSERT(dependIn != Circuit::NullGate());
-
-        // Bind stateSplit after the loopExit and loopExitDepend.
-        BindStateSplit(stateIn, dependIn, frameStateAfter);
-    }
-
-    // continue to find the loopExit.
-
-    FindLoopExit(gateAcc_.GetState(gate));
-}
-
-bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index)
-{
-    auto gate = builder_->GetGateByBcIndex(index);
-    if (index == bb.start) {
-        if (bb.numOfStatePreds > 1) { // 1: > 1 is merge
-            // backward to find loop exits, insert stateSplit before loopExit.
-            for (auto &predBb: bb.preds) {
-                if (LoopExitCount(predBb, &bb) > 0) {
-                    auto target = GetPredStateGateBetweenBB(&bb, predBb);
-                    FindLoopExit(target);
+        if (valueIdx < bytecodeInfo.inputs.size()) {
+            auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
+            GateRef defVreg = liveContext_->ValuesAt(vregId);
+            acc_.NewIn(gate, inIdx, defVreg);
+        } else {
+            GateRef defAcc = liveContext_->ValuesAt(accumulatorIndex_);
+            if (Bytecodes::IsCallOp(opcode)) {
+                auto oldGt = acc_.GetGateType(defAcc).GetGTRef();
+                GateType callTargetType = typeRecorder_->GetCallTargetType(bcIndex);
+                if (!tsManager_->MethodOffsetIsVaild(oldGt) && !callTargetType.IsAnyType()) {
+                    acc_.SetGateType(defAcc, callTargetType);
                 }
             }
-            return true;
-        } else if (bb.numOfStatePreds == 1) {   // 1: == 1 maybe loopexit
-            auto predBb = (bb.preds.size() > 0) ? bb.preds.at(0) : bb.trys.at(0);
-            if (LoopExitCount(predBb, &bb) > 0) {
-                return true;
+            acc_.NewIn(gate, inIdx, defAcc);
+        }
+    }
+}
+
+void FrameStateBuilder::AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
+{
+    if (bytecodeInfo.IsGeneral()) {
+        BindStateSplitBefore(bytecodeInfo, liveout, bcId);
+        if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
+            bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8) {
+            auto hole = circuit_->GetConstantGate(MachineType::I64,
+                                                  JSTaggedValue::VALUE_HOLE,
+                                                  GateType::TaggedValue());
+            uint32_t numRegs = accumulatorIndex_;
+            std::vector<GateRef> vec(numRegs + 1, hole);
+            vec[0] = liveContext_->currentDepend_;
+            // accumulator is res
+            for (size_t i = 0; i < numRegs; i++) {
+                if (liveout->TestBit(i)) {
+                    vec[i + 1] = liveContext_->ValuesAt(i);  // 1: skip dep
+                } else {
+                    vec[i + 1] = hole; // 1: skip dep
+                }
+            }
+            auto res = circuit_->NewGate(circuit_->SaveRegister(numRegs), vec);
+            liveContext_->currentDepend_ = res;
+        }
+    }
+}
+
+void FrameStateBuilder::UpdateStateDepend(GateRef state, GateRef depend)
+{
+    liveContext_->currentState_ = state;
+    liveContext_->currentDepend_ = depend;
+}
+
+void FrameStateBuilder::UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId)
+{
+    GateRef gate = Circuit::NullGate();
+    if (bytecodeInfo.AccIn()) {
+        gate = liveContext_->ValuesAt(accumulatorIndex_);
+    } else if (bytecodeInfo.inputs.size() != 0) {
+        auto vreg = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
+        gate = liveContext_->ValuesAt(vreg);
+    }
+    // variable kill
+    if (bytecodeInfo.AccOut()) {
+        liveContext_->SetValuesAt(accumulatorIndex_, gate);
+    } else if (bytecodeInfo.vregOut.size() != 0) {
+        auto vreg = bytecodeInfo.vregOut[0];
+        liveContext_->SetValuesAt(vreg, gate);
+    }
+    if (bcBuilder_->HasTypes()) {
+        GateType type = acc_.GetGateType(gate);
+        if (type.IsAnyType()) {
+            type = typeRecorder_->UpdateType(bcId, type);
+            acc_.SetGateType(gate, type);
+        }
+    }
+}
+
+void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
+    uint32_t bcId, GateRef gate)
+{
+    ASSERT(!bytecodeInfo.IsDiscarded() && !bytecodeInfo.IsMov());
+    if (bytecodeInfo.IsSetConstant()) {
+        liveContext_->SetValuesAt(accumulatorIndex_, gate);
+        return;
+    }
+    // jump gate is null
+    if (gate != Circuit::NullGate()) {
+        FillBcInputs(bytecodeInfo, bcId, gate);
+    }
+    auto liveout = GetFrameLiveoutAfter(bcId);
+    // variable kill
+    if (bytecodeInfo.AccOut()) {
+        liveContext_->SetValuesAt(accumulatorIndex_, gate);
+    }
+    for (const auto &out: bytecodeInfo.vregOut) {
+        liveContext_->SetValuesAt(out, gate);
+    }
+    if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
+        // accumulator is generator object
+        for (size_t i = 0; i < accumulatorIndex_; i++) {
+            if (liveout->TestBit(i)) {
+                auto restore = circuit_->NewGate(circuit_->RestoreRegister(i),
+                    MachineType::I64, { gate }, GateType::AnyType());
+                liveContext_->SetValuesAt(i, restore);
             }
         }
-        if (gateAcc_.GetOpCode(bb.dependCurrent) == OpCode::GET_EXCEPTION) {
-            return true;
+    }
+    BindStateSplitAfter(bytecodeInfo, bcId, gate);
+}
+
+void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
+{
+    auto frameContext = GetOrOCreateMergedContext(bb.id);
+    frameContext->currentState_ = circuit_->GetStateRoot();
+    frameContext->currentDepend_ = circuit_->GetDependRoot();
+    frameContext->needStateSplit_ = true;
+    // initialize argumnets
+    ASSERT(bcBuilder_->IsFirstBasicBlock(1)); // 1: is firstBlock
+    auto liveout = GetFrameLiveoutBefore(1); // 1: is firstBlock
+    GateRef frameArgs = bcBuilder_->GetFrameArgs();
+    if (liveout->TestBit(envIndex_)) {
+        GateRef jsFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
+        auto env = acc_.GetInitialEnvGate(jsFunc);
+        frameContext->SetValuesAt(envIndex_, env);
+    }
+    auto holeGate = circuit_->GetConstantGate(MachineType::I64,
+                                              JSTaggedValue::VALUE_HOLE,
+                                              GateType::TaggedValue());
+    for (size_t i = 0; i < envIndex_; i++) {
+        if (liveout->TestBit(i)) {
+            if (bcBuilder_->ArgGateNotExisted(i)) {
+                frameContext->SetValuesAt(i, holeGate);
+            } else {
+                GateRef arg = bcBuilder_->GetArgGate(i);
+                frameContext->SetValuesAt(i, arg);
+            }
+        }
+    }
+}
+
+void FrameStateBuilder::NewMerge(const BytecodeRegion &bbNext)
+{
+    auto frameContext = GetMergedBbContext(bbNext.id);
+    size_t numOfIns = bbNext.numOfStatePreds;
+    const GateMetaData* metaData = bbNext.loopNumber > 0 ?
+        circuit_->LoopBegin(numOfIns) : circuit_->Merge(numOfIns);
+    auto merge = circuit_->NewGate(metaData,
+        std::vector<GateRef>(numOfIns, Circuit::NullGate()));
+    auto dependMerge = circuit_->NewGate(circuit_->DependSelector(numOfIns),
+        std::vector<GateRef>(numOfIns + 1, Circuit::NullGate()));
+    acc_.NewIn(dependMerge, 0, merge); // 0: is state
+    // reset current state and depend
+    frameContext->currentState_ = merge;
+    frameContext->currentDepend_ = dependMerge;
+    if (bbNext.loopNumber > 0) {
+        ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
+        auto& loopInfo = GetLoopInfo(bbNext);
+        headerGates[loopInfo.sortIndx] = merge;
+        ASSERT(numOfIns = loopInfo.numLoopBacks + 1); // 1: one entry
+    }
+}
+
+void FrameStateBuilder::MergeStateDepend(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
+{
+    GateRef entryState = liveContext_->currentState_;
+    GateRef entryDepend = liveContext_->currentDepend_;
+    auto mergedContext = GetMergedBbContext(bbNext.id);
+    if (bbNext.numOfStatePreds == 1) { // 1: one entry edge
+        mergedContext->currentState_ = liveContext_->currentState_;
+        mergedContext->currentDepend_ = liveContext_->currentDepend_;
+        return;
+    }
+    auto index = mergedContext->currentIndex_;
+    // lazy first edge
+    if (index == 0) {
+        NewMerge(bbNext);
+    }
+    if (IsLoopBackEdge(bb, bbNext)) {
+        ASSERT(index != 0);
+        entryState = circuit_->NewGate(circuit_->LoopBack(), { entryState });
+    }
+    acc_.NewIn(mergedContext->currentState_, index, entryState);
+    acc_.NewIn(mergedContext->currentDepend_, index + 1, entryDepend); // 1: skip state
+    mergedContext->needStateSplit_ = true;
+}
+
+GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
+    GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index)
+{
+    ASSERT(stateMerge != Circuit::NullGate());
+    ASSERT(currentValue != Circuit::NullGate());
+    if (nextValue != Circuit::NullGate() &&
+        (acc_.GetOpCode(nextValue) == OpCode::VALUE_SELECTOR && acc_.GetState(nextValue) == stateMerge)) {
+        ASSERT(currentValue != Circuit::NullGate());
+        acc_.NewIn(nextValue, index + 1, currentValue);
+        currentValue = nextValue;
+    } else if (currentValue != nextValue) {
+        auto inList = std::vector<GateRef>(1 + bb.numOfStatePreds, Circuit::NullGate()); // 1: state
+        auto phi = circuit_->NewGate(circuit_->ValueSelector(bb.numOfStatePreds),
+            MachineType::I64, inList.size(), inList.data(), GateType::AnyType());
+        acc_.NewIn(phi, 0, stateMerge);
+        if (nextValue != Circuit::NullGate()) {
+            for (size_t i = 0; i < index; i++) {
+                acc_.NewIn(phi, i + 1, nextValue); // 1: skip state
+            }
+            acc_.NewIn(phi, index + 1, currentValue); // 1: skip state
+        } else {
+            ASSERT(index == 0);
+            acc_.NewIn(phi, 1, currentValue); // 1: skip state
+        }
+        currentValue = phi;
+    }
+    return currentValue;
+}
+
+void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bbNext)
+{
+    auto mergedContext = GetMergedBbContext(bbNext.id);
+    auto stateMerge = mergedContext->currentState_;
+    ASSERT(acc_.IsCFGMerge(stateMerge));
+    auto liveout = GetFrameLiveoutBefore(bbNext.id);
+    auto *loopAssignment = GetLoopAssignment(bbNext);
+    for (size_t i = 0; i < numVregs_; i++) {
+        if (liveout->TestBit(i)) {
+            auto current = liveContext_->ValuesAt(i);
+            auto next = mergedContext->ValuesAt(i);
+            GateRef value = Circuit::NullGate();
+#ifndef NDEBUG
+            if (loopAssignment == nullptr) {
+                ASSERT(current != Circuit::NullGate() && next != Circuit::NullGate());
+            } else if (loopAssignment->TestBit(i)) {
+                // next is null or phi
+                ASSERT(next == Circuit::NullGate() ||
+                    ((acc_.GetOpCode(next) == OpCode::VALUE_SELECTOR) && acc_.GetState(next) == stateMerge));
+            } else {
+                ASSERT(next == Circuit::NullGate() || current == next);
+            }
+#endif
+            if (loopAssignment != nullptr && !loopAssignment->TestBit(i)) {
+                value = current;
+            } else {
+                value = MergeValue(bbNext, stateMerge, current, next, mergedContext->currentIndex_);
+            }
+            mergedContext->SetValuesAt(i, value);
+        }
+    }
+}
+
+void FrameStateBuilder::CopyLiveoutValues(const BytecodeRegion &bbNext,
+    FrameContext* dest, FrameContext* src)
+{
+    auto liveout = GetFrameLiveoutBefore(bbNext.id);
+    for (size_t i = 0; i < numVregs_; i++) {
+        if (liveout->TestBit(i)) {
+            auto value = src->ValuesAt(i);
+            dest->SetValuesAt(i, value);
+        } else {
+            dest->SetValuesAt(i, Circuit::NullGate());
+        }
+    }
+}
+
+FrameContext *FrameStateBuilder::GetCachedContext()
+{
+    // lazy init cachedContext
+    if (cachedContext_ == nullptr) {
+        auto chunk = circuit_->chunk();
+        cachedContext_ = chunk->New<FrameContext>(chunk, numVregs_);
+    }
+    auto result = cachedContext_;
+    if (cachedContext_ == liveContext_) {
+        if (cachedContextBackup_ == nullptr) {
+            auto chunk = circuit_->chunk();
+            cachedContextBackup_ = chunk->New<FrameContext>(chunk, numVregs_);
+        }
+        result = cachedContextBackup_;
+    }
+    return result;
+}
+
+void FrameStateBuilder::SaveCurrentContext(const BytecodeRegion &bb)
+{
+    auto newContext = GetCachedContext();
+    ASSERT(newContext != liveContext_);
+    newContext->CopyCurrentStatus(liveContext_);
+    CopyLiveoutValues(bb, newContext, liveContext_);
+    liveContext_ = newContext;
+}
+
+void FrameStateBuilder::NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAssignment)
+{
+    auto state = liveContext_->currentState_;
+    auto depend = liveContext_->currentDepend_;
+    auto loopExit = circuit_->NewGate(circuit_->LoopExit(), { state });
+    auto loopExitDepend = circuit_->NewGate(circuit_->LoopExitDepend(),
+        { loopExit, depend });
+    auto liveout = GetFrameLiveoutBefore(bbNext.id);
+    for (size_t i = 0; i < numVregs_; i++) {
+        if (liveout->TestBit(i)) {
+            auto current = liveContext_->ValuesAt(i);
+            if (loopAssignment->TestBit(i)) {
+                current = circuit_->NewGate(circuit_->LoopExitValue(), acc_.GetMachineType(current),
+                    {loopExit, current}, acc_.GetGateType(current));
+            }
+            liveContext_->SetValuesAt(i, current);
+        } else {
+            ASSERT(liveContext_->ValuesAt(i) == Circuit::NullGate());
+        }
+    }
+    liveContext_->currentState_ = loopExit;
+    liveContext_->currentDepend_ = loopExitDepend;
+    if (!bcBuilder_->IsTypeLoweringEnabled()) {
+        return;
+    }
+    auto stateSplit = BuildStateSplit(liveContext_, liveout, bbNext.start);
+    liveContext_->currentDepend_ = stateSplit;
+}
+
+void FrameStateBuilder::TryInsertLoopExit(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
+{
+    if (!bcBuilder_->EnableLoopOptimization()) {
+        return;
+    }
+    auto currentLoop = GetLoopInfoByLoopBody(bb);
+    if (currentLoop != nullptr && !currentLoop->loopBodys->TestBit(bbNext.id)) {
+        // use bbNext as merged values
+        SaveCurrentContext(bbNext);
+    }
+    while (currentLoop != nullptr && !currentLoop->loopBodys->TestBit(bbNext.id)) {
+        ASSERT(currentLoop->loopExits != nullptr);
+#ifndef NDEBUG
+        bool found = false;
+        for (auto current : *currentLoop->loopExits) {
+            if (current->id == bbNext.id) {
+                found = true;
+                break;
+            }
+        }
+        ASSERT(found);
+#endif
+        NewLoopExit(bbNext, currentLoop->loopAssignment);
+        currentLoop = currentLoop->parentInfo;
+    }
+}
+
+void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb)
+{
+    liveContext_ = GetMergedBbContext(bb.id);
+    ASSERT(liveContext_ != nullptr);
+    if (bb.loopNumber > 0) {
+        // use bb as merged values
+        SaveCurrentContext(bb);
+    } else {
+        // all input merged
+        ASSERT(liveContext_->currentIndex_ == bb.numOfStatePreds);
+    }
+    if (liveContext_->needStateSplit_) {
+        liveContext_->needStateSplit_ = false;
+        if (!bcBuilder_->IsTypeLoweringEnabled()) {
+            return;
+        }
+        auto liveout = GetOrOCreateBBLiveOut(bb.id);
+        auto stateSplit = BuildStateSplit(liveContext_, liveout, bb.start);
+        liveContext_->currentDepend_ = stateSplit;
+    }
+}
+
+class SubContextScope {
+public:
+    explicit SubContextScope(FrameStateBuilder* frameBuilder)
+        : frameBuilder_(frameBuilder)
+    {
+        originContext_ = frameBuilder->liveContext_;
+    }
+
+    ~SubContextScope()
+    {
+        frameBuilder_->liveContext_ = originContext_;
+    }
+private:
+    FrameContext* originContext_ {nullptr};
+    FrameStateBuilder* frameBuilder_ {nullptr};
+};
+
+void FrameStateBuilder::MergeIntoSuccessor(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
+{
+    [[maybe_unused]] SubContextScope scope(this);
+    TryInsertLoopExit(bb, bbNext);
+    auto mergedContext = GetOrOCreateMergedContext(bbNext.id);
+    MergeStateDepend(bb, bbNext);
+    if (mergedContext->currentIndex_ == 0) {
+        if (bbNext.loopNumber > 0) {
+            MergeAssignment(bbNext);
+        } else {
+            CopyLiveoutValues(bbNext, mergedContext, liveContext_);
         }
     } else {
-        if (gate == Circuit::NullGate() || gateAcc_.GetStateCount(gate) != 1) {
-            return false;
-        }
-        auto state = gateAcc_.GetState(gate);
-        if (gateAcc_.GetOpCode(state) == OpCode::IF_SUCCESS) {
-            return true;
-        }
+        MergeAssignment(bbNext);
+    }
+    mergedContext->currentIndex_++;
+}
+
+bool FrameStateBuilder::IsLoopBackEdge(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
+{
+    if (bbNext.loopNumber > 0) {
+        auto& loopInfo = GetLoopInfo(bbNext);
+        return loopInfo.loopBodys->TestBit(bb.id);
     }
     return false;
 }
 
-void FrameStateBuilder::BuildFrameState(BytecodeRegion& bb,
-    const BytecodeInfo &bytecodeInfo, size_t index)
+FrameStateBuilder::LoopInfo& FrameStateBuilder::GetLoopInfo(const BytecodeRegion &bb)
 {
-    // Not bind state split for Call
+    ASSERT(bb.loopNumber > 0);
+    return loops_[bb.loopNumber - 1]; // -1: for index
+}
+
+FrameStateBuilder::LoopInfo& FrameStateBuilder::GetLoopInfo(BytecodeRegion &bb)
+{
+    ASSERT(bb.loopNumber > 0);
+    return loops_[bb.loopNumber - 1]; // -1: for index
+}
+
+FrameStateBuilder::LoopInfo* FrameStateBuilder::GetLoopInfoByLoopBody(const BytecodeRegion &bb)
+{
+    if (bb.loopIndex == 0) {
+        return nullptr;
+    }
+    auto& loopInfo = loops_[bb.loopIndex - 1];
+    ASSERT(loopInfo.loopBodys->TestBit(bb.id));
+    return &loopInfo;
+}
+
+BitSet *FrameStateBuilder::GetLoopAssignment(const BytecodeRegion &bb)
+{
+    if (bb.loopNumber > 0) {
+        auto& loopInfo = GetLoopInfo(bb);
+        return loopInfo.loopAssignment;
+    }
+    return nullptr;
+}
+
+void FrameStateBuilder::AddEmptyBlock(BytecodeRegion* bb)
+{
+    bbBeginStateLiveouts_.emplace_back(nullptr);
+    bbFrameContext_.emplace_back(nullptr);
+    auto liveout = GetOrOCreateBBLiveOut(bb->id);
+    liveout->CopyFrom(liveOutResult_);
+    GetOrOCreateMergedContext(bb->id);
+    bcBuilder_->AddBasicBlock(bb);
+}
+
+class BlockLoopAnalysis {
+public:
+    explicit BlockLoopAnalysis(FrameStateBuilder *builder, Chunk* chunk)
+        : frameBuilder_(builder), bcBuilder_(builder->bcBuilder_),
+        pendingList_(chunk), loopbacks_(chunk),
+        dfsStack_(chunk), visitState_(chunk), chunk_(chunk) {}
+
+    void Run()
+    {
+        ComputeLoopBack();
+        TryClearDeadBlock();
+        frameBuilder_->numLoops_ = numLoops_;
+        if (numLoops_ > 0) {
+            ComputeLoopInfo();
+            if (bcBuilder_->IsLogEnabled()) {
+                for (size_t i = 0; i < numLoops_; i++) {
+                    auto& loopInfo = frameBuilder_->loops_[i];
+                    PrintLoop(loopInfo);
+                }
+            }
+        }
+    }
+
+    void CountLoopBackEdge(size_t fromId, size_t toId)
+    {
+        loopbacks_.push_back({fromId, toId});
+        auto &toBlock = bcBuilder_->GetBasicBlockById(toId);
+        if (toBlock.loopNumber == 0) {
+            toBlock.loopNumber = ++numLoops_;
+        }
+    }
+
+    void ComputeLoopBack()
+    {
+        auto size = bcBuilder_->GetBasicBlockCount();
+        visitState_.resize(size, MarkState::UNVISITED);
+        size_t entryId = 0; // entry id
+        pendingList_.emplace_back(entryId);
+        while (!pendingList_.empty()) {
+            size_t bbId = pendingList_.back();
+            auto &bb = bcBuilder_->GetBasicBlockById(bbId);
+            bool allVisited = true;
+            visitState_[bbId] = MarkState::PENDING;
+            auto it = bb.succs.begin();
+            BytecodeRegion* catchBlock = bb.catches.empty() ? nullptr : bb.catches.at(0);
+            while (it != bb.succs.end() || (catchBlock != nullptr)) {
+                BytecodeRegion* succBlock = nullptr;
+                if (it != bb.succs.end()) {
+                    succBlock = *it;
+                    it++;
+                } else if (catchBlock != nullptr) {
+                    succBlock = catchBlock;
+                    catchBlock = nullptr;
+                }
+                size_t succId = succBlock->id;
+                if (visitState_[succId] == MarkState::UNVISITED) {
+                    pendingList_.emplace_back(succId);
+                    visitState_[succId] = MarkState::ON_STACK;
+                    allVisited = false;
+                    break;
+                } else if (visitState_[succId] == MarkState::PENDING) {
+                    // back edge
+                    CountLoopBackEdge(bbId, succId);
+                }
+            }
+            if (allVisited) {
+                visitState_[bbId] = MarkState::VISITED;
+                pendingList_.pop_back();
+                frameBuilder_->rpoList_.push_front(bbId);
+            }
+        }
+    }
+
+    void TryClearDeadBlock()
+    {
+        if (frameBuilder_->rpoList_.size() == bcBuilder_->NumberOfLiveBlock()) {
+            return;
+        }
+        auto size = bcBuilder_->GetBasicBlockCount();
+        for (size_t i = 0; i < size; i++) {
+            auto &bb = bcBuilder_->GetBasicBlockById(i);
+            if (bb.numOfStatePreds != 0 && visitState_[i] == MarkState::UNVISITED) {
+                bb.numOfStatePreds = 0;
+            }
+        }
+        bcBuilder_->RemoveUnreachableRegion();
+    }
+
+    void CountLoopBody(FrameStateBuilder::LoopInfo& loopInfo, size_t bbId)
+    {
+        if (bbId != loopInfo.loopHeadId && !loopInfo.loopBodys->TestBit(bbId)) {
+            loopInfo.loopBodys->SetBit(bbId);
+            pendingList_.emplace_back(bbId);
+            auto liveout = frameBuilder_->GetOrOCreateBBLiveOut(bbId);
+            ASSERT(liveout != nullptr);
+            loopInfo.loopAssignment->Union(liveout->defRegisters_);
+        }
+    }
+
+    void PropagateLoopBody(FrameStateBuilder::LoopInfo& loopInfo)
+    {
+        while (!pendingList_.empty()) {
+            auto cur = pendingList_.back();
+            auto &curBlock = bcBuilder_->GetBasicBlockById(cur);
+            pendingList_.pop_back();
+            for (auto pred : curBlock.preds) {
+                CountLoopBody(loopInfo, pred->id);
+            }
+            for (auto pred : curBlock.trys) {
+                CountLoopBody(loopInfo, pred->id);
+            }
+        }
+    }
+
+    void InitLoopInfo(FrameStateBuilder::LoopInfo& loopInfo, BytecodeRegion& loopHeader, size_t backId)
+    {
+        if (loopInfo.loopHeadId == 0) {
+            auto size = bcBuilder_->GetBasicBlockCount();
+            loopInfo.loopHeadId = loopHeader.id;
+            loopInfo.loopIndex = loopHeader.loopNumber;
+            loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
+            loopInfo.loopAssignment = chunk_->New<BitSet>(chunk_, frameBuilder_->numVregs_);
+            loopHeader.loopIndex = loopInfo.loopIndex;
+            loopInfo.loopBodys->SetBit(loopInfo.loopHeadId);
+            auto liveout = frameBuilder_->GetOrOCreateBBLiveOut(loopInfo.loopHeadId);
+            loopInfo.loopAssignment->Union(liveout->defRegisters_);
+            loopInfo.numLoopBacks = 1;
+            loopInfo.loopBodys->SetBit(backId);
+        } else if (!loopInfo.loopBodys->TestBit(backId)) {
+            loopInfo.numLoopBacks++;
+            loopInfo.loopBodys->SetBit(backId);
+        }
+    }
+
+    void ComputeLoopInfo()
+    {
+        frameBuilder_->loops_.resize(numLoops_, FrameStateBuilder::LoopInfo());
+        for (auto& info : loopbacks_) {
+            auto& toBlock = bcBuilder_->GetBasicBlockById(info.toId);
+            auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
+            InitLoopInfo(loopInfo, toBlock, info.fromId);
+        }
+        TryMergeLoopEntry();
+        for (auto& info : loopbacks_) {
+            auto& toBlock = bcBuilder_->GetBasicBlockById(info.toId);
+            auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
+            CountLoopBody(loopInfo, info.fromId);
+            PropagateLoopBody(loopInfo);
+        }
+        if (!bcBuilder_->EnableLoopOptimization()) {
+            return;
+        }
+        auto size = bcBuilder_->GetBasicBlockCount();
+        dfsStack_.resize(size, DFSState(0, 0));
+        ComputeLoopTree();
+    }
+
+    void InsertEmptyBytecodeRegion(FrameStateBuilder::LoopInfo& loopInfo,
+        BytecodeRegion& loopHeader, size_t numOfEntries)
+    {
+        auto size = bcBuilder_->GetBasicBlockCount();
+        auto block = chunk_->New<BytecodeRegion>(chunk_);
+        block->id = size;
+        block->numOfStatePreds = numOfEntries;
+        block->start = loopHeader.start;
+        ASSERT(loopHeader.start != 0);
+        block->end = BytecodeIterator::INVALID_INDEX;
+        block->bytecodeIterator_.Reset(bcBuilder_, block->start, block->end);
+
+        frameBuilder_->liveOutResult_->Reset();
+        for (auto it = loopHeader.preds.begin(); it != loopHeader.preds.end();) {
+            auto bbPred = *it;
+            // not loop back
+            if (!loopInfo.loopBodys->TestBit(bbPred->id)) {
+                it = loopHeader.preds.erase(it);
+                std::replace(bbPred->succs.begin(), bbPred->succs.end(), &loopHeader, block);
+                block->preds.emplace_back(bbPred);
+            } else {
+                it++;
+            }
+        }
+        frameBuilder_->MergeFromSuccBB(loopHeader.id);
+        block->succs.emplace_back(&loopHeader);
+        loopHeader.preds.insert(loopHeader.preds.begin(), block);
+        frameBuilder_->AddEmptyBlock(block);
+
+        ASSERT(loopHeader.trys.empty());
+        loopHeader.numOfStatePreds -= (numOfEntries - 1); // 1: one entry
+        auto it = std::find(frameBuilder_->rpoList_.begin(), frameBuilder_->rpoList_.end(), loopHeader.id);
+        ASSERT(it != frameBuilder_->rpoList_.end());
+        frameBuilder_->rpoList_.insert(it, block->id);
+        visitState_.emplace_back(MarkState::UNVISITED1);
+    }
+
+    void TryMergeLoopEntry()
+    {
+        for (size_t i = 0; i < numLoops_; i++) {
+            auto& loopInfo = frameBuilder_->loops_[i];
+            auto& loopHeader = bcBuilder_->GetBasicBlockById(loopInfo.loopHeadId);
+            size_t numOfEntries = static_cast<size_t>(loopHeader.numOfStatePreds - loopInfo.numLoopBacks);
+            if (numOfEntries > 1 && loopHeader.trys.size() == 0) {
+                InsertEmptyBytecodeRegion(loopInfo, loopHeader, numOfEntries);
+            }
+            // clear loopback bits for visit body
+            loopInfo.loopBodys->Reset();
+            loopInfo.loopBodys->SetBit(loopInfo.loopHeadId);
+        }
+    }
+
+    FrameStateBuilder::LoopInfo* EnterInnerLoop(FrameStateBuilder::LoopInfo* loopInfo, size_t bbId)
+    {
+        auto &bb = bcBuilder_->GetBasicBlockById(bbId);
+        if (bb.loopNumber > 0) {
+            auto &innerInfo = frameBuilder_->GetLoopInfo(bb);
+            ASSERT(innerInfo.parentInfo == nullptr);
+            innerInfo.parentInfo = loopInfo;
+            innerInfo.sortIndx = frameBuilder_->sortIndx_++;
+            loopInfo = &innerInfo;
+        } else if (loopInfo != nullptr) {
+            bb.loopIndex = loopInfo->loopIndex;
+        }
+        return loopInfo;
+    }
+
+    void ComputeLoopTree()
+    {
+        FrameStateBuilder::LoopInfo* loopInfo = nullptr;
+        auto currentDepth = Push(0, 0); // entry id
+        while (currentDepth > 0) {
+            auto &curState = dfsStack_[currentDepth - 1]; // -1: for current
+            auto const &bb = bcBuilder_->GetBasicBlockById(curState.bbId);
+            ASSERT(bb.catches.empty());
+            auto index = curState.index;
+            BytecodeRegion* bbNext = nullptr;
+            if (index >= bb.succs.size()) {
+                if (bb.loopNumber > 0) {
+                    if (visitState_[curState.bbId] == MarkState::ON_STACK) {
+                        ASSERT(loopInfo->loopHeadId == curState.bbId);
+                        loopInfo = loopInfo->parentInfo;
+                        visitState_[curState.bbId] = MarkState::VISITED1;
+                    }
+                    bbNext = PushLoopExist(bb, currentDepth);
+                }
+            } else {
+                bbNext = bb.succs[curState.index++]; // 1: goto next
+            }
+            if (bbNext != nullptr) {
+                if (loopInfo != nullptr && !loopInfo->loopBodys->TestBit(bbNext->id)) {
+                    AddLoopExit(bbNext, loopInfo);
+                } else if (visitState_[bbNext->id] == MarkState::UNVISITED1) {
+                    currentDepth = Push(bbNext->id, currentDepth);
+                    loopInfo = EnterInnerLoop(loopInfo, bbNext->id);
+                }
+            } else {
+                if (bb.loopNumber == 0) {
+                    visitState_[curState.bbId] = MarkState::VISITED1;
+                }
+                currentDepth--;
+            }
+        }
+    }
+
+    size_t Push(size_t bbId, size_t depth)
+    {
+        if (visitState_[bbId] == MarkState::UNVISITED1) {
+            dfsStack_[depth].bbId = bbId;
+            dfsStack_[depth].index = 0;
+            visitState_[bbId] = MarkState::ON_STACK;
+            return depth + 1;
+        }
+        return depth;
+    }
+
+    BytecodeRegion* PushLoopExist(const BytecodeRegion& bb, size_t depth)
+    {
+        auto &curState = dfsStack_[depth - 1]; // -1: for current
+        auto loopExitIndex = curState.index - bb.succs.size();
+        auto& currentInfo = frameBuilder_->GetLoopInfo(bb);
+        BytecodeRegion* bbNext = nullptr;
+        if (currentInfo.loopExits != nullptr && loopExitIndex < currentInfo.loopExits->size()) {
+            bbNext = currentInfo.loopExits->at(loopExitIndex);
+            curState.index++; // 1: goto next
+        }
+        return bbNext;
+    }
+
+    void AddLoopExit(BytecodeRegion *bb, FrameStateBuilder::LoopInfo *loopInfo)
+    {
+        if (loopInfo->loopExits == nullptr) {
+            loopInfo->loopExits = chunk_->New<ChunkVector<BytecodeRegion*>>(chunk_);
+        }
+        loopInfo->loopExits->emplace_back(bb);
+    }
+
+    void PrintLoop(FrameStateBuilder::LoopInfo& loopInfo)
+    {
+        auto size = bcBuilder_->GetBasicBlockCount();
+        LOG_COMPILER(INFO) << "--------------------------------- LoopInfo Start ---------------------------------";
+        LOG_COMPILER(INFO) << "LoopHead: " << loopInfo.loopHeadId;
+        if (loopInfo.parentInfo != nullptr) {
+            LOG_COMPILER(INFO) << "ParentLoopHead: " << loopInfo.parentInfo->loopHeadId;
+        }
+        std::string log = "Body: [";
+        for (size_t i = 0; i < size; i++) {
+            if (loopInfo.loopBodys->TestBit(i)) {
+                log += std::to_string(i) + ", ";
+            }
+        }
+        LOG_COMPILER(INFO) << log << "]";
+        std::string log1 = "Exit: [";
+        if (loopInfo.loopExits != nullptr) {
+            for (auto bb : *loopInfo.loopExits) {
+                log1 += std::to_string(bb->id) + ", ";
+            }
+        }
+        LOG_COMPILER(INFO) << log1 << "]";
+        std::string log2 = "LoopAssignment [";
+        bool firset = true;
+        for (size_t i = 0; i < frameBuilder_->numVregs_; i++) {
+            if (loopInfo.loopAssignment->TestBit(i)) {
+                if (!firset) {
+                    log2 += ",";
+                }
+                firset = false;
+                log2 += std::to_string(i);
+            }
+        }
+        LOG_COMPILER(INFO) << log2 << "]";
+        LOG_COMPILER(INFO) << "--------------------------------- LoopInfo End ---------------------------------";
+    }
+
+private:
+    struct EndToHead {
+        size_t fromId;
+        size_t toId;
+    };
+    struct DFSState {
+        DFSState(size_t bbId, size_t index)
+            : bbId(bbId), index(index) {}
+
+        size_t bbId;
+        size_t index;
+    };
+    enum class MarkState : uint8_t {
+        UNVISITED = 0,
+        ON_STACK,
+        PENDING,
+        VISITED,
+        VISITED1,
+        UNVISITED1 = VISITED
+    };
+    FrameStateBuilder* frameBuilder_ {nullptr};
+    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
+    ChunkDeque<size_t> pendingList_;
+    ChunkVector<EndToHead> loopbacks_;
+    ChunkVector<DFSState> dfsStack_;
+    ChunkVector<MarkState> visitState_;
+    Chunk* chunk_ {nullptr};
+    size_t numLoops_ {0};
+};
+
+void FrameStateBuilder::ComputeLoopInfo()
+{
+    BlockLoopAnalysis loopAnalysis(this, circuit_->chunk());
+    loopAnalysis.Run();
+    if (numLoops_ != 0) {
+        ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
+        headerGates.resize(numLoops_, Circuit::NullGate());
+    }
+}
+
+void FrameStateBuilder::DumpLiveState()
+{
+    LOG_COMPILER(INFO) << "DumpLiveState";
+    for (size_t i = 0; i < bcEndStateLiveouts_.size(); i++) {
+        auto liveout = GetFrameLiveoutAfter(i);
+        if (liveout == nullptr) {
+            continue;
+        }
+        std::string log = "BC: " + std::to_string(i) + " {";
+        bool firset = true;
+        for (size_t j = 0; j < numVregs_; j++) {
+            if (liveout->TestBit(j)) {
+                if (!firset) {
+                    log += ",";
+                }
+                firset = false;
+                log += std::to_string(j);
+            }
+        }
+        log += "}";
+        LOG_COMPILER(INFO) << log;
+    }
+    for (size_t i = 1; i < bbBeginStateLiveouts_.size(); i++) { // 1: skip entry
+        auto liveout = GetFrameLiveoutBefore(i);
+        if (liveout == nullptr) {
+            continue;
+        }
+        std::string log = "BB: " + std::to_string(i) + " {";
+        bool firset = true;
+        for (size_t j = 0; j < numVregs_; j++) {
+            if (liveout->TestBit(j)) {
+                if (!firset) {
+                    log += ",";
+                }
+                firset = false;
+                log += std::to_string(j);
+            }
+        }
+        log += "}";
+        LOG_COMPILER(INFO) << log;
+    }
+}
+
+GateRef FrameStateBuilder::BuildFrameState(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex)
+{
+    auto pcOffset = bcBuilder_->GetPcOffset(bcIndex);
+    GateRef gateValues = BuildFrameValues(frameContext, liveout);
+
+    GateRef frameArgs = bcBuilder_->GetFrameArgs();
+    GateRef preFrameState = bcBuilder_->GetPreFrameState();
+    UInt32PairAccessor accessor(static_cast<uint32_t>(pcOffset),
+        FrameStateOutput::Invalid().GetValue());
+    auto frameState = circuit_->NewGate(circuit_->FrameState(accessor.ToValue()),
+        {frameArgs, gateValues, preFrameState});
+    return frameState;
+}
+
+GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex)
+{
+    auto frameState = BuildFrameState(frameContext, liveout, bcIndex);
+    auto state = frameContext->currentState_;
+    auto depend = frameContext->currentDepend_;
+    ASSERT(state != Circuit::NullGate());
+    ASSERT(depend != Circuit::NullGate());
+    return circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
+}
+
+void FrameStateBuilder::BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
+{
+    if (!bcBuilder_->IsTypeLoweringEnabled()) {
+        return;
+    }
     if (bytecodeInfo.IsCall()) {
-        BuildCallFrameState(index, bb);
+        frameStateCache_ = BuildFrameState(liveContext_, liveout, bcId);
     }
+    ASSERT(!liveContext_->needStateSplit_);
+}
 
-    bool needStateSplitBefore = ShouldInsertFrameStateBefore(bb, index);
-    auto gate = builder_->GetGateByBcIndex(index);
-    if (needStateSplitBefore && index != bb.start) {
-        auto depend = gateAcc_.GetDep(gate);
-        if (gateAcc_.GetOpCode(depend) == OpCode::STATE_SPLIT) {
-            needStateSplitBefore = false;
-        }
+void FrameStateBuilder::BindStateSplitAfter(const BytecodeInfo &bytecodeInfo,
+    uint32_t bcId, GateRef gate)
+{
+    if (!bcBuilder_->IsTypeLoweringEnabled()) {
+        return;
     }
-    if (needStateSplitBefore) {
-        BuildStateSplitBefore(bb, index);
+    if (bytecodeInfo.IsCall()) {
+        auto frameState = GetBcFrameStateCache();
+        acc_.ReplaceFrameStateIn(gate, frameState);
     }
-
     if (!bytecodeInfo.NoSideEffects() && !bytecodeInfo.IsThrow()) {
-        if (!gateAcc_.HasIfExceptionUse(gate)) {
-            BuildStateSplitAfter(index, bb);
+        auto stateSplit = BuildStateSplit(liveContext_, GetOrOCreateBCEndLiveOut(bcId), bcId + 1); // 1: for after
+        liveContext_->currentDepend_ = stateSplit;
+    }
+}
+
+GateRef FrameStateBuilder::BuildFrameValues(FrameContext* frameContext, FrameLiveOut* liveout)
+{
+    size_t frameStateInputs = numVregs_;
+    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
+    auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
+                                                   JSTaggedValue::VALUE_OPTIMIZED_OUT,
+                                                   GateType::TaggedValue());
+    for (size_t i = 0; i < numVregs_; i++) {
+        auto value = frameContext->ValuesAt(i);
+        if (value == Circuit::NullGate() || !liveout->TestBit(i)) {
+            value = optimizedGate;
         }
+        inList[i] = value;
     }
-}
-
-void FrameStateBuilder::BuildCallFrameState(size_t index, BytecodeRegion& bb)
-{
-    auto pcOffset = builder_->GetPcOffset(index);
-    auto stateInfo = GetFrameInfoBefore(bb, index);
-    GateRef frameValues = BuildFrameValues(stateInfo);
-    GateRef frameState = BuildFrameStateGate(pcOffset, frameValues, FrameStateOutput::Invalid());
-    auto gate = builder_->GetGateByBcIndex(index);
-    gateAcc_.ReplaceFrameStateIn(gate, frameState);
-}
-
-void FrameStateBuilder::BindBBStateSplit()
-{
-    auto& dfsList = builder_->GetDfsList();
-    for (auto &bbId: dfsList) {
-        auto &bb = builder_->GetBasicBlockById(bbId);
-        if (builder_->IsFirstBasicBlock(bb.id)) {
-            BuildStateSplitBefore(bb, bb.start);
-        }
-        if (builder_->IsEntryBlock(bb.id)) {
-            BuildStateSplitBefore(bb, bb.start);
-        }
-        ASSERT(!bb.isDead);
-
-        builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
-            auto &iterator = bb.GetBytecodeIterator();
-            auto index = iterator.Index();
-            BuildFrameState(bb, bytecodeInfo, index);
-            return true;
-        });
-    }
-}
-
-FrameStateInfo *FrameStateBuilder::GetFrameInfoBefore(BytecodeRegion &bb, uint32_t bcId)
-{
-    if (bcId == bb.start) {
-        return GetBBBeginStateInfo(bb.id);
-    } else {
-        return GetOrOCreateBCEndStateInfo(bcId - 1); // 1: prev pc
-    }
-}
-
-FrameStateInfo *FrameStateBuilder::GetFrameInfoAfter(uint32_t bcId)
-{
-    return GetOrOCreateBCEndStateInfo(bcId);
-}
-
-void FrameStateBuilder::SaveBBBeginStateInfo(size_t bbId)
-{
-    if (bbBeginStateInfos_[bbId] == nullptr) {
-        bbBeginStateInfos_[bbId] = CreateEmptyStateInfo();
-    }
-    bbBeginStateInfos_[bbId]->CopyFrom(liveOutResult_);
-}
-
-void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
-{
-    auto saveRegsGate = gateAcc_.GetDep(gate);
-    size_t numOfRegs = gateAcc_.GetNumValueIn(saveRegsGate);
-    for (size_t i = 0; i < numOfRegs; i++) {
-        GateRef def = gateAcc_.GetValueIn(saveRegsGate, i);
-        UpdateVirtualRegister(i, def);
-    }
-}
-
-void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
-{
-    auto uses = gateAcc_.Uses(gate);
-    for (auto it = uses.begin(); it != uses.end(); it++) {
-        if (gateAcc_.IsValueIn(it) && gateAcc_.GetOpCode(*it) == OpCode::RESTORE_REGISTER) {
-            auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(*it));
-            UpdateVirtualRegister(vreg, Circuit::NullGate());
-        }
-    }
-}
-
-size_t FrameStateBuilder::LoopExitCount(BytecodeRegion* bb, BytecodeRegion* bbNext)
-{
-    return builder_->LoopExitCount(bb->id, bbNext->id);
-}
-
-GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff, size_t reg)
-{
-    if ((gateAcc_.GetOpCode(value) != OpCode::LOOP_EXIT_VALUE) || (diff == 0)) {
-        return value;
-    }
-
-    for (size_t i = 0; i < diff; ++i) {
-        ASSERT(gateAcc_.GetOpCode(value) == OpCode::LOOP_EXIT_VALUE);
-        GateRef loopExit = gateAcc_.GetState(value);
-        FrameStateInfo* loopExitFrameInfo = GetOrOCreateLoopExitStateInfo(loopExit);
-        loopExitFrameInfo->SetValuesAt(reg, value);
-        value = gateAcc_.GetValueIn(value);
-    }
-    return value;
+    return circuit_->NewGate(circuit_->FrameValues(frameStateInputs), inList);
 }
 }

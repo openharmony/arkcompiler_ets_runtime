@@ -114,6 +114,11 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<TSInlineLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
+        // skip async function, because some application run with errors.
+        if (methodInfo.IsTypeInferAbort()) {
+            data.AbortCompilation();
+            return;
+        }
         pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
@@ -143,15 +148,9 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LLVMIRGenPass>();
     });
 
-    ProcessConstantPool(&collector);
-    return true;
-}
-
-void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
-{
-    LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
+    LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
+    return true;
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const

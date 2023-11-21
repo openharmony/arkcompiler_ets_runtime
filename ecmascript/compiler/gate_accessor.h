@@ -384,18 +384,22 @@ public:
     uint32_t GetTrueWeight(GateRef gate) const;
     uint32_t GetFalseWeight(GateRef gate) const;
     bool HasBranchWeight(GateRef gate) const;
+    MemoryOrder GetMemoryOrder(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
     size_t GetJSType(GateRef gate) const;
     uint32_t GetArraySize(GateRef gate) const;
     void SetArraySize(GateRef gate, uint32_t size);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
+    GateType GetReceiverType(GateRef gate) const;
+    GateType GetHolderType(GateRef gate) const;
+    GateType GetNewHolderType(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     MemoryType GetMemoryType(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
-    PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    PGOTypeRef GetTypedBinaryType(GateRef gate) const;
     bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     bool HasStringType(GateRef gate) const;
@@ -410,6 +414,7 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
+    bool IsLocalAccessor(GateRef gate) const;
     bool GetNoGCFlag(GateRef gate) const;
     bool TypedCallIsNoGC(GateRef gate) const;
     bool IsNoGC(GateRef gate) const;
@@ -417,13 +422,17 @@ public:
     uint32_t TryGetMethodOffset(GateRef gate) const;
     GateRef GetFrameArgs(GateRef gate) const;
     void UpdateMethodOffset(GateRef gate, uint32_t methodOffset);
-    PGOSampleType TryGetPGOType(GateRef gate) const;
-    void TrySetPGOType(GateRef gate, PGOSampleType type);
+    PGOTypeRef TryGetPGOType(GateRef gate) const;
+    void TrySetPGOType(GateRef gate, PGOTypeRef type);
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
-    void Print(GateRef gate) const;
+    void Print(GateRef gate) const DUMP_API_ATTR;
+#ifndef NDEBUG
+    void PrintById(size_t id) const DUMP_API_ATTR ;
+#endif
+    void PrintWithBytecode(GateRef gate) const DUMP_API_ATTR;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
@@ -456,6 +465,7 @@ public:
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceDependIn(GateRef gate, GateRef in, size_t index = 0);
+    void ReplaceOrNewDependIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceValueIn(GateRef gate, GateRef in, size_t index = 0);
     void DeleteGate(GateRef gate);
     MachineType GetMachineType(GateRef gate) const;
@@ -479,6 +489,7 @@ public:
     bool IsDependSelector(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsConstantUndefined(GateRef gate) const;
+    bool IsUndefinedOrNull(GateRef gate) const;
     bool IsConstantNumber(GateRef gate) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsNotWrite(GateRef gate) const;
@@ -579,7 +590,7 @@ public:
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
     void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
-    bool IsLoopBackUse(const UseIterator &useIt) const;
+    bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);

@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_OBJECT_ACCESS_HELPER_H
 #define ECMASCRIPT_COMPILER_OBJECT_ACCESS_HELPER_H
 
+#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -48,6 +50,40 @@ public:
 
 private:
     GateType type_ {GateType::AnyType()};
+    int hclassIndex_ {-1};
+    PropertyLookupResult plr_ {};
+};
+
+class PGOObjectAccessInfo final {
+public:
+    explicit PGOObjectAccessInfo(
+        ProfileTyper type, int hclassIndex = -1, PropertyLookupResult plr = PropertyLookupResult())
+        : type_(type), hclassIndex_(hclassIndex), plr_(plr) {}
+    ~PGOObjectAccessInfo() = default;
+
+    void Set(int hclassIndex, PropertyLookupResult plr)
+    {
+        hclassIndex_ = hclassIndex;
+        plr_ = plr;
+    }
+
+    ProfileTyper Type() const
+    {
+        return type_;
+    }
+
+    int HClassIndex() const
+    {
+        return hclassIndex_;
+    }
+
+    PropertyLookupResult Plr() const
+    {
+        return plr_;
+    }
+
+private:
+    ProfileTyper type_ {ProfileTyper()};
     int hclassIndex_ {-1};
     PropertyLookupResult plr_ {};
 };
@@ -107,6 +143,72 @@ private:
     AccessMode mode_ {};
     GateRef receiver_ {Circuit::NullGate()};
     GateType type_ {GateType::AnyType()};
+    JSTaggedValue key_ {JSTaggedValue::Hole()};
+    GateRef value_ {Circuit::NullGate()};
+};
+
+class PGOObjectAccessHelper final {
+public:
+    static constexpr size_t POLYMORPHIC_MAX_SIZE = 4;
+
+    enum AccessMode : uint8_t {
+        LOAD = 0,
+        STORE
+    };
+
+    explicit PGOObjectAccessHelper(TSManager *tsManager, AccessMode mode, GateRef receiver, ProfileTyper type,
+                                   JSTaggedValue key, GateRef value)
+        : tsManager_(tsManager),
+          thread_(tsManager_->GetThread()),
+          mode_(mode),
+          receiver_(receiver),
+          holder_(receiver),
+          type_(type),
+          key_(key),
+          value_(value) {}
+
+    ~PGOObjectAccessHelper() = default;
+
+    AccessMode GetAccessMode() const
+    {
+        return mode_;
+    }
+
+    bool IsLoading() const
+    {
+        return mode_ == AccessMode::LOAD;
+    }
+
+    GateRef GetReceiver() const
+    {
+        return receiver_;
+    }
+
+    GateRef GetHolder() const
+    {
+        return holder_;
+    }
+
+    void SetHolder(GateRef holder)
+    {
+        holder_ = holder;
+    }
+
+    GateRef GetValue() const
+    {
+        return value_;
+    }
+    bool ComputeForClassInstance(PGOObjectAccessInfo &info);
+    bool ClassInstanceIsCallable(PGOObjectAccessInfo &info);
+
+private:
+
+    TSManager *tsManager_ {nullptr};
+    const JSThread *thread_ {nullptr};
+    AccessMode mode_ {};
+    GateRef receiver_ {Circuit::NullGate()};
+    GateRef holder_ {Circuit::NullGate()};
+    ProfileTyper type_ {ProfileTyper()};
     JSTaggedValue key_ {JSTaggedValue::Hole()};
     GateRef value_ {Circuit::NullGate()};
 };

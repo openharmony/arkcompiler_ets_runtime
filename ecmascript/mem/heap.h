@@ -233,6 +233,7 @@ public:
     {
         LockHolder holder(finishColdStartMutex_);
         onStartupEvent_ = true;
+        LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 
     /*
@@ -306,7 +307,7 @@ public:
     void TryTriggerIdleCollection();
     void TryTriggerIncrementalMarking();
     void CalculateIdleDuration();
-
+    void UpdateWorkManager(WorkManager *workManager);
     /*
      * Wait for existing concurrent marking tasks to be finished (if any).
      * Return true if there's ongoing concurrent marking.
@@ -372,6 +373,7 @@ public:
     inline size_t GetCommittedSize() const;
 
     inline size_t GetHeapObjectSize() const;
+    size_t GetLiveObjectSize() const;
 
     inline uint32_t GetHeapObjectCount() const;
 
@@ -539,6 +541,8 @@ public:
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
 
+    void TryTriggerFullMarkByNativeSize();
+
     void NotifyHeapAliveSizeAfterGC(size_t size)
     {
         heapAliveSizeAfterGC_ = size;
@@ -570,7 +574,6 @@ public:
             ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
         }
     }
-
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;

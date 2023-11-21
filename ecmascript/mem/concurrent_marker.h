@@ -162,6 +162,8 @@ private:
     bool isConcurrentMarking_ {false};
     Mutex waitMarkingFinishedMutex_;
     ConditionVariable waitMarkingFinishedCV_;
+
+    friend class Heap;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CONCURRENT_MARKER_H

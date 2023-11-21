@@ -43,6 +43,17 @@ private:
         return dependChains_[idx];
     }
 
+    GateRef LookupNode(DependChains* dependChain, GateRef gate)
+    {
+        for (auto iter = dependChain->begin(); iter != dependChain->end(); ++iter) {
+            GateRef curGate = iter.GetCurrentGate();
+            if (CheckReplacement(curGate, gate)) {
+                return curGate;
+            }
+        }
+        return Circuit::NullGate();
+    }
+
     GateRef VisitDependEntry(GateRef gate);
     GateRef UpdateDependChain(GateRef gate, DependChains* dependInfo);
     GateRef TryEliminateGate(GateRef gate);

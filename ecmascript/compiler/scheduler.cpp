@@ -244,7 +244,7 @@ bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
         if (upperBound.count(gate) > 0) {
             returnValue = upperBound[gate];
             getReturn = true;
-        } else if (acc.IsProlog(gate) || acc.IsRoot(gate)) {
+        } else if (acc.IsProlog(gate) || acc.IsRoot(gate) || acc.IsVirtualState(gate)) {
             returnValue = 0;
             getReturn = true;
         } else if (acc.IsFixed(gate)) {
@@ -421,9 +421,12 @@ void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
             size_t curLowerBound;
             if (acc.IsState(curGate)) {  // cur_opcode would not be STATE_ENTRY
                 curLowerBound = bbGatesAddrToIdx.at(curGate);
-            } else if (acc.IsFixed(curGate)) {
+            } else if (acc.IsSelector(curGate)) {
                 ASSERT(idx > 0);
                 curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(acc.GetIn(curGate, 0), idx - 1));
+            } else if (acc.IsFixed(curGate)) {
+                ASSERT(idx > 0);
+                curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(curGate, 0));
             } else {
                 curLowerBound = lowerBound.at(curGate);
             }

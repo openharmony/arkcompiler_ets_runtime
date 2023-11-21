@@ -109,7 +109,7 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
 }
 
 void PGOProfilerDecoder::LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool,
-                                       const PGOContext &context, void *addr)
+                                       PGOContext &context, void *addr)
 {
     if (externalAbcFilePool != nullptr) {
         abcFilePool_ = externalAbcFilePool;
@@ -121,7 +121,7 @@ void PGOProfilerDecoder::LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &ex
 
     if (header_->SupportProfileTypeWithAbcId()) {
         auto abcFilePoolTemp = std::make_shared<PGOAbcFilePool>();
-        PGOFileSectionInterface::ParseSectionFromBinary(addr, header_, *abcFilePoolTemp->GetPool());
+        PGOFileSectionInterface::ParseSectionFromBinary(context, addr, header_, *abcFilePoolTemp->GetPool());
         // step1: [abc pool merge] merge abcFilePool from ap file to memory.
         abcFilePool_->Merge(context, *abcFilePoolTemp);
     }
@@ -212,12 +212,12 @@ bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &re
     return recordSimpleInfos_->Match(GetNormalizedFileDesc(jsPandaFile), recordName, EntityId(methodId));
 }
 
-bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
+bool PGOProfilerDecoder::GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const
 {
     if (!isLoaded_ || !isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->GetHClassLayoutDesc(profileType, desc);
+    return recordSimpleInfos_->GetHClassTreeDesc(profileType, desc);
 }
 
 void PGOProfilerDecoder::GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount,

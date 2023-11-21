@@ -546,6 +546,21 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
+void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
+{
+    vm->SetDeviceDisconnectCallback(cb);
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
@@ -662,7 +677,6 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
-    vm->ResetPGOProfiler();
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
@@ -708,12 +722,12 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
 }
 
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->HasPendingJob();
 }
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
@@ -981,6 +995,15 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     JSHandle<JSTaggedValue> exportObj(thread, result);
+    return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
+Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
+{   
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
@@ -1314,8 +1337,10 @@ Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-    JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
-    symbol->SetDescription(vm->GetJSThread(), desc);
+    if (!description.IsEmpty()) {
+        JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
+        symbol->SetDescription(vm->GetJSThread(), desc);
+    }
     return JSNApiHelper::ToLocal<SymbolRef>(JSHandle<JSTaggedValue>(symbol));
 }
 
@@ -1772,7 +1797,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     vm->GetHeap()->ClearKeptObjects();
-
+    vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
@@ -1898,6 +1923,33 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
     JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method(thread, func->GetMethod());
     return method->IsNativeWithCallField();
+}
+
+void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
+{
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    function->SetCallNapi(callNapi);
+}
+
+void* FunctionRef::GetData(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> function(funcValue);
+    if (!function->IsCallNapi()) {
+        return nullptr;
+    }
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsNativePointer()) {
+        return nullptr;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
+    return extraInfo->GetData();
 }
 
 // ----------------------------------- ArrayRef ----------------------------------------
@@ -2870,14 +2922,14 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     // callBack
     FunctionCallback nativeFunc = reinterpret_cast<FunctionCallback>(extraInfo->GetExternalPointer());
 
-    JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
+    JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     bool getStackBeforeCallNapiSuccess = false;
     if (thread->GetIsProfiling() && function->IsCallNapi()) {
         getStackBeforeCallNapiSuccess = thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
-    Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
+    Local<JSValueRef> result = nativeFunc(jsiRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling() && function->IsCallNapi() && getStackBeforeCallNapiSuccess) {
         thread->GetEcmaVM()->GetProfiler()->GetStackAfterCallNapi(thread);
@@ -3516,11 +3568,19 @@ bool JSValueRef::IsVector()
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
-JsiRuntimeCallInfo::JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo, void* data)
-    : thread_(ecmaInfo->GetThread()), numArgs_(ecmaInfo->GetArgsNumber())
+void *JsiRuntimeCallInfo::GetData()
 {
-    stackArgs_ = ecmaInfo->GetArgs();
-    data_ = data;
+    JSHandle<JSTaggedValue> constructor = BuiltinsBase::GetConstructor(reinterpret_cast<EcmaRuntimeCallInfo *>(this));
+    if (!constructor->IsJSFunction()) {
+        return nullptr;
+    }
+    JSHandle<JSFunction> function(constructor);
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
+        return nullptr;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
+    return extraInfo->GetData();
 }
 
 EcmaVM *JsiRuntimeCallInfo::GetVM() const
@@ -3668,10 +3728,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
-    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
     method->SetModule(thread, module);
     return true;
 }

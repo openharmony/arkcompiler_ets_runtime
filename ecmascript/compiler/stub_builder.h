@@ -206,6 +206,7 @@ public:
     GateRef TaggedIsUndefined(GateRef x);
     GateRef TaggedIsException(GateRef x);
     GateRef TaggedIsSpecial(GateRef x);
+    GateRef TaggedIsRegularObject(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
@@ -233,6 +234,7 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
+    GateRef NumberGetInt(GateRef glue, GateRef x);
     GateRef TaggedGetNumber(GateRef x);
     GateRef Int8ToTaggedInt(GateRef x);
     GateRef Int16ToTaggedInt(GateRef x);
@@ -294,6 +296,7 @@ public:
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);
     GateRef IsDictionaryMode(GateRef object);
@@ -333,6 +336,8 @@ public:
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
     GateRef IsConfigable(GateRef attr);
+    GateRef IsDefaultAttribute(GateRef attr);
+    GateRef IsArrayLengthWritable(GateRef glue, GateRef receiver);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
@@ -483,6 +488,7 @@ public:
     GateRef IsDigit(GateRef ch);
     void TryToGetInteger(GateRef string, Variable *num, Label *success, Label *failed);
     GateRef StringToElementIndex(GateRef glue, GateRef string);
+    GateRef ComputeElementCapacity(GateRef oldLength);
     GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
                                                GateRef maxNonInlinedFastPropsCapacity);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
@@ -522,6 +528,11 @@ public:
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
+    GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
+    GateRef ToObject(GateRef glue, GateRef obj);
+    GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
+    GateRef NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj);
+    GateRef ModuleNamespaceDeleteProperty(GateRef glue, GateRef obj, GateRef value);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
     GateRef TruncInt32ToInt16(GateRef x);
@@ -605,6 +616,10 @@ public:
     template<OpCode Op, MachineType Type>
     GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
+    GateRef AddElementInternal(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef attr);
+    GateRef ShouldTransToDict(GateRef capcity, GateRef index);
+    void NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver);
+    GateRef GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);

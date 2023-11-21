@@ -20,48 +20,11 @@
 #include "ecmascript/compiler/type.h"
 
 namespace panda::ecmascript::kungfu {
-void LoopPeeling::Peel()
+void LoopPeeling::CopyLoopExit()
 {
-    SetCopy(loopInfo_->loopHead);
-    for (auto gate : loopInfo_->loopBodys) {
-        SetCopy(gate);
-    }
-    for (auto gate : loopInfo_->loopBacks) {
-        copies_[gate] = GetCopy(acc_.GetState(gate));
-    }
-
-    for (auto gate : loopInfo_->loopBodys) {
-        if ((gate == loopInfo_->loopHead) ||
-            (acc_.IsSelector(gate) && acc_.GetState(gate) == loopInfo_->loopHead)) {
-            continue;
-        }
-        GateRef copy = GetCopy(gate);
-        size_t numIns = acc_.GetNumIns(gate);
-        for (size_t i = 0; i < numIns; ++i) {
-            GateRef in = acc_.GetIn(gate, i);
-            GateRef copyIn = TryGetCopy(in);
-            if (copyIn != Circuit::NullGate()) {
-                acc_.NewIn(copy, i, copyIn);
-            } else {
-                acc_.NewIn(copy, i, in);
-            }
-        }
-    }
-
-    // replace origin forwards with peeled loop back.
-    GateRef stateBack = acc_.GetState(loopInfo_->loopHead, 1); // 1: index of state back
-    acc_.ReplaceIn(loopInfo_->loopHead, 0, GetCopy(stateBack));  // 0: index of state forward
-    auto use = acc_.Uses(loopInfo_->loopHead);
-    for (auto it = use.begin(); it != use.end(); ++it) {
-        if (acc_.IsSelector(*it)) {
-            GateRef backward = acc_.GetIn(*it, 2);  // 2: index of depend or value back
-            acc_.ReplaceIn(*it, 1, GetCopy(backward)); // 1: index of depend or value forward
-        }
-    }
-
     for (auto exit : loopInfo_->loopExits) {
         ASSERT(acc_.GetOpCode(exit) == OpCode::LOOP_EXIT);
-        GateRef numIns = 2;
+        GateRef numIns = 2; // 2: num ins
         GateRef copyExit = GetCopy(acc_.GetState(exit));
         GateRef merge = circuit_->NewGate(circuit_->Merge(numIns), {exit, copyExit});
         auto exitUse = acc_.Uses(exit);
@@ -89,6 +52,99 @@ void LoopPeeling::Peel()
             }
         }
     }
+}
+
+void LoopPeeling::CopyLoopBody()
+{
+    for (auto gate : loopInfo_->loopBodys) {
+        if ((gate == loopInfo_->loopHead) ||
+            (acc_.IsSelector(gate) && acc_.GetState(gate) == loopInfo_->loopHead)) {
+            continue;
+        }
+        GateRef copy = GetCopy(gate);
+        size_t numIns = acc_.GetNumIns(gate);
+        for (size_t i = 0; i < numIns; ++i) {
+            GateRef in = acc_.GetIn(gate, i);
+            GateRef copyIn = TryGetCopy(in);
+            if (copyIn != Circuit::NullGate()) {
+                acc_.NewIn(copy, i, copyIn);
+            } else {
+                acc_.NewIn(copy, i, in);
+            }
+        }
+    }
+}
+
+GateRef LoopPeeling::CopySelector(GateRef stateMerge, GateRef selector, size_t numLoopbacks)
+{
+    GateRef newGate = Circuit::NullGate();
+    auto inList = std::vector<GateRef>(1 + numLoopbacks, Circuit::NullGate()); // 1: state
+    if (acc_.IsValueSelector(selector)) {
+        newGate = circuit_->NewGate(circuit_->ValueSelector(numLoopbacks),
+            MachineType::I64, inList.size(), inList.data(), GateType::AnyType());
+    } else {
+        newGate = circuit_->NewGate(circuit_->DependSelector(numLoopbacks), inList);
+    }
+    acc_.NewIn(newGate, 0, stateMerge); // 0: is state
+    auto numOfIns = acc_.GetNumIns(selector);
+    const size_t skipValue = 2; // 2: state & entry value
+    ASSERT(numOfIns == numLoopbacks + skipValue);
+    for (size_t i = skipValue; i < numOfIns; i++) {
+        auto input = acc_.GetIn(selector, i);
+        acc_.NewIn(newGate, i - 1, GetCopy(input)); // 1: is state
+    }
+    return newGate;
+}
+
+void LoopPeeling::CopyLoopHeader()
+{
+    auto numLoopbacks = loopInfo_->loopBacks.size();
+    if (numLoopbacks > 1) {
+        const size_t skipValue = 1; // 1: entry state
+        auto numOfIns = acc_.GetNumIns(loopInfo_->loopHead);
+        ASSERT(numOfIns == numLoopbacks + skipValue);
+        std::vector<GateRef> inList(numLoopbacks, Circuit::NullGate());
+        auto merge = circuit_->NewGate(circuit_->Merge(numLoopbacks), inList);
+        for (size_t i = skipValue; i < numOfIns; i++) { // 1: skip entry
+            auto input = acc_.GetIn(loopInfo_->loopHead, i);
+            acc_.NewIn(merge, i - skipValue, GetCopy(input));
+        }
+
+        auto use = acc_.Uses(loopInfo_->loopHead);
+        for (auto it = use.begin(); it != use.end(); ++it) {
+            if (acc_.IsSelector(*it)) {
+                auto selector = CopySelector(merge, *it, numLoopbacks);
+                acc_.ReplaceIn(*it, 1, selector);
+            }
+        }
+        acc_.ReplaceIn(loopInfo_->loopHead, 0, merge);  // 0: index of state forward
+    } else {
+        // replace origin forwards with peeled loop back.
+        GateRef stateBack = acc_.GetState(loopInfo_->loopHead, 1); // 1: index of state back
+        acc_.ReplaceIn(loopInfo_->loopHead, 0, GetCopy(stateBack));  // 0: index of state forward
+        auto use = acc_.Uses(loopInfo_->loopHead);
+        for (auto it = use.begin(); it != use.end(); ++it) {
+            if (acc_.IsSelector(*it)) {
+                GateRef backward = acc_.GetIn(*it, 2);  // 2: index of depend or value back
+                acc_.ReplaceIn(*it, 1, GetCopy(backward)); // 1: index of depend or value forward
+            }
+        }
+    }
+}
+
+void LoopPeeling::Peel()
+{
+    SetCopy(loopInfo_->loopHead);
+    for (auto gate : loopInfo_->loopBodys) {
+        SetCopy(gate);
+    }
+    for (auto gate : loopInfo_->loopBacks) {
+        copies_[gate] = GetCopy(acc_.GetState(gate));
+    }
+    CopyLoopBody();
+    CopyLoopHeader();
+    CopyLoopExit();
+
     if (bcBuilder_) {
         auto asyncList = bcBuilder_->GetAsyncRelatedGates();
         ChunkVector<GateRef> list(chunk_);
@@ -119,7 +175,7 @@ void LoopPeeling::SetCopy(GateRef gate)
         copies_[gate] = acc_.GetIn(gate, 1); // 1: index of forward
         return;
     }
-    
+
     std::vector<GateRef> inList(acc_.GetNumIns(gate), Circuit::NullGate());
     GateRef newGate = circuit_->NewGate(acc_.GetMetaData(gate), inList);
     acc_.SetGateType(newGate, acc_.GetGateType(gate));

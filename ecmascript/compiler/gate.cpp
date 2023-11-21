@@ -110,12 +110,6 @@ void Gate::CheckStateInput() const
                 CheckInputOpcode(idx, OpCode::SWITCH_BRANCH);
                 needCheck = false;
                 break;
-            case OpCode::LOOP_BEGIN:
-                if (idx == stateStart + 1) { // 1: idx 1
-                    CheckInputOpcode(idx, OpCode::LOOP_BACK);
-                    needCheck = false;
-                }
-                break;
             default:
                 break;
         }
@@ -343,12 +337,22 @@ void Gate::CheckRelay() const
 {
     if (GetOpCode() == OpCode::DEPEND_RELAY) {
         auto stateOp = GetInGateConst(0)->GetOpCode();
-        if (!(stateOp == OpCode::IF_TRUE || stateOp == OpCode::IF_FALSE || stateOp == OpCode::SWITCH_CASE ||
-            stateOp == OpCode::DEFAULT_CASE || stateOp == OpCode::IF_SUCCESS || stateOp == OpCode::IF_EXCEPTION ||
-            stateOp == OpCode::ORDINARY_BLOCK)) {
-            CheckFailed("State input does not match ("
-                "expected:[IF_TRUE|IF_FALSE|SWITCH_CASE|DEFAULT_CASE|IF_SUCCESS|IF_EXCEPTION|ORDINARY_BLOCK] actual:" +
-                GateMetaData::Str(stateOp) + ")", 0);
+        switch (stateOp) {
+            case OpCode::IF_TRUE:
+            case OpCode::IF_FALSE:
+            case OpCode::SWITCH_CASE:
+            case OpCode::DEFAULT_CASE:
+            case OpCode::IF_SUCCESS:
+            case OpCode::IF_EXCEPTION:
+            case OpCode::ORDINARY_BLOCK:
+            case OpCode::DEOPT_CHECK:
+                break;
+            default:
+                CheckFailed("State input does not match ("
+                    "expected:[IF_TRUE|IF_FALSE|SWITCH_CASE|DEFAULT_CASE|"
+                    "IF_SUCCESS|IF_EXCEPTION|ORDINARY_BLOCK|DEOPT_CHECK] actual:" +
+                    GateMetaData::Str(stateOp) + ")", 0);
+                break;
         }
     }
 }
@@ -857,6 +861,57 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
     log += "]";
     log += ((isEnd) ? "" : ", ");
     return idx;
+}
+
+void Gate::PrintWithBytecode() const
+{
+    auto opcode = GetOpCode();
+    std::string bytecodeStr = "";
+    switch (opcode) {
+        case OpCode::JS_BYTECODE: {
+            bytecodeStr = GetJSBytecodeMetaData()->Str();
+            break;
+        }
+        case OpCode::TYPED_BINARY_OP: {
+            bytecodeStr = GetTypedBinaryMetaData()->Str();
+            break;
+        }
+        case OpCode::TYPED_UNARY_OP: {
+            auto typedOp = TypedUnaryAccessor(GetOneParameterMetaData()->GetValue()).GetTypedUnOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::TYPED_CONDITION_JUMP: {
+            auto typedOp = TypedJumpAccessor(GetOneParameterMetaData()->GetValue()).GetTypedJumpOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::LOAD_ELEMENT: {
+            auto typedOp = static_cast<TypedLoadOp>(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::STORE_ELEMENT: {
+            auto typedOp = static_cast<TypedStoreOp>(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::TYPED_CALLTARGETCHECK_OP: {
+            auto typedOp = GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+            bytecodeStr = GateMetaData::Str(typedOp);
+            break;
+        }
+        case OpCode::CONVERT:
+        case OpCode::CHECK_AND_CONVERT: {
+            ValuePairTypeAccessor accessor(GetOneParameterMetaData()->GetValue());
+            bytecodeStr = GateMetaData::Str(accessor.GetSrcType()) + "_TO_" +
+                GateMetaData::Str(accessor.GetDstType());
+            break;
+        }
+        default:
+            break;
+    }
+    PrintGateWithAdditionOp(bytecodeStr);
 }
 
 void Gate::PrintGateWithAdditionOp(std::string additionOp) const

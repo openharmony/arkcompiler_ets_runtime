@@ -18,6 +18,7 @@ declare function print(arg:any):string;
 class A {
     x: number;
     constructor() {
+        // Mega state
         this.x = 5;
     }
 }
@@ -33,8 +34,34 @@ class C extends A {
     }
 }
 
+class D extends A {
+    constructor() {
+        super();
+    }
+}
+
+class E extends A {
+    constructor() {
+        super();
+    }
+}
+
+class F extends A {
+    constructor() {
+        super();
+    }
+}
+
+class G {
+    x: number;
+    constructor() {
+        this.x = 5;
+    }
+}
+
 function foo(a) {
-    print(a.x);
+    // Mega state
+    a.x;
 }
 
 function bar(t) {
@@ -44,8 +71,32 @@ function bar(t) {
 let a = new A();
 let b = new B();
 let c = new C();
+let d = new D();
+let e = new E();
+let f = new F();
 
 foo(a);
 foo(b);
+for (let i = 0; i < 1000; i++) {
+    foo(c);
+}
+foo(d);
+foo(e);
+foo(f);
+
 bar(b);
 bar(c);
+
+function getPrototypeOf(a)
+{
+    return a.prototype
+}
+
+getPrototypeOf(A);
+getPrototypeOf(B);
+
+A.prototype.foo = function() {
+    print("foo");
+}
+
+a.foo();

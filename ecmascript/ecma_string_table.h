@@ -43,6 +43,7 @@ public:
                                                MemSpaceType type, bool isConstantString, uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress,
                                                MemSpaceType type);
+    EcmaString *TryGetInternString(EcmaString *string);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
     bool CheckStringTableValidity();

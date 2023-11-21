@@ -14,14 +14,14 @@
  */
 
 class Test {
-    x;
-    y;
-    z;
-    constructor(x, y, z) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
+  x;
+  y;
+  z;
+  constructor(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
 }
 
 let a = new Test(1, 2, 3);
@@ -31,11 +31,11 @@ function foo2(p) { return p.y }
 function foo3(p) { return p.z }
 
 for (let i = 0; i < 5; i++) {
-    foo1(a);
+  foo1(a);
 }
 
 for (let i = 0; i < 50; i++) {
-    foo3(a);
+  foo3(a);
 }
 
 foo2(a);

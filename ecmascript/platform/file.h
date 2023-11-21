@@ -29,6 +29,7 @@
 
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
+
 namespace panda::ecmascript {
 class SourceTextModule;
 #ifdef PANDA_TARGET_WINDOWS
@@ -69,6 +70,8 @@ void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
 void FSync(fd_t fd);
 MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
+MemMap FileMapForAlignAddress(const char *fileName, int flag, int prot,
+                              int64_t offset, uint32_t offStart);
 int FileUnMap(MemMap addr);
 JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
                                                JSTaggedValue request);

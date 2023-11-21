@@ -83,7 +83,8 @@ namespace panda::ecmascript::kungfu {
     V(CreateJSSetIterator)            \
     V(CreateJSMapIterator)            \
     V(GetSingleCharCodeByIndex)       \
-    V(FastStringEqual)
+    V(FastStringEqual)                \
+    V(FastStringAdd)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

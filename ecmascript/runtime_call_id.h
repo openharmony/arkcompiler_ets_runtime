@@ -238,6 +238,7 @@ namespace panda::ecmascript {
     V(StPatchVar)                   \
     V(AsyncGeneratorReject)         \
     V(NotifyConcurrentResult)       \
+    V(UpdateHClass)                 \
     V(SetGeneratorState)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

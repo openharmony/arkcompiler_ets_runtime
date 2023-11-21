@@ -35,6 +35,7 @@ public:
     using ObjectUpdaterFunc =
         std::function<void(const FrameHandler *, std::string_view, Local<JSValueRef>)>;
     using SingleStepperFunc = std::function<void()>;
+    using ReturnNativeFunc = std::function<void()>;
 
     explicit JsDebuggerManager(const EcmaVM *vm) : hotReloadManager_(vm)
     {
@@ -127,6 +128,18 @@ public:
         }
     }
 
+    void SetJSReturnNativeFunc(ReturnNativeFunc *returnNative)
+    {
+        returnNative_ = returnNative;
+    }
+
+    void NotifyReturnNative()
+    {
+        if (returnNative_ != nullptr) {
+            (*returnNative_)();
+        }
+    }
+
     void SetStepperFunc(SingleStepperFunc *stepperFunc)
     {
         stepperFunc_ = stepperFunc;
@@ -166,6 +179,7 @@ private:
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
     SingleStepperFunc *stepperFunc_ {nullptr};
+    ReturnNativeFunc *returnNative_ {nullptr};
     JSThread *jsThread_ {nullptr};
     std::shared_ptr<FrameHandler> frameHandler_;
     DropframeManager dropframeManager_ { };

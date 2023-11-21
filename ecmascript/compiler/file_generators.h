@@ -188,6 +188,7 @@ public:
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
+
     void SaveSnapshotFile();
 
     std::vector<LLVMStackMapType::Pc2CallSiteInfo> &GetPc2StackMapVec()
@@ -205,16 +206,17 @@ public:
     }
 
 private:
+    // collect aot component info
+    void CollectCodeInfo(Module *module, uint32_t moduleIdx);
+
+    uint64_t RollbackTextSize(Module *module);
+
     AnFileInfo aotInfo_;
     std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
     std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
     EcmaVM* vm_;
     CompilationConfig cfg_;
     std::string curCompileFileName_;
-    // collect aot component info
-    void CollectCodeInfo(Module *module, uint32_t moduleIdx);
-
-    uint64_t RollbackTextSize(Module *module);
 };
 
 enum class StubFileKind {

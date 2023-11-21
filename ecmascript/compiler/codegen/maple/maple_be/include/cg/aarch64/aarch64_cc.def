@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+CONDCODE(EQ, 0x0) /* equal */
+CONDCODE(NE, 0x1) /* not equal */
+CONDCODE(CS, 0x2) /* carry set (== HS) */
+CONDCODE(HS, 0x2) /* unsigned higher or same (== CS) */
+CONDCODE(CC, 0x3) /* carry clear (== LO) */
+CONDCODE(LO, 0x3) /* Unsigned lower (== CC) */
+CONDCODE(MI, 0x4) /* Minus or negative result */
+CONDCODE(PL, 0x5) /* positive or zero result */
+CONDCODE(VS, 0x6) /* overflow */
+CONDCODE(VC, 0x7) /* no overflow */
+CONDCODE(HI, 0x8) /* unsigned higher */
+CONDCODE(LS, 0x9) /* unsigned lower or same */
+CONDCODE(GE, 0xa) /* signed greater than or equal */
+CONDCODE(LT, 0xb) /* signed less than */
+CONDCODE(GT, 0xc) /* signed greater than */
+CONDCODE(LE, 0xd) /* signed less than or equal */
+CONDCODE(AL, 0xe) /* always, this is the default. usually omitted. */

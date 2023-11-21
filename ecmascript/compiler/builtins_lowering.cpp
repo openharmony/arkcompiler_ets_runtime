@@ -57,6 +57,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT):
             LowerIteratorNext(gate, id);
             break;
+        case BUILTINS_STUB_ID(NumberConstructor):
+            LowerNumberConstructor(gate);
+            break;
         default:
             break;
     }
@@ -79,7 +82,7 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
     Label exit(&builder_);
 
     GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
@@ -172,7 +175,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
 
     Label exit(&builder_);
     GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     Label isInt(&builder_);
     Label notInt(&builder_);
@@ -279,6 +282,9 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::TYPED_ARRAY_PROTO_ITERATOR: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
+        case BuiltinsStubCSigns::ID::NumberConstructor: {
+            return LowerCallTargetCheckWithGlobalEnv(gate, id);
+        }
         default: {
             return LowerCallTargetCheckDefault(gate, id);
         }
@@ -290,6 +296,15 @@ GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubC
     GateRef constantFunction = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     return builder_.Equal(function, constantFunction);
+}
+
+GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef globalFunction =
+        builder_.GetGlobalEnvObj(glueGlobalEnv, GET_TYPED_GLOBAL_ENV_INDEX(id));
+    GateRef target = acc_.GetValueIn(gate, 0); // 0:target
+    return builder_.Equal(target, globalFunction);
 }
 
 GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
@@ -366,6 +381,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+        case BuiltinsStubCSigns::ID::NumberConstructor:
             // Don't need check para
             return funcCheck;
         default: {
@@ -443,5 +459,50 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
             UNREACHABLE();
     }
     ReplaceHirWithValue(gate, result);
+}
+
+void BuiltinLowering::LowerNumberConstructor(GateRef gate)
+{
+    auto env = builder_.GetCurrentEnvironment();
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), IntToTaggedIntPtr(builder_.Int32(0)));
+    GateRef param = acc_.GetValueIn(gate, 0);
+    Label exit(env);
+    Label isNumber(env);
+    Label notNumber(env);
+    builder_.Branch(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
+    builder_.Bind(&isNumber);
+    {
+        result = param;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notNumber);
+    {
+        Label isString(env);
+        Label notString(env);
+        builder_.Branch(builder_.TaggedIsString(param), &isString, &notString);
+        builder_.Bind(&isString);
+        {
+            Label nonZeroLength(env);
+            auto length = builder_.GetLengthFromString(param);
+            builder_.Branch(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
+            builder_.Bind(&nonZeroLength);
+            Label isInteger(env);
+            builder_.Branch(builder_.IsIntegerString(param), &isInteger, &notString);
+            builder_.Bind(&isInteger);
+            {
+                result = IntToTaggedIntPtr(builder_.GetRawHashFromString(param));
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&notString);
+        {
+            GateRef glue = acc_.GetGlueFromArgList();
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(ToNumericConvertBigInt), { param }, true);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    ReplaceHirWithValue(gate, *result);
 }
 }  // namespace panda::ecmascript::kungfu

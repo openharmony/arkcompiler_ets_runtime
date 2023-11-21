@@ -46,15 +46,17 @@ private:
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
-    void LowerStLexVar(GateRef gate);
-    void LowerLdLexVar(GateRef gate);
+    void LowerStoreModuleVar(GateRef gate, GateRef glue);
+    void LowerLdLocalModuleVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
     GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
     GateRef NewTaggedArray(size_t length);
+    GateRef NewTaggedArray(GateRef length);
     GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
+    void ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     GateRef GetFrameState(GateRef gate) const
     {

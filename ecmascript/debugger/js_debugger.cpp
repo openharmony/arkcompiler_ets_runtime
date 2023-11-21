@@ -76,11 +76,27 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, ui
 {
     ASSERT(bcOffset < method->GetCodeSize() && "code size of current Method less then bcOffset");
     HandleExceptionThrowEvent(thread, method, bcOffset);
-
-    // Step event is reported before breakpoint, according to the spec.
-    if (!HandleStep(method, bcOffset)) {
-        HandleBreakpoint(method, bcOffset);
+    // clear singlestep flag
+    singleStepOnDebuggerStmt_ = false;
+    if (ecmaVm_->GetJsDebuggerManager()->IsMixedDebugEnabled()) {
+        if (!HandleBreakpoint(method, bcOffset)) {
+            HandleNativeOut();
+            HandleStep(method, bcOffset);
+        }
+    } else  {
+        if (!HandleStep(method, bcOffset)) {
+            HandleBreakpoint(method, bcOffset);
+        }
     }
+}
+
+bool JSDebugger::HandleNativeOut()
+{
+    if (hooks_ == nullptr) {
+        return false;
+    }
+
+    return hooks_->NativeOut();
 }
 
 bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)

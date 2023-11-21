@@ -86,9 +86,7 @@ void GraphEditor::PropagateGate(const Edge& edge)
     GateRef gate = edge.GetGate();
     // isStateIn
     if (acc_.IsStateIn(gate, edge.GetIndex())) {
-        // 2: is loop begin
-        ASSERT(acc_.GetStateCount(gate) == 1 ||
-            acc_.GetStateCount(gate) == 2); // 2: LOOP_BEGIN
+        ASSERT(acc_.GetStateCount(gate) == 1);
         ReplaceGate(gate);
         return;
     }
@@ -161,14 +159,10 @@ void GraphEditor::EliminatePhi()
         workList.pop();
         acc_.SetVisited(cur);
         auto valueNum = acc_.GetNumValueIn(cur);
-        bool selfUse = false;
         bool sameIns = true;
         GateRef first = acc_.GetValueIn(cur, 0);
         for (size_t i = 0; i < valueNum; ++i) {
             GateRef input = acc_.GetValueIn(cur, i);
-            if (input == cur) {
-                selfUse = true;
-            }
             if (input != first) {
                 sameIns = false;
             }
@@ -177,8 +171,8 @@ void GraphEditor::EliminatePhi()
                 acc_.SetPrevisit(input);
             }
         }
-        
-        if ((!sameIns) && (!selfUse)) {
+
+        if (!sameIns) {
             continue;
         }
 

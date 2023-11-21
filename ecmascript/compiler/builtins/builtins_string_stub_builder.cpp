@@ -1713,10 +1713,20 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     Label exit(env);
     Label equalZero(env);
     Label notEqualZero(env);
+    Label lessThanMax(env);
+    Label throwError(env);
 
     GateRef leftLength = GetLengthFromString(leftString);
     GateRef rightLength = GetLengthFromString(rightString);
     GateRef newLength = Int32Add(leftLength, rightLength);
+    Branch(Int32GreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
+    Bind(&throwError);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidStringLength));
+        CallRuntime(glue, RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
+        Jump(&exit);
+    }
+    Bind(&lessThanMax);
     Branch(Int32Equal(newLength, Int32(0)), &equalZero, &notEqualZero);
     Bind(&equalZero);
     {
@@ -1892,7 +1902,7 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
     }
 }
 
-GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode)
+GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef thisValue, GateRef trimMode)
 {
     auto env = GetEnvironment();
 
@@ -1905,7 +1915,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcStrin
     Label notEmpty(env);
     Label exit(env);
 
-    GateRef srcLen = GetLengthFromString(srcString);
+    GateRef srcLen = GetLengthFromString(thisValue);
     Branch(Int32Equal(srcLen, Int32(0)), &emptyString, &notEmpty);
     Bind(&emptyString);
     {
@@ -1918,10 +1928,10 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcStrin
         Label srcFlattenFastPath(env);
 
         FlatStringStubBuilder srcFlat(this);
-        srcFlat.FlattenString(glue, srcString, &srcFlattenFastPath);
+        srcFlat.FlattenString(glue, thisValue, &srcFlattenFastPath);
         Bind(&srcFlattenFastPath);
         StringInfoGateRef srcStringInfoGate(&srcFlat);
-        result = EcmaStringTrimBody(glue, srcStringInfoGate, trimMode, IsUtf8String(srcString));
+        result = EcmaStringTrimBody(glue, thisValue, srcStringInfoGate, trimMode, IsUtf8String(thisValue));
         Jump(&exit);
     }
     Bind(&exit);
@@ -1930,8 +1940,8 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef srcStrin
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGateRef srcStringInfoGate,
-    GateRef trimMode, GateRef isUtf8)
+GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, GateRef thisValue,
+    StringInfoGateRef srcStringInfoGate, GateRef trimMode, GateRef isUtf8)
 {
     auto env = GetEnvironment();
 
@@ -1940,6 +1950,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGa
 
     GateRef srcLen = srcStringInfoGate.GetLength();
     GateRef srcString = srcStringInfoGate.GetString();
+    GateRef startIndex = srcStringInfoGate.GetStartIndex();
 
     DEFVARIABLE(start, VariableType::INT32(), Int32(0));
     DEFVARIABLE(end, VariableType::INT32(), Int32Sub(srcLen, Int32(1)));
@@ -1951,7 +1962,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGa
     Branch(Int32GreaterThanOrEqual(trimMode, Int32(0)), &trimOrTrimStart, &notTrimStart);
     Bind(&trimOrTrimStart); // mode = TrimMode::TRIM or TrimMode::TRIM_START
     {
-        start = CallNGCRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, srcString, srcLen});
+        start = CallNGCRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, srcString, srcLen, startIndex});
         Jump(&notTrimStart);
     }
     Bind(&notTrimStart);
@@ -1960,13 +1971,13 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, StringInfoGa
         Branch(Int32LessThanOrEqual(trimMode, Int32(0)), &trimOrTrimEnd, &next);
         Bind(&trimOrTrimEnd); // mode = TrimMode::TRIM or TrimMode::TRIM_END
         {
-            end = CallNGCRuntime(glue, RTSTUB_ID(StringGetEnd), {isUtf8, srcString, *start, srcLen});
+            end = CallNGCRuntime(glue, RTSTUB_ID(StringGetEnd), {isUtf8, srcString, *start, srcLen, startIndex});
             Jump(&next);
         }
     }
     Bind(&next);
     {
-        auto ret = FastSubString(glue, srcString, *start,
+        auto ret = FastSubString(glue, thisValue, *start,
                                  Int32Add(Int32Sub(*end, *start), Int32(1)), srcStringInfoGate);
         env->SubCfgExit();
         return ret;

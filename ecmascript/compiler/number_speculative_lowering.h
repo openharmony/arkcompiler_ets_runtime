@@ -44,6 +44,8 @@ private:
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
+    void VisitUndefinedEq(GateRef gate);
+    void VisitEqual(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitRangeGuard(GateRef gate);
     void VisitRangeCheckPredicate(GateRef gate);
@@ -72,6 +74,8 @@ private:
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);
+    template<TypedBinOp Op>
+    void VisitStringAdd(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
@@ -89,8 +93,6 @@ private:
     GateRef MonocularInt(GateRef gate);
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
-
-    GateRef VisitStringEqual(GateRef left, GateRef right);
 
     TypeInfo GetOutputType(GateRef gate) const
     {

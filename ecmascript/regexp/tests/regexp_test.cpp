@@ -45,8 +45,8 @@ public:
 
     void TearDown() override
     {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
         delete regExpCachedChunk_;
+        TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
     bool IsValidAlphaEscapeInAtom(char s) const

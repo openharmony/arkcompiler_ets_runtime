@@ -855,10 +855,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     } else {
         classLiteral->SetIsAOTUsed(true);
-        JSHandle<JSHClass> ihclass(ihc);
         JSHandle<JSHClass> chclass(chc);
         cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
-                                                  lexenv, ihclass, chclass);
+                                                  lexenv, ihc, chclass);
     }
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -913,10 +912,17 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         }
     }
 
-    ctor->GetTaggedObject()->GetClass()->SetPrototype(thread, parent);
+    ctor->GetTaggedObject()->GetClass()->SetPrototype(thread, parent); // __proto__
 
     JSHandle<JSObject> clsPrototype(thread, JSHandle<JSFunction>(ctor)->GetFunctionPrototype());
     clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+
+    // ctor -> hclass -> EnableProtoChangeMarker
+    auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
+    JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
+    // prototype -> hclass -> EnableProtoChangeMarker
+    JSHClass::EnableProtoChangeMarker(thread,
+        JSHandle<JSHClass>(thread, constructor->GetFunctionPrototype().GetTaggedObject()->GetClass()));
 
     // by enableing the ProtoChangeMarker, the IHC generated in the Aot stage
     // is registered into the listener of its prototype. In this way, it is ensured
@@ -928,6 +934,9 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
             JSHandle<JSHClass> ihcHandle(thread, ihc);
             JSHClass::EnableProtoChangeMarker(thread, ihcHandle);
         }
+    } else {
+        JSHandle<JSObject> protoHandle(thread, protoOrHClass);
+        JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
     }
 
     return JSTaggedValue::Undefined();
@@ -1813,17 +1822,13 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedArgs(JSThread *thread, JSTaggedType
 JSTaggedValue RuntimeStubs::RuntimeCopyRestArgs(JSThread *thread, JSTaggedType *sp, uint32_t restNumArgs,
                                                 uint32_t startIdx)
 {
-    JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(restNumArgs));
-
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < restNumArgs; ++i) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        element.Update(JSTaggedValue(sp[startIdx + i]));
-        JSObject::SetProperty(thread, restArray, i, element, true);
-    }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return restArray.GetTaggedValue();
+    return JSArray::ArrayCreateWithInit(
+        thread, restNumArgs, [thread, sp, startIdx] (const JSHandle<TaggedArray> &newElements, uint32_t length) {
+        for (uint32_t i = 0; i < length; ++i) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newElements->Set(thread, i, JSTaggedValue(sp[startIdx + i]));
+        }
+    });
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateArrayWithBuffer(JSThread *thread, ObjectFactory *factory,
@@ -1872,10 +1877,36 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
     return tagged;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle)
+JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
+                                              uint16_t methodId, const JSHandle<JSTaggedValue> &module)
 {
+    JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
+    JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
+    JSTaggedValue val = constpoolHandle->GetObjectFromCache(methodId);
+    if (val.IsAOTLiteralInfo()) {
+        JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
+        ihc.Update(aotLiteralInfo->GetIhc());
+    }
+    JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(),
+                                                            module.GetTaggedValue(), methodId);
+    const JSHandle<Method> methodHandle(thread, method);
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewJSFunction(methodHandle).GetTaggedValue();
+    JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
+    if (!ihc->IsUndefined()) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
+        result->SetProtoOrHClass(thread, ihc);
+        JSHandle<JSObject> clsPrototype(thread, result->GetFunctionPrototype());
+        clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+        JSHClass::EnableProtoChangeMarker(thread,
+            JSHandle<JSHClass>(thread, result->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+    }
+
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
+    }
+    return result.GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateRegExpWithLiteral(JSThread *thread,
@@ -2025,7 +2056,9 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
 JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, const JSHandle<JSObject> &obj,
                                                              const JSHandle<JSTaggedValue> &prop,
                                                              const JSHandle<JSTaggedValue> &getter,
-                                                             const JSHandle<JSTaggedValue> &setter, bool flag)
+                                                             const JSHandle<JSTaggedValue> &setter, bool flag,
+                                                             const JSHandle<JSTaggedValue> &func,
+                                                             int32_t pcOffset)
 {
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, prop);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2036,6 +2069,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
             thread,
             "In a class, computed property names for static getter that are named 'prototype' throw a TypeError");
     }
+
+    auto receiverHClass = obj->GetJSHClass();
 
     if (flag) {
         if (!getter->IsUndefined()) {
@@ -2071,8 +2106,21 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
         method->SetFunctionKind(FunctionKind::SETTER_FUNCTION);
         desc.SetSetter(setter);
     }
-    JSObject::DefineOwnProperty(thread, obj, propKey, desc);
 
+    JSObject::DefineOwnProperty(thread, obj, propKey, desc);
+    auto holderTraHClass = obj->GetJSHClass();
+    if (receiverHClass != holderTraHClass) {
+        if (holderTraHClass->IsTS()) {
+            JSHandle<JSHClass> phcHandle(thread, holderTraHClass);
+            JSHClass::EnablePHCProtoChangeMarker(thread, phcHandle);
+        }
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+            if (!func->IsUndefined()) {
+                thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineGetterSetter(
+                    receiverHClass, holderTraHClass, func, pcOffset);
+            }
+        }
+    }
     return obj.GetTaggedValue();
 }
 
@@ -2645,6 +2693,36 @@ JSTaggedValue RuntimeStubs::RuntimeStPatchVar(JSThread *thread, uint32_t index, 
 JSTaggedValue RuntimeStubs::RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint)
 {
     thread->GetEcmaVM()->TriggerConcurrentCallback(result, hint);
+    return JSTaggedValue::Undefined();
+}
+
+bool RuntimeStubs::IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                             JSTaggedValue key)
+{
+    JSMutableHandle<JSObject> protoHandle(thread, hclass->GetPrototype());
+    while (true) {
+        if (!protoHandle.GetTaggedValue().IsHeapObject()) {
+            break;
+        }
+        JSHClass *protoHclass = protoHandle->GetJSHClass();
+        if (JSHClass::FindPropertyEntry(thread, protoHclass, key) != -1) {
+            return true;
+        }
+        protoHandle.Update(protoHclass->GetPrototype());
+    }
+    return false;
+}
+
+JSTaggedValue RuntimeStubs::RuntimeUpdateHClass(JSThread *thread,
+    const JSHandle<JSHClass> &oldhclass, const JSHandle<JSHClass> &newhclass, JSTaggedValue key)
+{
+#if ECMASCRIPT_ENABLE_IC
+    if (IsNeedNotifyHclassChangedForAotTransition(thread, oldhclass, key)) {
+        JSHClass::NotifyHclassChanged(thread, oldhclass, newhclass, key);
+    }
+    JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
+    JSHClass::RefreshUsers(thread, oldhclass, newhclass);
+#endif
     return JSTaggedValue::Undefined();
 }
 

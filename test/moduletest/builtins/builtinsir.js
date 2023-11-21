@@ -57,4 +57,24 @@ a.foo = Boolean;
 a.test();
 a.foo = Date;
 a.test();
+
+var obj = {
+    number: Number,
+    date: Date,
+    bool: Boolean
+};
+print(obj.number(1));
+print(obj.number(1, 2));
+print(obj.number(1, 2, 3));
+print(obj.number(1, 2, 3, 4));
+print(obj.number([1]));
+print(obj.number([1, 2]));
+obj.date(0);
+obj.date(0, 1);
+obj.date(0, 1, 2);
+obj.date(0, 1, 2, 3);
+print(obj.bool(0));
+print(obj.bool(0, 1));
+print(obj.bool(0, 1, 2));
+print(obj.bool(0, 1, 2, 3));
 print("builtins ir end");

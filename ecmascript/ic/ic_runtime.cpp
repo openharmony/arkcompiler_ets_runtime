@@ -42,6 +42,12 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     }
     JSHandle<JSTaggedValue> handlerValue;
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
+    // When a transition occurs without the shadow property, AOT does not trigger the
+    // notifyprototypechange behavior, so for the case where the property does not
+    // exist and the Hclass is AOT, IC needs to be abandoned.
+    if (hclass->IsTS() && !op.IsFound()) {
+        return;
+    }
     if (op.IsElement()) {
         if (!op.IsFound() && hclass->IsDictionaryElement()) {
             return;
@@ -201,7 +207,6 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
             icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
-
         UpdateLoadHandler(op, key, receiver);
     }
 
@@ -232,7 +237,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
-    if (op.GetValue().IsInternalAccessor()) {
+    if (op.GetValue().IsAccessor()) {
         op = ObjectOperator(GetThread(), receiver, key);
     }
     if (!op.IsFound() && kind == ICKind::NamedGlobalTryLoadIC) {

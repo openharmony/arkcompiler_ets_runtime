@@ -115,10 +115,6 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     JSHandle<JSTaggedValue> constructor(thread, JSTaggedValue::Undefined());
     if (isArray) {
         // Let C be Get(originalArray, "constructor").
-        auto *hclass = originalArray->GetJSHClass();
-        if (hclass->IsJSArray() && !hclass->HasConstructor()) {
-            return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
-        }
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
         constructor = JSTaggedValue::GetProperty(thread, originalValue, constructorKey).GetValue();
         // ReturnIfAbrupt(C).
@@ -397,6 +393,10 @@ JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     int64_t len = ArrayHelper::GetArrayLength(thread, obj);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // If len is 0 or 1, no need to sort
+    if (len == 0 || len == 1) {
+        return obj.GetTaggedValue();
+    }
 
     // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
     // the following steps when called:

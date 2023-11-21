@@ -207,9 +207,21 @@ Object.defineProperty(Array.prototype, "tt", {
     writable:false,
 });
 
-var arr = new Array(5);
-arr[0] = 93;
-arr[2] = -45;
-arr[3] = "djs";
-arr[4] = 0;
-print(arr.sort());
+var arr6 = new Array(5);
+arr6[0] = 93;
+arr6[2] = -45;
+arr6[3] = "djs";
+arr6[4] = 0;
+print(arr6.sort());
+
+var arr7 = [1];
+print(arr7.sort());
+
+var res1 = Array.prototype.sort.call("m", Uint8Array);
+print(res1);
+
+try {
+    Array.prototype.sort.call("mm", Uint8Array);
+} catch (e) {
+    print(e.name);
+}

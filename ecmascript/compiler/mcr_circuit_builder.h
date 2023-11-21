@@ -84,7 +84,7 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -104,7 +104,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -123,7 +123,7 @@ GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -143,7 +143,7 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -170,7 +170,7 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -239,7 +239,7 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     Label bothAreHeapObjet(env_);
     Label bothAreStringType(env_);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
     Bind(&bothAreHeapObjet);
     {
@@ -328,7 +328,7 @@ GateRef CircuitBuilder::TaggedIsJSArray(GateRef obj)
     Label entry(env_);
     SubCfgEntry(&entry);
     Label exit(env_);
-    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
@@ -381,7 +381,12 @@ GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
-    return BoolOr(TaggedIsUndefined(x), TaggedIsNull(x));
+    x = ChangeTaggedPointerToInt64(x);
+    GateRef heapObjMask = Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK);
+    GateRef tagSpecial = Int64(JSTaggedValue::TAG_SPECIAL);
+    GateRef andGate = Int64And(x, heapObjMask);
+    GateRef result = Equal(andGate, tagSpecial);
+    return result;
 }
 
 GateRef CircuitBuilder::TaggedTrue()
@@ -440,13 +445,13 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
 
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
-    PGOSampleType sampleType)
+    PGOTypeRef pgoType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(xType, yType);
-    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, sampleType),
+    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, pgoType),
         MachineType::I64, {currentControl, currentDepend, x, y}, gateType);
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
@@ -601,6 +606,13 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
+}
+
+GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(valType, array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,

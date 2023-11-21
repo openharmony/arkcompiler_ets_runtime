@@ -64,28 +64,28 @@ public:
         }
     }
 
-    void AddDefine(uint32_t offset, PGOSampleType type, PGOSampleType superType)
+    void AddDefine(uint32_t offset, PGODefineOpType type)
     {
-        auto result = objDefOpTypeInfos_.find(ObjDefOpTypeInfo(offset, type, superType));
+        auto result = objDefOpTypeInfos_.find(ObjDefOpTypeInfo(offset, type));
         if (result != objDefOpTypeInfos_.end()) {
             return;
         }
-        objDefOpTypeInfos_.emplace(offset, type, superType);
+        objDefOpTypeInfos_.emplace(offset, type);
     }
 
     template <typename Callback>
     void GetTypeInfo(Callback callback)
     {
         for (const auto &typeInfo : scalarOpTypeInfos_) {
-            auto type = typeInfo.GetType();
+            const auto &type = typeInfo.GetTypeRef();
             callback(typeInfo.GetOffset(), &type);
         }
         for (const auto &typeInfo : rwScalarOpTypeInfos_) {
-            auto type = typeInfo.GetType();
+            const auto &type = typeInfo.GetTypeRef();
             callback(typeInfo.GetOffset(), &type);
         }
         for (const auto &typeInfo : objDefOpTypeInfos_) {
-            auto type = typeInfo.GetType();
+            const auto &type = typeInfo.GetTypeRef();
             callback(typeInfo.GetOffset(), &type);
         }
     }
@@ -151,7 +151,7 @@ private:
         void ConvertFrom(PGOContext &context, const FromType &from)
         {
             size_ = sizeof(RWScalarOpTemplate);
-            type_.ConvertFrom(context, from.GetType());
+            type_.ConvertFrom(context, from.GetTypeRef());
         }
 
         bool operator<(const RWScalarOpTemplate &right) const
@@ -174,7 +174,7 @@ private:
             type_.AddObjectInfo(info);
         }
 
-        const RWOpType &GetType() const
+        const RWOpType &GetTypeRef() const
         {
             return type_;
         }
@@ -230,6 +230,11 @@ private:
             return type_;
         }
 
+        const SampleType &GetTypeRef() const
+        {
+            return type_;
+        }
+
     protected:
         ScalarOpTemplate(uint32_t size, InfoType infoType, uint32_t offset, SampleType type)
             : TypeInfoHeader(size, infoType, offset), type_(type) {}
@@ -240,22 +245,15 @@ private:
     using ScalarOpTypeInfo = ScalarOpTemplate<PGOSampleType>;
     using ScalarOpTypeInfoRef = ScalarOpTemplate<PGOSampleTypeRef>;
 
-    template <typename SampleType, typename ScalarOpTypeInfoType>
-    class ObjDefOpTemplate : public ScalarOpTypeInfoType {
+    template <typename PGODefineOpType>
+    class ObjDefOpTemplate : public TypeInfoHeader {
     public:
-        ObjDefOpTemplate(uint32_t offset, SampleType type, SampleType superType)
-            : ScalarOpTypeInfoType(sizeof(ObjDefOpTemplate), InfoType::DEFINE_CLASS_TYPE, offset, type),
-            superType_(superType) {}
-
-        SampleType GetSuperType() const
-        {
-            return superType_;
-        }
+        ObjDefOpTemplate(uint32_t offset, PGODefineOpType type)
+            : TypeInfoHeader(sizeof(ObjDefOpTemplate), InfoType::DEFINE_CLASS_TYPE, offset), type_(type) {}
 
         bool operator<(const ObjDefOpTemplate &right) const
         {
-            return this->offset_ < right.GetOffset() || this->GetType() < right.GetType() ||
-                   superType_ < right.superType_;
+            return this->offset_ < right.GetOffset() || this->GetType() < right.GetType();
         }
 
         void ProcessToText(std::string &text) const
@@ -264,21 +262,28 @@ private:
             text += DumpUtils::BLOCK_START;
             text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
             text += this->GetType().GetTypeString();
-            text += DumpUtils::TYPE_SEPARATOR;
-            text += GetSuperType().GetTypeString();
             text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+        }
+
+        PGODefineOpType GetType() const
+        {
+            return type_;
+        }
+
+        const PGODefineOpType &GetTypeRef() const
+        {
+            return type_;
         }
 
     protected:
         ObjDefOpTemplate(
-            uint32_t size, InfoType infoType, uint32_t offset, SampleType type, SampleType superType)
-            : ScalarOpTypeInfoType(size, infoType, offset, type), superType_(superType) {}
-
+            uint32_t size, InfoType infoType, uint32_t offset, PGODefineOpType type)
+            : TypeInfoHeader(size, infoType, offset), type_(type) {}
     private:
-        SampleType superType_;
+        PGODefineOpType type_;
     };
-    using ObjDefOpTypeInfo = ObjDefOpTemplate<PGOSampleType, ScalarOpTypeInfo>;
-    using ObjDefOpTypeInfoRef = ObjDefOpTemplate<PGOSampleTypeRef, ScalarOpTypeInfoRef>;
+    using ObjDefOpTypeInfo = ObjDefOpTemplate<PGODefineOpType>;
+    using ObjDefOpTypeInfoRef = ObjDefOpTemplate<PGODefineOpTypeRef>;
 
     std::set<ScalarOpTypeInfo> scalarOpTypeInfos_;
     std::set<RWScalarOpTypeInfo> rwScalarOpTypeInfos_;

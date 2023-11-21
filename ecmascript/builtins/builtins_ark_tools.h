@@ -41,7 +41,8 @@
     V("pgoAssertType",                 PGOAssertType,                 2, INVALID)         \
     V("print",                         ObjectDump,                    0, INVALID)         \
     V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
-    V("timeInUs",                      TimeInUs,                      0, INVALID)
+    V("timeInUs",                      TimeInUs,                      0, INVALID)         \
+    V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                            \
     V("prepareFunctionForOptimization",  PrepareFunctionForOptimization,  1, INVALID)     \
@@ -113,6 +114,9 @@ public:
 #endif
     // ArkTools.isPrototype(object)
     static JSTaggedValue IsPrototype(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isAOTCompiledAssert(func)
+    static JSTaggedValue IsAOTCompiled(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 

@@ -19,6 +19,8 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -183,10 +185,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_EQ>(gate, false);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_EQ>(gate);
             break;
         case EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerTypedStrictEq(gate);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate, false);
@@ -253,6 +255,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             LowerTypedStObjByName(gate, true);
+            break;
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+            LowerTypedStOwnByName(gate);
             break;
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
@@ -323,6 +329,19 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
+            if (enableLoweringBuiltin_) {
+                LowerTypedTryLdGlobalByName(gate);
+            }
+            break;
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+            LowerInstanceOf(gate);
+            break;
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+            LowerCreateObjectWithBuffer(gate);
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -351,27 +370,31 @@ void TypeBytecodeLowering::LowerTypedUnOp(GateRef gate)
     }
 }
 
-void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
+template<TypedBinOp Op>
+void TypeBytecodeLowering::LowerTypedEqOrStrictEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right, false)) {
-        GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
-            left, right, leftType, rightType, gateType, sampleType);
+    PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
+    if (acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right) || HasNumberType(gate, left, right, false)) {
+        AddProfiling(gate);
+        GateRef result = builder_.TypedBinaryOp<Op>(
+            left, right, leftType, rightType, gateType, pgoType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    } else if (HasStringType(gate, left, right)) {
+        SpeculateStrings<Op>(gate);
     }
 }
 
 bool TypeBytecodeLowering::HasNumberType(GateRef gate, GateRef value) const
 {
     GateType valueType = acc_.GetGateType(value);
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNumber() ||
-        (sampleType.IsNone() && valueType.IsPrimitiveNumberType())) {
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber() ||
+        (sampleType->IsNone() && valueType.IsPrimitiveNumberType())) {
         return true;
     }
     return false;
@@ -382,13 +405,13 @@ bool TypeBytecodeLowering::HasNumberType(GateRef gate, GateRef left, GateRef rig
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
 
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNumber()) {
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
         return true;
-    } else if (convertNumberType && sampleType.IsNone() && leftType.IsPrimitiveNumberType() &&
+    } else if (convertNumberType && sampleType->IsNone() && leftType.IsPrimitiveNumberType() &&
                rightType.IsPrimitiveNumberType()) {
         return true;
-    } else if (!convertNumberType && sampleType.IsNone() && leftType.IsNumberType() && rightType.IsNumberType()) {
+    } else if (!convertNumberType && sampleType->IsNone() && leftType.IsNumberType() && rightType.IsNumberType()) {
         return true;
     } else {
         return false;
@@ -410,7 +433,7 @@ bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef 
 template<TypedBinOp Op>
 void TypeBytecodeLowering::SpeculateStrings(GateRef gate)
 {
-    if (Op == TypedBinOp::TYPED_EQ) {
+    if (Op == TypedBinOp::TYPED_EQ || Op == TypedBinOp::TYPED_ADD) {
         AddProfiling(gate);
         GateRef left = acc_.GetValueIn(gate, 0);
         GateRef right = acc_.GetValueIn(gate, 1);
@@ -423,10 +446,10 @@ void TypeBytecodeLowering::SpeculateStrings(GateRef gate)
         GateType leftType = acc_.GetGateType(left);
         GateType rightType = acc_.GetGateType(right);
         GateType gateType = acc_.GetGateType(gate);
-        PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+        PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
         pgoTypeLog_.CollectGateTypeLogInfo(gate, true);
 
-        GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, sampleType);
+        GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, pgoType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     }
 }
@@ -440,10 +463,10 @@ void TypeBytecodeLowering::SpeculateNumbers(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
     pgoTypeLog_.CollectGateTypeLogInfo(gate, true);
 
-    GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, sampleType);
+    GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, pgoType);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
@@ -456,11 +479,11 @@ void TypeBytecodeLowering::SpeculateNumber(GateRef gate)
     GateType gateType = acc_.GetGateType(gate);
     pgoTypeLog_.CollectGateTypeLogInfo(gate, false);
 
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNumber()) {
-        if (sampleType.IsInt()) {
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
             gateType = GateType::IntType();
-        } else if (sampleType.IsDouble()) {
+        } else if (sampleType->IsDouble()) {
             gateType = GateType::DoubleType();
         } else {
             gateType = GateType::NumberType();
@@ -507,11 +530,11 @@ void TypeBytecodeLowering::SpeculateConditionJump(GateRef gate, bool flag)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateRef jump = Circuit::NullGate();
-    PGOSampleType sampleType = acc_.TryGetPGOType(value);
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(value).GetPGOSampleType();
     if (flag) {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, sampleType.GetWeight());
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, sampleType->GetWeight());
     } else {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, sampleType.GetWeight());
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, sampleType->GetWeight());
     }
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
@@ -531,11 +554,123 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
     uint16_t keyIndex = acc_.GetConstantValue(constData);
     JSTaggedValue key = tsManager_->GetStringFromConstantPool(keyIndex);
-
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
-    LowerNamedAccess(gate, receiver, AccessMode::LOAD, key, Circuit::NullGate());
+
+    // deal builtins and array
+    GateType tsreceiverType = acc_.GetGateType(receiver);
+    tsreceiverType = tsManager_->TryNarrowUnionType(tsreceiverType);
+    if (TryLowerTypedLdObjByNameForBuiltin(gate, tsreceiverType, key)) {
+        return;
+    }
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
+    // get types from pgo
+
+    if (types.size() == 0) {
+        return;
+    }
+
+    std::vector<Label> loaders;
+    std::vector<Label> fails;
+    std::vector<PGOObjectAccessHelper> accessHelpers;
+    std::vector<PGOObjectAccessInfo> accessInfos;
+    std::vector<PGOObjectAccessHelper> checkerHelpers;
+    std::vector<PGOObjectAccessInfo> checkerInfos;
+    for (size_t i = 0; i < types.size() - 1; ++i) {
+        loaders.emplace_back(Label(&builder_));
+        fails.emplace_back(Label(&builder_));
+    }
+    Label exit(&builder_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = types[i].first;
+        ProfileTyper holderType = types[i].second;
+        if (receiverType == holderType) {
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+                receiver, receiverType, key, Circuit::NullGate()));
+            accessInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(accessHelpers[i]);
+            checkerInfos.emplace_back(accessInfos[i]);
+        } else {
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+                receiver, holderType, key, Circuit::NullGate()));
+            accessInfos.emplace_back(PGOObjectAccessInfo(holderType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+                receiver, receiverType, key, Circuit::NullGate()));
+            checkerInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            checkerHelpers[i].ComputeForClassInstance(checkerInfos[i]);
+            if (checkerInfos[i].HClassIndex() == -1) {
+                return;
+            }
+        }
+    }
+
+    AddProfiling(gate);
+
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = types[i].first;
+        ProfileTyper holderType = types[i].second;
+        auto expected = builder_.GetHClassGateFromIndex(gate, checkerInfos[i].HClassIndex());
+        if (i != types.size() - 1) {
+            builder_.Branch(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
+            builder_.Bind(&loaders[i]);
+        } else {
+            // Deopt if fails at last hclass compare
+            builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
+                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
+        }
+        if (receiverType == holderType) {
+            // Local
+            result = BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+            builder_.Jump(&exit);
+        } else {
+            // prototype change marker check
+            auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+            auto protoHClass =
+                builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+            auto marker =
+                builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+            builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
+
+            // lookup from receiver for holder
+            auto holderHC = builder_.GetHClassGateFromIndex(gate, accessInfos[i].HClassIndex());
+            DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+            Label loopHead(&builder_);
+            Label loadHolder(&builder_);
+            Label lookUpProto(&builder_);
+            builder_.Jump(&loopHead);
+
+            builder_.LoopBegin(&loopHead);
+            auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+            builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+            builder_.Bind(&lookUpProto);
+            current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+            builder_.LoopEnd(&loopHead);
+
+            builder_.Bind(&loadHolder);
+            accessHelpers[i].SetHolder(*current);
+            result = BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+            builder_.Jump(&exit);
+        }
+        if (i != types.size() - 1) {
+            builder_.Bind(&fails[i]);
+        }
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
     DeleteConstDataIfNoUser(constData);
 }
 
@@ -559,98 +694,327 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         receiver = acc_.GetValueIn(gate, 2); // 2: receiver
         value = acc_.GetValueIn(gate, 3); // 3: acc
     }
-    LowerNamedAccess(gate, receiver, AccessMode::STORE, key, value);
+
+    std::vector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types;
+    // get types from pgo
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types.emplace_back(std::make_tuple(
+            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
+            std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())
+        ));
+    }
+    // get types from pgo
+
+    if (types.size() == 0) {
+        return;
+    }
+
+    std::vector<Label> loaders;
+    std::vector<Label> fails;
+    std::vector<PGOObjectAccessHelper> accessHelpers;
+    std::vector<PGOObjectAccessInfo> accessInfos;
+    std::vector<PGOObjectAccessHelper> checkerHelpers;
+    std::vector<PGOObjectAccessInfo> checkerInfos;
+    for (size_t i = 0; i < types.size() - 1; ++i) {
+        loaders.emplace_back(Label(&builder_));
+        fails.emplace_back(Label(&builder_));
+    }
+    Label exit(&builder_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = std::get<0>(types[i]);
+        ProfileTyper holderType = std::get<1>(types[i]);
+        ProfileTyper newHolderType = std::get<2>(types[i]);
+        if (receiverType != newHolderType) {
+            // transition happened ==> slowpath
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, newHolderType, key, value));
+            accessInfos.emplace_back(PGOObjectAccessInfo(newHolderType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, receiverType, key, value));
+            checkerInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            checkerHelpers[i].ComputeForClassInstance(checkerInfos[i]);
+            if (checkerInfos[i].HClassIndex() == -1) {
+                return;
+            }
+        } else if (receiverType == holderType) {
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, receiverType, key, value));
+            accessInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(accessHelpers[i]);
+            checkerInfos.emplace_back(accessInfos[i]);
+        } else {
+            UNREACHABLE();
+            return;
+        }
+    }
+
+    AddProfiling(gate);
+
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = std::get<0>(types[i]);
+        ProfileTyper holderType = std::get<1>(types[i]);
+        ProfileTyper newHolderType = std::get<2>(types[i]);
+        auto expected = builder_.GetHClassGateFromIndex(gate, checkerInfos[i].HClassIndex());
+        if (i != types.size() - 1) {
+            builder_.Branch(builder_.Equal(receiverHC, expected),
+                &loaders[i], &fails[i]);
+            builder_.Bind(&loaders[i]);
+        } else {
+            builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
+                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
+        }
+        if (receiverType != newHolderType) {
+            // prototype change marker check
+            auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+            auto protoHClass =
+                builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+            auto marker =
+                builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+            auto hasChanged = builder_.GetHasChanged(marker);
+            builder_.DeoptCheck(builder_.BoolNot(hasChanged), acc_.FindNearestFrameState(builder_.GetDepend()),
+                DeoptType::PROTOTYPECHANGED);
+
+            // transition happened
+            Label notProto(&builder_);
+            Label isProto(&builder_);
+            auto newHolderHC = builder_.GetHClassGateFromIndex(gate, accessInfos[i].HClassIndex());
+            builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+            builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
+                BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+            builder_.Bind(&isProto);
+            auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC), constData);
+            builder_.CallRuntime(glue_, RTSTUB_ID(UpdateHClass), Gate::InvalidGateRef,
+                { receiverHC, newHolderHC, propKey }, gate);
+            builder_.Jump(&notProto);
+            builder_.Bind(&notProto);
+            builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
+                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+            if (!accessInfos[i].Plr().IsInlinedProps()) {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
+                auto capacity = builder_.LoadConstOffset(VariableType::INT32(), properties, TaggedArray::LENGTH_OFFSET);
+                auto index = builder_.Int32(accessInfos[i].Plr().GetOffset());
+                Label needExtend(&builder_);
+                Label notExtend(&builder_);
+                builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+                builder_.Bind(&notExtend);
+                {
+                    BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&needExtend);
+                {
+                    builder_.CallRuntime(glue_,
+                        RTSTUB_ID(PropertiesSetValue),
+                        Gate::InvalidGateRef,
+                        { receiver, value, properties, builder_.Int32ToTaggedInt(capacity),
+                          builder_.Int32ToTaggedInt(index) }, gate);
+                    builder_.Jump(&exit);
+                }
+            } else {
+                BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+                builder_.Jump(&exit);
+            }
+        } else if (receiverType == holderType) {
+            // Local
+            BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+            builder_.Jump(&exit);
+        } else {
+            // find in prototype, same as transition
+            UNREACHABLE();
+            return;
+        }
+        if (i != types.size() - 1) {
+            // process fastpath for next type
+            builder_.Bind(&fails[i]);
+        }
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(constData);
 }
 
-void TypeBytecodeLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key,
-                                     GateRef value)
+void TypeBytecodeLowering::LowerTypedStOwnByName(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (accessMode == AccessMode::LOAD && TryLowerTypedLdObjByNameForBuiltin(gate, receiverType, key)) {
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    auto constData = acc_.GetValueIn(gate, 0);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    auto key = tsManager_->GetStringFromConstantPool(propIndex);
+
+    GateRef receiver = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    std::vector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types;
+    // get types from pgo
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types.emplace_back(std::make_tuple(
+            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
+            std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())
+        ));
+    }
+    // get types from pgo
+
+    if (types.size() == 0) {
         return;
     }
 
-    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value);
-    ChunkVector<ObjectAccessInfo> infos(circuit_->chunk());
-    bool continuation = accessHelper.Compute(infos);
-    if (!continuation) {
-        return;  // slowpath
+    std::vector<Label> loaders;
+    std::vector<Label> fails;
+    std::vector<PGOObjectAccessHelper> accessHelpers;
+    std::vector<PGOObjectAccessInfo> accessInfos;
+    std::vector<PGOObjectAccessHelper> checkerHelpers;
+    std::vector<PGOObjectAccessInfo> checkerInfos;
+    for (size_t i = 0; i < types.size() - 1; ++i) {
+        loaders.emplace_back(Label(&builder_));
+        fails.emplace_back(Label(&builder_));
+    }
+    Label exit(&builder_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = std::get<0>(types[i]);
+        ProfileTyper holderType = std::get<1>(types[i]);
+        ProfileTyper newHolderType = std::get<2>(types[i]);
+        if (receiverType != newHolderType) {
+            // transition happened ==> slowpath
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, newHolderType, key, value));
+            accessInfos.emplace_back(PGOObjectAccessInfo(newHolderType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, receiverType, key, value));
+            checkerInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            checkerHelpers[i].ComputeForClassInstance(checkerInfos[i]);
+            if (checkerInfos[i].HClassIndex() == -1) {
+                return;
+            }
+        } else if (receiverType == holderType) {
+            accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::STORE,
+                receiver, receiverType, key, value));
+            accessInfos.emplace_back(PGOObjectAccessInfo(receiverType));
+            if (!accessHelpers[i].ComputeForClassInstance(accessInfos[i])) {
+                return;
+            }
+            checkerHelpers.emplace_back(accessHelpers[i]);
+            checkerInfos.emplace_back(accessInfos[i]);
+        } else {
+            UNREACHABLE();
+            return;
+        }
     }
 
-    ASSERT(!infos.empty());
     AddProfiling(gate);
 
-    // If all elements of the array are objects, and receiver is one of the elements,
-    // no HeapObjectCheck is required.
-    bool isHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
-
-    // monomorphic
-    if (infos.size() == 1) {
-        int hclassIndex = infos[0].HClassIndex();
-        PropertyLookupResult plr = infos[0].Plr();
-        if (!Uncheck()) {
-            GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-            builder_.ObjectTypeCheck(infos[0].Type(), isHeapObject, receiver, hclassIndexGate);
-        }
-
-        GateRef result = BuildNamedPropertyAccess(gate, accessHelper, plr);
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-        return;
-    }
-
-    // polymorphic
-    size_t size = infos.size();
-    GateRef fallthroughState = builder_.GetState();
-    GateRef fallthroughDepend = builder_.GetDepend();
-    std::vector<GateRef> values(size + 1, Circuit::NullGate());   // +1: state for value selector
-    std::vector<GateRef> depends(size + 1, Circuit::NullGate());  // +1: state for depend selector
-    std::vector<GateRef> states(size, Circuit::NullGate());
-    for (size_t i = 0; i < size; ++i) {
-        GateType type = infos[i].Type();
-        int hclassIndex = infos[i].HClassIndex();
-        PropertyLookupResult plr = infos[i].Plr();
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-
-        builder_.SetState(fallthroughState);
-        builder_.SetDepend(fallthroughDepend);
-        if (i == size - 1) {
-            builder_.ObjectTypeCheck(type, isHeapObject, receiver, hclassIndexGate);
-            fallthroughState = Circuit::NullGate();
-            fallthroughDepend = Circuit::NullGate();
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper receiverType = std::get<0>(types[i]);
+        ProfileTyper holderType = std::get<1>(types[i]);
+        ProfileTyper newHolderType = std::get<2>(types[i]);
+        auto expected = builder_.GetHClassGateFromIndex(gate, checkerInfos[i].HClassIndex());
+        if (i != types.size() - 1) {
+            builder_.Branch(builder_.Equal(receiverHC, expected),
+                &loaders[i], &fails[i]);
+            builder_.Bind(&loaders[i]);
         } else {
-            GateRef compare = builder_.ObjectTypeCompare(type, isHeapObject, receiver, hclassIndexGate);
-            GateRef branch = builder_.Branch(builder_.GetState(), compare);
-            GateRef ifTrue = builder_.IfTrue(branch);
-            GateRef ifFalse = builder_.IfFalse(branch);
-            GateRef tDepend = builder_.DependRelay(ifTrue, builder_.GetDepend());
-            fallthroughState = ifFalse;
-            fallthroughDepend = builder_.DependRelay(ifFalse, builder_.GetDepend());
-            builder_.SetState(ifTrue);
-            builder_.SetDepend(tDepend);
+            builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
+                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
         }
+        if (receiverType != newHolderType) {
+            // prototype change marker check
+            auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+            auto protoHClass =
+                builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+            auto marker =
+                builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+            auto hasChanged = builder_.GetHasChanged(marker);
+            builder_.DeoptCheck(builder_.BoolNot(hasChanged), acc_.FindNearestFrameState(builder_.GetDepend()),
+                DeoptType::PROTOTYPECHANGED);
 
-        values[i + 1] = BuildNamedPropertyAccess(gate, accessHelper, plr);
-        depends[i + 1] = builder_.GetDepend();
-        states[i] = builder_.GetState();
+            // transition happened
+            Label notProto(&builder_);
+            Label isProto(&builder_);
+            auto newHolderHC = builder_.GetHClassGateFromIndex(gate, accessInfos[i].HClassIndex());
+            builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+            builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
+                BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+            builder_.Bind(&isProto);
+            auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC), constData);
+            builder_.CallRuntime(glue_, RTSTUB_ID(UpdateHClass), Gate::InvalidGateRef,
+                { receiverHC, newHolderHC, propKey }, gate);
+            builder_.Jump(&notProto);
+            builder_.Bind(&notProto);
+            builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
+                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+            if (!accessInfos[i].Plr().IsInlinedProps()) {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
+                auto capacity = builder_.LoadConstOffset(VariableType::INT32(), properties, TaggedArray::LENGTH_OFFSET);
+                auto index = builder_.Int32(accessInfos[i].Plr().GetOffset());
+                Label needExtend(&builder_);
+                Label notExtend(&builder_);
+                builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+                builder_.Bind(&notExtend);
+                {
+                    BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&needExtend);
+                {
+                    builder_.CallRuntime(glue_,
+                        RTSTUB_ID(PropertiesSetValue),
+                        Gate::InvalidGateRef,
+                        { receiver, value, properties, builder_.Int32ToTaggedInt(capacity),
+                          builder_.Int32ToTaggedInt(index) }, gate);
+                    builder_.Jump(&exit);
+                }
+            } else {
+                BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+                builder_.Jump(&exit);
+            }
+        } else if (receiverType == holderType) {
+            // Local
+            BuildNamedPropertyAccess(gate, accessHelpers[i], accessInfos[i].Plr());
+            builder_.Jump(&exit);
+        } else {
+            // find in prototype, same as transition
+            UNREACHABLE();
+            return;
+        }
+        if (i != types.size() - 1) {
+            // process fastpath for next type
+            builder_.Bind(&fails[i]);
+        }
     }
-    ASSERT(fallthroughState == Circuit::NullGate());
-    ASSERT(fallthroughDepend == Circuit::NullGate());
-    GateRef mergeState = circuit_->NewGate(circuit_->Merge(size), states);
-    depends[0] = mergeState;
-    values[0] = mergeState;
-    GateRef dependSelector = circuit_->NewGate(circuit_->DependSelector(size), depends);
-    GateRef result = accessHelper.IsLoading() ?
-        circuit_->NewGate(circuit_->ValueSelector(size), MachineType::I64, size + 1, values.data(), GateType::AnyType())
-        : Circuit::NullGate();
-    acc_.ReplaceHirAndDeleteIfException(gate, StateDepend(mergeState, dependSelector), result);
+
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    DeleteConstDataIfNoUser(constData);
 }
 
-GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr)
+GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(
+    GateRef hir, PGOObjectAccessHelper accessHelper, PropertyLookupResult plr)
 {
     GateRef receiver = accessHelper.GetReceiver();
+    GateRef holder = accessHelper.GetHolder();
     GateRef plrGate = builder_.Int32(plr.GetData());
     GateRef result = Circuit::NullGate();
 
@@ -658,24 +1022,18 @@ GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccess
     switch (mode) {
         case AccessMode::LOAD: {
             if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
-                if (UNLIKELY(IsVerifyVTbale())) {
-                    BuildNamedPropertyAccessVerifier(hir, receiver, mode, result);
-                }
+                result = builder_.LoadProperty(holder, plrGate, plr.IsFunction());
             } else {
-                result = builder_.CallGetter(hir, receiver, plrGate);
+                result = builder_.CallGetter(hir, receiver, holder, plrGate);
             }
         }
             break;
         case AccessMode::STORE: {
             GateRef value = accessHelper.GetValue();
-            if (LIKELY(plr.IsLocal())) {
+            if (LIKELY(!plr.IsAccessor())) {
                 builder_.StoreProperty(receiver, plrGate, value);
-                if (UNLIKELY(IsVerifyVTbale())) {
-                    BuildNamedPropertyAccessVerifier(hir, receiver, mode, value);
-                }
             } else {
-                builder_.CallSetter(hir, receiver, plrGate, value);
+                builder_.CallSetter(hir, receiver, holder, plrGate, value);
             }
         }
             break;
@@ -684,17 +1042,6 @@ GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccess
     }
 
     return result;
-}
-
-void TypeBytecodeLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value)
-{
-    GateRef constData = acc_.GetValueIn(gate, 1);
-    uint16_t keyIndex = acc_.GetConstantValue(constData);
-    GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = builder_.GetConstPool(func);
-    GateRef key =  builder_.GetValueFromTaggedArray(constPool, builder_.Int32(keyIndex));
-    int stubId = mode == AccessMode::LOAD ? RTSTUB_ID(VerifyVTableLoading) : RTSTUB_ID(VerifyVTableStoring);
-    builder_.CallRuntime(glue_, stubId, builder_.GetDepend(), { receiver, key, value }, gate);
 }
 
 bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
@@ -749,6 +1096,21 @@ bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTa
     return TryLowerTypedLdObjByNameForBuiltinMethod(gate, key, type);
 }
 
+void TypeBytecodeLowering::LowerTypedLdArrayLength(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef array = acc_.GetValueIn(gate, 2);
+    if (!Uncheck()) {
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        if (!IsCreateArray(array)) {
+            builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
+        }
+    }
+
+    GateRef result = builder_.LoadArrayLength(array);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
 bool TypeBytecodeLowering::IsCreateArray(GateRef gate)
 {
     if (acc_.GetOpCode(gate) != OpCode::JS_BYTECODE) {
@@ -766,21 +1128,6 @@ bool TypeBytecodeLowering::IsCreateArray(GateRef gate)
     }
     UNREACHABLE();
     return false;
-}
-
-void TypeBytecodeLowering::LowerTypedLdArrayLength(GateRef gate)
-{
-    AddProfiling(gate);
-    GateRef array = acc_.GetValueIn(gate, 2);
-    if (!Uncheck()) {
-        ElementsKind kind = acc_.TryGetElementsKind(gate);
-        if (!IsCreateArray(array)) {
-            builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
-        }
-    }
-
-    GateRef result = builder_.LoadArrayLength(array);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypeBytecodeLowering::LowerTypedLdTypedArrayLength(GateRef gate)
@@ -809,6 +1156,7 @@ void TypeBytecodeLowering::LowerTypedLdStringLength(GateRef gate)
 
 bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type)
 {
+    AddProfiling(gate);
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
     if (!protoField.has_value()) {
         return false;
@@ -833,7 +1181,6 @@ bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate
         }
     }
     // Successfully goes to typed path
-    AddProfiling(gate);
     GateRef plrGate = builder_.Int32(plr.GetData());
     GateRef prototype = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(*protoField));
     GateRef result = builder_.LoadProperty(prototype, plrGate, plr.IsFunction());
@@ -1136,13 +1483,27 @@ void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
-    if (!tsManager_->IsClassTypeKind(ctorType)) {
+    GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
+    if (ctorGT.IsBuiltinModule()) {
+        if (TryLowerNewBuiltinConstructor(gate)) {
+            return;
+        }
+    }
+
+    auto sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (!sampleType->IsProfileType()) {
+        return;
+    }
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
         return;
     }
 
     AddProfiling(gate);
 
-    int hclassIndex = tsManager_->GetHClassIndexByClassGateType(ctorType);
     GateRef stateSplit = acc_.GetDep(gate);
 
     GateRef frameState = acc_.FindNearestFrameState(stateSplit);
@@ -1150,13 +1511,42 @@ void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range, EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range,
+        EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
     std::vector<GateRef> args { glue_, actualArgc, ctor, ctor, thisObj };
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
     GateRef constructGate = builder_.Construct(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+}
+
+bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
+{
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateType ctorType = acc_.GetGateType(ctor);
+    GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
+    GateRef constructGate = Circuit::NullGate();
+    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT)) {
+        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
+            if (!Uncheck()) {
+                builder_.ArrayConstructorCheck(ctor);
+            }
+            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
+        }
+    } else if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::OBJECT, ctorGT)) {
+        AddProfiling(gate);
+        if (!Uncheck()) {
+            builder_.ObjectConstructorCheck(ctor);
+        }
+        constructGate = builder_.BuiltinConstructor(BuiltinTypeId::OBJECT, gate);
+    }
+    if (constructGate == Circuit::NullGate()) {
+        return false;
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+    return true;
 }
 
 void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
@@ -1218,12 +1608,14 @@ BuiltinsStubCSigns::ID TypeBytecodeLowering::GetBuiltinId(BuiltinTypeId id, Gate
 
 BuiltinsStubCSigns::ID TypeBytecodeLowering::GetPGOBuiltinId(GateRef gate)
 {
-    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (sampleType.IsNone()) {
+    PGOTypeRef sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.GetPGOSampleType()->IsNone()) {
         return BuiltinsStubCSigns::ID::NONE;
     }
-    ASSERT(sampleType.GetProfileType().IsBuiltinFunctionId());
-    return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetProfileType().GetId());
+    if (sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId()) {
+        return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    }
+    return BuiltinsStubCSigns::ID::NONE;
 }
 
 void TypeBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
@@ -1308,17 +1700,20 @@ void TypeBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 void TypeBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 1);
-    GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return;
-    }
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateType a0Type = acc_.GetGateType(a0Value);
-    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
+    BuiltinsStubCSigns::ID id = GetPGOBuiltinId(gate);
+    if ((IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType())) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { a0Value }, id, false);
+    } else if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
     } else {
+        GateType funcType = acc_.GetGateType(func);
+        if (!tsManager_->IsFunctionTypeKind(funcType)) {
+            return;
+        }
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
         LowerTypedCall(gate, func, actualArgc, funcType, 1);
@@ -1366,7 +1761,8 @@ void TypeBytecodeLowering::LowerTypedCallrange(GateRef gate)
     LowerTypedCall(gate, func, actualArgc, funcType, argc);
 }
 
-void TypeBytecodeLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
+void TypeBytecodeLowering::LowerTypedCall(
+    GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
 {
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
     if (!tsManager_->IsHotnessFunc(funcGt)) {
@@ -1472,7 +1868,7 @@ void TypeBytecodeLowering::LowerTypedCallthis0(GateRef gate)
         return;
     }
     BuiltinsStubCSigns::ID pgoFuncId = GetPGOBuiltinId(gate);
-    if (pgoFuncId != BuiltinsStubCSigns::ID::NONE) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { thisObj }, pgoFuncId, true);
         return;
@@ -1532,7 +1928,7 @@ void TypeBytecodeLowering::LowerTypedCallthis3(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef func = acc_.GetValueIn(gate, 4); // 4: func
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::STRING, func);
-    if (id == BuiltinsStubCSigns::ID::LocaleCompare) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS3(id)) {
         AddProfiling(gate);
         GateRef thisObj = acc_.GetValueIn(gate, 0);
         GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para
@@ -1634,6 +2030,18 @@ void TypeBytecodeLowering::AddProfiling(GateRef gate)
     }
 }
 
+void TypeBytecodeLowering::FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types)
+{
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types.emplace_back(std::make_pair(
+            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
+        ));
+    }
+}
+
 void TypeBytecodeLowering::AddBytecodeCount(EcmaOpcode op)
 {
     currentOp_ = op;
@@ -1691,5 +2099,159 @@ void TypeBytecodeLowering::LowerGetIterator(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     AddProfiling(gate);
     SpeculateCallBuiltin(gate, obj, { obj }, id, true);
+}
+
+void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto value = acc_.GetValueIn(gate, 1);
+    auto idx = acc_.GetConstantValue(value);
+    auto key = tsManager_->GetStringFromConstantPool(idx);
+    auto builtinIndex = builtinIndex_.GetBuiltinIndex(key);
+    if (builtinIndex == builtinIndex_.NOT_FOUND) {
+        return;
+    }
+    AddProfiling(gate);
+    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtinIndex_.GetBuiltinBoxOffset(key)));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    DeleteConstDataIfNoUser(value);
+}
+
+void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
+    GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+
+    // CompilerCheck - pgo.hclass having [hasInstance] property
+    // if true -> slowthPath
+    // if false -> lowering
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    auto hasInstanceEnvIndex =static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
+    JSTaggedValue key = globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
+
+    if (types.size() == 0) {
+        return;
+    }
+
+    // Instanceof does not support Poly for now
+    ASSERT(types.size() == 1);
+
+    ChunkVector<PGOObjectAccessHelper> accessHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> accessInfos(chunk_);
+    ChunkVector<PGOObjectAccessHelper> checkerHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> checkerInfos(chunk_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper targetPgoType = types[i].first;
+        accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+            target, targetPgoType, key, Circuit::NullGate()));
+        accessInfos.emplace_back(PGOObjectAccessInfo(targetPgoType));
+        // If @@hasInstance is found on prototype Chain of ctor -> slowpath
+        // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass
+        // Current temporary solution:
+        // Try searching @@hasInstance in pgo dump stage,
+        // If found, pgo dump no types and we go slowpath in aot
+        accessHelpers[i].ComputeForClassInstance(accessInfos[i]);
+        if (accessInfos[i].HClassIndex() == -1 || !accessHelpers[i].ClassInstanceIsCallable(accessInfos[i])) {
+            return;
+        }
+        checkerHelpers.emplace_back(accessHelpers[i]);
+        checkerInfos.emplace_back(accessInfos[i]);
+    }
+
+    AddProfiling(gate);
+
+    std::vector<GateRef> expectedHCIndexes;
+    for (size_t i = 0; i < types.size(); ++i) {
+        GateRef temp = builder_.Int32(checkerInfos[i].HClassIndex());
+        expectedHCIndexes.emplace_back(temp);
+    }
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    // RuntimeCheck -
+    // 1. pgo.hclass == ctor.hclass
+    // 2. ctor.hclass has a prototype chain up to Function.prototype
+    builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, target, expectedHCIndexes[0]);
+    auto ctorHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), ctorHC, JSHClass::PROTOTYPE_OFFSET);
+    auto protoHClass =
+        builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+    auto marker =
+        builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
+
+    result = builder_.OrdinaryHasInstance(obj, target);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+}
+
+void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
+{
+    auto sampleType = acc_.TryGetPGOType(gate).GetPGODefineOpType();
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return;
+    }
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of value ins
+    GateRef index = acc_.GetValueIn(gate, 0);
+    auto imm = acc_.GetConstantValue(index);
+    JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        tsManager_->GetEcmaVM()->GetJSThread(), tsManager_->GetConstantPool().GetTaggedValue(), imm, recordName_);
+    JSHandle<JSObject> objhandle = JSHandle<JSObject>(thread_, obj);
+    JSHandle<TaggedArray> properties = JSHandle<TaggedArray>(thread_, objhandle->GetProperties());
+    if (properties->GetLength() > 0) {
+        return;
+    }
+    JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread_, objhandle->GetElements());
+    if (elements->GetLength() > 0) {
+        return;
+    }
+    std::vector<uint64_t> inlinedProps;
+    JSHandle<JSHClass> newClass = JSHandle<JSHClass>(thread_, ptManager->QueryHClass(type.first, type.second));
+    JSHandle<JSHClass> oldClass = JSHandle<JSHClass>(thread_, objhandle->GetClass());
+    if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
+        return;
+    }
+    auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
+    for (uint32_t i = 0; i < oldClass->GetInlinedProperties(); i++) {
+        auto attr = layout->GetAttr(i);
+        JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
+        if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
+            value.IsNumber() || value.IsBoolean() || value.IsException()) {
+            auto converted = JSObject::ConvertValueWithRep(attr, value);
+            if (!converted.first) {
+                return;
+            }
+            inlinedProps.emplace_back(converted.second.GetRawData());
+        } else {
+            return;
+        }
+    }
+
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef oldObj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
+        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    builder_.StartAllocate();
+    auto size = newClass->GetObjectSize();
+    GateRef newObj = builder_.HeapAlloc(builder_.IntPtr(size),
+        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), newObj,
+        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+        builder_.StoreConstOffset(VariableType::INT64(), newObj, newClass->GetInlinedPropertiesOffset(i),
+            builder_.Int64(inlinedProps.at(i)));
+    }
+    builder_.FinishAllocate();
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), newObj);
 }
 }  // namespace panda::ecmascript

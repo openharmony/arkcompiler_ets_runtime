@@ -92,7 +92,6 @@ group("ark_js_unittest") {
   deps = []
   if (host_os != "mac") {
     deps += [
-      "ecmascript/ohos/tests:unittest",
       "ecmascript/pgo_profiler/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/base/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/builtins/tests:unittest",
@@ -137,7 +136,6 @@ group("ark_unittest") {
       "ecmascript/jspandafile/tests:host_unittest",
       "ecmascript/module/tests:host_unittest",
       "ecmascript/napi/test:host_unittest",
-      "ecmascript/ohos/tests:host_unittest",
       "ecmascript/pgo_profiler/tests:host_unittest",
       "ecmascript/regexp/tests:host_unittest",
       "ecmascript/require/tests:host_unittest",
@@ -147,7 +145,10 @@ group("ark_unittest") {
     ]
     if (!run_with_asan) {
       if (!(ark_standalone_build && current_os == "ohos")) {
-        deps += [ "ecmascript/compiler/tests:host_unittest" ]
+        deps += [
+          "ecmascript/compiler/tests:host_unittest",
+          "ecmascript/ohos/tests:host_unittest",
+        ]
       }
     }
   }
@@ -186,7 +187,7 @@ group("ark_runtime_host_unittest") {
     # js unittest
     deps += [
       ":ark_unittest",
-      "$js_root/test/typeinfer:ark_pgotypeinfer_test",
+      "$js_root/test/pgotypeinfer:ark_pgotypeinfer_test",
     ]
 
     # js bytecode test
@@ -387,6 +388,10 @@ config("ark_jsruntime_common_config") {
     }
   }
 
+  if (is_ohos) {
+    defines += [ "PANDA_TARGET_OHOS" ]
+  }
+
   if (!is_mac && target_os != "ios" && !use_libfuzzer && !enable_lto_O0) {
     cflags_cc += [ "-flto=thin" ]
     ldflags += [ "-flto=thin" ]
@@ -480,6 +485,15 @@ config("ark_jsruntime_common_config") {
   # is_asan: skynet config; run_with_asan: est_runtime enable asan config
   if (is_asan) {
     defines += [ "ECMASCRIPT_ENABLE_DFX_CONFIG" ]
+  }
+
+  code_encrypto_enable = true
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_crypto_metadata_process)) {
+    code_encrypto_enable = false
+  }
+  if (code_encrypto_enable) {
+    defines += [ "CODE_ENCRYPTION_ENABLE" ]
   }
 }
 
@@ -576,6 +590,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_weak_ref.cpp",
   "ecmascript/builtins/builtins_weak_set.cpp",
   "ecmascript/byte_array.cpp",
+  "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
@@ -585,7 +600,14 @@ ecma_source = [
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",
+  "ecmascript/compiler/aot_snapshot/aot_snapshot.cpp",
+  "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.cpp",
+  "ecmascript/compiler/aot_snapshot/snapshot_global_data.cpp",
   "ecmascript/compiler/pgo_bc_info.cpp",
+  "ecmascript/compiler/pgo_type/pgo_hclass_generator.cpp",
+  "ecmascript/compiler/pgo_type/pgo_type_manager.cpp",
+  "ecmascript/compiler/pgo_type/pgo_type_parser.cpp",
+  "ecmascript/compiler/pgo_type/pgo_type_recorder.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",
@@ -845,6 +867,18 @@ ecma_profiler_source += [
   "ecmascript/snapshot/mem/snapshot_processor.cpp",
 ]
 
+ecma_stackinfo_source = []
+
+ecma_stackinfo_source = [
+  "ecmascript/extractortool/src/extractor.cpp",
+  "ecmascript/extractortool/src/file_mapper.cpp",
+  "ecmascript/extractortool/src/file_path_utils.cpp",
+  "ecmascript/extractortool/src/zip_file_reader_io.cpp",
+  "ecmascript/extractortool/src/zip_file_reader_mem.cpp",
+  "ecmascript/extractortool/src/zip_file_reader.cpp",
+  "ecmascript/extractortool/src/zip_file.cpp",
+]
+
 ecma_platform_source = []
 
 ecma_platform_source += [
@@ -968,6 +1002,10 @@ ohos_source_set("libark_jsruntime_set") {
   sources += hitrace_scope_source
   sources += ecma_platform_source
 
+  if (is_ohos) {
+    sources += ecma_stackinfo_source
+  }
+
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
@@ -983,13 +1021,13 @@ ohos_source_set("libark_jsruntime_set") {
 
   external_deps = []
   deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
   }
 
-  if (is_ohos && is_standard_system && !is_cross_platform_build &&
+  if (is_ohos && is_standard_system && !is_arkui_x &&
       defined(global_parts_info) && defined(global_parts_info.qos_manager)) {
     defines += [ "ENABLE_QOS" ]
     external_deps += [ "qos_manager:qos" ]
@@ -1028,7 +1066,7 @@ ohos_source_set("libark_js_intl_set") {
 
   external_deps = []
   deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -1056,6 +1094,11 @@ ohos_source_set("libark_jsruntime_test_set") {
   sources += ecma_platform_source
 
   defines = [ "OHOS_UNIT_TEST" ]
+
+  if (is_ohos) {
+    sources += ecma_stackinfo_source
+  }
+
   if (is_ohos && is_standard_system) {
     stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
   } else {
@@ -1072,7 +1115,7 @@ ohos_source_set("libark_jsruntime_test_set") {
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -1123,7 +1166,7 @@ ohos_source_set("libark_jsruntime_static") {
     ":libark_jsruntime_set",
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
@@ -1150,7 +1193,7 @@ ohos_shared_library("libark_jsruntime") {
     sdk_libc_secshared_dep,
   ]
   external_deps = []
-  if (!is_cross_platform_build) {
+  if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]

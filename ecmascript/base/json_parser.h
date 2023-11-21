@@ -37,6 +37,7 @@ namespace panda::ecmascript::base {
 constexpr unsigned int UNICODE_DIGIT_LENGTH = 4;
 constexpr unsigned int NUMBER_TEN = 10;
 constexpr unsigned int NUMBER_SIXTEEN = 16;
+constexpr unsigned int INTEGER_MAX_LEN = 9;
 
 constexpr unsigned char CODE_SPACE = 0x20;
 constexpr unsigned char ASCII_END = 0X7F;
@@ -112,21 +113,13 @@ protected:
     {
         if (inObjorArr) {
             bool isFast = true;
-            bool isNumber = ReadNumberRange(isFast);
+            int32_t fastInteger = 0;
+            bool isNumber = ReadNumberRange(isFast, fastInteger);
             if (!isNumber) {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
             }
             if (isFast) {
-                std::string strNum(current_, end_ + 1);
-                current_ = end_;
-                errno = 0; // reset errno to 0 to avoid errno has been changed
-                double v = std::strtod(strNum.c_str(), nullptr);
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
-                }
-                errno = 0;
-                return JSTaggedValue::TryCastDoubleToInt32(v);
+                return JSTaggedValue(fastInteger);
             }
         }
 
@@ -244,29 +237,44 @@ protected:
 
         Advance();
         SkipStartWhiteSpace();
-        JSHandle<JSArray> arr = factory_->NewJSArray();
+
         if (*current_ == ']') {
+            JSHandle<JSArray> arr = factory_->NewJSArray();
             return arr.GetTaggedValue();
         }
 
         JSTaggedValue value;
-        uint32_t index = 0;
+        std::vector<JSHandle<JSTaggedValue>> vec;
         while (current_ <= range_) {
             value = ParseJSONText(true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            ObjectFastOperator::SetPropertyByIndex<true>(thread_, arr.GetTaggedValue(), index++, value);
+            vec.emplace_back(JSHandle<JSTaggedValue>(thread_, value));
             GetNextNonSpaceChar();
             if (*current_ == ',') {
                 Advance();
             } else if (*current_ == ']') {
                 if (inObjorArr || current_ == range_) {
-                    return arr.GetTaggedValue();
+                    return CreateJsonArray(vec);
                 } else {
                     THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON", JSTaggedValue::Exception());
                 }
             }
         }
         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON", JSTaggedValue::Exception());
+    }
+
+    inline JSTaggedValue CreateJsonArray(std::vector<JSHandle<JSTaggedValue>> &vec)
+    {
+        JSHandle<JSArray> array = factory_->NewJSArray();
+        size_t arrayLength = vec.size();
+        array->SetArrayLength(thread_, arrayLength);
+        JSHandle<TaggedArray> newElements = factory_->NewTaggedArray(arrayLength);
+        for (size_t i = 0; i < arrayLength; i++) {
+            newElements->Set(thread_, i, vec[i]);
+        }
+        JSHandle<JSObject> obj(array);
+        obj->SetElements(thread_, newElements);
+        return array.GetTaggedValue();
     }
 
     JSTaggedValue ParseObject(bool inObjorArr = false)
@@ -440,18 +448,34 @@ protected:
         return true;
     }
 
-    bool ReadNumberRange(bool &isFast)
+    bool ReadNumberRange(bool &isFast, int32_t &fastInteger)
     {
         Text current = current_;
+        int32_t sign = 1;
+        if (*current == '-') {
+            current++;
+            sign = -1;
+        }
+
         if (*current == '0') {
             isFast = false;
             current++;
-        } else if (*current == '-') {
-            current++;
-            if (*current == '0') {
-                isFast = false;
-                current++;
+        } else {
+            Text advance = AdvanceLastNumberCharacter(current);
+            if (UNLIKELY(current == advance)) {
+                return false;
             }
+            size_t numberLength = advance - current;
+            int32_t i = 0;
+            if (numberLength <= INTEGER_MAX_LEN && (*advance == ',' || *advance == ']' || *advance == '}')) {
+                for (; current != advance; current++) {
+                    i = (i * 10) + ((*current) - '0');
+                }
+                fastInteger = i * sign;
+                current_ = advance - 1;
+                return true;
+            }
+            isFast = false;
         }
 
         while (current != range_) {
@@ -482,6 +506,11 @@ protected:
         }
         end_ = range_ - 1;
         return true;
+    }
+
+    Text AdvanceLastNumberCharacter(Text current)
+    {
+        return std::find_if(current, range_, [this](T c) { return !IsNumberCharacter(c); });
     }
 
     bool IsNumberCharacter(T ch)
@@ -665,7 +694,7 @@ public:
         ASSERT(str != nullptr);
         uint32_t len = EcmaStringAccessor(str).GetLength();
         ASSERT(len != UINT32_MAX);
-        CVector<uint8_t> buf(len);
+        CVector<uint8_t> buf(len + 1);
         EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len);
         Text begin = buf.data();
         return Launch(begin, begin + len);
@@ -687,11 +716,12 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
             }
             if (isFastString) {
-                std::string_view value(reinterpret_cast<const char *>(current_), end_ - current_);
+                size_t strLength = end_ - current_;
+                ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
+                JSTaggedValue res = factory_->NewCompressedUtf8(
+                    reinterpret_cast<const uint8_t *>(current_), strLength).GetTaggedValue();
                 current_ = end_;
-                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
-                return factory_->NewFromUtf8LiteralCompress(
-                    reinterpret_cast<const uint8_t *>(value.data()), value.size()).GetTaggedValue();
+                return res;
             }
         } else {
             if (*end_ != '"' || current_ == end_) {

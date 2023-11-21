@@ -200,7 +200,7 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::init
     SavePcIfNeeded(glue);
     const std::string name = RuntimeStubCSigns::GetRTName(index);
     GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
-                                                     Circuit::NullGate(), name.c_str());
+                                                     glue, name.c_str());
     return result;
 }
 
@@ -632,6 +632,12 @@ inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
     return env_->GetBuilder()->TaggedIsSpecial(x);
 }
 
+inline GateRef StubBuilder::TaggedIsRegularObject(GateRef x)
+{
+    GateRef objectType = GetObjectType(LoadHClass(x));
+    return Int32LessThan(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+}
+
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsHeapObject(x);
@@ -1032,6 +1038,11 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
+inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
+{
+    return env_->GetBuilder()->StorePrototype(glue, hclass, prototype);
+}
+
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 {
     return env_->GetBuilder()->GetObjectType(hClass);
@@ -1349,6 +1360,15 @@ inline GateRef StubBuilder::IsWritable(GateRef attr)
         Int32And(
             Int32LSR(attr, Int32(PropertyAttributes::WritableField::START_BIT)),
             Int32((1LLU << PropertyAttributes::WritableField::SIZE) - 1)),
+        Int32(0));
+}
+
+inline GateRef StubBuilder::IsDefaultAttribute(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(
+            Int32LSR(attr, Int32(PropertyAttributes::DefaultAttributesField::START_BIT)),
+            Int32((1LLU << PropertyAttributes::DefaultAttributesField::SIZE) - 1)),
         Int32(0));
 }
 

@@ -16,9 +16,10 @@
 #ifndef ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H
 #define ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H
 
+#include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
+#include "ecmascript/compiler/pgo_bc_info.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "ecmascript/compiler/pgo_bc_info.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -391,48 +392,6 @@ private:
     bool isNamespace_ {false};
 };
 
-
-class ConstantPoolInfo {
-public:
-    enum ItemType {
-        STRING = 0,
-        METHOD,
-        CLASS_LITERAL,
-        OBJECT_LITERAL,
-        ARRAY_LITERAL,
-
-        ITEM_TYPE_NUM,
-        ITEM_TYPE_FIRST = STRING,
-        ITEM_TYPE_LAST = ARRAY_LITERAL,
-    };
-
-    struct ItemData {
-        uint32_t index {0};
-        uint32_t outerMethodOffset {0};
-        CString *recordName {nullptr};
-        uint32_t bcIndex {0};
-    };
-
-    // key:constantpool index, value:ItemData
-    using Item = std::unordered_map<uint64_t, ItemData>;
-
-    ConstantPoolInfo(JSPandaFile* jsPandaFile) : items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
-
-    Item& GetCPItem(ItemType type)
-    {
-        ASSERT(ItemType::ITEM_TYPE_FIRST <= type && type <= ItemType::ITEM_TYPE_LAST);
-        return items_[type];
-    }
-
-    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex);
-private:
-    static constexpr uint32_t CONSTPOOL_MASK = 32;
-    uint64_t GetItemKey(uint32_t index, uint32_t methodOffset);
-
-    std::vector<Item> items_;
-    JSPandaFile* jsPandaFile_ {nullptr};
-};
-
 struct FastCallInfo {
     bool canFastCall_ {false};
     bool isNoGC_ {false};
@@ -440,8 +399,8 @@ struct FastCallInfo {
 
 class BCInfo {
 public:
-    explicit BCInfo(size_t maxAotMethodSize, JSPandaFile* jsPandaFile)
-        : cpInfo_(jsPandaFile), maxMethodSize_(maxAotMethodSize)
+    explicit BCInfo(size_t maxAotMethodSize)
+        : maxMethodSize_(maxAotMethodSize)
     {
     }
 
@@ -478,6 +437,11 @@ public:
         return true;
     }
 
+    const std::set<uint32_t>& GetSkippedMethodSet() const
+    {
+        return skippedMethods_;
+    }
+
     void AddSkippedMethod(uint32_t methodOffset)
     {
         skippedMethods_.insert(methodOffset);
@@ -502,6 +466,11 @@ public:
         return recordNames_[index];
     }
 
+    bool FindMethodOffsetToRecordName(uint32_t methodOffset)
+    {
+        return methodOffsetToRecordName_.find(methodOffset) != methodOffsetToRecordName_.end();
+    }
+
     void AddMethodOffsetToRecordName(uint32_t methodOffset, CString recordName)
     {
         methodOffsetToRecordName_.emplace(methodOffset, recordName);
@@ -510,25 +479,6 @@ public:
     size_t GetSkippedMethodSize() const
     {
         return skippedMethods_.size();
-    }
-
-    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
-    {
-        cpInfo_.AddIndexToCPItem(type, index, methodOffset, bcIndex);
-    }
-
-    template <class Callback>
-    void IterateConstantPoolInfo(ConstantPoolInfo::ItemType type, const Callback &cb)
-    {
-        auto &item = cpInfo_.GetCPItem(type);
-        for (auto &iter : item) {
-            ConstantPoolInfo::ItemData &data = iter.second;
-            auto recordNameIter = methodOffsetToRecordName_.find(data.outerMethodOffset);
-            if (recordNameIter != methodOffsetToRecordName_.end()) {
-                data.recordName = &recordNameIter->second;
-                cb(data);
-            }
-        }
     }
 
     uint32_t GetDefineMethod(const uint32_t classLiteralOffset) const
@@ -663,7 +613,6 @@ private:
     std::unordered_map<uint32_t, MethodInfo> methodList_ {};
     std::unordered_map<uint32_t, CString> methodOffsetToRecordName_ {};
     std::set<uint32_t> skippedMethods_ {};
-    ConstantPoolInfo cpInfo_;
     size_t maxMethodSize_;
     std::unordered_map<uint32_t, uint32_t> classTypeLOffsetToDefMethod_ {};
     std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
@@ -731,9 +680,19 @@ public:
         return &bytecodeInfo_;
     }
 
-    PGOBCInfo* GetPGOBCInfo()
+    const PGOBCInfo* GetPGOBCInfo() const
     {
         return &pgoBCInfo_;
+    }
+
+    void StoreDataToGlobalData(SnapshotGlobalData &snapshotData)
+    {
+        snapshotCPData_.StoreDataToGlobalData(snapshotData, GetSkippedMethodSet());
+    }
+
+    const std::set<uint32_t>& GetSkippedMethodSet() const
+    {
+        return bytecodeInfo_.GetSkippedMethodSet();
     }
 
     bool IsSkippedMethod(uint32_t methodOffset) const
@@ -757,9 +716,13 @@ public:
     }
 
     template <class Callback>
-    void IterateConstantPoolInfo(ConstantPoolInfo::ItemType type, const Callback &cb)
+    void IterateAllMethods(const Callback &cb)
     {
-        bytecodeInfo_.IterateConstantPoolInfo(type, cb);
+        auto &methodList = bytecodeInfo_.GetMethodList();
+        for (const auto &method : methodList) {
+            uint32_t methodOffset = method.first;
+            cb(methodOffset);
+        }
     }
 
 private:
@@ -768,12 +731,6 @@ private:
     inline size_t GetMethodInfoID()
     {
         return methodInfoIndex_++;
-    }
-
-    void AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType type,
-                                      uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
-    {
-        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset, bcIndex);
     }
 
     inline std::string GetClassName(const EntityId entityId)
@@ -805,8 +762,6 @@ private:
                                  bool *canFastCall);
     void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                  const CString &recordName);
-    void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                            uint32_t bcIndex);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
@@ -824,6 +779,7 @@ private:
     BCInfo bytecodeInfo_;
     PGOProfilerDecoder &pfDecoder_;
     PGOBCInfo pgoBCInfo_ {};
+    SnapshotConstantPoolData snapshotCPData_;
     size_t methodInfoIndex_ {0};
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};

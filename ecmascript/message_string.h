@@ -42,7 +42,14 @@ namespace panda::ecmascript {
     V(LenGreaterThanMax, "len is bigger than 2^32 - 1")                                      \
     V(ElementTypeNoElementTypes, "CreateListFromArrayLike: not an element of elementTypes")  \
     V(TargetIsDetachedBuffer, "Is Detached Buffer")                                          \
-    V(ThisBranchIsUnreachable, "this branch is unreachable")
+    V(ThisBranchIsUnreachable, "this branch is unreachable")                                 \
+    V(CanNotConvertNotUndefinedObject, "Cannot convert a UNDEFINED value to a JSObject")     \
+    V(CanNotConvertNotNullObject, "Cannot convert a NULL value to a JSObject")               \
+    V(CanNotConvertNotHoleObject, "Cannot convert a HOLE value to a JSObject")               \
+    V(CanNotConvertUnknowObject, "Cannot convert a Unknown object value to a JSObject")      \
+    V(CanNotConvertNotValidObject, "Obj is not a valid object")                              \
+    V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
+    V(InvalidStringLength, "Invalid string length")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

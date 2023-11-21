@@ -28,15 +28,68 @@ void LoopAnalysis::PrintLoop(LoopInfo* loopInfo)
     LOG_COMPILER(INFO) << "MaxDepth: " << loopInfo->maxDepth;
     LOG_COMPILER(INFO) << "Body: [";
     for (auto gate : loopInfo->loopBodys) {
-        LOG_COMPILER(INFO) << acc_.GetId(gate) << ", ";
+        acc_.ShortPrint(gate);
     }
     LOG_COMPILER(INFO) << "]";
     LOG_COMPILER(INFO) << "Exit: [";
     for (auto gate : loopInfo->loopExits) {
-        LOG_COMPILER(INFO) << acc_.GetId(gate) << ", ";
+        acc_.ShortPrint(gate);
     }
     LOG_COMPILER(INFO) << "]";
     LOG_COMPILER(INFO) << "--------------------------------- LoopInfo End ---------------------------------";
+}
+
+void LoopAnalysis::Run()
+{
+    ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
+    for (auto it = headerGates.rbegin(); it != headerGates.rend(); ++it) {
+        auto gate = *it;
+        auto loopInfo = chunk_->New<LoopInfo>(chunk_, gate);
+        loopInfos_.emplace_back(loopInfo);
+    }
+}
+
+void LoopAnalysis::CollectUseGate(ChunkUnorderedMap<GateRef, size_t>& gateToDepth,
+    ChunkQueue<GateRef>& firstList, ChunkQueue<GateRef>& secondList,
+    LoopInfo* loopInfo, GateRef cur)
+{
+    auto use = acc_.Uses(cur);
+    ASSERT(use.begin() != use.end());
+    bool isCurLoop = gateToDepth[cur] == 1; // 1: loopDepth
+    for (auto it = use.begin(); it != use.end(); ++it) {
+        auto nex = *it;
+        if (isCurLoop && acc_.IsLoopExit(cur) && (!acc_.IsFixed(*it))) {
+            continue;
+        } else if (isCurLoop && acc_.IsLoopExitRelated(cur) && acc_.IsFixed(cur)) {
+            continue;
+        } else if (acc_.GetDependCount(nex) == 0 && acc_.GetStateCount(nex) == 0) {
+            continue;
+        }
+        if (gateToDepth.count(nex)) {
+            // loop back
+            if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
+                ASSERT(gateToDepth[nex] == ComputeLoopDepth(cur, nex, gateToDepth[cur]));
+            }
+            continue;
+        }
+        if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
+            // only calculate loop depth for state & depend edges,
+            // since there is no phi of each value and each loop head.
+            gateToDepth[nex] = ComputeLoopDepth(cur, nex, gateToDepth[cur]);
+            if (acc_.HasFrameState(nex)) {
+                auto frameState = acc_.GetFrameState(nex);
+                if (acc_.GetOpCode(frameState) == OpCode::FRAME_STATE) {
+                    gateToDepth[frameState] = gateToDepth[nex];
+                    gateToDepth[acc_.GetValueIn(frameState, 1)] = gateToDepth[nex];
+                }
+            }
+            // state and depend edge should be visited first.
+            firstList.push(nex);
+            UpdateLoopInfo(loopInfo, nex, gateToDepth.at(nex));
+        } else {
+            secondList.push(nex);
+        }
+    }
 }
 
 void LoopAnalysis::CollectLoopBody(LoopInfo* loopInfo)
@@ -57,44 +110,8 @@ void LoopAnalysis::CollectLoopBody(LoopInfo* loopInfo)
             secondList.pop();
         }
         ASSERT(gateToDepth.count(cur) > 0);
-        auto use = acc_.Uses(cur);
-        ASSERT(use.begin() != use.end());
-        for (auto it = use.begin(); it != use.end(); ++it) {
-            auto nex = *it;
-            if (acc_.IsLoopExit(cur) && (!acc_.IsFixed(*it))) {
-                continue;
-            } else if (acc_.IsLoopExitRelated(cur) && acc_.IsFixed(cur)) {
-                continue;
-            } else if (acc_.GetDependCount(nex) == 0 && acc_.GetStateCount(nex) == 0) {
-                continue;
-            }
-            if (gateToDepth.count(nex)) {
-                // loop back
-                if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
-                    ASSERT(gateToDepth[nex] == ComputeLoopDepth(cur, nex, gateToDepth[cur]));
-                }
-                continue;
-            }
-            if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
-                // only calculate loop depth for state & depend edges,
-                // since there is no phi of each value and each loop head.
-                gateToDepth[nex] = ComputeLoopDepth(cur, nex, gateToDepth[cur]);
-                if (acc_.HasFrameState(nex)) {
-                    auto frameState = acc_.GetFrameState(nex);
-                    if (acc_.GetOpCode(frameState) == OpCode::FRAME_STATE) {
-                        gateToDepth[frameState] = gateToDepth[nex];
-                        gateToDepth[acc_.GetValueIn(frameState, 1)] = gateToDepth[nex];
-                    }
-                }
-                // state and depend edge should be visited first.
-                firstList.push(nex);
-                UpdateLoopInfo(loopInfo, nex, gateToDepth.at(nex));
-            } else {
-                secondList.push(nex);
-            }
-        }
+        CollectUseGate(gateToDepth, firstList, secondList, loopInfo, cur);
     }
-    return;
 }
 
 void LoopAnalysis::UpdateLoopInfo(LoopInfo* loopInfo, GateRef gate, size_t dep)

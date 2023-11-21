@@ -100,6 +100,17 @@ public:
                             bool isNew = false);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
                              const JSHandle<JSTaggedValue> &fn);
+    
+    template <class Callback>
+    static JSTaggedValue ArrayCreateWithInit(JSThread *thread, uint32_t length, const Callback &cb)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> newElements(factory->NewTaggedArray(length));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> array(JSArray::CreateArrayFromList(thread, newElements));
+        cb(newElements, length);
+        return array.GetTaggedValue();
+    }
 };
 
 class TrackInfo : public TaggedObject {

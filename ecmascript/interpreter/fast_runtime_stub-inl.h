@@ -101,12 +101,13 @@ JSTaggedValue FastRuntimeStub::FastEqual(JSTaggedValue left, JSTaggedValue right
         }
     }
     if (right.IsUndefinedOrNull()) {
-        if (left.IsHeapObject()) {
-            return JSTaggedValue::False();
-        }
         if (left.IsUndefinedOrNull()) {
             return JSTaggedValue::True();
         }
+        return JSTaggedValue::False();
+    }
+    if (left.IsUndefinedOrNull()) {
+        return JSTaggedValue::False();
     }
     if (left.IsBoolean()) {
         if (right.IsSpecial()) {

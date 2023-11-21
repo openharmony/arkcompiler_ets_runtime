@@ -87,10 +87,6 @@ JSTaggedValue BuiltinsWeakSet::WeakSetConstructor(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, adder, JSHandle<JSTaggedValue>(weakSet), undefined, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(nextValue.GetTaggedValue());
-        if (nextValue->IsArray(thread)) {
-            auto prop = JSObject::GetProperty(thread, nextValue, valueIndex).GetValue();
-            info->SetCallArg(prop.GetTaggedValue());
-        }
         // Let status be Call(adder, weakset, «nextValue.[[value]]»).
         JSFunction::Call(info);
         // If status is an abrupt completion, return IteratorClose(iter, status).

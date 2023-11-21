@@ -923,6 +923,17 @@ void FastStringEqualStubBuilder::GenerateCircuit()
     Return(result);
 }
 
+void FastStringAddStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef str1 = TaggedArgument(1);
+    GateRef str2 = Int32Argument(2);
+
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+    GateRef result = builtinsStringStubBuilder.StringConcat(glue, str1, str2);
+    Return(result);
+}
+
 void GetpropiteratorStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

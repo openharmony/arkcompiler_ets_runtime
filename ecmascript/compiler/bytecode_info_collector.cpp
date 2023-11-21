@@ -34,8 +34,9 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
                                              size_t maxAotMethodSize, bool enableCollectLiteralInfo)
     : vm_(vm),
       jsPandaFile_(jsPandaFile),
-      bytecodeInfo_(maxAotMethodSize, jsPandaFile),
+      bytecodeInfo_(maxAotMethodSize),
       pfDecoder_(pfDecoder),
+      snapshotCPData_(vm, jsPandaFile),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
@@ -252,7 +253,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
             canFastCall = false;
         }
         CollectModuleInfoFromBC(bcIns, method, recordName);
-        CollectConstantPoolIndexInfoFromBC(bcIns, method, bcIndex);
+        snapshotCPData_.Record(bcIns, bcIndex, recordName, method);
         pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
         if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
             noGC = false;
@@ -714,85 +715,6 @@ void BytecodeInfoCollector::RearrangeInnerMethods()
     }
 }
 
-void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns,
-                                                               const MethodLiteral *method, uint32_t bcIndex)
-{
-    BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
-    uint32_t methodOffset = method->GetMethodId().GetOffset();
-    switch (opcode) {
-        case BytecodeInstruction::Opcode::LDA_STR_ID16:
-        case BytecodeInstruction::Opcode::STOWNBYNAME_IMM8_ID16_V8:
-        case BytecodeInstruction::Opcode::STOWNBYNAME_IMM16_ID16_V8:
-        case BytecodeInstruction::Opcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
-        case BytecodeInstruction::Opcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
-        case BytecodeInstruction::Opcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
-        case BytecodeInstruction::Opcode::TRYLDGLOBALBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::TRYLDGLOBALBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::TRYSTGLOBALBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::TRYSTGLOBALBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::STTOGLOBALRECORD_IMM16_ID16:
-        case BytecodeInstruction::Opcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
-        case BytecodeInstruction::Opcode::STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8:
-        case BytecodeInstruction::Opcode::LDTHISBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::LDTHISBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::STTHISBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::STTHISBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::LDGLOBALVAR_IMM16_ID16:
-        case BytecodeInstruction::Opcode::LDOBJBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::LDOBJBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::STOBJBYNAME_IMM8_ID16_V8:
-        case BytecodeInstruction::Opcode::STOBJBYNAME_IMM16_ID16_V8:
-        case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM8_ID16:
-        case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM16_ID16:
-        case BytecodeInstruction::Opcode::STSUPERBYNAME_IMM8_ID16_V8:
-        case BytecodeInstruction::Opcode::STSUPERBYNAME_IMM16_ID16_V8:
-        case BytecodeInstruction::Opcode::STGLOBALVAR_IMM16_ID16:
-        case BytecodeInstruction::Opcode::LDBIGINT_ID16: {
-            auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::STRING, index, methodOffset, bcIndex);
-            break;
-        }
-        case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
-        case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8:
-        case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
-        case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
-            auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, index, methodOffset, bcIndex);
-            break;
-        }
-        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
-            auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::OBJECT_LITERAL, index, methodOffset, bcIndex);
-            break;
-        }
-        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
-            auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::ARRAY_LITERAL, index, methodOffset, bcIndex);
-            break;
-        }
-        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
-            auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset, bcIndex);
-            auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex,
-                                         methodOffset, bcIndex);
-            break;
-        }
-        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
-            auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset, bcIndex);
-            auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex,
-                                         methodOffset, bcIndex);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
 LexEnvManager::LexEnvManager(BCInfo &bcInfo)
     : lexEnvs_(bcInfo.GetMethodList().size())
 {
@@ -832,26 +754,5 @@ uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
         status = GetLexEnvStatus(offset);
     }
     return offset;
-}
-
-uint64_t ConstantPoolInfo::GetItemKey(uint32_t index, uint32_t methodOffset)
-{
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile_->GetPandaFile(),
-                                             panda_file::File::EntityId(methodOffset));
-    uint64_t result = 0;
-    result = static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
-    result = result << CONSTPOOL_MASK;
-    result |= index;
-    return result;
-}
-
-void ConstantPoolInfo::AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
-{
-    uint64_t key = GetItemKey(index, methodOffset);
-    Item &item = GetCPItem(type);
-    if (item.find(key) != item.end()) {
-        return;
-    }
-    item.insert({key, ItemData {index, methodOffset, nullptr, bcIndex}});
 }
 }  // namespace panda::ecmascript::kungfu

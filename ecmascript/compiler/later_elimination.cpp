@@ -86,7 +86,7 @@ GateRef LaterElimination::TryEliminateGate(GateRef gate)
         return Circuit::NullGate();
     }
     // lookup gate, replace
-    auto preGate = dependChain->LookupNode(this, gate);
+    auto preGate = LookupNode(dependChain, gate);
     if (preGate != Circuit::NullGate()) {
         return preGate;
     }

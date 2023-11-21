@@ -376,6 +376,12 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
+
+    if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
+        if (!lazyInit) {
+            thread_->InitializeBuiltinObject();
+        }
+    }
 }
 
 void Builtins::InitializeFunctionHclassForOptimized(const JSHandle<GlobalEnv> &env) const
@@ -2009,9 +2015,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     env->SetArrayFunction(thread_, arrayFunction);
     env->SetArrayPrototype(thread_, arrFuncPrototype);
 
-    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY,
-        arrayFunction->GetJSHClass(),
-        arrFuncPrototype->GetJSHClass());
+    thread_->SetInitialBuiltinHClass(
+        BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(), arrFuncPrototype->GetJSHClass());
 }
 
 void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const

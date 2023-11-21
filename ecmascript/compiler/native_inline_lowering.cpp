@@ -123,9 +123,9 @@ void NativeInlineLowering::ArrayForeachCall(GateRef gate, GateRef thisObj, GateR
     Label loopEnd(&builder_);
     Label exitloop(&builder_);
     Label slowForeach(&builder_);
-    DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
-    DEFVAlUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i)));
-    DEFVAlUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i)));
+    DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     builder_.Branch(builder_.Int32LessThan(*i, length), &loopHead, &exitloop);
     builder_.LoopBegin(&loopHead);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisObj);

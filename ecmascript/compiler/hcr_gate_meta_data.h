@@ -19,6 +19,7 @@
 #include <string>
 
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -65,12 +66,12 @@ public:
         return pcOffset_;
     }
 
-    void SetType(PGOSampleType type)
+    void SetType(PGOTypeRef type)
     {
         type_ = type;
     }
 
-    PGOSampleType GetType() const
+    PGOTypeRef GetType() const
     {
         return type_;
     }
@@ -99,10 +100,15 @@ public:
         return elementsKinds_;
     }
 
+    std::string Str() const
+    {
+        return GetEcmaOpcodeStr(opcode_);
+    }
+
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
-    PGOSampleType type_;
+    PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};
 };
 

@@ -16,24 +16,32 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
 #define ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
 
+#include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/enum_conversion.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeBytecodeLowering {
 public:
-    TypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
-                   bool enableLog, bool enableTypeLog,
-                   const std::string& name)
+    TypeBytecodeLowering(Circuit* circuit,
+                         PassContext* ctx,
+                         Chunk* chunk,
+                         bool enableLog,
+                         bool enableTypeLog,
+                         const std::string& name,
+                         bool enableLoweringBuiltin,
+                         const CString& recordName)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
+          chunk_(chunk),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
@@ -44,7 +52,11 @@ public:
           argAcc_(circuit),
           pgoTypeLog_(circuit),
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
-          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
+          thread_(ctx->GetEcmaVM()->GetJSThread()),
+          enableLoweringBuiltin_(enableLoweringBuiltin),
+          recordName_(recordName)
+    {
+    }
 
     ~TypeBytecodeLowering() = default;
 
@@ -86,17 +98,19 @@ private:
     void LowerTypedBinOp(GateRef gate, bool convertNumberType = true);
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
-    void LowerTypedStrictEq(GateRef gate);
+    template<TypedBinOp Op>
+    void LowerTypedEqOrStrictEq(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate, bool flag);
 
+    void LowerTypedTryLdGlobalByName(GateRef gate);
+
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
-    using AccessMode = ObjectAccessHelper::AccessMode;
-    void LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key, GateRef value);
-    GateRef BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr);
-    void BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value);
+    void LowerTypedStOwnByName(GateRef gate);
+    GateRef BuildNamedPropertyAccess(GateRef hir, PGOObjectAccessHelper accessHelper, PropertyLookupResult plr);
+    using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key);
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
     bool TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
@@ -109,7 +123,9 @@ private:
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedStObjByValue(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
+
     void LowerTypedNewObjRange(GateRef gate);
+    void LowerCreateObjectWithBuffer(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);
 
     void LowerTypedCallArg0(GateRef gate);
@@ -139,6 +155,7 @@ private:
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
     void LowerTypedTypeOf(GateRef gate);
+    void LowerInstanceOf(GateRef gate);
     void LowerGetIterator(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
@@ -171,7 +188,9 @@ private:
     BuiltinsStubCSigns::ID GetBuiltinId(BuiltinTypeId id, GateRef func);
     BuiltinsStubCSigns::ID GetPGOBuiltinId(GateRef gate);
     void DeleteConstDataIfNoUser(GateRef gate);
+    bool TryLowerNewBuiltinConstructor(GateRef gate);
 
+    void FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types);
     void AddProfiling(GateRef gate);
 
     bool Uncheck() const
@@ -184,6 +203,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
+    Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
     bool profiling_ {false};
@@ -201,6 +221,9 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
     const JSThread *thread_ {nullptr};
+    bool enableLoweringBuiltin_ {false};
+    BuiltinIndex builtinIndex_ {};
+    const CString &recordName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H

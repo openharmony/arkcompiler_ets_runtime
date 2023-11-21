@@ -39,6 +39,11 @@ public:
         return reinterpret_cast<LayoutInfo *>(obj);
     }
 
+    inline static LayoutInfo *UncheckCast(TaggedObject *obj)
+    {
+        return reinterpret_cast<LayoutInfo *>(obj);
+    }
+
     void Initialize(const JSThread *thread, int num = 0);
     int GetPropertiesCapacity() const;
     int NumberOfElements() const;
@@ -90,7 +95,9 @@ public:
                         int32_t lastLength);
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
                         const JSHandle<JSObject> object);
-    void DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, PGOObjKind kind);
+
+    void DumpFieldIndex(int index, pgo::HClassLayoutDesc *desc);
+    bool UpdateFieldIndex(int index, pgo::HClassLayoutDesc *desc);
     DECL_DUMP()
 
 private:

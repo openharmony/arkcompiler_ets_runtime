@@ -21,3 +21,4 @@ https://www.c.com
 Infinity
 -Infinity
 123
+SyntaxError
