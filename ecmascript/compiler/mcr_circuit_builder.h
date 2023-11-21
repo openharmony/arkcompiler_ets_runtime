@@ -381,7 +381,12 @@ GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
-    return BoolOr(TaggedIsUndefined(x), TaggedIsNull(x));
+    x = ChangeTaggedPointerToInt64(x);
+    GateRef heapObjMask = Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK);
+    GateRef tagSpecial = Int64(JSTaggedValue::TAG_SPECIAL);
+    GateRef andGate = Int64And(x, heapObjMask);
+    GateRef result = Equal(andGate, tagSpecial);
+    return result;
 }
 
 GateRef CircuitBuilder::TaggedTrue()

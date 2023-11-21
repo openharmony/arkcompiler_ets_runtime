@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -127,70 +128,6 @@ private:
     const JSPandaFile *jsPandaFile_ {nullptr};
     LLVMModule *aotModule_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
-};
-
-class PassOptions {
-public:
-    PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
-                bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
-                bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
-                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion, bool enableCollectLiteralInfo,
-                bool enableOptConstantFolding, bool enableLexenvSpecialization, bool enableInlineNative,
-                bool enableFastModule)
-        : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
-          enableTypeLowering_(enableTypeLowering),
-          enableEarlyElimination_(enableEarlyElimination),
-          enableLaterElimination_(enableLaterElimination),
-          enableValueNumbering_(enableValueNumbering),
-          enableTypeInfer_(enableTypeInfer),
-          enableOptInlining_(enableOptInlining),
-          enableOptPGOType_(enableOptPGOType),
-          enableOptTrackField_(enableOptTrackField),
-          enableOptLoopPeeling_(enableOptLoopPeeling),
-          enableOptOnHeapCheck_(enableOptOnHeapCheck),
-          enableOptLoopInvariantCodeMotion_(enableOptLoopInvariantCodeMotion),
-          enableCollectLiteralInfo_(enableCollectLiteralInfo),
-          enableOptConstantFolding_(enableOptConstantFolding),
-          enableLexenvSpecialization_(enableLexenvSpecialization),
-          enableInlineNative_(enableInlineNative),
-          enableFastModule_(enableFastModule)
-        {
-        }
-
-#define OPTION_LIST(V)                      \
-    V(ArrayBoundsCheckElimination, true)    \
-    V(TypeLowering, true)                   \
-    V(EarlyElimination, true)               \
-    V(LaterElimination, true)               \
-    V(ValueNumbering, false)                \
-    V(TypeInfer, false)                     \
-    V(OptInlining, false)                   \
-    V(OptNoGCCall, false)                   \
-    V(OptPGOType, false)                    \
-    V(NoCheck, false)                       \
-    V(OptTrackField, false)                 \
-    V(OptLoopPeeling, false)                \
-    V(OptOnHeapCheck, false)                \
-    V(OptLoopInvariantCodeMotion, false)    \
-    V(CollectLiteralInfo, false)            \
-    V(OptConstantFolding, true)             \
-    V(LexenvSpecialization, false)          \
-    V(InlineNative, false)                  \
-    V(FastModule, false)
-
-#define DECL_OPTION(NAME, DEFAULT)    \
-public:                               \
-    bool Enable##NAME() const         \
-    {                                 \
-        return enable##NAME##_;       \
-    }                                 \
-                                      \
-private:                              \
-    bool enable##NAME##_ {DEFAULT};
-
-    OPTION_LIST(DECL_OPTION)
-#undef ENABLE_OPTION
-#undef OPTION_LIST
 };
 
 class PassManager {

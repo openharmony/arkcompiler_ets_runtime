@@ -96,7 +96,7 @@ void PGOProfiler::ProfileDefineClass(JSTaggedType ctor)
     }
 }
 
-void PGOProfiler::ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue)
+void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue, ProfileType::Kind kind)
 {
     if (!isEnable_) {
         return;
@@ -114,11 +114,11 @@ void PGOProfiler::ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue)
     auto ctorMethod = Method::Cast(ctorMethodValue);
     auto entityId = ctorMethod->GetMethodId().GetOffset();
 
-    auto ihc = JSHClass::Cast(JSTaggedValue(ihcValue).GetTaggedObject());
-    ihc->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-    if (GetProfileType(ihcValue, ihcValue).IsNone()) {
-        ProfileType ihcProfileType(GetMethodAbcId(ctorFunc), entityId, ProfileType::Kind::ClassId, true);
-        InsertProfileType(ihcValue, ihcValue, ihcProfileType);
+    auto rootHc = JSHClass::Cast(JSTaggedValue(rootHcValue).GetTaggedObject());
+    rootHc->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
+    if (GetProfileType(rootHcValue, rootHcValue).IsNone()) {
+        ProfileType ihcProfileType(GetMethodAbcId(ctorFunc), entityId, kind, true);
+        InsertProfileType(rootHcValue, rootHcValue, ihcProfileType);
     }
 }
 
@@ -605,6 +605,16 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
+            case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
+                uint16_t slotId = READ_INST_16_0();
+                DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM8: {
@@ -635,6 +645,12 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
+            // Others
+            case EcmaOpcode::INSTANCEOF_IMM8_V8: {
+                uint8_t slotId = READ_INST_8_0();
+                DumpInstanceof(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
             case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             default:
                 break;
@@ -648,6 +664,10 @@ void PGOProfiler::DumpICByName(ApEntityId abcId, const CString &recordName, Enti
 {
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
         return;
     }
     if (firstValue.IsWeak()) {
@@ -667,6 +687,10 @@ void PGOProfiler::DumpICByValue(ApEntityId abcId, const CString &recordName, Ent
 {
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
         return;
     }
     if (firstValue.IsWeak()) {
@@ -963,12 +987,14 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         objDefType.SetCtorPt(ctorType);
         recordInfos_->AddRootLayout(ctorRootHClass, ctorType);
 
-        auto prototypeObj = JSObject::Cast(protoOrHClass);
-        auto prototypeHClass = prototypeObj->GetClass();
-        auto prototypeRootHClass = JSTaggedType(JSHClass::FindRootHClass(prototypeHClass));
-        auto prototypeType = GetProfileType(prototypeRootHClass, prototypeRootHClass);
-        objDefType.SetProtoTypePt(prototypeType);
-        recordInfos_->AddRootLayout(prototypeRootHClass, prototypeType);
+        if (protoOrHClass.IsJSObject()) {
+            auto prototypeObj = JSObject::Cast(protoOrHClass);
+            auto prototypeHClass = prototypeObj->GetClass();
+            auto prototypeRootHClass = JSTaggedType(JSHClass::FindRootHClass(prototypeHClass));
+            auto prototypeType = GetProfileType(prototypeRootHClass, prototypeRootHClass);
+            objDefType.SetProtoTypePt(prototypeType);
+            recordInfos_->AddRootLayout(prototypeRootHClass, prototypeType);
+        }
 
         recordInfos_->AddDefine(recordType, methodId, bcOffset, objDefType);
     }
@@ -1060,6 +1086,37 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
     recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }
 
+void PGOProfiler::DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                  uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
+{
+    JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
+    if (!firstValue.IsHeapObject()) {
+        if (firstValue.IsHole()) {
+            // Mega state
+            AddObjectInfoWithMega(abcId, recordName, methodId, bcOffset);
+        }
+        return;
+    }
+    if (firstValue.IsWeak()) {
+        TaggedObject *object = firstValue.GetWeakReferentUnChecked();
+        if (object->GetClass()->IsHClass()) {
+            JSHClass *hclass = JSHClass::Cast(object);
+            // Since pgo does not support symbol, we choose to return if hclass having @@hasInstance
+            JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+            JSTaggedValue key = env->GetHasInstanceSymbol().GetTaggedValue();
+            JSHClass *functionPrototypeHC = JSObject::Cast(env->GetFunctionPrototype().GetTaggedValue())->GetClass();
+            JSTaggedValue foundHClass = TryFindKeyInPrototypeChain(object, hclass, key);
+            if (!foundHClass.IsUndefined() && JSHClass::Cast(foundHClass.GetTaggedObject()) != functionPrototypeHC) {
+                return;
+            }
+            AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
+        }
+        return;
+    }
+    // Poly Not Consider now
+    return;
+}
+
 void PGOProfiler::UpdateLayout(JSHClass *hclass)
 {
     auto rootHClass = JSTaggedType(JSHClass::FindRootHClass(hclass));
@@ -1118,6 +1175,15 @@ void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, Ent
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     AddTranstionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra);
+}
+
+void PGOProfiler::AddObjectInfoWithMega(
+    ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset)
+{
+    auto megaType = ProfileType::CreateMegeType();
+    PGOObjectInfo info(megaType, megaType, megaType, megaType, megaType, megaType);
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 
 void PGOProfiler::AddElementInfo(
@@ -1313,20 +1379,20 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
         return ProfileType::PROFILE_TYPE_NONE;
     }
     ProfileType recordType {0};
-    if (recordInfo.moduleRecordIdx != -1) {
-        recordType = GetModuleRecordProfileType(abcId, recordInfo.moduleRecordIdx);
-        recordInfos_->GetRecordPool()->AddModuleRecordType(recordType, recordName);
+    if (pf->IsBundlePack()) {
+        ASSERT(recordName == JSPandaFile::ENTRY_FUNCTION_NAME);
+        recordType = CreateRecordProfileType(abcId, ProfileType::RECORD_ID_FOR_BUNDLE);
+        recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;
     }
-    ApEntityId recordId {0};
-    recordInfos_->GetRecordPool()->TryAdd(recordName, recordId);
-    recordType = GetLocalRecordProfileType(abcId, recordId);
-    return recordType;
-}
-
-ProfileType PGOProfiler::GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId)
-{
-    return {abcId, recordId, ProfileType::Kind::LocalRecordId};
+    if (recordInfo.classId != JSPandaFile::CLASSID_OFFSET_NOT_FOUND) {
+        recordType = CreateRecordProfileType(abcId, recordInfo.classId);
+        recordInfos_->GetRecordPool()->Add(recordType, recordName);
+        return recordType;
+    }
+    LOG_ECMA(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo.isCjs
+                    << ", isJson: " << recordInfo.isJson;
+    return ProfileType::PROFILE_TYPE_NONE;
 }
 
 void PGOProfiler::WorkList::PushBack(WorkNode *node)
@@ -1389,8 +1455,34 @@ void PGOProfiler::WorkList::Iterate(Callback callback) const
     }
 }
 
-ProfileType PGOProfiler::GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId)
+ProfileType PGOProfiler::CreateRecordProfileType(ApEntityId abcId, ApEntityId classId)
 {
-    return {abcId, moduleRecordId, ProfileType::Kind::ModuleRecordId};
+    return {abcId, classId, ProfileType::Kind::RecordClassId};
+}
+
+JSTaggedValue PGOProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key)
+{
+    while (!JSTaggedValue(currHC).IsUndefinedOrNull()) {
+        if (LIKELY(!currHC->IsDictionaryMode())) {
+            int entry = JSHClass::FindPropertyEntry(vm_->GetJSThread(), currHC, key);
+            if (entry != -1) {
+                return JSTaggedValue(currHC);
+            }
+        } else {
+            TaggedArray *array = TaggedArray::Cast(JSObject::Cast(currObj)->GetProperties().GetTaggedObject());
+            ASSERT(array->IsDictionaryMode());
+            NameDictionary *dict = NameDictionary::Cast(array);
+            int entry = dict->FindEntry(key);
+            if (entry != -1) {
+                return JSTaggedValue(currHC);
+            }
+        }
+        currObj = currHC->GetProto().GetTaggedObject();
+        if (JSTaggedValue(currObj).IsUndefinedOrNull()) {
+            break;
+        }
+        currHC = currObj->GetClass();
+    }
+    return JSTaggedValue::Undefined();
 }
 } // namespace panda::ecmascript::pgo

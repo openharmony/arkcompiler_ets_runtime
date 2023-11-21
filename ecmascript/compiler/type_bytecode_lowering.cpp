@@ -19,6 +19,8 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -183,10 +185,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
             break;
         case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedBinOp<TypedBinOp::TYPED_EQ>(gate, false);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_EQ>(gate);
             break;
         case EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerTypedStrictEq(gate);
+            LowerTypedEqOrStrictEq<TypedBinOp::TYPED_STRICTEQ>(gate);
             break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate, false);
@@ -327,6 +329,19 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+        case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
+            if (enableLoweringBuiltin_) {
+                LowerTypedTryLdGlobalByName(gate);
+            }
+            break;
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+            LowerInstanceOf(gate);
+            break;
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+            LowerCreateObjectWithBuffer(gate);
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -355,7 +370,8 @@ void TypeBytecodeLowering::LowerTypedUnOp(GateRef gate)
     }
 }
 
-void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
+template<TypedBinOp Op>
+void TypeBytecodeLowering::LowerTypedEqOrStrictEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -363,10 +379,13 @@ void TypeBytecodeLowering::LowerTypedStrictEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
     PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
-    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right, false)) {
-        GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
+    if (acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right) || HasNumberType(gate, left, right, false)) {
+        AddProfiling(gate);
+        GateRef result = builder_.TypedBinaryOp<Op>(
             left, right, leftType, rightType, gateType, pgoType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    } else if (HasStringType(gate, left, right)) {
+        SpeculateStrings<Op>(gate);
     }
 }
 
@@ -547,15 +566,8 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     }
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
-    std::vector<std::pair<ProfileTyper, ProfileTyper>> types;
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
-    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
-        auto temp = pgoTypes->GetObjectInfo(i);
-        types.emplace_back(std::make_pair(
-            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
-        ));
-    }
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
     // get types from pgo
 
     if (types.size() == 0) {
@@ -629,9 +641,7 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
                 builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
             auto marker =
                 builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-            auto hasChanged = builder_.GetHasChanged(marker);
-            builder_.DeoptCheck(builder_.BoolNot(hasChanged), acc_.FindNearestFrameState(builder_.GetDepend()),
-                DeoptType::PROTOTYPECHANGED);
+            builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
 
             // lookup from receiver for holder
             auto holderHC = builder_.GetHClassGateFromIndex(gate, accessInfos[i].HClassIndex());
@@ -1517,14 +1527,16 @@ bool TypeBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
     GateType ctorType = acc_.GetGateType(ctor);
     GlobalTSTypeRef ctorGT = ctorType.GetGTRef();
     GateRef constructGate = Circuit::NullGate();
-    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT) && enableNewArrayInline_) {
+    if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::ARRAY, ctorGT)) {
         if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
             if (!Uncheck()) {
                 builder_.ArrayConstructorCheck(ctor);
             }
             constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
         }
     } else if (tsManager_->IsBuiltinConstructor(BuiltinTypeId::OBJECT, ctorGT)) {
+        AddProfiling(gate);
         if (!Uncheck()) {
             builder_.ObjectConstructorCheck(ctor);
         }
@@ -1600,8 +1612,10 @@ BuiltinsStubCSigns::ID TypeBytecodeLowering::GetPGOBuiltinId(GateRef gate)
     if (sampleType.GetPGOSampleType()->IsNone()) {
         return BuiltinsStubCSigns::ID::NONE;
     }
-    ASSERT(sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId());
-    return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    if (sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId()) {
+        return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    }
+    return BuiltinsStubCSigns::ID::NONE;
 }
 
 void TypeBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
@@ -1686,17 +1700,20 @@ void TypeBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 void TypeBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 1);
-    GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return;
-    }
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateType a0Type = acc_.GetGateType(a0Value);
-    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
+    BuiltinsStubCSigns::ID id = GetPGOBuiltinId(gate);
+    if ((IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType())) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { a0Value }, id, false);
+    } else if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
     } else {
+        GateType funcType = acc_.GetGateType(func);
+        if (!tsManager_->IsFunctionTypeKind(funcType)) {
+            return;
+        }
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
         LowerTypedCall(gate, func, actualArgc, funcType, 1);
@@ -1851,7 +1868,7 @@ void TypeBytecodeLowering::LowerTypedCallthis0(GateRef gate)
         return;
     }
     BuiltinsStubCSigns::ID pgoFuncId = GetPGOBuiltinId(gate);
-    if (pgoFuncId != BuiltinsStubCSigns::ID::NONE) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { thisObj }, pgoFuncId, true);
         return;
@@ -1911,7 +1928,7 @@ void TypeBytecodeLowering::LowerTypedCallthis3(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef func = acc_.GetValueIn(gate, 4); // 4: func
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::STRING, func);
-    if (id == BuiltinsStubCSigns::ID::LocaleCompare) {
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS3(id)) {
         AddProfiling(gate);
         GateRef thisObj = acc_.GetValueIn(gate, 0);
         GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para
@@ -2013,6 +2030,18 @@ void TypeBytecodeLowering::AddProfiling(GateRef gate)
     }
 }
 
+void TypeBytecodeLowering::FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types)
+{
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        types.emplace_back(std::make_pair(
+            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
+        ));
+    }
+}
+
 void TypeBytecodeLowering::AddBytecodeCount(EcmaOpcode op)
 {
     currentOp_ = op;
@@ -2070,5 +2099,159 @@ void TypeBytecodeLowering::LowerGetIterator(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     AddProfiling(gate);
     SpeculateCallBuiltin(gate, obj, { obj }, id, true);
+}
+
+void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto value = acc_.GetValueIn(gate, 1);
+    auto idx = acc_.GetConstantValue(value);
+    auto key = tsManager_->GetStringFromConstantPool(idx);
+    auto builtinIndex = builtinIndex_.GetBuiltinIndex(key);
+    if (builtinIndex == builtinIndex_.NOT_FOUND) {
+        return;
+    }
+    AddProfiling(gate);
+    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtinIndex_.GetBuiltinBoxOffset(key)));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    DeleteConstDataIfNoUser(value);
+}
+
+void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
+    GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+
+    // CompilerCheck - pgo.hclass having [hasInstance] property
+    // if true -> slowthPath
+    // if false -> lowering
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    auto hasInstanceEnvIndex =static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
+    JSTaggedValue key = globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
+    FetchPGORWTypesDual(gate, types);
+
+    if (types.size() == 0) {
+        return;
+    }
+
+    // Instanceof does not support Poly for now
+    ASSERT(types.size() == 1);
+
+    ChunkVector<PGOObjectAccessHelper> accessHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> accessInfos(chunk_);
+    ChunkVector<PGOObjectAccessHelper> checkerHelpers(chunk_);
+    ChunkVector<PGOObjectAccessInfo> checkerInfos(chunk_);
+
+    for (size_t i = 0; i < types.size(); ++i) {
+        ProfileTyper targetPgoType = types[i].first;
+        accessHelpers.emplace_back(PGOObjectAccessHelper(tsManager_, AccessMode::LOAD,
+            target, targetPgoType, key, Circuit::NullGate()));
+        accessInfos.emplace_back(PGOObjectAccessInfo(targetPgoType));
+        // If @@hasInstance is found on prototype Chain of ctor -> slowpath
+        // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass
+        // Current temporary solution:
+        // Try searching @@hasInstance in pgo dump stage,
+        // If found, pgo dump no types and we go slowpath in aot
+        accessHelpers[i].ComputeForClassInstance(accessInfos[i]);
+        if (accessInfos[i].HClassIndex() == -1 || !accessHelpers[i].ClassInstanceIsCallable(accessInfos[i])) {
+            return;
+        }
+        checkerHelpers.emplace_back(accessHelpers[i]);
+        checkerInfos.emplace_back(accessInfos[i]);
+    }
+
+    AddProfiling(gate);
+
+    std::vector<GateRef> expectedHCIndexes;
+    for (size_t i = 0; i < types.size(); ++i) {
+        GateRef temp = builder_.Int32(checkerInfos[i].HClassIndex());
+        expectedHCIndexes.emplace_back(temp);
+    }
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    // RuntimeCheck -
+    // 1. pgo.hclass == ctor.hclass
+    // 2. ctor.hclass has a prototype chain up to Function.prototype
+    builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, target, expectedHCIndexes[0]);
+    auto ctorHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), ctorHC, JSHClass::PROTOTYPE_OFFSET);
+    auto protoHClass =
+        builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+    auto marker =
+        builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
+
+    result = builder_.OrdinaryHasInstance(obj, target);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+}
+
+void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
+{
+    auto sampleType = acc_.TryGetPGOType(gate).GetPGODefineOpType();
+    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    if (hclassIndex == -1) {
+        return;
+    }
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of value ins
+    GateRef index = acc_.GetValueIn(gate, 0);
+    auto imm = acc_.GetConstantValue(index);
+    JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        tsManager_->GetEcmaVM()->GetJSThread(), tsManager_->GetConstantPool().GetTaggedValue(), imm, recordName_);
+    JSHandle<JSObject> objhandle = JSHandle<JSObject>(thread_, obj);
+    JSHandle<TaggedArray> properties = JSHandle<TaggedArray>(thread_, objhandle->GetProperties());
+    if (properties->GetLength() > 0) {
+        return;
+    }
+    JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread_, objhandle->GetElements());
+    if (elements->GetLength() > 0) {
+        return;
+    }
+    std::vector<uint64_t> inlinedProps;
+    JSHandle<JSHClass> newClass = JSHandle<JSHClass>(thread_, ptManager->QueryHClass(type.first, type.second));
+    JSHandle<JSHClass> oldClass = JSHandle<JSHClass>(thread_, objhandle->GetClass());
+    if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
+        return;
+    }
+    auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
+    for (uint32_t i = 0; i < oldClass->GetInlinedProperties(); i++) {
+        auto attr = layout->GetAttr(i);
+        JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
+        if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
+            value.IsNumber() || value.IsBoolean() || value.IsException()) {
+            auto converted = JSObject::ConvertValueWithRep(attr, value);
+            if (!converted.first) {
+                return;
+            }
+            inlinedProps.emplace_back(converted.second.GetRawData());
+        } else {
+            return;
+        }
+    }
+
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef oldObj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
+        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    builder_.StartAllocate();
+    auto size = newClass->GetObjectSize();
+    GateRef newObj = builder_.HeapAlloc(builder_.IntPtr(size),
+        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), newObj,
+        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+        builder_.StoreConstOffset(VariableType::INT64(), newObj, newClass->GetInlinedPropertiesOffset(i),
+            builder_.Int64(inlinedProps.at(i)));
+    }
+    builder_.FinishAllocate();
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), newObj);
 }
 }  // namespace panda::ecmascript

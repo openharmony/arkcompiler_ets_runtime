@@ -1713,10 +1713,20 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     Label exit(env);
     Label equalZero(env);
     Label notEqualZero(env);
+    Label lessThanMax(env);
+    Label throwError(env);
 
     GateRef leftLength = GetLengthFromString(leftString);
     GateRef rightLength = GetLengthFromString(rightString);
     GateRef newLength = Int32Add(leftLength, rightLength);
+    Branch(Int32GreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
+    Bind(&throwError);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidStringLength));
+        CallRuntime(glue, RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
+        Jump(&exit);
+    }
+    Bind(&lessThanMax);
     Branch(Int32Equal(newLength, Int32(0)), &equalZero, &notEqualZero);
     Bind(&equalZero);
     {

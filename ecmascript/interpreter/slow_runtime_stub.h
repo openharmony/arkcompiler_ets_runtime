@@ -142,7 +142,7 @@ public:
     static JSTaggedValue TryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StArraySpread(JSThread *thread, JSTaggedValue dst, JSTaggedValue index, JSTaggedValue src);
 
-    static JSTaggedValue DefineFunc(JSThread *thread, Method *method);
+    static JSTaggedValue DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId, JSTaggedValue module);
 
     static JSTaggedValue GetSuperConstructor(JSThread *thread, JSTaggedValue ctor);
     static JSTaggedValue SuperCall(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget, uint16_t firstVRegIdx,

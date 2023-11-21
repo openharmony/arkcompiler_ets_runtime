@@ -601,8 +601,67 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 {
     RUNTIME_STUBS_HEADER(CallGetPrototype);
     JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-
     return JSProxy::GetPrototype(thread, proxy).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSDeleteProxyPrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSDeleteProxyPrototype);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSProxy::DeleteProperty(thread, proxy, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallModuleNamespaceDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallModuleNamespaceDeletePrototype);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = ModuleNamespace::DeleteProperty(thread, obj, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallTypedArrayDeletePrototype);
+    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSTypedArray::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSObject::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(Exp)
@@ -1533,6 +1592,25 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(NewJSPrimitiveRef)
+{
+    RUNTIME_STUBS_HEADER(NewJSPrimitiveRef);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue> (argv, argc, 1);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewJSPrimitiveRef(thisFunc, obj).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ThrowRangeError)
+{
+    RUNTIME_STUBS_HEADER(ThrowRangeError);
+    JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);
+    std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, message.c_str());
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
+}
+
 DEF_RUNTIME_STUBS(LoadMiss)
 {
     RUNTIME_STUBS_HEADER(LoadMiss);
@@ -1881,8 +1959,10 @@ DEF_RUNTIME_STUBS(NewObjRange)
 DEF_RUNTIME_STUBS(DefineFunc)
 {
     RUNTIME_STUBS_HEADER(DefineFunc);
-    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeDefinefunc(thread, method).GetRawData();
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeDefinefunc(thread, constpool, static_cast<uint16_t>(methodId.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -2052,6 +2132,18 @@ DEF_RUNTIME_STUBS(ToNumeric)
     RUNTIME_STUBS_HEADER(ToNumeric);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeToNumeric(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToNumericConvertBigInt)
+{
+    RUNTIME_STUBS_HEADER(ToNumericConvertBigInt);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> numericVal(thread, RuntimeToNumeric(thread, value));
+    if (numericVal->IsBigInt()) {
+        JSHandle<BigInt> bigNumericVal(numericVal);
+        return BigInt::BigIntToNumber(bigNumericVal).GetRawData();
+    }
+    return numericVal->GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DynamicImport)
@@ -2320,6 +2412,25 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     RUNTIME_STUBS_HEADER(SlowFlattenString);
     JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString)
+{
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    uint32_t index = 0;
+    if (EcmaStringAccessor(string).ToElementIndex(&index)) {
+        return JSTaggedValue(index).GetRawData();
+    }
+    if (!EcmaStringAccessor(string).IsInternString()) {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        EcmaString *str =
+            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
+        if (str == nullptr) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
+        return JSTaggedValue::Cast(static_cast<void *>(str));
+    }
+    return ecmaString;
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,

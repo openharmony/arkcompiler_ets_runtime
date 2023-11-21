@@ -142,21 +142,26 @@ bool DateParse::ParseIsoDateTime(DateProxy *proxy, DayValue *dayValue, TimeValue
             // skip '+' | '-'
             proxy->NextDate();
             DateUnit hourZone = proxy->GetDate();
-            if (!hourZone.IsTwoDecimalDigit()) {
+            if (hourZone.IsTwoDecimalDigit()) {
+                timeZone->SetHour(hourZone.GetValue());
+                proxy->NextDate();
+                if (!proxy->GetDate().IsSymbol(':')) {
+                    return false;
+                }
+                proxy->NextDate();
+                DateUnit minZone = proxy->GetDate();
+                if (!minZone.IsTwoDecimalDigit()) {
+                    return false;
+                }
+                timeZone->SetMin(minZone.GetValue());
+                proxy->NextDate();
+            } else if (hourZone.IsFourDecimalDigit()) {
+                timeZone->SetHour(hourZone.GetValue() / JSDate::HUNDRED);
+                timeZone->SetMin(hourZone.GetValue() % JSDate::HUNDRED);
+                proxy->NextDate();
+            } else {
                 return false;
             }
-            timeZone->SetHour(hourZone.GetValue());
-            proxy->NextDate();
-            if (!proxy->GetDate().IsSymbol(':')) {
-                return false;
-            }
-            proxy->NextDate();
-            DateUnit minZone = proxy->GetDate();
-            if (!minZone.IsTwoDecimalDigit()) {
-                return false;
-            }
-            timeZone->SetMin(minZone.GetValue());
-            proxy->NextDate();
         } else {
             if (!proxy->GetDate().IsStringEnd()) {
                 return false;

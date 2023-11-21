@@ -59,7 +59,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableCollectLiteralInfo_ = false;
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
-    isEnableFastModule_ = runtimeOptions.IsEnableFastModule();
+    isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)

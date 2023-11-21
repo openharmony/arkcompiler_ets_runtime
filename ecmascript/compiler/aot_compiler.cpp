@@ -22,6 +22,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -116,23 +117,26 @@ int Main(const int argc, const char **argv)
         cPreprocessor.SnapshotInitialize();
         ret = cPreprocessor.GetCompilerResult();
 
-        PassOptions passOptions(cOptions.isEnableArrayBoundsCheckElimination_,
-                                cOptions.isEnableTypeLowering_,
-                                cOptions.isEnableEarlyElimination_,
-                                cOptions.isEnableLaterElimination_,
-                                cOptions.isEnableValueNumbering_,
-                                cOptions.isEnableTypeInfer_,
-                                cOptions.isEnableOptInlining_,
-                                cOptions.isEnableOptPGOType_,
-                                cOptions.isEnableOptTrackField_,
-                                cOptions.isEnableOptLoopPeeling_,
-                                cOptions.isEnableOptOnHeapCheck_,
-                                cOptions.isEnableOptLoopInvariantCodeMotion_,
-                                cOptions.isEnableCollectLiteralInfo_,
-                                cOptions.isEnableOptConstantFolding_,
-                                cOptions.isEnableLexenvSpecialization_,
-                                cOptions.isEnableNativeInline_,
-                                cOptions.isEnableFastModule_);
+        PassOptions::Builder optionsBuilder;
+        PassOptions passOptions =
+            optionsBuilder.EnableArrayBoundsCheckElimination(cOptions.isEnableArrayBoundsCheckElimination_)
+                .EnableTypeLowering(cOptions.isEnableTypeLowering_)
+                .EnableEarlyElimination(cOptions.isEnableEarlyElimination_)
+                .EnableLaterElimination(cOptions.isEnableLaterElimination_)
+                .EnableValueNumbering(cOptions.isEnableValueNumbering_)
+                .EnableTypeInfer(cOptions.isEnableTypeInfer_)
+                .EnableOptInlining(cOptions.isEnableOptInlining_)
+                .EnableOptPGOType(cOptions.isEnableOptPGOType_)
+                .EnableOptTrackField(cOptions.isEnableOptTrackField_)
+                .EnableOptLoopPeeling(cOptions.isEnableOptLoopPeeling_)
+                .EnableOptOnHeapCheck(cOptions.isEnableOptOnHeapCheck_)
+                .EnableOptLoopInvariantCodeMotion(cOptions.isEnableOptLoopInvariantCodeMotion_)
+                .EnableCollectLiteralInfo(cOptions.isEnableCollectLiteralInfo_)
+                .EnableOptConstantFolding(cOptions.isEnableOptConstantFolding_)
+                .EnableLexenvSpecialization(cOptions.isEnableLexenvSpecialization_)
+                .EnableInlineNative(cOptions.isEnableNativeInline_)
+                .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
+                .Build();
 
         PassManager passManager(vm,
                                 cOptions.triple_,

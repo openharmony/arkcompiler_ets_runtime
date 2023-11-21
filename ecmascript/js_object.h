@@ -648,6 +648,7 @@ public:
     inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
     inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
     inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;
+    PropertyBox* GetGlobalPropertyBox(JSThread *thread, const std::string& key);
     template <bool needBarrier = true>
     inline void SetProperty(const JSThread *thread, const JSHClass *hclass, PropertyAttributes attr,
                             JSTaggedValue value);
@@ -655,6 +656,7 @@ public:
     static bool IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver);
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
+    static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
@@ -670,6 +672,9 @@ public:
     static JSHandle<JSTaggedValue> IterableToList(JSThread *thread, const JSHandle<JSTaggedValue> &items,
                                                   JSTaggedValue method = JSTaggedValue::Undefined());
 
+    static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
+
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
@@ -681,6 +686,7 @@ private:
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
 
+    PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));

@@ -39,6 +39,7 @@ public:
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
+        uint32_t classId {CLASSID_OFFSET_NOT_FOUND};
         CString npmPackageName;
 
         void SetParsedConstpoolVM(const EcmaVM *vm)
@@ -76,6 +77,7 @@ public:
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
+    static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
     static constexpr int32_t PF_OFFSET = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);

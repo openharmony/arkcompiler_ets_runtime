@@ -151,7 +151,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE,
     OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
     OPTION_COMPILER_ENABLE_NATIVE_INLINE,
-    OPTION_COMPILER_ENABLE_FAST_MODULE
+    OPTION_COMPILER_ENABLE_LOWERING_BUILTIN
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1324,14 +1324,14 @@ public:
         enableNativeInline_ = value;
     }
 
-    bool IsEnableFastModule() const
+    bool IsEnableLoweringBuiltin() const
     {
-        return enableFastModule_;
+        return enableLoweringBuiltin_;
     }
 
-    void SetEnableFastModule(bool value)
+    void SetEnableLoweringBuiltin(bool value)
     {
-        enableFastModule_ = value;
+        enableLoweringBuiltin_ = value;
     }
 
 private:
@@ -1442,7 +1442,7 @@ private:
     bool enableOptLoopInvariantCodeMotion_ {false};
     bool enableLexenvSpecialization_ {true};
     bool enableNativeInline_ {false};
-    bool enableFastModule_ {false};
+    bool enableLoweringBuiltin_ {false};
 };
 }  // namespace panda::ecmascript
 

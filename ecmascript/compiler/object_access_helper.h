@@ -199,6 +199,7 @@ public:
         return value_;
     }
     bool ComputeForClassInstance(PGOObjectAccessInfo &info);
+    bool ClassInstanceIsCallable(PGOObjectAccessInfo &info);
 
 private:
 

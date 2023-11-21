@@ -548,7 +548,6 @@ private:
     CMap<ProfileType, PGOMethodInfoMap *> recordInfos_;
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;
     PGOProfilerHeader *header_ {nullptr};
-    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
@@ -721,7 +720,7 @@ private:
     std::unique_ptr<Chunk> chunk_;
     CUnorderedMap<CString, CUnorderedMap<CString, PGOMethodIdSet *>> methodIds_;
     PGOProfilerHeader *header_ {nullptr};
-    std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
+    // std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;

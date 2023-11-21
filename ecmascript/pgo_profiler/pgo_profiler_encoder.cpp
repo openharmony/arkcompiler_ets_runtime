@@ -193,7 +193,8 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     {
         ReadLockHolder lock(rwLock_);
-        PGOFileSectionInterface::ProcessSectionToBinary(fileStream, header_, *abcFilePool_->GetPool());
+        PGOFileSectionInterface::ProcessSectionToBinary(*globalRecordInfos_, fileStream, header_,
+                                                        *abcFilePool_->GetPool());
     }
     header_->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
     header_->ProcessToBinary(fileStream);

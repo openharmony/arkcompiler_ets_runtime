@@ -684,4 +684,110 @@ void BuiltinsObjectStubBuilder::Assign(Variable *result, Label *exit, Label *slo
         }
     }
 }
+
+void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label keyIsString(env);
+    Label valid(env);
+    Label isHeapObject(env);
+    GateRef prop = GetCallArg0(numArgs_);
+    Branch(TaggedIsHeapObject(thisValue_), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    Branch(TaggedIsRegularObject(thisValue_), &valid, slowPath);
+    Bind(&valid);
+    {
+        Label isIndex(env);
+        Label notIndex(env);
+        Branch(TaggedIsString(prop), &keyIsString, slowPath); // 2 : two args
+        Bind(&keyIsString);
+        {
+            GateRef res = CallNGCRuntime(glue_, RTSTUB_ID(TryToElementsIndexOrFindInStringTable), { glue_, prop });
+            Branch(TaggedIsNumber(res), &isIndex, &notIndex);
+            Bind(&isIndex);
+            {
+                GateRef index = NumberGetInt(glue_, res);
+                Label findByIndex(env);
+                GateRef elements = GetElementsArray(thisValue_);
+                GateRef len = GetLengthOfTaggedArray(elements);
+                Branch(Int32Equal(len, Int32(0)), exit, &findByIndex);
+                Bind(&findByIndex);
+                {
+                    Label isDictionaryElement(env);
+                    Label notDictionaryElement(env);
+                    Branch(IsDictionaryMode(elements), &isDictionaryElement, &notDictionaryElement);
+                    Bind(&notDictionaryElement);
+                    {
+                        Label lessThanLength(env);
+                        Label notLessThanLength(env);
+                        Branch(Int32UnsignedLessThanOrEqual(len, index), exit, &lessThanLength);
+                        Bind(&lessThanLength);
+                        {
+                            Label notHole(env);
+                            GateRef value = GetValueFromTaggedArray(elements, index);
+                            Branch(TaggedIsNotHole(value), &notHole, exit);
+                            Bind(&notHole);
+                            {
+                                *result = TaggedTrue();
+                                Jump(exit);
+                            }
+                        }
+                    }
+                    Bind(&isDictionaryElement);
+                    {
+                        GateRef entryA = FindElementFromNumberDictionary(glue_, elements, index);
+                        Label notNegtiveOne(env);
+                        Branch(Int32NotEqual(entryA, Int32(-1)), &notNegtiveOne, exit);
+                        Bind(&notNegtiveOne);
+                        {
+                            *result = TaggedTrue();
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+            Bind(&notIndex);
+            {
+                Label findInStringTabel(env);
+                Branch(TaggedIsHole(res), exit, &findInStringTabel);
+                Bind(&findInStringTabel);
+                {
+                    Label isDicMode(env);
+                    Label notDicMode(env);
+                    GateRef hclass = LoadHClass(thisValue_);
+                    Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+                    Bind(&notDicMode);
+                    {
+                        GateRef layOutInfo = GetLayoutFromHClass(hclass);
+                        GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
+                        // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
+                        GateRef entryA = FindElementWithCache(glue_, layOutInfo, hclass, res, propsNum);
+                        Label hasEntry(env);
+                        // if branch condition : entry != -1
+                        Branch(Int32NotEqual(entryA, Int32(-1)), &hasEntry, exit);
+                        Bind(&hasEntry);
+                        {
+                            *result = TaggedTrue();
+                            Jump(exit);
+                        }
+                    }
+                    Bind(&isDicMode);
+                    {
+                        GateRef array = GetPropertiesArray(thisValue_);
+                        // int entry = dict->FindEntry(key)
+                        GateRef entryB = FindEntryFromNameDictionary(glue_, array, res);
+                        Label notNegtiveOne(env);
+                        // if branch condition : entry != -1
+                        Branch(Int32NotEqual(entryB, Int32(-1)), &notNegtiveOne, exit);
+                        Bind(&notNegtiveOne);
+                        {
+                            *result = TaggedTrue();
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

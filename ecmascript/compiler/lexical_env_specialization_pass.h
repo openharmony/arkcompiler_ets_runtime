@@ -17,18 +17,19 @@
 #ifndef ECMASCRIPT_LEXICAL_ENV_SPECIALIZATION_H
 #define ECMASCRIPT_LEXICAL_ENV_SPECIALIZATION_H
 
-#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/base/depend_chain_helper.h"
+#include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 
 namespace panda::ecmascript::kungfu {
 class DependChains;
-class LexicalEnvSpecialization : public PassVisitor {
+class LexicalEnvSpecializationPass : public PassVisitor {
 public:
-    LexicalEnvSpecialization(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk, bool enableLog)
+    LexicalEnvSpecializationPass(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk, bool enableLog)
         : PassVisitor(circuit, chunk, visitor), chunk_(chunk), dependChains_(chunk), specializeId_(chunk),
-        notdomStlexvar_(chunk), notDomCall_(chunk_), enableLog_(enableLog) {}
+        notdomStlexvar_(chunk), notDomCall_(chunk_), enableLog_(enableLog), acc_(circuit) {}
 
-    ~LexicalEnvSpecialization() = default;
+    ~LexicalEnvSpecializationPass() = default;
 
     void Initialize() override;
     GateRef VisitGate(GateRef gate) override;
@@ -42,10 +43,6 @@ private:
         return dependChains_[idx];
     }
 
-    void SpecializeInlinedGetEnv();
-    void TryReplaceGetEnv(GateRef gate, GateRef func);
-    void ReplaceGetEnv(GateRef gate, GateRef env);
-
     GateRef VisitDependEntry(GateRef gate);
     GateRef UpdateDependChain(GateRef gate, DependChains* dependInfo);
     GateRef TrySpecializeLdLexVar(GateRef gate);
@@ -58,6 +55,7 @@ private:
     bool HasNotDomCall(GateRef gate);
     bool HasNotDomIllegalOp(GateRef gate);
     void LookUpNotDomStLexVarOrCall(GateRef current, GateRef next);
+    GateRef LookupStLexvarNode(DependChains* dependChain, GateRef gate);
 
     Chunk *chunk_ {nullptr};
     ChunkVector<DependChains*> dependChains_;
@@ -65,6 +63,21 @@ private:
     ChunkMap<GateRef, GateRef> notdomStlexvar_;
     ChunkMap<GateRef, GateRef> notDomCall_;
     bool enableLog_ {false};
+    GateAccessor acc_;
+};
+
+class GetEnvSpecializationPass : public PassVisitor {
+public:
+    GetEnvSpecializationPass(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk)
+        : PassVisitor(circuit, chunk, visitor),
+          acc_(circuit) {}
+    ~GetEnvSpecializationPass() = default;
+
+    GateRef VisitGate(GateRef gate) override;
+private:
+    GateRef TryGetReplaceEnv(GateRef func);
+
+    GateAccessor acc_;
 };
 }
 #endif // ECMASCRIPT_LEXICAL_ENV_SPECIALIZATION_H

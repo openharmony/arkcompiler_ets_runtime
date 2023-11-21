@@ -64,7 +64,7 @@ struct CompilationOptions {
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
     bool isEnablePGOHCRLowering_;
-    bool isEnableFastModule_;
+    bool isEnableLoweringBuiltin_;
 };
 
 class AotCompilerPreprocessor {

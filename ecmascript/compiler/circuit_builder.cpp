@@ -697,9 +697,9 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Bind(&cache);
     {
         if (type == ConstPoolType::METHOD) {
-            Label isInt(env_);
-            Branch(TaggedIsInt(*result), &isInt, &exit);
-            Bind(&isInt);
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
                     { constPool, Int32ToTaggedInt(index), module }, hirGate);
@@ -835,6 +835,21 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->LoadBuiltinObject(offset),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 
 }  // namespace panda::ecmascript::kungfu

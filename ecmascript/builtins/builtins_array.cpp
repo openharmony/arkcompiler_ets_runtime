@@ -120,12 +120,15 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     //   d. Assert: defineStatus is true.
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> itemK(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < argc; k++) {
         key.Update(JSTaggedValue(k));
-        JSHandle<JSTaggedValue> itemK = GetCallArg(argv, k);
+        itemK.Update(GetCallArg(argv, k));
+        if (itemK.GetTaggedValue().IsHole()) {
+            itemK.Update(JSTaggedValue::Undefined());
+        }
         JSObject::CreateDataProperty(thread, newArrayHandle, key, itemK);
     }
-
     // 11. Assert: the value of array’s length property is numberOfArgs.
     // 12. Return array.
     JSArray::Cast(*newArrayHandle)->SetArrayLength(thread, argc);
@@ -745,6 +748,18 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+
+    if (thisHandle->IsJSArray()) {
+        bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
+        if (isDictionary) {
+            uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
+            uint32_t size = thisObjHandle->GetNumberOfElements();
+            if (length - size > JSObject::MAX_GAP) {
+                JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
+            }
+        }
+    }
+
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1836,10 +1851,6 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // Fast path for stable array. Returns thisValue.
-    if (thisObjVal->IsStableJSArray(thread)) {
-        return JSStableArray::Reverse(thread, thisObjHandle, len);
-    }
 
     // 5. Let middle be floor(len/2).
     int64_t middle = std::floor(len / 2);
@@ -1883,6 +1894,10 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
+
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSStableArray::Reverse(thread, thisObjHandle, lower, len);
+    }
     while (lower != middle) {
         int64_t upper = len - lower - 1;
         lowerP.Update(JSTaggedValue(lower));

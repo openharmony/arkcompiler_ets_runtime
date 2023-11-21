@@ -43,14 +43,14 @@ namespace panda::ecmascript {
         return JSTaggedValue::Hole();                 \
     }
 
-std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thread,
+                                                                  JSTaggedValue receiver, JSTaggedValue key)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
     if (!receiver.IsHeapObject() || !(receiver.IsRegularObject())) {
         return std::make_pair(JSTaggedValue::Hole(), false);
     }
-    if (!key.IsString())
-    {
+    if (!key.IsString()) {
         return std::make_pair(JSTaggedValue::Hole(), false);
     }
 

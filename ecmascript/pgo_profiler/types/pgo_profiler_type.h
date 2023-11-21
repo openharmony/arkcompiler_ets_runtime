@@ -446,6 +446,11 @@ public:
         return receiverType_.IsNone();
     }
 
+    bool IsMegaStateType() const
+    {
+        return receiverType_.IsMegaStateType();
+    }
+
     bool InConstructor() const
     {
         return receiverType_.IsConstructor();
@@ -505,6 +510,10 @@ public:
     void AddObjectInfo(const PGOObjectInfoType &info)
     {
         if (info.IsNone()) {
+            return;
+        }
+        if (info.IsMegaStateType()) {
+            count_ = 0;
             return;
         }
         uint32_t count = 0;

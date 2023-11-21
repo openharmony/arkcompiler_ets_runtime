@@ -103,7 +103,7 @@ public:
 
     static constexpr size_t SIZE = DATA_OFFSET;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(TaggedNode, NEXT_OFFSET, SIZE)
-
+    DECL_DUMP()
     static JSHandle<RBTreeNode> Treeing(JSThread *thread, const JSHandle<LinkedNode> &head);
 };
 

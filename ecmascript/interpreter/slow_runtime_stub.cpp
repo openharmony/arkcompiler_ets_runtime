@@ -965,12 +965,14 @@ JSTaggedValue SlowRuntimeStub::StArraySpread(JSThread *thread, JSTaggedValue dst
     return RuntimeStubs::RuntimeStArraySpread(thread, dstHandle, index, srcHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, Method *method)
+JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId,
+                                          JSTaggedValue module)
 {
     INTERPRETER_TRACE(thread, DefineFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<Method> methodHandle(thread, method);
-    return RuntimeStubs::RuntimeDefinefunc(thread, methodHandle);
+    JSHandle<JSTaggedValue> constpoolHandle(thread, constPool);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    return RuntimeStubs::RuntimeDefinefunc(thread, constpoolHandle, methodId, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)

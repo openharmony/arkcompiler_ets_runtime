@@ -31,6 +31,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/frame_states.h"
 #include "ecmascript/compiler/loop_analysis.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -230,6 +231,7 @@ public:
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes,
             enableOptTrackField),
+          pgoTypeRecorder_(*decoder, jsPandaFile, method_->GetMethodId().GetOffset()),
           hasTypes_(hasTypes), enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
@@ -381,19 +383,14 @@ public:
         return GetPcOffset(jsGatesToByteCode_.at(gate));
     }
 
-    PGORWOpType GetPGOType(GateRef gate) const
+    std::vector<ElementsKind> GetElementsKindsForUser(GateRef gate) const
     {
-        return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
+        return pgoTypeRecorder_.GetElementsKindsForUser(GetPcOffsetByGate(gate));
     }
 
-    std::vector<ElementsKind> LoadElementsKinds(GateRef gate) const
+    ElementsKind GetElementsKindForCreater(GateRef gate) const
     {
-        return typeRecorder_.LoadElementsKinds(GetPcOffsetByGate(gate));
-    }
-
-    ElementsKind GetArrayElementsKind(GateRef gate) const
-    {
-        return typeRecorder_.GetElementsKind(gateAcc_.TryGetPcOffset(gate));
+        return pgoTypeRecorder_.GetElementsKindForCreater(gateAcc_.TryGetPcOffset(gate));
     }
 
     bool ShouldPGOTypeInfer(GateRef gate) const
@@ -514,6 +511,11 @@ public:
         return &typeRecorder_;
     }
 
+    const PGOTypeRecorder *GetPGOTypeRecorder() const
+    {
+        return &pgoTypeRecorder_;
+    }
+
     GateRef GetArgGate(const size_t currentVreg) const
     {
         return argAcc_.GetArgGate(currentVreg);
@@ -578,6 +580,7 @@ private:
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
     TypeRecorder typeRecorder_;
+    PGOTypeRecorder pgoTypeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
     bool enableTypeLowering_ {false};

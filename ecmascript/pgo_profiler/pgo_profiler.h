@@ -54,13 +54,13 @@ public:
 
     virtual ~PGOProfiler();
 
-    static ProfileType GetLocalRecordProfileType(ApEntityId abcId, ApEntityId recordId);
-    static ProfileType GetModuleRecordProfileType(ApEntityId abcId, ApEntityId moduleRecordId);
+    static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
     void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
     void ProfileDefineGetterSetter(
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
-    void ProfileDefineIClass(JSTaggedType ctor, JSTaggedType ihcValue);
+    void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
+                                ProfileType::Kind kind = ProfileType::Kind::ClassId);
     void UpdateProfileType(JSHClass *oldHClass, JSHClass *newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
@@ -85,6 +85,8 @@ public:
     void UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag);
     void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
+
+    JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
@@ -133,6 +135,8 @@ private:
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
     void DumpGetIterator(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+    void DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                         uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 
     void UpdateLayout(JSHClass *hclass);
     void AddTranstionLayout(JSHClass *parent, JSHClass *child);
@@ -141,6 +145,7 @@ private:
 
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
+    void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
     void AddElementInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver);
 

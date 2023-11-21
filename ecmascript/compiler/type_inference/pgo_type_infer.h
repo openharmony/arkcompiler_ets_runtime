@@ -60,7 +60,7 @@ private:
         return types.size() == 1;
     }
 
-    inline bool IsMonoNumberType(PGORWOpType &pgoTypes) const
+    inline bool IsMonoNumberType(const PGORWOpType &pgoTypes) const
     {
         // "ldobjbyvalue" will collect the type of the variable inside the square brackets while pgo collecting.
         // If the type is "number", it will be marked as an "Element".

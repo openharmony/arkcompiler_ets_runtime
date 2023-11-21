@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
@@ -239,6 +240,7 @@ private:
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     TSManager *tsManager_ {nullptr};
     const TypeRecorder *typeRecorder_ {nullptr};
+    const PGOTypeRecorder *pgoTypeRecorder_ {nullptr};
     FrameLiveOut *liveOutResult_ {nullptr};
     FrameLiveOut *currentBBliveOut_ {nullptr};
     FrameContext *liveContext_ {nullptr};

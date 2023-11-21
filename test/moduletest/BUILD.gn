@@ -31,6 +31,7 @@ group("ark_js_moduletest") {
     "arraywith",
     "arraysort",
     "arrayprotochange",
+    "arrayshift",
     "assignproxy",
     "async",
     "asyncgenerator",
@@ -99,14 +100,17 @@ group("ark_js_moduletest") {
     "negintmin",
     "newobjdynrange",
     "objectcloneproperties",
+    "objecthasownproperty",
     "objoperate",
     "objseal",
     "promise",
     "propertydetector",
     "protobuf",
     "proxy",
+    "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
+    "regress",
     "require",
     "setobjectwithproto",
     "spreadoperator",
@@ -131,6 +135,7 @@ group("ark_js_moduletest") {
     "esmnestedimportcjs",
     "regexp",
     "deregistermodule",
+    "getpropertybyic",
   ]
 
   deps = []
@@ -177,6 +182,7 @@ group("ark_asm_test") {
     "arraypop",
     "arraysort",
     "arrayprotochange",
+    "arrayshift",
     "asmstackoverflow",
     "assignproxy",
     "async",
@@ -233,11 +239,13 @@ group("ark_asm_test") {
     "negintmin",
     "newobjdynrange",
     "objectcloneproperties",
+    "objecthasownproperty",
     "objoperate",
     "objseal",
     "promise",
     "propertydetector",
     "proxy",
+    "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
     "setobjectwithproto",
@@ -258,6 +266,7 @@ group("ark_asm_test") {
     "yieldstar",
     "regexp",
     "deregistermodule",
+    "getpropertybyic",
   ]
 
   deps = []
@@ -302,6 +311,7 @@ group("ark_asm_single_step_test") {
     "arrayjoin",
     "arraypop",
     "arrayprotochange",
+    "arrayshift",
     "asmstackoverflow",
     "assignproxy",
     "async",
@@ -350,11 +360,13 @@ group("ark_asm_single_step_test") {
     "negintmin",
     "newobjdynrange",
     "objectcloneproperties",
+    "objecthasownproperty",
     "objoperate",
     "objseal",
     "promise",
     "propertydetector",
     "proxy",
+    "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
     "setobjectwithproto",
@@ -372,6 +384,7 @@ group("ark_asm_single_step_test") {
     "watch",
     "weakcollectionswithsymbol",
     "yieldstar",
+    "getpropertybyic",
   ]
 
   deps = []

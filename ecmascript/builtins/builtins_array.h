@@ -63,7 +63,7 @@
     /* Array.prototype.forEach ( callbackfn [ , thisArg ] ) */              \
     V("forEach",        ForEach,          1, ArrayForEach)                  \
     /* Array.prototype.includes ( searchElement [ , fromIndex ] ) */        \
-    V("includes",       Includes,         1, INVALID)                       \
+    V("includes",       Includes,         1, ArrayIncludes)                 \
     /* Array.prototype.indexOf ( searchElement [ , fromIndex ] ) */         \
     V("indexOf",        IndexOf,          1, ArrayIndexOf)                  \
     /* Array.prototype.join ( separator ) */                                \

@@ -206,6 +206,7 @@ public:
     GateRef TaggedIsUndefined(GateRef x);
     GateRef TaggedIsException(GateRef x);
     GateRef TaggedIsSpecial(GateRef x);
+    GateRef TaggedIsRegularObject(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
@@ -233,6 +234,7 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
+    GateRef NumberGetInt(GateRef glue, GateRef x);
     GateRef TaggedGetNumber(GateRef x);
     GateRef Int8ToTaggedInt(GateRef x);
     GateRef Int16ToTaggedInt(GateRef x);
@@ -527,6 +529,11 @@ public:
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
+    GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
+    GateRef ToObject(GateRef glue, GateRef obj);
+    GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
+    GateRef NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj);
+    GateRef ModuleNamespaceDeleteProperty(GateRef glue, GateRef obj, GateRef value);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
     GateRef TruncInt32ToInt16(GateRef x);

@@ -386,6 +386,9 @@ public:
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void TransitionElementsToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
+    static void OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static void OptimizeAsFastProperties(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                         const std::vector<int> &indexArray = {}, bool isDictionary = false);
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr);

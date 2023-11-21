@@ -462,6 +462,8 @@ namespace panda::ecmascript::kungfu {
 #define ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)                     \
     APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)        \
     APPEND_SUFFIX_IMM16(HandleDefineclasswithbufferImm16Id16Id16Imm16V8, V) \
+    APPEND_SUFFIX(HandleDefinefuncImm8Id16Imm8, V)                          \
+    APPEND_SUFFIX_IMM16(HandleDefinefuncImm16Id16Imm8, V)                   \
     APPEND_SUFFIX(HandleDefinegettersetterbyvalueV8V8V8V8, V)               \
     APPEND_SUFFIX(HandleCreateobjectwithbufferImm8Id16, V)                  \
     APPEND_SUFFIX_IMM16(HandleCreateobjectwithbufferImm16Id16, V)           \

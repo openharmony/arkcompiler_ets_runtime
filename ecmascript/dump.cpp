@@ -524,6 +524,37 @@ static void DumpPropertyKey(JSTaggedValue key, std::ostream &os)
     }
 }
 
+static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream &os)
+{
+    if (attr.IsAccessor()) {
+        os << "(Accessor) ";
+    }
+
+    os << "Attr(";
+    if (attr.IsNoneAttributes()) {
+        os << "NONE";
+    }
+    if (attr.IsWritable()) {
+        os << "W";
+    }
+    if (attr.IsEnumerable()) {
+        os << "E";
+    }
+    if (attr.IsConfigurable()) {
+        os << "C";
+    }
+    os << ")";
+
+    os << " InlinedProps: " << attr.IsInlinedProps();
+
+    if (fastMode) {
+        os << " Order: " << std::dec << attr.GetOffset();
+        os << " SortedIndex: " << std::dec << attr.GetSortedIndex();
+    } else {
+        os << " Order: " << std::dec << attr.GetDictionaryOrder();
+    }
+}
+
 static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDetail)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -538,8 +569,18 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     attrs.DumpTaggedValue(os);
     os << "\n";
     if (withDetail && !attrs.IsNull()) {
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
-        layoutInfo->Dump(os);
+        LayoutInfo *layout = LayoutInfo::Cast(jshclass->GetLayout().GetTaggedObject());
+        int element = static_cast<int>(jshclass->NumberOfProps());
+        for (int i = 0; i < element; i++) {
+            JSTaggedValue key = layout->GetKey(i);
+            PropertyAttributes attr = layout->GetAttr(i);
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
+            os << "[" << i << "]: ";
+            DumpPropertyKey(key, os);
+            os << " : ";
+            DumpAttr(attr, true, os);
+            os << "\n";
+        }
     }
 
     os << " - Transitions :" << std::setw(DUMP_TYPE_OFFSET);
@@ -607,37 +648,6 @@ static void DumpClass(TaggedObject *obj, std::ostream &os)
 {
     ASSERT(obj->GetClass()->GetObjectType() == JSType::HCLASS);
     DumpHClass(JSHClass::Cast(obj), os, true);
-}
-
-static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream &os)
-{
-    if (attr.IsAccessor()) {
-        os << "(Accessor) ";
-    }
-
-    os << "Attr(";
-    if (attr.IsNoneAttributes()) {
-        os << "NONE";
-    }
-    if (attr.IsWritable()) {
-        os << "W";
-    }
-    if (attr.IsEnumerable()) {
-        os << "E";
-    }
-    if (attr.IsConfigurable()) {
-        os << "C";
-    }
-    os << ")";
-
-    os << " InlinedProps: " << attr.IsInlinedProps();
-
-    if (fastMode) {
-        os << " Order: " << std::dec << attr.GetOffset();
-        os << " SortedIndex: " << std::dec << attr.GetSortedIndex();
-    } else {
-        os << " Order: " << std::dec << attr.GetDictionaryOrder();
-    }
 }
 
 static void DumpObject(TaggedObject *obj, std::ostream &os)
@@ -1037,6 +1047,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             TSNamespaceType::Cast(obj)->Dump(os);
             break;
         case JSType::LINKED_NODE:
+            LinkedNode::Cast(obj)->Dump(os);
+            break;
         case JSType::RB_TREENODE:
             break;
         case JSType::JS_API_HASH_MAP:
@@ -1520,6 +1532,13 @@ void Program::Dump(std::ostream &os) const
 {
     os << " - MainFunction: ";
     GetMainFunction().Dump(os);
+    os << "\n";
+}
+
+void LinkedNode::Dump(std::ostream &os) const
+{
+    os << " - Next: ";
+    
     os << "\n";
 }
 
@@ -4051,6 +4070,8 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             JSAPIArrayListIterator::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::LINKED_NODE:
+            LinkedNode::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::RB_TREENODE:
             return;
         case JSType::JS_API_HASH_MAP:
@@ -4498,6 +4519,11 @@ void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("MainFunction"), GetMainFunction());
+}
+
+void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Next"), GetNext());
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5378,6 +5404,10 @@ void MachineCode::DumpForSnapshot(std::vector<Reference> &vec) const
 void TrackInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back("ElementsKind", JSTaggedValue(static_cast<uint32_t>(GetElementsKind())));
+    
+    vec.emplace_back(CString("CachedHClass"), GetCachedHClass());
+    vec.emplace_back(CString("CachedFunc"), GetCachedFunc());
+    vec.emplace_back(CString("ArrayLength"), JSTaggedValue(GetArrayLength()));
 }
 
 void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const

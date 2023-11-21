@@ -43,13 +43,15 @@ public:
         LegacyKind = BuiltinsId,
         MethodId,           // method offset of js function
         BuiltinFunctionId,  // function index of registered function
-        LocalRecordId,
-        ModuleRecordId,
+        RecordClassId,
         PrototypeId,
         ConstructorId,
+        MegaStateKinds,
         TotalKinds,
         UnknowId
     };
+
+    static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
 
     static const ProfileType PROFILE_TYPE_NONE;
 
@@ -76,6 +78,13 @@ public:
             UpdateKind(kind);
             UpdateIsRootFlag(root);
         }
+    }
+
+    static ProfileType CreateMegeType()
+    {
+        ProfileType type;
+        type.UpdateKind(Kind::MegaStateKinds);
+        return type;
     }
 
     ProfileType &Remap(const PGOContext &context);
@@ -133,6 +142,11 @@ public:
     bool IsPrototype() const
     {
         return GetKind() == Kind::PrototypeId;
+    }
+
+    bool IsMegaStateType() const
+    {
+        return GetKind() == Kind::MegaStateKinds;
     }
 
     uint32_t GetId() const
@@ -204,6 +218,13 @@ private:
     uint64_t type_ {0};
 };
 
+struct HashProfileType {
+    uint64_t operator()(const ProfileType &profileType) const
+    {
+        return profileType.GetRaw();
+    }
+};
+
 class ProfileTypeRef {
 public:
     ProfileTypeRef() = default;
@@ -227,6 +248,11 @@ public:
     }
 
     bool IsConstructor() const
+    {
+        return false;
+    }
+
+    bool IsMegaStateType() const
     {
         return false;
     }

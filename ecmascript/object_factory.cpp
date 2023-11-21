@@ -3580,6 +3580,13 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompress(const uint8_t *ut
     return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true));
 }
 
+JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    NewObjectHook();
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len));
+    return GetStringFromStringTable(utf8Data, utf8Len, true);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len)
 {
     NewObjectHook();

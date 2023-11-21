@@ -26,7 +26,7 @@ namespace panda::ecmascript::kungfu {
 class NTypeBytecodeLowering {
 public:
     NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
-                          bool enableLog, const std::string& name, bool fastModule)
+                          bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -38,8 +38,7 @@ public:
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
-          argAcc_(circuit),
-          fastModule_(fastModule) {}
+          argAcc_(circuit) {}
 
     ~NTypeBytecodeLowering() = default;
 
@@ -70,11 +69,6 @@ private:
         return traceBc_;
     }
 
-    bool IsFastModule() const
-    {
-        return fastModule_;
-    }
-
     const std::string& GetMethodName() const
     {
         return methodName_;
@@ -93,7 +87,6 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    bool fastModule_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H

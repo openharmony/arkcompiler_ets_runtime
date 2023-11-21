@@ -31,3 +31,12 @@ for (let i = 0; i < 5; i++) {
     print(arr1[i]);
     print(arr2[i]);
 }
+
+let arr3 = {x: 1,y:3};
+for (let i = 0; i < 5; i++) {
+    arr3[i] = `value ${i}`;
+    if (i ==3) delete arr3[i];
+}
+for (let i = 0; i < 5; i++) {
+    print(arr3[i]);
+}

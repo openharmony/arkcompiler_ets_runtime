@@ -1262,7 +1262,7 @@ DECLARE_ASM_HANDLER(HandleDelobjpropV8)
     GateRef v0 = ReadInst8_0(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef prop = acc;
-    GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
+    GateRef result = DeletePropertyOrThrow(glue, obj, prop);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DELOBJPROP_V8));
 }
 
@@ -4253,7 +4253,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef length = ReadInst8_3(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
+    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { constpool, Int16ToTaggedInt(methodId), GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4266,6 +4266,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         SetLexicalEnvToFunction(glue, *result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
+        callback.ProfileDefineClass(*result);
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -4279,7 +4280,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef length = ReadInst8_4(pc);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
+    result = CallRuntime(glue, RTSTUB_ID(DefineFunc), { constpool, Int16ToTaggedInt(methodId), GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4293,6 +4294,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, *result, GetHomeObjectFromFunction(currentFunc));
         varAcc = *result;
+        callback.ProfileDefineClass(*result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }
 }

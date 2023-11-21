@@ -84,6 +84,12 @@ GateRef CircuitBuilder::IsProtoTypeHClass(GateRef hClass)
         Int32((1LU << JSHClass::IsPrototypeBit::SIZE) - 1)));
 }
 
+GateRef CircuitBuilder::IsJsProxy(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
 GateRef CircuitBuilder::IsTreeString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -337,12 +343,20 @@ inline GateRef CircuitBuilder::GetMethodId(GateRef func)
 {
     GateRef method = GetMethodFromFunction(func);
     GateRef literalInfoOffset = IntPtr(Method::LITERAL_INFO_OFFSET);
-    GateRef LiteralInfo = Load(VariableType::INT64(), method, literalInfoOffset);
-    GateRef methodId = Int64And(Int64LSR(LiteralInfo, Int64(MethodLiteral::MethodIdBits::START_BIT)),
+    GateRef literalInfo = Load(VariableType::INT64(), method, literalInfoOffset);
+    GateRef methodId = Int64And(Int64LSR(literalInfo, Int64(MethodLiteral::MethodIdBits::START_BIT)),
         Int64((1LLU << MethodLiteral::MethodIdBits::SIZE) - 1));
     return methodId;
 }
 
+inline GateRef CircuitBuilder::GetBuiltinsId(GateRef func)
+{
+    GateRef method = GetMethodFromFunction(func);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    GateRef builtinsId = Int64And(Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
+        Int64((1LLU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
+    return builtinsId;
 }
-
+}
 #endif  // ECMASCRIPT_COMPILER_HCR_CIRCUIT_BUILDER_H

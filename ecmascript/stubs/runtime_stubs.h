@@ -119,6 +119,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatATan)                               \
     V(FloatFloor)                              \
     V(FindElementWithCache)                    \
+    V(TryToElementsIndexOrFindInStringTable)   \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -140,6 +141,11 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
+    V(CallJSDeleteProxyPrototype)         \
+    V(CallModuleNamespaceDeletePrototype) \
+    V(CallTypedArrayDeletePrototype)      \
+    V(CallJSObjDeletePrototype)           \
+    V(NewJSPrimitiveRef)                  \
     V(ThrowTypeError)                     \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
@@ -291,6 +297,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(OptSuperCall)                       \
     V(LdBigInt)                           \
     V(ToNumeric)                          \
+    V(ToNumericConvertBigInt)             \
     V(DynamicImport)                      \
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
@@ -342,7 +349,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(HClassCloneWithAddProto)            \
     V(LocaleCompareWithGc)                \
     V(ArrayForEachContinue)               \
-    V(NumberDictionaryPut)
+    V(NumberDictionaryPut)                \
+    V(ThrowRangeError)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -400,6 +408,7 @@ public:
         uintptr_t object, size_t offset, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
+    static JSTaggedType TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -647,7 +656,8 @@ private:
     static inline JSTaggedValue RuntimeNewObjRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                    const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                    uint16_t length);
-    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle);
+    static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
+                                                  uint16_t methodId, const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -725,6 +735,8 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline bool IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                                 JSTaggedValue key);
     static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
         const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);

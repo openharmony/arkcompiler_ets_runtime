@@ -134,10 +134,10 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
         ASSERT(heapClean);
     }
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
-    size_t heapSize = vm_->GetHeap()->GetHeapObjectSize();
-    LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
     int32_t heapCount = 0;
     if (isFullGC) {
+        size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
+        LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
         heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
         if (progress != nullptr) {
             progress->ReportProgress(0, heapCount);

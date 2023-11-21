@@ -39,6 +39,7 @@ namespace panda::ecmascript::kungfu {
     V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                           \
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
     V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
@@ -79,7 +80,8 @@ namespace panda::ecmascript::kungfu {
     V(HeapAlloc,                   HEAP_ALLOC,                     GateFlags::NONE_FLAG, 1, 1, 1)       \
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
-    V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)
+    V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \
+    V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                       \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)

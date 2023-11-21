@@ -18,6 +18,7 @@ group("object_test") {
     "object_assign",
     "object_hasOwnProperty",
     "object_toString",
+    "object_transition",
   ]
 
   deps = []

@@ -223,17 +223,20 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t length = keys->GetLength();
-    if (length == ClassInfoExtractor::STATIC_RESERVED_LENGTH && base->IsHole() &&
-        properties->Get(NAME_INDEX).IsString()) {
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-        if (method->IsAotWithCallField()) {
-            if (method->IsFastCall()) {
-                return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedWithFastCallClass());
+    if (!thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        // The class constructor of AOT is not shared, and PGO collect cannot be shared.
+        if (length == ClassInfoExtractor::STATIC_RESERVED_LENGTH && base->IsHole() &&
+            properties->Get(NAME_INDEX).IsString()) {
+            const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+            if (method->IsAotWithCallField()) {
+                if (method->IsFastCall()) {
+                    return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedWithFastCallClass());
+                } else {
+                    return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedClass());
+                }
             } else {
-                return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedClass());
+                return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorClass());
             }
-        } else {
-            return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorClass());
         }
     }
     JSHandle<JSHClass> hclass;

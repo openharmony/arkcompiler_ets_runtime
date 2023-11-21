@@ -68,7 +68,7 @@ JSHandle<JSTaggedValue> JSIterator::GetIterator(JSThread *thread, const JSHandle
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, iter);
     // 5.If Type(iterator) is not Object, throw a TypeError exception
     if (!iter->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", undefined);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "JSIterator::GetIterator: iter is not object", undefined);
     }
     return iter;
 }

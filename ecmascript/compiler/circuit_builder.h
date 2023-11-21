@@ -221,6 +221,8 @@ public:
     inline GateRef Undefined();
     inline GateRef Hole();
 
+    GateRef LoadBuiltinObject(size_t offset);
+
     // Get
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
@@ -332,6 +334,7 @@ public:
     GateRef BuiltinConstructor(BuiltinTypeId id, GateRef gate);
 
     inline GateRef GetMethodId(GateRef func);
+    inline GateRef GetBuiltinsId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
 
     // call operation
@@ -396,6 +399,7 @@ public:
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
     inline GateRef IsProtoTypeHClass(GateRef hclass);
+    inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     GateRef IsStabelArray(GateRef glue, GateRef obj);
@@ -419,9 +423,12 @@ public:
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type);
 
+    // Others
+    GateRef OrdinaryHasInstance(GateRef obj, GateRef target);
 
     // ************************************************************* Middle IR **********************************************************************************
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
+    GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
@@ -432,6 +439,7 @@ public:
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
+    GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);

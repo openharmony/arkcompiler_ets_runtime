@@ -1337,22 +1337,27 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         //   d. Let elementSize be the Number value of the Element Size value specified in Table 49 for srcType.
         uint32_t elementSize = TypedArrayHelper::GetSizeFromType(srcType);
         //   e. NOTE: If srcType and targetType are the same the transfer must be performed in a manner that
-        //   preserves the bit-level encoding of the source data. f. Let srcByteOffset be the value of O’s
-        //   [[ByteOffset]] internal slot.
+        //   preserves the bit-level encoding of the source data.
+        //   f. Let srcByteOffset be the value of O’s[[ByteOffset]] internal slot.
         uint32_t srcByteOffset = thisObj->GetByteOffset();
-        //   g. Let targetByteIndex be 0.
         //   h. Let srcByteIndex be (k × elementSize) + srcByteOffset.
         uint32_t srcByteIndex = k * elementSize + srcByteOffset;
+        //   g. Let targetByteIndex be A.[[ByteOffset]].
+        uint32_t targetByteIndex = JSTypedArray::Cast(*newArrObj)->GetByteOffset();
         //   i. Repeat, while targetByteIndex < count × elementSize
         //     i. Let value be GetValueFromBuffer(srcBuffer, srcByteIndex, "Uint8").
         //     ii. Perform SetValueInBuffer (targetBuffer, targetByteIndex, "Uint8", value).
         //     iii. Increase srcByteIndex by 1.
         //     iv. Increase targetByteIndex by 1.
-        void *srcBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
-        void *targetBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer);
-        if (memcpy_s(targetBuf, count * elementSize, srcBuf, count * elementSize) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
+        uint8_t *srcBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+        uint8_t *targetBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer, targetByteIndex);
+        while (count--) {
+            if (memcpy_s(targetBuf, elementSize, srcBuf, elementSize) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+                UNREACHABLE();
+            }
+            srcBuf += elementSize;
+            targetBuf += elementSize;
         }
     }
     // 23. Return A.
