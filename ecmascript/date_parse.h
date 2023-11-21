@@ -54,9 +54,9 @@ private:
                 int index = 0;
                 int num = 0;
                 while (IsDigit()) {
-                    // 9 : max decimal of int
-                    if (index < 9) {
-                        num = (value_ - '0') + num * JSDate::TEN;
+                    int n = (value_ - '0') + num * JSDate::TEN;
+                    if (n >= 0 && n < std::numeric_limits<int>::max()) {
+                        num = n;
                         index++;
                     }
                     NextChar();
