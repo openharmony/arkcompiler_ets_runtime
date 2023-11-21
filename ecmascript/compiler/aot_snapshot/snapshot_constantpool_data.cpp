@@ -113,7 +113,8 @@ void MethodSnapshotInfo::StoreDataToGlobalData(EcmaVM *vm, const JSPandaFile *js
         ProfileType pt = ptManager->GetRootIdByLocation(loc);
         JSHandle<JSTaggedValue> ihc = JSHandle<JSTaggedValue>(thread, ptManager->QueryHClass(pt, pt));
         JSHandle<AOTLiteralInfo> aotLiteralInfo = factory->NewAOTLiteralInfo(1); // 1: only one method
-        aotLiteralInfo->SetObjectToCache(thread, 0, JSTaggedValue(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE));
+        int initValue = static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
+        aotLiteralInfo->SetObjectToCache(thread, 0, JSTaggedValue(initValue));
         if (!ihc->IsUndefined()) {
             aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
         }
