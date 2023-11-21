@@ -54,6 +54,7 @@ enum class PromiseRejectionEvent : uint8_t;
 class JSPandaFileManager;
 class JSPandaFile;
 class EcmaStringTable;
+class SingleCharTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
@@ -450,6 +451,12 @@ public:
         return stringTable_;
     }
 
+    JSHandle<JSTaggedValue> GetSingleCharTable() const
+    {
+        ASSERT(singleCharTable_ != JSTaggedValue::Hole());
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&singleCharTable_));
+    }
+
     void IncreaseCallDepth()
     {
         callDepth_++;
@@ -501,6 +508,7 @@ private:
     bool initialized_ {false};
     GCStats *gcStats_ {nullptr};
     EcmaStringTable *stringTable_;
+    JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

@@ -232,6 +232,7 @@ bool EcmaVM::Initialize()
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
 
+    singleCharTable_ = SingleCharTable::CreateSingleCharTable(thread_);
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
     initialized_ = true;
@@ -507,6 +508,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
+    v(Root::ROOT_VM, ObjectSlot(ToUintPtr(&singleCharTable_)));
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }

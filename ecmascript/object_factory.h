@@ -655,6 +655,7 @@ private:
     friend class EcmaString;
     friend class SnapshotProcessor;
     friend class TSManager;
+    friend class SingleCharTable;
     void InitObjectFields(const TaggedObject *object);
 
     JSThread *thread_ {nullptr};

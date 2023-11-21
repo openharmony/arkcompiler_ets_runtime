@@ -19,6 +19,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 class EcmaString;
@@ -71,6 +72,21 @@ private:
     CUnorderedMultiMap<uint32_t, EcmaString *> table_;
     const EcmaVM *vm_{nullptr};
     friend class SnapshotProcessor;
+};
+
+class SingleCharTable : public TaggedArray {
+public:
+    static SingleCharTable *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<SingleCharTable*>(object);
+    }
+    static JSTaggedValue CreateSingleCharTable(const JSThread *thread);
+    JSTaggedValue GetStringFromSingleCharTable(int32_t ch)
+    {
+        return Get(ch);
+    }
+private:
+    static constexpr uint32_t MAX_ONEBYTE_CHARCODE = 128; // 0X00-0X7F
 };
 }  // namespace panda::ecmascript
 

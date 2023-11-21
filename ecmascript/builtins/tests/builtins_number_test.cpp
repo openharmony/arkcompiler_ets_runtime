@@ -214,28 +214,101 @@ HWTEST_F_L0(BuiltinsNumberTest, IsNaN)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-// new Number(123.456).toString(7)
-HWTEST_F_L0(BuiltinsNumberTest, ToString)
+HWTEST_F_L0(BuiltinsNumberTest, ToString1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
 
+    // new Number(123.456).toString(7)
     JSHandle<JSFunction> numberObject(env->GetNumberFunction());
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(123.456));
     JSHandle<JSPrimitiveRef> number = thread->GetEcmaVM()->GetFactory()->NewJSPrimitiveRef(numberObject, value);
 
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(number.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(7.0));
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(number.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(7.0));
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsNumber::ToString(ecmaRuntimeCallInfo);
-    ASSERT_TRUE(result.IsString());
-    JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSHandle<EcmaString> correctResult = factory->NewFromASCII("234.312256641535441");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo1);
+    ASSERT_TRUE(result1.IsString());
+    JSHandle<EcmaString> res1(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
+    JSHandle<EcmaString> correctResult1 = factory->NewFromASCII("234.312256641535441");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res1, *correctResult1));
+    TestHelper::TearDownFrame(thread, prev);
+
+    // (15).toString(4)
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue(15));
+    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(4));
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo2);
+    ASSERT_TRUE(result2.IsString());
+    JSHandle<EcmaString> res2(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
+    JSHandle<EcmaString> correctResult2 = factory->NewFromASCII("33");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res2, *correctResult2));
+    TestHelper::TearDownFrame(thread, prev);
+
+    // (5).toString(8)
+    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue(5));
+    ecmaRuntimeCallInfo3->SetCallArg(0, JSTaggedValue(8));
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
+    JSTaggedValue result3 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo3);
+    ASSERT_TRUE(result3.IsString());
+    JSHandle<EcmaString> res3(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
+    JSHandle<EcmaString> correctResult3 = factory->NewFromASCII("5");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res3, *correctResult3));
+    TestHelper::TearDownFrame(thread, prev);
+
+    // (0).toString(8)
+    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo4->SetThis(JSTaggedValue(0));
+    ecmaRuntimeCallInfo4->SetCallArg(0, JSTaggedValue(8));
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
+    JSTaggedValue result4 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo4);
+    ASSERT_TRUE(result4.IsString());
+    JSHandle<EcmaString> res4(thread, reinterpret_cast<EcmaString *>(result4.GetRawData()));
+    JSHandle<EcmaString> correctResult4 = factory->NewFromASCII("0");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res4, *correctResult4));
+    TestHelper::TearDownFrame(thread, prev);
+}
+HWTEST_F_L0(BuiltinsNumberTest, ToString2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // (-50).toString(35)
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue(-50));
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(35));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo1);
+    ASSERT_TRUE(result1.IsString());
+    JSHandle<EcmaString> res1(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
+    JSHandle<EcmaString> correctResult1 = factory->NewFromASCII("-1f");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res1, *correctResult1));
+    TestHelper::TearDownFrame(thread, prev);
+
+    // (2).toString(2.5)
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue(2));
+    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(2.5));
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsNumber::ToString(ecmaRuntimeCallInfo2);
+    ASSERT_TRUE(result2.IsString());
+    JSHandle<EcmaString> res2(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
+    JSHandle<EcmaString> correctResult2 = factory->NewFromASCII("10");
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res2, *correctResult2));
     TestHelper::TearDownFrame(thread, prev);
 }
 
