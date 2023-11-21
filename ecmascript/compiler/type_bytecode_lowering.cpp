@@ -2128,7 +2128,7 @@ void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
     // if true -> slowthPath
     // if false -> lowering
     JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
-    auto hasInstanceEnvIndex =static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
+    auto hasInstanceEnvIndex = static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
     JSTaggedValue key = globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
     FetchPGORWTypesDual(gate, types);

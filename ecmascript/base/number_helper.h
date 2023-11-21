@@ -82,6 +82,9 @@ static constexpr uint64_t GET_MULTIPLY = 0x2545F4914F6CDD1D;
 // Exponent bits for double value between [1.0, 2.0)
 static constexpr uint64_t EXPONENTBITS_RANGE_IN_ONE_AND_TWO = 0x3FF0000000000000;
 
+// Special Value for Hole in ElementsKind
+static constexpr uint64_t SPECIAL_HOLE = 0xFFFE000000000001;
+
 class NumberHelper {
 public:
     static inline JSTaggedType GetNaN()
