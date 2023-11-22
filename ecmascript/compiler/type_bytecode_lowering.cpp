@@ -423,8 +423,9 @@ bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef 
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
     // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
-    if (leftType.IsStringType() && rightType.IsStringType()) {
+    if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
         return true;
     }
     return false;
@@ -1093,7 +1094,7 @@ bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTa
         }
     }
     // (2) other functions
-    return TryLowerTypedLdObjByNameForBuiltinMethod(gate, key, type);
+    return false;
 }
 
 void TypeBytecodeLowering::LowerTypedLdArrayLength(GateRef gate)

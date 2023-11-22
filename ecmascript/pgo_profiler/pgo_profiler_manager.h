@@ -58,7 +58,7 @@ public:
     const std::string GetBundleName()
     {
         if (encoder_) {
-            encoder_->GetBundleName();
+            return encoder_->GetBundleName();
         }
         return "";
     }

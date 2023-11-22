@@ -1209,6 +1209,10 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
             auto attr = layout->GetAttr(i);
             result += static_cast<int32_t>(attr.GetTrackType());
             result += attr.GetPropertyMetaData();
+        } else if (key.IsSymbol()) {
+            result += "IsSymbolkey";
+        } else {
+            LOG_ECMA(FATAL) << "JSHClass::DumpToString UNREACHABLE";
         }
     }
     return result;

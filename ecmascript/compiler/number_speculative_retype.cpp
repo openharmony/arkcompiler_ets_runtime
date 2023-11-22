@@ -242,8 +242,7 @@ GateRef NumberSpeculativeRetype::VisitStringBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_ADD:
             return VisitStringAdd(gate);
         default:
-            LOG_COMPILER(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+            return Circuit::NullGate();
     }
 }
 
