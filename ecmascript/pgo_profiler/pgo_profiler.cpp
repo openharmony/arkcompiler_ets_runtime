@@ -577,8 +577,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             }
             case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
-                uint16_t slotId = READ_INST_16_0();
-                DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                // no ic slot
                 break;
             }
             case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
