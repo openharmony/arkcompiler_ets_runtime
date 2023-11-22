@@ -3802,12 +3802,7 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
     vm->SetSourceMapTranslateCallback(callback);
 }
 
-TryCatch::~TryCatch()
-{
-    if (!rethrow_) {
-        ecmaVm_->GetJSThread()->ClearException();
-    }
-}
+TryCatch::~TryCatch() {}
 
 bool TryCatch::HasCaught() const
 {
@@ -3823,4 +3818,15 @@ Local<ObjectRef> TryCatch::GetAndClearException()
 {
     return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetAndClearEcmaUncaughtException());
 }
+
+Local<ObjectRef> TryCatch::GetException()
+{
+    return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetEcmaUncaughtException());
+}
+
+void TryCatch::ClearException()
+{
+    ecmaVm_->GetJSThread()->ClearException();
+}
+
 }  // namespace panda

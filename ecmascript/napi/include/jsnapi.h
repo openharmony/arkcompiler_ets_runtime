@@ -150,6 +150,11 @@ public:
         return GetAddress() == nullptr;
     }
 
+    inline void Empty()
+    {
+        address_ = 0;
+    }
+
     inline bool IsNull() const
     {
         return IsEmpty() || GetAddress()->IsHole();
@@ -1324,6 +1329,8 @@ public:
     bool HasCaught() const;
     void Rethrow();
     Local<ObjectRef> GetAndClearException();
+    Local<ObjectRef> GetException();
+    void ClearException();
 
     ECMA_DISALLOW_COPY(TryCatch);
     ECMA_DISALLOW_MOVE(TryCatch);
