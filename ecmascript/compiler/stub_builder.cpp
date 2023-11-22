@@ -1268,7 +1268,7 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
     } else {
         auto depend = env_->GetCurrentLabel()->GetDepend();
         GateRef ptr = PtrAdd(base, offset);
-        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::NOT_ATOMIC);
+        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
         GateRef result = env_->GetCircuit()->NewGate(
             env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
             { depend, value, ptr }, type.GetGateType());

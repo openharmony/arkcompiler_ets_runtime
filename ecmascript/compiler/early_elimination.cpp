@@ -341,7 +341,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             if (acc_.GetOffset(lhs) != acc_.GetOffset(rhs)) {
                 return false;
             }
-            if (acc_.GetMemoryOrder(lhs) != acc_.GetMemoryOrder(rhs)) {
+            if (acc_.GetMemoryOrder(lhs).Value() != acc_.GetMemoryOrder(rhs).Value()) {
                 return false;
             }
             break;

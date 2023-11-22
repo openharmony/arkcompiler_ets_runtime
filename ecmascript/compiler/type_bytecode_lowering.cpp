@@ -801,8 +801,9 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
                 { receiverHC, newHolderHC, propKey }, gate);
             builder_.Jump(&notProto);
             builder_.Bind(&notProto);
+            MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
             builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
-                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+                TaggedObject::HCLASS_OFFSET, newHolderHC, order);
             if (!accessInfos[i].Plr().IsInlinedProps()) {
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
@@ -964,8 +965,9 @@ void TypeBytecodeLowering::LowerTypedStOwnByName(GateRef gate)
                 { receiverHC, newHolderHC, propKey }, gate);
             builder_.Jump(&notProto);
             builder_.Bind(&notProto);
+            MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
             builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
-                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+                TaggedObject::HCLASS_OFFSET, newHolderHC, order);
             if (!accessInfos[i].Plr().IsInlinedProps()) {
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);

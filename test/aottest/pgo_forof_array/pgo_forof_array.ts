@@ -41,3 +41,13 @@ for (let i = 0; i < 10; i++) {
     }
     print(m.value)
 }
+
+function testThrow() {
+  let x = 1;
+  for (const x of [x]) {}
+}
+
+try {
+    testThrow();
+} catch (e) {}
+
