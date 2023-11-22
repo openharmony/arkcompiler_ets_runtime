@@ -1200,7 +1200,7 @@ ohos_shared_library("libark_jsruntime") {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]
   }
 
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+  all_dependent_configs = [ ":ark_jsruntime_public_config" ]
 
   if (is_ohos && is_standard_system && !is_debug) {
     version_script = "libark_jsruntime.map"
