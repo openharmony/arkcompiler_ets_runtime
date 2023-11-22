@@ -321,6 +321,11 @@ public:
         return type_.index() == 0 && GetPrimitiveType() == Type::DOUBLE;
     }
 
+    bool IsString() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::STRING;
+    }
+
     bool IsNumber() const
     {
         if (type_.index() != 0) {

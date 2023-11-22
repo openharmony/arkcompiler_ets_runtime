@@ -28,6 +28,7 @@ group("ark_aot_js_test") {
     "for_await_of",
     "dead_code_elimination",
     "equal",
+    "js_string_equal",
   ]
 
   deps = []
