@@ -505,7 +505,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
         GateRef arrayLength = Load(VariableType::INT32(), obj, lengthOffset);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
     }
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
 
     auto accessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
     SetPropertyInlinedProps(glue_, result->ReadVariable(), hclass, accessor,
