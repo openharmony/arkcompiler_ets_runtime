@@ -417,7 +417,7 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     return panda::ecmascript::SetDirModeAsDefault(path);
 }
 
-void AOTFileGenerator::SaveAOTFile(const std::string &filename)
+void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
@@ -434,7 +434,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
     }
-    panda::ecmascript::CodeSignForAOTFile(filename);
+    panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

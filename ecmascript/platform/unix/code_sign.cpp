@@ -16,8 +16,9 @@
 #include "ecmascript/platform/code_sign.h"
 
 namespace panda::ecmascript {
-void CodeSignForAOTFile(const std::string &filename)
+void CodeSignatureForAOTFile(const std::string &filename, const std::string &appSignature)
 {
     (void)filename;
+    (void)appSignature;
 }
 }  // namespace panda::ecmascript
