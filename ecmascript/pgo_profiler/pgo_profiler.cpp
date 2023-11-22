@@ -1030,13 +1030,14 @@ void PGOProfiler::DumpCreateObject(ApEntityId abcId, const CString &recordName, 
         TrackInfo *trackInfo = TrackInfo::Cast(slotValue.GetTaggedObject());
         auto elementsKind = trackInfo->GetElementsKind();
         objDefType.SetElementsKind(elementsKind);
+        objDefType.SetElementsLength(trackInfo->GetArrayLength());
+        objDefType.SetSpaceFlag(trackInfo->GetSpaceFlag());
         recordInfos_->AddDefine(recordType, methodId, bcOffset, objDefType);
         auto cachedHClass = trackInfo->GetCachedHClass();
         if (cachedHClass.IsJSHClass()) {
             auto hclass = JSHClass::Cast(cachedHClass.GetTaggedObject());
             recordInfos_->AddRootLayout(JSTaggedType(hclass), profileType);
         }
-        recordInfos_->UpdateElements(currentType, trackInfo->GetArrayLength(), trackInfo->GetSpaceFlag());
     }
 }
 

@@ -178,7 +178,8 @@ void PGOTypeInfer::InferCreateArray(GateRef gate)
     if (!builder_->ShouldPGOTypeInfer(gate)) {
         return;
     }
-
+    auto length = builder_->GetArrayElementsLength(gate);
+    acc_.TrySetArrayElementsLength(gate, length);
     ElementsKind kind = builder_->GetElementsKindForCreater(gate);
     if (Elements::IsGeneric(kind)) {
         return;

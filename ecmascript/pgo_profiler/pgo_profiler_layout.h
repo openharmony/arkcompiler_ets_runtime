@@ -144,18 +144,6 @@ using PropertyDesc = std::pair<CString, PGOHandler>;
 using LayoutDesc = CVector<PropertyDesc>;
 class PGOHClassTreeDesc;
 
-struct ElementsTrackInfo {
-    std::string ToString() const
-    {
-        std::stringstream stream;
-            stream << "(size: " << arrayLength_ << ", " << ToSpaceTypeName(spaceFlag_) << ")";
-        return stream.str();
-    }
-
-    uint32_t arrayLength_ { 0 };
-    RegionSpaceFlag spaceFlag_ { RegionSpaceFlag::UNINITIALIZED };
-};
-
 class HClassLayoutDesc {
 public:
     explicit HClassLayoutDesc(ProfileType type) : type_(type) {}
@@ -304,31 +292,6 @@ public:
         return type_ < right.type_;
     }
 
-    ElementsTrackInfo GetElementsTrackInfo() const
-    {
-        return elementTrackInfo_;
-    }
-
-    uint32_t GetArrayLength() const
-    {
-        return elementTrackInfo_.arrayLength_;
-    }
-
-    void UpdateArrayLength(uint32_t size)
-    {
-        elementTrackInfo_.arrayLength_ = size;
-    }
-
-    RegionSpaceFlag GetSpaceFlag() const
-    {
-        return elementTrackInfo_.spaceFlag_;
-    }
-
-    void UpdateSpaceFlag(RegionSpaceFlag spaceFlag)
-    {
-        elementTrackInfo_.spaceFlag_ = spaceFlag;
-    }
-
     HClassLayoutDesc *GetHClassLayoutDesc(ProfileType type) const;
     HClassLayoutDesc *GetOrInsertHClassLayoutDesc(ProfileType type, bool root = false);
 
@@ -359,7 +322,6 @@ private:
     }
 
     ProfileType type_;
-    ElementsTrackInfo elementTrackInfo_;
     CMap<ProfileType, HClassLayoutDesc *> transitionLayout_;
 };
 
@@ -566,11 +528,8 @@ private:
 template <typename SampleType>
 class PGOHClassTreeTemplate {
 public:
-    PGOHClassTreeTemplate(size_t size, SampleType type, ElementsTrackInfo &trackInfo)
-        : size_(size), type_(type)
-    {
-        SetElementsTrackInfo(trackInfo);
-    }
+    PGOHClassTreeTemplate(size_t size, SampleType type)
+        : size_(size), type_(type) {}
 
     static size_t CaculateSize(const PGOHClassTreeDesc &desc)
     {
@@ -584,7 +543,6 @@ public:
         desc.IterateChilds([&size](ChildHClassLayoutDesc *desc) {
             size += ChildHClassLayoutDescInner::CaculateSize(*desc);
         });
-        size += sizeof(ElementsTrackInfo);
         return size;
     }
 
@@ -592,9 +550,6 @@ public:
     {
         std::string text;
         text += desc.GetProfileType().GetTypeString();
-        if (desc.GetArrayLength() > 0 && desc.GetSpaceFlag() != RegionSpaceFlag::UNINITIALIZED) {
-            text += desc.GetElementsTrackInfo().ToString();
-        }
         text += DumpUtils::BLOCK_AND_ARRAY_START;
         auto layoutDesc = desc.GetHClassLayoutDesc(desc.GetProfileType());
         if (layoutDesc != nullptr) {
@@ -660,11 +615,6 @@ public:
             current->Convert(reinterpret_cast<ChildHClassLayoutDesc *>(childLayoutDesc));
             last = current;
         }
-        if (context.SupportElementsTrackInfo()) {
-            auto trackInfo = GetElementsTrackInfo();
-            desc.UpdateArrayLength(trackInfo->arrayLength_);
-            desc.UpdateSpaceFlag(trackInfo->spaceFlag_);
-        }
         return desc;
     }
 
@@ -688,18 +638,6 @@ private:
     {
         return reinterpret_cast<const ChildHClassLayoutDescInner *>(
             reinterpret_cast<uintptr_t>(current) + current->Size());
-    }
-
-    void SetElementsTrackInfo(ElementsTrackInfo trackInfo)
-    {
-        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo);
-        *reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset) = trackInfo;
-    }
-
-    ElementsTrackInfo* GetElementsTrackInfo()
-    {
-        auto trackInfoOffset = GetEnd() - sizeof(ElementsTrackInfo);
-        return reinterpret_cast<ElementsTrackInfo *>(trackInfoOffset);
     }
 
     uintptr_t GetEnd() const

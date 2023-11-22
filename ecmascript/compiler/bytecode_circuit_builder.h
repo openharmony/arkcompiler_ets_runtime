@@ -393,6 +393,11 @@ public:
         return pgoTypeRecorder_.GetElementsKindForCreater(gateAcc_.TryGetPcOffset(gate));
     }
 
+    uint32_t GetArrayElementsLength(GateRef gate) const
+    {
+        return pgoTypeRecorder_.GetElementsLength(gateAcc_.TryGetPcOffset(gate));
+    }
+
     bool ShouldPGOTypeInfer(GateRef gate) const
     {
         return jsGatesToByteCode_.find(gate) != jsGatesToByteCode_.end();

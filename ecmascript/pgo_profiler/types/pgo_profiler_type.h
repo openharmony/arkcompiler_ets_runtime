@@ -21,6 +21,7 @@
 #include <variant>
 
 #include "ecmascript/elements.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
@@ -567,6 +568,8 @@ public:
         ctorPt_ = PGOProfileType(context, from.GetCtorPt());
         protoPt_ = PGOProfileType(context, from.GetProtoTypePt());
         kind_ = from.GetElementsKind();
+        elementsLength_ = from.GetElementsLength();
+        spaceFlag_ = from.GetSpaceFlag();
     }
 
     std::string GetTypeString() const
@@ -579,6 +582,12 @@ public:
         result += protoPt_.GetTypeString();
         result += ", elementsKind:";
         result += std::to_string(static_cast<int32_t>(kind_));
+        if (elementsLength_ > 0 && spaceFlag_ != RegionSpaceFlag::UNINITIALIZED) {
+            result += ", size: ";
+            result += std::to_string(elementsLength_);
+            result += ", space; ";
+            result += ToSpaceTypeName(spaceFlag_);
+        }
         return result;
     }
 
@@ -622,6 +631,26 @@ public:
         return kind_;
     }
 
+    void SetElementsLength(uint32_t length)
+    {
+        elementsLength_ = length;
+    }
+
+    uint32_t GetElementsLength() const
+    {
+        return elementsLength_;
+    }
+
+    void SetSpaceFlag(RegionSpaceFlag flag)
+    {
+        spaceFlag_ = flag;
+    }
+
+    RegionSpaceFlag GetSpaceFlag() const
+    {
+        return spaceFlag_;
+    }
+
     bool operator<(const PGODefineOpTemplate &right) const
     {
         return this->GetProfileType() < right.GetProfileType();
@@ -631,7 +660,9 @@ private:
     PGOProfileType type_ { PGOProfileType() };
     PGOProfileType ctorPt_ { PGOProfileType() };
     PGOProfileType protoPt_ { PGOProfileType() };
+    uint32_t elementsLength_ { 0 };
     ElementsKind kind_ { ElementsKind::NONE };
+    RegionSpaceFlag spaceFlag_  { RegionSpaceFlag::UNINITIALIZED };
 };
 
 using PGODefineOpType = PGODefineOpTemplate<ProfileType>;
