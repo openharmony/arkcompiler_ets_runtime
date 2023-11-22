@@ -56,8 +56,8 @@ std::vector<ElementsKind> PGOTypeRecorder::GetElementsKindsForUser(int32_t offse
     for (uint32_t i = 0; i < rwType.GetCount(); i++) {
         PGOObjectInfo info = rwType.GetObjectInfo(i);
         auto profileType = info.GetProfileType();
-        if (profileType.IsElementType()) {
-            elementsKinds.emplace_back(ElementsKind(profileType.GetId()));
+        if (profileType.IsBuiltinsArray()) {
+            elementsKinds.emplace_back(profileType.GetElementsKind());
             continue;
         }
     }
