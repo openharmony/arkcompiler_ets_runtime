@@ -23,10 +23,12 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 
@@ -455,7 +457,7 @@ public:
         });
     }
 
-    void Convert(RootHClassLayoutDesc *desc) const
+    void Convert(PGOContext& context, RootHClassLayoutDesc *desc) const
     {
         auto descInfo = GetFirstProperty();
         for (uint32_t i = 0; i < propCount_; i++) {
@@ -463,7 +465,8 @@ public:
             descInfo = GetNextProperty(descInfo);
         }
         for (uint32_t i = 0; i < childCount_; i++) {
-            desc->AddChildHClassLayoutDesc(*GetChildType(i));
+            auto profileType(*GetChildType(i));
+            desc->AddChildHClassLayoutDesc(profileType.Remap(context));
         }
     }
 
@@ -539,12 +542,13 @@ public:
         new (current) PGOLayoutDescInfo(key, type);
     }
 
-    void Convert(ChildHClassLayoutDesc *desc) const
+    void Convert(PGOContext& context, ChildHClassLayoutDesc *desc) const
     {
         auto descInfo = GetProperty();
         desc->InsertKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
         for (uint32_t i = 0; i < childCount_; i++) {
-            desc->AddChildHClassLayoutDesc(*GetChildType(i));
+            auto profileType(*GetChildType(i));
+            desc->AddChildHClassLayoutDesc(profileType.Remap(context));
         }
     }
 
@@ -647,17 +651,17 @@ public:
         if (root->GetProfileType().IsNone()) {
             return desc;
         }
-        auto layoutDesc = desc.GetOrInsertHClassLayoutDesc(root->GetProfileType(), true);
+        auto layoutDesc = desc.GetOrInsertHClassLayoutDesc(root->GetProfileType().Remap(context), true);
         auto rootLayoutDesc = reinterpret_cast<RootHClassLayoutDesc *>(layoutDesc);
         rootLayoutDesc->SetObjectType(root->GetObjectType());
         rootLayoutDesc->SetObjectSize(root->GetObjectSize());
-        root->Convert(rootLayoutDesc);
+        root->Convert(context, rootLayoutDesc);
 
         auto last = reinterpret_cast<const HClassLayoutDescInner *>(root);
         for (int32_t i = 0; i < childCount_; i++) {
             auto current = GetNext(last);
-            auto childLayoutDesc = desc.GetOrInsertHClassLayoutDesc(current->GetProfileType(), false);
-            current->Convert(reinterpret_cast<ChildHClassLayoutDesc *>(childLayoutDesc));
+            auto childLayoutDesc = desc.GetOrInsertHClassLayoutDesc(current->GetProfileType().Remap(context), false);
+            current->Convert(context, reinterpret_cast<ChildHClassLayoutDesc *>(childLayoutDesc));
             last = current;
         }
         if (context.SupportElementsTrackInfo()) {
