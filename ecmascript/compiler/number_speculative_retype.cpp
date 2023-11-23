@@ -259,6 +259,19 @@ GateRef NumberSpeculativeRetype::VisitStringAdd(GateRef gate)
     if (IsRetype()) {
         return SetOutputType(gate, GateType::StringType());
     }
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            TypeInfo inputInfo = GetOutputTypeInfo(input);
+            if (inputInfo == TypeInfo::CHAR) {
+                GateRef glue = acc_.GetGlueFromArgList();
+                input = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, input });
+            }
+            acc_.ReplaceValueIn(gate, input, i);
+        }
+    }
     return Circuit::NullGate();
 }
 

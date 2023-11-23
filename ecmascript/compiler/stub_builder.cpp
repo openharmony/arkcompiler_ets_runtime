@@ -5480,6 +5480,7 @@ GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
             Branch(bothString, &stringAdd, &exit);
             Bind(&stringAdd);
             {
+                callback.ProfileOpType(Int32(PGOSampleType::StringType()));
                 BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
                 result = builtinsStringStubBuilder.StringConcat(glue, left, right);
                 Branch(HasPendingException(glue), &hasPendingException, &exit);
