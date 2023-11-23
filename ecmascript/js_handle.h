@@ -156,7 +156,9 @@ public:
     {
         if (!std::is_convertible<T *, JSTaggedValue *>::value) {
             ASSERT(slot != 0);
-            T::Cast((*reinterpret_cast<JSTaggedValue *>(slot)).GetTaggedObject());
+            if ((*reinterpret_cast<JSTaggedValue *>(slot)).IsHeapObject()) {
+                T::Cast((*reinterpret_cast<JSTaggedValue *>(slot)).GetTaggedObject());
+            }
         }
     }
 
