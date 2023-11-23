@@ -1062,6 +1062,7 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
         JSTaggedValue value = dstElements->Get(thread, i);
         if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i)) {
             value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             dstElements->Set(thread, i, value);
         }
     }
