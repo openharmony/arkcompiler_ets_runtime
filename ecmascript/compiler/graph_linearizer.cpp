@@ -504,7 +504,7 @@ public:
             innerLoop.outer = loopInfo;
             loopInfo = &innerLoop;
         } else if (loopInfo != nullptr) {
-            succ->loopIndex_ = loopInfo->loopIndex;
+            succ->loopIndex_ = static_cast<int32_t>(loopInfo->loopIndex);
         }
         return loopInfo;
     }

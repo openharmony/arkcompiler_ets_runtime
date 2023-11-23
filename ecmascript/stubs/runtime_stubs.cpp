@@ -2971,7 +2971,7 @@ DEF_RUNTIME_STUBS(ArrayForEachContinue)
     JSHandle<JSTaggedValue> lengthHandle = GetHArg<JSTaggedValue>(argv, argc, 4);       // 4: means the fourth parameter
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     uint32_t i = key->GetInt();
-    uint32_t len = lengthHandle->GetInt();
+    uint32_t len = static_cast<uint32_t>(lengthHandle->GetInt());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (i < len) {
         bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, i);
