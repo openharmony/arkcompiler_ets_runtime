@@ -197,6 +197,11 @@ public:
         Barriers::SetPrimitive(GetData(), GetAotArrayInfoOffset(), info.GetRawData());
     }
 
+    inline JSTaggedValue GetAotArrayInfo()
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotArrayInfoOffset()));
+    }
+
     inline void SetAotHClassInfo(JSTaggedValue info)
     {
         Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
@@ -339,8 +344,13 @@ public:
                     break;
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
-                    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
-                        constpoolHandle, entry, needSetAotFlag, entryIndexes);
+                    // literal fetching from AOT ArrayInfos
+                    JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
+                    if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag, entryIndexes, literal)) {
+                        literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
+                                                                                constpoolHandle, entry,
+                                                                                needSetAotFlag, entryIndexes));
+                    }
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     arr->SetElements(thread, literal);
@@ -358,6 +368,21 @@ public:
         }
 
         return val;
+    }
+
+    bool TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
+                               JSMutableHandle<TaggedArray> literal)
+    {
+        if (loadAOT) {
+            int elementIndex = entryIndexes->GetElementIndex();
+            if (elementIndex != kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE) {
+                JSTaggedValue arrayInfos = GetAotArrayInfo();
+                JSHandle<TaggedArray> aotArrayInfos(thread, arrayInfos);
+                literal.Update(aotArrayInfos->Get(elementIndex));
+                return true;
+            }
+        }
+        return false;
     }
 
     static panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index)

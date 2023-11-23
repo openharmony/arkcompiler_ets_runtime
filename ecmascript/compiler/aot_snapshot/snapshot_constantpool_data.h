@@ -29,6 +29,8 @@ namespace panda::ecmascript::kungfu {
 
 class BaseSnapshotInfo {
 public:
+    static constexpr int32_t AOT_ELEMENT_INDEX_DEFAULT_VALUE = -1;
+
     struct ItemData {
         CString recordName_;
         int32_t constantPoolId_ {0};
@@ -54,7 +56,8 @@ protected:
 
     void CollectLiteralInfo(EcmaVM *vm, JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool, const std::set<uint32_t> &skippedMethods,
-                            JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc);
+                            JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
+                            int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE);
 
     CUnorderedMap<ItemKey, ItemData> info_;
 };
