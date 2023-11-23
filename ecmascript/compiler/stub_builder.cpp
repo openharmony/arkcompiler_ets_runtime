@@ -7811,4 +7811,53 @@ GateRef StubBuilder::UpdateProfileTypeInfo(GateRef glue, GateRef jsFunc)
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::GetFuncKind(GateRef method)
+{
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(Method::FunctionKindBits::START_BIT)),
+                            Int32((1LU << Method::FunctionKindBits::SIZE) - 1));
+    return kind;
+}
+
+GateRef StubBuilder::GetFunctionHClass(GateRef glue, GateRef method, size_t idx1, size_t idx2, size_t idx3)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(hclass, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    Label exit(env);
+    Label isAot(env);
+    Label notAot(env);
+    Branch(IsAotWithCallField(method), &isAot, &notAot);
+    Bind(&isAot);
+    {
+        Label isFastCall(env);
+        Label notFastCall(env);
+        Branch(IsFastCall(method), &isFastCall, &notFastCall);
+        Bind(&isFastCall);
+        {
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx1);
+            Jump(&exit);
+        }
+        Bind(&notFastCall);
+        {
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx2);
+            Jump(&exit);
+        }
+    }
+    Bind(&notAot);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx3);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *hclass;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu
