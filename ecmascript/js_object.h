@@ -41,6 +41,7 @@ class JSForInIterator;
 class LexicalEnv;
 class GlobalEnv;
 class TaggedQueue;
+class NumberDictionary;
 
 using EnumCacheKind = EnumCache::EnumCacheKind;
 // Integrity level for objects
@@ -374,6 +375,7 @@ public:
     static constexpr int MIN_ELEMENTS_HINT_LENGTH = 1_KB;
     static constexpr int MAX_ELEMENTS_HINT_LENGTH = 2_MB;
     static constexpr int ELEMENTS_HINT_FACTOR = 8;
+    static constexpr int SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR = 2;
 
     CAST_CHECK(JSObject, IsECMAObject);
 
@@ -659,6 +661,7 @@ public:
     static bool IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver);
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
+    static bool ShouldTransToFastElements(JSHandle<NumberDictionary> dictionary, uint32_t capacity, uint32_t index);
     static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
