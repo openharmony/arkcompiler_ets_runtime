@@ -671,6 +671,32 @@ JSHandle<JSArray> ObjectFactory::NewJSArray()
     return JSHandle<JSArray>(NewJSObjectByConstructor(function));
 }
 
+JSHandle<JSArray> ObjectFactory::NewJSArray(size_t length, JSHandle<JSHClass> &hclass)
+{
+    JSHandle<JSObject> obj = NewJSObject(hclass);
+    JSArray::Cast(*obj)->SetLength(length);
+    JSArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
+    auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
+    JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    return JSHandle<JSArray>(obj);
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewJsonFixedArray(size_t start, size_t length,
+                                                       const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return EmptyArray();
+    }
+
+    MemSpaceType spaceType = length < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, spaceType);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
+}
+
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                             const JSHandle<JSTaggedValue> keys,
                                                             const JSHandle<JSTaggedValue> cachedHclass)
