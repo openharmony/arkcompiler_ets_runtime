@@ -25,8 +25,8 @@
 namespace panda::ecmascript {
 EcmaStringTable::EcmaStringTable(const EcmaVM *vm) : vm_(vm) {}
 
-EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
-                                       const JSHandle<EcmaString> &secondString) const
+std::pair<EcmaString *, uint32_t> EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
+                                                             const JSHandle<EcmaString> &secondString) const
 {
     ASSERT(EcmaStringAccessor(firstString).NotTreeString());
     ASSERT(EcmaStringAccessor(secondString).NotTreeString());
@@ -37,41 +37,41 @@ EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
-            return foundString;
+            return std::make_pair(foundString, hashCode);
         }
     }
-    return nullptr;
+    return std::make_pair(nullptr, hashCode);
 }
 
-EcmaString *EcmaStringTable::GetString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const
+std::pair<EcmaString *, uint32_t> EcmaStringTable::GetString(const uint8_t *utf8Data,
+                                                             uint32_t utf8Len, bool canBeCompress) const
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto range = table_.equal_range(hashCode);
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
-            return foundString;
+            return std::make_pair(foundString, hashCode);
         }
     }
-    return nullptr;
+    return std::make_pair(nullptr, hashCode);
 }
 
-EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16Len) const
+std::pair<EcmaString *, uint32_t> EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16Len) const
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
     auto range = table_.equal_range(hashCode);
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
-            return foundString;
+            return std::make_pair(foundString, hashCode);
         }
     }
-    return nullptr;
+    return std::make_pair(nullptr, hashCode);
 }
 
 EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 {
-    ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second; ++item) {
@@ -106,27 +106,30 @@ EcmaString *EcmaStringTable::GetOrInternString(const JSHandle<EcmaString> &first
 {
     auto firstFlat = JSHandle<EcmaString>(vm_->GetJSThread(), EcmaStringAccessor::Flatten(vm_, firstString));
     auto secondFlat = JSHandle<EcmaString>(vm_->GetJSThread(), EcmaStringAccessor::Flatten(vm_, secondString));
-    EcmaString *concatString = GetString(firstFlat, secondFlat);
-    if (concatString != nullptr) {
-        return concatString;
+    std::pair<EcmaString *, uint32_t> result = GetString(firstFlat, secondFlat);
+    if (result.first != nullptr) {
+        return result.first;
     }
     JSHandle<EcmaString> concatHandle(vm_->GetJSThread(),
         EcmaStringAccessor::Concat(vm_, firstFlat, secondFlat, MemSpaceType::OLD_SPACE));
-    concatString = EcmaStringAccessor::Flatten(vm_, concatHandle, MemSpaceType::OLD_SPACE);
+    EcmaString *concatString = EcmaStringAccessor::Flatten(vm_, concatHandle, MemSpaceType::OLD_SPACE);
+    concatString->SetMixHashcode(result.second);
     InternString(concatString);
     return concatString;
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress)
 {
-    EcmaString *result = GetString(utf8Data, utf8Len, canBeCompress);
-    if (result != nullptr) {
-        return result;
+    std::pair<EcmaString *, uint32_t> result = GetString(utf8Data, utf8Len, canBeCompress);
+    if (result.first != nullptr) {
+        return result.first;
     }
 
-    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::OLD_SPACE);
-    InternString(result);
-    return result;
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::OLD_SPACE);
+    str->SetMixHashcode(result.second);
+    InternString(str);
+    return str;
 }
 
 /*
@@ -135,26 +138,29 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t
 */
 EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    EcmaString *result = GetString(utf8Data, utf8Len, true);
-    if (result != nullptr) {
-        return result;
+    std::pair<EcmaString *, uint32_t> result  = GetString(utf8Data, utf8Len, true);
+    if (result.first != nullptr) {
+        return result.first;
     }
 
-    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true, MemSpaceType::NON_MOVABLE);
-    InternString(result);
-    return result;
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true, MemSpaceType::NON_MOVABLE);
+    str->SetMixHashcode(result.second);
+    InternString(str);
+    return str;
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress)
 {
-    EcmaString *result = GetString(utf16Data, utf16Len);
-    if (result != nullptr) {
-        return result;
+    std::pair<EcmaString *, uint32_t> result = GetString(utf16Data, utf16Len);
+    if (result.first != nullptr) {
+        return result.first;
     }
 
-    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::OLD_SPACE);
-    InternString(result);
-    return result;
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::OLD_SPACE);
+    str->SetMixHashcode(result.second);
+    InternString(str);
+    return str;
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
@@ -194,33 +200,35 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8D
                                                             bool canBeCompress, MemSpaceType type,
                                                             bool isConstantString, uint32_t idOffset)
 {
-    EcmaString *result = GetString(utf8Data, utf8Len, canBeCompress);
-    if (result != nullptr) {
-        return result;
+    std::pair<EcmaString *, uint32_t> result = GetString(utf8Data, utf8Len, canBeCompress);
+    if (result.first != nullptr) {
+        return result.first;
     }
     type = type == MemSpaceType::NON_MOVABLE ? MemSpaceType::NON_MOVABLE : MemSpaceType::OLD_SPACE;
+    EcmaString *str;
     if (canBeCompress) {
         // Constant string will be created in this branch.
-        result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type, isConstantString,
+        str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type, isConstantString,
             idOffset);
     } else {
-        result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type);
+        str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type);
     }
-    InternString(result);
-    return result;
+    str->SetMixHashcode(result.second);
+    InternString(str);
+    return str;
 }
 
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len,
-                                                            bool canBeCompress, MemSpaceType type)
+EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf16Len,
+                                                            MemSpaceType type)
 {
-    EcmaString *result = GetString(utf16Data, utf16Len);
+    type = type == MemSpaceType::NON_MOVABLE ? MemSpaceType::NON_MOVABLE : MemSpaceType::OLD_SPACE;
+    EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm_, utf8Data, utf16Len, type);
+    EcmaString *result = GetString(str);
     if (result != nullptr) {
         return result;
     }
-    type = type == MemSpaceType::NON_MOVABLE ? MemSpaceType::NON_MOVABLE : MemSpaceType::OLD_SPACE;
-    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, type);
-    InternString(result);
-    return result;
+    InternString(str);
+    return str;
 }
 
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
