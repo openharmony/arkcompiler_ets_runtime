@@ -443,7 +443,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
 {
     if (LIKELY(handler.IsInt())) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
-        if (HandlerBase::IsElement(handlerInfo)) {
+        if (HandlerBase::IsNormalElement(handlerInfo)) {
             return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
         } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return LoadTypedArrayElement(thread, receiver, key);
