@@ -2132,6 +2132,7 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     /* %TypedArray%.prototype_or_hclass */                                                                      \
     JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewEcmaHClass(                                         \
         panda::ecmascript::JSTypedArray::SIZE, JSType::JS_##TYPE, arrFuncPrototypeValue);                       \
+    arrFuncInstanceHClass->SetHasConstructor(false);                                                            \
     /* %TypedArray% = new Function() */                                                                         \
     JSHandle<JSFunction> arrayFunction = factory_->NewSpecificTypedArrayFunction(                               \
         env, reinterpret_cast<void *>(BuiltinsTypedArray::Type##Constructor));                                  \

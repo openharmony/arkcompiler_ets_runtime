@@ -1011,7 +1011,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
     return;
 }
 
-// if condition:objHandle->IsJSArray() &&
+// if condition:(objHandle->IsJSArray() || objHandle->IsTypedArray()) &&
 //      keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
 GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
@@ -1023,7 +1023,7 @@ GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, 
         Int64Mul(Int64(sizeof(JSTaggedValue)),
             Int64(static_cast<uint64_t>(ConstantIndex::CONSTRUCTOR_STRING_INDEX))));
     GateRef isCtorStr = Equal(key, gCtorStr);
-    return BoolAnd(IsJsArray(receiver), isCtorStr);
+    return BoolAnd(BoolOr(IsJsArray(receiver), IsTypedArray(receiver)), isCtorStr);
 }
 
 // Note: set return exit node

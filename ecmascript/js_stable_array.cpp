@@ -855,26 +855,49 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
                                      JSTaggedValue::Exception());
     }
     uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
-    JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
-    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
     ContentType contentType = targetArray->GetContentType();
     uint32_t elemLen = elements->GetLength();
-    for (uint32_t i = 0; i < srcLength; i++) {
-        if (i < elemLen) {
-            elem.Update(elements->Get(i));
-        } else {
-            elem.Update(JSTaggedValue::Hole());
-        }
-        if (contentType == ContentType::BigInt) {
+    if (contentType == ContentType::BigInt) {
+        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+        JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
+        for (uint32_t i = 0; i < srcLength; i++) {
+            if (i < elemLen) {
+                elem.Update(elements->Get(i));
+            } else {
+                elem.Update(JSTaggedValue::Hole());
+            }
             kValue.Update(JSTaggedValue::ToBigInt(thread, elem));
-        } else {
-            kValue.Update(JSTaggedValue::ToNumber(thread, elem));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
+                                                  targetType, kValue, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
         }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        BuiltinsArrayBuffer::SetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
-                                              targetType, kValue, true);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        targetByteIndex += targetElementSize;
+    } else {
+        double val = 0.0;
+        uint32_t copyLen = srcLength > elemLen ? elemLen : srcLength;
+        for (uint32_t i = 0; i < copyLen; i++) {
+            JSTaggedValue taggedVal = elements->Get(i);
+            if (!taggedVal.IsNumber()) {
+                JSTaggedNumber taggedNumber = JSTaggedValue::ToNumber(thread, taggedVal);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                val = taggedNumber.GetNumber();
+            } else {
+                val = taggedVal.GetNumber();
+            }
+            BuiltinsArrayBuffer::FastSetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
+                                                      targetType, val, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
+        }
+
+        for (uint32_t i = copyLen; i < srcLength; i++) {
+            val = JSTaggedNumber(base::NAN_VALUE).GetNumber();
+            BuiltinsArrayBuffer::FastSetValueInBuffer(thread, targetBuffer.GetTaggedValue(), targetByteIndex,
+                                                      targetType, val, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
+        }
     }
     return JSTaggedValue::Undefined();
 }

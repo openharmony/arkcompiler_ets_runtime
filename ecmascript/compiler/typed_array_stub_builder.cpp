@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/byte_array.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef TypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
@@ -404,5 +405,126 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef TypedArrayStubBuilder::CalArrayRelativePos(GateRef index, GateRef arrayLen)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+
+    Label indexLessZero(env);
+    Label indexNotLessZero(env);
+    Label exit(env);
+    Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
+    Bind(&indexLessZero);
+    {
+        GateRef tempBeginIndex = Int32Add(arrayLen, index);
+        Label beginIndexLargeZero(env);
+        Branch(Int32GreaterThan(tempBeginIndex, Int32(0)), &beginIndexLargeZero, &exit);
+        Bind(&beginIndexLargeZero);
+        {
+            result = tempBeginIndex;
+            Jump(&exit);
+        }
+    }
+    Bind(&indexNotLessZero);
+    {
+        Label lessLen(env);
+        Label largeLen(env);
+        Branch(Int32LessThan(index, arrayLen), &lessLen, &largeLen);
+        Bind(&lessLen);
+        {
+            result = index;
+            Jump(&exit);
+        }
+        Bind(&largeLen);
+        {
+            result = arrayLen;
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef relativeBegin, GateRef end,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    DEFVARIABLE(beginIndex, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(endIndex, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(newLength, VariableType::INT32(), Int32(0));
+
+    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+
+    GateRef objHclass = LoadHClass(thisValue);
+    Label defaultConstructor(env);
+    Branch(HasConstructorByHClass(objHclass), slowPath, &defaultConstructor);
+    Bind(&defaultConstructor);
+    GateRef arrayLen = GetArrayLength(thisValue);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    Label offHeap(env);
+    Branch(BoolOr(IsJSObjectType(buffer, JSType::JS_ARRAY_BUFFER),
+        IsJSObjectType(buffer, JSType::JS_SHARED_ARRAY_BUFFER)), &offHeap, slowPath);
+    Bind(&offHeap);
+    Label notDetached(env);
+    Branch(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
+
+    Label intIndex(env);
+    Branch(TaggedIsInt(relativeBegin), &intIndex, slowPath);
+    Bind(&intIndex);
+    GateRef relativeBeginInt = GetInt32OfTInt(relativeBegin);
+    beginIndex = CalArrayRelativePos(relativeBeginInt, arrayLen);
+
+    Label undefEnd(env);
+    Label defEnd(env);
+    Label calNewLength(env);
+    Label newArray(env);
+    Branch(TaggedIsUndefined(end), &undefEnd, &defEnd);
+    Bind(&undefEnd);
+    {
+        endIndex = arrayLen;
+        Jump(&calNewLength);
+    }
+    Bind(&defEnd);
+    {
+        Label intEnd(env);
+        Branch(TaggedIsInt(end), &intEnd, slowPath);
+        Bind(&intEnd);
+        {
+            GateRef endVal = GetInt32OfTInt(end);
+            endIndex = CalArrayRelativePos(endVal, arrayLen);
+            Jump(&calNewLength);
+        }
+    }
+    Bind(&calNewLength);
+    {
+        GateRef diffLen = Int32Sub(*endIndex, *beginIndex);
+        Label diffLargeZero(env);
+        Branch(Int32GreaterThan(diffLen, Int32(0)), &diffLargeZero, &newArray);
+        Bind(&diffLargeZero);
+        {
+            newLength = diffLen;
+            Jump(&newArray);
+        }
+    }
+    Bind(&newArray);
+    GateRef oldByteLength = Load(VariableType::INT32(), thisValue, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET));
+    GateRef elementSize = Int32Div(oldByteLength, arrayLen);
+    NewObjectStubBuilder newBuilder(this);
+    *result = newBuilder.NewTaggedSubArray(glue, thisValue, elementSize, *newLength, *beginIndex, objHclass, buffer);
+    Jump(exit);
 }
 }  // namespace panda::ecmascript::kungfu

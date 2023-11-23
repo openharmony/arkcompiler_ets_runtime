@@ -79,6 +79,8 @@ public:
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
+    GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
+        GateRef beginIndex, GateRef arrayCls, GateRef buffer);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
