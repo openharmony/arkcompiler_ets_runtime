@@ -22,11 +22,11 @@
 
 using namespace OHOS::Security::CodeSign;
 namespace panda::ecmascript {
-void CodeSignForAOTFile(const std::string &filename)
+void CodeSignatureForAOTFile(const std::string &filename, const std::string &appSignature)
 {
     LOG_ECMA(DEBUG) << "start to sign the aot file!";
     ByteBuffer sig;
-    if (LocalCodeSignKit::SignLocalCode(filename, sig) != CommonErrCode::CS_SUCCESS) {
+    if (LocalCodeSignKit::SignLocalCode(appSignature, filename, sig) != CommonErrCode::CS_SUCCESS) {
         LOG_ECMA(ERROR) << "Failed to sign the aot file!";
         return;
     }

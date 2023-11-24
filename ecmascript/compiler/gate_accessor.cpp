@@ -144,7 +144,7 @@ MemoryOrder GateAccessor::GetMemoryOrder(GateRef gate) const
             break;
         }
     }
-    return MemoryOrder::NOT_ATOMIC;
+    return MemoryOrder::Default();
 }
 
 bool GateAccessor::HasBranchWeight(GateRef gate) const

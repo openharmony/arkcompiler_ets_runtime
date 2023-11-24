@@ -13,12 +13,16 @@
  * limitations under the License.
  */
 
-#include "ecmascript/platform/code_sign.h"
-
-namespace panda::ecmascript {
-void CodeSignatureForAOTFile(const std::string &filename, const std::string &appSignature)
-{
-    (void)filename;
-    (void)appSignature;
+function t1() {
+    return function t2(obj) {
+        print(obj.x);
+    };
 }
-}  // namespace panda::ecmascript
+
+function foo() {
+    let f = t1();
+    let obj = {x : 123};
+    f(obj);
+}
+
+foo();

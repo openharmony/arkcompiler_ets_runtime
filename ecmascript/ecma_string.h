@@ -103,6 +103,8 @@ private:
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
         uint32_t idOffset = 0);
+    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+        MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static SlicedString *CreateSlicedString(const EcmaVM *vm, MemSpaceType type = MemSpaceType::SEMI_SPACE);
@@ -132,7 +134,7 @@ private:
     // not change src data structure
     static inline EcmaString *FastSubUtf16String(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
-
+    inline void TrimLineString(const JSThread *thread, uint32_t newLength);
     inline bool IsUtf8() const
     {
         return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_COMPRESSED;
@@ -1028,6 +1030,12 @@ public:
         bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0)
     {
         return EcmaString::CreateConstantString(vm, utf8Data, length, compressed, type, idOffset);
+    }
+
+    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+    {
+        return EcmaString::CreateUtf16StringFromUtf8(vm, utf8Data, utf8Len, type);
     }
 
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,

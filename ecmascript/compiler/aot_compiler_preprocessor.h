@@ -95,6 +95,8 @@ public:
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 
     void SnapshotInitialize();
+    
+    std::string GetMainPkgArgsAppSignature() const;
 
     bool GetCompilerResult()
     {
