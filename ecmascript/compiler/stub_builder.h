@@ -314,7 +314,6 @@ public:
     GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
-    GateRef TaggedObjectIsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
     GateRef IsSlicedString(GateRef obj);
     GateRef IsConstantString(GateRef obj);
@@ -588,6 +587,7 @@ public:
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
+    GateRef FastGetPropertyByValue(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
     void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
         ProfileOperation callback = ProfileOperation());
