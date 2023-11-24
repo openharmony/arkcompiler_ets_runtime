@@ -4408,6 +4408,35 @@ void StubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef inde
     env->SubCfgExit();
 }
 
+GateRef StubBuilder::GetCtorPrototype(GateRef ctor)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(constructorPrototype, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label isHClass(env);
+    Label isPrototype(env);
+
+    GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), ctor, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
+    Bind(&isHClass);
+    {
+        constructorPrototype = Load(VariableType::JS_POINTER(), ctorProtoOrHC, IntPtr(JSHClass::PROTOTYPE_OFFSET));
+        Jump(&exit);
+    }
+    Bind(&isPrototype);
+    {
+        constructorPrototype = ctorProtoOrHC;
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *constructorPrototype;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -4457,10 +4486,32 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
             Bind(&objIsEcmaObject);
             {
                 // 4. Let P be Get(C, "prototype").
-                auto prototypeString = GetGlobalConstantValue(
-                    VariableType::JS_POINTER(), glue, ConstantIndex::PROTOTYPE_STRING_INDEX);
+                Label getCtorProtoSlowPath(env);
+                Label ctorIsJSFunction(env);
+                Label gotCtorPrototype(env);
+                DEFVARIABLE(constructorPrototype, VariableType::JS_ANY(), Undefined());
+                Branch(IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
+                Bind(&ctorIsJSFunction);
+                {
+                    Label getCtorProtoFastPath(env);
+                    GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), target,
+                                                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
 
-                GateRef constructorPrototype = FastGetPropertyByName(glue, target, prototypeString, ProfileOperation());
+                    Branch(TaggedIsHole(ctorProtoOrHC), &getCtorProtoSlowPath, &getCtorProtoFastPath);
+                    Bind(&getCtorProtoFastPath);
+                    {
+                        constructorPrototype = GetCtorPrototype(target);
+                        Jump(&gotCtorPrototype);
+                    }
+                }
+                Bind(&getCtorProtoSlowPath);
+                {
+                    auto prototypeString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                  ConstantIndex::PROTOTYPE_STRING_INDEX);
+                    constructorPrototype = FastGetPropertyByName(glue, target, prototypeString, ProfileOperation());
+                    Jump(&gotCtorPrototype);
+                }
+                Bind(&gotCtorPrototype);
 
                 // 5. ReturnIfAbrupt(P).
                 // no throw exception, so needn't return
@@ -4478,10 +4529,10 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                 Label constructorPrototypeIsHeapObject(env);
                 Label constructorPrototypeIsEcmaObject(env);
                 Label constructorPrototypeNotEcmaObject(env);
-                Branch(TaggedIsHeapObject(constructorPrototype), &constructorPrototypeIsHeapObject,
+                Branch(TaggedIsHeapObject(*constructorPrototype), &constructorPrototypeIsHeapObject,
                     &constructorPrototypeNotEcmaObject);
                 Bind(&constructorPrototypeIsHeapObject);
-                Branch(TaggedObjectIsEcmaObject(constructorPrototype), &constructorPrototypeIsEcmaObject,
+                Branch(TaggedObjectIsEcmaObject(*constructorPrototype), &constructorPrototypeIsEcmaObject,
                     &constructorPrototypeNotEcmaObject);
                 Bind(&constructorPrototypeNotEcmaObject);
                 {
@@ -4508,7 +4559,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                     Branch(TaggedIsNull(*object), &afterLoop, &loopHead);
                     LoopBegin(&loopHead);
                     {
-                        GateRef isEqual = SameValue(glue, *object, constructorPrototype);
+                        GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
 
                         Branch(isEqual, &strictEqual1, &notStrictEqual1);
                         Bind(&strictEqual1);

@@ -2251,6 +2251,14 @@ DEF_RUNTIME_STUBS(FastCopyElementToArray)
     return JSTaggedValue(JSTypedArray::FastCopyElementToArray(thread, typedArray, array)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetPropertyByName)
+{
+    RUNTIME_STUBS_HEADER(GetPropertyByName);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return JSTaggedValue::GetProperty(thread, target, key).GetValue()->GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
