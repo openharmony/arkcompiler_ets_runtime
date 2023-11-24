@@ -26,6 +26,9 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label isExtensible(env);
     Branch(HasConstructor(thisValue), slowPath, &isExtensible);
     Bind(&isExtensible);
