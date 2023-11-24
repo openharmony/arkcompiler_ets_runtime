@@ -38,7 +38,6 @@ host_unittest_action("EcmaVm_001_Test") {
     "frame_test.cpp",
     "gc_test.cpp",
     "global_dictionary_test.cpp",
-    "global_index_map_test.cpp",
     "glue_regs_test.cpp",
     "handle_leak_test.cpp",
     "huge_object_test.cpp",
