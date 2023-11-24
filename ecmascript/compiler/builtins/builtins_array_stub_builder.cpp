@@ -29,98 +29,116 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
     Label isHeapObject(env);
     Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    Label isExtensible(env);
-    Branch(HasConstructor(thisValue), slowPath, &isExtensible);
-    Bind(&isExtensible);
-    Label numArgsOne(env);
-    Branch(Int64Equal(numArgs, IntPtr(1)), &numArgsOne, slowPath);
-    Bind(&numArgsOne);
-    GateRef arg0 = GetCallArg0(numArgs);
-    Label allEcmaObject(env);
-    Label allStableJsArray(env);
-    GateRef isThisEcmaObject = IsEcmaObject(thisValue);
-    GateRef isArgEcmaObject = IsEcmaObject(arg0);
-    Branch(BoolAnd(isThisEcmaObject, isArgEcmaObject), &allEcmaObject, slowPath);
-    Bind(&allEcmaObject);
-    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
-    GateRef isArgStableJSArray = IsStableJSArray(glue, arg0);
-    Branch(BoolAnd(isThisStableJSArray, isArgStableJSArray), &allStableJsArray, slowPath);
-    Bind(&allStableJsArray);
-    GateRef maxArrayIndex = Int64(TaggedArray::MAX_ARRAY_INDEX);
-    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-    GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
-    GateRef sumArrayLen = Int64Add(argLen, thisLen);
-    Label notOverFlow(env);
-    Branch(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
-    Bind(&notOverFlow);
-    Label spreadable(env);
-    Label argspreadable(env);
-    GateRef isSpreadable = IsConcatSpreadable(glue, thisValue);
-    Branch(isSpreadable, &spreadable, slowPath);
-    Bind(&spreadable);
-    GateRef argisSpreadable = IsConcatSpreadable(glue, arg0);
-    Branch(argisSpreadable, &argspreadable, slowPath);
-    Bind(&argspreadable);
-    // new array
-    Label setProperties(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
-    Branch(TaggedIsException(newArray), exit, &setProperties);
-    Bind(&setProperties);
-    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(sumArrayLen));
-    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, newArray, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-    SetExtensibleToBitfield(glue, newArray, true);
-    GateRef thisEles = GetElementsArray(thisValue);
-    GateRef argEles = GetElementsArray(arg0);
-    GateRef newArrayEles = GetElementsArray(newArray);
-    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(j, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
     {
-        Branch(Int64LessThan(*i, thisLen), &next, &loopExit);
-        Bind(&next);
-        GateRef ele = GetValueFromTaggedArray(thisEles, *i);
-        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *j, ele);
-        Jump(&loopEnd);
+        Label isExtensible(env);
+        Branch(HasConstructor(thisValue), slowPath, &isExtensible);
+        Bind(&isExtensible);
+        {
+            Label numArgsOne(env);
+            Branch(Int64Equal(numArgs, IntPtr(1)), &numArgsOne, slowPath);
+            Bind(&numArgsOne);
+            {
+                GateRef arg0 = GetCallArg0(numArgs);
+                Label allEcmaObject(env);
+                Label allStableJsArray(env);
+                GateRef isThisEcmaObject = IsEcmaObject(thisValue);
+                GateRef isArgEcmaObject = IsEcmaObject(arg0);
+                Branch(BoolAnd(isThisEcmaObject, isArgEcmaObject), &allEcmaObject, slowPath);
+                Bind(&allEcmaObject);
+                {
+                    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+                    GateRef isArgStableJSArray = IsStableJSArray(glue, arg0);
+                    Branch(BoolAnd(isThisStableJSArray, isArgStableJSArray), &allStableJsArray, slowPath);
+                    Bind(&allStableJsArray);
+                    {
+                        GateRef maxArrayIndex = Int64(TaggedArray::MAX_ARRAY_INDEX);
+                        GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                        GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
+                        GateRef sumArrayLen = Int64Add(argLen, thisLen);
+                        Label notOverFlow(env);
+                        Branch(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
+                        Bind(&notOverFlow);
+                        {
+                            Label spreadable(env);
+                            GateRef isSpreadable = IsConcatSpreadable(glue, thisValue);
+                            GateRef argisSpreadable = IsConcatSpreadable(glue, arg0);
+                            Branch(BoolAnd(isSpreadable, argisSpreadable), &spreadable, slowPath);
+                            Bind(&spreadable);
+                            {
+                                Label setProperties(env);
+                                GateRef glueGlobalEnvOffset =
+                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                                auto arrayFunc =GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                    GlobalEnv::ARRAY_FUNCTION_INDEX);
+                                GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                                NewObjectStubBuilder newBuilder(this);
+                                newBuilder.SetParameters(glue, 0);
+                                GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
+                                Branch(TaggedIsException(newArray), exit, &setProperties);
+                                Bind(&setProperties);
+                                {
+                                    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+                                    Store(VariableType::INT32(), glue, newArray, lengthOffset,
+                                        TruncInt64ToInt32(sumArrayLen));
+                                    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                        ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+                                    SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
+                                        Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+                                    SetExtensibleToBitfield(glue, newArray, true);
+                                    GateRef thisEles = GetElementsArray(thisValue);
+                                    GateRef argEles = GetElementsArray(arg0);
+                                    GateRef newArrayEles = GetElementsArray(newArray);
+                                    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+                                    DEFVARIABLE(j, VariableType::INT64(), Int64(0));
+                                    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+                                    Label loopHead(env);
+                                    Label loopEnd(env);
+                                    Label next(env);
+                                    Label loopExit(env);
+                                    Jump(&loopHead);
+                                    LoopBegin(&loopHead);
+                                    {
+                                        Branch(Int64LessThan(*i, thisLen), &next, &loopExit);
+                                        Bind(&next);
+                                        GateRef ele = GetValueFromTaggedArray(thisEles, *i);
+                                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *j, ele);
+                                        Jump(&loopEnd);
+                                    }
+                                    Bind(&loopEnd);
+                                    i = Int64Add(*i, Int64(1));
+                                    j = Int64Add(*j, Int64(1));
+                                    LoopEnd(&loopHead);
+                                    Bind(&loopExit);
+                                    Label loopHead1(env);
+                                    Label loopEnd1(env);
+                                    Label next1(env);
+                                    Label loopExit1(env);
+                                    Jump(&loopHead1);
+                                    LoopBegin(&loopHead1);
+                                    {
+                                        Branch(Int64LessThan(*k, argLen), &next1, &loopExit1);
+                                        Bind(&next1);
+                                        GateRef ele = GetValueFromTaggedArray(argEles, *k);
+                                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *j, ele);
+                                        Jump(&loopEnd1);
+                                    }
+                                    Bind(&loopEnd1);
+                                    k = Int64Add(*k, Int64(1));
+                                    j = Int64Add(*j, Int64(1));
+                                    LoopEnd(&loopHead1);
+                                    Bind(&loopExit1);
+                                    result->WriteVariable(newArray);
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
-    Bind(&loopEnd);
-    i = Int64Add(*i, Int64(1));
-    j = Int64Add(*j, Int64(1));
-    LoopEnd(&loopHead);
-    Bind(&loopExit);
-    Label loopHead1(env);
-    Label loopEnd1(env);
-    Label next1(env);
-    Label loopExit1(env);
-    Jump(&loopHead1);
-    LoopBegin(&loopHead1);
-    {
-        Branch(Int64LessThan(*k, argLen), &next1, &loopExit1);
-        Bind(&next1);
-        GateRef ele = GetValueFromTaggedArray(argEles, *k);
-        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *j, ele);
-        Jump(&loopEnd1);
-    }
-    Bind(&loopEnd1);
-    k = Int64Add(*k, Int64(1));
-    j = Int64Add(*j, Int64(1));
-    LoopEnd(&loopHead1);
-    Bind(&loopExit1);
-    result->WriteVariable(newArray);
-    Jump(exit);
 }
 
 void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef numArgs,
