@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -349,6 +350,217 @@ GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver,
     return iter;
 }
 
+GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(hclass, VariableType::JS_ANY(), Undefined());
+    GateRef kind = GetFuncKind(method);
+    Label exit(env);
+    Label defaultLabel(env);
+    Label isNormal(env);
+    Label notNormal(env);
+    Label isAsync(env);
+    Label notAsync(env);
+
+    Label labelBuffer[2] = { Label(env), Label(env) };
+    Label labelBuffer1[3] = { Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[2] = {
+        static_cast<int64_t>(FunctionKind::NORMAL_FUNCTION), static_cast<int64_t>(FunctionKind::ARROW_FUNCTION) };
+    int64_t valueBuffer1[3] = {
+        static_cast<int64_t>(FunctionKind::BASE_CONSTRUCTOR), static_cast<int64_t>(FunctionKind::GENERATOR_FUNCTION),
+        static_cast<int64_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION) };
+    Branch(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::ARROW_FUNCTION))),
+        &isNormal, &notNormal);
+    Bind(&isNormal);
+    {
+        // 2 : this switch has 2 case
+        Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 2);
+        Bind(&labelBuffer[0]);
+        {
+            hclass = GetFunctionHClass(glue, method,
+                GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED_WITH_FAST_CALL,
+                GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED,
+                GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+            Jump(&exit);
+        }
+        Bind(&labelBuffer[1]);
+        {
+            hclass = GetFunctionHClass(glue, method,
+                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED_WITH_FAST_CALL,
+                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED,
+                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+            Jump(&exit);
+        }
+    }
+    Bind(&notNormal);
+    {
+        Branch(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::ASYNC_FUNCTION))),
+            &isAsync, &notAsync);
+        Bind(&isAsync);
+        {
+            hclass = GetFunctionHClass(glue, method,
+                GlobalEnv::ASYNC_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
+                GlobalEnv::ASYNC_FUNCTION_CLASS_OPTIMIZED,
+                GlobalEnv::ASYNC_FUNCTION_CLASS);
+            Jump(&exit);
+        }
+        Bind(&notAsync);
+        {
+            // 3 : this switch has 3 case
+            Switch(kind, &defaultLabel, valueBuffer1, labelBuffer1, 3);
+            Bind(&labelBuffer1[0]);
+            {
+                hclass = GetFunctionHClass(glue, method,
+                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED_WITH_FAST_CALL,
+                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED,
+                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+                Jump(&exit);
+            }
+            Bind(&labelBuffer1[1]);
+            {
+                hclass = GetFunctionHClass(glue, method,
+                    GlobalEnv::GENERATOR_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
+                    GlobalEnv::GENERATOR_FUNCTION_CLASS_OPTIMIZED,
+                    GlobalEnv::GENERATOR_FUNCTION_CLASS);
+                Jump(&exit);
+            }
+            // 2 : index of kind
+            Bind(&labelBuffer1[2]);
+            {
+                hclass = GetFunctionHClass(glue, method,
+                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
+                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS_OPTIMIZED,
+                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *hclass;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef method, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    auto val = GetValueFromTaggedArray(constpool, index);
+    Label isAOTLiteral(env);
+    Label notAOTLiteral(env);
+    Label afterAOTLiteral(env);
+    Branch(IsAOTLiteralInfo(val), &isAOTLiteral, &notAOTLiteral);
+    {
+        Bind(&isAOTLiteral);
+        ihc = GetIhcFromAOTLiteralInfo(val);
+        Jump(&afterAOTLiteral);
+        Bind(&notAOTLiteral);
+        Jump(&afterAOTLiteral);
+    }
+    Bind(&afterAOTLiteral);
+    GateRef hclass = LoadHClassFromMethod(glue, method);
+    result = NewJSObject(glue, hclass);
+    SetExtensibleToBitfield(glue, hclass, true);
+    SetCallableToBitfield(glue, hclass, true);
+    GateRef kind = GetFuncKind(method);
+    InitializeJSFunction(glue, *result, kind);
+    SetMethodToFunction(glue, *result, method);
+
+    Label ihcNotUndefined(env);
+    Branch(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
+    Bind(&ihcNotUndefined);
+    {
+        CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), { *result, *ihc});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, GateRef kind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label hasProto(env);
+    Label notProto(env);
+    Label hasAccess(env);
+    Label isBase(env);
+    Label notBase(env);
+    Label isGenerator(env);
+    Label notClassConstructor(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    GateRef hclass = LoadHClass(func);
+
+    SetLexicalEnvToFunction(glue, func, Undefined());
+    SetHomeObjectToFunction(glue, func, Undefined());
+    SetProtoOrHClassToFunction(glue, func, Hole());
+    SetWorkNodePointerToFunction(glue, func, NullPtr());
+    SetMethodToFunction(glue, func, Undefined());
+
+    Branch(HasPrototype(kind), &hasProto, &notProto);
+    Bind(&hasProto);
+    {
+        auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                        ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
+        Branch(IsBaseKind(kind), &isBase, &notBase);
+        Bind(&isBase);
+        {
+            SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
+                                    Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX));
+            auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                       ConstantIndex::FUNCTION_NAME_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                    Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+            Branch(IsGeneratorKind(kind), &isGenerator, &exit);
+            Bind(&isGenerator);
+            {
+                thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
+                SetProtoOrHClassToFunction(glue, func, *thisObj);
+                Jump(&exit);
+            }
+        }
+        Bind(&notBase);
+        {
+            Branch(IsClassConstructorKind(kind), &exit, &notClassConstructor);
+            Bind(&notClassConstructor);
+            {
+                CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&notProto);
+    {
+        Branch(HasAccessor(kind), &hasAccess, &exit);
+        Bind(&hasAccess);
+        {
+            auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                       ConstantIndex::FUNCTION_NAME_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
+
 GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -505,7 +717,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
         GateRef arrayLength = Load(VariableType::INT32(), obj, lengthOffset);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
     }
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
 
     auto accessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
     SetPropertyInlinedProps(glue_, result->ReadVariable(), hclass, accessor,

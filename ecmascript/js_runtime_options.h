@@ -1440,7 +1440,7 @@ private:
     bool enableOptConstantFolding_ {true};
     bool enableOptOnHeapCheck_ {true};
     bool enableOptLoopInvariantCodeMotion_ {false};
-    bool enableLexenvSpecialization_ {true};
+    bool enableLexenvSpecialization_ {false};
     bool enableNativeInline_ {false};
     bool enableLoweringBuiltin_ {false};
 };

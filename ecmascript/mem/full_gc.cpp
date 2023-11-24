@@ -20,6 +20,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
@@ -41,6 +42,13 @@ void FullGC::RunPhases()
     if (heap_->CheckOngoingConcurrentMarking()) {
         LOG_GC(DEBUG) << "FullGC after ConcurrentMarking";
         heap_->GetConcurrentMarker()->Reset();  // HPPGC use mark result to move TaggedObject.
+    }
+
+    if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
+        LOG_GC(DEBUG) << "FullGC after IncrementalMarking";
+        heap_->ClearIdleTask();
+        heap_->DisableNotifyIdle();
+        heap_->GetIncrementalMarker()->Reset();
     }
     Initialize();
     Mark();

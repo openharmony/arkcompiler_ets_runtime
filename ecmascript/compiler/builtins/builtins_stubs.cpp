@@ -278,8 +278,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
 }
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
-    V(Values,       JS_POINTER)             \
-    V(Concat,       JS_POINTER)             \
+    V(Concat,       JS_ANY)                 \
     V(Filter,       JS_POINTER)             \
     V(ForEach,      JS_ANY)                 \
     V(IndexOf,      JS_ANY)                 \
@@ -287,6 +286,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Slice,        JS_POINTER)             \
     V(Reverse,      JS_POINTER)             \
     V(Push,         JS_ANY)                 \
+    V(Values,       JS_POINTER)             \
     V(Includes,     JS_ANY)
 
 BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)

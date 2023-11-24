@@ -640,20 +640,6 @@ bool PGORecordDetailInfos::UpdateLayout(ProfileType rootType, JSTaggedType hclas
     return true;
 }
 
-bool PGORecordDetailInfos::UpdateElements(PGOSampleType type, uint32_t size, RegionSpaceFlag spaceFlag)
-{
-    PGOHClassTreeDesc descInfo(type.GetProfileType());
-    auto iter = hclassTreeDescInfos_.find(descInfo);
-    if (iter != hclassTreeDescInfos_.end()) {
-        auto &oldDescInfo = const_cast<PGOHClassTreeDesc &>(*iter);
-        oldDescInfo.UpdateArrayLength(size);
-        oldDescInfo.UpdateSpaceFlag(spaceFlag);
-    } else {
-        return false;
-    }
-    return true;
-}
-
 bool PGORecordDetailInfos::AddTransitionLayout(
     ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType)
 {
@@ -812,7 +798,6 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
             return false;
         }
         auto profileType = PGOSampleType(typeInfo.GetProfileType());
-        auto trackInfo = typeInfo.GetElementsTrackInfo();
         size_t size = PGOHClassTreeDescInnerRef::CaculateSize(typeInfo);
         if (size == 0) {
             continue;
@@ -820,7 +805,7 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
 
         PGOSampleTypeRef classRef = PGOSampleTypeRef::ConvertFrom(*this, profileType);
         void *addr = allocator->Allocate(size);
-        auto descInfos = new (addr) PGOHClassTreeDescInnerRef(size, classRef, trackInfo);
+        auto descInfos = new (addr) PGOHClassTreeDescInnerRef(size, classRef);
         descInfos->Merge(typeInfo);
         stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);

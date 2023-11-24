@@ -61,7 +61,7 @@ public:
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
-    void UpdateProfileType(JSHClass *oldHClass, JSHClass *newHClass);
+    void UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
@@ -146,7 +146,7 @@ private:
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
-    void AddElementInfo(
+    void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);

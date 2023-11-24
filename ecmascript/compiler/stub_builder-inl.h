@@ -115,6 +115,11 @@ inline GateRef StubBuilder::Null()
     return env_->GetBuilder()->NullConstant();
 }
 
+inline GateRef StubBuilder::NullPtr()
+{
+    return env_->GetBuilder()->NullPtrConstant();
+}
+
 inline GateRef StubBuilder::Exception()
 {
     return env_->GetBuilder()->ExceptionConstant();
@@ -1158,25 +1163,6 @@ inline GateRef StubBuilder::IsString(GateRef obj)
     return res;
 }
 
-inline GateRef StubBuilder::TaggedObjectIsString(GateRef obj)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label heapObj(env);
-    Label exit(env);
-    GateRef isHeapObject = TaggedIsHeapObject(obj);
-    Branch(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    result = env_->GetBuilder()->TaggedObjectIsString(obj);
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 inline GateRef StubBuilder::IsLineString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -2050,6 +2036,14 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
     return GetInt64OfTInt(GetValueFromTaggedArray(layout, index));
 }
 
+inline GateRef StubBuilder::GetIhcFromAOTLiteralInfo(GateRef info)
+{
+    auto len = GetLengthOfTaggedArray(info);
+    GateRef ihcOffset = Int32Mul(
+        Int32Sub(len, Int32(AOTLiteralInfo::AOT_IHC_INDEX)), Int32(JSTaggedValue::TaggedTypeSize()));
+    return Load(VariableType::JS_ANY(), info, ZExtInt32ToInt64(ihcOffset));
+}
+
 inline void StubBuilder::SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
@@ -2485,6 +2479,31 @@ inline void StubBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef object, G
     Store(VariableType::JS_ANY(), glue, object, offset, lexicalEnv);
 }
 
+
+inline void StubBuilder::SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::WORK_NODE_POINTER_OFFSET);
+    Store(VariableType::NATIVE_POINTER(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
@@ -2541,6 +2560,73 @@ inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+}
+
+inline GateRef StubBuilder::IsAOTLiteralInfo(GateRef info)
+{
+    return env_->GetBuilder()->IsAOTLiteralInfo(info);
+}
+
+inline GateRef StubBuilder::IsAotWithCallField(GateRef method)
+{
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(callfield, Int64(Method::IsAotCodeBit::START_BIT)),
+            Int64((1LU << Method::IsAotCodeBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline GateRef StubBuilder::IsFastCall(GateRef method)
+{
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(callfield, Int64(Method::IsFastCallBit::START_BIT)),
+            Int64((1LU << Method::IsFastCallBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline GateRef StubBuilder::HasPrototype(GateRef kind)
+{
+    GateRef greater = Int32GreaterThanOrEqual(kind,
+        Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
+    GateRef less = Int32LessThanOrEqual(kind,
+        Int32(static_cast<int32_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)));
+    GateRef notproxy = Int32NotEqual(kind,
+        Int32(static_cast<int32_t>(FunctionKind::BUILTIN_PROXY_CONSTRUCTOR)));
+    return BoolAnd(notproxy, BoolAnd(greater, less));
+}
+
+inline GateRef StubBuilder::HasAccessor(GateRef kind)
+{
+    GateRef greater = Int32GreaterThanOrEqual(kind,
+        Int32(static_cast<int32_t>(FunctionKind::NORMAL_FUNCTION)));
+    GateRef less = Int32LessThanOrEqual(kind,
+        Int32(static_cast<int32_t>(FunctionKind::ASYNC_FUNCTION)));
+    return BoolAnd(greater, less);
+}
+
+inline GateRef StubBuilder::IsClassConstructorKind(GateRef kind)
+{
+    GateRef left = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
+    GateRef right = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::DERIVED_CONSTRUCTOR)));
+    return BoolOr(left, right);
+}
+
+inline GateRef StubBuilder::IsGeneratorKind(GateRef kind)
+{
+    GateRef left = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)));
+    GateRef right = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::GENERATOR_FUNCTION)));
+    return BoolOr(left, right);
+}
+
+inline GateRef StubBuilder::IsBaseKind(GateRef kind)
+{
+    GateRef val = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
+    return BoolOr(val, IsGeneratorKind(kind));
 }
 
 inline GateRef StubBuilder::IsNativeMethod(GateRef method)
@@ -2704,6 +2790,18 @@ inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool
     GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
     GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
     GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
+
+inline void StubBuilder::SetCallableToBitfield(GateRef glue, GateRef obj, bool isCallable)
+{
+    GateRef jsHclass = LoadHClass(obj);
+    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef boolVal = Boolean(isCallable);
+    GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
+    GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::CallableBit::START_BIT));
+    GateRef mask = Int32(((1LU << JSHClass::CallableBit::SIZE) - 1) << JSHClass::CallableBit::START_BIT);
     bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
     Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
 }

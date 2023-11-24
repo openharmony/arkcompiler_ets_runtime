@@ -29,6 +29,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
+
 namespace panda::ecmascript::kungfu {
 GateRef TypeHCRLowering::VisitGate(GateRef gate)
 {
@@ -2223,7 +2224,7 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                 {
                     GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
                     builder_.CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef,
-                                                  { builder_.Int32ToTaggedInt(taggedId) }, gate);
+                                         { builder_.Int32ToTaggedInt(taggedId) }, gate);
                     result = builder_.ExceptionConstant();
                     builder_.Jump(&exit);
                 }

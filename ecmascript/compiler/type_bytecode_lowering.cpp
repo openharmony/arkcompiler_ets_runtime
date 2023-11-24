@@ -423,8 +423,10 @@ bool TypeBytecodeLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef 
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
-    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
-    if (leftType.IsStringType() && rightType.IsStringType()) {
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
+    if (sampleType->IsString()) {
+        return true;
+    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
         return true;
     }
     return false;
@@ -799,8 +801,9 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
                 { receiverHC, newHolderHC, propKey }, gate);
             builder_.Jump(&notProto);
             builder_.Bind(&notProto);
+            MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
             builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
-                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+                TaggedObject::HCLASS_OFFSET, newHolderHC, order);
             if (!accessInfos[i].Plr().IsInlinedProps()) {
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
@@ -962,8 +965,9 @@ void TypeBytecodeLowering::LowerTypedStOwnByName(GateRef gate)
                 { receiverHC, newHolderHC, propKey }, gate);
             builder_.Jump(&notProto);
             builder_.Bind(&notProto);
+            MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
             builder_.StoreConstOffset(VariableType::JS_ANY(), receiver,
-                TaggedObject::HCLASS_OFFSET, newHolderHC, MemoryOrder::MEMORY_ORDER_RELEASE);
+                TaggedObject::HCLASS_OFFSET, newHolderHC, order);
             if (!accessInfos[i].Plr().IsInlinedProps()) {
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
@@ -1046,6 +1050,18 @@ GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(
 
 bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
 {
+    ChunkVector<ProfileType> types(chunk_);
+    FetchBuiltinsTypes(gate, types);
+    // Just supported mono.
+    if (types.size() == 1) {
+        if (types[0].IsBuiltinsString()) {
+            return TryLowerTypedLdObjByNameForBuiltin(gate, key, BuiltinTypeId::STRING);
+        }
+        if (types[0].IsBuiltinsArray()) {
+            return TryLowerTypedLdObjByNameForBuiltin(gate, key, BuiltinTypeId::ARRAY);
+        }
+    }
+
     // String: primitive string type only
     // e.g. let s1 = "ABC"; // OK
     //      let s2 = new String("DEF"); // Not included, whose type is JSType::JS_PRIMITIVE_REF
@@ -1093,7 +1109,7 @@ bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, JSTa
         }
     }
     // (2) other functions
-    return TryLowerTypedLdObjByNameForBuiltinMethod(gate, key, type);
+    return false;
 }
 
 void TypeBytecodeLowering::LowerTypedLdArrayLength(GateRef gate)
@@ -1237,7 +1253,7 @@ void TypeBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
     index = builder_.Int32(indexValue);
     auto length = builder_.LoadTypedArrayLength(receiverType, receiver);
     if (!Uncheck()) {
-        builder_.IndexCheck(receiverType, length, index);
+        builder_.IndexCheck(length, index);
     }
 
     if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
@@ -1265,22 +1281,34 @@ void TypeBytecodeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
         receiver = acc_.GetValueIn(gate, 1);
         propKey = acc_.GetValueIn(gate, 2);  // 2: the third parameter
     }
+    ChunkVector<ProfileType> types(chunk_);
+    FetchBuiltinsTypes(gate, types);
+    GateRef result = Circuit::NullGate();
+    // Just supported mono.
+    if (types.size() == 1) {
+        if (types[0].IsBuiltinsString()) {
+            AddProfiling(gate);
+            acc_.SetGateType(propKey, GateType::NumberType());
+            result = LoadStringByIndex(receiver, propKey);
+            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            return;
+        } else if (types[0].IsBuiltinsArray()) {
+            AddProfiling(gate);
+            ElementsKind kind = acc_.TryGetArrayElementsKind(gate);
+            acc_.SetGateType(propKey, GateType::NumberType());
+            result = LoadJSArrayByIndex(receiver, propKey, kind);
+            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            return;
+        }
+    }
+
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (!propKeyType.IsNumberType()) {
         return; // slowpath
     }
-
-    GateRef result = Circuit::NullGate();
-    if (receiverType.IsStringType()) {
-        AddProfiling(gate);
-        result = LoadStringByIndex(receiver, propKey);
-    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
-        AddProfiling(gate);
-        ElementsKind kind = acc_.TryGetArrayElementsKind(gate);
-        result = LoadJSArrayByIndex(receiver, propKey, kind);
-    } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
+    if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         result = LoadTypedArrayByIndex(receiver, propKey);
     } else {
@@ -1292,11 +1320,9 @@ void TypeBytecodeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 GateRef TypeBytecodeLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
 {
     if (!Uncheck()) {
-        GateType receiverType = acc_.GetGateType(receiver);
-        receiverType = tsManager_->TryNarrowUnionType(receiverType);
         builder_.EcmaStringCheck(receiver);
         GateRef length = builder_.LoadStringLength(receiver);
-        propKey = builder_.IndexCheck(receiverType, length, propKey);
+        propKey = builder_.IndexCheck(length, propKey);
         receiver = builder_.FlattenTreeStringCheck(receiver);
     }
     return builder_.LoadElement<TypedLoadOp::STRING_LOAD_ELEMENT>(receiver, propKey);
@@ -1305,13 +1331,11 @@ GateRef TypeBytecodeLowering::LoadStringByIndex(GateRef receiver, GateRef propKe
 GateRef TypeBytecodeLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)
 {
     if (!Uncheck()) {
-        GateType receiverType = acc_.GetGateType(receiver);
-        receiverType = tsManager_->TryNarrowUnionType(receiverType);
         if (!IsCreateArray(receiver)) {
             builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
         }
         GateRef length = builder_.LoadArrayLength(receiver);
-        propKey = builder_.IndexCheck(receiverType, length, propKey);
+        propKey = builder_.IndexCheck(length, propKey);
     }
 
     GateRef result = Circuit::NullGate();
@@ -1336,7 +1360,7 @@ GateRef TypeBytecodeLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef pr
     if (!Uncheck()) {
         builder_.TypedArrayCheck(receiverType, receiver);
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
-        propKey = builder_.IndexCheck(receiverType, length, propKey);
+        propKey = builder_.IndexCheck(length, propKey);
     }
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
     switch (builtinTypeId) {
@@ -1369,13 +1393,11 @@ GateRef TypeBytecodeLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef pr
 void TypeBytecodeLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind)
 {
     if (!Uncheck()) {
-        GateType receiverType = acc_.GetGateType(receiver);
-        receiverType = tsManager_->TryNarrowUnionType(receiverType);
         if (!IsCreateArray(receiver)) {
             builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
         }
         GateRef length = builder_.LoadArrayLength(receiver);
-        builder_.IndexCheck(receiverType, length, propKey);
+        builder_.IndexCheck(length, propKey);
         builder_.COWArrayCheck(receiver);
 
         if (Elements::IsObject(kind)) {
@@ -1394,7 +1416,7 @@ void TypeBytecodeLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef prop
     if (!Uncheck()) {
         builder_.TypedArrayCheck(receiverType, receiver);
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
-        propKey = builder_.IndexCheck(receiverType, length, propKey);
+        propKey = builder_.IndexCheck(length, propKey);
     }
 
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
@@ -1580,7 +1602,7 @@ void TypeBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 }
 
 void TypeBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                                         BuiltinsStubCSigns::ID id, bool isThrow)
+    BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
@@ -1808,7 +1830,7 @@ bool TypeBytecodeLowering::CanOptimizeAsFastCall(GateRef func)
 }
 
 void TypeBytecodeLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;
@@ -2030,11 +2052,25 @@ void TypeBytecodeLowering::AddProfiling(GateRef gate)
     }
 }
 
+void TypeBytecodeLowering::FetchBuiltinsTypes(GateRef gate, ChunkVector<ProfileType> &types)
+{
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsBuiltinsType()) {
+            types.emplace_back(temp.GetReceiverType());
+        }
+    }
+}
+
 void TypeBytecodeLowering::FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types)
 {
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsBuiltinsType()) {
+            continue;
+        }
         types.emplace_back(std::make_pair(
             std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
             std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
@@ -2128,7 +2164,7 @@ void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
     // if true -> slowthPath
     // if false -> lowering
     JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
-    auto hasInstanceEnvIndex =static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
+    auto hasInstanceEnvIndex = static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
     JSTaggedValue key = globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types(chunk_);
     FetchPGORWTypesDual(gate, types);

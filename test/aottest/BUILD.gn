@@ -28,6 +28,7 @@ group("ark_aot_js_test") {
     "for_await_of",
     "dead_code_elimination",
     "equal",
+    "js_string_equal",
   ]
 
   deps = []
@@ -192,6 +193,7 @@ group("ark_aot_ts_test") {
     "pgo_forof_typed_array",
     "pgo_function_operation",
     "pgo_function_prototype",
+    "pgo_length",
     "pgo_objectliteral_operation",
     "pgo_call_deopt",
     "poplexenv",

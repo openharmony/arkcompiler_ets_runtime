@@ -144,7 +144,7 @@ MemoryOrder GateAccessor::GetMemoryOrder(GateRef gate) const
             break;
         }
     }
-    return MemoryOrder::NOT_ATOMIC;
+    return MemoryOrder::Default();
 }
 
 bool GateAccessor::HasBranchWeight(GateRef gate) const
@@ -329,10 +329,12 @@ bool GateAccessor::HasNumberType(GateRef gate) const
 
 bool GateAccessor::HasStringType(GateRef gate) const
 {
-    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
     GateType leftType = GetLeftType(gate);
     GateType rightType = GetRightType(gate);
-    if (leftType.IsStringType() && rightType.IsStringType()) {
+    const PGOSampleType *sampleType = TryGetPGOType(gate).GetPGOSampleType();
+    if (sampleType->IsString()) {
+        return true;
+    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
         return true;
     }
     return false;
@@ -587,6 +589,25 @@ void GateAccessor::TrySetPGOType(GateRef gate, PGOTypeRef type)
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetType(type);
+    }
+}
+
+uint32_t GateAccessor::TryGetArrayElementsLength(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetElementsLength();
+    }
+    return 0;
+}
+
+void GateAccessor::TrySetArrayElementsLength(GateRef gate, uint32_t length)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsLength(length);
     }
 }
 
