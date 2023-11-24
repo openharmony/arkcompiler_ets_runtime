@@ -2400,6 +2400,8 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     Label handlerInfoNotInlinedProps(env);
     Label indexMoreCapacity(env);
     Label indexLessCapacity(env);
+    Label capacityIsZero(env);
+    Label capacityNotZero(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef newHClass;
     GateRef handlerInfo;
@@ -2426,11 +2428,26 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
         Branch(Int32GreaterThanOrEqual(index, capacity), &indexMoreCapacity, &indexLessCapacity);
         Bind(&indexMoreCapacity);
         {
-            CallRuntime(glue,
-                        RTSTUB_ID(PropertiesSetValue),
-                        { receiver, value, array, IntToTaggedInt(capacity),
-                          IntToTaggedInt(index) });
-            Jump(&exit);
+            NewObjectStubBuilder newBuilder(this);
+            Branch(Int32Equal(capacity, Int32(0)), &capacityIsZero, &capacityNotZero);
+            Bind(&capacityIsZero);
+            {
+                GateRef properties = newBuilder.NewTaggedArray(glue, Int32(JSObject::MIN_PROPERTIES_LENGTH));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, properties, index, value);
+                SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, properties);
+                Jump(&exit);
+            }
+            Bind(&capacityNotZero);
+            {
+                GateRef inlinedProperties = GetInlinedPropertiesFromHClass(newHClass);
+                GateRef maxNonInlinedFastPropsCapacity =
+                                Int32Sub(Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY), inlinedProperties);
+                GateRef newLen = ComputeNonInlinedFastPropsCapacity(glue, capacity, maxNonInlinedFastPropsCapacity);
+                GateRef properties = newBuilder.CopyArray(glue, array, capacity, newLen);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, properties, index, value);
+                SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, properties);
+                Jump(&exit);
+            }
         }
         Bind(&indexLessCapacity);
         {
