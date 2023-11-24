@@ -407,4 +407,31 @@ void NumberDictionary::ClearEntry(const JSThread *thread, int entry)
     PropertyAttributes metaData;
     SetEntry(thread, entry, hole, hole, metaData);
 }
+
+JSHandle<PointerToIndexDictionary> PointerToIndexDictionary::Create(const JSThread *thread, int numberOfElements)
+{
+    return OrderHashTableT::Create(thread, numberOfElements);
+}
+
+JSHandle<PointerToIndexDictionary> PointerToIndexDictionary::PutIfAbsent(
+    const JSThread *thread,
+    const JSHandle<PointerToIndexDictionary> &dictionary,
+    const JSHandle<JSTaggedValue> &key,
+    const JSHandle<JSTaggedValue> &value)
+{
+    /* no need to add key if exist */
+    int entry = dictionary->FindEntry(key.GetTaggedValue());
+    if (entry != -1) {
+        return dictionary;
+    }
+    // Check whether the table should be growed
+    JSHandle<PointerToIndexDictionary> newDictionary = HashTableT::GrowHashTable(thread, dictionary);
+
+    // Compute the key object
+    int32_t hash = PointerToIndexDictionary::Hash(key.GetTaggedValue());
+    entry = newDictionary->FindInsertIndex(hash);
+    newDictionary->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue());
+    newDictionary->IncreaseEntries(thread);
+    return newDictionary;
+}
 }  // namespace panda::ecmascript
