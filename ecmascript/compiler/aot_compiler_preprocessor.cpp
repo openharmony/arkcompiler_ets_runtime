@@ -253,4 +253,9 @@ void AotCompilerPreprocessor::SnapshotInitialize()
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     ptManager->InitAOTSnapshot(fileInfos_.size());
 }
+
+std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const
+{
+    return GetMainPkgArgs() == nullptr ? "" : GetMainPkgArgs()->GetAppSignature();
+}
 } // namespace panda::ecmascript::kungfu

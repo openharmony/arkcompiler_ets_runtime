@@ -54,6 +54,7 @@ public:
     constexpr static const char *const KEY_PROCESS_UID = "processUid";
     constexpr static const char *const KEY_BUNDLE_UID = "bundleUid";
     constexpr static const char *const IS_ENCRYPTED_BUNDLE = "isEncryptedBundle";
+    constexpr static const char *const APP_IDENTIFIER = "appIdentifier";
 
     OhosPkgArgs() = default;
 
@@ -259,6 +260,8 @@ public:
         } else if (strcmp(key, IS_ENCRYPTED_BUNDLE) == 0) {
             char *str = nullptr;
             IsEncryptedBundle_ = static_cast<uint32_t>(strtol(value, &str, 0));
+        } else if (strcmp(key, APP_IDENTIFIER) == 0) {
+            appSignature_ = value;
         } else {
             LOG_COMPILER(ERROR) << "Unknown keyword when parse pkg info. key: " << key << ", value: " << value;
         }
@@ -285,7 +288,8 @@ public:
                            << KEY_PGO_DIR << ": " << pgoDir_ << ", "
                            << KEY_BUNDLE_UID << ": " << bundleUid_ << ", "
                            << KEY_PROCESS_UID << ": " << processUid_ << ", "
-                           << IS_ENCRYPTED_BUNDLE << ": " << IsEncryptedBundle_ ;
+                           << IS_ENCRYPTED_BUNDLE << ": " << IsEncryptedBundle_
+                           << APP_IDENTIFIER << ": " << appSignature_;
     }
 
     const std::string &GetBundleName() const
@@ -301,6 +305,11 @@ public:
     const std::string &GetPath() const
     {
         return pkgPath_;
+    }
+
+    const std::string &GetAppSignature() const
+    {
+        return appSignature_;
     }
 
     std::string GetFullName() const
@@ -445,6 +454,7 @@ private:
     std::string pkgPath_{""};
     std::string abcName_{""};
     std::string pgoDir_{""};
+    std::string appSignature_{""};
     uint32_t abcOffset_ {INVALID_VALUE};
     uint32_t abcSize_ {INVALID_VALUE};
     uint32_t bundleUid_ {INVALID_VALUE};
