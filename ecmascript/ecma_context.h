@@ -47,7 +47,6 @@ class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
-class GlobalIndexMap;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -517,7 +516,6 @@ private:
     JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue pointerToIndexDictionary_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
@@ -589,7 +587,6 @@ private:
     friend class ObjectFactory;
     friend class panda::JSNApi;
     friend class AOTFileManager;
-    friend class GlobalIndexMap;
 };
 }  // namespace ecmascript
 }  // namespace panda

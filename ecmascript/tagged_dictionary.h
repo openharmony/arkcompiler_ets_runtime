@@ -140,56 +140,5 @@ public:
     static constexpr int ENTRY_DETAILS_INDEX = 2;
     static constexpr int ENTRY_SIZE = 3;
 };
-
-class PointerToIndexDictionary : public OrderTaggedHashTable<PointerToIndexDictionary> {
-public:
-    using OrderHashTableT = OrderTaggedHashTable<PointerToIndexDictionary>;
-    inline static int GetKeyIndex(int entry)
-    {
-        return OrderHashTableT::TABLE_HEADER_SIZE + entry * GetEntrySize() + ENTRY_KEY_INDEX;
-    }
-    
-    inline static int GetValueIndex(int entry)
-    {
-        return OrderHashTableT::TABLE_HEADER_SIZE + entry * GetEntrySize() + ENTRY_VALUE_INDEX;
-    }
-
-    inline static int GetEntryIndex(int entry)
-    {
-        return OrderHashTableT::TABLE_HEADER_SIZE + entry * GetEntrySize();
-    }
-    
-    inline static int GetEntrySize()
-    {
-        return ENTRY_SIZE;
-    }
-
-    inline void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value)
-    {
-        SetKey(thread, entry, key);
-        SetValue(thread, entry, value);
-    }
-
-    static int32_t Hash(const JSTaggedValue &key)
-    {
-        return static_cast<int32_t>(key.GetRawData());
-    }
-
-    static bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
-    {
-        return key == other;
-    }
-    static JSHandle<PointerToIndexDictionary> Create(const JSThread *thread,
-                                        int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
-    static JSHandle<PointerToIndexDictionary> PutIfAbsent(
-                                        const JSThread *thread, const JSHandle<PointerToIndexDictionary> &dictionary,
-                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
-
-    // DECL_DUMP()
-
-    static constexpr int ENTRY_KEY_INDEX = 0;
-    static constexpr int ENTRY_VALUE_INDEX = 1;
-    static constexpr int ENTRY_SIZE = 2;
-};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_NEW_DICTIONARY_H
