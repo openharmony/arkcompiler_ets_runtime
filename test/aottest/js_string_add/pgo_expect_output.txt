@@ -11,9 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_js_test_action("js_string_equal") {
-  deps = []
-  is_enable_pgo = true
-}
+HelloWorld
+Hello WorldHello
+123
+Hello,  OD
+Hello,  Huawei
+Hello,  
+BUGBUG
+BUGfull of bug
+full of bugfull of bug
+%F0

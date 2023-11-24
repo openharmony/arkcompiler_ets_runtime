@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_js_test_action("js_string_equal") {
+host_aot_js_test_action("js_string_add") {
   deps = []
   is_enable_pgo = true
 }
