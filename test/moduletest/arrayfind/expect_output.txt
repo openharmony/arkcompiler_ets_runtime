@@ -12,5 +12,21 @@
 # limitations under the License.
 
 12
+7.3
+0,0
+1,1
+2,undefined
+3,undefined
+4,undefined
+5,5
+6,6
+array[5]5
+0,0
+1,1
+2,undefined
+3,undefined
+4,undefined
+5,undefined
+6,6
 undefined
 5

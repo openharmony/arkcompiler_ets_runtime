@@ -225,22 +225,23 @@ void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef num
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label stableJSArray(env);
-
     GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
     Branch(isThisStableJSArray, &stableJSArray, slowPath);
     Bind(&stableJSArray);
 
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
+    Label arg0HeapObject(env);
+    Branch(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
     Label callable(env);
     Branch(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
     GateRef argHandle = GetCallArg1(numArgs);
     GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-
 
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     Label loopHead(env);
@@ -252,8 +253,7 @@ void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef num
     {
         Branch(Int64LessThan(*i, thisArrLen), &next, &loopExit);
         Bind(&next);
-        GateRef thisEles = GetElementsArray(thisValue);
-        GateRef kValue = GetValueFromTaggedArray(thisEles, *i);
+        GateRef kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
         GateRef key = Int64ToTaggedInt(*i);
         Label hasException(env);
         Label notHasException(env);
