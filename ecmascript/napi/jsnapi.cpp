@@ -1726,6 +1726,36 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    current->SetCallNapi(callNapi);
+    return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+}
+
+static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
+    clsPrototype->GetClass()->SetClassPrototype(true);
+    func->SetClassConstructor(true);
+    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(func), parent);
+    func->SetHomeObject(thread, clsPrototype);
+    func->SetCallNapi(callNapi);
+}
+
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
@@ -1738,22 +1768,26 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
-
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
-    current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
-                                     accessor.GetTaggedValue());
-
+    InitClassFunction(vm, current, callNapi);
     current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
+    Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+    return scope.Escape(result);
+}
 
-    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, current);
-    clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
-    JSHandle<JSTaggedValue>::Cast(current)->GetTaggedObject()->GetClass()->SetClassConstructor(true);
-    current->SetClassConstructor(true);
-    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
-    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
-    current->SetHomeObject(thread, clsPrototype);
-    current->SetCallNapi(callNapi);
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
+        hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+    InitClassFunction(vm, current, callNapi);
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }

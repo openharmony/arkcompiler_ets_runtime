@@ -776,13 +776,17 @@ public:
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
+using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
