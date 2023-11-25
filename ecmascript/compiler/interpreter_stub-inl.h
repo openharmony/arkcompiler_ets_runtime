@@ -211,6 +211,22 @@ GateRef InterpreterStubBuilder::GetFunctionFromFrame(GateRef frame)
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
 }
 
+GateRef InterpreterStubBuilder::GetNewTarget(GateRef sp)
+{
+    GateRef function = Load(VariableType::JS_POINTER(), GetFrame(sp),
+        IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
+    GateRef method = GetMethodFromFunction(function);
+    GateRef callField = GetCallFieldFromMethod(method);
+    // ASSERT: callField has "extra" bit.
+    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumVregsBits::START_BIT)),
+        Int64((1LLU << MethodLiteral::NumVregsBits::SIZE) - 1)));
+    GateRef haveFunc = ZExtInt1ToInt32(Int64NotEqual(Int64And(Int64LSR(callField,
+        Int64(MethodLiteral::HaveFuncBit::START_BIT)),
+        Int64((1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1)), Int64(0)));
+    GateRef idx = ZExtInt32ToPtr(Int32Add(numVregs, haveFunc));
+    return Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
+}
+
 GateRef InterpreterStubBuilder::GetThisFromFrame(GateRef frame)
 {
     return Load(VariableType::JS_POINTER(), frame,

@@ -940,7 +940,43 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     }
     Bind(&callRuntime);
     {
-        thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
+        thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor, Undefined()});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *thisObj;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superCtor, GateRef newTarget)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isHeapObject(env);
+    Label checkJSObject(env);
+    Label callRuntime(env);
+    Label newObject(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
+    protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
+        IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(IsJSHClass(*protoOrHclass), &checkJSObject, &callRuntime);
+    Bind(&checkJSObject);
+    auto objectType = GetObjectType(*protoOrHclass);
+    Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
+        &newObject, &callRuntime);
+    Bind(&newObject);
+    {
+        SetParameters(glue, 0);
+        NewJSObject(&thisObj, &exit, *protoOrHclass);
+    }
+    Bind(&callRuntime);
+    {
+        thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {superCtor, newTarget});
         Jump(&exit);
     }
     Bind(&exit);
@@ -1017,7 +1053,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, GateRe
             GateRef arrayLength = GetArrayLength(arrayLiteral);
             ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, arrayLength);
         }
-        
+
         SetValueToTaggedArray(VariableType::JS_POINTER(), glue, profileTypeInfo, slotId, *ret);
         callback.TryPreDump();
         Jump(&exit);

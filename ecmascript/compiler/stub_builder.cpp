@@ -6713,6 +6713,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
         case JSCallMode::CALL_THIS_ARG3:
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
             return true;
         case JSCallMode::DEPRECATED_CALL_ARG0:
         case JSCallMode::DEPRECATED_CALL_ARG1:
@@ -6881,6 +6882,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2], data[3] });
                 break;
+            case JSCallMode::SUPER_CALL_WITH_ARGV:
+                result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -6996,6 +7000,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         result = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2], data[3] });
                         Jump(&exit);
                         break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
                     default:
                         LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
@@ -7072,6 +7080,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
                             { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
                         Jump(&exit);
                         break;
                     default:
@@ -7158,6 +7170,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                             { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
                         Jump(&exit);
                         break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
                     default:
                         LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
@@ -7234,6 +7250,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                         result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
                             { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
                         Jump(&exit);
                         break;
                     default:
@@ -7330,6 +7350,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 result = CallNGCRuntime(glue, RTSTUB_ID(CallReturnWithArgv),
                     { glue, func, method, callField, data[0], data[1], data[2] });
                 Jump(&exit);
+                break;
+            case JSCallMode::SUPER_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushSuperCallAndDispatch),
+                    { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
+                Return();
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";

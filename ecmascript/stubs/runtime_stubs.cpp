@@ -1965,9 +1965,15 @@ DEF_RUNTIME_STUBS(NewThisObject)
 {
     RUNTIME_STUBS_HEADER(NewThisObject);
     JSHandle<JSFunction> ctor(GetHArg<JSTaggedValue>(argv, argc, 0));  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget(GetHArg<JSTaggedValue>(argv, argc, 1));  // 1: means the first parameter
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
+    JSHandle<JSObject> obj;
+    if (newTarget->IsUndefined()) {
+        obj = factory->NewJSObjectByConstructor(ctor);
+    } else {
+        obj = factory->NewJSObjectByConstructor(ctor, newTarget);
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return obj.GetTaggedType();  // state is not set here
 }

@@ -373,6 +373,12 @@ void AsmInterpreterCall::PushCallNewAndDispatch(ExtendedAssembler *assembler)
     JSCallCommonEntry(assembler, JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
 }
 
+void AsmInterpreterCall::PushSuperCallAndDispatch(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushSuperCallAndDispatch));
+    JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV);
+}
+
 void AsmInterpreterCall::PushCallArgs3AndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgs3AndDispatch));
@@ -557,6 +563,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         case JSCallMode::CALL_THIS_ARG3:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
@@ -585,6 +592,8 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+            return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
             Register argvRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
