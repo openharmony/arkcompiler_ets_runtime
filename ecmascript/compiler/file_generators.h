@@ -187,7 +187,7 @@ public:
     bool SetFileModeAsDefault(const std::string &filename);
 
     // save function for aot files containing normal func translated from JS/TS
-    void SaveAOTFile(const std::string &filename);
+    void SaveAOTFile(const std::string &filename, const std::string &appSignature);
 
     void SaveSnapshotFile();
 

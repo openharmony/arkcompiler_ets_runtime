@@ -132,17 +132,17 @@ def judge_output(args: object):
     if args.expect_output:
         returncode = str(subp.returncode)
         if returncode != args.expect_output:
-            out_str = out.decode('UTF-8')
-            err_str = err.decode('UTF-8')
+            out_str = out.decode('UTF-8', errors="ignore")
+            err_str = err.decode('UTF-8', errors="ignore")
             print(out_str)
             print(err_str)
             print(">>>>> Expect return: [" + args.expect_output \
                 + "]\n>>>>> But got: [" + returncode + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
     elif args.expect_sub_output:
-        out_str = out.decode('UTF-8')
+        out_str = out.decode('UTF-8', errors="ignore")
         if out_str.find(args.expect_sub_output) == -1:
-            out_str = out.decode('UTF-8')
+            out_str = out.decode('UTF-8', errors="ignore")
             print(out_str)
             print(">>>>> Expect contain: [" + args.expect_sub_output \
                 + "]\n>>>>> But got: [" + out_str + "]")
@@ -152,9 +152,9 @@ def judge_output(args: object):
             # skip license header
             expect_output = ''.join(file.readlines()[13:])
             file.close()
-            out_str = out.decode('UTF-8')
+            out_str = out.decode('UTF-8', errors="ignore")
             if out_str != expect_output:
-                err_str = err.decode('UTF-8')
+                err_str = err.decode('UTF-8', errors="ignore")
                 print(err_str)
                 print(">>>>> Expect : [" + expect_output \
                     + "]\n>>>>> But got: [" + out_str + "]")

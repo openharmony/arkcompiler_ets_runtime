@@ -2182,11 +2182,44 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     builder_.Bind(&objIsEcmaObject);
     {
         // 4. Let P be Get(C, "prototype").
-        // target must be a builtin function
-        GateRef ctorHClass = builder_.LoadConstOffset(VariableType::JS_POINTER(), target,
-                                                      JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-        GateRef constructorPrototype = builder_.LoadPrototype(ctorHClass);
+        Label getCtorProtoSlowPath(&builder_);
+        Label ctorIsJSFunction(&builder_);
+        Label gotCtorPrototype(&builder_);
+        DEFVALUE(constructorPrototype, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+        builder_.Branch(builder_.IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
+        builder_.Bind(&ctorIsJSFunction);
+        {
+            Label getCtorProtoFastPath(&builder_);
+            GateRef ctorProtoOrHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target,
+                                                             JSFunction::PROTO_OR_DYNCLASS_OFFSET);
 
+            builder_.Branch(builder_.TaggedIsHole(ctorProtoOrHC), &getCtorProtoSlowPath, &getCtorProtoFastPath);
+            builder_.Bind(&getCtorProtoFastPath);
+            {
+                Label isHClass(&builder_);
+                Label isPrototype(&builder_);
+                builder_.Branch(builder_.IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
+                builder_.Bind(&isHClass);
+                {
+                    constructorPrototype = builder_.LoadConstOffset(VariableType::JS_POINTER(), ctorProtoOrHC,
+                                                                    JSHClass::PROTOTYPE_OFFSET);
+                    builder_.Jump(&gotCtorPrototype);
+                }
+                builder_.Bind(&isPrototype);
+                {
+                    constructorPrototype = ctorProtoOrHC;
+                    builder_.Jump(&gotCtorPrototype);
+                }
+            }
+        }
+        builder_.Bind(&getCtorProtoSlowPath);
+        {
+            auto prototypeString = builder_.GetGlobalConstantValue(ConstantIndex::PROTOTYPE_STRING_INDEX);
+            constructorPrototype = builder_.CallRuntime(glue, RTSTUB_ID(GetPropertyByName), Gate::InvalidGateRef,
+                                                        { target, prototypeString }, gate);
+            builder_.Jump(&gotCtorPrototype);
+        }
+        builder_.Bind(&gotCtorPrototype);
         // 7. Repeat
         //    a.Let O be O.[[GetPrototypeOf]]().
         //    b.ReturnIfAbrupt(O).
@@ -2203,7 +2236,7 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
         builder_.Branch(builder_.TaggedIsNull(*object), &afterLoop, &loopHead);
         builder_.LoopBegin(&loopHead);
         {
-            GateRef isEqual = builder_.Equal(*object, constructorPrototype);
+            GateRef isEqual = builder_.Equal(*object, *constructorPrototype);
 
             builder_.Branch(isEqual, &strictEqual1, &notStrictEqual1);
             builder_.Bind(&strictEqual1);

@@ -4353,6 +4353,35 @@ GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef i
     return ret;
 }
 
+GateRef StubBuilder::FastGetPropertyByValue(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+
+    Branch(TaggedIsHeapObject(obj), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        result = GetPropertyByValue(glue, obj, key, callback);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
+            { Undefined(), obj, key, IntToTaggedInt(Int32(0)) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
     ProfileOperation callback)
 {
@@ -4425,6 +4454,35 @@ void StubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef inde
     env->SubCfgExit();
 }
 
+GateRef StubBuilder::GetCtorPrototype(GateRef ctor)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(constructorPrototype, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label isHClass(env);
+    Label isPrototype(env);
+
+    GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), ctor, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
+    Bind(&isHClass);
+    {
+        constructorPrototype = Load(VariableType::JS_POINTER(), ctorProtoOrHC, IntPtr(JSHClass::PROTOTYPE_OFFSET));
+        Jump(&exit);
+    }
+    Bind(&isPrototype);
+    {
+        constructorPrototype = ctorProtoOrHC;
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *constructorPrototype;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -4474,10 +4532,32 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
             Bind(&objIsEcmaObject);
             {
                 // 4. Let P be Get(C, "prototype").
-                auto prototypeString = GetGlobalConstantValue(
-                    VariableType::JS_POINTER(), glue, ConstantIndex::PROTOTYPE_STRING_INDEX);
+                Label getCtorProtoSlowPath(env);
+                Label ctorIsJSFunction(env);
+                Label gotCtorPrototype(env);
+                DEFVARIABLE(constructorPrototype, VariableType::JS_ANY(), Undefined());
+                Branch(IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
+                Bind(&ctorIsJSFunction);
+                {
+                    Label getCtorProtoFastPath(env);
+                    GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), target,
+                                                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
 
-                GateRef constructorPrototype = FastGetPropertyByName(glue, target, prototypeString, ProfileOperation());
+                    Branch(TaggedIsHole(ctorProtoOrHC), &getCtorProtoSlowPath, &getCtorProtoFastPath);
+                    Bind(&getCtorProtoFastPath);
+                    {
+                        constructorPrototype = GetCtorPrototype(target);
+                        Jump(&gotCtorPrototype);
+                    }
+                }
+                Bind(&getCtorProtoSlowPath);
+                {
+                    auto prototypeString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                  ConstantIndex::PROTOTYPE_STRING_INDEX);
+                    constructorPrototype = FastGetPropertyByName(glue, target, prototypeString, ProfileOperation());
+                    Jump(&gotCtorPrototype);
+                }
+                Bind(&gotCtorPrototype);
 
                 // 5. ReturnIfAbrupt(P).
                 // no throw exception, so needn't return
@@ -4495,10 +4575,10 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                 Label constructorPrototypeIsHeapObject(env);
                 Label constructorPrototypeIsEcmaObject(env);
                 Label constructorPrototypeNotEcmaObject(env);
-                Branch(TaggedIsHeapObject(constructorPrototype), &constructorPrototypeIsHeapObject,
+                Branch(TaggedIsHeapObject(*constructorPrototype), &constructorPrototypeIsHeapObject,
                     &constructorPrototypeNotEcmaObject);
                 Bind(&constructorPrototypeIsHeapObject);
-                Branch(TaggedObjectIsEcmaObject(constructorPrototype), &constructorPrototypeIsEcmaObject,
+                Branch(TaggedObjectIsEcmaObject(*constructorPrototype), &constructorPrototypeIsEcmaObject,
                     &constructorPrototypeNotEcmaObject);
                 Bind(&constructorPrototypeNotEcmaObject);
                 {
@@ -4525,7 +4605,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                     Branch(TaggedIsNull(*object), &afterLoop, &loopHead);
                     LoopBegin(&loopHead);
                     {
-                        GateRef isEqual = SameValue(glue, *object, constructorPrototype);
+                        GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
 
                         Branch(isEqual, &strictEqual1, &notStrictEqual1);
                         Bind(&strictEqual1);
@@ -5497,6 +5577,7 @@ GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
             Branch(bothString, &stringAdd, &exit);
             Bind(&stringAdd);
             {
+                callback.ProfileOpType(Int32(PGOSampleType::StringType()));
                 BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
                 result = builtinsStringStubBuilder.StringConcat(glue, left, right);
                 Branch(HasPendingException(glue), &hasPendingException, &exit);

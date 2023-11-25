@@ -1876,7 +1876,7 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         GateRef options = GetCallArg2(numArgs);
         GateRef localesIsUndef = TaggedIsUndefined(locales);
         GateRef optionsIsUndef = TaggedIsUndefined(options);
-        GateRef cacheable = BoolAnd(BoolOr(localesIsUndef, TaggedObjectIsString(locales)), optionsIsUndef);
+        GateRef cacheable = BoolAnd(BoolOr(localesIsUndef, TaggedIsString(locales)), optionsIsUndef);
         Label optionsIsString(env);
         Label cacheAble(env);
         Label uncacheable(env);

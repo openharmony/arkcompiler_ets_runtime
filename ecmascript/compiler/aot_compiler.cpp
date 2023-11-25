@@ -152,7 +152,8 @@ int Main(const int argc, const char **argv)
         AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_);
         const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
         CompileValidFiles(passManager, generator, ret, fileInfos);
-        generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);
+        std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
+        generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
         generator.SaveSnapshotFile();
         log.Print();
     }
