@@ -20,6 +20,8 @@
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/compiler/access_object_stub_builder.h"
+
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -591,7 +593,9 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         GateRef isConcatsprKey =
             GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
-        GateRef spreadable = FastGetPropertyByValue(glue, obj, isConcatsprKey, ProfileOperation());
+        AccessObjectStubBuilder builder(this);
+        GateRef spreadable =
+            builder.LoadObjByValue(glue, obj, isConcatsprKey, Undefined(), Int32(0), ProfileOperation());
         Label isDefined(env);
         Label isUnDefined(env);
         Branch(TaggedIsUndefined(spreadable), &isUnDefined, &isDefined);
