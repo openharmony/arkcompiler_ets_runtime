@@ -82,11 +82,6 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
-        return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
-    }
-
     CString moduleRequestName = ConvertToString(moduleRequest.GetTaggedValue());
     auto vm = thread->GetEcmaVM();
     // check if module need to be mock
@@ -94,8 +89,12 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         moduleRequestName = vm->GetMockModule(moduleRequestName);
     }
 
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
+        if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
+            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
+        }
         return moduleManager->ResolveNativeModule(moduleRequestName, moduleType);
     }
 
@@ -344,12 +343,12 @@ void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSVa
 }
 
 bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
-    const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType)
+                                        ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     [[maybe_unused]] LocalScope scope(vm);
 
-    CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    CString moduleRequestName = ConvertToString(EcmaString::Cast(requiredModule->GetEcmaModuleRecordName()));
     CString moduleName = PathHelper::GetStrippedModuleName(moduleRequestName);
     std::vector<Local<JSValueRef>> arguments;
     LOG_FULL(DEBUG) << "Request module is " << moduleRequestName;
@@ -383,7 +382,7 @@ void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<Source
     ModuleTypes moduleType)
 {
     if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
-        if (!SourceTextModule::LoadNativeModule(thread, requiredModule, moduleRequest, moduleType)) {
+        if (!SourceTextModule::LoadNativeModule(thread, requiredModule, moduleType)) {
             LOG_FULL(WARN) << "LoadNativeModule " << ConvertToString(
                 EcmaString::Cast(moduleRequest->GetTaggedObject())) << " failed";
             return;

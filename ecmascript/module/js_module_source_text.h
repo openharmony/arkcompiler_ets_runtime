@@ -105,7 +105,7 @@ public:
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
     static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
-                                 const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
+                                 ModuleTypes moduleType);
     inline static bool IsNativeModule(ModuleTypes moduleType)
     {
         return moduleType == ModuleTypes::OHOS_MODULE ||

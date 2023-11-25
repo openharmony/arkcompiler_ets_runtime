@@ -40,8 +40,7 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
         JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, moduleType);
         JSHandle<SourceTextModule> nativeModule = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
 
-        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, JSHandle<JSTaggedValue>(specifierString),
-            moduleType)) {
+        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
             LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
         }
 
