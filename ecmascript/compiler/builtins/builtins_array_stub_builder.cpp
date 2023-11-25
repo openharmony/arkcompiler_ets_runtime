@@ -69,7 +69,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                 GateRef glueGlobalEnvOffset =
                                     IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
                                 GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                                auto arrayFunc =GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                     GlobalEnv::ARRAY_FUNCTION_INDEX);
                                 GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
@@ -313,7 +313,6 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
             }
         }
         Bind(&startDone);
-
         Label endDone(env);
         Label msg1Def(env);
         Branch(TaggedIsUndefined(msg1), &endDone, &msg1Def);
@@ -364,7 +363,6 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
         }
 
         Bind(&endDone);
-
         DEFVARIABLE(count, VariableType::INT64(), Int64(0));
         GateRef tempCnt = Int64Sub(*end, *start);
         Label tempCntGreaterOrEqualZero(env);
@@ -376,24 +374,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
             Jump(&tempCntDone);
         }
         Bind(&tempCntDone);
-
-        // new array
-        Label setProperties(env);
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, *count);
-        Branch(TaggedIsException(newArray), exit, &setProperties);
-        Bind(&setProperties);
-        GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-        Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(*count));
-        GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-        SetPropertyInlinedProps(glue, newArray, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-        SetExtensibleToBitfield(glue, newArray, true);
-
+        GateRef newArray = NewArray(glue, *count);
         GateRef thisEles = GetElementsArray(thisValue);
         GateRef thisElesLen = ZExtInt32ToInt64(GetLengthOfTaggedArray(thisEles));
         GateRef newArrayEles = GetElementsArray(newArray);
@@ -608,7 +589,8 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
     {
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef isConcatsprKey = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
+        GateRef isConcatsprKey =
+            GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
         GateRef spreadable = FastGetPropertyByValue(glue, obj, isConcatsprKey, ProfileOperation());
         Label isDefined(env);
         Label isUnDefined(env);
@@ -626,6 +608,37 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
             result = TaggedIsTrue(spreadable);
             Jump(&exit);
         }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+    Label exit(env);
+    Label setProperties(env);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    result = newBuilder.NewJSArrayWithSize(intialHClass, count);
+    Branch(TaggedIsException(*result), &exit, &setProperties);
+    Bind(&setProperties);
+    {
+        GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+        Store(VariableType::INT32(), glue, *result, lengthOffset, TruncInt64ToInt32(count));
+        GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+        SetPropertyInlinedProps(glue, *result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+        SetExtensibleToBitfield(glue, *result, true);
+        Jump(&exit);
     }
     Bind(&exit);
     auto res = *result;
