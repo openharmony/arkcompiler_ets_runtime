@@ -601,7 +601,7 @@ private:
     ChunkVector<GateRef> loopHeaderGates_;
     GateRef preFrameState_ {Circuit::NullGate()};
     GateRef preFrameArgs_ {Circuit::NullGate()};
-    size_t numOfLiveBB_;
+    size_t numOfLiveBB_ {0};
     bool isInline_ {false};
 };
 }  // namespace panda::ecmascript::kungfu

@@ -129,7 +129,7 @@ bool PGOObjectAccessHelper::ComputeForClassInstance(PGOObjectAccessInfo &info)
 {
     auto type = info.Type();
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return false;
     }
@@ -150,7 +150,7 @@ bool PGOObjectAccessHelper::ClassInstanceIsCallable(PGOObjectAccessInfo &info)
 {
     auto type = info.Type();
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return false;
     }

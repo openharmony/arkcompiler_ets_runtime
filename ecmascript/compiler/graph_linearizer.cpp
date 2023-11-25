@@ -977,7 +977,7 @@ void GraphLinearizer::PrintGraph(const char* title)
         }
         auto front = bb->gateList_.front();
         auto opcode = acc_.GetOpCode(front);
-        auto loopHeadId = 0;
+        size_t loopHeadId = 0;
         auto loopInfo = GetLoopInfo(bb);
         if (loopInfo != nullptr) {
             loopHeadId = loopInfo->loopHead->id_;

@@ -281,8 +281,8 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
     if (xValue == 0 || yValue == 0) {
         return xValue > yValue ? 1 : -1;
     }
-    uint32_t unsignedX = xValue;
-    uint32_t unsignedY = yValue;
+    uint32_t unsignedX = static_cast<uint32_t>(xValue);
+    uint32_t unsignedY = static_cast<uint32_t>(yValue);
     if (yValue > 0) {
         if (xValue < 0) {
             return -1;
@@ -291,8 +291,8 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         if (xValue > 0) {
             return 1;
         }
-        unsignedX = -xValue;
-        unsignedY = -yValue;
+        unsignedX = static_cast<uint32_t>(-xValue);
+        unsignedY = static_cast<uint32_t>(-yValue);
     }
     int xDigit = log10(unsignedX);
     int yDigit = log10(unsignedY);

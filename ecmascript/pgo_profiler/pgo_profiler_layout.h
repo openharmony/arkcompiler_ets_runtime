@@ -245,7 +245,7 @@ public:
 
 private:
     JSType objType_;
-    uint32_t objSize_;
+    uint32_t objSize_ {0};
     LayoutDesc layoutDesc_;
 };
 
@@ -469,7 +469,7 @@ private:
     }
 
     JSType objType_;
-    uint32_t objSize_;
+    uint32_t objSize_ {0};
     uint32_t propCount_ {0};
     uint32_t childCount_ {0};
     ProfileType childType_;

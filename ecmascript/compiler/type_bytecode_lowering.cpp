@@ -1519,7 +1519,7 @@ void TypeBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
 
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return;
     }
@@ -2229,7 +2229,7 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
 
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int hclassIndex = ptManager->GetHClassIndexByProfileType(type);
+    int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return;
     }

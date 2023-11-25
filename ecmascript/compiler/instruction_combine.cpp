@@ -64,7 +64,7 @@ inline bool SignedAddOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
     uint32_t res = static_cast<uint32_t>(lhs) + static_cast<uint32_t>(rhs);
     *val = base::bit_cast<int32_t>(res);
     // Check for overflow by examining the sign bit.(bit 31 in a 32-bit integer)
-    return ((res ^ lhs) & (res ^ rhs) & (1U << 31)) != 0;
+    return ((res ^ static_cast<uint32_t>(lhs)) & (res ^ static_cast<uint32_t>(rhs)) & (1U << 31)) != 0;
 }
 
 
@@ -73,7 +73,7 @@ inline bool SignedSubOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
     uint32_t res = static_cast<uint32_t>(lhs) - static_cast<uint32_t>(rhs);
     *val = base::bit_cast<int32_t>(res);
     // Check for overflow by examining the sign bit.(bit 31 in a 32-bit integer)
-    return ((res ^ lhs) & (res ^ ~rhs) & (1U << 31)) != 0;
+    return ((res ^ static_cast<uint32_t>(lhs)) & (res ^ ~static_cast<uint32_t>(rhs)) & (1U << 31)) != 0;
 }
 
 inline bool SignedMulOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
@@ -315,8 +315,8 @@ GateRef InstructionCombine::VisitICMP(GateRef gate)
         if (m.Left().IsOr()) {
             Int64BinopMatcher cmpLeft(m.Left().Gate(), circuit_);
             if (cmpLeft.Right().HasResolvedValue()) {
-                int constant1 = cmpLeft.Right().ResolvedValue();
-                int constant2 = m.Right().ResolvedValue();
+                uint64_t constant1 = static_cast<uint64_t>(cmpLeft.Right().ResolvedValue());
+                uint64_t constant2 = static_cast<uint64_t>(m.Right().ResolvedValue());
                 bool flag = ((constant1 | constant2) != constant2);
                 result = flag ? builder_.False() : Circuit::NullGate();
             }
@@ -978,7 +978,8 @@ GateRef InstructionCombine::ReduceWord64And(GateRef gate)
     }
     // K & K  => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(m.Left().ResolvedValue() & m.Right().ResolvedValue());
+        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) &
+            static_cast<uint64_t>(m.Right().ResolvedValue()));
     }
     // x & x => x
     if (m.LeftEqualsRight()) {
@@ -989,7 +990,8 @@ GateRef InstructionCombine::ReduceWord64And(GateRef gate)
         Int64BinopMatcher mleft(m.Left().Gate(), circuit_);
         if (mleft.Right().HasResolvedValue()) {
             auto newGate = builder_.Int64And(
-                mleft.Left().Gate(), builder_.Int64(m.Right().ResolvedValue() & mleft.Right().ResolvedValue()));
+                mleft.Left().Gate(), builder_.Int64(static_cast<uint64_t>(m.Right().ResolvedValue()) &
+                static_cast<uint64_t>(mleft.Right().ResolvedValue())));
             return ReplaceOld(gate, newGate);
         }
     }
@@ -1013,7 +1015,8 @@ GateRef InstructionCombine::ReduceWord32And(GateRef gate)
     }
     // K & K  => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(m.Left().ResolvedValue() & m.Right().ResolvedValue());
+        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) &
+            static_cast<uint32_t>(m.Right().ResolvedValue()));
     }
     // x & x => x
     if (m.LeftEqualsRight()) {
@@ -1024,7 +1027,8 @@ GateRef InstructionCombine::ReduceWord32And(GateRef gate)
         Int32BinopMatcher mleft(m.Left().Gate(), circuit_);
         if (mleft.Right().HasResolvedValue()) {
             auto newGate = builder_.Int32And(
-                mleft.Left().Gate(), builder_.Int32(m.Right().ResolvedValue() & mleft.Right().ResolvedValue()));
+                mleft.Left().Gate(), builder_.Int32(static_cast<uint32_t>(m.Right().ResolvedValue()) &
+                static_cast<uint32_t>(mleft.Right().ResolvedValue())));
             return ReplaceOld(gate, newGate);
         }
     }
@@ -1044,7 +1048,8 @@ GateRef InstructionCombine::ReduceWord64Or(GateRef gate)
     }
     // K | K  => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(m.Left().ResolvedValue() | m.Right().ResolvedValue());
+        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) |
+            static_cast<uint64_t>(m.Right().ResolvedValue()));
     }
     // x | x => x
     if (m.LeftEqualsRight()) {
@@ -1077,7 +1082,8 @@ GateRef InstructionCombine::ReduceWord32Or(GateRef gate)
     }
     // K | K  => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(m.Left().ResolvedValue() | m.Right().ResolvedValue());
+        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) |
+            static_cast<uint32_t>(m.Right().ResolvedValue()));
     }
     // x | x => x
     if (m.LeftEqualsRight()) {
@@ -1107,7 +1113,8 @@ GateRef InstructionCombine::ReduceWord64Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
+        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) ^
+            static_cast<uint64_t>(m.Right().ResolvedValue()));
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int64(0); // x ^ x => 0
@@ -1131,7 +1138,8 @@ GateRef InstructionCombine::ReduceWord32Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
+        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) ^
+            static_cast<uint32_t>(m.Right().ResolvedValue()));
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int32(0); // x ^ x => 0
@@ -1198,6 +1206,7 @@ GateRef InstructionCombine::ReduceWord64Asr(GateRef gate)
     }
     return Circuit::NullGate();
 }
+
 GateRef InstructionCombine::ReduceWord32Asr(GateRef gate)
 {
     Int32BinopMatcher m(gate, circuit_);
