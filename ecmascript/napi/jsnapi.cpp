@@ -556,6 +556,17 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    // if load module, it needs to check whether clear singlestepper_
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
 void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
 {
     vm->SetDeviceDisconnectCallback(cb);
