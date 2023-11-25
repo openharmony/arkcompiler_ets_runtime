@@ -382,9 +382,14 @@ public:
     static bool ToPropertyDescriptorFast(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                          PropertyDescriptor &desc);
 
+    static JSHandle<JSTaggedValue> CallFunction(JSThread *thread, const JSHandle<JSTaggedValue> &func);
+
     // ecma6 7.3 Operations on Objects
     static JSHandle<JSTaggedValue> GetMethod(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                              const JSHandle<JSTaggedValue> &key);
+
+    static JSHandle<JSTaggedValue> FastGetMethod(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                 const JSHandle<JSTaggedValue> &key);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                                    const JSHandle<JSTaggedValue> &value);

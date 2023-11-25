@@ -205,8 +205,24 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
 
     // 4. Let P be Get(C, "prototype").
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> constructorPrototype =
-        JSTaggedValue::GetProperty(thread, constructor, globalConst->GetHandledPrototypeString()).GetValue();
+    JSHandle<JSTaggedValue> prototypeString = globalConst->GetHandledPrototypeString();
+    JSMutableHandle<JSTaggedValue> constructorPrototype(thread, JSTaggedValue::Undefined());
+    if (constructor->IsJSFunction()) {
+        JSHandle<JSFunction> ctor(thread, constructor->GetTaggedObject());
+        JSHandle<JSTaggedValue> ctorProtoOrHclass(thread, ctor->GetProtoOrHClass());
+        if (!ctorProtoOrHclass->IsHole()) {
+            if (!ctorProtoOrHclass->IsJSHClass()) {
+                constructorPrototype.Update(ctorProtoOrHclass);
+            } else {
+                JSTaggedValue ctorProto = JSHClass::Cast(ctorProtoOrHclass->GetTaggedObject())->GetProto();
+                constructorPrototype.Update(ctorProto);
+            }
+        } else {
+            constructorPrototype.Update(JSTaggedValue::GetProperty(thread, constructor, prototypeString).GetValue());
+        }
+    } else {
+        constructorPrototype.Update(JSTaggedValue::GetProperty(thread, constructor, prototypeString).GetValue());
+    }
 
     // 5. ReturnIfAbrupt(P).
     // no throw exception, so needn't return
