@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/debugger/js_debugger.h"
+#include <memory>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
@@ -190,14 +191,14 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
 {
     std::unique_ptr<PtMethod> ptMethod {nullptr};
     ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&ptMethod, location](
-        const JSPandaFile *jsPandaFile) {
-        if (jsPandaFile->GetJSPandaFileDesc() == location.GetJsPandaFile()->GetJSPandaFileDesc()) {
-            MethodLiteral *methodsData = jsPandaFile->GetMethodLiterals();
-            uint32_t numberMethods = jsPandaFile->GetNumMethods();
+        const std::shared_ptr<JSPandaFile> &file) {
+        if (file->GetJSPandaFileDesc() == location.GetJsPandaFile()->GetJSPandaFileDesc()) {
+            MethodLiteral *methodsData = file->GetMethodLiterals();
+            uint32_t numberMethods = file->GetNumMethods();
             for (uint32_t i = 0; i < numberMethods; ++i) {
                 if (methodsData[i].GetMethodId() == location.GetMethodId()) {
                     MethodLiteral *methodLiteral = methodsData + i;
-                    ptMethod = std::make_unique<PtMethod>(jsPandaFile,
+                    ptMethod = std::make_unique<PtMethod>(file.get(),
                         methodLiteral->GetMethodId(), methodLiteral->IsNativeWithCallField());
                     return false;
                 }

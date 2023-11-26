@@ -310,7 +310,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     pfManager->AddJSPandaFileVm(instance, pf2);
     std::vector<CString> descList{};
     int count = 0;
-    pfManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
+    pfManager->EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
         auto desc = file->GetJSPandaFileDesc();
         std::cout << "desc:" << desc << std::endl;
         descList.push_back(desc);

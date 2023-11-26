@@ -14,11 +14,16 @@
  */
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 
+#include <utility>
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
+#include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -26,11 +31,14 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -46,7 +54,7 @@ void AOTFileManager::Iterate(const RootVisitor &v)
     for (auto &iter : aiDatum_) {
         auto &aiData = iter.second;
         for (auto &eachFileData : aiData) {
-            auto &cpMap = eachFileData.second;
+            auto &cpMap = eachFileData.second.multiCpsMap_;
             for (auto &eachCpPair : cpMap) {
                 v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
             }
@@ -110,7 +118,7 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
 
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
-    uint32_t index = GetAnFileIndex(jsPandaFile);
+    uint32_t index = jsPandaFile->GetAOTFileInfoIndex();
     if (index == INVALID_INDEX) {
         return nullptr;
     }
@@ -118,17 +126,24 @@ const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFil
     return anFileDataManager->SafeGetAnFileInfo(index);
 }
 
-bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
+uint32_t AOTFileManager::GetFileIndex(uint32_t anFileInfoIndex, CString abcNormalizedName) const
 {
-    if (!AnFileDataManager::GetInstance()->IsEnable()) {
-        return false;
-    }
+    auto fileIndex = INVALID_INDEX;
+    if (abcNormalizedName.find(JSFilePath::GetBaseName(STUB_AN_FILE)) == std::string::npos) {
+        auto aiDatumIter = aiDatum_.find(anFileInfoIndex);
+        if (aiDatumIter == aiDatum_.end()) {
+            return INVALID_INDEX;
+        }
 
-    const std::shared_ptr<AnFileInfo> anFileInfo = GetAnFileInfo(jsPandaFile);
-    if (anFileInfo == nullptr) {
-        return false;
+        auto fileIter = aiDatumIter->second.find(abcNormalizedName);
+        if (fileIter == aiDatumIter->second.end()) {
+            return INVALID_INDEX;
+        }
+        fileIndex = fileIter->second.fileIndex_;
+    } else {
+        fileIndex = STUB_FILE_INDEX;
     }
-    return anFileInfo->IsLoad();
+    return fileIndex;
 }
 
 bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
@@ -142,7 +157,44 @@ bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &e
         return false;
     }
 
-    return anFileInfo->IsLoadMain(jsPandaFile, entry);
+    auto fileIndex = GetFileIndex(jsPandaFile->GetAOTFileInfoIndex(), jsPandaFile->GetNormalizedFileDesc().c_str());
+    if (fileIndex == INVALID_INDEX) {
+        return false;
+    }
+    return anFileInfo->IsLoadMain(fileIndex, jsPandaFile, entry);
+}
+
+std::list<CString> AOTFileManager::GetPandaFiles(uint32_t aotFileInfoIndex)
+{
+    std::list<CString> abcFilesList {};
+    auto aiDatumIter = aiDatum_.find(aotFileInfoIndex);
+    if (aiDatumIter == aiDatum_.end()) {
+        return abcFilesList;
+    }
+    for (const auto& nameIter : aiDatumIter->second) {
+        abcFilesList.push_back(nameIter.first);
+    }
+    return abcFilesList;
+}
+
+void AOTFileManager::BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName)
+{
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    uint32_t aotFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(aotFileBaseName + FILE_EXTENSION_AN);
+    if (aotFileInfoIndex == INVALID_INDEX) {
+        return;
+    }
+    auto abcFiles = GetPandaFiles(aotFileInfoIndex);
+    for (const auto &abcNormalizedName : abcFiles) {
+        const auto abcFile = JSPandaFileManager::GetInstance()->FindJSPandaFileByNormalizedName(abcNormalizedName);
+        if (!abcFile) {
+            LOG_ECMA(WARN) << "Can not find file: " << abcNormalizedName << " in module: " << moduleName;
+            continue;
+        }
+        if (!abcFile->IsLoadedAOT()) {
+            abcFile->SetAOTFileInfoIndex(aotFileInfoIndex);
+        }
+    }
 }
 
 uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
@@ -197,7 +249,7 @@ void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method
 {
     uint32_t mId = method->GetMethodId().GetOffset();
     std::string mName = method->GetMethodName(file);
-    std::string fileName = file->GetFileName();
+    auto &fileName = file->GetJSPandaFileDesc();
     LOG_COMPILER(INFO) << "Bind " << mName << "@" << mId << "@" << fileName
                        << " -> AOT-Entry = " << reinterpret_cast<void *>(entry);
 }
@@ -208,11 +260,22 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     const std::shared_ptr<AnFileInfo> anFileInfo = anFileDataManager->SafeGetAnFileInfo(anFileInfoIndex);
+    auto aiDatumIter = aiDatum_.find(anFileInfoIndex);
+    if (aiDatumIter == aiDatum_.end()) {
+        LOG_ECMA(FATAL) << "can not find aiData by anFileInfoIndex " << anFileInfoIndex;
+        UNREACHABLE();
+    }
+    uint32_t fileIndex = GetFileIndex(jsPandaFile->GetAOTFileInfoIndex(), jsPandaFile->GetNormalizedFileDesc().c_str());
+    if (fileIndex == INVALID_INDEX) {
+        LOG_ECMA(FATAL) << "can not find aiData by anFileInfoIndex " << anFileInfoIndex
+                        << ", normalizedDesc: " << jsPandaFile->GetNormalizedFileDesc();
+        UNREACHABLE();
+    }
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     uint64_t mainEntry;
     bool isFastCall;
-    std::tie(mainEntry, isFastCall) = anFileInfo->GetMainFuncEntry(mainFuncMethodId);
+    std::tie(mainEntry, isFastCall) = anFileInfo->GetMainFuncEntry(fileIndex, mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
@@ -344,16 +407,25 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
     JSHandle<TaggedArray> aiData(thread, deserializedData);
     uint32_t aiDataLen = aiData->GetLength();
     ASSERT(aiDataLen % AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE  == 0);
-    aiDatum_.insert({ anFileInfoIndex, CMap<CString, CMap<int32_t, JSTaggedValue>> {} });
-    FileNameToMultiConstantPoolMap &fileNameToMulCpMap = aiDatum_.at(anFileInfoIndex);
+    auto aiDatumResult = aiDatum_.try_emplace(anFileInfoIndex);
+    FileNameToMultiConstantPoolMap &fileNameToMulCpMap = aiDatumResult.first->second;
 
+    JSMutableHandle<TaggedArray> fileInfo(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<TaggedArray> cpList(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < aiDataLen; i += AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE) {
-        CString fileNameStr = EcmaStringAccessor(aiData->Get(i)).ToCString();
-        JSHandle<TaggedArray> cpList(thread, aiData->Get(i + 1));
+        // handle file info
+        fileInfo.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::PANDA_INFO_ID)));
+        auto nameOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::NAME_ID);
+        auto indexOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::INDEX_ID);
+        CString fileNameStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToCString();
+        uint32_t fileIndex = fileInfo->Get(indexOffset).GetInt();
+        // handle constant pool
+        cpList.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID)));
         uint32_t cpLen = cpList->GetLength();
         ASSERT(cpLen % AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE == 0);
-        fileNameToMulCpMap.insert({fileNameStr, CMap<int32_t, JSTaggedValue>{}});
-        MultiConstantPoolMap &cpMap = fileNameToMulCpMap.at(fileNameStr);
+        auto &PandaCpInfoInserted = fileNameToMulCpMap.try_emplace(fileNameStr).first->second;
+        PandaCpInfoInserted.fileIndex_ = fileIndex;
+        MultiConstantPoolMap &cpMap = PandaCpInfoInserted.multiCpsMap_;
         for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
             int32_t constantPoolID = cpList->Get(pos).GetInt();
             JSTaggedValue cp = cpList->Get(pos + 1);
@@ -382,7 +454,7 @@ JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPand
         LOG_COMPILER(FATAL) << "can not find constpools by fileName " << jsPandaFile->GetNormalizedFileDesc().c_str();
         UNREACHABLE();
     }
-    const CMap<int32_t, JSTaggedValue> &cpMap = cpMapIter->second;
+    const CMap<int32_t, JSTaggedValue> &cpMap = cpMapIter->second.multiCpsMap_;
     auto iter = cpMap.find(cpID);
     if (iter == cpMap.end()) {
         LOG_COMPILER(FATAL) << "can not find deserialized constantpool in anFileInfo, constantPoolID is " << cpID;

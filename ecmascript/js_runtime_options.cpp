@@ -20,6 +20,7 @@
 #include <iostream>
 #include <getopt.h>
 
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
@@ -300,6 +301,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         switch (option) {
             case OPTION_AOT_FILE:
                 SetAOTOutputFile(optarg);
+                ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
                 break;
             case OPTION_ARK_PROPERTIES:
                 ret = ParseIntParam("ark-properties", &argInt);

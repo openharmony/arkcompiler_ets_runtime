@@ -199,30 +199,4 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
     CalcCallSite();
     return true;
 }
-
-void LLVMStackMapParser::CalculateFuncFpDelta(LLVMStackMapType::Func2FpDelta info, uint32_t moduleIndex)
-{
-    std::vector<LLVMStackMapType::Func2FpDelta> fun2FpDelta;
-    auto it = module2fun2FpDelta_.find(moduleIndex);
-    if (it != module2fun2FpDelta_.end()) {
-        fun2FpDelta = module2fun2FpDelta_.at(moduleIndex);
-    }
-    bool find = std::find(fun2FpDelta.begin(), fun2FpDelta.end(), info) == fun2FpDelta.end();
-    if (!info.empty() && find) {
-        fun2FpDelta.emplace_back(info);
-    }
-    module2fun2FpDelta_.erase(moduleIndex);
-    module2fun2FpDelta_[moduleIndex] = fun2FpDelta;
-
-    std::set<uintptr_t> funAddr;
-    auto i = module2funAddr_.find(moduleIndex);
-    if (i != module2funAddr_.end()) {
-        funAddr = module2funAddr_.at(moduleIndex);
-        module2funAddr_.erase(moduleIndex);
-    }
-    for (auto &iterator: info) {
-        funAddr.insert(iterator.first);
-    }
-    module2funAddr_[moduleIndex] = funAddr;
-}
 }  // namespace panda::ecmascript::kungfu

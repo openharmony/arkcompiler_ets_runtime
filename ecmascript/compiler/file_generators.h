@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -38,12 +39,12 @@ public:
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
                               uint32_t moduleIndex, const CompilerLog &log);
 
-    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo, uint32_t fileIndex,
                               uint32_t moduleIndex, const CompilerLog &log);
 
 #ifdef COMPILE_MAPLE
     void CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
-                                      uint32_t moduleIndex);
+                                      uint32_t fileIndex, uint32_t moduleIndex);
 #endif
 
     bool IsRelaSection(ElfSecName sec) const

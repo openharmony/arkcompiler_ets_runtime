@@ -16,12 +16,16 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_CONSTANTS_H
 #define ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_CONSTANTS_H
 
-#include "ecmascript/mem/mem_common.h"
+#include <cstdint>
+
+#include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 
 namespace panda::ecmascript {
+using CP_TOP_ITEM = kungfu::SnapshotGlobalData::CP_TOP_ITEM;
+
 class AOTSnapshotConstants final {
 public:
-    static constexpr uint8_t SNAPSHOT_DATA_ITEM_SIZE = 2;
+    static constexpr uint8_t SNAPSHOT_DATA_ITEM_SIZE = static_cast<uint8_t>(CP_TOP_ITEM::COUNT);
     static constexpr uint8_t SNAPSHOT_CP_ARRAY_ITEM_SIZE = 2;
 
 private:

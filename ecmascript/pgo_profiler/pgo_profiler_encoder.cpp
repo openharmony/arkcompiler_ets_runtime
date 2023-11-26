@@ -92,9 +92,6 @@ void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &a
 
 bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entryId)
 {
-    if (!isProfilingInitialized_) {
-        return false;
-    }
     ReadLockHolder lock(rwLock_);
     return abcFilePool_->GetEntryId(abcName, entryId);
 }

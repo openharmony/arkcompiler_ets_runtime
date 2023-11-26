@@ -64,17 +64,18 @@ public:
     {
         LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
-            if (!cb(item.second.first.get())) {
+            if (!cb(item.second.first)) {
                 return;
             }
         }
         for (const auto &item : oldJSPandaFiles_) {
-            if (!cb(item.first.get())) {
+            if (!cb(item.first)) {
                 return;
             }
         }
     }
 
+    std::shared_ptr<JSPandaFile> FindJSPandaFileByNormalizedName(const CString &normalizedName);
     std::shared_ptr<JSPandaFile> FindJSPandaFile(const CString &filename);
     std::shared_ptr<JSPandaFile> FindMergedJSPandaFile();
     void AddJSPandaFileVm(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile);

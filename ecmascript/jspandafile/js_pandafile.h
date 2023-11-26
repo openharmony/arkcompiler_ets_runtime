@@ -19,6 +19,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file-inl.h"
@@ -283,7 +284,7 @@ public:
 
     bool IsLoadedAOT() const
     {
-        return (anFileInfoIndex_ != INVALID_INDEX);
+        return (GetAOTFileInfoIndex() != INVALID_INDEX);
     }
 
     uint32_t GetFileUniqId() const
@@ -343,6 +344,11 @@ public:
 
     void SetAOTFileInfoIndex(uint32_t index)
     {
+        if (IsLoadedAOT()) {
+            LOG_ECMA(ERROR) << "Set Aot file info index failed. desc: " << GetJSPandaFileDesc()
+                            << ", anFileIndex: " << anFileInfoIndex_ << "  vs " << index;
+            return;
+        }
         anFileInfoIndex_ = index;
     }
 

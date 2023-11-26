@@ -1367,7 +1367,7 @@ private:
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
-    bool compilerEnableExternalPkg_ {false};
+    bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();

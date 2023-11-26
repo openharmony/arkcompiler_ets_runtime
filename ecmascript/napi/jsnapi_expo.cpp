@@ -3177,8 +3177,12 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
         return;
     }
-    std::string aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir();
-    aotFileName += moduleName;
+    std::string aotFileName;
+    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
+        aotFileName = vm->GetJSOptions().GetAOTOutputFile();
+    }  else {
+        aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
+    }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }

@@ -43,6 +43,7 @@ public:
         bool isFastCall_ {};
         uint32_t indexInKindOrMethodId_ {};
         uint32_t moduleIndex_ {};
+        uint32_t abcIndexInAi_ {INVALID_INDEX};
         int fpDeltaPrevFrameSp_ {};
         uint32_t funcSize_ {};
         uint32_t calleeRegisterNum_ {};
@@ -111,7 +112,7 @@ public:
     }
 
     void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, bool isFastCall, int indexInKind, uint64_t offset,
-                  uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
+                  uint32_t fileIndex, uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
         if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
@@ -122,6 +123,7 @@ public:
         des.isMainFunc_ = isMainFunc;
         des.isFastCall_ = isFastCall;
         des.indexInKindOrMethodId_ = static_cast<uint32_t>(indexInKind);
+        des.abcIndexInAi_ = fileIndex;
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;
         des.fpDeltaPrevFrameSp_ = delta;
