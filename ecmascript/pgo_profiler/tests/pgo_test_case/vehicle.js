@@ -16,7 +16,7 @@
 export { Vehicle };
 
 class Vehicle {
-    name = "Vehicle";
+    name = 'Vehicle';
 
     info() {
         return this.name;

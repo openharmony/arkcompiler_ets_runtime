@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/enum_conversion.h"
@@ -41,6 +42,7 @@ public:
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
+          ptManager_(ctx->GetPTManager()),
           chunk_(chunk),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
@@ -99,7 +101,7 @@ private:
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedEqOrStrictEq(GateRef gate);
+    void LowerTypedEqOrNotEq(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate, bool flag);
@@ -190,6 +192,7 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
 
+    void FetchBuiltinsTypes(GateRef gate, ChunkVector<ProfileType> &types);
     void FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types);
     void AddProfiling(GateRef gate);
 
@@ -203,6 +206,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
+    PGOTypeManager *ptManager_ {nullptr};
     Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};

@@ -470,7 +470,6 @@ public:
     bool AddTransitionLayout(ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child,
         ProfileType childType);
     bool UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType);
-    bool UpdateElements(PGOSampleType type, uint32_t size, RegionSpaceFlag spaceFlag);
 
     void Merge(const PGORecordDetailInfos &recordInfos);
 

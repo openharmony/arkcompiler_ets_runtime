@@ -150,6 +150,11 @@ public:
         return GetAddress() == nullptr;
     }
 
+    inline void Empty()
+    {
+        address_ = 0;
+    }
+
     inline bool IsNull() const
     {
         return IsEmpty() || GetAddress()->IsHole();
@@ -735,8 +740,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
-    static Local<ObjectRef> New(const EcmaVM *vm, void *attach, void *detach);
-    bool Set(const EcmaVM *vm, void *attach, void *detach);
+    bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
     bool SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
@@ -772,13 +776,17 @@ public:
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
+using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
@@ -1325,6 +1333,8 @@ public:
     bool HasCaught() const;
     void Rethrow();
     Local<ObjectRef> GetAndClearException();
+    Local<ObjectRef> GetException();
+    void ClearException();
 
     ECMA_DISALLOW_COPY(TryCatch);
     ECMA_DISALLOW_MOVE(TryCatch);
@@ -1348,6 +1358,17 @@ public:
         int port = -1;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
+
+    struct NativeBindingInfo {
+        static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
+        void *env = nullptr;
+        void *nativeValue = nullptr;
+        void *attachFunc = nullptr;
+        void *attachData = nullptr;
+        void *detachFunc = nullptr;
+        void *detachData = nullptr;
+        void *hint = nullptr;
+    };
 
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
@@ -1431,6 +1452,7 @@ public:
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturnJS(const EcmaVM *vm);
+    static void NotifyLoadModule(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);

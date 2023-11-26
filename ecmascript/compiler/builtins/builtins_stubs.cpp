@@ -278,8 +278,10 @@ DECLARE_BUILTINS(Array##Method)                                                 
 }
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
-    V(Concat,       JS_POINTER)             \
+    V(Concat,       JS_ANY)             \
     V(Filter,       JS_POINTER)             \
+    V(Find,         JS_ANY)                 \
+    V(FindIndex,    JS_ANY)                 \
     V(ForEach,      JS_ANY)                 \
     V(IndexOf,      JS_ANY)                 \
     V(LastIndexOf,  JS_ANY)                 \

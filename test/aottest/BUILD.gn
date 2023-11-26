@@ -28,6 +28,8 @@ group("ark_aot_js_test") {
     "for_await_of",
     "dead_code_elimination",
     "equal",
+    "js_string_equal",
+    "js_string_add",
   ]
 
   deps = []
@@ -176,6 +178,7 @@ group("ark_aot_ts_test") {
     "newobjrange",
     "newobjspread",
     "not",
+    "not_equal",
     "numberspeculativeretype",
     "operations_stub_test",
     "optimization",
@@ -183,6 +186,7 @@ group("ark_aot_ts_test") {
     "or",
     "pgo_call",
     "pgo_class_operation",
+    "pgo_class_prototype",
     "pgo_constructor_number",
     "pgo_forof_array",
     "pgo_forof_map",
@@ -191,6 +195,7 @@ group("ark_aot_ts_test") {
     "pgo_forof_typed_array",
     "pgo_function_operation",
     "pgo_function_prototype",
+    "pgo_length",
     "pgo_objectliteral_operation",
     "pgo_call_deopt",
     "poplexenv",

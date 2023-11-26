@@ -639,6 +639,7 @@ ecma_source = [
   "ecmascript/ecma_string.cpp",
   "ecmascript/ecma_string_table.cpp",
   "ecmascript/ecma_vm.cpp",
+  "ecmascript/element_accessor.cpp",
   "ecmascript/elements.cpp",
   "ecmascript/frames.cpp",
   "ecmascript/free_object.cpp",
@@ -800,6 +801,7 @@ ecma_source = [
   "ecmascript/regexp/regexp_opcode.cpp",
   "ecmascript/regexp/regexp_parser.cpp",
   "ecmascript/regexp/regexp_parser_cache.cpp",
+  "ecmascript/global_index_map.cpp",
   "ecmascript/shared_mm/shared_mm.cpp",
   "ecmascript/tagged_dictionary.cpp",
   "ecmascript/tagged_hash_array.cpp",
@@ -1199,7 +1201,7 @@ ohos_shared_library("libark_jsruntime") {
     deps += [ "$ark_root/libpandafile:libarkfile_static" ]
   }
 
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+  all_dependent_configs = [ ":ark_jsruntime_public_config" ]
 
   if (is_ohos && is_standard_system && !is_debug) {
     version_script = "libark_jsruntime.map"

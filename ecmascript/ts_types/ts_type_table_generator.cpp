@@ -61,7 +61,7 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::GetOrGenerateTSTypeTable(const JSPan
         return tsManager_->GetTSTypeTable(moduleId);
     }
     JSHandle<EcmaString> recordNameStr = factory_->NewFromUtf8(recordName);
-    JSHandle<EcmaString> abcNameStr = factory_->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
+    JSHandle<EcmaString> abcNameStr = factory_->NewFromUtf8(jsPandaFile->GetNormalizedFileDesc());
     // when PGO is enabled, no matter whether the abc file is a '.js' or a '.ts' file, it may contain PGO GT
     uint32_t typeNum = tsManager_->GetPGOGTCountByRecordName(recordName);
     if (jsPandaFile->HasTSTypes(recordName)) {

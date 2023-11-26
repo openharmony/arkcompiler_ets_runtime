@@ -317,6 +317,9 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
+    JSHandle<JSArray> NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
+    JSHandle<TaggedArray> NewJsonFixedArray(size_t start, size_t length,
+                                            const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();

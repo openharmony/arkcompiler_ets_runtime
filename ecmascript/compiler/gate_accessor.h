@@ -424,6 +424,8 @@ public:
     void UpdateMethodOffset(GateRef gate, uint32_t methodOffset);
     PGOTypeRef TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOTypeRef type);
+    uint32_t TryGetArrayElementsLength(GateRef gate) const;
+    void TrySetArrayElementsLength(GateRef gate, uint32_t length);
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);

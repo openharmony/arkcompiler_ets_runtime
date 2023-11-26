@@ -41,7 +41,7 @@ public:
     EcmaString *GetOrInternString(EcmaString *string);
     EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
                                                MemSpaceType type, bool isConstantString, uint32_t idOffset);
-    EcmaString *GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress,
+    EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
     EcmaString *TryGetInternString(EcmaString *string);
 
@@ -52,9 +52,10 @@ private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
-    EcmaString *GetString(const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString) const;
-    EcmaString *GetString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
-    EcmaString *GetString(const uint16_t *utf16Data, uint32_t utf16Len) const;
+    std::pair<EcmaString *, uint32_t> GetString(
+        const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString) const;
+    std::pair<EcmaString *, uint32_t> GetString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
+    std::pair<EcmaString *, uint32_t> GetString(const uint16_t *utf16Data, uint32_t utf16Len) const;
     EcmaString *GetString(EcmaString *string) const;
 
     void InternString(EcmaString *string);

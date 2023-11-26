@@ -322,7 +322,7 @@ public:
     }
 
     // ************************************************************* High IR **********************************************************************************
-    GateRef CreateArray(ElementsKind kind, uint32_t arraySize);
+    GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
     GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode,
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
@@ -440,7 +440,7 @@ public:
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
-    GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
+    GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
@@ -532,13 +532,13 @@ public:
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
-        MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+        MemoryOrder order = MemoryOrder::Default());
     GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value,
-        MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+        MemoryOrder order = MemoryOrder::Default());
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
     GateRef StringAdd(GateRef x, GateRef y);
@@ -580,6 +580,7 @@ public:
     inline GateRef TaggedIsStoreTSHandler(GateRef x);
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
+    inline GateRef TaggedIsNotUndefinedAndNull(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
@@ -643,13 +644,13 @@ public:
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left,
                              GateRef right, GateType gateType = GateType::Empty(), const char* comment = nullptr);
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment = nullptr);
-    GateRef Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+    GateRef Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order = MemoryOrder::Default());
     GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
-        MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+        MemoryOrder order = MemoryOrder::Default());
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
-        MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+        MemoryOrder order = MemoryOrder::Default());
     void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value,
-        MemoryOrder order = MemoryOrder::NOT_ATOMIC);
+        MemoryOrder order = MemoryOrder::Default());
 
     // cast operation
     inline GateRef GetInt64OfTInt(GateRef x);

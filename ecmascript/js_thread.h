@@ -204,6 +204,11 @@ public:
         return glueData_.globalConst_;
     }
 
+    const BuiltinEntries GetBuiltinEntries() const
+    {
+        return glueData_.builtinEntries_;
+    }
+
     const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const
     {
         return arrayHClassIndexMap_;

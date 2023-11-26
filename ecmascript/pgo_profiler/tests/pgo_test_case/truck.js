@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { Vehicle } from './vehicle';   // Test direct Export & use after import
+import { Vehicle } from './vehicle'; // Test direct Export & use after import
 
 class Truck extends Vehicle {
 constructor() {
-    super();
+  super();
 }
 truckInfo() {
-    return "Truck";
+  return 'Truck';
 }
 }
 
-var myCar = new Truck();
+let myCar = new Truck();
 
 print(myCar.info());
-print("name: " + myCar.name);
+print('name: ' + myCar.name);

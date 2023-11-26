@@ -389,6 +389,16 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
     return result;
 }
 
+GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
+{
+    x = ChangeTaggedPointerToInt64(x);
+    GateRef heapObjMask = Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK);
+    GateRef tagSpecial = Int64(JSTaggedValue::TAG_SPECIAL);
+    GateRef andGate = Int64And(x, heapObjMask);
+    GateRef result = NotEqual(andGate, tagSpecial);
+    return result;
+}
+
 GateRef CircuitBuilder::TaggedTrue()
 {
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_TRUE, GateType::TaggedValue());

@@ -27,11 +27,10 @@
 
 #define BUILTIN_PUBLIC_SYMBOLS(V)                       \
     V(asyncIterator, AsyncIterator)                     \
-    V(attach,        Attach)                            \
-    V(detach,        Detach)                            \
     V(iterator,      Iterator)                          \
     V(match,         Match)                             \
     V(matchAll,      MatchAll)                          \
+    V(nativeBinding, NativeBinding)                     \
     V(replace,       Replace)                           \
     V(search,        Search)                            \
     V(species,       Species)                           \

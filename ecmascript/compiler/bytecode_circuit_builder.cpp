@@ -611,7 +611,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
         auto ifFalse = circuit_->NewGate(circuit_->IfFalse(), {gate});
         auto falseRelay = circuit_->NewGate(circuit_->DependRelay(), {ifFalse, gate});
         for (auto &bbNext: bb.succs) {
-            if (bbNext->id == bb.id + 1) {
+            if (iterator.Index() + 1 == bbNext->start) {
                 frameStateBuilder_.UpdateStateDepend(ifFalse, falseRelay);
                 frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
                 bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});

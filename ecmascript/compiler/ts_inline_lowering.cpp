@@ -338,7 +338,7 @@ GateRef TSInlineLowering::BuildAccessor(CallGateInfo &info)
     auto pgoType = pgoTypes->GetObjectInfo(0);
     ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int holderHCIndex = ptManager->GetHClassIndexByProfileType(holderType);
+    int holderHCIndex = static_cast<uint32_t>(ptManager->GetHClassIndexByProfileType(holderType));
     auto holderHC = builder_.GetHClassGateFromIndex(gate, holderHCIndex);
 
     auto currentLabel = env.GetCurrentLabel();

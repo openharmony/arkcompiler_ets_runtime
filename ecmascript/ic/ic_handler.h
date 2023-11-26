@@ -82,6 +82,11 @@ public:
 
     static inline bool IsElement(uint32_t handler)
     {
+        return IsNormalElement(handler) || IsStringElement(handler) || IsTypedArrayElement(handler);
+    }
+
+    static inline bool IsNormalElement(uint32_t handler)
+    {
         return GetKind(handler) == HandlerKind::ELEMENT;
     }
 

@@ -13,5 +13,5 @@ function foo2() {
 foo();
 foo1();
 
-let a = foo2()
+let a = foo2();
 a[7] = 10;

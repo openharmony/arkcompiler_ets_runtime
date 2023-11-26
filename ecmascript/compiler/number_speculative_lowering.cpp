@@ -116,12 +116,14 @@ void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
     }
     auto op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
-        case TypedBinOp::TYPED_STRICTEQ: {
-            VisitStrictEqual(gate);
+        case TypedBinOp::TYPED_STRICTEQ:
+        case TypedBinOp::TYPED_STRICTNOTEQ: {
+            VisitStrictEqualOrStrictNotEqual(gate);
             break;
         }
-        case TypedBinOp::TYPED_EQ: {
-            VisitEqual(gate);
+        case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_NOTEQ: {
+            VisitEqualOrNotEqual(gate);
             break;
         }
         default: {
@@ -133,21 +135,21 @@ void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
     }
 }
 
-void NumberSpeculativeLowering::VisitEqual(GateRef gate)
+void NumberSpeculativeLowering::VisitEqualOrNotEqual(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
     } else {
-        VisitUndefinedEq(gate);
+        VisitUndefinedEqOrUndefinedNotEq(gate);
     }
 }
 
-void NumberSpeculativeLowering::VisitStrictEqual(GateRef gate)
+void NumberSpeculativeLowering::VisitStrictEqualOrStrictNotEqual(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
     } else {
-        VisitUndefinedStrictEq(gate);
+        VisitUndefinedStrictEqOrUndefinedStrictNotEq(gate);
     }
 }
 
@@ -193,6 +195,10 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
         }
         case TypedBinOp::TYPED_STRICTEQ: {
             VisitNumberCompare<TypedBinOp::TYPED_STRICTEQ>(gate);
+            break;
+        }
+        case TypedBinOp::TYPED_STRICTNOTEQ: {
+            VisitNumberCompare<TypedBinOp::TYPED_STRICTNOTEQ>(gate);
             break;
         }
         case TypedBinOp::TYPED_SHL: {
@@ -476,26 +482,39 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
     acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
 }
 
-void NumberSpeculativeLowering::VisitUndefinedStrictEq(GateRef gate)
+void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ);
+    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ ||
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
-    GateRef result = builder_.Equal(left, right);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) {
+        result = builder_.Equal(left, right);
+    } else {
+        result = builder_.NotEqual(left, right);
+    }
+    ASSERT(result != Circuit::NullGate());
     acc_.SetMachineType(gate, MachineType::I1);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void NumberSpeculativeLowering::VisitUndefinedEq(GateRef gate)
+void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ);
+    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ ||
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
     GateRef valueGate =  acc_.IsUndefinedOrNull(left) ? right : left;
-    GateRef result = builder_.TaggedIsUndefinedOrNull(valueGate);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) {
+        result = builder_.TaggedIsUndefinedOrNull(valueGate);
+    } else {
+        result = builder_.TaggedIsNotUndefinedAndNull(valueGate);
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -730,6 +749,7 @@ GateRef NumberSpeculativeLowering::CompareInts(GateRef left, GateRef right)
             condition = builder_.Int32Equal(left, right);
             break;
         case TypedBinOp::TYPED_NOTEQ:
+        case TypedBinOp::TYPED_STRICTNOTEQ:
             condition = builder_.Int32NotEqual(left, right);
             break;
         default:
@@ -765,6 +785,13 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
             GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
             GateRef doubleEqual = builder_.DoubleEqual(left, right);
+            condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
+            break;
+        }
+        case TypedBinOp::TYPED_STRICTNOTEQ: {
+            GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
+            GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
+            GateRef doubleEqual = builder_.DoubleNotEqual(left, right);
             condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
             break;
         }

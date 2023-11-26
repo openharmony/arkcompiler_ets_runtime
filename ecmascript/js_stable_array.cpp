@@ -761,7 +761,12 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
     while (k < len) {
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());
-        kValue.Update(array->Get(k));
+        JSTaggedValue value = array->Get(k);
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        kValue.Update(value);
         if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =
@@ -1063,6 +1068,7 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> srcElements(thread, thisObjHandle->GetElements());
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     int64_t len = static_cast<int64_t>(srcElements->GetLength());
     int64_t oldLen;
     if (len > k + count) {
@@ -1071,6 +1077,14 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
         oldLen = len - k;
     }
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, count, oldLen, k);
+    for (int i = 0; i < count; i++) {
+        JSTaggedValue value = dstElements->Get(thread, i);
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            dstElements->Set(thread, i, value);
+        }
+    }
     return factory->NewJSStableArrayWithElements(dstElements).GetTaggedValue();
 }
 

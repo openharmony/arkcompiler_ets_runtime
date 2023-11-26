@@ -556,6 +556,17 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    // if load module, it needs to check whether clear singlestepper_
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
 void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)
 {
     vm->SetDeviceDisconnectCallback(cb);
@@ -1394,38 +1405,16 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
-Local<ObjectRef> ObjectRef::New(const EcmaVM *vm, void *detach, void *attach)
-{
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSFunction> constructor(env->GetObjectFunction());
-    JSHandle<JSTaggedValue> object(factory->NewJSObjectByConstructor(constructor));
-    JSHandle<JSTaggedValue> detachKey = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attachKey = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> detachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, detach));
-    JSHandle<JSTaggedValue> attachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, attach));
-    JSTaggedValue::SetProperty(vm->GetJSThread(), object, detachKey, detachValue);
-    JSTaggedValue::SetProperty(vm->GetJSThread(), object, attachKey, attachValue);
-    RETURN_VALUE_IF_ABRUPT(vm->GetJSThread(), JSValueRef::Undefined(vm));
-    return JSNApiHelper::ToLocal<ObjectRef>(object);
-}
-
-bool ObjectRef::Set(const EcmaVM *vm, void *detach, void *attach)
+bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
-    JSHandle<JSTaggedValue> detachKey = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attachKey = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> detachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, detach));
-    JSHandle<JSTaggedValue> attachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, attach));
-    bool detachResult = JSTaggedValue::SetProperty(vm->GetJSThread(), object, detachKey, detachValue);
-    bool attachResult = JSTaggedValue::SetProperty(vm->GetJSThread(), object, attachKey, attachValue);
-    RETURN_VALUE_IF_ABRUPT(vm->GetJSThread(), false);
-    return detachResult && attachResult;
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
+    return JSTaggedValue::SetProperty(vm->GetJSThread(), object, keyValue, valueValue);
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
@@ -1737,6 +1726,36 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    current->SetCallNapi(callNapi);
+    return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+}
+
+static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
+    clsPrototype->GetClass()->SetClassPrototype(true);
+    func->SetClassConstructor(true);
+    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(func), parent);
+    func->SetHomeObject(thread, clsPrototype);
+    func->SetCallNapi(callNapi);
+}
+
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
@@ -1749,22 +1768,26 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
-
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
-    current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
-                                     accessor.GetTaggedValue());
-
+    InitClassFunction(vm, current, callNapi);
     current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
+    Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+    return scope.Escape(result);
+}
 
-    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, current);
-    clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
-    JSHandle<JSTaggedValue>::Cast(current)->GetTaggedObject()->GetClass()->SetClassConstructor(true);
-    current->SetClassConstructor(true);
-    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
-    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
-    current->SetHomeObject(thread, clsPrototype);
-    current->SetCallNapi(callNapi);
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
+        hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+    InitClassFunction(vm, current, callNapi);
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -3824,7 +3847,6 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
     vm->SetSourceMapTranslateCallback(callback);
 }
 
-
 void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
                                            [[maybe_unused]] bool &getStackBeforeCallNapiSuccess)
 {
@@ -3846,13 +3868,7 @@ void JSNApi::GetStackAfterCallNapi([[maybe_unused]] EcmaVM *vm)
 #endif
 }
 
-
-TryCatch::~TryCatch()
-{
-    if (!rethrow_) {
-        ecmaVm_->GetJSThread()->ClearException();
-    }
-}
+TryCatch::~TryCatch() {}
 
 bool TryCatch::HasCaught() const
 {
@@ -3868,4 +3884,15 @@ Local<ObjectRef> TryCatch::GetAndClearException()
 {
     return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetAndClearEcmaUncaughtException());
 }
+
+Local<ObjectRef> TryCatch::GetException()
+{
+    return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetEcmaUncaughtException());
+}
+
+void TryCatch::ClearException()
+{
+    ecmaVm_->GetJSThread()->ClearException();
+}
+
 }  // namespace panda

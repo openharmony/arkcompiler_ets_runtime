@@ -284,7 +284,7 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
     EXPECT_EQ(heapTotalSize, expectHeapTotalSize);
 
     size_t heapUsedSize = DFXJSNApi::GetHeapUsedSize(vm_);
-    size_t expectHeapUsedSize = heap->GetLiveObjectSize();
+    size_t expectHeapUsedSize = heap->GetHeapObjectSize();
     EXPECT_EQ(heapUsedSize, expectHeapUsedSize);
 }
 

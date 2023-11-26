@@ -109,6 +109,34 @@ DEF_RUNTIME_STUBS(AddElementInternal)
     return JSTaggedValue(result).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(InitializeGeneratorFunction)
+{
+    RUNTIME_STUBS_HEADER(InitializeGeneratorFunction);
+    FunctionKind kind = static_cast<FunctionKind>(GetTArg(argv, argc, 0)); // 1: means the first parameter
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
+    if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
+        JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
+    } else if (kind == FunctionKind::GENERATOR_FUNCTION) {
+        JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
+    }
+    return initialGeneratorFuncPrototype.GetTaggedType();
+}
+
+DEF_RUNTIME_STUBS(FunctionDefineOwnProperty)
+{
+    RUNTIME_STUBS_HEADER(FunctionDefineOwnProperty);
+    JSHandle<JSFunction> func(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSTaggedValue> accessor = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    FunctionKind kind = static_cast<FunctionKind>(GetTArg(argv, argc, 2)); // 2: means the second parameter
+    PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
+    JSObject::DefineOwnProperty(thread, JSHandle<JSObject>(func),
+                                thread->GlobalConstants()->GetHandledPrototypeString(), desc);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(AllocateInYoung)
 {
     RUNTIME_STUBS_HEADER(AllocateInYoung);
@@ -600,8 +628,67 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 {
     RUNTIME_STUBS_HEADER(CallGetPrototype);
     JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-
     return JSProxy::GetPrototype(thread, proxy).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSDeleteProxyPrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSDeleteProxyPrototype);
+    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSProxy::DeleteProperty(thread, proxy, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallModuleNamespaceDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallModuleNamespaceDeletePrototype);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = ModuleNamespace::DeleteProperty(thread, obj, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallTypedArrayDeletePrototype);
+    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSTypedArray::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
+{
+    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    auto result = JSObject::DeleteProperty(thread, tagged, value);
+    if (!result) {
+        auto factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
+        thread->SetException(error.GetTaggedValue());
+        return JSTaggedValue::Exception().GetRawData();
+    }
+    return JSTaggedValue::True().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(Exp)
@@ -1532,6 +1619,15 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(NewJSPrimitiveRef)
+{
+    RUNTIME_STUBS_HEADER(NewJSPrimitiveRef);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue> (argv, argc, 1);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewJSPrimitiveRef(thisFunc, obj).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ThrowRangeError)
 {
     RUNTIME_STUBS_HEADER(ThrowRangeError);
@@ -2153,6 +2249,14 @@ DEF_RUNTIME_STUBS(FastCopyElementToArray)
     JSHandle<JSTaggedValue> typedArray = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<TaggedArray> array = GetHArg<TaggedArray>(argv, argc, 1);  // 1: means the first parameter
     return JSTaggedValue(JSTypedArray::FastCopyElementToArray(thread, typedArray, array)).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetPropertyByName)
+{
+    RUNTIME_STUBS_HEADER(GetPropertyByName);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return JSTaggedValue::GetProperty(thread, target, key).GetValue()->GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DebugAOTPrint)
@@ -2903,7 +3007,7 @@ DEF_RUNTIME_STUBS(ArrayForEachContinue)
     JSHandle<JSTaggedValue> lengthHandle = GetHArg<JSTaggedValue>(argv, argc, 4);       // 4: means the fourth parameter
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     uint32_t i = key->GetInt();
-    uint32_t len = lengthHandle->GetInt();
+    uint32_t len = static_cast<uint32_t>(lengthHandle->GetInt());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (i < len) {
         bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, i);
@@ -2923,6 +3027,24 @@ DEF_RUNTIME_STUBS(ArrayForEachContinue)
     }
 
     return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
+{
+    RUNTIME_STUBS_HEADER(AOTEnableProtoChangeMarker);
+    JSHandle<JSFunction> result(GetHArg<JSTaggedValue>(argv, argc, 0)); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> ihc = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
+    result->SetProtoOrHClass(thread, ihc);
+    JSHandle<JSObject> clsPrototype(thread, result->GetFunctionPrototype());
+    clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+    JSHClass::EnableProtoChangeMarker(thread,
+        JSHandle<JSHClass>(thread, result->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
+    }
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

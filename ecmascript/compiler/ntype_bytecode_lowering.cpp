@@ -149,7 +149,8 @@ void NTypeBytecodeLowering::LowerNTypedCreateEmptyArray(GateRef gate)
     // and the type will be used to determine whether to create a typed-array.
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
-    GateRef array = builder_.CreateArray(kind, 0);
+    uint32_t length = acc_.TryGetArrayElementsLength(gate);
+    GateRef array = builder_.CreateArray(kind, 0, builder_.Int64(length));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
