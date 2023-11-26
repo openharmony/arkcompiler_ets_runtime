@@ -607,7 +607,7 @@ void GateAccessor::TrySetArrayElementsLength(GateRef gate, uint32_t length)
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
-         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsLength(length);
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsLength(length);
     }
 }
 

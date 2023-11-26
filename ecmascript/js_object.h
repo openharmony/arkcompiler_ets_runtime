@@ -371,6 +371,9 @@ public:
     static constexpr int MIN_GAP = 256;
     static constexpr int MAX_GAP = 1_KB;
     static constexpr uint32_t MAX_ELEMENT_INDEX = std::numeric_limits<uint32_t>::max();
+    static constexpr int MIN_ELEMENTS_HINT_LENGTH = 1_KB;
+    static constexpr int MAX_ELEMENTS_HINT_LENGTH = 2_MB;
+    static constexpr int ELEMENTS_HINT_FACTOR = 8;
 
     CAST_CHECK(JSObject, IsECMAObject);
 
@@ -701,6 +704,7 @@ private:
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
+    static uint32_t ComputeElementCapacityWithHint(uint32_t oldCapacity, uint32_t hint);
     static uint32_t ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
                                                        uint32_t maxNonInlinedFastPropsCapacity);
 
