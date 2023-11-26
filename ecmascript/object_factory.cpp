@@ -907,6 +907,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     info->SetCallArg(message.GetTaggedValue());
     Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
     auto sp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
     ASSERT(FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_ENTRY_FRAME);
