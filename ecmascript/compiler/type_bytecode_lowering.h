@@ -101,7 +101,7 @@ private:
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedEqOrStrictEq(GateRef gate);
+    void LowerTypedEqOrNotEq(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate, bool flag);

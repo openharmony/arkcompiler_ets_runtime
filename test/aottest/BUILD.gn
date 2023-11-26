@@ -178,6 +178,7 @@ group("ark_aot_ts_test") {
     "newobjrange",
     "newobjspread",
     "not",
+    "not_equal",
     "numberspeculativeretype",
     "operations_stub_test",
     "optimization",
