@@ -457,6 +457,9 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label isJSArray(env);
     GateRef jsCOWArray = IsJsCOWArray(thisValue);
     GateRef jsJSArray = IsJsArray(thisValue);
@@ -631,12 +634,15 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label stableJSArray(env);
     Label notStableJSArray(env);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
+    Label arg0HeapObject(env);
+    Branch(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
     Label callable(env);
     Branch(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
