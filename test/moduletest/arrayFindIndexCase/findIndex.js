@@ -14,13 +14,13 @@
  */
 
 /*
- * @tc.name:stringSlice
- * @tc.desc:test String.slice
+ * @tc.name:findIndex
+ * @tc.desc:test array.findIndex
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require:
  */
 
-t array1 = [5, 12, 8, 130, 44];
+const array1 = [5, 12, 8, 130, 44];
 const isLargeNumber = (element) => element > 13;
 print(array1.findIndex(isLargeNumber));
 
