@@ -6186,7 +6186,8 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Branch(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &isException);
     Bind(&objectIsEcmaObject);
     {
-        result = DeleteProperty(glue, obj, value);
+        GateRef keyValue = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
+        result = DeleteProperty(glue, obj, keyValue);
         Jump(&exit);
     }
     Bind(&isException);

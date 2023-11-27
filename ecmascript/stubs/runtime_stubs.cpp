@@ -691,6 +691,14 @@ DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
     return JSTaggedValue::True().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ToPropertyKey)
+{
+    RUNTIME_STUBS_HEADER(ToPropertyKey);
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
+    return res.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(Exp)
 {
     RUNTIME_STUBS_HEADER(Exp);
