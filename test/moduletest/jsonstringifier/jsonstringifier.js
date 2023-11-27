@@ -84,3 +84,19 @@ var obj={
     3:3,
 }
 print(JSON.stringify(obj))
+
+var List = undefined;
+var LinkedList = undefined;
+if (globalThis["ArkPrivate"] != undefined) {
+    List = ArkPrivate.Load(ArkPrivate.List);
+    let list = new List();
+    list.add({"f1": 1});
+    list.add({"f2": 2});
+    print(JSON.stringify(list));
+
+    LinkedList = ArkPrivate.Load(ArkPrivate.LinkedList);
+    let linkList = new LinkedList();
+    linkList.add({"f3": 3});
+    linkList.add({"f4": 4});
+    print(JSON.stringify(linkList));
+}
