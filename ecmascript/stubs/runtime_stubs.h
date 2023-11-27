@@ -434,7 +434,7 @@ public:
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
                                            EcmaString *thatHandle);
-    static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength); 
+    static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);

@@ -147,36 +147,26 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label isExtensible(env);
     GateRef  hasConstructor = HasConstructor(thisValue);
     GateRef jsJSArray = IsJsArray(thisValue);
     Branch(BoolAnd(jsJSArray, BoolNot(hasConstructor)), &isExtensible, slowPath);
     Bind(&isExtensible);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
+    Label argOHeapObject(env);
+
+    Branch(TaggedIsHeapObject(callbackFnHandle), &argOHeapObject, slowPath);
+    Bind(&argOHeapObject);
     Label callable(env);
     Branch(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
     GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
     GateRef argHandle = GetCallArg1(numArgs);
-    // new array
-    Label setProperties(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, len);
-    Branch(TaggedIsException(newArray), exit, &setProperties);
-    Bind(&setProperties);
+    GateRef newArray = NewArray(glue, len);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(len));
-    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, newArray, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-    SetExtensibleToBitfield(glue, newArray, true);
     GateRef newArrayEles = GetElementsArray(newArray);
     Label stableJSArray(env);
     DEFVARIABLE(thisEles, VariableType::JS_ANY(), GetElementsArray(thisValue));
@@ -217,7 +207,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
                 Bind(&checkArray);
                 {
                     Label lenChange(env);
-                    GateRef tmpArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue)); // ? element array?
+                    GateRef tmpArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
                     Branch(Int64LessThan(tmpArrLen, *thisArrLenVar), &lenChange, &kValueIsHole);
                     Bind(&lenChange);
                     {
@@ -308,6 +298,9 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label stableJSArray(env);
     Label isDeufaltConstructor(env);
     Branch(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
@@ -753,7 +746,6 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
         {
         Branch(Int64LessThan(*i, thisArrLen), &next, &loopExit);
         Bind(&next);
-        DebugPrint(glue, {thisArrLen});
         GateRef thisEles = GetElementsArray(thisValue);
         kValue = GetValueFromTaggedArray(thisEles, *i);
         Label isHole(env);
@@ -807,7 +799,6 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
     }
     Bind(&notStableJSArray);
     {
-        DebugPrint(glue, {Int64(999)});
         DEFVARIABLE(j, VariableType::INT64(), Int64(0));
         Label loopHead(env);
         Label loopEnd(env);
