@@ -18,6 +18,7 @@
 #include <chrono>
 #include <thread>
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
@@ -46,6 +47,9 @@
 #endif
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+#include "syspara/parameter.h"
 #endif
 
 namespace panda::ecmascript {
@@ -393,7 +397,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
                 SetMarkType(MarkType::MARK_YOUNG);
             }
-            if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_FULL) {
+            if (markType_ == MarkType::MARK_FULL) {
                 // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
                 gcType_ = TriggerGCType::OLD_GC;
             }
@@ -446,6 +450,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 
     // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
     if (shouldThrowOOMError_) {
+        sweeper_->EnsureAllTaskFinished();
+        DumpHeapSnapshotBeforeOOM(false);
         ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
@@ -508,6 +514,15 @@ void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
     GetEcmaVM()->GetEcmaGCStats()->PrintGCMemoryStatistic();
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
+}
+
+void Heap::CheckNonMovableSpaceOOM()
+{
+    if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
+        sweeper_->EnsureAllTaskFinished();
+        DumpHeapSnapshotBeforeOOM(false);
+        ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+    }
 }
 
 void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
@@ -620,10 +635,30 @@ void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unuse
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
     if (profiler != nullptr) {
-        BlockHookScope blockScope;
+        base::BlockHookScope blockScope;
         profiler->AllocationEvent(address, size);
     }
 #endif
+}
+
+void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    if (ecmaVm_->GetHeapProfile() != nullptr) {
+        return;
+    }
+    // Filter appfreeze when dump.
+    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    base::BlockHookScope blockScope;
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+    SetParameter("hiviewdfx.appfreeze.filter_bundle_name", ecmaVm_->GetBundleName().c_str());
+    // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    HeapProfilerInterface::Destroy(ecmaVm_);
+    SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+#endif // ENABLE_DUMP_IN_FAULTLOG
+#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
 void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
@@ -632,7 +667,7 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
     if (profiler != nullptr) {
-        BlockHookScope blockScope;
+        base::BlockHookScope blockScope;
         profiler->MoveEvent(address, forwardAddress, size);
     }
 #endif

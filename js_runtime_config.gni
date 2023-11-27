@@ -94,7 +94,10 @@ enable_hitrace =
 hiviewdfx_deps = []
 hiviewdfx_ext_deps = []
 if (enable_dump_in_faultlog) {
-  hiviewdfx_ext_deps += [ "faultloggerd:libfaultloggerd" ]
+  hiviewdfx_ext_deps += [
+    "faultloggerd:libfaultloggerd",
+    "init:libbegetutil",
+  ]
 }
 if (enable_bytrace) {
   hiviewdfx_ext_deps += [ "hitrace:hitrace_meter" ]

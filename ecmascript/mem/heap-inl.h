@@ -18,7 +18,6 @@
 
 #include "ecmascript/mem/heap.h"
 
-#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/allocator-inl.h"
@@ -31,14 +30,17 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 
 namespace panda::ecmascript {
-using BlockHookScope = base::BlockHookScope;
 #define CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, space, message)                                         \
     if (UNLIKELY((object) == nullptr)) {                                                                    \
-        size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();   \
+        EcmaVM *vm = GetEcmaVM();                                                                           \
+        size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        if ((space)->IsOOMDumpSpace()) {                                                                    \
+            DumpHeapSnapshotBeforeOOM();                                                                    \
+        }                                                                                                   \
         object = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                                 \
         ThrowOutOfMemoryError(size, message);                                                               \
-    }                                                                                                       \
+    }
 
 template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
@@ -264,6 +266,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             if (UNLIKELY(object == nullptr)) {
+                DumpHeapSnapshotBeforeOOM();
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
             }
             ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");

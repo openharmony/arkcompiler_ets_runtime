@@ -23,6 +23,10 @@
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
 
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+#include "faultloggerd_client.h"
+#endif
+
 namespace panda::ecmascript {
 std::pair<bool, uint32_t> EntryIdMap::FindId(Address addr)
 {
@@ -124,6 +128,22 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
     vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
     snapshot->UpdateNodes();
+}
+
+void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[maybe_unused]] bool isVmMode,
+                                    [[maybe_unused]] bool isPrivate, [[maybe_unused]] bool captureNumericValue,
+                                    [[maybe_unused]] bool isFullGC)
+{
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    // Write in faultlog for heap leak.
+    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
+        return;
+    }
+    FileDescriptorStream stream(fd);
+    DumpHeapSnapshot(dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, true);
+#endif
 }
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,

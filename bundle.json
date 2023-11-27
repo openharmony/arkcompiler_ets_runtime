@@ -23,6 +23,7 @@
         "deps": {
             "components": [
               "faultloggerd",
+              "init",
               "hitrace",
               "hilog",
               "qos_manager",

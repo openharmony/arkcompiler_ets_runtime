@@ -568,12 +568,7 @@ public:
         return oldGCRequested_;
     }
 
-    void CheckNonMovableSpaceOOM()
-    {
-        if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
-            ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
-        }
-    }
+    void CheckNonMovableSpaceOOM();
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -590,6 +585,7 @@ private:
     void ReduceTaskCount();
     void WaitClearTaskFinished();
     void InvokeWeakNodeNativeFinalizeCallback();
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     class ParallelGCTask : public Task {
