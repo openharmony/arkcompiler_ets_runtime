@@ -24,6 +24,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_queue.h"
+#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 inline void ECMAObject::SetCallable(bool flag)
@@ -357,6 +358,20 @@ inline bool JSObject::ShouldTransToDict(uint32_t capacity, uint32_t index)
         return index > capacity * FAST_ELEMENTS_FACTOR;
     }
 
+    return false;
+}
+
+inline bool JSObject::ShouldTransToFastElements(JSHandle<NumberDictionary> dictionary,
+                                                uint32_t capacity, uint32_t index)
+{
+    if (index >= static_cast<uint32_t>(INT32_MAX)) {
+        return false;
+    }
+    uint32_t dictionarySize = static_cast<uint32_t>(dictionary->GetLength());
+    // Turn fast if only saves 50% space.
+    if (dictionarySize * SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR >= capacity) {
+        return true;
+    }
     return false;
 }
 

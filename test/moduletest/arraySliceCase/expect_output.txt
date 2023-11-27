@@ -11,8 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_moduletest_action("arrayfindIndex") {
-  deps = []
-}
+camel,duck,elephant
+camel,duck
+bison,camel,duck,elephant
+duck,elephant
+camel,duck
+ant,bison,camel,duck,elephant
+2,,4
+3,4
+1,2,3

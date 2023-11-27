@@ -333,10 +333,10 @@ bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> 
     return op.GetAttr().IsWritable();
 }
 
-bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index,
-                                  const JSHandle<JSTaggedValue> &value, PropertyAttributes attr)
+bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                  uint32_t index, const JSHandle<JSTaggedValue> &value,
+                                  PropertyAttributes attr)
 {
-    bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     ElementsKind kind = ElementsKind::NONE;
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
@@ -354,6 +354,18 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
     }
     thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
 
+    // check whether to convert to dictionary
+    if (receiver->GetJSHClass()->IsDictionaryElement() && receiver->IsJSArray()) {
+        JSArray *arr = JSArray::Cast(*receiver);
+        uint32_t capacity = arr->GetArrayLength();
+        TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+        ASSERT(elements->IsDictionaryMode());
+        if (ShouldTransToFastElements(JSHandle<NumberDictionary>(thread, elements), capacity, index)) {
+            JSObject::TryOptimizeAsFastElements(thread, receiver);
+        }
+    }
+    
+    bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (isDictionary) {
         ASSERT(elements->IsDictionaryMode());
