@@ -1121,20 +1121,6 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
                                       const JSHandle<JSTaggedValue> &key, PropertyDescriptor &desc)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-    JSHandle<JSTaggedValue> thisObjVal(obj);
-    bool isArray = obj->IsJSArray();
-    if (isArray) {
-        JSHandle<TaggedArray> srcElements(thread, obj->GetElements());
-        int64_t len = static_cast<int64_t>(srcElements->GetLength());
-        for (int i = 0; i < len; i++) {
-            JSTaggedValue value = srcElements->Get(thread, i);
-            if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i)) {
-                value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i).GetTaggedValue();
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-                srcElements->Set(thread, i, value);
-            }
-        }
-    }
     ObjectOperator op(thread, JSHandle<JSTaggedValue>(obj), key, OperatorType::OWN);
 
     if (!op.IsFound()) {
