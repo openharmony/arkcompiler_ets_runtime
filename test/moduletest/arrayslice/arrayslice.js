@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+var holey_array = [1, 2, 3, 4, 5,,,,,,];
+print(holey_array.slice(6, 7)[0]);
+print(holey_array.slice(2, 3)[0]);
 
 (function() {
     var array = [,];

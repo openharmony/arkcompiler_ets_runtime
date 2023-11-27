@@ -1079,8 +1079,8 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, count, oldLen, k);
     for (int i = 0; i < count; i++) {
         JSTaggedValue value = dstElements->Get(thread, i);
-        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i)) {
-            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i).GetTaggedValue();
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, i + k)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, i + k).GetTaggedValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             dstElements->Set(thread, i, value);
         }
