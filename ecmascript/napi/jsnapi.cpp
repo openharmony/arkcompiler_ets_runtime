@@ -172,6 +172,7 @@ using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
 using ecmascript::JSProxy;
+using ecmascript::ObjectFastOperator;
 #ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
@@ -1414,8 +1415,16 @@ bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> v
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
-    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, valueValue);
-    RETURN_VALUE_IF_ABRUPT(vm->GetJSThread(), false);
+    JSThread *thread = vm->GetJSThread();
+    if (!obj->IsHeapObject()) {
+        bool result = JSTaggedValue::SetProperty(thread, obj, keyValue, valueValue);
+        RETURN_VALUE_IF_ABRUPT(thread, false);
+        return result;
+    }
+    bool result = ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                             keyValue.GetTaggedValue(),
+                                                             valueValue.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
 
@@ -1423,8 +1432,19 @@ bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
-    Local<JSValueRef> keyValue = NumberRef::New(vm, key);
-    return Set(vm, keyValue, value);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
+    JSThread *thread = vm->GetJSThread();
+    if (!obj->IsHeapObject()) {
+        bool result = JSTaggedValue::SetProperty(thread, obj, key, valueValue);
+        RETURN_VALUE_IF_ABRUPT(thread, false);
+        return result;
+    }
+    bool result = ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(),
+                                                             key, valueValue.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    return result;
 }
 
 bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
@@ -1455,19 +1475,32 @@ Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
-    OperationResult ret = JSTaggedValue::GetProperty(thread, obj, keyValue);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    if (!ret.GetPropertyMetaData().IsFound()) {
-        return JSValueRef::Undefined(vm);
+    if (!obj->IsHeapObject()) {
+        OperationResult ret = JSTaggedValue::GetProperty(thread, obj, keyValue);
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
     }
-    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
+    JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                                   keyValue.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
 }
 
 Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, int32_t key)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    Local<JSValueRef> keyValue = IntegerRef::New(vm, key);
-    return Get(vm, keyValue);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    if (!obj->IsHeapObject()) {
+        OperationResult ret = JSTaggedValue::GetProperty(thread, obj, key);
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
+    }
+    JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByIndex(thread, obj.GetTaggedValue(), key);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
 }
 
 bool ObjectRef::GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute &property)
