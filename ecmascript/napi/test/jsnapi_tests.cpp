@@ -1040,7 +1040,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
 HWTEST_F_L0(JSNApiTests, ClassFunction)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, nullptr, nullptr, nullptr);
+    Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, FunctionCallback, nullptr, nullptr);
 
     JSHandle<JSTaggedValue> clsObj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     ASSERT_TRUE(clsObj->IsClassConstructor());
@@ -1128,7 +1128,7 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
     JSRuntimeOptions option;
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
-    JSNApi::addWorker(vm_, workerVm);
+    JSNApi::AddWorker(vm_, workerVm);
     bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
     EXPECT_TRUE(hasDeleted);
 

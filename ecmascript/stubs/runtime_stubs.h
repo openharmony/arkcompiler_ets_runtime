@@ -316,6 +316,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
     V(FastCopyElementToArray)             \
+    V(GetPropertyByName)                  \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(ProfileOptimizedCode)               \

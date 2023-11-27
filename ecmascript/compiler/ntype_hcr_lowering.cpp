@@ -46,24 +46,20 @@ void NTypeHCRLowering::LowerCreateArray(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     if (acc_.GetArraySize(gate) == 0) {
-        LowerCreateEmptyArray(gate, glue);
+        LowerCreateEmptyArray(gate);
     } else {
         LowerCreateArrayWithOwn(gate, glue);
     }
 }
 
-void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
+void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate)
 {
     GateRef length = builder_.Int32(0);
     GateRef elements = Circuit::NullGate();
     GateRef value = acc_.GetValueIn(gate, 0);
-    auto elementsLength = static_cast<uint32_t>(acc_.GetConstantValue(value));
-    if (elementsLength > 0) {
-        elements = CreateElementsWithLength(gate, glue, elementsLength);
-    } else {
-        elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    }
-    auto array = NewJSArrayLiteral(gate, elements, length);
+    auto hintLength = static_cast<uint32_t>(acc_.GetConstantValue(value));
+    elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    auto array = NewJSArrayLiteral(gate, elements, length, hintLength);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -137,7 +133,7 @@ GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, s
     return elements;
 }
 
-GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length)
+GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length, uint32_t hintLength)
 {
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
     GateRef hclass = Circuit::NullGate();
@@ -172,7 +168,12 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, Gate
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
     builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
-    builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
+    if (hintLength > 0) {
+        builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET,
+            builder_.Int64(JSTaggedValue(hintLength).GetRawData()));
+    } else {
+        builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
+    }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
     builder_.FinishAllocate();
     return array;

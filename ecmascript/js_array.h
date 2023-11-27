@@ -57,6 +57,16 @@ public:
         SetLength(length);
     }
 
+    inline uint32_t GetHintLength() const
+    {
+        auto trackInfo = GetTrackInfo();
+        if (trackInfo.IsInt()) {
+            int hint = trackInfo.GetInt();
+            return hint > 0 ? hint : 0;
+        }
+        return 0;
+    }
+
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TRACE_INDEX_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(TraceIndex, uint32_t, TRACE_INDEX_OFFSET, TRACK_INFO_OFFSET)

@@ -160,28 +160,32 @@ GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
     }
 
     if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ &&
-        acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_EQ) {
+        acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTNOTEQ &&
+        acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_EQ &&
+        acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_NOTEQ) {
         if (acc_.HasPrimitiveNumberType(gate)) {
             return VisitNumberBinaryOp(gate);
         }
     }
 
-    return VisitEqualOrStrictEqual(gate);
+    return VisitEqualCompareOrNotEqualCompare(gate);
 }
 
-GateRef NumberSpeculativeRetype::VisitEqualOrStrictEqual(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitEqualCompareOrNotEqualCompare(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
         return VisitNumberBinaryOp(gate);
     } else {
-        return VisitUndefinedEqOrStrictEq(gate);
+        return VisitUndefinedEqualCompareOrUndefinedNotEqualCompare(gate);
     }
 }
 
-GateRef NumberSpeculativeRetype::VisitUndefinedEqOrStrictEq(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitUndefinedEqualCompareOrUndefinedNotEqualCompare(GateRef gate)
 {
     ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ ||
-           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ);
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ ||
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ ||
+           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT((acc_.IsUndefinedOrNull(left)) || (acc_.IsUndefinedOrNull(right)));
@@ -258,6 +262,19 @@ GateRef NumberSpeculativeRetype::VisitStringAdd(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::StringType());
+    }
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            TypeInfo inputInfo = GetOutputTypeInfo(input);
+            if (inputInfo == TypeInfo::CHAR) {
+                GateRef glue = acc_.GetGlueFromArgList();
+                input = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, input });
+            }
+            acc_.ReplaceValueIn(gate, input, i);
+        }
     }
     return Circuit::NullGate();
 }
@@ -361,7 +378,8 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_GREATEREQ:
         case TypedBinOp::TYPED_EQ:
         case TypedBinOp::TYPED_NOTEQ:
-        case TypedBinOp::TYPED_STRICTEQ: {
+        case TypedBinOp::TYPED_STRICTEQ:
+        case TypedBinOp::TYPED_STRICTNOTEQ: {
             return VisitNumberCompare(gate);
         }
         case TypedBinOp::TYPED_SHL:

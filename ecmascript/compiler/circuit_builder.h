@@ -583,6 +583,7 @@ public:
     inline GateRef TaggedIsStoreTSHandler(GateRef x);
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
+    inline GateRef TaggedIsNotUndefinedAndNull(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);

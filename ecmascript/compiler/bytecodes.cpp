@@ -210,6 +210,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::GREATER_IMM8_V8:
         case EcmaOpcode::GREATEREQ_IMM8_V8:
         case EcmaOpcode::STRICTEQ_IMM8_V8:
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:

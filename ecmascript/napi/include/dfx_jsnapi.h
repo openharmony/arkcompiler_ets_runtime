@@ -100,8 +100,9 @@ public:
         int interval = 500; // 500:Default Sampling interval 500 microseconds
         ProfilerType profilerType = ProfilerType::CPU_PROFILER;
     };
-    static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t instanceId,
-        const DebuggerPostTask &debuggerPostTask);
+    // To be compatible with old process.
+    static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
+                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
     static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);
     static const SamplingInfo *GetAllocationProfile(const EcmaVM *vm);

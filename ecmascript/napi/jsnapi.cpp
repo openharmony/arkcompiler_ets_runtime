@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "dfx_jsnapi.h"
 #include "jsnapi_helper.h"
 
 #include <array>
@@ -20,6 +21,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utility>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_parser.h"
@@ -99,9 +101,10 @@
 namespace OHOS::ArkCompiler::Toolchain {
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {
-    bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
+    bool StartDebug(const std::string& componentName, void* vm, int32_t instanceId,
         const DebuggerPostTask& debuggerPostTask, int port);
     void StopDebug(const std::string& componentName);
+    void WaitForDebugger(void* vm);
 }
 } // namespace OHOS::ArkCompiler::Toolchain
 const std::string DEBUGGER_NAME = "PandaDebugger";
@@ -200,6 +203,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
+std::unordered_map<uint32_t, std::pair<EcmaVM *, const DebuggerPostTask>> JSNApi::debugInfo_ {};
 static Mutex *mutex = new panda::Mutex();
 #define XPM_PROC_PREFIX "/proc/"
 #define XPM_PROC_SUFFIX "/xpm_region"
@@ -423,6 +427,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
+// for prevewer debugger.
 bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                            [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
@@ -487,6 +492,168 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
+// for old process.
+bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
+                                        [[maybe_unused]] int32_t instanceId,
+                                        [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
+    if (vm == nullptr) {
+        return false;
+    }
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    if (!handle.IsValid()) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
+        return false;
+    }
+
+    using StartDebugger = bool (*)(
+        const std::string &, EcmaVM *, int32_t, const DebuggerPostTask &, int);
+
+    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebug");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
+        return false;
+    }
+
+    bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
+        "PandaDebugger", vm, instanceId, debuggerPostTask, option.port);
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        panda::os::library_loader::LibraryHandle libraryHandle(nullptr);
+        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
+    }
+    return ret;
+#else
+    if (vm == nullptr) {
+        return false;
+    }
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
+        DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+    }
+    return ret;
+#endif // PANDA_TARGET_IOS
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+// for socketpair process in ohos platform.
+bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
+                                        [[maybe_unused]] const DebugOption &option,
+                                        [[maybe_unused]] int socketfd,
+                                        [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    EcmaVM *vm = GetEcmaVMByTid(tid);
+    const DebuggerPostTask &realDebuggerPostTask = GetDebuggerTaskByTid(tid);
+    if (vm == nullptr) {
+        return false;
+    }
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    if (!handle.IsValid()) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
+        return false;
+    }
+
+    using StartDebuggerForSocketPair = bool (*)(EcmaVM *, uint32_t, const DebuggerPostTask &, int);
+
+    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Resolve symbol fail: " << sym.Error().ToString();
+        return false;
+    }
+
+    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(vm, tid, realDebuggerPostTask, socketfd);
+    if (!ret) {
+        // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        panda::os::library_loader::LibraryHandle libraryHandle(nullptr);
+        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
+    }
+    return ret;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+EcmaVM *JSNApi::GetEcmaVMByTid(uint32_t tid)
+{
+    if (debugInfo_.find(tid) == debugInfo_.end()) {
+        return nullptr;
+    }
+    return debugInfo_[tid].first;
+}
+
+const DebuggerPostTask &JSNApi::GetDebuggerTaskByTid(uint32_t tid)
+{
+    if (debugInfo_.find(tid) == debugInfo_.end()) {
+        return {};
+    }
+    return debugInfo_[tid].second;
+}
+
+bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
+                             [[maybe_unused]] EcmaVM *vm,
+                             [[maybe_unused]] const char *libraryPath,
+                             [[maybe_unused]] const DebugOption &option,
+                             [[maybe_unused]] int32_t instanceId,
+                             [[maybe_unused]] const DebuggerPostTask &debuggerPostTask,
+                             [[maybe_unused]] bool debugApp, [[maybe_unused]] bool debugMode)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    // debug app & -D; heap profile
+    if (vm == nullptr) {
+        return false;
+    }
+    if (debugInfo_.find(tid) == debugInfo_.end()) {
+        debugInfo_.emplace(tid, std::make_pair(vm, debuggerPostTask));
+    }
+
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    if (handler.IsValid()) {
+        return false;
+    }
+
+    auto handle = panda::os::library_loader::Load(std::string(libraryPath));
+    if (!handle) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << libraryPath << " " << errno;
+        return false;
+    }
+    vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
+    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode && debugApp);
+    bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+
+    if (debugApp && debugMode) {
+        using WaitForDebugger = bool (*)(EcmaVM *);
+
+        auto sym = panda::os::library_loader::ResolveSymbol(
+            vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "WaitForDebugger");
+        if (!sym) {
+            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol fail: " << sym.Error().ToString();
+            return false;
+        }
+        reinterpret_cast<WaitForDebugger>(sym.Value())(vm);
+    }
+    return ret;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
 bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
@@ -507,6 +674,46 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     }
 
     reinterpret_cast<StopDebug>(sym.Value())("PandaDebugger");
+
+    vm->GetJsDebuggerManager()->SetDebugMode(false);
+    return true;
+#else
+    if (vm == nullptr) {
+        return false;
+    }
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+
+    OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
+    vm->GetJsDebuggerManager()->SetDebugMode(false);
+    return true;
+#endif // PANDA_TARGET_IOS
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+bool JSNApi::StopDebugger(uint32_t tid)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
+    EcmaVM *vm = GetEcmaVMByTid(tid);
+    if (vm == nullptr) {
+        return false;
+    }
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+
+    const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+
+    using StopOldDebug = void (*)(void *, const std::string &);
+
+    auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopOldDebug");
+    if (!sym) {
+        LOG_ECMA(ERROR) << sym.Error().ToString();
+        return false;
+    }
+
+    reinterpret_cast<StopOldDebug>(sym.Value())(vm, "PandaDebugger");
 
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
@@ -551,6 +758,17 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
     vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+#endif
+}
+
+void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    // if load module, it needs to check whether clear singlestepper_
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
 #endif
@@ -689,7 +907,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     vm->PostFork();
 }
 
-void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+void JSNApi::AddWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     if (hostVm != nullptr && workerVm != nullptr) {
         hostVm->WorkersetInfo(workerVm);
@@ -1715,6 +1933,36 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
+Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    current->SetCallNapi(callNapi);
+    return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+}
+
+static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
+    clsPrototype->GetClass()->SetClassPrototype(true);
+    func->SetClassConstructor(true);
+    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(func), parent);
+    func->SetHomeObject(thread, clsPrototype);
+    func->SetCallNapi(callNapi);
+}
+
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
@@ -1727,22 +1975,26 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
-
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
-    current->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
-                                     accessor.GetTaggedValue());
-
+    InitClassFunction(vm, current, callNapi);
     current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
+    Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+    return scope.Escape(result);
+}
 
-    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, current);
-    clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
-    JSHandle<JSTaggedValue>::Cast(current)->GetTaggedObject()->GetClass()->SetClassConstructor(true);
-    current->SetClassConstructor(true);
-    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
-    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
-    current->SetHomeObject(thread, clsPrototype);
-    current->SetCallNapi(callNapi);
+Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
+        hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+    InitClassFunction(vm, current, callNapi);
+    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -3800,6 +4052,27 @@ void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
 void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
 {
     vm->SetSourceMapTranslateCallback(callback);
+}
+
+void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
+                                           [[maybe_unused]] bool &getStackBeforeCallNapiSuccess)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    JSThread *thread = vm->GetJSThread();
+    if (thread->GetIsProfiling()) {
+        getStackBeforeCallNapiSuccess = vm->GetProfiler()->GetStackBeforeCallNapi(thread);
+    }
+#endif
+}
+
+void JSNApi::GetStackAfterCallNapi([[maybe_unused]] EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    JSThread *thread = vm->GetJSThread();
+    if (thread->GetIsProfiling()) {
+        vm->GetProfiler()->GetStackAfterCallNapi(thread);
+    }
+#endif
 }
 
 TryCatch::~TryCatch() {}

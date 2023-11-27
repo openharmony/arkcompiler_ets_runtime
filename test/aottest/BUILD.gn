@@ -29,6 +29,7 @@ group("ark_aot_js_test") {
     "dead_code_elimination",
     "equal",
     "js_string_equal",
+    "js_string_add",
   ]
 
   deps = []
@@ -177,6 +178,7 @@ group("ark_aot_ts_test") {
     "newobjrange",
     "newobjspread",
     "not",
+    "not_equal",
     "numberspeculativeretype",
     "operations_stub_test",
     "optimization",

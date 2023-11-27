@@ -44,6 +44,7 @@ namespace panda::ecmascript::kungfu {
     V(TYPED_EQ)                 \
     V(TYPED_NOTEQ)              \
     V(TYPED_STRICTEQ)           \
+    V(TYPED_STRICTNOTEQ)        \
     V(TYPED_SHL)                \
     V(TYPED_SHR)                \
     V(TYPED_ASHR)               \

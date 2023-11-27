@@ -62,6 +62,8 @@ namespace panda::ecmascript::kungfu {
     V(FunctionPrototypeApply)                       \
     V(ArrayConcat)                                  \
     V(ArrayFilter)                                  \
+    V(ArrayFind)                                    \
+    V(ArrayFindIndex)                               \
     V(ArrayForEach)                                 \
     V(ArrayIndexOf)                                 \
     V(ArrayLastIndexOf)                             \

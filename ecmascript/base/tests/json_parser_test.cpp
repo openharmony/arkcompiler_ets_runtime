@@ -125,7 +125,7 @@ HWTEST_F_L0(JsonParserTest, Parser_003)
 
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(
         "\t\r \n{\t\r \n \"json\"\t\r\n:\t\r \n{\t\r \n}\t\r \n,\t\r \n \"prop2\"\t\r \n:\t\r \n [\t\r \nfalse\t\r"
-        "\n,\t\r \nnull\t\r \ntrue\t\r,123.456\t\r \n]\t\r \n}\t\r \n"));
+        "\n,\t\r \nnull\t\r, \ntrue\t\r,123.456\t\r \n]\t\r \n}\t\r \n"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg)); // JSON Object
     JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
     EXPECT_TRUE(result->IsECMAObject());

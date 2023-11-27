@@ -21,6 +21,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <map>
 
@@ -776,13 +777,17 @@ public:
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
+using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
@@ -1350,7 +1355,7 @@ class ECMA_PUBLIC_API JSNApi {
 public:
     struct DebugOption {
         const char *libraryPath;
-        bool isDebugMode;
+        bool isDebugMode = false;
         int port = -1;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
@@ -1442,12 +1447,24 @@ public:
     static bool HasPendingException(const EcmaVM *vm);
     static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
+    // prevewer debugger.
     static bool StartDebugger(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
+    // To be compatible with the old process.
+    static bool StartDebuggerForOldProcess(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
+        const DebuggerPostTask &debuggerPostTask = {});
+    // socketpair process in ohos platform.
+    static bool StartDebuggerForSocketPair(uint32_t tid, const DebugOption &option, int socketfd = -1,
+        const DebuggerPostTask &debuggerPostTask = {});
     static bool StopDebugger(EcmaVM *vm);
+    static bool StopDebugger(uint32_t tid);
+    static bool NotifyDebugMode(uint32_t tid, EcmaVM *vm, const char *libraryPath, const DebugOption &option,
+                                int32_t instanceId = 0, const DebuggerPostTask &debuggerPostTask = {},
+                                bool debugApp = false, bool debugMode = false);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturnJS(const EcmaVM *vm);
+    static void NotifyLoadModule(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
@@ -1469,8 +1486,10 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
-    static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
+    static void GetStackAfterCallNapi(EcmaVM *vm);
 
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static PatchErrorCode LoadPatch(EcmaVM *vm,
@@ -1509,9 +1528,12 @@ public:
 private:
     static int vmCount_;
     static bool initialize_;
+    static std::unordered_map<uint32_t, std::pair<EcmaVM *, const DebuggerPostTask>> debugInfo_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
 
+    static EcmaVM *GetEcmaVMByTid(uint32_t tid);
+    static const DebuggerPostTask &GetDebuggerTaskByTid(uint32_t tid);
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);

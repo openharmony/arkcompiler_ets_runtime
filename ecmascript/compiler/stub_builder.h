@@ -388,6 +388,7 @@ public:
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
+    GateRef GetCtorPrototype(GateRef ctor);
     GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId,
         ProfileOperation callback);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);

@@ -67,6 +67,16 @@ function test5() {
 }
 test5();
 
+function foo() {};
+function bar() {};
+const proxy = new Proxy(foo, {});
+
+let f = new foo();
+
+print(f instanceof foo); // true
+print(f instanceof proxy); // true
+print(f instanceof bar); // false
+
 print(ArkTools.isAOTCompiled(test1));
 print(ArkTools.isAOTCompiled(test2));
 print(ArkTools.isAOTCompiled(test3));

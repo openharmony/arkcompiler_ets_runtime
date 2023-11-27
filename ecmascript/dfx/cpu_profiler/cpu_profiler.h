@@ -19,6 +19,7 @@
 #include <csignal>
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
+#include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
@@ -118,6 +119,7 @@ private:
     uint64_t beforeCallNapiTimeStamp_ = 0;
     std::atomic_bool isBuildNapiStack_ {false};
     bool enableVMTag_ {false};
+    RunParams *params_ = nullptr;
 };
 
 class CallNapiScope {
