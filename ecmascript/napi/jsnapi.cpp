@@ -634,6 +634,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     }
     vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode && debugApp);
+    vm->GetJsDebuggerManager()->SetIsDebugApp(debugApp);
     bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
     if (debugApp && debugMode) {

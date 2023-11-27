@@ -76,6 +76,16 @@ public:
         return isDebugMode_;
     }
 
+    void SetIsDebugApp(bool isDebugApp)
+    {
+        isDebugApp_ = isDebugApp;
+    }
+
+    bool IsDebugApp() const
+    {
+        return isDebugApp_;
+    }
+
     void SetMixedDebugEnabled(bool enabled)
     {
         isMixedDebugEnabled_ = enabled;
@@ -174,6 +184,7 @@ public:
 
 private:
     bool isDebugMode_ {false};
+    bool isDebugApp_ {false};
     bool isMixedDebugEnabled_ { false };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
