@@ -41,6 +41,11 @@ public:
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
                               uint32_t moduleIndex, const CompilerLog &log);
 
+#ifdef COMPILE_MAPLE
+    void CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+                                      uint32_t moduleIndex);
+#endif
+
     bool IsRelaSection(ElfSecName sec) const
     {
         return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
@@ -84,6 +89,11 @@ public:
     IRModule* GetModule() const
     {
         return irModule_;
+    }
+
+    bool IsLLVM() const
+    {
+        return irModule_->GetModuleKind() == MODULE_LLVM;
     }
 
 private:

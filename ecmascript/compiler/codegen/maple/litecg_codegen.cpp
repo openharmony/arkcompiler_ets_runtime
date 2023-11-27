@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/litecg_codegen.h"
+#include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
 #if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 #include "ecmascript/base/llvm_helper.h"
 #endif
@@ -29,9 +29,10 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/stackmap/litecg_stackmap_type.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
-#include "lmir_builder.h"
-#include "litecg.h"
+#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/lmir_builder.h"
+#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 
 namespace panda::ecmascript::kungfu {
 class CompilerLog;
@@ -109,5 +110,13 @@ void LiteCGIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGrap
     LiteCGIRBuilder builder(&graph, circuit, module_, cfg, conv, enableLog_, enableOptInlining, methodLiteral,
                             jsPandaFile, methodName);
     builder.Build();
+}
+
+void LiteCGAssembler::CollectAnStackMap(CGStackMapInfo &stackMapInfo)
+{
+    auto &liteCGStackMapInfo = static_cast<LiteCGStackMapInfo&>(stackMapInfo);
+    const auto &codeInfo = GetCodeInfo();
+    liteCGStackMapInfo.AppendCallSiteInfo(codeInfo.GetPC2CallsiteInfo());
+    liteCGStackMapInfo.AppendDeoptInfo(codeInfo.GetPC2DeoptInfo());
 }
 }  // namespace panda::ecmascript::kungfu

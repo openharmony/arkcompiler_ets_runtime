@@ -22,9 +22,9 @@
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #ifdef COMPILE_MAPLE
 #include "ecmascript/compiler/litecg_ir_builder.h"
-#include "ecmascript/compiler/litecg_codegen.h"
+#include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
 #include "ecmascript/stackmap/litecg_stackmap_type.h"
-#include "litecg.h"
+#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 #endif
 
 namespace panda::ecmascript::kungfu {
@@ -54,11 +54,8 @@ void Module::CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
                                   CGStackMapInfo &stackMapInfo) const
 {
 #ifdef COMPILE_MAPLE
-    if (GetModule()->GetModuleKind() != MODULE_LLVM) {
-        auto &liteCGStackMapInfo = static_cast<LiteCGStackMapInfo&>(stackMapInfo);
-        const auto &codeInfo = assembler_->GetCodeInfo();
-        liteCGStackMapInfo.AppendCallSiteInfo(codeInfo.GetPC2CallsiteInfo());
-        liteCGStackMapInfo.AppendDeoptInfo(codeInfo.GetPC2DeoptInfo());
+    if (!IsLLVM()) {
+        static_cast<LiteCGAssembler*>(assembler_)->CollectAnStackMap(stackMapInfo);
         return;
     }
 #endif
@@ -125,65 +122,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
 {
 #ifdef COMPILE_MAPLE
     if (irModule_->GetModuleKind() != MODULE_LLVM) {
-        std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
-        std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
-        // 1.Compile all functions and collect function infos
-        LMIRModule *lmirModule = static_cast<LMIRModule*>(irModule_);
-        LiteCGAssembler *assembler = static_cast<LiteCGAssembler*>(assembler_);
-        const auto &func2Addr = assembler->GetCodeInfo().GetFuncInfos();
-        lmirModule->IteratefuncIndexMap([&](size_t idx, std::string funcName, bool isFastCall) {
-            auto itr = func2Addr.find(funcName);
-            if (itr == func2Addr.end()) {
-                LOG_COMPILER(FATAL) << "get function address from emitter failed";
-                UNREACHABLE();
-            }
-            uint64_t funcEntry = itr->second.addr;
-            addr2name[funcEntry] = funcName;
-            int delta = itr->second.fp2PrevFrameSpDelta;
-            ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
-            funcInfo.emplace_back(std::tuple(funcEntry, idx, delta, isFastCall));
-            kungfu::CalleeRegAndOffsetVec info = itr->second.calleeRegInfo;
-            calleeSaveRegisters.emplace_back(info);
-        });
-        // 2.After all functions compiled, the module sections would be fixed
-        uintptr_t textAddr = GetTextAddr();
-        uint32_t textSize = GetTextSize();
-        uint32_t rodataSizeBeforeText = 0;
-        uint32_t rodataSizeAfterText = 0;
-
-        aotInfo.AlignTextSec(AOTFileInfo::PAGE_ALIGN);
-        if (rodataSizeBeforeText != 0) {
-            aotInfo.UpdateCurTextSecOffset(rodataSizeBeforeText);
-            aotInfo.AlignTextSec(AOTFileInfo::TEXT_SEC_ALIGN);
-        }
-
-        const size_t funcCount = funcInfo.size();
-        funcCount_ = funcCount;
-        startIndex_ = aotInfo.GetEntrySize();
-        // 3.Add function entries based on the module sections
-        for (size_t i = 0; i < funcInfo.size(); i++) {
-            uint64_t funcEntry = 0;
-            size_t idx;
-            int delta;
-            bool isFastCall;
-            uint32_t funcSize;
-            std::tie(funcEntry, idx, delta, isFastCall) = funcInfo[i];
-            if (i < funcCount - 1) {
-                funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
-            } else {
-                funcSize = textAddr + textSize - funcEntry;
-            }
-            auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
-            bool isMainFunc = found != std::string::npos;
-            uint64_t offset = funcEntry;
-            aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
-                             offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
-        }
-        aotInfo.UpdateCurTextSecOffset(textSize);
-        if (rodataSizeAfterText != 0) {
-            aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
-            aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
-        }
+        CollectFuncEntryInfoByLiteCG(addr2name, aotInfo, moduleIndex);
         return;
     }
 #endif
@@ -248,6 +187,72 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
+
+#ifdef COMPILE_MAPLE
+void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+                                          uint32_t moduleIndex)
+{
+    std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
+    std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
+    // 1.Compile all functions and collect function infos
+    LMIRModule *lmirModule = static_cast<LMIRModule*>(irModule_);
+    LiteCGAssembler *assembler = static_cast<LiteCGAssembler*>(assembler_);
+    const auto &func2Addr = assembler->GetCodeInfo().GetFuncInfos();
+    lmirModule->IteratefuncIndexMap([&](size_t idx, std::string funcName, bool isFastCall) {
+        auto itr = func2Addr.find(funcName);
+        if (itr == func2Addr.end()) {
+            LOG_COMPILER(FATAL) << "get function address from emitter failed";
+            UNREACHABLE();
+        }
+        uint64_t funcEntry = itr->second.addr;
+        addr2name[funcEntry] = funcName;
+        int delta = itr->second.fp2PrevFrameSpDelta;
+        ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
+        funcInfo.emplace_back(std::tuple(funcEntry, idx, delta, isFastCall));
+        kungfu::CalleeRegAndOffsetVec info = itr->second.calleeRegInfo;
+        calleeSaveRegisters.emplace_back(info);
+    });
+    // 2.After all functions compiled, the module sections would be fixed
+    uintptr_t textAddr = GetTextAddr();
+    uint32_t textSize = GetTextSize();
+    uint32_t rodataSizeBeforeText = 0;
+    uint32_t rodataSizeAfterText = 0;
+
+    aotInfo.AlignTextSec(AOTFileInfo::PAGE_ALIGN);
+    if (rodataSizeBeforeText != 0) {
+        aotInfo.UpdateCurTextSecOffset(rodataSizeBeforeText);
+        aotInfo.AlignTextSec(AOTFileInfo::TEXT_SEC_ALIGN);
+    }
+
+    const size_t funcCount = funcInfo.size();
+    funcCount_ = funcCount;
+    startIndex_ = aotInfo.GetEntrySize();
+    // 3.Add function entries based on the module sections
+    for (size_t i = 0; i < funcInfo.size(); i++) {
+        uint64_t funcEntry = 0;
+        size_t idx;
+        int delta;
+        bool isFastCall;
+        uint32_t funcSize;
+        std::tie(funcEntry, idx, delta, isFastCall) = funcInfo[i];
+        if (i < funcCount - 1) {
+            funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
+        } else {
+            funcSize = textAddr + textSize - funcEntry;
+        }
+        auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
+        bool isMainFunc = found != std::string::npos;
+        uint64_t offset = funcEntry;
+        aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
+                        offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+    }
+    aotInfo.UpdateCurTextSecOffset(textSize);
+    if (rodataSizeAfterText != 0) {
+        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+        aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
+    }
+}
+#endif
 
 void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
 {
@@ -376,7 +381,8 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
     uint32_t rodataSizeBeforeText = 0;
     uint64_t rodataAddrAfterText = 0;
     uint32_t rodataSizeAfterText = 0;
-    if (module->GetModule()->GetModuleKind() == MODULE_LLVM) {
+    if (module->IsLLVM()) {
+        // In llvm the ro section is separated from the text section, but these all in text section in LiteCG.
         std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
             module->GetMergedRODataAddrAndSize(textAddr);
     }
@@ -405,7 +411,7 @@ void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
     module->CollectAnModuleSectionDes(des, textOffset, *stackMapInfo_);
 
     aotInfo_.AddModuleDes(des);
-    if ((module->GetModule()->GetModuleKind() == MODULE_LLVM) && log_->OutputASM()) {
+    if (module->IsLLVM() && log_->OutputASM()) {
         module->DisassemblerFunc(addr2name, textOffset, *(log_), *(logList_), codeStream_);
     }
 }
@@ -504,6 +510,7 @@ void AOTFileGenerator::DestroyCollectedStackMapInfo()
 {
     if (stackMapInfo_ != nullptr) {
         delete stackMapInfo_;
+        stackMapInfo_ = nullptr;
     }
 }
 

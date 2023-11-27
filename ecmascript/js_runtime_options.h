@@ -152,7 +152,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
     OPTION_COMPILER_ENABLE_NATIVE_INLINE,
     OPTION_COMPILER_ENABLE_LOWERING_BUILTIN,
-    OPTION_ENABLE_LITECG,
+    OPTION_COMPILER_ENABLE_LITECG,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1335,12 +1335,12 @@ public:
         enableLoweringBuiltin_ = value;
     }
 
-    void SetEnableLiteCG(bool value)
+    void SetCompilerEnableLiteCG(bool value)
     {
         enableLiteCG_ = value;
     }
 
-    bool IsEnableLiteCG() const
+    bool IsCompilerEnableLiteCG() const
     {
         return enableLiteCG_;
     }

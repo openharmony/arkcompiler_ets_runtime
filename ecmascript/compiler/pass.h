@@ -54,7 +54,7 @@
 #include "ecmascript/js_runtime_options.h"
 
 #ifdef COMPILE_MAPLE
-#include "ecmascript/compiler/litecg_codegen.h"
+#include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
 #include "litecg.h"
 #include "lmir_builder.h"
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_IR_BUILDER_H
 #define ECMASCRIPT_COMPILER_IR_BUILDER_H
+
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
 
 namespace panda::ecmascript::kungfu {
