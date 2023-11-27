@@ -14,10 +14,10 @@
  */
 
 /*
- * @tc.name:stringSlice
- * @tc.desc:test String.slice
+ * @tc.name:arraySlice
+ * @tc.desc:test array.slice
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require:
  */
 
 const animals = ['ant', 'bison', 'camel', 'duck', 'elephant'];
