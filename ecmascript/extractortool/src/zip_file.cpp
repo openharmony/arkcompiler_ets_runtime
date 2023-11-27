@@ -186,14 +186,8 @@ bool ZipFile::Open()
     if (pathName_.length() > PATH_MAX) {
         return false;
     }
-    std::string realPath;
-    realPath.reserve(PATH_MAX);
-    realPath.resize(PATH_MAX - 1);
-    if (realpath(pathName_.c_str(), &(realPath[0])) == nullptr) {
-        return false;
-    }
 
-    zipFileReader_ = ZipFileReader::CreateZipFileReader(realPath);
+    zipFileReader_ = ZipFileReader::CreateZipFileReader(pathName_);
     if (!zipFileReader_) {
         return false;
     }

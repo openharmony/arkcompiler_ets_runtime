@@ -86,11 +86,14 @@ Method *ECMAObject::GetCallTarget() const
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                      uint32_t capacity, bool highGrowth, bool isNew)
 {
-    uint32_t newCapacity;
-    if (highGrowth) {
-        newCapacity = ComputeElementCapacityHighGrowth(capacity);
-    } else {
-        newCapacity = ComputeElementCapacity(capacity, isNew);
+    uint32_t newCapacity = 0;
+    if (obj->IsJSArray()) {
+        uint32_t hint = JSHandle<JSArray>(obj)->GetHintLength();
+        newCapacity = ComputeElementCapacityWithHint(capacity, hint);
+    }
+    if (newCapacity == 0) {
+        newCapacity = highGrowth ? ComputeElementCapacityHighGrowth(capacity) :
+            ComputeElementCapacity(capacity, isNew);
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
@@ -100,7 +103,7 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
     obj->SetElements(thread, newElements);
     if (thread->IsPGOProfilerEnable() && obj->IsJSArray()) {
         auto trackInfo = JSHandle<JSArray>(obj)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackArrayLength(trackInfo, capacity);
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackArrayLength(trackInfo, newCapacity);
     }
     return newElements;
 }
@@ -330,10 +333,10 @@ bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> 
     return op.GetAttr().IsWritable();
 }
 
-bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index,
-                                  const JSHandle<JSTaggedValue> &value, PropertyAttributes attr)
+bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                  uint32_t index, const JSHandle<JSTaggedValue> &value,
+                                  PropertyAttributes attr)
 {
-    bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     ElementsKind kind = ElementsKind::NONE;
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
@@ -351,6 +354,18 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
     }
     thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
 
+    // check whether to convert to dictionary
+    if (receiver->GetJSHClass()->IsDictionaryElement() && receiver->IsJSArray()) {
+        JSArray *arr = JSArray::Cast(*receiver);
+        uint32_t capacity = arr->GetArrayLength();
+        TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+        ASSERT(elements->IsDictionaryMode());
+        if (ShouldTransToFastElements(JSHandle<NumberDictionary>(thread, elements), capacity, index)) {
+            JSObject::TryOptimizeAsFastElements(thread, receiver);
+        }
+    }
+    
+    bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (isDictionary) {
         ASSERT(elements->IsDictionaryMode());
@@ -1073,9 +1088,8 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 2. Let desc be O.[[GetOwnProperty]](P).
-
     ObjectOperator op(thread, JSHandle<JSTaggedValue>(obj), key, OperatorType::OWN);
-
+    
     // 4. If desc is undefined, return true.
     if (!op.IsFound()) {
         return true;

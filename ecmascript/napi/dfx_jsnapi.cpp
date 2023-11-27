@@ -247,7 +247,7 @@ size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
-    return vm->GetHeap()->GetLiveObjectSize();
+    return vm->GetHeap()->GetHeapObjectSize();
 }
 
 size_t DFXJSNApi::GetHeapLimitSize(const EcmaVM *vm)
@@ -612,14 +612,16 @@ void DFXJSNApi::StopSampling([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t instanceId,
-                              const DebuggerPostTask &debuggerPostTask)
+// old process.
+bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
+                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask)
 {
     JSNApi::DebugOption debugOption;
     debugOption.libraryPath = option.libraryPath;
     if (option.profilerType == ProfilerType::CPU_PROFILER) {
         debugOption.isDebugMode = false;
-        if (JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask)) {
+        if (JSNApi::NotifyDebugMode(
+            tid, vm, option.libraryPath, debugOption, instanceId, debuggerPostTask, false, false)) {
             StartCpuProfilerForInfo(vm, option.interval);
             return true;
         } else {
@@ -628,7 +630,8 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t 
         }
     } else {
         debugOption.isDebugMode = true;
-        return JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask);
+        return JSNApi::JSNApi::NotifyDebugMode(
+            tid, vm, option.libraryPath, debugOption, instanceId, debuggerPostTask, true, true);
     }
 }
 

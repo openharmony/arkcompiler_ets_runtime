@@ -56,8 +56,8 @@ std::vector<ElementsKind> PGOTypeRecorder::GetElementsKindsForUser(int32_t offse
     for (uint32_t i = 0; i < rwType.GetCount(); i++) {
         PGOObjectInfo info = rwType.GetObjectInfo(i);
         auto profileType = info.GetProfileType();
-        if (profileType.IsElementType()) {
-            elementsKinds.emplace_back(ElementsKind(profileType.GetId()));
+        if (profileType.IsBuiltinsArray()) {
+            elementsKinds.emplace_back(profileType.GetElementsKind());
             continue;
         }
     }
@@ -80,6 +80,16 @@ ElementsKind PGOTypeRecorder::GetElementsKindForCreater(int32_t offset) const
     }
     return ElementsKind::NONE;
 }
+
+uint32_t PGOTypeRecorder::GetElementsLength(int32_t offset) const
+{
+    if (bcOffsetPGODefOpTypeMap_.find(offset) != bcOffsetPGODefOpTypeMap_.end()) {
+        const auto iter = bcOffsetPGODefOpTypeMap_.at(offset);
+        return iter->GetElementsLength();
+    }
+    return 0;
+}
+
 
 PGOTypeRef PGOTypeRecorder::GetPGOType(int32_t offset) const
 {

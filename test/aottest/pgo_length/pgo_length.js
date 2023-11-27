@@ -13,19 +13,13 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:async
- * @tc.desc:array.flatmap
- * @tc.type: FUNC
- * @tc.require:issueI8FBM3
- */
-{
-    class MyArray extends Array {
-        static get [Symbol.species]() {
-            return this;
-        }
-    }
-    const wannabe = new MyArray();
-    const result = wannabe.flatMap(x => [x, x]);
-    print(result instanceof MyArray);//t
+let string = "hello world"
+let array = [1, 23, 3]
+
+function foo(p) {
+    print(p.length)
+    print(p[1])
 }
+
+foo(string)
+foo(array)

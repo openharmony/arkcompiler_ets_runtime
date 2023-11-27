@@ -671,6 +671,32 @@ JSHandle<JSArray> ObjectFactory::NewJSArray()
     return JSHandle<JSArray>(NewJSObjectByConstructor(function));
 }
 
+JSHandle<JSArray> ObjectFactory::NewJSArray(size_t length, JSHandle<JSHClass> &hclass)
+{
+    JSHandle<JSObject> obj = NewJSObject(hclass);
+    JSArray::Cast(*obj)->SetLength(length);
+    JSArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
+    auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
+    JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    return JSHandle<JSArray>(obj);
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewJsonFixedArray(size_t start, size_t length,
+                                                       const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return EmptyArray();
+    }
+
+    MemSpaceType spaceType = length < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, spaceType);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
+}
+
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                             const JSHandle<JSTaggedValue> keys,
                                                             const JSHandle<JSTaggedValue> cachedHclass)
@@ -881,6 +907,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     info->SetCallArg(message.GetTaggedValue());
     Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
     auto sp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
     ASSERT(FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_ENTRY_FRAME);
@@ -2672,10 +2699,7 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
         return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type,
                                                                          isConstantString, idOffset);
     }
-
-    CVector<uint16_t> utf16Data(utf16Len);
-    auto len = utf::ConvertRegionMUtf8ToUtf16(mutf8Data, utf16Data.data(), utf::Mutf8Size(mutf8Data), utf16Len, 0);
-    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(utf16Data.data(), len, false, type);
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, type);
 }
 
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
@@ -4254,6 +4278,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
             break;
         }
         case FunctionKind::CONCURRENT_FUNCTION:
+        case FunctionKind::ASYNC_ARROW_FUNCTION:
         case FunctionKind::ASYNC_FUNCTION: {
             if (methodHandle->IsAotWithCallField()) {
                 if (methodHandle->IsFastCall()) {
@@ -4275,18 +4300,6 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
                 }
             } else {
                 hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
-            }
-            break;
-        }
-        case FunctionKind::ASYNC_ARROW_FUNCTION: {
-            if (methodHandle->IsAotWithCallField()) {
-                if (methodHandle->IsFastCall()) {
-                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimizedWithFastCall());
-                } else {
-                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimized());
-                }
-            } else {
-                hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
             }
             break;
         }

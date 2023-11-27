@@ -1,0 +1,114 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ecmascript/element_accessor.h"
+
+#include "ecmascript/base/number_helper.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_tagged_number.h"
+#include "ecmascript/js_tagged_value-inl.h"
+
+namespace panda::ecmascript {
+JSTaggedValue ElementAccessor::Get(JSHandle<JSObject> receiver, uint32_t idx)
+{
+    ElementsKind kind = receiver->GetClass()->GetElementsKind();
+    // waiting for elementsKind
+    (void) kind;
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    ASSERT(idx < elements->GetLength());
+    // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
+    //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+    return JSTaggedValue(Barriers::GetValue<JSTaggedType>(elements->GetData(), offset));
+}
+
+bool ElementAccessor::IsDictionaryMode(JSHandle<JSObject> receiver)
+{
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    return elements->GetClass()->IsDictionary();
+}
+
+uint32_t ElementAccessor::GetElementsLength(JSHandle<JSObject> receiver)
+{
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    return elements->GetLength();
+}
+
+JSTaggedValue ElementAccessor::GetTaggedValueWithElementsKind(JSTaggedType rawValue, ElementsKind kind)
+{
+    JSTaggedValue convertedValue = JSTaggedValue::Hole();
+    if (rawValue == base::SPECIAL_HOLE) {
+        return convertedValue;
+    }
+    switch (kind) {
+        case ElementsKind::INT:
+        case ElementsKind::HOLE_INT:
+            convertedValue = JSTaggedValue(static_cast<int>(rawValue));
+            break;
+        case ElementsKind::NUMBER:
+        case ElementsKind::HOLE_NUMBER:
+            convertedValue = JSTaggedValue(base::bit_cast<double>(rawValue));
+            break;
+        case ElementsKind::TAGGED:
+        case ElementsKind::STRING:
+        case ElementsKind::HOLE_TAGGED:
+        case ElementsKind::HOLE_STRING:
+            convertedValue = JSTaggedValue(rawValue);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "Trying to Get TaggedValue With Unknown ElementsKind";
+            UNREACHABLE();
+            break;
+    }
+    return convertedValue;
+}
+
+JSTaggedType ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind)
+{
+    JSTaggedType convertedValue = base::SPECIAL_HOLE;
+    if (rawValue.IsHole()) {
+        return convertedValue;
+    }
+    switch (kind) {
+        case ElementsKind::INT:
+        case ElementsKind::HOLE_INT:
+            convertedValue = static_cast<JSTaggedType>(rawValue.GetInt());
+            break;
+        case ElementsKind::NUMBER:
+        case ElementsKind::HOLE_NUMBER:
+            if (rawValue.IsInt()) {
+                int intValue = rawValue.GetInt();
+                convertedValue = base::bit_cast<JSTaggedType>(static_cast<double>(intValue));
+            } else {
+                convertedValue = base::bit_cast<JSTaggedType>(rawValue.GetDouble());
+            }
+            break;
+        case ElementsKind::TAGGED:
+        case ElementsKind::STRING:
+        case ElementsKind::HOLE_TAGGED:
+        case ElementsKind::HOLE_STRING:
+            convertedValue = rawValue.GetRawData();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "Trying to Convert TaggedValue With Unknown ElementsKind";
+            UNREACHABLE();
+            break;
+    }
+    return convertedValue;
+}
+}  // namespace panda::ecmascript

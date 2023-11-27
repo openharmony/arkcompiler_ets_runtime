@@ -65,7 +65,7 @@ extern "C" int get_ark_js_heap_crash_info(
     int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 #if defined(PANDA_TARGET_OHOS)
 extern "C" int get_ark_native_frame_info(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrameList);
+    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, size_t &size, panda::ecmascript::JsFrame **jsFrameList);
 #endif
 // define in dfx_signal_handler.h
 typedef void(*ThreadInfoCallback)(char *buf, size_t len, void *ucontext);

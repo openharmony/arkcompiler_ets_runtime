@@ -44,6 +44,7 @@ namespace panda::ecmascript::kungfu {
     V(TYPED_EQ)                 \
     V(TYPED_NOTEQ)              \
     V(TYPED_STRICTEQ)           \
+    V(TYPED_STRICTNOTEQ)        \
     V(TYPED_SHL)                \
     V(TYPED_SHR)                \
     V(TYPED_ASHR)               \
@@ -102,10 +103,6 @@ namespace panda::ecmascript::kungfu {
     V(JSCALLTHIS_NOGC)                      \
     V(JSCALLTHIS_FAST_NOGC)
 
-#define MEMORY_ORDER_LIST(V)    \
-    V(NOT_ATOMIC)               \
-    V(MEMORY_ORDER_RELEASE)
-
 enum class TypedBinOp : uint8_t {
 #define DECLARE_TYPED_BIN_OP(OP) OP,
     TYPED_BIN_OP_LIST(DECLARE_TYPED_BIN_OP)
@@ -144,12 +141,6 @@ enum class TypedCallTargetCheckOp : uint8_t {
 #define DECLARE_TYPED_CALL_TARGET_CHECK_OP(OP) OP,
     TYPED_CALL_TARGET_CHECK_OP_LIST(DECLARE_TYPED_CALL_TARGET_CHECK_OP)
 #undef DECLARE_TYPED_CALL_TARGET_CHECK_OP
-};
-
-enum class MemoryOrder : uint8_t {
-#define MEMORY_ORDER(OP) OP,
-    MEMORY_ORDER_LIST(MEMORY_ORDER)
-#undef MEMORY_ORDER
 };
 
 enum class BranchKind : uint8_t {
@@ -383,22 +374,83 @@ private:
     uint64_t bitField_;
 };
 
+class MemoryOrder {
+public:
+    MemoryOrder() = default;
+    ~MemoryOrder() = default;
+    explicit MemoryOrder(uint32_t v) : value_(v) {}
+
+    enum Order {
+        NOT_ATOMIC = 0,
+        MEMORY_ORDER_RELEASE
+    };
+
+    enum Barrier {
+        NEED_BARRIER = 0,
+        NO_BARRIER
+    };
+
+    static MemoryOrder Default()
+    {
+        return Create(NOT_ATOMIC);
+    }
+
+    static MemoryOrder Create(Order order, Barrier barrier = NO_BARRIER)
+    {
+        uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier);
+        return MemoryOrder(value);
+    }
+
+    void SetBarrier(Barrier barrier)
+    {
+        BarrierField::Set<uint32_t>(barrier, &value_);
+    }
+
+    Barrier GetBarrier() const
+    {
+        return BarrierField::Get(value_);
+    }
+
+    void SetOrder(Order order)
+    {
+        OrderField::Set<uint32_t>(order, &value_);
+    }
+
+    Order GetOrder() const
+    {
+        return OrderField::Get(value_);
+    }
+
+    uint32_t Value() const
+    {
+        return value_;
+    }
+
+private:
+    static constexpr uint32_t ORDER_BITS = 8;
+    static constexpr uint32_t BARRIER_BITS = 8;
+    using OrderField = panda::BitField<Order, 0, ORDER_BITS>;
+    using BarrierField = OrderField::NextField<Barrier, BARRIER_BITS>;
+
+    uint32_t value_;
+};
+
 class LoadStoreAccessor {
 public:
-    static constexpr int MEMORY_ORDER_BITS = 8;
+    static constexpr int MEMORY_ORDER_BITS = 32;
     explicit LoadStoreAccessor(uint64_t value) : bitField_(value) {}
 
     MemoryOrder GetMemoryOrder() const
     {
-        return static_cast<MemoryOrder>(MemoryOrderBits::Get(bitField_));
+        return MemoryOrder(MemoryOrderBits::Get(bitField_));
     }
 
     static uint64_t ToValue(MemoryOrder order)
     {
-        return MemoryOrderBits::Encode(static_cast<uint8_t>(order));
+        return MemoryOrderBits::Encode(order.Value());
     }
 private:
-    using MemoryOrderBits = panda::BitField<uint8_t, 0, MEMORY_ORDER_BITS>;
+    using MemoryOrderBits = panda::BitField<uint32_t, 0, MEMORY_ORDER_BITS>;
 
     uint64_t bitField_;
 };
@@ -406,12 +458,12 @@ private:
 class LoadStoreConstOffsetAccessor {
 public:
     static constexpr int OPRAND_OFFSET_BITS = 32;
-    static constexpr int MEMORY_ORDER_BITS = 8;
+    static constexpr int MEMORY_ORDER_BITS = 32;
     explicit LoadStoreConstOffsetAccessor(uint64_t value) : bitField_(value) {}
 
     MemoryOrder GetMemoryOrder() const
     {
-        return static_cast<MemoryOrder>(MemoryOrderBits::Get(bitField_));
+        return MemoryOrder(MemoryOrderBits::Get(bitField_));
     }
 
     size_t GetOffset() const
@@ -422,11 +474,11 @@ public:
     static uint64_t ToValue(size_t offset, MemoryOrder order)
     {
         return OprandOffsetBits::Encode(static_cast<uint32_t>(offset)) |
-               MemoryOrderBits::Encode(static_cast<uint8_t>(order));
+               MemoryOrderBits::Encode(order.Value());
     }
 private:
     using OprandOffsetBits = panda::BitField<uint32_t, 0, OPRAND_OFFSET_BITS>;
-    using MemoryOrderBits = OprandOffsetBits::NextField<uint8_t, MEMORY_ORDER_BITS>;
+    using MemoryOrderBits = OprandOffsetBits::NextField<uint32_t, MEMORY_ORDER_BITS>;
 
     uint64_t bitField_;
 };

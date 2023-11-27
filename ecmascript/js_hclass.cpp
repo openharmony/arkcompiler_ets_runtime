@@ -443,7 +443,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
             newProtoClass->SetIsPrototype(true);
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateProfileType(*hclass, *newProtoClass);
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
         } else {
             hclass->SetIsPrototype(true);
         }
@@ -1168,7 +1168,7 @@ bool JSHClass::UpdateRootLayoutDesc(const JSHClass *hclass, const PGOHClassTreeD
     }
 
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
-    int rootPropLen = rootDesc->NumOfProps();
+    int rootPropLen = static_cast<size_t>(rootDesc->NumOfProps());
     int element = static_cast<int>(hclass->NumberOfProps());
     ASSERT(element >= rootPropLen);
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
@@ -1209,6 +1209,10 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
             auto attr = layout->GetAttr(i);
             result += static_cast<int32_t>(attr.GetTrackType());
             result += attr.GetPropertyMetaData();
+        } else if (key.IsSymbol()) {
+            result += "IsSymbolkey";
+        } else {
+            LOG_ECMA(FATAL) << "JSHClass::DumpToString UNREACHABLE";
         }
     }
     return result;

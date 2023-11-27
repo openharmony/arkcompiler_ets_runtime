@@ -858,7 +858,7 @@ BuiltinTypeId TSManager::GetBuiltinTypeIdByJSType(JSType jsType)
 const kungfu::GateType TSManager::GetBuiltinsGateTypeByPt(ProfileType pgoType)
 {
     ASSERT(pgoType.IsBuiltinsType());
-    JSType jsType = static_cast<JSType>(pgoType.GetId());
+    JSType jsType = pgoType.GetBuiltinsId();
 
     auto it = pgoBuiltinGTCache_.find(jsType);
     if (it != pgoBuiltinGTCache_.end()) {

@@ -36,6 +36,12 @@ public:
     void Filter(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
+    void Find(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
+    void FindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
     void ForEach(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
@@ -58,6 +64,10 @@ public:
         Variable *result, Label *exit, Label *slowPath);
 
     void Includes(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+
+    GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
+
+    GateRef NewArray(GateRef glue, GateRef count);
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;

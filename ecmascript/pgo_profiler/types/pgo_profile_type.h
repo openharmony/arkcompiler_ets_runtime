@@ -20,6 +20,9 @@
 #include <string>
 #include <variant>
 
+#include "ecmascript/builtin_entries.h"
+#include "ecmascript/elements.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
@@ -38,7 +41,6 @@ public:
     enum class Kind : uint8_t {
         ClassId,
         LiteralId,
-        ElementId,
         BuiltinsId,
         LegacyKind = BuiltinsId,
         MethodId,           // method offset of js function
@@ -63,6 +65,55 @@ public:
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
     using IsRootBits = KindBits::NextFlag;
 
+    class BuiltinsId {
+    public:
+        static constexpr uint32_t BUILTINS_ID_NUM = 16;
+        using BuiltinsIdBits = BitField<JSType, 0, BUILTINS_ID_NUM>;
+
+        explicit BuiltinsId() = default;
+        explicit BuiltinsId(uint32_t id) : id_(id) {}
+
+        uint32_t GetId() const
+        {
+            return id_;
+        }
+
+        BuiltinsId SetBuiltinsId(JSType type)
+        {
+            id_ = BuiltinsIdBits::Update(id_, type);
+            return *this;
+        }
+
+        JSType GetBuiltinsId() const
+        {
+            return BuiltinsIdBits::Decode(id_);
+        }
+
+    protected:
+        uint32_t id_ { 0 };
+    };
+
+    class BuiltinsArrayId : public BuiltinsId {
+    public:
+        // BuilitinsArray second bit field
+        static constexpr uint32_t ELEMENTS_KIND_BITFIELD_NUM = 5;
+        using ElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, ELEMENTS_KIND_BITFIELD_NUM>;
+
+        explicit BuiltinsArrayId() = default;
+        explicit BuiltinsArrayId(uint32_t id) : BuiltinsId(id) {}
+
+        BuiltinsArrayId UpdateElementsKind(ElementsKind kind)
+        {
+            id_ = ElementsKindBits::Update(id_, kind);
+            return *this;
+        }
+
+        ElementsKind GetElementsKind() const
+        {
+            return ElementsKindBits::Decode(id_);
+        }
+    };
+
     static_assert(KindBits::IsValid(Kind::TotalKinds));
 
     ProfileType() = default;
@@ -85,6 +136,18 @@ public:
         ProfileType type;
         type.UpdateKind(Kind::MegaStateKinds);
         return type;
+    }
+
+    static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind)
+    {
+        auto id = BuiltinsArrayId().UpdateElementsKind(kind).SetBuiltinsId(type).GetId();
+        return ProfileType(abcId, id, Kind::BuiltinsId);
+    }
+
+    static ProfileType CreateBuiltins(ApEntityId abcId, JSType type)
+    {
+        auto id = BuiltinsId().SetBuiltinsId(type).GetId();
+        return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
     ProfileType &Remap(const PGOContext &context);
@@ -112,11 +175,6 @@ public:
     bool IsClassType() const
     {
         return GetKind() == Kind::ClassId;
-    }
-
-    bool IsElementType() const
-    {
-        return GetKind() == Kind::ElementId;
     }
 
     bool IsMethodId() const
@@ -209,6 +267,47 @@ public:
         type_ = IsRootBits::Update(type_, root);
     }
 
+    JSType GetBuiltinsId() const
+    {
+        ASSERT(IsBuiltinsType());
+        auto builtinsId = BuiltinsId(GetId());
+        return builtinsId.GetBuiltinsId();
+    }
+
+    ElementsKind GetElementsKind() const
+    {
+        ASSERT(IsBuiltinsArray());
+        auto builtinsArrayId = BuiltinsArrayId(GetId());
+        return builtinsArrayId.GetElementsKind();
+    }
+
+    bool IsBuiltinsString() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsId();
+            return type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST;
+        }
+        return false;
+    }
+
+    bool IsBuiltinsArray() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsId();
+            return type == JSType::JS_ARRAY;
+        }
+        return false;
+    }
+
+    bool IsBuiltinsTypeArray() const
+    {
+        if (IsBuiltinsType()) {
+            JSType type = GetBuiltinsId();
+            return type > JSType::JS_TYPED_ARRAY_FIRST && type <= JSType::JS_TYPED_ARRAY_LAST;
+        }
+        return false;
+    }
+
 private:
     void UpdateId(uint64_t type)
     {
@@ -242,7 +341,7 @@ public:
         return typeId_ == 0;
     }
 
-    bool IsElementType() const
+    bool IsBuiltinsArray() const
     {
         return false;
     }

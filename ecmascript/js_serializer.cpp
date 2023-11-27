@@ -874,20 +874,17 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::IsNativeBindingObject(std::vector<JSTaggedValue> keyVector)
 {
-    if (keyVector.size() < 2) { // 2: detachSymbol, attachSymbol
+    if (keyVector.size() < 1) { // 1: nativeBindingSymbol
         return false;
     }
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
-    JSMutableHandle<JSTaggedValue> detachKey(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> attachKey(thread_, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> nativeBindingSymbol = env->GetNativeBindingSymbol();
+    JSMutableHandle<JSTaggedValue> nativeBindingKey(thread_, JSTaggedValue::Undefined());
     uint32_t keyLength = keyVector.size();
-    for (uint32_t i = 0; i < keyLength - 1; i++) {
-        if (keyVector[i].IsSymbol() && keyVector[i + 1].IsSymbol()) {
-            detachKey.Update(keyVector[i]);
-            attachKey.Update(keyVector[i + 1]);
-            if (JSTaggedValue::Equal(thread_, detach, detachKey) || JSTaggedValue::Equal(thread_, attach, attachKey)) {
+    for (uint32_t i = 0; i < keyLength; i++) {
+        if (keyVector[i].IsSymbol()) {
+            nativeBindingKey.Update(keyVector[i]);
+            if (JSTaggedValue::Equal(thread_, nativeBindingSymbol, nativeBindingKey)) {
                 return true;
             }
         }
@@ -966,35 +963,31 @@ bool JSSerializer::WriteNativeBindingObject(const JSHandle<JSTaggedValue> &objVa
 {
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
+    JSHandle<JSTaggedValue> nativeBindingSymbol = env->GetNativeBindingSymbol();
     if (!WriteType(SerializationUID::NATIVE_BINDING_OBJECT)) {
         return false;
     }
-    int32_t paramCount = obj->GetNativePointerFieldCount();
-    void *enginePointer = nullptr;
-    void *objPointer = nullptr;
-    void *hint = nullptr;
-    void *detachData = nullptr;
-    void *attachData = nullptr;
-    if (paramCount == 5) { // 5 : enginePointer, objPointer, hint, detachData, attachData
-        enginePointer = obj->GetNativePointerField(0);
-        objPointer = obj->GetNativePointerField(1);
-        hint = obj->GetNativePointerField(2); // 2 : hint
-        detachData = obj->GetNativePointerField(3); // 3 : detachData
-        attachData = obj->GetNativePointerField(4); // 4 : attachData
+    JSHandle<JSTaggedValue> nativeBindingValue =
+        JSObject::GetProperty(thread_, obj, nativeBindingSymbol).GetRawValue();
+    if (!nativeBindingValue->IsJSNativePointer()) {
+        return false;
     }
-    // Write custom object's values: AttachFunc*, buffer*
-    JSHandle<JSTaggedValue> detachVal = JSObject::GetProperty(thread_, obj, detach).GetRawValue();
-    JSHandle<JSTaggedValue> attackVal = JSObject::GetProperty(thread_, obj, attach).GetRawValue();
-    DetachFunc detachNative = reinterpret_cast<DetachFunc>(JSNativePointer::Cast(
-        detachVal.GetTaggedValue().GetTaggedObject())->GetExternalPointer());
+    auto info = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(
+        JSNativePointer::Cast(nativeBindingValue->GetTaggedObject())->GetExternalPointer());
+    if (info == nullptr) {
+        return false;
+    }
+    void *enginePointer = info->env;
+    void *objPointer = info->nativeValue;
+    void *hint = info->hint;
+    void *detachData = info->detachData;
+    void *attachData = info->attachData;
+    DetachFunc detachNative = reinterpret_cast<DetachFunc>(info->detachFunc);
     if (detachNative == nullptr) {
         return false;
     }
     void *buffer = detachNative(enginePointer, objPointer, hint, detachData);
-    AttachFunc attachNative = reinterpret_cast<AttachFunc>(JSNativePointer::Cast(
-        attackVal.GetTaggedValue().GetTaggedObject())->GetExternalPointer());
+    AttachFunc attachNative = reinterpret_cast<AttachFunc>(info->attachFunc);
     if (!WriteRawData(&attachNative, sizeof(uintptr_t))) {
         return false;
     }

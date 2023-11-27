@@ -35,11 +35,11 @@ public:
 private:
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);
 
-    static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread, bool isOOMError);
+    static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread);
 
     static JSHandle<JSTaggedValue> GetErrorName(JSThread *thread, const JSHandle<JSTaggedValue> &name,
                                                 const ErrorType &errorType);
-    static constexpr uint32_t MAX_ERROR_SIZE = 128_KB;
+    static constexpr uint32_t MAX_ERROR_SIZE = 10_KB;
 };
 }  // namespace panda::ecmascript::base
 

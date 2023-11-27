@@ -41,6 +41,7 @@ class JSForInIterator;
 class LexicalEnv;
 class GlobalEnv;
 class TaggedQueue;
+class NumberDictionary;
 
 using EnumCacheKind = EnumCache::EnumCacheKind;
 // Integrity level for objects
@@ -371,6 +372,10 @@ public:
     static constexpr int MIN_GAP = 256;
     static constexpr int MAX_GAP = 1_KB;
     static constexpr uint32_t MAX_ELEMENT_INDEX = std::numeric_limits<uint32_t>::max();
+    static constexpr int MIN_ELEMENTS_HINT_LENGTH = 1_KB;
+    static constexpr int MAX_ELEMENTS_HINT_LENGTH = 2_MB;
+    static constexpr int ELEMENTS_HINT_FACTOR = 8;
+    static constexpr int SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR = 2;
 
     CAST_CHECK(JSObject, IsECMAObject);
 
@@ -656,6 +661,7 @@ public:
     static bool IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver);
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
+    static bool ShouldTransToFastElements(JSHandle<NumberDictionary> dictionary, uint32_t capacity, uint32_t index);
     static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
@@ -701,6 +707,7 @@ private:
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
+    static uint32_t ComputeElementCapacityWithHint(uint32_t oldCapacity, uint32_t hint);
     static uint32_t ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
                                                        uint32_t maxNonInlinedFastPropsCapacity);
 

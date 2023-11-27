@@ -21,7 +21,6 @@
 #include <fstream>
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -84,8 +83,8 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
-    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "pthread_create fail!";
         return;
     }
@@ -147,8 +146,8 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
-    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "pthread_create fail!";
         return;
     }

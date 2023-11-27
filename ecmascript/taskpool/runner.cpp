@@ -95,7 +95,7 @@ void Runner::SetRunTask(uint32_t threadId, Task *task)
 void Runner::Run(uint32_t threadId)
 {
     os::thread::native_handle_type thread = os::thread::GetNativeHandle();
-    os::thread::SetThreadName(thread, "GC_WorkerThread");
+    os::thread::SetThreadName(thread, "OS_GC_WorkerThread");
     RecordThreadId();
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
         SetRunTask(threadId, task.get());

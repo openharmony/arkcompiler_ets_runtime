@@ -24,6 +24,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/jsnapi_internals.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -63,6 +64,34 @@ public:
     {
         vm_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm_);
+    }
+
+    template<typename T>
+    void TestNumberRef(T val, TaggedType expected)
+    {
+        LocalScope scope(vm_);
+        Local<NumberRef> obj= NumberRef::New(vm_, val);
+        ASSERT_TRUE(obj->IsNumber());
+        JSTaggedType res = JSNApiHelper::ToJSTaggedValue(*obj).GetRawData();
+        ASSERT_EQ(res, expected);
+        if constexpr (std::is_floating_point_v<T>) {
+            if (std::isnan(val)) {
+                ASSERT_TRUE(std::isnan(obj->Value()));
+            } else {
+                ASSERT_EQ(obj->Value(), val);
+            }
+        } else if constexpr (sizeof(T) >= sizeof(int32_t)) {
+            ASSERT_EQ(obj->IntegerValue(vm_), val);
+        } else if constexpr (std::is_signed_v<T>) {
+            ASSERT_EQ(obj->Int32Value(vm_), val);
+        } else {
+            ASSERT_EQ(obj->Uint32Value(vm_), val);
+        }
+    }
+
+    TaggedType ConvertDouble(double val)
+    {
+        return base::bit_cast<JSTaggedType>(val) + JSTaggedValue::DOUBLE_ENCODE_OFFSET;
     }
 
 protected:
@@ -143,7 +172,7 @@ HWTEST_F_L0(JSNApiTests, SetProperty)
 
     Local<ArrayRef> property = ArrayRef::New(vm_, 3); // 3 : length
     ASSERT_TRUE(property->IsArray(vm_));
-    ASSERT_EQ(property->Length(vm_), 3); // 3 : test case of input
+    ASSERT_EQ(property->Length(vm_), 3U); // 3 : test case of input
 
     Local<ObjectRef> key = StringRef::NewFromUtf8(vm_, "Test");
     bool result = globalObject->Set(vm_, key, property);
@@ -151,7 +180,7 @@ HWTEST_F_L0(JSNApiTests, SetProperty)
 
     Local<ObjectRef> propertyGet = globalObject->Get(vm_, key);
     ASSERT_TRUE(propertyGet->IsArray(vm_));
-    ASSERT_EQ(Local<ArrayRef>(propertyGet)->Length(vm_), 3); // 3 : test case of input
+    ASSERT_EQ(Local<ArrayRef>(propertyGet)->Length(vm_), 3U); // 3 : test case of input
 }
 
 HWTEST_F_L0(JSNApiTests, JsonParser)
@@ -273,7 +302,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_001)
     std::string test = "中";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 1);
+    EXPECT_EQ(testString->Length(), 1U);
     char buffer[1];
     EXPECT_EQ(testString->WriteLatin1(buffer, 1), 1);
 
@@ -286,7 +315,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_002)
     std::string test = "En123";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 5);
+    EXPECT_EQ(testString->Length(), 5U);
     char buffer[5];
     EXPECT_EQ(testString->WriteLatin1(buffer, 5), 5);
 
@@ -332,10 +361,28 @@ void attach([[maybe_unused]] void* buffer)
     GTEST_LOG_(INFO) << "attach is running";
 }
 
+static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
+{
+    GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
+    panda::JSNApi::NativeBindingInfo* info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
+    info->attachData = attach;
+    info->detachData = detach;
+    return info;
+}
+
 HWTEST_F_L0(JSNApiTests, CreateNativeObject)
 {
     LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void*>(detach), reinterpret_cast<void*>(attach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
+        [](void* data, [[maybe_unused]] void* info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+            delete externalInfo;
+        }, nullptr, nativeBindingSize);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
+    ASSERT_TRUE(result);
     Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
     Local<JSValueRef> value = ObjectRef::New(vm_);
     PropertyAttribute attribute(value, true, true, true);
@@ -397,8 +444,16 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 
-    Local<FunctionRef> native = ObjectRef::New(vm_, reinterpret_cast<void*>(detach), reinterpret_cast<void*>(attach));
-    protoType = native->GetPrototype(vm_);
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
+        [](void* data, [[maybe_unused]] void* info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+            delete externalInfo;
+        }, nullptr, nativeBindingSize);
+    bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
+    ASSERT_TRUE(result);
+    protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 }
 
@@ -985,7 +1040,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
 HWTEST_F_L0(JSNApiTests, ClassFunction)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, nullptr, nullptr, nullptr);
+    Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, FunctionCallback, nullptr, nullptr);
 
     JSHandle<JSTaggedValue> clsObj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     ASSERT_TRUE(clsObj->IsClassConstructor());
@@ -1073,7 +1128,7 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
     JSRuntimeOptions option;
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
-    JSNApi::addWorker(vm_, workerVm);
+    JSNApi::AddWorker(vm_, workerVm);
     bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
     EXPECT_TRUE(hasDeleted);
 
@@ -1240,16 +1295,6 @@ HWTEST_F_L0(JSNApiTests, NumberRef_New)
     Local<NumberRef> res1 = NumberRef::New(vm_, input1);
     ASSERT_TRUE(res->IsNumber());
     ASSERT_TRUE(res1->IsNumber());
-}
-
-HWTEST_F_L0(JSNApiTests, ObjectRef_Set)
-{
-    LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_);
-    void *data1 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
-    void *data2 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
-    bool res = object->Set(vm_, data1, data2);
-    ASSERT_TRUE(res);
 }
 
 HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
@@ -1538,4 +1583,95 @@ HWTEST_F_L0(JSNApiTests, AotTrigger)
     ASSERT_EQ(module, "requestAot");
     ASSERT_EQ(trigger, 0);
 }
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTest)
+{
+#define CHECK_VALUE(VAL) ASSERT_EQ(JSValueRefInternals::VAL, JSTaggedValue::VAL)
+    CHECK_VALUE(BIT_PER_BYTE);
+    CHECK_VALUE(TAG_BITS_SIZE);
+    CHECK_VALUE(TAG_BITS_SHIFT);
+    CHECK_VALUE(TAG_MARK);
+    CHECK_VALUE(TAG_INT);
+    CHECK_VALUE(TAG_INT32_INC_MAX);
+    CHECK_VALUE(TAG_INT32_DEC_MIN);
+    CHECK_VALUE(TAG_OBJECT);
+    CHECK_VALUE(TAG_WEAK);
+    CHECK_VALUE(TAG_NULL);
+    CHECK_VALUE(TAG_SPECIAL);
+    CHECK_VALUE(TAG_BOOLEAN);
+    CHECK_VALUE(TAG_EXCEPTION);
+    CHECK_VALUE(TAG_OPTIMIZED_OUT);
+    CHECK_VALUE(TAG_SPECIAL_MASK);
+    CHECK_VALUE(TAG_BOOLEAN_MASK);
+    CHECK_VALUE(TAG_HEAPOBJECT_MASK);
+    CHECK_VALUE(TAG_WEAK_MASK);
+    CHECK_VALUE(VALUE_HOLE);
+    CHECK_VALUE(VALUE_NULL);
+    CHECK_VALUE(VALUE_FALSE);
+    CHECK_VALUE(VALUE_TRUE);
+    CHECK_VALUE(VALUE_UNDEFINED);
+    CHECK_VALUE(VALUE_EXCEPTION);
+    CHECK_VALUE(VALUE_ZERO);
+    CHECK_VALUE(VALUE_OPTIMIZED_OUT);
+    CHECK_VALUE(INT_SIGN_BIT_OFFSET);
+    CHECK_VALUE(DOUBLE_ENCODE_OFFSET_BIT);
+    CHECK_VALUE(DOUBLE_ENCODE_OFFSET);
+    CHECK_VALUE(VALUE_POSITIVE_ZERO);
+    CHECK_VALUE(VALUE_NEGATIVE_ZERO);
+#undef CHECK_VALUE
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNumberRef)
+{
+    // double
+    TestNumberRef(0., JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    TestNumberRef(NAN, base::bit_cast<TaggedType>(ecmascript::base::NAN_VALUE) + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+
+    // int32_t
+    TestNumberRef(static_cast<int32_t>(0), JSTaggedValue::TAG_INT);
+    TestNumberRef(INT32_MIN, static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
+    TestNumberRef(INT32_MAX, static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
+
+    // uint32_t
+    TestNumberRef(static_cast<uint32_t>(0), JSTaggedValue::TAG_INT);
+    TestNumberRef(static_cast<uint32_t>(INT32_MAX), static_cast<uint32_t>(INT32_MAX) | JSTaggedValue::TAG_INT);
+    auto val = static_cast<uint32_t>(INT32_MAX + 1UL);
+    TestNumberRef(val, ConvertDouble(static_cast<double>(val)));
+    TestNumberRef(UINT32_MAX, ConvertDouble(static_cast<double>(UINT32_MAX)));
+
+    // int64_t
+    TestNumberRef(static_cast<int64_t>(INT32_MIN), static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
+    TestNumberRef(static_cast<int64_t>(INT32_MAX), static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
+    TestNumberRef(INT64_MIN, ConvertDouble(static_cast<double>(INT64_MIN)));
+    TestNumberRef(INT64_MAX, ConvertDouble(static_cast<double>(INT64_MAX)));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestBooleanRef)
+{
+    LocalScope scope(vm_);
+    bool input = true;
+    Local<BooleanRef> res = BooleanRef::New(vm_, input);
+    EXPECT_TRUE(res->IsBoolean());
+    EXPECT_TRUE(res->BooleaValue());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_TRUE);
+
+    input = false;
+    res = BooleanRef::New(vm_, input);
+    EXPECT_TRUE(res->IsBoolean());
+    EXPECT_FALSE(res->BooleaValue());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_FALSE);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNullUndefined)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> null = JSValueRef::Null(vm_);
+    ASSERT_TRUE(null->IsNull());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*null).GetRawData(), JSTaggedValue::VALUE_NULL);
+
+    Local<JSValueRef> undefined = JSValueRef::Undefined(vm_);
+    ASSERT_TRUE(undefined->IsUndefined());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*undefined).GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
+}
+
 }  // namespace panda::test

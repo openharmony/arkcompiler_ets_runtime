@@ -1188,6 +1188,15 @@ static void* attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void 
     return nullptr;
 }
 
+static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
+{
+    GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
+    auto info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
+    info->attachFunc = attach;
+    info->detachFunc = detach;
+    return info;
+}
+
 HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -1196,35 +1205,32 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj3 = factory->NewEmptyJSObject();
 
-    JSHandle<JSTaggedValue> key1 = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> key2 = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("y"));
-    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("a"));
-    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("b"));
-    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("5"));
-    JSHandle<JSTaggedValue> key8(factory->NewFromASCII("6"));
-    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(detach)));
-    JSHandle<JSTaggedValue> value2(factory->NewJSNativePointer(reinterpret_cast<void*>(attach)));
-    JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> value4(thread, JSTaggedValue(2));
-    JSHandle<JSTaggedValue> value5(thread, JSTaggedValue(3));
-    JSHandle<JSTaggedValue> value6(thread, JSTaggedValue(4));
-    JSHandle<JSTaggedValue> value7(thread, JSTaggedValue(5));
-    JSHandle<JSTaggedValue> value8(thread, JSTaggedValue(6));
+    JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("y"));
+    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("a"));
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("b"));
+    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("5"));
+    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("6"));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> value4(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> value5(thread, JSTaggedValue(4));
+    JSHandle<JSTaggedValue> value6(thread, JSTaggedValue(5));
+    JSHandle<JSTaggedValue> value7(thread, JSTaggedValue(6));
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, value1);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key2, value2);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key3, value3);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key4, value4);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key5, value5);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key6, value6);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key7, value7);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key8, value8);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key1, value1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key2, value2);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key3, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key4, value4);
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success1 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(obj1));
@@ -1253,12 +1259,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("xyz"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("6"));
     JSHandle<JSTaggedValue> key4(factory->NewFromASCII("8"));
-    JSHandle<JSTaggedValue> key5 = env->GetAttachSymbol();
+    JSHandle<JSTaggedValue> key5 = env->GetNativeBindingSymbol();
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(6));
     JSHandle<JSTaggedValue> value2 = JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("VALUE"));
     JSHandle<JSTaggedValue> value3 = JSHandle<JSTaggedValue>::Cast(factory->NewJSArray());
     JSHandle<JSTaggedValue> value4 = JSHandle<JSTaggedValue>::Cast(factory->GetEmptyString());
-    JSHandle<JSTaggedValue> value5(factory->NewJSNativePointer(reinterpret_cast<void*>(attach)));
+    JSHandle<JSTaggedValue> value5(thread, JSTaggedValue::Undefined());
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, value1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
@@ -1286,30 +1292,28 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
-    JSHandle<JSTaggedValue> key1 = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> key2 = env->GetAttachSymbol();
-    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("root1"));
-    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("root2"));
-    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("root3"));
-    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("name"));
-    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("version"));
-    JSHandle<JSTaggedValue> key8(factory->NewFromASCII("product"));
-    JSHandle<JSTaggedValue> key9(factory->NewFromASCII("os"));
-    JSHandle<JSTaggedValue> key10(factory->NewFromASCII("system"));
-    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(detach)));
-    JSHandle<JSTaggedValue> value2(factory->NewJSNativePointer(reinterpret_cast<void*>(attach)));
-    JSHandle<JSTaggedValue> value3(factory->NewFromASCII(""));
+    JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("root1"));
+    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("root2"));
+    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("root3"));
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("name"));
+    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("version"));
+    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("product"));
+    JSHandle<JSTaggedValue> key8(factory->NewFromASCII("os"));
+    JSHandle<JSTaggedValue> key9(factory->NewFromASCII("system"));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII(""));
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, value1);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key3, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key4, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key5, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key6, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key7, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key8, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key9, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key10, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key2, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key3, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key4, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key5, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key6, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key7, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key8, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key9, value2);
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success1 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(obj1));

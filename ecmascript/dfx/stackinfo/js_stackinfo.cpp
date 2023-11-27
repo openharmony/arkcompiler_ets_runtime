@@ -529,6 +529,21 @@ bool ArkGetMethodIdandJSPandaFileAddr(int pid, uintptr_t method, uintptr_t &meth
     return true;
 }
 
+uint32_t ArkGetOffsetFromMethod(int pid, uintptr_t currentPtr, uintptr_t method)
+{
+    uintptr_t pc = 0;
+    if (!ReadUintptrFromAddr(pid, currentPtr, pc, true)) {
+        return 0;
+    }
+    uintptr_t byteCodeArrayAddr = method + Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET;
+    uintptr_t byteCodeArray = 0;
+    if (!ReadUintptrFromAddr(pid, byteCodeArrayAddr, byteCodeArray, true)) {
+        return 0;
+    }
+    uintptr_t offset = pc - byteCodeArray;
+    return static_cast<uint32_t>(offset);
+}
+
 uint32_t ArkGetBytecodeOffset(int pid, uintptr_t method, uintptr_t frameType, uintptr_t currentPtr)
 {
     FrameType type = static_cast<FrameType>(frameType);
@@ -537,33 +552,13 @@ uint32_t ArkGetBytecodeOffset(int pid, uintptr_t method, uintptr_t frameType, ui
         case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
             currentPtr -= AsmInterpretedFrame::GetTypeOffset();
             currentPtr += AsmInterpretedFrame::GetPcOffset(false);
-            uintptr_t pc = 0;
-            if (!ReadUintptrFromAddr(pid, currentPtr, pc, true)) {
-                return 0;
-            }
-            uintptr_t byteCodeArrayAddr = method + Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET;
-            uintptr_t byteCodeArray = 0;
-            if (!ReadUintptrFromAddr(pid, byteCodeArrayAddr, byteCodeArray, true)) {
-                return 0;
-            }
-            uintptr_t offset = pc - byteCodeArray;
-            return static_cast<uint32_t>(offset);
+            return ArkGetOffsetFromMethod(pid, currentPtr, method);
         }
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME: {
             currentPtr -= InterpretedFrame::GetTypeOffset();
             currentPtr += InterpretedFrame::GetPcOffset(false);
-            uintptr_t pc = 0;
-            if (!ReadUintptrFromAddr(pid, currentPtr, pc, true)) {
-                return 0;
-            }
-            uintptr_t byteCodeArrayAddr = method + Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET;
-            uintptr_t byteCodeArray = 0;
-            if (!ReadUintptrFromAddr(pid, byteCodeArrayAddr, byteCodeArray, true)) {
-                return 0;
-            }
-            uintptr_t offset = pc - byteCodeArray;
-            return static_cast<uint32_t>(offset);
+            return ArkGetOffsetFromMethod(pid, currentPtr, method);
         }
         // ato need stackmaps
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
@@ -598,22 +593,24 @@ bool ArkReadData(const std::string &hapPath, const std::string &sourceMapPath, c
     }
     *data = (char*)malloc(sizeof(char)*dataSize);
     if (memcpy_s(*data, dataSize, dataPtr.get(), dataSize) != EOK) {
-        LOG_COMPILER(FATAL) << "memcpy_s failed";
+        LOG_ECMA(FATAL) << "memcpy_s failed";
         UNREACHABLE();
     }
     return true;
 }
 
-std::string ArkGetHapName(int pid, std::string filename)
+std::string ArkGetHapName(int pid, std::string &fileName)
 {
-    auto found = filename.find(JSPandaFile::BUNDLE_INSTALL_PATH);
+    auto found = fileName.find(JSPandaFile::BUNDLE_INSTALL_PATH);
     if (found == std::string::npos) {
+        LOG_ECMA(ERROR) << "ArkGetHapName can't find BUNDLE_INSTALL_PATH: " << fileName;
         return "";
     }
 
-    std::string subPath = filename.substr(sizeof(JSPandaFile::BUNDLE_INSTALL_PATH) - 1);
+    std::string subPath = fileName.substr(sizeof(JSPandaFile::BUNDLE_INSTALL_PATH) - 1);
     auto endPos = subPath.find("/");
     if (endPos == std::string::npos) {
+        LOG_ECMA(ERROR) << "ArkGetHapName can't find /: " << fileName;
         return "";
     }
 
@@ -623,7 +620,135 @@ std::string ArkGetHapName(int pid, std::string filename)
     return hapSource;
 }
 
-bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrameList)
+std::string ArkGetMapPath(std::string &fileName)
+{
+    auto lastSlash = fileName.rfind("/");
+    if (lastSlash == std::string::npos) {
+        LOG_ECMA(ERROR) << "ArkGetMapPath can't find fisrt /: " << fileName;
+        return "";
+    }
+
+    auto secondLastSlash = fileName.rfind("/", lastSlash - 1);
+    if (secondLastSlash == std::string::npos) {
+        LOG_ECMA(ERROR) << "ArkGetMapPath can't second fisrt /: " << fileName;
+        return "";
+    }
+
+    std::string mapPath = fileName.substr(secondLastSlash + 1);
+    return mapPath;
+}
+
+bool ArkIsNativeWithCallField(int pid, uintptr_t method)
+{
+    uintptr_t callFieldAddr = method + Method::CALL_FIELD_OFFSET;
+    uintptr_t callField = 0;
+    if (!ReadUintptrFromAddr(pid, callFieldAddr, callField, true)) {
+        return true;
+    }
+    return Method::IsNativeBit::Decode(callField);
+}
+
+std::string ArkReadFileName(int pid, uintptr_t descAddr)
+{
+    std::string fileName;
+    while(true) {
+        uintptr_t desc = 0;
+        ReadUintptrFromAddr(pid, descAddr, desc, true);
+        bool key = 1;
+        size_t shiftAmount = 8;
+        for (size_t i = 0; i < sizeof(long); i++) {
+            char bottomEightBits = desc;
+            desc = desc >> shiftAmount;
+            if (!bottomEightBits) {
+                key = 0;
+                break;
+            }
+            fileName += bottomEightBits;
+        }
+        if (!key) {
+            break;
+        }
+        descAddr += sizeof(long);
+    }
+    return fileName;
+}
+
+std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr)
+{
+    size_t size = sizeof(JSPandaFile) / sizeof(long);
+    uintptr_t *jsPandaFilePart = new uintptr_t[size]();
+    for (size_t i = 0; i < size; i++) {
+        if (!ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], true)) {
+            LOG_ECMA(ERROR) << "ArkGetFileName failed, jsPandaFileAddr: " << jsPandaFileAddr;
+            return "";
+        }
+        jsPandaFileAddr += sizeof(long);
+    }
+    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(jsPandaFilePart);
+    uintptr_t descAddr = reinterpret_cast<uintptr_t>(const_cast<char *>(jsPandaFile->GetJSPandaFileDesc().c_str()));
+    delete []jsPandaFilePart;
+    return ArkReadFileName(pid, descAddr);
+}
+
+JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
+                            uintptr_t preMethodId, uintptr_t offset)
+{
+    std::shared_ptr<JSPandaFile> newJsPandaFile =
+            JSPandaFileManager::GetInstance()->NewJSPandaFile(pf, fileName.c_str());
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(newJsPandaFile.get());
+    auto methodId = EntityId(preMethodId);
+    std::string name = MethodLiteral::ParseFunctionName(newJsPandaFile.get(), methodId);
+    name = name.size() ? name : "?";
+    std::string url = debugExtractor->GetSourceFile(methodId);
+
+    // line number and column number
+    int lineNumber = 0;
+    int columnNumber = 0;
+    auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+        lineNumber = line + 1;
+        return true;
+    };
+    auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+        columnNumber = column + 1;
+        return true;
+    };
+    if (offset > 0) {
+        if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
+                !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+            lineNumber = 0;
+            columnNumber = 0;
+        }
+    }
+    JsFrame jsFrame;
+    size_t urlSize = url.size() + 1;
+    size_t nameSize = name.size() + 1;
+    if (strcpy_s(jsFrame.url, urlSize, url.c_str()) != EOK ||
+            strcpy_s(jsFrame.functionName, nameSize, name.c_str()) != EOK) {
+        LOG_FULL(FATAL) << "strcpy_s failed";
+        UNREACHABLE();
+    }
+    jsFrame.line = lineNumber;
+    jsFrame.column = columnNumber;
+    return jsFrame;
+}
+
+bool ArkGetNextFrame(uintptr_t &currentPtr, uintptr_t typeOffset,
+                     uintptr_t prevOffset, int pid)
+{
+    currentPtr -= typeOffset;
+    currentPtr += prevOffset;
+    if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr, true)) {
+        return false;
+    }
+    if (currentPtr == 0) {
+        LOG_ECMA(ERROR) << "currentPtr is nullptr in GetArkNativeFrameInfo()!";
+        return false;
+    }
+    return true;
+}
+
+bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
+                           size_t &size, panda::ecmascript::JsFrame **jsFrameList)
 {
     constexpr size_t FP_SIZE = 8;
     constexpr size_t LR_SIZE = 8;
@@ -637,6 +762,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         LOG_ECMA(ERROR) << "invalid pc in GetArkNativeFrameInfo()!";
         return false;
     }
+    std::vector<JsFrame> jsFrames;
     while (true) {
         currentPtr -= sizeof(FrameType);
         uintptr_t frameType = 0;
@@ -655,100 +781,43 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
             break;
         }
         uintptr_t function = ArkGetFunction(pid, currentPtr, frameType);
-        if (function != 0) {
-            uintptr_t method = ArkCheckAndGetMethod(pid, function);
-            uintptr_t callFieldAddr = method + Method::CALL_FIELD_OFFSET;
-            uintptr_t callField = 0;
-            if (!ReadUintptrFromAddr(pid, callFieldAddr, callField, true)) {
+        if (!function) {
+            if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
                 return false;
             }
-
-            bool isNativeWithCallField = Method::IsNativeBit::Decode(callField);
-            if (!isNativeWithCallField) {
-                uintptr_t jsPandaFileAddr = 0;
-                uintptr_t preMethodId = 0;
-                ArkGetMethodIdandJSPandaFileAddr(pid, method, preMethodId, jsPandaFileAddr);
-                uintptr_t offset = ArkGetBytecodeOffset(pid, method, frameType, currentPtr);
-                if (offset) {
-                    size_t count = sizeof(JSPandaFile) / sizeof(long);
-                    uintptr_t *jsPandaFilePart = new uintptr_t[count];
-                    for (size_t i = 0; i < count; i++) {
-                        ReadUintptrFromAddr(pid, jsPandaFileAddr, jsPandaFilePart[i], true);
-                        jsPandaFileAddr += sizeof(long);
-                    }
-                    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(jsPandaFilePart);
-                    uintptr_t desc = 0;
-                    uintptr_t descAddr = reinterpret_cast<uintptr_t>(const_cast<char *>(jsPandaFile->GetJSPandaFileDesc().c_str()));
-                    std::string fileName = {};
-                    while(true) {
-                        ReadUintptrFromAddr(pid, descAddr, desc, true);
-                        bool key = 1;
-                        size_t shiftAmount = 8;
-                        for (size_t i = 0; i < sizeof(long); i++) {
-                            char bottomEightBits = desc;
-                            desc = desc >> shiftAmount;
-                            if (!bottomEightBits) {
-                                key = 0;
-                                break;
-                            }
-                            fileName += bottomEightBits;
-                        }
-                        if (!key) {
-                            break;
-                        }
-                        descAddr += sizeof(long);
-                    }
-                    std::string hapPath = ArkGetHapName(pid, fileName);
-                    std::string sourceMapPath = "ets/modules.abc";
-                    char *data = nullptr;
-                    size_t dataSize = 0;
-                    ArkReadData(hapPath, sourceMapPath, &data, dataSize);
-                    auto pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
-                    std::shared_ptr<JSPandaFile> newJsPandaFile =
-                        JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.get(), fileName.c_str());
-                    auto extractorPtr = std::make_unique<DebugInfoExtractor>(newJsPandaFile.get());
-                    DebugInfoExtractor *debugExtractor = extractorPtr.get();
-                    auto methodId = EntityId(preMethodId);
-                    std::string name = MethodLiteral::ParseFunctionName(newJsPandaFile.get(), methodId);
-                    name = name.size() ? name : "?";
-                    std::string url = debugExtractor->GetSourceFile(methodId);
-                    // line number and column number
-                    int lineNumber = 0;
-                    int columnNumber = 0;
-                    auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
-                        lineNumber = line + 1;
-                        return true;
-                    };
-                    auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
-                        columnNumber = column + 1;
-                        return true;
-                    };
-                    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-                        !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-                        lineNumber = 0;
-                        columnNumber = 0;
-                    }
-                    JsFrame jsFrame;
-                    if (strcpy_s(jsFrame.url, url.size(), url.c_str()) != EOK &&
-                            strcpy_s(jsFrame.functionName, name.size(), name.c_str()) != EOK) {
-                        LOG_FULL(FATAL) << "strcpy_s failed";
-                        UNREACHABLE();
-                    }
-                    jsFrame.line = lineNumber;
-                    jsFrame.column = columnNumber;
-                    *jsFrameList++ = jsFrame;
-                    delete []jsPandaFilePart;
-                    free(data);
-                }
+            continue;
+        }
+        uintptr_t method = ArkCheckAndGetMethod(pid, function);
+        if (!method) {
+            if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
+                return false;
             }
+            continue;
         }
-        currentPtr -= typeOffset;
-        currentPtr += prevOffset;
-        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr, true)) {
-            return false;
+        if (!ArkIsNativeWithCallField(pid, method)) {
+            uintptr_t jsPandaFileAddr = 0;
+            uintptr_t preMethodId = 0;
+            if (!ArkGetMethodIdandJSPandaFileAddr(pid, method, preMethodId, jsPandaFileAddr)) {
+                LOG_ECMA(ERROR) << "Method ERROR, method: " << method;
+                return false;
+            }
+            uintptr_t offset = ArkGetBytecodeOffset(pid, method, frameType, currentPtr);
+            std::string fileName = ArkGetFileName(pid, jsPandaFileAddr);
+            std::string hapPath = ArkGetHapName(pid, fileName);
+            std::string MapPath = ArkGetMapPath(fileName);
+            char *data = nullptr;
+            size_t dataSize = 0;
+            ArkReadData(hapPath, MapPath, &data, dataSize);
+            auto pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
+            if (!pf.get()) {
+                LOG_ECMA(ERROR) << "OpenPandaFileFromMemory ERROR, hapPath: " << hapPath
+                                << ", MapPath: " << MapPath;
+                return false;
+            }
+            JsFrame jsFrame = ArkParseJsFrameInfo(pf.get(), fileName, preMethodId, offset);
+            jsFrames.push_back(jsFrame);
         }
-        if (currentPtr == 0) {
-            LOG_ECMA(ERROR) << "currentPtr is nullptr in GetArkNativeFrameInfo()!";
+        if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
             return false;
         }
     }
@@ -760,6 +829,17 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
     }
     currentPtr += LR_SIZE;
     *sp = currentPtr;
+
+    size = jsFrames.size();
+    if (!size) {
+        return true;
+    }
+    size_t jsFramesSize = sizeof(JsFrame) * size;
+    *jsFrameList = (JsFrame*)malloc(jsFramesSize);
+    if (memcpy_s(*jsFrameList, jsFramesSize, jsFrames.data(), jsFramesSize) != EOK) {
+        LOG_ECMA(FATAL) << "JsFrame memcpy_s failed, jsFramesSize: " << jsFramesSize;
+        UNREACHABLE();
+    }
     return true;
 }
 #endif
@@ -937,10 +1017,10 @@ __attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
 }
 
 #if defined(PANDA_TARGET_OHOS)
-__attribute__((visibility("default"))) int get_ark_native_frame_info(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrameList)
+__attribute__((visibility("default"))) int get_ark_native_frame_info(int pid, uintptr_t *pc,
+    uintptr_t *fp, uintptr_t *sp, size_t &size, panda::ecmascript::JsFrame **jsFrameList)
 {
-    if (GetArkNativeFrameInfo(pid, pc, fp, sp, jsFrameList)) {
+    if (GetArkNativeFrameInfo(pid, pc, fp, sp, size, jsFrameList)) {
         return 1;
     }
     return -1;

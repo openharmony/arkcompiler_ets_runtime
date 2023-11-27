@@ -48,7 +48,7 @@ GateRef ValueNumbering::VisitGate(GateRef gate)
                 entriesSize_++;
                 // Resize to keep load factor below 80%
                 EnsureCapacity();
-            } 
+            }
             ASSERT(entriesSize_ + entriesSize_ / LOAD_FACTOR_THRESHOLD < entriesLength_);
             return Circuit::NullGate();
         }
@@ -87,7 +87,7 @@ void ValueNumbering::Grow()
 {
     GateRef *const oldEntries = entries_;
     size_t const oldSize = entriesLength_;
-    entriesLength_ *= 2;
+    entriesLength_ *= 2; // 2 : entriesLength
     InitEntries(entriesLength_);
     size_t const mask = entriesLength_ - 1;
 
@@ -127,7 +127,7 @@ void ValueNumbering::InitEntries(size_t initSize)
 size_t HashCombine(size_t seed, size_t value)
 {
     // In the meantime, we're not considering 32-bit systems
-    assert(sizeof(void *) == 8);
+    assert(sizeof(void *) == 8); // 8 : make sure the void* pointer is 8 bytes in size
     const uint64_t m = uint64_t{0xC6A4A7935BD1E995};
     const uint32_t r = 47;
 

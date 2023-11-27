@@ -49,9 +49,9 @@
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
     V("filter",         Filter,           1, ArrayFilter)                   \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
-    V("find",           Find,             1, INVALID)                       \
+    V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
-    V("findIndex",      FindIndex,        1, INVALID)                       \
+    V("findIndex",      FindIndex,        1, ArrayFindIndex)                \
     /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
     V("findLast",       FindLast,         1, INVALID)                       \
     /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \

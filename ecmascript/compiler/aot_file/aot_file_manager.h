@@ -21,6 +21,7 @@
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
+#include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
 #include "ecmascript/compiler/aot_file/binary_buffer_parser.h"
 #include "ecmascript/compiler/aot_file/module_section_des.h"
 #include "ecmascript/compiler/aot_file/stub_file_info.h"
@@ -37,20 +38,25 @@ class JSpandafile;
 class JSThread;
 
 /*                  AOTLiteralInfo
- *      +--------------------------------+----
- *      |             cache              |  ^
- *      |              ...               |  |
- *      |   -1 (No AOT Function Entry)   |  |
- *      |     AOT Function Entry Index   |  |
- *      |     AOT Function Entry Index   |  |
- *      +--------------------------------+----
- *      |      AOT Instance Hclass (IHC) |
- *      |   AOT Constructor Hclass (CHC) |
- *      +--------------------------------+
+ *      +-----------------------------------+----
+ *      |             cache                 |  ^
+ *      |              ...                  |  |
+ *      |   -1 (No AOT Function Entry)      |  |
+ *      |     AOT Function Entry Index      |  |
+ *      |     AOT Function Entry Index      |  |
+ *      +-----------------------------------+----
+ *      |      AOT Instance Hclass (IHC)    |
+ *      |   AOT Constructor Hclass (CHC)    |
+ *      |   AOT ElementIndex (ElementIndex) |
+ *      +-----------------------------------+
  */
 class AOTLiteralInfo : public TaggedArray {
 public:
     static constexpr size_t NO_FUNC_ENTRY_VALUE = -1;
+    static constexpr size_t AOT_CHC_INDEX = 1;
+    static constexpr size_t AOT_IHC_INDEX = 2;
+    static constexpr size_t AOT_ELEMENT_INDEX = 3;
+    static constexpr size_t RESERVED_LENGTH = AOT_ELEMENT_INDEX;
 
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
@@ -68,6 +74,7 @@ public:
         TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
         SetIhc(JSTaggedValue::Undefined());
         SetChc(JSTaggedValue::Undefined());
+        SetElementIndex(JSTaggedValue(kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE));
     }
 
     inline uint32_t GetCacheLength() const
@@ -95,6 +102,16 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetChcOffset()));
     }
 
+    inline void SetElementIndex(JSTaggedValue value)
+    {
+        Barriers::SetPrimitive(GetData(), GetElementIndexOffset(), value.GetRawData());
+    }
+
+    inline int GetElementIndex() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementIndexOffset())).GetInt();
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -105,9 +122,6 @@ public:
         return Get(index);
     }
 private:
-    static constexpr size_t AOT_CHC_INDEX = 1;
-    static constexpr size_t AOT_IHC_INDEX = 2;
-    static constexpr size_t RESERVED_LENGTH = AOT_IHC_INDEX;
 
     inline size_t GetIhcOffset() const
     {
@@ -117,6 +131,11 @@ private:
     inline size_t GetChcOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_CHC_INDEX);
+    }
+
+    inline size_t GetElementIndexOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENT_INDEX);
     }
 };
 

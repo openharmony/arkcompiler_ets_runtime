@@ -149,7 +149,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         func->SetProtoOrHClass(thread, newClass);
     } else {
         func->SetFunctionPrototype(thread, value.GetTaggedValue());
-        if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler() && value->IsECMAObject()) {
             thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(func.GetTaggedType(),
                 JSTaggedType(value->GetTaggedObject()->GetClass()), pgo::ProfileType::Kind::PrototypeId);
         }

@@ -33,6 +33,7 @@ public:
 
     std::vector<ElementsKind> GetElementsKindsForUser(int32_t offset) const;
     ElementsKind GetElementsKindForCreater(int32_t offset) const;
+    uint32_t GetElementsLength(int32_t offset) const;
 
     PGOTypeRef GetPGOType(int32_t offset) const;
 

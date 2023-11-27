@@ -203,8 +203,7 @@
     V(JSTaggedValue, ObjectLiteralHClassCache, OBJECT_LITERAL_HCLASS_CACHE)                         \
     V(JSTaggedValue, WeakRefKeepObjects, WEAK_REF_KEEP_OBJECTS)                                     \
     V(JSTaggedValue, FinRegLists, FIN_REG_LISTS)                                                    \
-    V(JSTaggedValue, AttachSymbol, ATTACH_SYMBOL_INDEX)                                             \
-    V(JSTaggedValue, DetachSymbol, DETACH_SYMBOL_INDEX)                                             \
+    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                              \
     V(JSTaggedValue, CjsModuleFunction, CJS_MODULE_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, CjsExportsFunction, CJS_EXPORTS_FUNCTION_INDEX)                                \
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \

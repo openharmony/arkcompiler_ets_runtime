@@ -76,11 +76,7 @@ bool ZipFileReader::init()
     if (filePath_.empty()) {
         return false;
     }
-    char resolvePath[PATH_MAX] = {0};
-    if (realpath(filePath_.c_str(), resolvePath) == nullptr) {
-        return false;
-    }
-    fd_ = open(resolvePath, O_RDONLY);
+    fd_ = open(filePath_.c_str(), O_RDONLY);
     if (fd_ < 0) {
         return false;
     }
