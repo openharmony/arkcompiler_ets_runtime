@@ -1515,10 +1515,11 @@ JSTaggedValue BuiltinsArray::Pop(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (thisHandle->IsStableJSArray(thread)) {
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    if (thisHandle->IsStableJSArray(thread) && JSObject::IsArrayLengthWritable(thread, thisObjHandle)) {
         return JSStableArray::Pop(JSHandle<JSArray>::Cast(thisHandle), argv);
     }
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
