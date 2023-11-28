@@ -3005,6 +3005,14 @@ JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType lo
     return result;
 }
 
+void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t length = static_cast<uint32_t>(newLength);
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    array->Trim(thread, length);
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);

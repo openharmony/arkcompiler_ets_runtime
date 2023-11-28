@@ -474,7 +474,8 @@ private:
     V(NumberHelperStringToDouble)               \
     V(LocaleCompareNoGc)                        \
     V(StringGetStart)                           \
-    V(StringGetEnd)
+    V(StringGetEnd)                             \
+    V(ArrayTrim)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

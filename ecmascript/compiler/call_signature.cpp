@@ -1226,6 +1226,21 @@ DEF_CALL_SIGNATURE(LocaleCompareNoGc)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ArrayTrim)
+{
+    // 3 : 3 input parameters
+    CallSignature ArrayTrim("ArrayTrim", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = ArrayTrim;
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT64()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(BigIntSameValueZero)
 {
     // 1 : 1 input parameters

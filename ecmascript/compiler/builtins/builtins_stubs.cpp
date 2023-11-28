@@ -286,6 +286,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(ForEach,      JS_ANY)                 \
     V(IndexOf,      JS_ANY)                 \
     V(LastIndexOf,  JS_ANY)                 \
+    V(Pop,          JS_ANY)                 \
     V(Slice,        JS_POINTER)             \
     V(Reverse,      JS_POINTER)             \
     V(Push,         JS_ANY)                 \
