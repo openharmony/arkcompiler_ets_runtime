@@ -37,6 +37,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/builtins/builtins_string.h"
 
 namespace panda::ecmascript::builtins {
 using ArrayHelper = base::ArrayHelper;
@@ -165,6 +166,11 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
     if (items->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The items is null.", JSTaggedValue::Exception());
     }
+    if (!mapping && items->IsString()) {
+        JSHandle<EcmaString> strItems(items);
+        return BuiltinsString::StringToList(thread, strItems);
+    }
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, items, iteratorSymbol);

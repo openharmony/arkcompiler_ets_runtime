@@ -2059,6 +2059,40 @@ int32_t BuiltinsString::ConvertDoubleToInt(double d)
     return base::NumberHelper::DoubleToInt(d, base::INT32_BITS);
 }
 
+JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString> &str)
+{
+    JSHandle<StringToListResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringToListResultCache());
+    JSTaggedValue cacheResult = StringToListResultCache::FindCachedResult(thread, cacheTable, str);
+    if (cacheResult != JSTaggedValue::Undefined()) {
+        JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread,
+            JSHandle<TaggedArray>(thread, cacheResult)));
+        return resultArray.GetTaggedValue();
+    }
+
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<EcmaString> iteratedString(str);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
+    uint32_t totalElements = EcmaStringAccessor(iteratedString).GetLength();
+    JSHandle<TaggedArray> elements = (oldElements->GetLength() < totalElements) ?
+        factory->ExtendArray(oldElements, totalElements) : oldElements;
+    uint32_t index = 0;
+    while (index < totalElements) {
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
+        JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
+        elements->Set(thread, index, newStr);
+        index++;
+    }
+    JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, totalElements);
+    newArrayHandle->SetElements(thread, elements);
+
+    StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
+
+    return newArrayHandle.GetTaggedValue();
+}
+
 JSTaggedValue StringSplitResultCache::CreateCacheTable(const JSThread *thread)
 {
     int length = CACHE_SIZE * ENTRY_SIZE;
@@ -2106,7 +2140,7 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
         newElements->Set(thread, i, resultArray->Get(i));
     }
     uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
-    uint32_t entry  = hash & (CACHE_SIZE - 1);
+    uint32_t entry = hash & (CACHE_SIZE - 1);
     uint32_t index = entry * ENTRY_SIZE;
 
     cache->Set(thread, index + STRING_INDEX, thisString);
@@ -2114,4 +2148,55 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
     cache->Set(thread, index + ARRAY_INDEX, newElements);
 }
 
+JSTaggedValue StringToListResultCache::CreateCacheTable(const JSThread *thread)
+{
+    int length = CACHE_SIZE * ENTRY_SIZE;
+    auto table = static_cast<StringToListResultCache*>(
+        *thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined()));
+    return JSTaggedValue(table);
+}
+
+JSTaggedValue StringToListResultCache::FindCachedResult(const JSThread *thread,
+    const JSHandle<StringToListResultCache> &cache, const JSHandle<EcmaString> &thisString)
+{
+    if (EcmaStringAccessor(thisString).GetLength() > MAX_STRING_LENGTH) {
+        return JSTaggedValue::Undefined();
+    }
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t entry = hash & (CACHE_SIZE - 1);
+    uint32_t index = entry * ENTRY_SIZE;
+    JSHandle<JSTaggedValue> cacheThis(thread, cache->Get(index + STRING_INDEX));
+    if (!cacheThis->IsString()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<EcmaString> cacheStr(cacheThis);
+    if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), thisString, cacheStr)) {
+        return cache->Get(index + ARRAY_INDEX);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+void StringToListResultCache::SetCachedResult(const JSThread *thread, const JSHandle<StringToListResultCache> &cache,
+    const JSHandle<EcmaString> &thisString, const JSHandle<TaggedArray> &resultArray)
+{
+    if (EcmaStringAccessor(thisString).GetLength() > MAX_STRING_LENGTH ||
+        EcmaStringAccessor(thisString).GetLength() == 0) {
+        return;
+    }
+    if (!EcmaStringAccessor(thisString).IsInternString()) {
+        return;
+    }
+    // clone to cache array
+    uint32_t arrayLength = resultArray->GetLength();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> newElements(factory->NewCOWTaggedArray(arrayLength));
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        newElements->Set(thread, i, resultArray->Get(i));
+    }
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t entry = hash & (CACHE_SIZE - 1);
+    uint32_t index = entry * ENTRY_SIZE;
+    cache->Set(thread, index + STRING_INDEX, thisString);
+    cache->Set(thread, index + ARRAY_INDEX, newElements);
+}
 }  // namespace panda::ecmascript::builtins

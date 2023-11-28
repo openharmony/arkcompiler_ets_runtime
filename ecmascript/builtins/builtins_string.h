@@ -245,6 +245,7 @@ public:
         //   (3) get length
         return GetStringPrototypeFunctions().Size() + 3;
     }
+    static JSTaggedValue StringToList(JSThread *thread, JSHandle<EcmaString> &str);
 
 private:
 #define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \
@@ -291,6 +292,25 @@ private:
     static constexpr int PATTERN_INDEX = 1;
     static constexpr int ARRAY_INDEX = 2;
     static constexpr int ENTRY_SIZE = 3;
+};
+
+class StringToListResultCache : public TaggedArray {
+public:
+    static StringToListResultCache *Cast(TaggedObject *object)
+    {
+        return reinterpret_cast<StringToListResultCache*>(object);
+    }
+    static JSTaggedValue CreateCacheTable(const JSThread *thread);
+    static JSTaggedValue FindCachedResult(const JSThread *thread, const JSHandle<StringToListResultCache> &cache,
+        const JSHandle<EcmaString> &string);
+    static void SetCachedResult(const JSThread *thread, const JSHandle<StringToListResultCache> &cache,
+        const JSHandle<EcmaString> &string, const JSHandle<TaggedArray> &result);
+
+    static constexpr int MAX_STRING_LENGTH = 20;
+    static constexpr int CACHE_SIZE = 128;
+    static constexpr int STRING_INDEX = 0;
+    static constexpr int ARRAY_INDEX = 1;
+    static constexpr int ENTRY_SIZE = 2;
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_STRING_H

@@ -765,7 +765,8 @@ public:
     inline GateRef GetKey(GateRef layoutInfo, GateRef index);
     inline GateRef GetKeyIndex(GateRef index);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
-    
+    GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
+
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);

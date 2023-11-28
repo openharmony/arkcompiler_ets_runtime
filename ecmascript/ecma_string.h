@@ -1449,6 +1449,8 @@ public:
         return EcmaString::GetUtf16DataFlat(src, buf);
     }
 
+    static JSTaggedValue StringToList(JSThread *thread, JSHandle<JSTaggedValue> &str);
+
 private:
     EcmaString *string_ {nullptr};
 };

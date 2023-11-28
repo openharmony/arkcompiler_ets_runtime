@@ -24,7 +24,7 @@
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_ARRAY_FUNCTIONS(V)                          \
     /* Array.from ( items [ , mapfn [ , thisArg ] ] ) */    \
-    V("from",    From,    1, INVALID)                       \
+    V("from",    From,    1, ArrayFrom)                     \
     /* Array.isArray ( arg ) */                             \
     V("isArray", IsArray, 1, INVALID)                       \
     /* Array.of ( ...items ) */                             \
@@ -93,7 +93,7 @@
     /* Array.prototype.sort ( comparefn ) */                                \
     V("sort",           Sort,             1, SORT)                          \
     /* Array.prototype.splice ( start, deleteCount, ...items ) */           \
-    V("splice",         Splice,           2, INVALID)                       \
+    V("splice",         Splice,           2, ArraySplice)                   \
     /* Array.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */  \
     V("toLocaleString", ToLocaleString,   0, INVALID)                       \
     /* Array.prototype.toReversed ( ) */                                    \
