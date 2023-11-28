@@ -338,7 +338,7 @@ GateRef TSInlineLowering::BuildAccessor(CallGateInfo &info)
     auto pgoType = pgoTypes->GetObjectInfo(0);
     ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int holderHCIndex = static_cast<uint32_t>(ptManager->GetHClassIndexByProfileType(holderType));
+    int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     auto holderHC = builder_.GetHClassGateFromIndex(gate, holderHCIndex);
 
     auto currentLabel = env.GetCurrentLabel();
@@ -529,7 +529,7 @@ void TSInlineLowering::InlineAccessorCheck(const CallGateInfo &info)
     auto pgoType = pgoTypes->GetObjectInfo(0);
     ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    int receiverHCIndex = ptManager->GetHClassIndexByProfileType(receiverType);
+    int receiverHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
     auto expectReceiverHC = builder_.GetHClassGateFromIndex(gate, receiverHCIndex);
 
     auto currentLabel = env.GetCurrentLabel();
@@ -650,13 +650,13 @@ PropertyLookupResult TSInlineLowering::IsAccessor(GateRef gate, GateRef constDat
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     JSHClass *hclass = nullptr;
     if (receiverType == holderType) {
-        int hclassIndex = ptManager->GetHClassIndexByProfileType(receiverType);
+        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
         if (hclassIndex == -1) {
             return PropertyLookupResult();
         }
         hclass = JSHClass::Cast(ptManager->QueryHClass(receiverType.first, receiverType.second).GetTaggedObject());
     } else {
-        int hclassIndex = ptManager->GetHClassIndexByProfileType(holderType);
+        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
         if (hclassIndex == -1) {
             return PropertyLookupResult();
         }

@@ -5187,14 +5187,12 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
             Label rightIsUndefinedOrNull(env);
             Label rightIsNotUndefinedOrNull(env);
             Branch(TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull, &rightIsNotUndefinedOrNull);
-            // if (right == undefined/null)
             Bind(&rightIsUndefinedOrNull);
             {
                 curType = Int32(PGOSampleType::UndefineOrNullType());
                 Label leftIsHeapObject(env);
                 Label leftNotHeapObject(env);
                 Branch(TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
-                // if (left is heapobj)
                 Bind(&leftIsHeapObject);
                 {
                     GateRef type = Int32(PGOSampleType::HeapObjectType());
@@ -5202,21 +5200,18 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                     result = TaggedFalse();
                     Jump(&exit);
                 }
-                // if (left is not heapobj)
                 Bind(&leftNotHeapObject);
                 {
                     Label leftIsUndefinedOrNull(env);
                     Label leftIsNotUndefinedOrNull(env);
                     // if left is undefined or null, then result is true, otherwise result is false
                     Branch(TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull, &leftIsNotUndefinedOrNull);
-                    // if (left == undefined/null)
                     Bind(&leftIsUndefinedOrNull);
                     {
                         callback.ProfileOpType(*curType);
                         result = TaggedTrue();
                         Jump(&exit);
                     }
-                    // if (left != undefined&null)
                     Bind(&leftIsNotUndefinedOrNull);
                     {
                         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -5225,7 +5220,6 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                     }
                 }
             }
-            // if (right != undefined&null)
             Bind(&rightIsNotUndefinedOrNull);
             {
                 Label leftIsUndefinedOrNull(env);
@@ -5233,14 +5227,12 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                 Branch(TaggedIsUndefinedOrNull(right), &leftIsUndefinedOrNull, &leftIsNotUndefinedOrNull);
                 // If left is undefined or null, result will always be false
                 // because we can ensure that right is not null here.
-                // if (left == undefined/null)
                 Bind(&leftIsUndefinedOrNull);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
                     result = TaggedFalse();
                     Jump(&exit);
                 }
-                // if (left != undefined&null)
                 Bind(&leftIsNotUndefinedOrNull);
                 {
                     Label leftIsBool(env);

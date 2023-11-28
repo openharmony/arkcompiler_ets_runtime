@@ -16,14 +16,6 @@
 declare function print(n:string):string;
 declare function print(n:number):string;
 
-// CMP
-//[compiler] Found a replaceable node, before -> after
-//[compiler] {"id":212, "op":"ICMP", "MType":"I1, bitfield=0xa, type=NJS_VALUE-GT(M=0, L=0), stamp=10, mark=2, ","in":[[], [], [55, 205], [], []], "out":[213]},
-//[compiler] {"id":209, "op":"ICMP", "MType":"I1, bitfield=0xa, type=NJS_VALUE-GT(M=0, L=0), stamp=10, mark=3, ","in":[[], [], [55, 205], [], []], "out":[210]},
-
-//[compiler] {"id":55, "op":"VALUE_SELECTOR", "MType":"I32, bitfield=0x0, type=NJS_VALUE-GT(M=0, L=0), stamp=9, mark=3, ","in":[[16], [], [227, 217], [], []], "out":[215, 212, 209, 206, 102, 88, 94, 97, 99, 85, 83, 80, 71]},
-//[compiler] {"id":205, "op":"CONSTANT", "MType":"I32, bitfield=0x1, type=NJS_VALUE-GT(M=0, L=0), stamp=9, mark=3, ","in":[[], [], [], [], []], "out":[227, 224, 221, 215, 212, 209]},
-
 for (var i:number = 0; i < 10; i++) {
       if (i <= 1) {
         print("Hello");
@@ -33,11 +25,6 @@ for (var i:number = 0; i < 10; i++) {
       }
 }
 
-// TypedOperator
-
-//[compiler] Found a replaceable node, before -> after
-//[compiler] {"id":669, "op":"FDIV", "MType":"F64, bitfield=0x0, type=NJS_VALUE-GT(M=0, L=0), stamp=10, mark=2, ","in":[[], [], [608, 610], [], []], "out":[670]},
-//[compiler] {"id":664, "op":"FDIV", "MType":"F64, bitfield=0x0, type=NJS_VALUE-GT(M=0, L=0), stamp=10, mark=3, ","in":[[], [], [608, 610], [], []], "out":[665]},
 function div(a: number, b: number): number {
     let sum = 0;
     if (a > 0) {
