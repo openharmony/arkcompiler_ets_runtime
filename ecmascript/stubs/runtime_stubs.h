@@ -21,6 +21,7 @@
 #include "ecmascript/stubs/test_runtime_stubs.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/method.h"
 #include "ecmascript/mem/region.h"
 
@@ -748,6 +749,9 @@ private:
         JSHandle<JSTaggedValue> presentValue, std::map<uint64_t, JSHandle<JSTaggedValue>> &cachedString);
     static inline JSTaggedValue TryCopyCOWArray(JSThread *thread, JSHandle<JSArray> holderHandler, bool &isCOWArray);
     static inline JSTaggedValue ArrayNumberSort(JSThread *thread, JSHandle<JSObject> thisObj, uint32_t len);
+    static inline bool ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
+                                          const JSHandle<JSTaggedValue> &chc,
+                                          const JSHandle<ClassLiteral> &classLiteral);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

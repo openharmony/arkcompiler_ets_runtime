@@ -817,6 +817,12 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     return cloneClass.GetTaggedValue();
 }
 
+bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
+                                      const JSHandle<JSTaggedValue> &chc,
+                                      const JSHandle<ClassLiteral> &classLiteral)
+{
+    return !(ihc->IsUndefined() || chc->IsUndefined() || classLiteral->GetIsAOTUsed());
+}
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
@@ -850,14 +856,13 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
 
-    if ((ihc->IsUndefined() && chc->IsUndefined()) ||
-        (classLiteral->GetIsAOTUsed())) {
-        cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
-    } else {
+    if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
         JSHandle<JSHClass> chclass(chc);
         cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
                                                   lexenv, ihc, chclass);
+    } else {
+        cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     }
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
