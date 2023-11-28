@@ -101,7 +101,7 @@
 namespace OHOS::ArkCompiler::Toolchain {
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {
-    bool StartDebug(const std::string& componentName, void* vm, int32_t instanceId,
+    bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
         const DebuggerPostTask& debuggerPostTask, int port);
     void StopDebug(const std::string& componentName);
     void WaitForDebugger(void* vm);
@@ -427,7 +427,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
-// for prevewer debugger.
+// for previewer debugger.
 bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                            [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
@@ -462,6 +462,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     }
 
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    vm->GetJsDebuggerManager()->SetIsDebugApp(true);
     vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
         "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
@@ -510,7 +511,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     }
 
     using StartDebugger = bool (*)(
-        const std::string &, EcmaVM *, int32_t, const DebuggerPostTask &, int);
+        const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebug");
     if (!sym) {
@@ -519,7 +520,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     }
 
     bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
-        "PandaDebugger", vm, instanceId, debuggerPostTask, option.port);
+        "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (!ret) {
         // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
