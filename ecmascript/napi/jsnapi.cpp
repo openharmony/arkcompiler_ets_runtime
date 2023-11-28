@@ -264,7 +264,7 @@ bool JSNApi::CheckSecureMem(uintptr_t mem)
 
 #define CHECK_HAS_PENDING_EXCEPTION(vm, returnVal)                                    \
     do {                                                                              \
-        if (vm->GetJSThread()->HasPendingException()) {                               \
+        if (vm->GetAndFastCheckJSThread()->HasPendingException()) {                   \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
             LOG_ECMA(ERROR) << panda::ecmascript::previewerTag <<                     \
@@ -1033,7 +1033,7 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
-    vm->GetJSThread()->DisposeGlobalHandle(addr);
+    vm->GetAndFastCheckJSThread()->DisposeGlobalHandle(addr);
 }
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer)
