@@ -999,7 +999,6 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Set);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 1. Assert: array is any ECMAScript language value other than an Object with a [[TypedArrayName]] internal slot.
     // If it is such an Object, the definition in 22.2.3.22.2 applies.
     // 2. Let target be the this value.
@@ -1042,7 +1041,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         }
     }
     // 9. Let targetBuffer be the value of target’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTaggedValue> targetBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, targetObj));
+    JSHandle<JSTaggedValue> targetBuffer(thread, JSTypedArray::FastGetOffHeapBuffer(thread, targetObj));
     // 10. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
@@ -1183,6 +1182,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     // 25. Else, let srcByteIndex be srcByteOffset.
     uint32_t srcByteIndex = 0;
     if (JSTaggedValue::SameValue(srcBufferHandle.GetTaggedValue(), targetBuffer.GetTaggedValue())) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         srcBuffer =
             BuiltinsArrayBuffer::CloneArrayBuffer(thread, targetBuffer, srcByteOffset, env->GetArrayBufferFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

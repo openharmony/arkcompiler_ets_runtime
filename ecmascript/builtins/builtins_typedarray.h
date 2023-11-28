@@ -107,7 +107,7 @@
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
     V("sort",           Sort,           1, INVALID)                                     \
     /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
-    V("subarray",       Subarray,       2, INVALID)                                     \
+    V("subarray",       Subarray,       2, TypedArraySubArray)                          \
     /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
     V("toLocaleString", ToLocaleString, 0, INVALID)                                     \
     /* %TypedArray%.prototype.toReversed ( ) */                                         \

@@ -1245,4 +1245,32 @@ template void NewObjectStubBuilder::CreateJSCollectionIterator<JSSetIterator, JS
     Variable *result, Label *exit, GateRef set, GateRef kind);
 template void NewObjectStubBuilder::CreateJSCollectionIterator<JSMapIterator, JSMap>(
     Variable *result, Label *exit, GateRef set, GateRef kind);
+
+GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedArray,
+    GateRef elementSize, GateRef newLength, GateRef beginIndex, GateRef arrayCls, GateRef buffer)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef constructorName = Load(VariableType::JS_POINTER(), srcTypedArray,
+        IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
+    GateRef srcByteOffset = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+    GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    GateRef beginByteOffset = Int32Add(srcByteOffset, Int32Mul(beginIndex, elementSize));
+
+    GateRef obj = NewJSObject(glue, arrayCls);
+    result = obj;
+    GateRef newByteLength = Int32Mul(elementSize, newLength);
+    Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), buffer);
+    Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), constructorName);
+    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
+    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
+    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+    Store(VariableType::BOOL(), glue, obj, IntPtr(JSTypedArray::ON_HEAP_OFFSET), Boolean(false));
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

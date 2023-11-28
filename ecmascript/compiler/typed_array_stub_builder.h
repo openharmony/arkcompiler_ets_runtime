@@ -37,6 +37,9 @@ public:
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
+    void SubArray(GateRef glue, GateRef thisValue, GateRef relativeBegin, GateRef end,
+        Variable *result, Label *exit, Label *slowPath);
+    GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
     GateRef GetViewedArrayBuffer(GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);

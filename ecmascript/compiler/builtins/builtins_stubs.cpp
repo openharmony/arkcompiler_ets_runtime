@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -740,4 +741,29 @@ DECLARE_BUILTINS(type##method)                                                  
 // Number.ParseFloat
 DECLARE_BUILTINS_NUMBER_STUB_BUILDER(Number, ParseFloat, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_NUMBER_STUB_BUILDER
+
+#define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(type, method, retType, retDefaultValue)            \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    GateRef begin = GetCallArg0(numArgs);                                                           \
+    GateRef end = GetCallArg1(numArgs);                                                             \
+    TypedArrayStubBuilder builder(this);                                                            \
+    builder.method(glue, thisValue, begin, end, &res, &exit, &slowPath);                            \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
+// TypedArray.Subarray
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, SubArray, VariableType::JS_ANY(), Undefined());
+#undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu
