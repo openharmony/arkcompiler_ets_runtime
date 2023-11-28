@@ -1371,6 +1371,11 @@ DEF_CALL_SIGNATURE(PushCallNewAndDispatch)
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallNewAndDispatch)
 }
 
+DEF_CALL_SIGNATURE(PushSuperCallAndDispatch)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushSuperCallAndDispatch)
+}
+
 DEF_CALL_SIGNATURE(PushCallRangeAndDispatch)
 {
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallRangeAndDispatch)

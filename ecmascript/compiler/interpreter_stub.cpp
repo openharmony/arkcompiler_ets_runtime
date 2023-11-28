@@ -3074,12 +3074,74 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)
 
 DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
 {
-    GateRef range = ReadInst8_1(pc);
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    auto env = GetEnvironment();
+    GateRef range = ZExtInt8ToInt16(ReadInst8_1(pc));
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
-        { currentFunc, Int16ToTaggedInt(v0), Int8ToTaggedInt(range) });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALLTHISRANGE_IMM8_IMM8_V8));
+    GateRef actualNumArgs = ZExtInt16ToInt32(range);
+    GateRef thisFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef newTarget = GetNewTarget(sp);
+    GateRef superCtor = GetPrototype(glue, thisFunc);
+
+    Label ctorIsHeapObject(env);
+    Label ctorIsJSFunction(env);
+    Label ctorIsConstructor(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    Label checkResult(env);
+    Label threadCheck(env);
+    Label dispatch(env);
+    Label ctorIsBase(env);
+    Label ctorNotBase(env);
+    Label isException(env);
+
+    Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
+    Bind(&ctorIsHeapObject);
+    Branch(IsJSFunction(superCtor), &ctorIsJSFunction, &slowPath);
+    Bind(&ctorIsJSFunction);
+    Branch(IsConstructor(superCtor), &ctorIsConstructor, &slowPath);
+    Bind(&ctorIsConstructor);
+    Branch(TaggedIsUndefined(newTarget), &slowPath, &fastPath);
+    Bind(&fastPath);
+    {
+        Branch(IsBase(superCtor), &ctorIsBase, &ctorNotBase);
+        Bind(&ctorIsBase);
+        {
+            NewObjectStubBuilder newBuilder(this);
+            thisObj = newBuilder.FastSuperAllocateThis(glue, superCtor, newTarget);
+            Branch(HasPendingException(glue), &isException, &ctorNotBase);
+        }
+        Bind(&ctorNotBase);
+        GateRef argv = PtrAdd(sp, PtrMul(ZExtInt16ToPtr(v0), IntPtr(JSTaggedValue::TaggedTypeSize()))); // skip function
+        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
+        METHOD_ENTRY_ENV_DEFINED(superCtor);
+        res = JSCallDispatch(glue, superCtor, actualNumArgs, jumpSize, hotnessCounter,
+                             JSCallMode::SUPER_CALL_WITH_ARGV,
+                             { thisFunc, Int16ToTaggedInt(v0), ZExtInt32ToPtr(actualNumArgs),
+                             argv, *thisObj, newTarget }, callback);
+        Jump(&threadCheck);
+    }
+    Bind(&slowPath);
+    res = CallRuntime(glue, RTSTUB_ID(SuperCall),
+        { thisFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
+    Jump(&checkResult);
+    Bind(&checkResult);
+    {
+        Branch(TaggedIsException(*res), &isException, &dispatch);
+    }
+    Bind(&threadCheck);
+    {
+        Branch(HasPendingException(glue), &isException, &dispatch);
+    }
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&dispatch);
+    varAcc = *res;
+    DISPATCH_WITH_ACC(SUPERCALLTHISRANGE_IMM8_IMM8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)

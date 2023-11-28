@@ -167,6 +167,8 @@ public:
 
     static void PushCallNewAndDispatch(ExtendedAssembler *assembler);
 
+    static void PushSuperCallAndDispatch(ExtendedAssembler *assembler);
+
     static void PushCallArgsAndDispatchNative(ExtendedAssembler *assembler);
 
     static void ResumeRspAndDispatch(ExtendedAssembler *assembler);

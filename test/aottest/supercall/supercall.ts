@@ -32,3 +32,21 @@ class B extends A {
 var obj = new B("AOT", 123);
 print(obj.name);
 print(obj.value);
+
+class M {
+    constructor(value) {
+        this.stageValue = value;
+    }
+}
+class BM extends M {
+    constructor(value) {
+        super(value);
+    }
+}
+
+let mdf = new M(2);
+print(mdf.stageValue);
+for (let i = 0; i < 12; i++) {
+    mdf = new BM(9);
+}
+print(mdf.stageValue);

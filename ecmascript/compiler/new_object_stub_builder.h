@@ -70,6 +70,7 @@ public:
                          GateRef arraySize);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
+    GateRef FastSuperAllocateThis(GateRef glue, GateRef superCtor, GateRef newTarget);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
     GateRef CreateEmptyArray(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,

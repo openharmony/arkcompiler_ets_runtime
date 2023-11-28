@@ -133,6 +133,8 @@ public:
 
     static void PushCallNewAndDispatch(ExtendedAssembler *assembler);
 
+    static void PushSuperCallAndDispatch(ExtendedAssembler *assembler);
+
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 
     static void PushCallRangeAndDispatchNative(ExtendedAssembler *assembler);
