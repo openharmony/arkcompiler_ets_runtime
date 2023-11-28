@@ -1613,19 +1613,36 @@ bool JSObject::CreateMethodProperty(JSThread *thread, const JSHandle<JSObject> &
     return DefineOwnProperty(thread, obj, key, desc);
 }
 
+JSHandle<JSTaggedValue> JSObject::CallFunction(JSThread *thread, const JSHandle<JSTaggedValue> &func)
+{
+    if (func->IsUndefined() || func->IsNull()) {
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+    }
+    if (!func->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not Callable", func);
+    }
+    return func;
+}
+
 // 7.3.9 GetMethod (O, P)
 JSHandle<JSTaggedValue> JSObject::GetMethod(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                             const JSHandle<JSTaggedValue> &key)
 {
     JSHandle<JSTaggedValue> func = JSTaggedValue::GetProperty(thread, obj, key).GetValue();
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    if (func->IsUndefined() || func->IsNull()) {
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
-    }
+    func = CallFunction(thread, func);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    return func;
+}
 
-    if (!func->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not Callable", func);
-    }
+JSHandle<JSTaggedValue> JSObject::FastGetMethod(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                const JSHandle<JSTaggedValue> &key)
+{
+    JSHandle<JSTaggedValue> func(thread, ObjectFastOperator::FastGetPropertyByName(thread, obj.GetTaggedValue(),
+                                                                                   key.GetTaggedValue()));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    func = CallFunction(thread, func);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return func;
 }
 
@@ -1943,7 +1960,7 @@ bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &objec
 
     EcmaVM *vm = thread->GetEcmaVM();
     // 2. Let instOfHandler be GetMethod(target, @@hasInstance).
-    JSHandle<JSTaggedValue> instOfHandler = GetMethod(thread, target, vm->GetGlobalEnv()->GetHasInstanceSymbol());
+    JSHandle<JSTaggedValue> instOfHandler = FastGetMethod(thread, target, vm->GetGlobalEnv()->GetHasInstanceSymbol());
 
     // 3. ReturnIfAbrupt(instOfHandler).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
