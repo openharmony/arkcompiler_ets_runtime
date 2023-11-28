@@ -443,6 +443,20 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         dstArray->SetElements(thread, dstElements);
         dstArray->SetArrayLength(thread, length);
         TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        for (uint32_t i = 0; i < length; i++) { 
+            JSTaggedValue reg = srcElements->Get(thread, i);
+            if (reg.IsHole()) {
+                JSTaggedValue reg2 = JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue();
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (reg2.IsHole()) {
+                    dstElements->Set(thread, i, JSTaggedValue::Undefined());
+                } else {
+                    dstElements->Set(thread, i, reg2);
+                }
+            } else {
+                dstElements->Set(thread, i, reg);
+            }
+        }
         return JSTaggedValue(length);
     }
 
