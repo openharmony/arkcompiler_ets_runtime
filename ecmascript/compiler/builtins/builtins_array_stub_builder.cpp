@@ -20,8 +20,8 @@
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
-
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -453,17 +453,53 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
 }
 
 // Note: unused arguments are reserved for further development
-void BuiltinsArrayStubBuilder::Reverse([[maybe_unused]] GateRef glue, GateRef thisValue,
-    [[maybe_unused]] GateRef numArgs,
+void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label thisIsEmpty(env);
-    // Fast path is this is an array of length 0 or 1
-    JsArrayRequirements req;
-    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ONE, req), &thisIsEmpty, slowPath);
-    Bind(&thisIsEmpty);
-    // Returns thisValue on fast path
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    Label isJSArray(env);
+    GateRef jsCOWArray = IsJsCOWArray(thisValue);
+    GateRef jsJSArray = IsJsArray(thisValue);
+    Branch(BoolAnd(jsJSArray, BoolNot(jsCOWArray)), &isJSArray, slowPath);
+    Bind(&isJSArray);
+    Label stableJSArray(env);
+    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+    Branch(isThisStableJSArray, &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef elements = GetElementsArray(thisValue);
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label arrayValue(env);
+        Label valueEqual(env);
+        Branch(Int64LessThan(*i, *j), &next, &loopExit);
+        Bind(&next);
+        {
+            GateRef lower = GetValueFromTaggedArray(elements, *i);
+            GateRef upper = GetValueFromTaggedArray(elements, *j);
+
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, upper);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *j, lower);
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Add(*i, Int64(1));
+    j = Int64Sub(*j, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
     result->WriteVariable(thisValue);
     Jump(exit);
 }
@@ -504,6 +540,31 @@ GateRef BuiltinsArrayStubBuilder::IsJsArrayWithLengthLimit(GateRef glue, GateRef
     GateRef ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    ConstantIndex iterClassIdx = ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX;
+    GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, iterClassIdx);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef prototype = GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv,
+                                          GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+    SetPrototypeToHClass(VariableType::JS_POINTER(), glue, iteratorHClass, prototype);
+    GateRef iter = newBuilder.NewJSObject(glue, iteratorHClass);
+    SetIteratedArrayOfArrayIterator(glue, iter, thisValue);
+    SetNextIndexOfArrayIterator(glue, iter, Int32(0));
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
+    SetBitFieldOfArrayIterator(glue, iter, kind);
+    result->WriteVariable(iter);
+    Jump(exit);
 }
 
 void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -573,12 +634,15 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
     Label stableJSArray(env);
     Label notStableJSArray(env);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Label isHeapObject(env);
-    Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
+    Label arg0HeapObject(env);
+    Branch(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
     Label callable(env);
     Branch(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);

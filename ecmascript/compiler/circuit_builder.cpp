@@ -31,6 +31,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
+#include "ecmascript/js_array_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -611,6 +612,24 @@ void CircuitBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, 
 {
     GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
     Store(VariableType::JS_ANY(), glue, iter, offset, hclass);
+}
+
+void CircuitBuilder::SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex)
+{
+    GateRef offset = IntPtr(JSArrayIterator::NEXT_INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, nextIndex);
+}
+
+void CircuitBuilder::SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray)
+{
+    GateRef offset = IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET);
+    Store(VariableType::JS_ANY(), glue, iter, offset, iteratedArray);
+}
+
+void CircuitBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind)
+{
+    GateRef offset = IntPtr(JSArrayIterator::BIT_FIELD_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, kind);
 }
 
 void CircuitBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)

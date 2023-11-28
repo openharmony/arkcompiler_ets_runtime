@@ -665,6 +665,9 @@ public:
     void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
     void SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
     void IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index);
+    void SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex);
+    void SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray);
+    void SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind);
     GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
     GateRef GetEmptyArray(GateRef glue);
     GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);

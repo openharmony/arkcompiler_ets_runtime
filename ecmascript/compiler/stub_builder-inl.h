@@ -1531,6 +1531,21 @@ inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, Gate
     env_->GetBuilder()->IncreaseInteratorIndex(glue, iter, index);
 }
 
+inline void StubBuilder::SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex)
+{
+    env_->GetBuilder()->SetNextIndexOfArrayIterator(glue, iter, nextIndex);
+}
+
+inline void StubBuilder::SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray)
+{
+    env_->GetBuilder()->SetIteratedArrayOfArrayIterator(glue, iter, iteratedArray);
+}
+
+inline void StubBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind)
+{
+    env_->GetBuilder()->SetBitFieldOfArrayIterator(glue, iter, kind);
+}
+
 inline GateRef StubBuilder::IsField(GateRef attr)
 {
     return Int32Equal(
