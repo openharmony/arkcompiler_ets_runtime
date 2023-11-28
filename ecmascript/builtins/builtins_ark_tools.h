@@ -44,19 +44,27 @@
     V("timeInUs",                      TimeInUs,                      0, INVALID)         \
     V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)
 
-#define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                            \
-    V("prepareFunctionForOptimization",  PrepareFunctionForOptimization,  1, INVALID)     \
-    V("optimizeFunctionOnNextCall",      OptimizeFunctionOnNextCall,      1, INVALID)     \
-    V("optimizeMaglevOnNextCall",        OptimizeMaglevOnNextCall,        1, INVALID)     \
-    V("deoptimizeFunction",              DeoptimizeFunction,              1, INVALID)     \
-    V("optimizeOsr",                     OptimizeOsr,                     1, INVALID)     \
-    V("neverOptimizeFunction",           NeverOptimizeFunction,           1, INVALID)     \
-    V("heapObjectVerify",                HeapObjectVerify,                1, INVALID)     \
-    V("disableOptimizationFinalization", DisableOptimizationFinalization, 0, INVALID)     \
-    V("deoptimizeNow",                   DeoptimizeNow,                   0, INVALID)     \
-    V("deoptimize_now",                  DeoptimizeNow,                   0, INVALID)     \
-    V("waitForBackgroundOptimization",   WaitForBackgroundOptimization,   0, INVALID)     \
-    V("gc",                              Gc,                              0, INVALID)
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
+    V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
+    V("optimizeFunctionOnNextCall",                OptimizeFunctionOnNextCall,                1, INVALID)     \
+    V("optimizeMaglevOnNextCall",                  OptimizeMaglevOnNextCall,                  1, INVALID)     \
+    V("deoptimizeFunction",                        DeoptimizeFunction,                        1, INVALID)     \
+    V("optimizeOsr",                               OptimizeOsr,                               1, INVALID)     \
+    V("neverOptimizeFunction",                     NeverOptimizeFunction,                     1, INVALID)     \
+    V("heapObjectVerify",                          HeapObjectVerify,                          1, INVALID)     \
+    V("disableOptimizationFinalization",           DisableOptimizationFinalization,           0, INVALID)     \
+    V("deoptimizeNow",                             DeoptimizeNow,                             0, INVALID)     \
+    V("deoptimize_now",                            DeoptimizeNow,                             0, INVALID)     \
+    V("waitForBackgroundOptimization",             WaitForBackgroundOptimization,             0, INVALID)     \
+    V("gc",                                        Gc,                                        0, INVALID)     \
+    V("toLength",                                  ToLength,                                  1, INVALID)     \
+    V("hasHoleyElements",                          HasHoleyElements,                          1, INVALID)     \
+    V("hasDictionaryElements",                     HasDictionaryElements,                     1, INVALID)     \
+    V("hasSmiElements",                            HasSmiElements,                            1, INVALID)     \
+    V("hasDoubleElements",                         HasDoubleElements,                         1, INVALID)     \
+    V("hasObjectElements",                         HasObjectElements,                         1, INVALID)     \
+    V("arrayBufferDetach",                         ArrayBufferDetach,                         1, INVALID)     \
+    V("haveSameMap",                               HaveSameMap,                               2, INVALID)
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -147,6 +155,22 @@ public:
     static JSTaggedValue Gc(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue PGOAssertType(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ToLength(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasHoleyElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasDictionaryElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasSmiElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasDoubleElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasObjectElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ArrayBufferDetach(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HaveSameMap(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {
