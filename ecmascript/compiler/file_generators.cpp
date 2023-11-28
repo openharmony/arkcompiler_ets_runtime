@@ -244,7 +244,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         bool isMainFunc = found != std::string::npos;
         uint64_t offset = funcEntry;
         aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
-                        offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+                         offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
