@@ -108,6 +108,8 @@ public:
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
+    static uint32_t ToCharCode(uint32_t number);
+    static JSTaggedValue Int32ToString(JSThread *thread, int32_t number, uint32_t radix);
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
     static double TruncateDouble(double d);
     static int64_t DoubleToInt64(double d);

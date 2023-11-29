@@ -429,7 +429,9 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     double radix = base::DECIMAL;
     JSHandle<JSTaggedValue> radixValue = GetCallArg(argv, 0);
     // 5. Else let radixNumber be ToInteger(radix).
-    if (!radixValue->IsUndefined()) {
+    if (radixValue->IsInt()) {
+        radix = radixValue->GetInt();
+    } else if (!radixValue->IsUndefined()) {
         JSTaggedNumber radixNumber = JSTaggedValue::ToInteger(thread, radixValue);
         // 6. ReturnIfAbrupt(x).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -450,6 +452,10 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
         cacheTable->SetCachedResult(thread, value, resultJSHandle);
         return resultJSHandle.GetTaggedValue();
+    }
+
+    if (value.IsInt()) {
+        return NumberHelper::Int32ToString(thread, value.GetInt(), radix);
     }
 
     double valueNumber = value.GetNumber();

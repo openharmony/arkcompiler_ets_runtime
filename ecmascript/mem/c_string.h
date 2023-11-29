@@ -70,22 +70,20 @@ std::enable_if_t<std::is_floating_point_v<T>, CString> FloatToCString(T number)
 template<class T>
 std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
 {
-    if (number == 0) {
-        return CString("0");
-    }
     static constexpr uint32_t BUFF_SIZE = std::numeric_limits<T>::digits10 + 3;  // 3: Reserved for sign bit and '\0'.
+    int64_t n = static_cast<int64_t>(number);
     char buf[BUFF_SIZE];
     uint32_t position = BUFF_SIZE - 1;
     buf[position] = '\0';
-    bool isNeg = number < 0;
-    while (number != 0) {
-        if (isNeg) {
-            buf[--position] = static_cast<int8_t>('0' - (number % 10)); // 10 : decimal
-        } else {
-            buf[--position] = static_cast<int8_t>('0' + (number % 10)); // 10 : decimal
-        }
-        number /= 10; // 10 : decimal
+    bool isNeg = true;
+    if (n >= 0) {
+        n = -n;
+        isNeg = false;
     }
+    do {
+        buf[--position] = static_cast<int8_t>('0' - (n % 10)); // 10 : decimal
+        n /= 10; // 10 : decimal
+    } while (n);
     if (isNeg) {
         buf[--position] = '-';
     }

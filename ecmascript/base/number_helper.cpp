@@ -24,6 +24,7 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 
@@ -113,6 +114,57 @@ bool NumberHelper::IsEmptyString(const uint8_t *start, const uint8_t *end)
 {
     auto p = const_cast<uint8_t *>(start);
     return !NumberHelper::GotoNonspace(&p, end);
+}
+
+/*
+*  This Function Translate from number 0-9 to number '0'-'9'
+*                               number 10-35 to number 'a'-'z'
+*/
+uint32_t NumberHelper::ToCharCode(uint32_t number)
+{
+    ASSERT(number < 36); // total number of '0'-'9' + 'a' -'z'
+    return number < 10 ? (number + 48): // 48 == '0'; 10: '0' - '9';
+                         (number - 10 + 97); // 97 == 'a'; 'a' - 'z'
+}
+
+JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint32_t radix)
+{
+    bool isNegative = number < 0;
+    uint32_t n = 0;
+    if (!isNegative) {
+        n = static_cast<uint32_t>(number);
+        if (n < radix) {
+            if (n == 0) {
+                return thread->GlobalConstants()->GetHandledZeroString().GetTaggedValue();
+            }
+            JSHandle<SingleCharTable> singleCharTable(thread->GetEcmaVM()->GetSingleCharTable());
+            return singleCharTable->GetStringFromSingleCharTable(ToCharCode(n));
+        }
+    } else {
+        n = static_cast<uint32_t>(-number);
+    }
+    uint32_t temp = n;
+    uint32_t length = isNegative ? 1 : 0;
+    // calculate length
+    while (temp > 0) {
+        temp = temp / radix;
+        length = length + 1;
+    }
+    std::string buf;
+    buf.resize(length);
+    uint32_t index = length - 1;
+    uint32_t digit = 0;
+    while (n > 0) {
+        digit = n % radix;
+        n /= radix;
+        buf[index] = ToCharCode(digit) + 0X00;
+        index--;
+    }
+    if (isNegative) {
+        ASSERT(index == 0);
+        buf[index] = '-';
+    }
+    return thread->GetEcmaVM()->GetFactory()->NewFromUtf8(buf).GetTaggedValue();
 }
 
 JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int radix)
@@ -367,7 +419,11 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     ASSERT(number.IsNumber());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (number.IsInt()) {
-        return factory->NewFromASCII(IntToString(number.GetInt()));
+        int intVal = number.GetInt();
+        if (intVal == 0) {
+            return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
+        }
+        return factory->NewFromASCII(IntToString(intVal));
     }
 
     double d = number.GetDouble();
