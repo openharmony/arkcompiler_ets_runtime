@@ -156,8 +156,8 @@ JSTaggedValue ContainersPrivate::InitializeContainer(JSThread *thread, const JSH
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromASCII(name));
-    JSTaggedValue value =
-        ObjectFastOperator::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+    JSTaggedValue value = ObjectFastOperator::GetPropertyByName<ObjectFastOperator::Status::UseOwn>
+        (thread, obj.GetTaggedValue(), key.GetTaggedValue());
     if (!value.IsUndefined()) {
         return value;
     }

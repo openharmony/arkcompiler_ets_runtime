@@ -512,6 +512,10 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
                                     Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+            funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                    Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
             Branch(IsGeneratorKind(kind), &isGenerator, &exit);
             Bind(&isGenerator);
             {
@@ -538,6 +542,9 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+            funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
             Jump(&exit);
         }
     }

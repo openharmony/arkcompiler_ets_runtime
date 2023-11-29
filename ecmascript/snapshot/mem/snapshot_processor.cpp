@@ -995,6 +995,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(JSFunction::PrototypeSetter),
     reinterpret_cast<uintptr_t>(JSFunction::PrototypeGetter),
     reinterpret_cast<uintptr_t>(JSFunction::NameGetter),
+    reinterpret_cast<uintptr_t>(JSFunction::LengthGetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthSetter),
     reinterpret_cast<uintptr_t>(JSArray::LengthGetter),
     reinterpret_cast<uintptr_t>(JSPandaFileManager::GetInstance)

@@ -13,3 +13,12 @@
 
 3
 42
+hello, undefined, undefined, undefined, Alice!
+bound aaaaaa
+3
+hello, hello2, undefined, undefined, Alice!
+bound bound aaaaaa
+2
+hello, hello2, hello3, undefined, Alice!
+bound bound bound aaaaaa
+1

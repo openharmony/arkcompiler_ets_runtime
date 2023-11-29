@@ -1942,7 +1942,8 @@ void InterpreterAssembly::HandleStownbynameImm8Id16V8(
         // fast path
         SAVE_ACC();
         receiver = GET_VREG_VALUE(v0);
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -2085,8 +2086,8 @@ void InterpreterAssembly::HandleStownbyindexImm8V8Imm16(
         SAVE_ACC();
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res =
-            FastRuntimeStub::SetPropertyByIndex<true>(thread, receiver, index, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, index, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -2119,7 +2120,8 @@ void InterpreterAssembly::HandleStownbyvalueImm8V8V8(
         JSTaggedValue propKey = GET_VREG_VALUE(v1);
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
 
         // SetPropertyByValue maybe gc need update the value
         RESTORE_ACC();
@@ -2457,7 +2459,8 @@ void InterpreterAssembly::HandleStownbyvaluewithnamesetImm8V8V8(
         JSTaggedValue propKey = GET_VREG_VALUE(v1);
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
 
         // SetPropertyByValue maybe gc need update the value
         RESTORE_ACC();
@@ -2501,7 +2504,8 @@ void InterpreterAssembly::HandleStownbynamewithnamesetImm8Id16V8(
         JSTaggedValue value = GET_ACC();
         // fast path
         SAVE_ACC();
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
@@ -3133,7 +3137,8 @@ void InterpreterAssembly::HandleStownbyvalueImm16V8V8(
         JSTaggedValue propKey = GET_VREG_VALUE(v1);
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
 
         // SetPropertyByValue maybe gc need update the value
         RESTORE_ACC();
@@ -3205,8 +3210,8 @@ void InterpreterAssembly::HandleStownbyindexImm16V8Imm16(
         SAVE_ACC();
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res =
-            FastRuntimeStub::SetPropertyByIndex<true>(thread, receiver, index, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, index, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -3368,8 +3373,8 @@ void InterpreterAssembly::HandleWideStownbyindexPrefV8Imm32(
         SAVE_ACC();
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res =
-            FastRuntimeStub::SetPropertyByIndex<true>(thread, receiver, index, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, index, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -5032,7 +5037,8 @@ void InterpreterAssembly::HandleStownbynamewithnamesetImm16Id16V8(
         JSTaggedValue value = GET_ACC();
         // fast path
         SAVE_ACC();
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             JSFunction::SetFunctionNameNoPrefix(thread, JSFunction::Cast(value.GetTaggedObject()), propKey);
@@ -5067,7 +5073,8 @@ void InterpreterAssembly::HandleStownbyvaluewithnamesetImm16V8V8(
         JSTaggedValue propKey = GET_VREG_VALUE(v1);
         JSTaggedValue value = GET_ACC();
         // fast path
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
 
         // SetPropertyByValue maybe gc need update the value
         RESTORE_ACC();
@@ -5268,7 +5275,8 @@ void InterpreterAssembly::HandleStownbynameImm16Id16V8(
         // fast path
         SAVE_ACC();
         receiver = GET_VREG_VALUE(v0);
-        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<true>(thread, receiver, propKey, value);
+        JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+                            (thread, receiver, propKey, value);
         if (!res.IsHole()) {
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -6575,7 +6583,7 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
-    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    result->SetLength(length);
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
     result->SetLexicalEnv(thread, taggedCurEnv);
@@ -6688,7 +6696,7 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
-    result->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    result->SetLength(length);
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
     result->SetLexicalEnv(thread, taggedCurEnv);
@@ -6710,7 +6718,7 @@ void InterpreterAssembly::HandleDefinefuncImm16Id16Imm8(
     auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, GetModule(sp));
     JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
-    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    jsFunc->SetLength(length);
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue envHandle = state->env;
     jsFunc->SetLexicalEnv(thread, envHandle);
@@ -6735,7 +6743,7 @@ void InterpreterAssembly::HandleDefinefuncImm8Id16Imm8(
     auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, GetModule(sp));
     JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
-    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+    jsFunc->SetLength(length);
     AsmInterpretedFrame *state = (reinterpret_cast<AsmInterpretedFrame *>(sp) - 1);
     JSTaggedValue envHandle = state->env;
     jsFunc->SetLexicalEnv(thread, envHandle);

@@ -4355,9 +4355,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
     {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int16ToTaggedInt(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        SetLengthToFunction(glue, *result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, *result, envHandle);
@@ -4383,9 +4381,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
     {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        SetLengthToFunction(glue, *result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, *result, envHandle);
@@ -4410,9 +4406,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
     {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        SetLengthToFunction(glue, *result, ZExtInt8ToInt32(length));
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
         varAcc = *result;
@@ -4433,9 +4427,7 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
     {
-        GateRef hclass = LoadHClass(*result);
-        SetPropertyInlinedProps(glue, *result, hclass, Int8ToTaggedInt(length),
-            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        SetLengthToFunction(glue, *result, ZExtInt8ToInt32(length));
         GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
         SetLexicalEnvToFunction(glue, *result, lexEnv);
         varAcc = *result;

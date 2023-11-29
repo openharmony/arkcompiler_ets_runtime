@@ -2512,6 +2512,12 @@ inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
+inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunctionBase::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, function, offset, value);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));

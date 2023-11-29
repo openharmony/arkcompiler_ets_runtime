@@ -20,6 +20,7 @@
 
 #include "ecmascript/frames.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_fast_operator.h"
 
 namespace panda::ecmascript {
 class GlobalEnv;
@@ -35,19 +36,19 @@ public:
     static inline JSTaggedValue FastStrictEqual(JSTaggedValue left, JSTaggedValue right);
     static inline JSTaggedValue NewLexicalEnv(JSThread *thread, ObjectFactory *factory, uint16_t numVars);
     static inline JSTaggedValue GetGlobalOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                    JSTaggedValue value);
-    template<bool UseOwn = false>
+    template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>
     static inline JSTaggedValue SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
 

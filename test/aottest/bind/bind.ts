@@ -25,3 +25,23 @@ var bindfunc = foo.bind(null, 37);
 
 print(bindfunc(5));
 
+const person = {
+    name: 'Alice'
+};
+
+const greetPerson = function aaaaaa(message, message2, message3, message4) {
+    print(message + ', ' + message2 + ', ' + message3 + ', ' + message4 + ', ' + this.name + '!');
+}.bind(person, 'hello');
+greetPerson();
+print(greetPerson.name);
+print(greetPerson.length);
+
+const greetPerson2 = greetPerson.bind(person, 'hello2');
+greetPerson2();
+print(greetPerson2.name);
+print(greetPerson2.length);
+
+const greetPerson3 = greetPerson2.bind(greetPerson, 'hello3');
+greetPerson3();
+print(greetPerson3.name);
+print(greetPerson3.length);
