@@ -400,7 +400,7 @@ public:
 
     bool EnableIdleGC() const
     {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_IDLE_GC) != 0;
+        return false;
     }
 
     bool EnableGCTracer() const
