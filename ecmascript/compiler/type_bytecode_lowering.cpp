@@ -1152,10 +1152,11 @@ void TypeBytecodeLowering::LowerTypedLdTypedArrayLength(GateRef gate)
     GateRef array = acc_.GetValueIn(gate, 2);
     GateType arrayType = acc_.GetGateType(array);
     arrayType = tsManager_->TryNarrowUnionType(arrayType);
+    OnHeapMode onHeap = acc_.TryGetOnHeapMode(gate);
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(arrayType, array);
+        builder_.TypedArrayCheck(array, arrayType, TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
     }
-    GateRef result = builder_.LoadTypedArrayLength(arrayType, array);
+    GateRef result = builder_.LoadTypedArrayLength(array, arrayType, onHeap);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
@@ -1217,7 +1218,8 @@ void TypeBytecodeLowering::LowerTypedLdObjByIndex(GateRef gate)
         GateRef index = acc_.GetValueIn(gate, 0);
         uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
         index = builder_.Int32(indexValue);
-        result = LoadTypedArrayByIndex(receiver, index);
+        OnHeapMode onHeapMode = acc_.TryGetOnHeapMode(gate);
+        result = LoadTypedArrayByIndex(receiver, index, onHeapMode);
     } else {
         return; // slowpath
     }
@@ -1242,7 +1244,8 @@ void TypeBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
         if (!Uncheck()) {
-            builder_.TypedArrayCheck(receiverType, receiver);
+            OnHeapMode onHeap = acc_.TryGetOnHeapMode(gate);
+            builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
         }
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1251,13 +1254,14 @@ void TypeBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 1);
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
     index = builder_.Int32(indexValue);
-    auto length = builder_.LoadTypedArrayLength(receiverType, receiver);
+    OnHeapMode onHeap = acc_.TryGetOnHeapMode(gate);
+    auto length = builder_.LoadTypedArrayLength(receiver, receiverType, onHeap);
     if (!Uncheck()) {
         builder_.IndexCheck(length, index);
     }
 
     if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
-        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
+        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value, onHeap);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -1310,7 +1314,8 @@ void TypeBytecodeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     }
     if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
-        result = LoadTypedArrayByIndex(receiver, propKey);
+        OnHeapMode onHeapMode = acc_.TryGetOnHeapMode(gate);
+        result = LoadTypedArrayByIndex(receiver, propKey, onHeapMode);
     } else {
         return; // slowpath
     }
@@ -1353,35 +1358,35 @@ GateRef TypeBytecodeLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propK
     return result;
 }
 
-GateRef TypeBytecodeLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
+GateRef TypeBytecodeLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey, OnHeapMode onHeap)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(receiverType, receiver);
-        GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
+        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
+        GateRef length = builder_.LoadTypedArrayLength(receiver, receiverType, onHeap);
         propKey = builder_.IndexCheck(length, propKey);
     }
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
     switch (builtinTypeId) {
         case BuiltinTypeId::INT8_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::INT8ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::INT8ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::UINT8_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::INT16_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::INT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::INT16ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::UINT16_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::INT32_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::UINT32_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::FLOAT32_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case BuiltinTypeId::FLOAT64_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey);
+            return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1409,44 +1414,44 @@ void TypeBytecodeLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey
 }
 
 
-void TypeBytecodeLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
+void TypeBytecodeLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, OnHeapMode onHeap)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(receiverType, receiver);
-        GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
+        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
+        GateRef length = builder_.LoadTypedArrayLength(receiver, receiverType, onHeap);
         propKey = builder_.IndexCheck(length, propKey);
     }
 
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
     switch (builtinTypeId) {
         case BuiltinTypeId::INT8_ARRAY:
-            builder_.StoreElement<TypedStoreOp::INT8ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::INT8ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::UINT8_ARRAY:
-            builder_.StoreElement<TypedStoreOp::UINT8ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::UINT8ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
-            builder_.StoreElement<TypedStoreOp::UINT8CLAMPEDARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::UINT8CLAMPEDARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::INT16_ARRAY:
-            builder_.StoreElement<TypedStoreOp::INT16ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::INT16ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::UINT16_ARRAY:
-            builder_.StoreElement<TypedStoreOp::UINT16ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::UINT16ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::INT32_ARRAY:
-            builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::UINT32_ARRAY:
-            builder_.StoreElement<TypedStoreOp::UINT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::UINT32ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::FLOAT32_ARRAY:
-            builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         case BuiltinTypeId::FLOAT64_ARRAY:
-            builder_.StoreElement<TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            builder_.StoreElement<TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(receiver, propKey, value, onHeap);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1473,7 +1478,8 @@ void TypeBytecodeLowering::LowerTypedStObjByValue(GateRef gate)
         StoreJSArrayByIndex(receiver, propKey, value, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
-        StoreTypedArrayByIndex(receiver, propKey, value);
+        OnHeapMode onHeapMode = acc_.TryGetOnHeapMode(gate);
+        StoreTypedArrayByIndex(receiver, propKey, value, onHeapMode);
     } else {
         return;
     }

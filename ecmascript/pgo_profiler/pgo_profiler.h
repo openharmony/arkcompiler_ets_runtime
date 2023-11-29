@@ -147,7 +147,8 @@ private:
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
     void AddBuiltinsInfo(
-        ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver);
+        ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
+        OnHeapMode onHeap = OnHeapMode::NONE);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
     ProfileType GetOrInsertProfileType(JSTaggedType root, JSTaggedType child);

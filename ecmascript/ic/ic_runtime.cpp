@@ -100,7 +100,8 @@ void ICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
     if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
         return;
     }
-    JSHandle<JSTaggedValue> handlerValue = LoadHandler::LoadTypedArrayElement(thread_);
+    JSHandle<JSTaggedValue> handlerValue =
+        LoadHandler::LoadTypedArrayElement(thread_, JSHandle<JSTypedArray>(receiver));
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
     icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
 }

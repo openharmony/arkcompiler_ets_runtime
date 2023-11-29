@@ -49,7 +49,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotHeapObject,                  NOTHEAPOBJECT)                \
     V(NotStableArray,                 NOTSARRAY)                    \
     V(NotArray,                       NOTARRAY)                     \
-    V(NotOnHeap,                      NOTONHEAP)                    \
+    V(InconsistentOnHeap,             INCONSISTENTONHEAP)           \
     V(InconsistentHClass,             INCONSISTENTHCLASS)           \
     V(NotNewObj,                      NOTNEWOBJ)                    \
     V(NotLegalIndex,                  NOTLEGALIDX)                  \
@@ -632,6 +632,117 @@ public:
 
 private:
     uint64_t type_;
+};
+
+class TypedArrayMetaDateAccessor {
+public:
+    enum Mode : uint8_t {
+        ACCESS_ELEMENT = 0,
+        LOAD_LENGTH,
+    };
+
+    static constexpr int TYPE_BITS_SIZE = 32;
+    static constexpr int MODE_BITS_SIZE = 8;
+    static constexpr int ON_HEAP_MODE_BITS_SIZE = 8;
+
+    explicit TypedArrayMetaDateAccessor(uint64_t value) : bitField_(value) {}
+    explicit TypedArrayMetaDateAccessor(GateType type, Mode mode, OnHeapMode onHeap)
+    {
+        bitField_ = TypeBits::Encode(type.Value()) | ModeBits::Encode(mode) | OnHeapModeBits::Encode(onHeap);
+    }
+
+    GateType GetType() const
+    {
+        return GateType(TypeBits::Get(bitField_));
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return OnHeapModeBits::Get(bitField_);
+    }
+
+    bool IsAccessElement() const
+    {
+        return ModeBits::Get(bitField_) == Mode::ACCESS_ELEMENT;
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using TypeBits = panda::BitField<uint32_t, 0, TYPE_BITS_SIZE>;
+    using ModeBits = TypeBits::NextField<Mode, MODE_BITS_SIZE>;
+    using OnHeapModeBits = ModeBits::NextField<OnHeapMode, ON_HEAP_MODE_BITS_SIZE>;
+
+    uint64_t bitField_;
+};
+
+class LoadElementAccessor {
+public:
+    static constexpr int TYPED_LOAD_OP_BITS_SIZE = 8;
+    static constexpr int ON_HEAP_MODE_BITS_SIZE = 8;
+
+    explicit LoadElementAccessor(uint64_t value): bitField_(value) {}
+    explicit LoadElementAccessor(TypedLoadOp op, OnHeapMode onHeap)
+    {
+        bitField_ = TypedLoadOpBits::Encode(op) | OnHeapModeBits::Encode(onHeap);
+    }
+
+    TypedLoadOp GetTypedLoadOp() const
+    {
+        return TypedLoadOpBits::Get(bitField_);
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return OnHeapModeBits::Get(bitField_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using TypedLoadOpBits = panda::BitField<TypedLoadOp, 0, TYPED_LOAD_OP_BITS_SIZE>;
+    using OnHeapModeBits = TypedLoadOpBits::NextField<OnHeapMode, ON_HEAP_MODE_BITS_SIZE>;
+
+    uint64_t bitField_;
+};
+
+class StoreElementAccessor {
+public:
+    static constexpr int TYPED_STORE_OP_BITS_SIZE = 8;
+    static constexpr int ON_HEAP_MODE_BITS_SIZE = 8;
+
+    explicit StoreElementAccessor(uint64_t value): bitField_(value) {}
+    explicit StoreElementAccessor(TypedStoreOp op, OnHeapMode onHeap)
+    {
+        bitField_ = TypedStoreOpBits::Encode(op) | OnHeapModeBits::Encode(onHeap);
+    }
+
+    TypedStoreOp GetTypedStoreOp() const
+    {
+        return TypedStoreOpBits::Get(bitField_);
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return OnHeapModeBits::Get(bitField_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using TypedStoreOpBits = panda::BitField<TypedStoreOp, 0, TYPED_STORE_OP_BITS_SIZE>;
+    using OnHeapModeBits = TypedStoreOpBits::NextField<OnHeapMode, ON_HEAP_MODE_BITS_SIZE>;
+
+    uint64_t bitField_;
 };
 } // namespace panda::ecmascript::kungfu
 

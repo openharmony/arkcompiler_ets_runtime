@@ -26,6 +26,7 @@
 
 #include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
+#include "ecmascript/on_heap.h"
 #include "libpandabase/macros.h"
 
 #include "ecmascript/compiler/share_gate_meta_data.h"
@@ -115,12 +116,23 @@ public:
         return GetEcmaOpcodeStr(opcode_);
     }
 
+    void SetOnHeapMode(OnHeapMode onHeapMode)
+    {
+        onHeapMode_ = onHeapMode;
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return onHeapMode_;
+    }
+
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
     uint32_t elementsLength_ { 0 };
     PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};
+    OnHeapMode onHeapMode_ {OnHeapMode::NONE};
 };
 
 

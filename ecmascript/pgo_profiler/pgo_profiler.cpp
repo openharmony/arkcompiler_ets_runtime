@@ -860,20 +860,34 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     if (type == BCType::LOAD) {
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
-            if (HandlerBase::IsElement(handlerInfo)) {
+            if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
                 AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
                 return;
             }
+
+            if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
+                OnHeapMode onHeap =  HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, onHeap);
+                return;
+            }
+
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
         }
         return;
     }
     if (secondValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
-        if (HandlerBase::IsElement(handlerInfo)) {
+        if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
             AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
             return;
         }
+
+        if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
+            OnHeapMode onHeap = HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, onHeap);
+            return;
+        }
+
         AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
     } else if (secondValue.IsTransitionHandler()) {
         auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
@@ -1201,7 +1215,8 @@ void PGOProfiler::AddObjectInfoWithMega(
 }
 
 void PGOProfiler::AddBuiltinsInfo(
-    ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver)
+    ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
+    OnHeapMode onHeap)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     if (receiver->IsJSArray()) {
@@ -1210,7 +1225,12 @@ void PGOProfiler::AddBuiltinsInfo(
         auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
-    } else if (receiver->IsTypedArray() || receiver->IsString()) {
+    } else if (receiver->IsTypedArray()) {
+        JSType jsType = receiver->GetObjectType();
+        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap);
+        PGOObjectInfo info(profileType);
+        recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
+    } else if (receiver->IsString()) {
         auto type = receiver->GetObjectType();
         PGOObjectInfo info(ProfileType::CreateBuiltins(abcId, type));
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);

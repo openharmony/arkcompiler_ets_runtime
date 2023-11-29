@@ -27,6 +27,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/on_heap.h"
 #include "libpandabase/utils/bit_field.h"
 #include "macros.h"
 
@@ -114,6 +115,27 @@ public:
         }
     };
 
+    class BuiltinsTypedArrayId : public BuiltinsId {
+    public:
+        // BuilitinsTypedArray second bit field
+        static constexpr uint8_t ON_HEAP_MODE_BITFIELD_NUM = 2;
+        using OnHeapModeBits = BuiltinsIdBits::NextField<OnHeapMode, ON_HEAP_MODE_BITFIELD_NUM>;
+
+        explicit BuiltinsTypedArrayId() = default;
+        explicit BuiltinsTypedArrayId(uint32_t id) : BuiltinsId(id) {}
+
+        BuiltinsTypedArrayId UpdateOnHeapMode(OnHeapMode onHeapMode)
+        {
+            id_ = OnHeapModeBits::Update(id_, onHeapMode);
+            return *this;
+        }
+
+        OnHeapMode GetOnHeapMode() const
+        {
+            return OnHeapModeBits::Decode(id_);
+        }
+    };
+
     static_assert(KindBits::IsValid(Kind::TotalKinds));
 
     ProfileType() = default;
@@ -141,6 +163,12 @@ public:
     static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind)
     {
         auto id = BuiltinsArrayId().UpdateElementsKind(kind).SetBuiltinsId(type).GetId();
+        return ProfileType(abcId, id, Kind::BuiltinsId);
+    }
+
+    static ProfileType CreateBuiltinsTypedArray(ApEntityId abcId, JSType type, OnHeapMode onHeap)
+    {
+        auto id = BuiltinsTypedArrayId().UpdateOnHeapMode(onHeap).SetBuiltinsId(type).GetId();
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 

@@ -53,7 +53,6 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
-    isEnableOptOnHeapCheck_ = runtimeOptions.IsEnableOptOnHeapCheck();
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableCollectLiteralInfo_ = false;
@@ -92,8 +91,6 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     vmOpt.SetFastAOTCompileMode(true);
     vmOpt.SetOptLevel(DEFAULT_OPT_LEVEL);
     cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
-    vmOpt.SetEnableOptOnHeapCheck(false);
-    cOptions.isEnableOptOnHeapCheck_ = false;
 }
 
 bool AotCompilerPreprocessor::HandlePandaFileNames(const int argc, const char **argv)

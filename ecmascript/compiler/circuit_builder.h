@@ -435,8 +435,9 @@ public:
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
-    GateRef TypedArrayCheck(GateType type, GateRef gate);
-    GateRef LoadTypedArrayLength(GateType type, GateRef gate);
+    GateRef TypedArrayCheck(GateRef gate, GateType type, TypedArrayMetaDateAccessor::Mode mode,
+                            OnHeapMode onHeap = OnHeapMode::NONE);
+    GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
@@ -526,7 +527,7 @@ public:
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
     template<TypedLoadOp Op>
-    GateRef LoadElement(GateRef receiver, GateRef index);
+    GateRef LoadElement(GateRef receiver, GateRef index, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef LoadArrayLength(GateRef array);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
@@ -543,7 +544,7 @@ public:
     GateRef StringEqual(GateRef x, GateRef y);
     GateRef StringAdd(GateRef x, GateRef y);
     template<TypedStoreOp Op>
-    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
+    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef IsOptimizedAndNotFastCall(GateRef obj);

@@ -363,7 +363,6 @@ public:
                                  data->GetCompilerConfig(),
                                  data->GetTSManager(),
                                  &chunk,
-                                 data->GetPassOptions()->EnableOptOnHeapCheck(),
                                  passOptions->EnableLoweringBuiltin());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
@@ -509,8 +508,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        bool onHeapCheck = data->GetPassOptions()->EnableOptOnHeapCheck();
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, onHeapCheck).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

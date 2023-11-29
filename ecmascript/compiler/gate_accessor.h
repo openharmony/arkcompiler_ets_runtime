@@ -411,6 +411,9 @@ public:
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
+    TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;
+    LoadElementAccessor GetLoadElementAccessor(GateRef gate) const;
+    StoreElementAccessor GetStoreElementAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
@@ -429,6 +432,8 @@ public:
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
+    void TrySetOnHeapMode(GateRef gate, OnHeapMode onHeapMode) const;
+    OnHeapMode TryGetOnHeapMode(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const DUMP_API_ATTR;
 #ifndef NDEBUG

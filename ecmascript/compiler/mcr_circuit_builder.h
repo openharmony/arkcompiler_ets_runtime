@@ -530,13 +530,13 @@ GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, uint32_t w
 }
 
 template <TypedLoadOp Op>
-GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
+GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index, OnHeapMode onHeap)
 {
-    auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::I64,
+    LoadElementAccessor accessor(Op, onHeap);
+    auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(accessor.ToValue()), MachineType::I64,
                                      {currentControl, currentDepend, receiver, index}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -544,15 +544,14 @@ GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
 }
 
 template <TypedStoreOp Op>
-GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
+GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap)
 {
-    auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret =
-        GetCircuit()->NewGate(GetCircuit()->StoreElement(opIdx), MachineType::NOVALUE,
-                              {currentControl, currentDepend, receiver, index, value}, GateType::AnyType());
+    StoreElementAccessor accessor(Op, onHeap);
+    auto ret = GetCircuit()->NewGate(GetCircuit()->StoreElement(accessor.ToValue()), MachineType::NOVALUE,
+                                     {currentControl, currentDepend, receiver, index, value}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

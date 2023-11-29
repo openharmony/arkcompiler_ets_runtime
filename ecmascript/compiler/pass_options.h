@@ -30,7 +30,6 @@ namespace panda::ecmascript::kungfu {
     V(NoCheck, false)                                                            \
     V(OptTrackField, false)                                                      \
     V(OptLoopPeeling, false)                                                     \
-    V(OptOnHeapCheck, false)                                                     \
     V(OptLoopInvariantCodeMotion, false)                                         \
     V(CollectLiteralInfo, false)                                                 \
     V(OptConstantFolding, true)                                                  \

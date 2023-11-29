@@ -237,6 +237,27 @@ BuiltinPrototypeHClassAccessor GateAccessor::GetBuiltinHClassAccessor(GateRef ga
     return BuiltinPrototypeHClassAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+TypedArrayMetaDateAccessor GateAccessor::GetTypedArrayMetaDateAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK || GetOpCode(gate) == OpCode::LOAD_TYPED_ARRAY_LENGTH);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return TypedArrayMetaDateAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+LoadElementAccessor GateAccessor::GetLoadElementAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return LoadElementAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+StoreElementAccessor GateAccessor::GetStoreElementAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STORE_ELEMENT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return StoreElementAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 bool GateAccessor::TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const
 {
     switch (kind) {
@@ -368,7 +389,6 @@ GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
@@ -646,6 +666,25 @@ void GateAccessor::TrySetElementsKind(GateRef gate, ElementsKind kind)
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsKind(kind);
     }
+}
+
+void GateAccessor::TrySetOnHeapMode(GateRef gate, OnHeapMode onHeapMode) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetOnHeapMode(onHeapMode);
+    }
+}
+
+OnHeapMode GateAccessor::TryGetOnHeapMode(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetOnHeapMode();
+    }
+    return OnHeapMode::NONE;
 }
 
 EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const

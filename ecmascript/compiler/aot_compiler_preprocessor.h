@@ -57,7 +57,6 @@ struct CompilationOptions {
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
     bool isEnableOptLoopPeeling_;
-    bool isEnableOptOnHeapCheck_;
     bool isEnableOptLoopInvariantCodeMotion_;
     bool isEnableCollectLiteralInfo_;
     bool isEnableOptConstantFolding_;

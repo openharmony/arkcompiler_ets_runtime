@@ -158,26 +158,29 @@ GateRef CircuitBuilder::ArrayGuardianCheck(GateRef frameState)
     return ret;
 }
 
-GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
+GateRef CircuitBuilder::TypedArrayCheck(GateRef gate, GateType type, TypedArrayMetaDateAccessor::Mode mode,
+                                        OnHeapMode onHeap)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    TypedArrayMetaDateAccessor accessor(type, mode, onHeap);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(accessor.ToValue()), MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::LoadTypedArrayLength(GateType type, GateRef gate)
+GateRef CircuitBuilder::LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(static_cast<size_t>(type.Value())),
-        MachineType::I64, {currentControl, currentDepend, gate}, GateType::IntType());
+    TypedArrayMetaDateAccessor accessor(type, TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
+    GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(accessor.ToValue()), MachineType::I64,
+                                        {currentControl, currentDepend, gate}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
