@@ -257,6 +257,14 @@ inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initiali
     return result;
 }
 
+inline GateRef StubBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
+                                                            const char* comment)
+{
+    GateRef result = env_->GetBuilder()->CallBuiltinRuntimeWithNewTarget(glue, Gate::InvalidGateRef, args, comment);
+
+    return result;
+}
+
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)
 {
     CallNGCRuntime(glue, RTSTUB_ID(DebugPrint), args);
@@ -2640,14 +2648,9 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
         Int64(0));
 }
 
-inline GateRef StubBuilder::IsOptimizedWithBitField(GateRef bitfield)
+inline GateRef StubBuilder::JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type)
 {
-    return env_->GetBuilder()->IsOptimizedWithBitField(bitfield);
-}
-
-inline GateRef StubBuilder::CanFastCallWithBitField(GateRef bitfield)
-{
-    return env_->GetBuilder()->CanFastCallWithBitField(bitfield);
+    return env_->GetBuilder()->JudgeAotAndFastCallWithMethod(method, type);
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)

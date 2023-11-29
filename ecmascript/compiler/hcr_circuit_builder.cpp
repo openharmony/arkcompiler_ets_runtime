@@ -92,6 +92,24 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     return result;
 }
 
+GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
+                                                        const char* comment)
+{
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    int index = 0;
+
+    index = static_cast<int>(RTSTUB_ID(PushNewTargetAndDispatchNative));
+
+    const CallSignature *cs = RuntimeStubCSigns::Get(index);
+    GateRef target = IntPtr(index);
+    auto label = GetCurrentLabel();
+    if (depend == Gate::InvalidGateRef) {
+        depend = label->GetDepend();
+    }
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    return result;
+}
+
 GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                              const std::vector<GateRef> &args, GateRef hirGate, const char* comment)
 {

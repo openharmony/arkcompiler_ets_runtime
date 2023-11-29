@@ -168,6 +168,13 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
 
+    enum JudgeMethodType {
+        HAS_AOT,
+        HAS_AOT_FASTCALL,
+        HAS_AOT_NOTFASTCALL,
+    };
+
+
     // ************************************************************* Share IR **********************************************************************************
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
@@ -368,6 +375,8 @@ public:
                      const char* comment = nullptr);
     GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
                                bool isNew = false, const char* comment = nullptr);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
+                                            const char* comment = nullptr);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
     GateRef NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args, GateRef hirGate);
@@ -377,15 +386,14 @@ public:
     GateRef GetCallBuiltinId(GateRef method);
 
     // FastCall
-    inline GateRef CanFastCall(GateRef obj);
-    inline GateRef CanFastCallWithBitField(GateRef bitfield);
+    inline GateRef CanFastCall(GateRef jsFunc);
+    inline GateRef CanFastCallWithMethod(GateRef method);
 
     // Js world
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef HasConstructor(GateRef object);
     inline GateRef IsSpecial(GateRef x, JSTaggedType type);
     inline GateRef IsJSFunction(GateRef obj);
-    inline GateRef IsJSFunctionWithBit(GateRef obj);
     inline GateRef IsDictionaryMode(GateRef object);
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef IsStableElements(GateRef hClass);
@@ -550,9 +558,8 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
-    GateRef IsOptimizedAndNotFastCall(GateRef obj);
-    GateRef IsOptimized(GateRef obj);
-    GateRef IsOptimizedWithBitField(GateRef bitfield);
+    inline GateRef JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type);
+    inline GateRef JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type);
     GateRef ComputeTaggedArraySize(GateRef length);
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef TaggedIsHeapObjectOp(GateRef value);

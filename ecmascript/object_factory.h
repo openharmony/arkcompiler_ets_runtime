@@ -232,9 +232,6 @@ public:
     JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle,
                                        const JSHandle<JSTaggedValue> &homeObject);
 
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle, FunctionKind kind,
-                                       bool isOptimized, bool canFastCall);
-
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
 
     JSHandle<JSFunction> NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
@@ -560,11 +557,9 @@ public:
     JSHandle<JSObject> NewJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
-                                     bool isOptimized = false, bool canFastCall = false);
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
-                                     const JSHandle<JSTaggedValue> &prototype,
-                                     bool isOptimized = false, bool canFastCall = false);
+                                     const JSHandle<JSTaggedValue> &prototype);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
@@ -648,7 +643,6 @@ public:
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
-    JSHandle<JSHClass> GetNonOptimizedHclass(JSHandle<JSHClass> oldHClassHandle, FunctionKind kind);
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
@@ -693,8 +687,7 @@ private:
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                           const JSHandle<JSTaggedValue> &prototype,
-                                           bool isOptimized = false, bool canFastCall = false);
+                                           const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 

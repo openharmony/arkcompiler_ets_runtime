@@ -64,6 +64,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PushCallNewAndDispatch)                \
     V(PushSuperCallAndDispatch)              \
     V(PushCallNewAndDispatchNative)          \
+    V(PushNewTargetAndDispatchNative)        \
     V(PushCallRangeAndDispatchNative)        \
     V(PushCallThisRangeAndDispatch)          \
     V(ResumeRspAndDispatch)                  \

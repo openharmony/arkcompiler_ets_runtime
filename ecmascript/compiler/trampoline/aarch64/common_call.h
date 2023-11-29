@@ -165,6 +165,8 @@ public:
 
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 
+    static void PushNewTargetAndDispatchNative(ExtendedAssembler *assembler);
+
     static void PushCallNewAndDispatch(ExtendedAssembler *assembler);
 
     static void PushSuperCallAndDispatch(ExtendedAssembler *assembler);
@@ -237,7 +239,7 @@ private:
 
     static void CallNativeEntry(ExtendedAssembler *assembler);
 
-    static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
+    static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     friend class OptimizedCall;
 };
 }  // namespace panda::ecmascript::x64

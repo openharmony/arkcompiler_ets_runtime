@@ -153,33 +153,17 @@
     V(JSTaggedValue, DynamicImportJob, DYNAMIC_IMPORT_JOB_INDEX)                                    \
     V(JSTaggedValue, TemplateMap, TEMPLATE_MAP_INDEX)                                               \
     V(JSTaggedValue, FunctionClassWithProto, FUNCTION_CLASS_WITH_PROTO)                             \
-    V(JSTaggedValue, FunctionClassWithProtoOptimized, FUNCTION_CLASS_WITH_PROTO_OPTIMIZED)          \
-    V(JSTaggedValue, FunctionClassWithProtoOptimizedWithFastCall,                                   \
-        FUNCTION_CLASS_WITH_PROTO_OPTIMIZED_WITH_FAST_CALL)                                         \
     V(JSTaggedValue, FunctionClassWithoutProto, FUNCTION_CLASS_WITHOUT_PROTO)                       \
-    V(JSTaggedValue, FunctionClassWithoutProtoOptimized, FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED)    \
-    V(JSTaggedValue, FunctionClassWithoutProtoOptimizedWithFastCall,                                \
-        FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED_WITH_FAST_CALL)                                      \
     V(JSTaggedValue, FunctionClassWithoutName, FUNCTION_CLASS_WITHOUT_NAME)                         \
     V(JSTaggedValue, ArgumentsClass, ARGUMENTS_CLASS)                                               \
     V(JSTaggedValue, ArgumentsCallerAccessor, ARGUMENTS_CALLER_ACCESSOR)                            \
     V(JSTaggedValue, ArgumentsCalleeAccessor, ARGUMENTS_CALLEE_ACCESSOR)                            \
     V(JSTaggedValue, AsyncFunctionClass, ASYNC_FUNCTION_CLASS)                                      \
-    V(JSTaggedValue, AsyncFunctionClassOptimized, ASYNC_FUNCTION_CLASS_OPTIMIZED)                   \
-    V(JSTaggedValue, AsyncFunctionClassOptimizedWithFastCall,                                       \
-        ASYNC_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL)                                              \
     V(JSTaggedValue, AsyncAwaitStatusFunctionClass, ASYNC_AWAIT_STATUS_FUNCTION_CLASS)              \
     V(JSTaggedValue, PromiseReactionFunctionClass, PROMISE_REACTION_FUNCTION_CLASS)                 \
     V(JSTaggedValue, PromiseExecutorFunctionClass, PROMISE_EXECUTOR_FUNCTION_CLASS)                 \
     V(JSTaggedValue, GeneratorFunctionClass, GENERATOR_FUNCTION_CLASS)                              \
-    V(JSTaggedValue, GeneratorFunctionClassOptimized, GENERATOR_FUNCTION_CLASS_OPTIMIZED)           \
-    V(JSTaggedValue, GeneratorFunctionClassOptimizedWithFastCall,                                   \
-        GENERATOR_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL)                                          \
     V(JSTaggedValue, AsyncGeneratorFunctionClass, ASYNC_GENERATOR_FUNCTION_CLASS)                   \
-    V(JSTaggedValue, AsyncGeneratorFunctionClassOptimized,                                          \
-        ASYNC_GENERATOR_FUNCTION_CLASS_OPTIMIZED)                                                   \
-    V(JSTaggedValue, AsyncGeneratorFunctionClassOptimizedWithFastCall,                              \
-        ASYNC_GENERATOR_FUNCTION_CLASS_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL)                     \
     V(JSTaggedValue, PromiseAllResolveElementFunctionClass, PROMISE_ALL_RESOLVE_ELEMENT_FUNC_CLASS) \
     V(JSTaggedValue, PromiseAnyRejectElementFunctionClass, PROMISE_ANY_REJECT_ELEMENT_FUNC_CLASS)   \
     V(JSTaggedValue, PromiseAllSettledElementFunctionClass, PROMISE_ALL_SETTLED_ELEMENT_FUNC_CLASS) \

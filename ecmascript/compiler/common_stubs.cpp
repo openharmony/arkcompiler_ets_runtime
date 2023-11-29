@@ -723,9 +723,8 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-    GateRef hClass = LoadHClass(func);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
-    Branch(CanFastCallWithBitField(bitfield), &methodIsFastCall, &notFastCall);
+    Branch(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+        &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);
     {
         Branch(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
@@ -812,27 +811,33 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Branch(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
             Bind(&isHeapObject);
             {
-                GateRef hClass = LoadHClass(target);
-                GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
-                Branch(IsClassConstructorFromBitField(bitfield), &slowPath, &notCallConstructor);
-                Bind(&notCallConstructor);
-                GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-                GateRef actualArgv = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * sizeof(JSTaggedValue)));
-                Branch(CanFastCallWithBitField(bitfield), &fastCall, &notFastCall);
-                Bind(&fastCall);
+                Branch(IsJSFunction(target), &isJsFcuntion, &slowPath);
+                Bind(&isJsFcuntion);
                 {
-                    result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
-                        { glue, target, thisTarget, actualArgc, actualArgv });
-                    Jump(&exit);
-                }
-                Bind(&notFastCall);
-                {
-                    Branch(IsOptimizedWithBitField(bitfield), &slowCall, &slowPath);
-                    Bind(&slowCall);
+                    Branch(IsClassConstructor(target), &slowPath, &notCallConstructor);
+                    Bind(&notCallConstructor);
+                    GateRef meth = GetMethodFromFunction(target);
+                    GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+                    GateRef actualArgv =
+                        PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
+                    Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                        &fastCall, &notFastCall);
+                    Bind(&fastCall);
                     {
-                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
-                            { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                            { glue, target, thisTarget, actualArgc, actualArgv });
                         Jump(&exit);
+                    }
+                    Bind(&notFastCall);
+                    {
+                        Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                            &slowCall, &slowPath);
+                        Bind(&slowCall);
+                        {
+                            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                                { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
+                            Jump(&exit);
+                        }
                     }
                 }
             }
@@ -859,27 +864,31 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Branch(TaggedIsHeapObject(method), &isHeapObject1, &slowPath1);
             Bind(&isHeapObject1);
             {
-                GateRef hClass = LoadHClass(method);
-                GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
-                Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
-                Bind(&notCallConstructor1);
-                GateRef meth = GetMethodFromFunction(method);
-                GateRef code = GetAotCodeAddr(meth);
-                Branch(CanFastCallWithBitField(bitfield), &fastCall1, &notFastCall1);
-                Bind(&fastCall1);
+                Branch(IsJSFunction(method), &isJsFcuntion1, &slowPath1);
+                Bind(&isJsFcuntion1);
                 {
-                    result = FastCallOptimized(glue, code,
-                        { glue, method, handler, target, thisTarget, arrHandle });
-                    Jump(&exit);
-                }
-                Bind(&notFastCall1);
-                {
-                    Branch(IsOptimizedWithBitField(bitfield), &slowCall1, &slowPath1);
-                    Bind(&slowCall1);
+                    Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
+                    Bind(&notCallConstructor1);
+                    GateRef meth = GetMethodFromFunction(method);
+                    GateRef code = GetAotCodeAddr(meth);
+                    Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                        &fastCall1, &notFastCall1);
+                    Bind(&fastCall1);
                     {
-                        result = CallOptimized(glue, code,
-                            { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                        result = FastCallOptimized(glue, code,
+                            { glue, method, handler, target, thisTarget, arrHandle });
                         Jump(&exit);
+                    }
+                    Bind(&notFastCall1);
+                    {
+                        Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                            &slowCall1, &slowPath1);
+                        Bind(&slowCall1);
+                        {
+                            result = CallOptimized(glue, code,
+                                { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                            Jump(&exit);
+                        }
                     }
                 }
             }

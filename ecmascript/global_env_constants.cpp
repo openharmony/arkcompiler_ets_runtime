@@ -334,7 +334,6 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
                 factory->CreateDefaultClassPrototypeHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
     SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
                 factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
-    InitClassConstructorOptimizedClass(factory);
 }
 
 void GlobalEnvConstants::InitGlobalCaches()
@@ -362,17 +361,6 @@ void GlobalEnvConstants::InitSpecialForSnapshot()
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
     InitJSAPIContainers();
-}
-
-void GlobalEnvConstants::InitClassConstructorOptimizedClass(ObjectFactory *factory)
-{
-    auto optimized = factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject()));
-    optimized->SetIsOptimized(true);
-    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_OPTIMIZED_HCLASS_INDEX, optimized);
-    auto fastCall = factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject()));
-    fastCall->SetIsOptimized(true);
-    fastCall->SetCanFastCall(true);
-    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_OPTIMIZED_WITH_FAST_CALL_HCLASS_INDEX, fastCall);
 }
 
 void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)

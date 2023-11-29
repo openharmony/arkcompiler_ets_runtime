@@ -6891,7 +6891,8 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
-        Branch(CanFastCallWithBitField(bitfield), &methodIsFastCall, &methodNotFastCall);
+        Branch(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+            &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);
         {
             GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
@@ -7058,7 +7059,8 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
 
         Bind(&methodNotFastCall);
-        Branch(IsOptimizedWithBitField(bitfield), &methodisAot, &methodNotAot);
+        Branch(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
+            &methodisAot, &methodNotAot);
         Bind(&methodisAot);
         {
             GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
@@ -7907,45 +7909,6 @@ GateRef StubBuilder::GetFuncKind(GateRef method)
     GateRef kind = Int32And(Int32LSR(bitfield, Int32(Method::FunctionKindBits::START_BIT)),
                             Int32((1LU << Method::FunctionKindBits::SIZE) - 1));
     return kind;
-}
-
-GateRef StubBuilder::GetFunctionHClass(GateRef glue, GateRef method, size_t idx1, size_t idx2, size_t idx3)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    DEFVARIABLE(hclass, VariableType::JS_ANY(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    Label exit(env);
-    Label isAot(env);
-    Label notAot(env);
-    Branch(IsAotWithCallField(method), &isAot, &notAot);
-    Bind(&isAot);
-    {
-        Label isFastCall(env);
-        Label notFastCall(env);
-        Branch(IsFastCall(method), &isFastCall, &notFastCall);
-        Bind(&isFastCall);
-        {
-            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx1);
-            Jump(&exit);
-        }
-        Bind(&notFastCall);
-        {
-            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx2);
-            Jump(&exit);
-        }
-    }
-    Bind(&notAot);
-    {
-        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, idx3);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *hclass;
-    env->SubCfgExit();
-    return ret;
 }
 
 GateRef StubBuilder::CalArrayRelativePos(GateRef index, GateRef arrayLen)

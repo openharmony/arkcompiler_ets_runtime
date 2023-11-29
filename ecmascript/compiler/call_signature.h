@@ -397,6 +397,7 @@ private:
     V(PushCallThisArgs2AndDispatch)             \
     V(PushCallThisArgs3AndDispatch)             \
     V(PushCallNewAndDispatchNative)             \
+    V(PushNewTargetAndDispatchNative)           \
     V(PushCallNewAndDispatch)                   \
     V(PushSuperCallAndDispatch)                 \
     V(CallGetter)                               \

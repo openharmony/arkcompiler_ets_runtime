@@ -242,7 +242,14 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
 
     JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
         JSHandle<JSTaggedValue>(thread, module.GetTaggedValue()), entryIndex, isLoadedAOT, &canFastCall);
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunction(method, kind, isLoadedAOT, canFastCall);
+    JSHandle<JSHClass> functionClass;
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    if (kind == FunctionKind::NORMAL_FUNCTION) {
+        functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    } else {
+        functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    }
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
 
     return jsFunc;

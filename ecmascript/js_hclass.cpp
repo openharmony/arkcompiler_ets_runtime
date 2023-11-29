@@ -129,8 +129,7 @@ void TransitionsDictionary::Rehash(const JSThread *thread, TransitionsDictionary
 }
 
 // class JSHClass
-void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
-                          bool isOptimized, bool canFastCall)
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ClearBitField();
@@ -144,8 +143,6 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     }
     if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
         SetIsJSFunction(true);
-        SetIsOptimized(isOptimized);
-        SetCanFastCall(canFastCall);
     }
     SetPrototype(thread, JSTaggedValue::Null());
 

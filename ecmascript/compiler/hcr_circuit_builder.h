@@ -193,17 +193,21 @@ GateRef CircuitBuilder::GetObjectType(GateRef hClass)
     return Int32And(bitfield, Int32((1LU << JSHClass::ObjectTypeBits::SIZE) - 1));
 }
 
-inline GateRef CircuitBuilder::CanFastCall(GateRef obj)
+inline GateRef CircuitBuilder::CanFastCall(GateRef jsFunc)
 {
-    GateRef hClass = LoadHClass(obj);
-    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::CanFastCallBit::START_BIT)), Int32(0));
+    GateRef method = GetMethodFromFunction(jsFunc);
+    return CanFastCallWithMethod(method);
 }
 
-inline GateRef CircuitBuilder::CanFastCallWithBitField(GateRef bitfield)
+inline GateRef CircuitBuilder::CanFastCallWithMethod(GateRef method)
 {
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::CanFastCallBit::START_BIT)), Int32(0));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(callfield, Int64(MethodLiteral::IsFastCallBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsFastCallBit::SIZE) - 1)),
+        Int64(0));
 }
 
 GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
@@ -307,14 +311,6 @@ GateRef CircuitBuilder::IsClassPrototypeWithBitField(GateRef bitfield)
     auto mask = Int32(classBitMask | ptBitMask);
     auto classPt = Int32And(bitfield, mask);
     return Int32Equal(classPt, mask);
-}
-
-inline GateRef CircuitBuilder::IsJSFunctionWithBit(GateRef obj)
-{
-    GateRef hClass = LoadHClass(obj);
-    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsJSFunctionBit::START_BIT)), Int32(0));
 }
 
 GateRef CircuitBuilder::CreateWeakRef(GateRef x)

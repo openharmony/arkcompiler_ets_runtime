@@ -371,6 +371,8 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
     int64_t valueBuffer1[3] = {
         static_cast<int64_t>(FunctionKind::BASE_CONSTRUCTOR), static_cast<int64_t>(FunctionKind::GENERATOR_FUNCTION),
         static_cast<int64_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION) };
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     Branch(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::ARROW_FUNCTION))),
         &isNormal, &notNormal);
     Bind(&isNormal);
@@ -379,18 +381,12 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
         Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 2);
         Bind(&labelBuffer[0]);
         {
-            hclass = GetFunctionHClass(glue, method,
-                GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED_WITH_FAST_CALL,
-                GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED,
-                GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
             Jump(&exit);
         }
         Bind(&labelBuffer[1]);
         {
-            hclass = GetFunctionHClass(glue, method,
-                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED_WITH_FAST_CALL,
-                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO_OPTIMIZED,
-                GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
             Jump(&exit);
         }
     }
@@ -400,10 +396,7 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
             &isAsync, &notAsync);
         Bind(&isAsync);
         {
-            hclass = GetFunctionHClass(glue, method,
-                GlobalEnv::ASYNC_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
-                GlobalEnv::ASYNC_FUNCTION_CLASS_OPTIMIZED,
-                GlobalEnv::ASYNC_FUNCTION_CLASS);
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ASYNC_FUNCTION_CLASS);
             Jump(&exit);
         }
         Bind(&notAsync);
@@ -412,27 +405,19 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
             Switch(kind, &defaultLabel, valueBuffer1, labelBuffer1, 3);
             Bind(&labelBuffer1[0]);
             {
-                hclass = GetFunctionHClass(glue, method,
-                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED_WITH_FAST_CALL,
-                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO_OPTIMIZED,
-                    GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
                 Jump(&exit);
             }
             Bind(&labelBuffer1[1]);
             {
-                hclass = GetFunctionHClass(glue, method,
-                    GlobalEnv::GENERATOR_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
-                    GlobalEnv::GENERATOR_FUNCTION_CLASS_OPTIMIZED,
-                    GlobalEnv::GENERATOR_FUNCTION_CLASS);
+                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::GENERATOR_FUNCTION_CLASS);
                 Jump(&exit);
             }
             // 2 : index of kind
             Bind(&labelBuffer1[2]);
             {
-                hclass = GetFunctionHClass(glue, method,
-                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS_FUNCTION_CLASS_OPTIMIZED_WITH_FAST_CALL,
-                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS_OPTIMIZED,
-                    GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS);
+                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                           GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS);
                 Jump(&exit);
             }
         }

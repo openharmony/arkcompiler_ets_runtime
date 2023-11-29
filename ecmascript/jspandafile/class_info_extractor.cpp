@@ -217,8 +217,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread,
 
 JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                                JSHandle<TaggedArray> &keys,
-                                                               JSHandle<TaggedArray> &properties,
-                                                               JSHandle<Method> &method)
+                                                               JSHandle<TaggedArray> &properties)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -228,15 +227,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
         if (length == ClassInfoExtractor::STATIC_RESERVED_LENGTH && base->IsHole() &&
             properties->Get(NAME_INDEX).IsString()) {
             const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-            if (method->IsAotWithCallField()) {
-                if (method->IsFastCall()) {
-                    return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedWithFastCallClass());
-                } else {
-                    return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorOptimizedClass());
-                }
-            } else {
-                return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorClass());
-            }
+            return JSHandle<JSHClass>(globalConst->GetHandledClassConstructorClass());
         }
     }
     JSHandle<JSHClass> hclass;
@@ -342,7 +333,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
     JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, base, staticKeys,
-                                                                                       staticProperties, method);
+                                                                                       staticProperties);
     // Allocate to non-movable space for PGO
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
         MemSpaceType::NON_MOVABLE);
@@ -437,8 +428,6 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
     }
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
-    constructorHClass->SetIsOptimized(method->IsAotWithCallField());
-    constructorHClass->SetCanFastCall(method->IsFastCall());
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
         MemSpaceType::NON_MOVABLE);
 
