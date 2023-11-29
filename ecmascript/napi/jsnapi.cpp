@@ -2033,6 +2033,39 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
+Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
+    JSValueRef *const argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    int32_t length)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    FunctionCallScope callScope(EcmaVM::ConstCast(vm));
+    JSThread *thread = vm->GetJSThread();
+    if (!IsFunction()) {
+        return JSValueRef::Undefined(vm);
+    }
+    vm->GetJsDebuggerManager()->ClearSingleStepper();
+    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(func, ERROR);
+    JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisValue, undefined, length);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    for (int32_t i = 0; i < length; i++) {
+        JSTaggedValue arg =
+            argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
+        info->SetCallArg(i, arg);
+    }
+    JSTaggedValue result = JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> resultValue(thread, result);
+
+    vm->GetHeap()->ClearKeptObjects();
+    vm->GetJsDebuggerManager()->NotifyReturnNative();
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
+}
+
 Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
