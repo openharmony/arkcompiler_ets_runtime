@@ -262,6 +262,20 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
             }
+            case JSType::JS_API_LINKED_LIST: {
+                JSHandle listHandle = JSHandle<JSAPILinkedList>(thread_, tagValue);
+                valHandle = JSHandle<JSTaggedValue>(thread_, JSAPILinkedList::ConvertToArray(thread_, listHandle));
+                SerializeJSONObject(valHandle, replacer);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                return tagValue;
+            }
+            case JSType::JS_API_LIST: {
+                JSHandle listHandle = JSHandle<JSAPIList>(thread_, tagValue);
+                valHandle = JSHandle<JSTaggedValue>(thread_, JSAPIList::ConvertToArray(thread_, listHandle));
+                SerializeJSONObject(valHandle, replacer);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                return tagValue;
+            }
             // If Type(value) is String, return QuoteJSONString(value).
             case JSType::LINE_STRING:
             case JSType::CONSTANT_STRING:
