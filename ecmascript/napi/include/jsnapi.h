@@ -161,8 +161,9 @@ public:
         return IsEmpty() || GetAddress()->IsHole();
     }
 
-private:
     explicit inline Local(uintptr_t addr) : address_(addr) {}
+
+private:
     inline T *GetAddress() const
     {
         return reinterpret_cast<T *>(address_);
