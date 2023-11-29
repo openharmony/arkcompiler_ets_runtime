@@ -39,7 +39,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     if (!loadedFirstPandaFile && !isBundlePack_) {
         // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
         // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
-        isFirstPandafile_ = true;
+        isFirstPandafile_ = false;
         loadedFirstPandaFile = true;
     }
 }
