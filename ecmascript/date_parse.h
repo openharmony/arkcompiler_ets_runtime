@@ -54,11 +54,16 @@ private:
                 int index = 0;
                 int num = 0;
                 while (IsDigit()) {
-                    int n = (value_ - '0') + num * JSDate::TEN;
-                    if (n >= 0 && n < std::numeric_limits<int>::max()) {
-                        num = n;
-                        index++;
+                    num = (value_ - '0') + num * JSDate::TEN;
+                    index++;
+                    const int maxDecimal = (std::numeric_limits<int>::max() - JSDate::NUM_NINE) / JSDate::TEN;
+                    if (num > maxDecimal) {
+                        break;
                     }
+                    NextChar();
+                }
+                // read the followed digit
+                while (IsDigit()) {
                     NextChar();
                 }
                 *len = index;
