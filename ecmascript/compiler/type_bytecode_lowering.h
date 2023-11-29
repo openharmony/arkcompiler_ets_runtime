@@ -192,6 +192,7 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
 
+    bool CheckDuplicatedBuiltinType(ChunkVector<ProfileType> &types, ProfileType newType);
     void FetchBuiltinsTypes(GateRef gate, ChunkVector<ProfileType> &types);
     void FetchPGORWTypesDual(GateRef gate, ChunkVector<std::pair<ProfileTyper, ProfileTyper>> &types);
     void AddProfiling(GateRef gate);

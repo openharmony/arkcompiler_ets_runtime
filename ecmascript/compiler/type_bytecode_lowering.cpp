@@ -2055,12 +2055,25 @@ void TypeBytecodeLowering::AddProfiling(GateRef gate)
     }
 }
 
+bool TypeBytecodeLowering::CheckDuplicatedBuiltinType(ChunkVector<ProfileType> &types, ProfileType newType)
+{
+    for (auto &type : types) {
+        if (type.GetBuiltinsId() == newType.GetBuiltinsId()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void TypeBytecodeLowering::FetchBuiltinsTypes(GateRef gate, ChunkVector<ProfileType> &types)
 {
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
+            if (CheckDuplicatedBuiltinType(types, temp.GetReceiverType())) {
+                continue;
+            }
             types.emplace_back(temp.GetReceiverType());
         }
     }
