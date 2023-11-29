@@ -79,7 +79,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.LoopBegin(&loopHead);
     auto loopBegin = builder.GetState();
     EXPECT_TRUE(acc.IsLoopHead(loopBegin));
-    auto loadLength = builder.LoadTypedArrayLength(GateType::AnyType(), array);
+    auto loadLength = builder.LoadTypedArrayLength(array, GateType::AnyType());
     acc.SetMachineType(loadLength, MachineType::I32);
     acc.SetGateType(loadLength, GateType::NJSValue());
     auto cmp = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(

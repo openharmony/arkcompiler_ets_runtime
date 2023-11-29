@@ -218,6 +218,7 @@ void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
     UpdateTypeForRWOp(gate, receiver);
     TrySetPropKeyKind(gate, propKey);
     TrySetElementsKind(gate);
+    TrySetOnHeapMode(gate);
 }
 
 void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIndex)
@@ -268,5 +269,41 @@ void PGOTypeInfer::TrySetPropKeyKind(GateRef gate, GateRef propKey)
     if (oldType.IsAnyType() && IsMonoNumberType(*pgoRwTypes)) {
         acc_.SetGateType(propKey, GateType::NumberType());
     }
+}
+
+void PGOTypeInfer::TrySetOnHeapMode(GateRef gate)
+{
+    PGOTypeRef pgoTypes = acc_.TryGetPGOType(gate);
+    const PGORWOpType *pgoRwTypes = pgoTypes.GetPGORWOpType();
+    std::vector<OnHeapMode> modes;
+
+    for (uint32_t i = 0; i < pgoRwTypes->GetCount(); i++) {
+        ProfileType profileType = pgoRwTypes->GetObjectInfo(i).GetProfileType();
+        if (profileType.IsBuiltinsType()) {
+            ProfileType::BuiltinsTypedArrayId id(profileType.GetId());
+            modes.emplace_back(id.GetOnHeapMode());
+        }
+    }
+
+    if (modes.empty()) {
+        return;
+    }
+
+    // monomorphic
+    if (modes.size() == 1) {
+        acc_.TrySetOnHeapMode(gate, modes[0]);
+        return;
+    }
+
+    // polymorphism
+    // If the modes can be merged into monomorphic, still optimize it. Otherwise degrade it to NONE.
+    OnHeapMode mode = modes[0];
+    for (uint32_t i = 1; i < modes.size(); i++) {
+        mode = OnHeap::Merge(mode, modes[i]);
+        if (OnHeap::IsNone(mode)) {
+            break;
+        }
+    }
+    acc_.TrySetOnHeapMode(gate, mode);
 }
 }  // namespace panda::ecmascript

@@ -36,6 +36,7 @@ using ecmascript::kungfu::Verifier;
 using ecmascript::kungfu::Environment;
 using ecmascript::kungfu::CombinedPassVisitor;
 using ecmascript::kungfu::TypeHCRLowering;
+using ecmascript::OnHeapMode;
 HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
 {
     // construct a circuit
@@ -48,14 +49,14 @@ HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
     // after number speculative runner
     builder.SetEnvironment(&env);
     auto array = builder.Arguments(1);
-    auto loadLength = builder.LoadTypedArrayLength(GateType::AnyType(), array);
+    auto loadLength = builder.LoadTypedArrayLength(array, GateType::AnyType());
     acc.SetMachineType(loadLength, MachineType::I32);
     acc.SetGateType(loadLength, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadLength);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "LoadTypedArrayLength", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -85,7 +86,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32ArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32ArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -114,14 +115,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -145,14 +147,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float64OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -176,14 +179,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, FLOAT32OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(array,
+        index, OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "FLOAT32OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -210,14 +214,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT8ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT8ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int8OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -244,14 +249,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt8OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt8OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -278,14 +284,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int16OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT16ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT16ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int16OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -312,14 +319,15 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt16OnHeapArrayLoadElement)
     auto array = builder.Arguments(1);
     acc.SetGateType(array, GateType::AnyType());
     auto index = builder.Int32(1);
-    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(array, index);
+    auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(array, index,
+        OnHeapMode::ON_HEAP);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadElement);
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt16OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -353,7 +361,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32ArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32ArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -385,11 +393,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Int32(2);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -416,11 +425,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Double(1.5);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float64OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -447,11 +457,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Int32(2);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT8ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT8ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int8OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -480,11 +491,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt8OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Int32(2);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::UINT8ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::UINT8ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt8OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -513,11 +525,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int16OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Int32(2);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT16ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::INT16ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int16OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -546,11 +559,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt16OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Int32(2);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::UINT16ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::UINT16ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                         OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt16OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -579,11 +593,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float32OnHeapArrayStoreElement)
     auto index = builder.Int32(1);
     auto value = builder.Double(1.5);
     auto storeElement =
-        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, index, value);
+        builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, index, value,
+                                                                                           OnHeapMode::ON_HEAP);
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float32OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, true, false);
+    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));

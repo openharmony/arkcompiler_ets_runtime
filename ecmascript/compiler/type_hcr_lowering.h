@@ -103,7 +103,6 @@ public:
                     CompilationConfig* cmpCfg,
                     TSManager* tsManager,
                     Chunk* chunk,
-                    bool onHeapCheck,
                     bool enableLoweringBuiltin)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
@@ -111,7 +110,6 @@ public:
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(tsManager),
-          onHeapCheck_(onHeapCheck),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
     }
@@ -121,10 +119,6 @@ public:
     GateRef VisitGate(GateRef gate) override;
 
 private:
-    bool IsOnHeap() const
-    {
-        return onHeapCheck_;
-    }
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
@@ -172,11 +166,13 @@ private:
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerStringLoadElement(GateRef gate);
     GateRef BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
+    GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
                                        Label *isArrayBuffer, Label *exit);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
+    void BuildNotOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
                                      Label *isArrayBuffer, Label *exit);
     void LowerUInt8ClampedArrayStoreElement(GateRef gate);
@@ -252,7 +248,6 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
-    bool onHeapCheck_ {false};
     bool enableLoweringBuiltin_ {false};
 };
 }  // panda::ecmascript::kungfu

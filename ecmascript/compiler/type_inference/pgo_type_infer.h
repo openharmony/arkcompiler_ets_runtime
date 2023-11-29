@@ -77,6 +77,7 @@ private:
     void UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIdx = INVALID_INDEX);
     void TrySetElementsKind(GateRef gate);
     void TrySetPropKeyKind(GateRef gate, GateRef propKey);
+    void TrySetOnHeapMode(GateRef gate);
 
     void Print() const;
     void AddProfiler(GateRef gate, GateType tsType, PGORWOpType pgoType, ChunkSet<GateType>& inferTypes);

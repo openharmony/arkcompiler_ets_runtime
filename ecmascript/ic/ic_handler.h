@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/tagged_object.h"
 
 namespace panda::ecmascript {
@@ -44,6 +45,7 @@ public:
     using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using IsOnHeapBit = AttrIndexBit::NextFlag;
 
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
@@ -124,6 +126,11 @@ public:
     {
         return OffsetBit::Get(handler);
     }
+
+    static inline bool IsOnHeap(uint32_t handler)
+    {
+        return IsOnHeapBit::Get(handler);
+    }
 };
 
 class LoadHandler final : public HandlerBase {
@@ -201,10 +208,12 @@ public:
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 
-    static inline JSHandle<JSTaggedValue> LoadTypedArrayElement(const JSThread *thread)
+    static inline JSHandle<JSTaggedValue> LoadTypedArrayElement(const JSThread *thread,
+                                                                JSHandle<JSTypedArray> typedArray)
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::TYPED_ARRAY, &handler);
+        IsOnHeapBit::Set<uint32_t>(typedArray->GetIsOnHeap(), &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 };

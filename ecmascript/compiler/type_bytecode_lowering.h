@@ -161,9 +161,9 @@ private:
     void LowerGetIterator(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
-    GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
+    GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey, OnHeapMode onHeap);
     void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind);
-    void StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
+    void StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, OnHeapMode onHeap);
     bool IsCreateArray(GateRef receiver);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,

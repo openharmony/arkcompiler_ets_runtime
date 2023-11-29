@@ -38,7 +38,7 @@ void NumberSpeculativeRunner::Run()
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
-    
+
     auto maxId = circuit_->GetMaxGateId();
     typeInfos_.resize(maxId + 1, TypeInfo::NONE);
 
@@ -72,7 +72,7 @@ void NumberSpeculativeRunner::Run()
     maxId = circuit_->GetMaxGateId();
     rangeInfos_.resize(maxId + 1, RangeInfo::NONE());
     CombinedPassVisitor rangeAnalysisVisitor(circuit_, enableLog_, methodName_, chunk_);
-    RangeAnalysis rangeAnalysis(circuit_, &rangeAnalysisVisitor, chunk_, typeInfos_, rangeInfos_, IsOnHeap());
+    RangeAnalysis rangeAnalysis(circuit_, &rangeAnalysisVisitor, chunk_, typeInfos_, rangeInfos_);
     rangeAnalysisVisitor.AddPass(&rangeAnalysis);
     rangeAnalysisVisitor.VisitGraph();
 
