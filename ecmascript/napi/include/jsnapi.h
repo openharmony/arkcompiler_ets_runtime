@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -1528,12 +1529,13 @@ public:
 private:
     static int vmCount_;
     static bool initialize_;
-    static std::unordered_map<uint32_t, std::pair<EcmaVM *, const DebuggerPostTask>> debugInfo_;
+    static std::shared_mutex mutex_;
+    static std::unordered_map<uint32_t, EcmaVM *> vmMap_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
 
-    static EcmaVM *GetEcmaVMByTid(uint32_t tid);
-    static const DebuggerPostTask &GetDebuggerTaskByTid(uint32_t tid);
+    static EcmaVM *GetEcmaVM(uint32_t tid);
+    static void AddEcmaVM(uint32_t tid, EcmaVM *vm);
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);
