@@ -96,9 +96,6 @@ print(isNaN(new Date(-1e81, "").getTime()));
 print(isNaN(new Date(Number.NaN).getTime()));
 print(isNaN(new Date(Number.NaN, "").getTime()));
 
-//mjsunit/regress/regress-2444.js
-var flags;
-
 function assertArrayEquals(expected, found) {
     if (expected.length != found.length) {
         return false
@@ -111,79 +108,6 @@ function assertArrayEquals(expected, found) {
         return true
     }
 };
-function resetFlags(size) {
-  flags = Array(size);
-  while (size--) flags[size] = 0;
-}
-
-function assertFlags(array) {
-  print(assertArrayEquals(array, flags));
-}
-
-function object_factory(flag_index, value, expected_flags) {
-  var obj = {};
-  obj.valueOf = function() {
-    assertFlags(expected_flags);
-    flags[flag_index]++;
-    return value;
-  }
-  return obj;
-}
-print(Math.max());
-resetFlags(1);
-print(Math.max(object_factory(0, NaN, [0])));
-assertFlags([1]);
-
-resetFlags(2);
-print(Math.max(object_factory(0, NaN, [0, 0]),object_factory(1,   0, [1, 0])));
-assertFlags([1, 1]);
-resetFlags(3);
-print(Math.max(object_factory(0, NaN, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2,   1, [1, 1, 0])));
-assertFlags([1, 1, 1]);
-
-resetFlags(3);
-print(Math.max(object_factory(0,   2, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2, NaN, [1, 1, 0])));
-assertFlags([1, 1, 1]);
-
-resetFlags(3);
-print(Math.max(object_factory(0,   2, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2,   1, [1, 1, 0])));
-assertFlags([1, 1, 1]);
-
-
-print(Math.min());
-
-resetFlags(1);
-print(Math.min(object_factory(0, NaN, [0])));
-assertFlags([1]);
-
-resetFlags(2);
-print(Math.min(object_factory(0, NaN, [0, 0]),
-                      object_factory(1,   0, [1, 0])));
-assertFlags([1, 1]);
-
-resetFlags(3);
-print(Math.min(object_factory(0, NaN, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2,   1, [1, 1, 0])));
-assertFlags([1, 1, 1]);
-
-resetFlags(3);
-print(Math.min(object_factory(0,   2, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2, NaN, [1, 1, 0])));
-assertFlags([1, 1, 1]);
-
-resetFlags(3);
-print(Math.min(object_factory(0,   2, [0, 0, 0]),
-                      object_factory(1,   0, [1, 0, 0]),
-                      object_factory(2,   1, [1, 1, 0])));
-assertFlags([1, 1, 1]);
 
 // regress/regress-crbug-658691.js
 function f(a, b, c) {

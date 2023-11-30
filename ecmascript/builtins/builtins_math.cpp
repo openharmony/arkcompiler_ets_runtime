@@ -20,7 +20,6 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
@@ -511,28 +510,15 @@ JSTaggedValue BuiltinsMath::Max(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argLen = argv->GetArgsNumber();
-    // 1. Let coerced be a new empty List.
-    // 2. For each element arg of args, do
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> numberList(factory->NewTaggedArray(argLen));
-    for (uint32_t i = 0; i < argLen; i++) {
-        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
-        //    a. Let n be ? ToNumber(arg).
-        auto numberValue = JSTaggedValue::ToNumber(thread, msg);
-        //    b. Append n to coerced.
-        numberList->Set(thread, i, numberValue);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
-    // 3. Let highest be -∞𝔽.
-    // 4. For each element number of coerced, do
-    //    a. If number is NaN, return NaN.
-    //    b. If number is +0𝔽 and highest is -0𝔽, set highest to +0𝔽.
-    //    c. If number > highest, set highest to number.
-    JSTaggedValue result = JSTaggedNumber(-base::POSITIVE_INFINITY);
+    auto numberValue = JSTaggedNumber(-base::POSITIVE_INFINITY);
+    // If no arguments are given, the result is -inf
+    auto result = JSTaggedNumber(-base::POSITIVE_INFINITY);
     auto tmpMax = -base::POSITIVE_INFINITY;
     auto value = -base::POSITIVE_INFINITY;
     for (uint32_t i = 0; i < argLen; i++) {
-        JSTaggedValue numberValue = numberList->Get(i);
+        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
+        numberValue = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         if (std::isnan(std::abs(value))) {
             // If any value is NaN, or -NaN, the max result is NaN
@@ -548,7 +534,7 @@ JSTaggedValue BuiltinsMath::Max(EcmaRuntimeCallInfo *argv)
             tmpMax = value;
         }
     }
-    return result;
+    return result;	
 }
 
 // 20.2.2.25
@@ -559,31 +545,18 @@ JSTaggedValue BuiltinsMath::Min(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argLen = argv->GetArgsNumber();
-    // 1. Let coerced be a new empty List.
-    // 2. For each element arg of args, do
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> numberList(factory->NewTaggedArray(argLen));
-    for (uint32_t i = 0; i < argLen; i++) {
-        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
-        //    a. Let n be ? ToNumber(arg).
-        auto numberValue = JSTaggedValue::ToNumber(thread, msg);
-        //    b. Append n to coerced.
-        numberList->Set(thread, i, numberValue);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
-    // 3. Let lowest be +∞𝔽.
-    // 4. For each element number of coerced, do
-    //    a. If number is NaN, return NaN.
-    //    b. If number is -0𝔽 and lowest is +0𝔽, set lowest to -0𝔽.
-    //    c. If number < lowest, set lowest to number.
-    JSTaggedValue result = JSTaggedNumber(base::POSITIVE_INFINITY);
+    auto numberValue = JSTaggedNumber(base::POSITIVE_INFINITY);
+    // If no arguments are given, the result is inf
+    auto result = JSTaggedNumber(base::POSITIVE_INFINITY);
     auto tmpMin = base::POSITIVE_INFINITY;
     auto value = base::POSITIVE_INFINITY;
     for (uint32_t i = 0; i < argLen; i++) {
-        JSTaggedValue numberValue = numberList->Get(i);
+        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
+        numberValue = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         if (std::isnan(std::abs(value))) {
-            // If any value is NaN or -NaN, the min result is NaN
+            // If any value is NaN or -NaN, the min result is NaN	
             result = numberValue;
             break;
         }
