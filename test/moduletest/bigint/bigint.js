@@ -93,3 +93,10 @@ hmap.set(d, '4');
 hmap.forEach((val,key)=>{
     print("hmap val:" + val, "key :" + key);
 })
+
+const v83 = new BigUint64Array(1096);
+try {
+    v83["toLocaleString"]("toLocaleString", "toLocaleString");
+} catch (error) {
+    print(error);
+}

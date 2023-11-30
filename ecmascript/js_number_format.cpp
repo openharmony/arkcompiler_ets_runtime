@@ -444,7 +444,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     ObjectFactory *factory = ecmaVm->GetFactory();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
-
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     // 2. If options is undefined, then
     //      a. Let options be ObjectCreate(null).
     // 3. Else,
