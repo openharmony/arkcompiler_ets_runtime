@@ -1738,7 +1738,7 @@ HWTEST_F_L0(JSNApiSplTest, PropertyAttribute_SetConfigurable)
     TEST_TIME(PropertyAttribute::SetConfigurable);
 }
 
-HWTEST_F_L0(JSNApiSplTest, HasWritable_true)
+HWTEST_F_L0(JSNApiSplTest, HasWritable_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -1753,7 +1753,7 @@ HWTEST_F_L0(JSNApiSplTest, HasWritable_true)
     TEST_TIME(PropertyAttribute::HasWritable);
 }
 
-HWTEST_F_L0(JSNApiSplTest, HasConfigurable_false)
+HWTEST_F_L0(JSNApiSplTest, HasConfigurable_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -1767,7 +1767,7 @@ HWTEST_F_L0(JSNApiSplTest, HasConfigurable_false)
     TEST_TIME(PropertyAttribute::HasConfigurable);
 }
 
-HWTEST_F_L0(JSNApiSplTest, HasEnumerable_true)
+HWTEST_F_L0(JSNApiSplTest, HasEnumerable_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -1810,7 +1810,7 @@ HWTEST_F_L0(JSNApiSplTest, SetValue)
     TEST_TIME(PropertyAttribute::SetValue);
 }
 
-HWTEST_F_L0(JSNApiSplTest, HasValue)
+HWTEST_F_L0(JSNApiSplTest, PropertyAttribute_HasValue)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -1818,13 +1818,13 @@ HWTEST_F_L0(JSNApiSplTest, HasValue)
     PropertyAttribute object(value, true, true, true);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object.HasValue();
+        (void)object.HasValue();
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(PropertyAttribute::HasValue);
 }
 
-HWTEST_F_L0(JSNApiSplTest, SetGetter)
+HWTEST_F_L0(JSNApiSplTest, PropertyAttribute_SetGetter)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -1838,16 +1838,16 @@ HWTEST_F_L0(JSNApiSplTest, SetGetter)
     TEST_TIME(PropertyAttribute::SetGetter);
 }
 
-HWTEST_F_L0(JSNApiSplTest, GetGetter)
+HWTEST_F_L0(JSNApiSplTest, PropertyAttribute_GetGetter)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> value = ObjectRef::New(vm_);
+    Local<JSValueRef> value = BooleanRef::New(vm_, true);
     PropertyAttribute object;
     object.SetGetter(value);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object.GetGetter(vm_);
+        (void)object.GetGetter(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(PropertyAttribute::GetGetter);
@@ -1916,7 +1916,8 @@ HWTEST_F_L0(JSNApiSplTest, Float32ArrayRef_New)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 4);
+    int32_t num = 4;
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
     int32_t byteOffset = 4;
     int32_t length = 20;
     gettimeofday(&g_beginTime, nullptr);
@@ -1931,7 +1932,8 @@ HWTEST_F_L0(JSNApiSplTest, Float64ArrayRef_New)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 4);
+    int32_t num = 4;
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
     int32_t byteOffset = 4;
     int32_t length = 20;
     gettimeofday(&g_beginTime, nullptr);
@@ -1946,7 +1948,8 @@ HWTEST_F_L0(JSNApiSplTest, BigInt64ArrayRef_New)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 4);
+    int32_t num = 4;
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
     int32_t byteOffset = 4;
     int32_t length = 20;
     gettimeofday(&g_beginTime, nullptr);
@@ -1961,7 +1964,8 @@ HWTEST_F_L0(JSNApiSplTest, BigUint64ArrayRef_New)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 4);
+    int32_t num = 4;
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
     int32_t byteOffset = 4;
     int32_t length = 20;
     gettimeofday(&g_beginTime, nullptr);
@@ -1987,8 +1991,8 @@ HWTEST_F_L0(JSNApiSplTest, GetOriginalSource)
     jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
     jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
     jSRegExp->SetLength(0);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+    JSHandle<JSTaggedValue> jsRegTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->GetOriginalSource(vm_);
@@ -2012,8 +2016,8 @@ HWTEST_F_L0(JSNApiSplTest, GetOriginalFlags)
     jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
     jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
     jSRegExp->SetLength(0);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+    JSHandle<JSTaggedValue> jsRegTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->GetOriginalFlags();
@@ -2030,8 +2034,8 @@ HWTEST_F_L0(JSNApiSplTest, IsGlobal)
     auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
     JSHandle<JSGlobalObject> globalObject = JSHandle<JSGlobalObject>::Cast(proto);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(globalObject);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+    JSHandle<JSTaggedValue> jsRegTag = JSHandle<JSTaggedValue>::Cast(globalObject);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->IsGlobal(vm_);
@@ -2050,8 +2054,8 @@ HWTEST_F_L0(JSNApiSplTest, IsIgnoreCase)
     JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
     JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
     JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+    JSHandle<JSTaggedValue> jsRegTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->IsIgnoreCase(vm_);
@@ -2070,8 +2074,8 @@ HWTEST_F_L0(JSNApiSplTest, IsMultiline)
     JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
     JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
     JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+    JSHandle<JSTaggedValue> jsRegTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsRegTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->IsMultiline(vm_);
@@ -2140,7 +2144,7 @@ HWTEST_F_L0(JSNApiSplTest, IsStick)
     TEST_TIME(RegExpRef::IsStick);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2154,7 +2158,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_true)
     TEST_TIME(JSValueRef_BooleaValue_true);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2168,53 +2172,57 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_BooleaValue_false)
     TEST_TIME(JSValueRef_BooleaValue_false);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_int64)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Int64)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> targetInt = NumberRef::New(vm_, 0xffffffffffff);
+    int64_t num = 0xffffffffffff; // 0xffffffffffff = 超过32位的一个数字
+    Local<JSValueRef> targetInt = NumberRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int64_t i64 = targetInt->IntegerValue(vm_);
         UNUSED(i64);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IntegerValue_int64);
+    TEST_TIME(JSValueRef_IntegerValue_Int64);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_double)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Double)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> targetInt = NumberRef::New(vm_, 123.456);
+    double num = 123.456; // 123.456 = 随机构造的一个double
+    Local<JSValueRef> targetInt = NumberRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int64_t i64 = targetInt->IntegerValue(vm_);
         UNUSED(i64);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IntegerValue_double);
+    TEST_TIME(JSValueRef_IntegerValue_Double);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_int)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> targetInt = IntegerRef::New(vm_, 789);
+    int num = 789; // 123.456 = 随机构造的一个int
+    Local<JSValueRef> targetInt = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int64_t i64 = targetInt->IntegerValue(vm_);
         UNUSED(i64);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IntegerValue_int);
+    TEST_TIME(JSValueRef_IntegerValue_Int);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_Uint32Value)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> targetUInt = IntegerRef::NewFromUnsigned(vm_, 456);
+    unsigned int num = 456; // 123.456 = 随机构造的一个unsigned int
+    Local<JSValueRef> targetUInt = IntegerRef::NewFromUnsigned(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         uint32_t ui = targetUInt->Uint32Value(vm_);
@@ -2224,7 +2232,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_Uint32Value)
     TEST_TIME(JSValueRef_Uint32Value);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_string)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2236,14 +2244,14 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_string)
         UNUSED(npr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_ToNativePointer_string);
+    TEST_TIME(JSValueRef_ToNativePointer_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_int)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new int(123));
+    void *vp1 = static_cast<void *>(new int(123)); // 123 = 随机构造的一个int
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2251,14 +2259,14 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_int)
         UNUSED(npr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_ToNativePointer_int);
+    TEST_TIME(JSValueRef_ToNativePointer_Int);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_double)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Double)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new double(123.456));
+    void *vp1 = static_cast<void *>(new double(123.456)); // 123.456 = 随机构造的一个double
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2266,10 +2274,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_double)
         UNUSED(npr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_ToNativePointer_double);
+    TEST_TIME(JSValueRef_ToNativePointer_Double);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_char)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Char)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2281,14 +2289,14 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_char)
         UNUSED(npr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_ToNativePointer_char);
+    TEST_TIME(JSValueRef_ToNativePointer_Char);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_long)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Long)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new long(123456));
+    void *vp1 = static_cast<void *>(new long(123456)); // 123456 = 随机构造的一个long
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2296,24 +2304,25 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_long)
         UNUSED(npr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_ToNativePointer_long);
+    TEST_TIME(JSValueRef_ToNativePointer_Long);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> tag = IntegerRef::New(vm_, 123);
+    int num = 123; // 123 = 随机构造的一个int
+    Local<JSValueRef> tag = IntegerRef::New(vm_,  num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->IsUndefined();
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsUndefined_false);
+    TEST_TIME(JSValueRef_IsUndefined_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2324,24 +2333,25 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsUndefined_true);
+    TEST_TIME(JSValueRef_IsUndefined_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> tag = IntegerRef::New(vm_, 123);
+    int num = 123; // 123 = 随机构造的一个int
+    Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->IsNull();
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsNull_false);
+    TEST_TIME(JSValueRef_IsNull_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2352,10 +2362,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsNull_true);
+    TEST_TIME(JSValueRef_IsNull_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2366,38 +2376,40 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_WithinInt32_false);
+    TEST_TIME(JSValueRef_WithinInt32_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> tag = IntegerRef::New(vm_, 456);
+    int num = 456; // 456 = 随机构造的一个int
+    Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->WithinInt32();
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_WithinInt32_true);
+    TEST_TIME(JSValueRef_WithinInt32_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> tag = IntegerRef::New(vm_, 123);
+    int num = 123; // 123 = 随机构造的一个int
+    Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->IsBoolean();
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsBoolean_false);
+    TEST_TIME(JSValueRef_IsBoolean_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2408,10 +2420,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsBoolean_true);
+    TEST_TIME(JSValueRef_IsBoolean_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2422,10 +2434,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsString_false);
+    TEST_TIME(JSValueRef_IsString_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2436,10 +2448,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsString_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsString_true);
+    TEST_TIME(JSValueRef_IsString_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2450,10 +2462,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsProxy_false);
+    TEST_TIME(JSValueRef_IsProxy_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2464,10 +2476,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsProxy_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsProxy_true);
+    TEST_TIME(JSValueRef_IsProxy_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2478,10 +2490,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsPromise_false);
+    TEST_TIME(JSValueRef_IsPromise_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2492,10 +2504,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPromise_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsPromise_true);
+    TEST_TIME(JSValueRef_IsPromise_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2506,24 +2518,25 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsDataView_false);
+    TEST_TIME(JSValueRef_IsDataView_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> tag = DataViewRef::New(vm_, ArrayBufferRef::New(vm_, 0), 0, 0);
+    int num = 0; // 0 = 随机构造的一个int
+    Local<JSValueRef> tag = DataViewRef::New(vm_, ArrayBufferRef::New(vm_, num), num, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->IsDataView();
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsDataView_true);
+    TEST_TIME(JSValueRef_IsDataView_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakRef_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakRef_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2534,10 +2547,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakRef_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsWeakRef_false);
+    TEST_TIME(JSValueRef_IsWeakRef_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2548,10 +2561,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsWeakMap_false);
+    TEST_TIME(JSValueRef_IsWeakMap_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2562,10 +2575,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakMap_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsWeakMap_true);
+    TEST_TIME(JSValueRef_IsWeakMap_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2576,10 +2589,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsWeakSet_false);
+    TEST_TIME(JSValueRef_IsWeakSet_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2590,7 +2603,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsWeakSet_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef_IsWeakSet_true);
+    TEST_TIME(JSValueRef_IsWeakSet_True);
 }
 
 HWTEST_F_L0(JSNApiSplTest, Global_Global)
@@ -2607,7 +2620,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_Global)
     TEST_TIME(Global_Global);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_operatorEqual)
+HWTEST_F_L0(JSNApiSplTest, Global_OperatorEqual)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2618,7 +2631,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_operatorEqual)
         global = param;
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_operatorEqual);
+    TEST_TIME(Global_OperatorEqual);
 }
 
 HWTEST_F_L0(JSNApiSplTest, Global_GlobalMove)
@@ -2635,7 +2648,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_GlobalMove)
     TEST_TIME(Global_GlobalMove);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_operatorEqualMove)
+HWTEST_F_L0(JSNApiSplTest, Global_OperatorEqualMove)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2646,7 +2659,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_operatorEqualMove)
         global = std::move(param);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_operatorEqualMove);
+    TEST_TIME(Global_OperatorEqualMove);
 }
 
 HWTEST_F_L0(JSNApiSplTest, Global_Global_VM_Local)
@@ -2731,7 +2744,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_FreeGlobalHandleAddr)
     TEST_TIME(Global_FreeGlobalHandleAddr);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_operatorStar)
+HWTEST_F_L0(JSNApiSplTest, Global_OperatorStar)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2742,10 +2755,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_operatorStar)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_operatorStar);
+    TEST_TIME(Global_OperatorStar);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_operatorPointTo)
+HWTEST_F_L0(JSNApiSplTest, Global_OperatorPointTo)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2756,10 +2769,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_operatorPointTo)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_operatorPointTo);
+    TEST_TIME(Global_OperatorPointTo);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_true)
+HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2770,10 +2783,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_IsEmpty_true);
+    TEST_TIME(Global_IsEmpty_True);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_false)
+HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2784,7 +2797,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_IsEmpty_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_IsEmpty_false);
+    TEST_TIME(Global_IsEmpty_False);
 }
 
 HWTEST_F_L0(JSNApiSplTest, Global_SetWeak)
@@ -2800,12 +2813,12 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeak)
     TEST_TIME(Global_SetWeak);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_int)
+HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new int(123);
+    void *ref = new int(123); // 123 = 随机构造的一个int
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<int>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<int>;
     gettimeofday(&g_beginTime, nullptr);
@@ -2813,10 +2826,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_int)
         global.SetWeakCallback(ref, freeGlobalCallBack, nativeFinalizeCallback);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_SetWeakCallback_int);
+    TEST_TIME(Global_SetWeakCallback_Int);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_string)
+HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2829,15 +2842,15 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_string)
         global.SetWeakCallback(ref, freeGlobalCallBack, nativeFinalizeCallback);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_SetWeakCallback_string);
+    TEST_TIME(Global_SetWeakCallback_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_double)
+HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Double)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new double(123.456);
+    void *ref = new double(123.456); // 123.456 = 随机构造的一个double
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<double>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<double>;
     gettimeofday(&g_beginTime, nullptr);
@@ -2845,10 +2858,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_double)
         global.SetWeakCallback(ref, freeGlobalCallBack, nativeFinalizeCallback);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_SetWeakCallback_double);
+    TEST_TIME(Global_SetWeakCallback_Double);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_char)
+HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Char)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2861,15 +2874,15 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_char)
         global.SetWeakCallback(ref, freeGlobalCallBack, nativeFinalizeCallback);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_SetWeakCallback_char);
+    TEST_TIME(Global_SetWeakCallback_Char);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_long)
+HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Long)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new long(123456);
+    void *ref = new long(123456); // 123456 = 随机构造的一个long
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<long>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<long>;
     gettimeofday(&g_beginTime, nullptr);
@@ -2877,7 +2890,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_long)
         global.SetWeakCallback(ref, freeGlobalCallBack, nativeFinalizeCallback);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_SetWeakCallback_long);
+    TEST_TIME(Global_SetWeakCallback_Long);
 }
 
 HWTEST_F_L0(JSNApiSplTest, Global_ClearWeak)
@@ -2893,7 +2906,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_ClearWeak)
     TEST_TIME(Global_ClearWeak);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_false)
+HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2904,10 +2917,10 @@ HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_false)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_IsWeak_false);
+    TEST_TIME(Global_IsWeak_False);
 }
 
-HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_true)
+HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -2919,7 +2932,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_IsWeak_true)
         UNUSED(b);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(Global_IsWeak_true);
+    TEST_TIME(Global_IsWeak_True);
 }
 
 HWTEST_F_L0(JSNApiSplTest, StringRef_Cast)
@@ -3080,7 +3093,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0};
+    char cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, local->Length());
@@ -3095,7 +3108,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_0)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0};
+    char cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, 0);
@@ -3110,7 +3123,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_true)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0};
+    char cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, 6, true);
@@ -3125,7 +3138,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all_true)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0};
+    char cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, local->Length(), true);
@@ -3140,7 +3153,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf16)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf16(vm_, u"您好，华为！");
-    char16_t cs[16] = {0};
+    char16_t cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf16(cs, 3);
@@ -3155,7 +3168,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteLatin1)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0};
+    char cs[16] = {0}; // 16 = 字符数组的大小
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteLatin1(cs, 8);
@@ -3191,7 +3204,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_IsMixedDebugEnabled)
     TEST_TIME(JSNApi_IsMixedDebugEnabled);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_int)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3201,10 +3214,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_int)
         JSNApi::NotifyNativeCalling(vm_, par);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_NotifyNativeCalling_int);
+    TEST_TIME(JSNApi_NotifyNativeCalling_Int);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_string)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3214,10 +3227,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_string)
         JSNApi::NotifyNativeCalling(vm_, par);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_NotifyNativeCalling_string);
+    TEST_TIME(JSNApi_NotifyNativeCalling_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_char)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_Char)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3227,23 +3240,23 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_char)
         JSNApi::NotifyNativeCalling(vm_, par);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_NotifyNativeCalling_char);
+    TEST_TIME(JSNApi_NotifyNativeCalling_Char);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_long)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_Long)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *par = new long(123456);
+    void *par = new long(123456); // 123456 = 随机构造的long
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         JSNApi::NotifyNativeCalling(vm_, par);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_NotifyNativeCalling_long);
+    TEST_TIME(JSNApi_NotifyNativeCalling_Long);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_nullptr)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_Nullptr)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3253,10 +3266,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_nullptr)
         JSNApi::NotifyNativeCalling(vm_, par);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_NotifyNativeCalling_nullptr);
+    TEST_TIME(JSNApi_NotifyNativeCalling_Nullptr);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_bool)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_Bool)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3268,25 +3281,26 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_bool)
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_bool);
+    TEST_TIME(JSNApi_SerializeValue_Bool);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_int)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> value = IntegerRef::New(vm_, 123);
-    Local<JSValueRef> transfer = IntegerRef::New(vm_, 123);
+    int num = 123; // 123 = 随机构造的int
+    Local<JSValueRef> value = IntegerRef::New(vm_, num);
+    Local<JSValueRef> transfer = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer);
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_int);
+    TEST_TIME(JSNApi_SerializeValue_Int);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3298,10 +3312,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string)
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_string);
+    TEST_TIME(JSNApi_SerializeValue_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string2)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String2)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3312,10 +3326,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string2)
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_string2);
+    TEST_TIME(JSNApi_SerializeValue_String2);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string3)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String3)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3327,10 +3341,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string3)
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_string3);
+    TEST_TIME(JSNApi_SerializeValue_String3);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string_bool)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String_Bool)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3342,10 +3356,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_string_bool)
         UNUSED(ptr);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_SerializeValue_string_bool);
+    TEST_TIME(JSNApi_SerializeValue_String_Bool);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_string)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3358,10 +3372,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_string)
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeserializeValue_string);
+    TEST_TIME(JSNApi_DeserializeValue_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_bool)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Bool)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3373,10 +3387,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_bool)
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeserializeValue_bool);
+    TEST_TIME(JSNApi_DeserializeValue_Bool);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_int)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3388,7 +3402,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_int)
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeserializeValue_int);
+    TEST_TIME(JSNApi_DeserializeValue_Int);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Undefined)
@@ -3421,7 +3435,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Null)
     TEST_TIME(JSNApi_DeserializeValue_Null);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_string)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3432,10 +3446,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_string)
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeleteSerializationData_string);
+    TEST_TIME(JSNApi_DeleteSerializationData_String);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_bool)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Bool)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3445,10 +3459,10 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_bool)
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeleteSerializationData_bool);
+    TEST_TIME(JSNApi_DeleteSerializationData_Bool);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_int)
+HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3458,7 +3472,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_int)
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DeleteSerializationData_int);
+    TEST_TIME(JSNApi_DeleteSerializationData_Int);
 }
 
 HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Undefined)
@@ -3509,7 +3523,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetHostResolveBufferTracker)
         if (inputPath.empty() || buff == nullptr || buffSize == nullptr) {
             return false;
         }
-        return false;
+        return true;
     };
 
     gettimeofday(&g_beginTime, nullptr);
@@ -3538,7 +3552,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetNativePtrGetter)
     TEST_TIME(JSNApi_SetNativePtrGetter);
 }
 
-Local<JSValueRef> HostEnqueueJobCallback(JsiRuntimeCallInfo *)
+Local<JSValueRef> HostEnqueueJobCallback([[maybe_unused]] JsiRuntimeCallInfo *callBackFunc)
 {
     Local<JSValueRef> local;
     return local;
@@ -3607,7 +3621,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DestroyPGOProfiler)
     TEST_TIME(JSNApi_DestroyPGOProfiler);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3628,11 +3642,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_true)
     TEST_TIME(JSValueRef::IsMapIterator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的数字
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsMapIterator());
@@ -3641,12 +3656,14 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_false)
     TEST_TIME(JSValueRef::IsMapIterator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 4);
-    Local<Uint8ClampedArrayRef> object = Uint8ClampedArrayRef::New(vm_, buffer, 0, 4);
+    int32_t length = 4; // 4 = 长度
+    int32_t byteOffset = 0; // 0 = 长度
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, length);
+    Local<Uint8ClampedArrayRef> object = Uint8ClampedArrayRef::New(vm_, buffer, byteOffset, length);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_TRUE(object->IsUint8ClampedArray());
@@ -3655,11 +3672,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_true)
     TEST_TIME(JSValueRef::IsUint8ClampedArray);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的数字
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsUint8ClampedArray());
@@ -3668,13 +3686,15 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_false)
     TEST_TIME(JSValueRef::IsUint8ClampedArray);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    const int32_t length = 30;
+    const int32_t length = 30; // 30 = 长度
+    int32_t byteOffset = 4; // 4 = 偏移量
+    int32_t len = 6; // 6 = 长度
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    Local<Int16ArrayRef> object = Int16ArrayRef::New(vm_, arrayBuffer, 4, 6);
+    Local<Int16ArrayRef> object = Int16ArrayRef::New(vm_, arrayBuffer, byteOffset, len);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_TRUE(object->IsInt16Array());
@@ -3683,11 +3703,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_true)
     TEST_TIME(JSValueRef::IsInt16Array);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的数字
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsInt16Array());
@@ -3696,13 +3717,13 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_false)
     TEST_TIME(JSValueRef::IsInt16Array);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> jstagvalue;
-    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
+    JSHandle<JSTaggedValue> jsTagValue;
+    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jsTagValue);
     JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
@@ -3713,7 +3734,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_true)
     TEST_TIME(JSValueRef::IsJSPrimitiveNumber);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3726,13 +3747,13 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveNumber_false)
     TEST_TIME(JSValueRef::IsJSPrimitiveNumber);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveInt_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveInt_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> jstagvalue;
-    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, jstagvalue);
+    JSHandle<JSTaggedValue> jsTagValue;
+    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, jsTagValue);
     JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
@@ -3743,13 +3764,13 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveInt_true)
     TEST_TIME(JSValueRef::IsJSPrimitiveInt);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> jstagvalue;
-    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, jstagvalue);
+    JSHandle<JSTaggedValue> jsTagValue;
+    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, jsTagValue);
     JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
     gettimeofday(&g_beginTime, nullptr);
@@ -3760,7 +3781,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_true)
     TEST_TIME(JSValueRef::IsJSPrimitiveBoolean);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3773,7 +3794,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPrimitiveBoolean_false)
     TEST_TIME(JSValueRef::IsJSPrimitiveBoolean);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3796,11 +3817,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_true)
     TEST_TIME(JSValueRef::IsJSCollator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsJSCollator());
@@ -3809,7 +3831,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_false)
     TEST_TIME(JSValueRef::IsJSCollator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3822,8 +3844,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_true)
     JSHandle<JSTaggedValue> localeStr(factory->NewFromASCII("en-GB"));
     JSHandle<JSPluralRules> initPluralRules =
         JSPluralRules::InitializePluralRules(thread_, pluralRules, localeStr, optionHandle);
-    JSHandle<JSTaggedValue> tagplurerules = JSHandle<JSTaggedValue>::Cast(initPluralRules);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(tagplurerules);
+    JSHandle<JSTaggedValue> tagPlureRules = JSHandle<JSTaggedValue>::Cast(initPluralRules);
+    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(tagPlureRules);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_TRUE(object->IsJSPluralRules());
@@ -3832,11 +3854,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_true)
     TEST_TIME(JSValueRef::IsJSPluralRules);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsJSPluralRules());
@@ -3845,11 +3868,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_false)
     TEST_TIME(JSValueRef::IsJSPluralRules);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSListFormat_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSListFormat_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsJSListFormat());
@@ -3858,15 +3882,15 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSListFormat_false)
     TEST_TIME(JSValueRef::IsJSListFormat);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
     ObjectFactory *factory = vm_->GetFactory();
     MethodLiteral *methodLiteral = nullptr;
     JSHandle<Method> method = factory->NewMethod(methodLiteral);
-    JSHandle<JSFunction> jsasyncgefu = factory->NewJSAsyncGeneratorFunction(method);
-    JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(jsasyncgefu);
+    JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
+    JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3876,11 +3900,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_true)
     TEST_TIME(JSValueRef::IsAsyncGeneratorFunction);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsAsyncGeneratorFunction());
@@ -3889,7 +3914,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_false)
     TEST_TIME(JSValueRef::IsAsyncGeneratorFunction);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3910,8 +3935,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_true)
         JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
     JSTaggedValue doubleList = TaggedDoubleList::Create(thread_);
     linkedList->SetDoubleList(thread_, doubleList);
-    JSHandle<JSTaggedValue> linkedlisttag = JSHandle<JSTaggedValue>::Cast(linkedList);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedlisttag);
+    JSHandle<JSTaggedValue> linkedListTag = JSHandle<JSTaggedValue>::Cast(linkedList);
+    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListTag);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_TRUE(object->IsLinkedList());
@@ -3920,11 +3945,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_true)
     TEST_TIME(JSValueRef::IsLinkedList);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsLinkedList());
@@ -3933,7 +3959,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_false)
     TEST_TIME(JSValueRef::IsLinkedList);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3943,7 +3969,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_true)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> tagvalue =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), 6);
+    uint32_t argvLength = 6; // 6 = 参数长度
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(tagvalue.GetTaggedValue());
     objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
@@ -3954,7 +3981,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_true)
         JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
     JSTaggedValue doubleList = TaggedDoubleList::Create(thread_);
     linkedList->SetDoubleList(thread_, doubleList);
-    uint32_t elementsNum = 256;
+    uint32_t elementsNum = 256; // 256 = 循环次数
     for (uint32_t i = 0; i < elementsNum; i++) {
         JSHandle<JSTaggedValue> taggedvalue(thread_, JSTaggedValue(i));
         JSAPILinkedList::Add(thread_, linkedList, taggedvalue);
@@ -3972,11 +3999,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_true)
     TEST_TIME(JSValueRef::IsLinkedListIterator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsLinkedListIterator());
@@ -3985,7 +4013,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_false)
     TEST_TIME(JSValueRef::IsLinkedListIterator);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -3995,7 +4023,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_true)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> value =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), 6);
+    uint32_t argvLength = 6; // 6 = 参数长度
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(value.GetTaggedValue());
     objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::List)));
@@ -4016,11 +4045,12 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_true)
     TEST_TIME(JSValueRef::IsList);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_false)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
+    int num = 10; // 10 = 随机构造的int
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsList());
     }
@@ -4028,7 +4058,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_false)
     TEST_TIME(JSValueRef::IsList);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_true)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -4038,7 +4068,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_true)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> value =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), 6);
+    uint32_t argvLength = 6; // 6 = 参数长度
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(value.GetTaggedValue());
     objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::PlainArray)));
@@ -4060,624 +4091,5 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_true)
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsPlainArray);
-}
-
-HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_false)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<JSValueRef> object = IntegerRef::New(vm_, 10);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_FALSE(object->IsPlainArray());
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef::IsPlainArray);
-}
-
-HWTEST_F_L0(JSNApiSplTest, DateRef_New)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    double time = 3.14;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        DateRef *object = nullptr;
-        object->New(vm_, time);
-        delete object;
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(DateRef::New);
-}
-
-HWTEST_F_L0(JSNApiSplTest, DateRef_ToString)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    double time = 3.14;
-    Local<DateRef> object = DateRef::New(vm_, time);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->ToString(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(DateRef::ToString);
-}
-
-HWTEST_F_L0(JSNApiSplTest, DateRef_GetTime)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    double time = 3.14;
-    Local<DateRef> object = DateRef::New(vm_, time);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTime();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(DateRef::GetTime);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ProxyRef_GetHandler)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
-    JSObject::SetProperty(thread_, targetHandle, key, value);
-    JSHandle<JSTaggedValue> handlerHandle(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
-    JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
-    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetHandler(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ProxyRef::GetHandler);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ProxyRef_GetTarget)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
-    JSObject::SetProperty(thread_, targetHandle, key, value);
-    JSHandle<JSTaggedValue> handlerHandle(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
-    JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
-    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTarget(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ProxyRef::GetTarget);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ProxyRef_IsRevoked)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
-    JSObject::SetProperty(thread_, targetHandle, key, value);
-    JSHandle<JSTaggedValue> handlerHandle(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
-    JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
-    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->IsRevoked();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ProxyRef::IsRevoked);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_GetSize)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetSize();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::GetSize);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_GetTotalElements)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTotalElements();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::GetTotalElements);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_Get)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Get(vm_, key);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::Get);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_GetKey)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetKey(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::GetKey);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_GetValue)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetValue(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::GetValue);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_New)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        MapRef *object = nullptr;
-        object->New(vm_);
-        delete object;
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::New);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapRef_Set)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Set(vm_, key, value);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapRef::Set);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetSize)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakMapRef> object = WeakMapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetSize();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakMapRef::GetSize);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetTotalElements)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakMapRef> object = WeakMapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTotalElements();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakMapRef::GetTotalElements);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetKey)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakMapRef> object = WeakMapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetKey(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakMapRef::GetKey);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetValue)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakMapRef> object = WeakMapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetValue(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakMapRef::GetValue);
-}
-
-HWTEST_F_L0(JSNApiSplTest, SetRef_GetSize)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<SetRef> object = SetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetSize();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(SetRef::GetSize);
-}
-
-HWTEST_F_L0(JSNApiSplTest, SetRef_GetTotalElements)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<SetRef> object = SetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTotalElements();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(SetRef::GetTotalElements);
-}
-
-HWTEST_F_L0(JSNApiSplTest, SetRef_GetValue)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<SetRef> object = SetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetValue(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(SetRef::GetValue);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetSize)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakSetRef> object = WeakSetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetSize();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakSetRef::GetSize);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetTotalElements)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakSetRef> object = WeakSetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetTotalElements();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakSetRef::GetTotalElements);
-}
-
-HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetValue)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<WeakSetRef> object = WeakSetRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetValue(vm_, 0);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(WeakSetRef::GetValue);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapIteratorRef_GetIndex)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
-    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
-    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
-    jsMap->SetLinkedMap(thread_, linkedHashMap);
-    JSHandle<JSTaggedValue> mapValue(jsMap);
-    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread_, mapValue, IterationKind::KEY);
-    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
-    mapIterator->SetNextIndex(1);
-    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetIndex();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapIteratorRef::GetIndex);
-}
-
-HWTEST_F_L0(JSNApiSplTest, MapIteratorRef_GetKind)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
-    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
-    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
-    jsMap->SetLinkedMap(thread_, linkedHashMap);
-    JSHandle<JSTaggedValue> mapValue(jsMap);
-    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread_, mapValue, IterationKind::KEY);
-    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
-    mapIterator->SetIterationKind(IterationKind::VALUE);
-    mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
-    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetKind(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(MapIteratorRef::GetKind);
-}
-
-HWTEST_F_L0(JSNApiSplTest, SetIteratorRef_GetIndex)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> set =
-        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread_);
-    set->SetLinkedSet(thread_, hashSet);
-    JSHandle<JSTaggedValue> setIteratorValue =
-        JSSetIterator::CreateSetIterator(thread_, JSHandle<JSTaggedValue>(set), IterationKind::KEY);
-    JSHandle<JSSetIterator> setIterator = JSHandle<JSSetIterator>::Cast(setIteratorValue);
-    setIterator->SetNextIndex(1);
-    Local<SetIteratorRef> object = JSNApiHelper::ToLocal<SetIteratorRef>(setIteratorValue);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetIndex();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(SetIteratorRef::GetIndex);
-}
-
-HWTEST_F_L0(JSNApiSplTest, SetIteratorRef_GetKind)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> set =
-        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread_);
-    set->SetLinkedSet(thread_, hashSet);
-    JSHandle<JSTaggedValue> setIteratorValue =
-        JSSetIterator::CreateSetIterator(thread_, JSHandle<JSTaggedValue>(set), IterationKind::KEY);
-    JSHandle<JSSetIterator> setIterator = JSHandle<JSSetIterator>::Cast(setIteratorValue);
-    setIterator->SetIterationKind(IterationKind::VALUE);
-    setIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
-    Local<SetIteratorRef> object = JSNApiHelper::ToLocal<SetIteratorRef>(setIteratorValue);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetKind(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(SetIteratorRef::GetKind);
-}
-
-HWTEST_F_L0(JSNApiSplTest, GeneratorFunctionRef_IsGenerator)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
-    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
-    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
-    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
-    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
-    Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    Local<GeneratorFunctionRef> object = genObjectRef->GetGeneratorFunction(vm_);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        ASSERT_TRUE(object->IsGenerator());
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(GeneratorFunctionRef::IsGenerator);
-}
-
-HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorState)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
-    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
-    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
-    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
-    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
-    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
-    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetGeneratorState(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(GeneratorObjectRef::GetGeneratorState);
-}
-
-HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorFunction)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
-    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
-    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
-    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
-    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
-    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
-    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetGeneratorFunction(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(GeneratorObjectRef::GetGeneratorFunction);
-}
-
-HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorReceiver)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
-    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
-    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
-    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
-    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
-    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
-    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetGeneratorReceiver(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(GeneratorObjectRef::GetGeneratorReceiver);
-}
-
-HWTEST_F_L0(JSNApiSplTest, CollatorRef_GetCompareFunction)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
-    JSHandle<JSCollator> collator =
-        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    JSHandle<JSTaggedValue> localeStr = thread_->GlobalConstants()->GetHandledEnUsString();
-    JSHandle<JSTaggedValue> undefinedHandle(thread_, JSTaggedValue::Undefined());
-    JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread_, collator, localeStr, undefinedHandle);
-    JSHandle<JSTaggedValue> collatorTagHandleVal = JSHandle<JSTaggedValue>::Cast(initCollator);
-    Local<CollatorRef> object = JSNApiHelper::ToLocal<CollatorRef>(collatorTagHandleVal);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->GetCompareFunction(vm_);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(GeneratorObjectRef::GetCompareFunction);
 }
 }
