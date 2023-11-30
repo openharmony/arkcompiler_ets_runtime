@@ -748,7 +748,7 @@ private:
     bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
-    bool onHighSensitiveEvent_ {false};
+    std::atomic_bool onHighSensitiveEvent_ {false};
     bool onStartupEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
