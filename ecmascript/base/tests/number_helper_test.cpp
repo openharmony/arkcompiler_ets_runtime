@@ -435,39 +435,47 @@ HWTEST_F_L0(NumberHelperTest, StringToDoubleWithRadix)
     radix = 3;
     resultStr = factory->NewFromASCII("-12");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
+    bool negative = false;
     // 5 = 1 * 3 + 2
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), -5);
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), -5);
 
     radix = 4;
     resultStr = factory->NewFromASCII("1234567");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
+    negative = false;
     // 27 = (1 * 4 + 2) * 4 + 3
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 27);
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 27);
     // string has space
     resultStr = factory->NewFromASCII(" 12345 ");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 27);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 27);
 
     radix = 16;
     resultStr = factory->NewFromASCII("0x00ff");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 255);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 255);
 
     resultStr = factory->NewFromASCII("0x0010");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 16);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 16);
 
     resultStr = factory->NewFromASCII("0x1234");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 4660);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 4660);
     // string has space
     resultStr = factory->NewFromASCII(" 0x12  ");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 18);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 18);
 
     resultStr = factory->NewFromASCII("0x1234XX");
     sp = EcmaStringAccessor(resultStr).ToUtf8Span(buf);
-    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix).GetDouble(), 4660);
+    negative = false;
+    EXPECT_EQ(NumberHelper::StringToDoubleWithRadix(sp.begin(), sp.end(), radix, &negative).GetDouble(), 4660);
 }
 
 /**

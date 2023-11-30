@@ -123,7 +123,7 @@ public:
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToFixed(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToPrecision(JSThread *thread, double number, int digit);
-    static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix);
+    static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     static CString IntegerToString(double number, int radix);
     static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);

@@ -594,7 +594,7 @@ private:
 
     bool ToElementIndex(uint32_t *index);
 
-    bool ToInt(int32_t *index);
+    bool ToInt(int32_t *index, bool *negative);
 
     bool ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, const uint8_t *data);
 
@@ -1343,9 +1343,9 @@ public:
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool ToInt(int32_t *index)
+    bool ToInt(int32_t *index, bool *negative)
     {
-        return string_->ToInt(index);
+        return string_->ToInt(index, negative);
     }
 
     // not change string data structure.

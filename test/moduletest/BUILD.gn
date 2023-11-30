@@ -254,6 +254,7 @@ group("ark_asm_test") {
     "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
+    "regressparseInt",
     "setobjectwithproto",
     "spreadoperator",
     "stackoverflow",
