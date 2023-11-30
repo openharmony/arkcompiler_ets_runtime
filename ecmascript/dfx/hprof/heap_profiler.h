@@ -78,7 +78,8 @@ public:
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                           bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
                           bool isFullGC = true) override;
-
+    void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
+                          bool captureNumericValue = false, bool isFullGC = true) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,

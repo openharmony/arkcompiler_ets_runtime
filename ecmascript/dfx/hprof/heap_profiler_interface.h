@@ -43,6 +43,9 @@ public:
     virtual bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                                   bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
                                   bool isFullGC = true) = 0;
+    // Provide an internal interface for oom dump.
+    virtual void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
+                                  bool captureNumericValue = false, bool isFullGC = true) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
                                    bool traceAllocation = false, bool newThread = true) = 0;
