@@ -53,7 +53,7 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
 }
 
 /*
- * Before: inputFileName: 1. /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+ * Before: inputFileName: 1. /data/storage/el1/bundle/moduleName@namespace/ets/xxx/xxx.abc
                           2. @bundle:bundleName/moduleName/ets/xxx/xxx.abc
                           3. moduleName/ets/xxx/xxx.abc
                           4. .test/xxx/xxx.abc
@@ -72,12 +72,13 @@ void ModulePathHelper::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName,
         pos = startStrLen;
     }
     if (pos != CString::npos) {
-        // inputFileName: /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+        // inputFileName: /data/storage/el1/bundle/moduleName@namespace/ets/xxx/xxx.abc
         pos = inputFileName.find(PathHelper::SLASH_TAG, startStrLen);
         if (pos == CString::npos) {
             LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
         }
         CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
+        PathHelper::DeleteNamespace(moduleName);
         outBaseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
         outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName.substr(startStrLen);
     } else {
