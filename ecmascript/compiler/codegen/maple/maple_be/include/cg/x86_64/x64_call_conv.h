@@ -96,26 +96,26 @@ public:
     ;
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(WebKitJSCallConventionInfo)
-const std::vector<X64reg> intParmRegs{R0};
-const std::vector<X64reg> intReturnRegs{R0};
-const std::vector<X64reg> floatParmRegs{};
-const std::vector<X64reg> floatReturnRegs{};
+const std::vector<X64reg> intParmRegs {R0};
+const std::vector<X64reg> intReturnRegs {R0};
+const std::vector<X64reg> floatParmRegs {};
+const std::vector<X64reg> floatReturnRegs {};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(CCallConventionInfo)
-const std::vector<X64reg> intParmRegs{R7, R6, R3, R2, R8, R9};
-const std::vector<X64reg> intReturnRegs{R0, R3};
-const std::vector<X64reg> floatParmRegs{V8, V9, V10, V11, V12, V13, V14, V15};
-const std::vector<X64reg> floatReturnRegs{V8, V9};
+const std::vector<X64reg> intParmRegs {R7, R6, R3, R2, R8, R9};
+const std::vector<X64reg> intReturnRegs {R0, R3};
+const std::vector<X64reg> floatParmRegs {V8, V9, V10, V11, V12, V13, V14, V15};
+const std::vector<X64reg> floatReturnRegs {V8, V9};
 
 int32 ClassifyAggregate(MIRType &mirType, uint64 sizeOfTy, std::vector<ArgumentClass> &classes) const;
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(GHCCallConventionInfo)
-const std::vector<X64reg> intParmRegs{R13, RBP, R12, RBX, R14, RSI, RDI, R8, R9, R15};
-const std::vector<X64reg> intReturnRegs{};
-const std::vector<X64reg> floatParmRegs{};
-const std::vector<X64reg> floatReturnRegs{};
+const std::vector<X64reg> intParmRegs {R13, RBP, R12, RBX, R14, RSI, RDI, R8, R9, R15};
+const std::vector<X64reg> intReturnRegs {};
+const std::vector<X64reg> floatParmRegs {};
+const std::vector<X64reg> floatReturnRegs {};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 class X64CallConvImpl {

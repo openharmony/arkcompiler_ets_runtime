@@ -148,8 +148,9 @@ MIRIntrinsicID MIRParser::GetIntrinsicID(TokenKind tk) const
     switch (tk) {
         default:
 #define DEF_MIR_INTRINSIC(P, NAME, INTRN_CLASS, RETURN_TYPE, ...) \
-    case TK_##P:                                                  \
-        return INTRN_##P;
+    case TK_##P: {                                                \
+        return INTRN_##P;                                         \
+    }
 #include "intrinsics.def"
 #undef DEF_MIR_INTRINSIC
     }
@@ -1014,9 +1015,10 @@ bool MIRParser::ParseVarTypeAttrs(MIRSymbol &st)
 #define TYPE_ATTR
 #define NOCONTENT_ATTR
 #define ATTR(X)               \
-    case TK_##X:              \
+    case TK_##X: {            \
         st.SetAttr(ATTR_##X); \
-        break;
+        break;                \
+    }
 #include "all_attributes.def"
 #undef ATTR
 #undef TYPE_ATTR

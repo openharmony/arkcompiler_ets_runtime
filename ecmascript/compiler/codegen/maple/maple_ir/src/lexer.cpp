@@ -244,7 +244,6 @@ TokenKind MIRLexer::GetIntConst(uint32 valStart, bool negative)
 
     if (c == 'u' || c == 'U') {  // skip 'u' or 'U'
         c = GetNextCurrentCharWithUpperCheck();
-
         if (c == 'l' || c == 'L') {
             c = GetNextCurrentCharWithUpperCheck();
         }
@@ -252,7 +251,6 @@ TokenKind MIRLexer::GetIntConst(uint32 valStart, bool negative)
 
     if (c == 'l' || c == 'L') {
         c = GetNextCurrentCharWithUpperCheck();
-
         if (c == 'l' || c == 'L' || c == 'u' || c == 'U') {
             ++curIdx;
         }

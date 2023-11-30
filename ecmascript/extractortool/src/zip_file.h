@@ -219,7 +219,6 @@ public:
      */
     bool ExtractFile(const std::string &file, std::ostream &dest) const;
 
-
     std::unique_ptr<FileMapper> CreateFileMapper(const std::string &fileName, FileMapperType type) const;
     bool ExtractToBufByName(const std::string &fileName, std::unique_ptr<uint8_t[]> &dataPtr,
         size_t &len) const;

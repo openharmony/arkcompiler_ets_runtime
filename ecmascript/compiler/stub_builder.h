@@ -533,7 +533,7 @@ public:
     GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
     GateRef ToObject(GateRef glue, GateRef obj);
     GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
-    GateRef NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj);
+    GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
     GateRef ModuleNamespaceDeleteProperty(GateRef glue, GateRef obj, GateRef value);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);

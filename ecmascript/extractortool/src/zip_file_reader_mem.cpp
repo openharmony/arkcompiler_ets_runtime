@@ -24,7 +24,6 @@ namespace ecmascript {
 bool ZipFileReaderMem::init()
 {
     if (!ZipFileReader::init()) {
-
         return false;
     }
     posix_fadvise(fd_, 0, 0, POSIX_FADV_SEQUENTIAL);

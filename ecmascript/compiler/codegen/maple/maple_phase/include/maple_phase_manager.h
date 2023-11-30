@@ -92,7 +92,7 @@ public:
         phasesSequence.clear();
     }
 
-#define ADDMAPLEPHASE(PhaseName, condition) AddPhase(PhaseName, condition);
+#define ADDMAPLEPHASE(PhaseName, condition) AddPhase(PhaseName, condition)
 #define ADDMAPLEMEPHASE(PhaseName, condition) \
     if (!MeOption::IsSkipPhase(PhaseName)) {  \
         AddPhase(PhaseName, condition);       \
