@@ -283,6 +283,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Filter,       JS_POINTER)             \
     V(Find,         JS_ANY)                 \
     V(FindIndex,    JS_ANY)                 \
+    V(From,         JS_ANY)                 \
+    V(Splice,       JS_ANY)                 \
     V(ForEach,      JS_ANY)                 \
     V(IndexOf,      JS_ANY)                 \
     V(LastIndexOf,  JS_ANY)                 \

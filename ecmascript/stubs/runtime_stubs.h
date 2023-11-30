@@ -132,6 +132,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(BigIntSameValueZero)                     \
     V(JSHClassFindProtoTransitions)            \
     V(NumberHelperStringToDouble)              \
+    V(GetStringToListCacheArray)               \
     V(LocaleCompareNoGc)                       \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
@@ -435,6 +436,7 @@ public:
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
+    static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
     static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
                                            EcmaString *thatHandle);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);

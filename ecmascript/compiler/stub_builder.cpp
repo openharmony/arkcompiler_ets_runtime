@@ -7947,4 +7947,49 @@ GateRef StubBuilder::GetFunctionHClass(GateRef glue, GateRef method, size_t idx1
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::CalArrayRelativePos(GateRef index, GateRef arrayLen)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+
+    Label indexLessZero(env);
+    Label indexNotLessZero(env);
+    Label exit(env);
+    Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
+    Bind(&indexLessZero);
+    {
+        GateRef tempBeginIndex = Int32Add(arrayLen, index);
+        Label beginIndexLargeZero(env);
+        Branch(Int32GreaterThan(tempBeginIndex, Int32(0)), &beginIndexLargeZero, &exit);
+        Bind(&beginIndexLargeZero);
+        {
+            result = tempBeginIndex;
+            Jump(&exit);
+        }
+    }
+    Bind(&indexNotLessZero);
+    {
+        Label lessLen(env);
+        Label largeLen(env);
+        Branch(Int32LessThan(index, arrayLen), &lessLen, &largeLen);
+        Bind(&lessLen);
+        {
+            result = index;
+            Jump(&exit);
+        }
+        Bind(&largeLen);
+        {
+            result = arrayLen;
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

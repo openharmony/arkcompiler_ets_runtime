@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/runtime_call_id.h"
@@ -1164,6 +1165,372 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     {
         result->WriteVariable(TaggedFalse());
         Jump(exit);
+    }
+}
+
+void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef item = GetCallArg0(numArgs);
+    Label stringItem(env);
+    Branch(TaggedIsString(item), &stringItem, slowPath);
+    Bind(&stringItem);
+    Label undefFn(env);
+    GateRef fn = GetCallArg1(numArgs);
+    Branch(TaggedIsUndefined(fn), &undefFn, slowPath);
+    Bind(&undefFn);
+    GateRef strLen = GetLengthFromString(item);
+    Label lessStrLen(env);
+    Branch(Int32LessThan(strLen, Int32(builtins::StringToListResultCache::MAX_STRING_LENGTH)), &lessStrLen, slowPath);
+    Bind(&lessStrLen);
+    GateRef cacheArray = CallNGCRuntime(glue, RTSTUB_ID(GetStringToListCacheArray), { glue });
+
+    Label cacheDef(env);
+    Branch(TaggedIsUndefined(cacheArray), slowPath, &cacheDef);
+    Bind(&cacheDef);
+    {
+        GateRef hash = GetHashcodeFromString(glue, item);
+        GateRef entry = Int32And(hash, Int32Sub(Int32(builtins::StringToListResultCache::CACHE_SIZE), Int32(1)));
+        GateRef index = Int32Mul(entry, Int32(builtins::StringToListResultCache::ENTRY_SIZE));
+        GateRef cacheStr = GetValueFromTaggedArray(cacheArray,
+            Int32Add(index, Int32(builtins::StringToListResultCache::STRING_INDEX)));
+        Label cacheStrDef(env);
+        Branch(TaggedIsUndefined(cacheStr), slowPath, &cacheStrDef);
+        Bind(&cacheStrDef);
+        Label strEqual(env);
+        Label strSlowEqual(env);
+        // cache str is intern
+        Branch(Equal(cacheStr, item), &strEqual, &strSlowEqual);
+        Bind(&strSlowEqual);
+        Branch(FastStringEqual(glue, cacheStr, item), &strEqual, slowPath);
+        Bind(&strEqual);
+
+        GateRef cacheResArray = GetValueFromTaggedArray(cacheArray,
+            Int32Add(index, Int32(builtins::StringToListResultCache::ARRAY_INDEX)));
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        GateRef newArray = newBuilder.NewJSObject(glue, intialHClass);
+        Store(VariableType::INT32(), glue, newArray, IntPtr(JSArray::LENGTH_OFFSET), strLen);
+        GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+        SetPropertyInlinedProps(glue, newArray, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+        SetExtensibleToBitfield(glue, newArray, true);
+
+        SetElementsArray(VariableType::JS_ANY(), glue, newArray, cacheResArray);
+        *result = newArray;
+        Jump(exit);
+    }
+}
+
+GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount,
+    GateRef arrayCls, GateRef start)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    Label exit(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+
+    // new delete array
+    DEFVARIABLE(srcElements, VariableType::JS_ANY(), GetElementsArray(thisValue));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewJSArrayWithSize(arrayCls, actualDeleteCount);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(actualDeleteCount));
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue, newArray, arrayCls, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetExtensibleToBitfield(glue, newArray, true);
+    result = newArray;
+
+    GateRef elements = GetElementsArray(newArray);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32LessThan(*i, actualDeleteCount), &next, &loopExit);
+        Bind(&next);
+        Label setHole(env);
+        Label setSrc(env);
+        Branch(Int32GreaterThanOrEqual(Int32Add(*i, start),
+            GetLengthOfTaggedArray(*srcElements)), &setHole, &setSrc);
+        Bind(&setHole);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, Hole());
+            Jump(&loopEnd);
+        }
+        Bind(&setSrc);
+        {
+            GateRef val = GetValueFromTaggedArray(*srcElements, Int32Add(start, *i));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, val);
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    Jump(&exit);
+
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStability(env);
+    Label defaultConstr(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    Branch(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    Branch(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    Branch(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    Label notCOWArray(env);
+    Branch(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Label equalCls(env);
+    GateRef arrayCls = LoadHClass(thisValue);
+    Branch(Equal(intialHClass, arrayCls), &equalCls, slowPath);
+    Bind(&equalCls);
+
+    GateRef arrayLen = GetArrayLength(thisValue);
+    Label lessThreeArg(env);
+
+    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(insertCount, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(actualDeleteCount, VariableType::INT32(), Int32(0));
+    GateRef argc = ChangeIntPtrToInt32(numArgs);
+    Branch(Int32LessThanOrEqual(argc, Int32(3)), &lessThreeArg, slowPath); // 3 : three arg
+    Bind(&lessThreeArg);
+    {
+        Label checkOverflow(env);
+        Label greaterZero(env);
+        Label greaterOne(env);
+        Label checkGreaterOne(env);
+        Label notOverflow(env);
+        Branch(Int32GreaterThan(argc, Int32(0)), &greaterZero, &checkGreaterOne);
+        Bind(&greaterZero);
+        GateRef taggedStart = GetCallArg0(numArgs);
+        Label taggedStartInt(env);
+        Branch(TaggedIsInt(taggedStart), &taggedStartInt, slowPath);
+        Bind(&taggedStartInt);
+        {
+            GateRef intStart = GetInt32OfTInt(taggedStart);
+            start = CalArrayRelativePos(intStart, arrayLen);
+        }
+        actualDeleteCount = Int32Sub(arrayLen, *start);
+        Jump(&checkGreaterOne);
+        Bind(&checkGreaterOne);
+        Branch(Int32GreaterThan(argc, Int32(1)), &greaterOne, &checkOverflow);
+        Bind(&greaterOne);
+        insertCount = Int32Sub(argc, Int32(2)); // 2 :  two args
+        GateRef argDeleteCount = GetCallArg1(numArgs);
+        Label argDeleteCountInt(env);
+        Branch(TaggedIsInt(argDeleteCount), &argDeleteCountInt, slowPath);
+        Bind(&argDeleteCountInt);
+        DEFVARIABLE(deleteCount, VariableType::INT32(), TaggedGetInt(argDeleteCount));
+        Label deleteCountLessZero(env);
+        Label calActualDeleteCount(env);
+        Branch(Int32LessThan(*deleteCount, Int32(0)), &deleteCountLessZero, &calActualDeleteCount);
+        Bind(&deleteCountLessZero);
+        deleteCount = Int32(0);
+        Jump(&calActualDeleteCount);
+        Bind(&calActualDeleteCount);
+        actualDeleteCount = *deleteCount;
+        Label lessArrayLen(env);
+        Branch(Int32LessThan(Int32Sub(arrayLen, *start), *deleteCount), &lessArrayLen, &checkOverflow);
+        Bind(&lessArrayLen);
+        actualDeleteCount = Int32Sub(arrayLen, *start);
+        Jump(&checkOverflow);
+        Bind(&checkOverflow);
+        Branch(Int64GreaterThan(Int64Sub(Int64Add(ZExtInt32ToInt64(arrayLen), ZExtInt32ToInt64(*insertCount)),
+            ZExtInt32ToInt64(*actualDeleteCount)), Int64(base::MAX_SAFE_INTEGER)), slowPath, &notOverflow);
+        Bind(&notOverflow);
+
+        *result = CreateSpliceDeletedArray(glue, thisValue, *actualDeleteCount, intialHClass, *start);
+
+        // insert Val
+        DEFVARIABLE(srcElements, VariableType::JS_ANY(), GetElementsArray(thisValue));
+        GateRef oldCapacity = GetLengthOfTaggedArray(*srcElements);
+        GateRef newCapacity = Int32Add(Int32Sub(arrayLen, *actualDeleteCount), *insertCount);
+        Label grow(env);
+        Label copy(env);
+        Branch(Int32GreaterThan(newCapacity, oldCapacity), &grow, &copy);
+        Bind(&grow);
+        {
+            srcElements =
+                CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newCapacity) });
+            Jump(&copy);
+        }
+        Bind(&copy);
+        GateRef srcElementsLen = GetLengthOfTaggedArray(*srcElements);
+        Label insertLessDelete(env);
+        Label insertGreaterDelete(env);
+        Label insertCountVal(env);
+        Label setArrayLen(env);
+        Branch(Int32LessThan(*insertCount, *actualDeleteCount), &insertLessDelete, &insertGreaterDelete);
+        Bind(&insertLessDelete);
+        {
+            {
+                DEFVARIABLE(i, VariableType::INT32(), *start);
+                DEFVARIABLE(ele, VariableType::JS_ANY(), Hole());
+
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label next(env);
+                Label loopExit(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    Branch(Int32LessThan(*i, Int32Sub(arrayLen, *actualDeleteCount)), &next, &loopExit);
+                    Bind(&next);
+                    ele = Hole();
+                    Label getSrcEle(env);
+                    Label checkVal(env);
+                    Label setEle(env);
+                    Branch(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &checkVal);
+                    Bind(&getSrcEle);
+                    {
+                        ele = GetValueFromTaggedArray(*srcElements, Int32Add(*i, *actualDeleteCount));
+                        Jump(&checkVal);
+                    }
+                    Bind(&checkVal);
+                    {
+                        Label isHole(env);
+                        Branch(TaggedIsHole(*ele), &isHole, &setEle);
+                        Bind(&isHole);
+                        {
+                            ele = Undefined();
+                            Jump(&setEle);
+                        }
+                    }
+                    Bind(&setEle);
+                    {
+                        Label setIndexLessLen(env);
+                        Branch(Int32LessThan(Int32Add(*i, *insertCount), srcElementsLen), &setIndexLessLen, &loopEnd);
+                        Bind(&setIndexLessLen);
+                        {
+                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, *srcElements,
+                                Int32Add(*i, *insertCount), *ele);
+                            Jump(&loopEnd);
+                        }
+                    }
+                }
+                Bind(&loopEnd);
+                i = Int32Add(*i, Int32(1));
+                LoopEnd(&loopHead);
+                Bind(&loopExit);
+            }
+
+            Label trim(env);
+            Label noTrim(env);
+            Branch(BoolAnd(Int32GreaterThan(oldCapacity, newCapacity),
+                Int32GreaterThan(Int32Sub(newCapacity, oldCapacity),
+                Int32(TaggedArray::MAX_END_UNUSED))), &trim, &noTrim);
+            Bind(&trim);
+            {
+                CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, *srcElements, ZExtInt32ToInt64(newCapacity)});
+                Jump(&insertCountVal);
+            }
+            Bind(&noTrim);
+            {
+                DEFVARIABLE(idx, VariableType::INT32(), newCapacity);
+                Label loopHead1(env);
+                Label loopEnd1(env);
+                Label next1(env);
+                Label loopExit1(env);
+                Jump(&loopHead1);
+                LoopBegin(&loopHead1);
+                {
+                    Branch(Int32LessThan(*idx, arrayLen), &next1, &loopExit1);
+                    Bind(&next1);
+
+                    Label setHole(env);
+                    Branch(Int32LessThan(*idx, srcElementsLen), &setHole, &loopEnd1);
+                    Bind(&setHole);
+                    {
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, *srcElements, *idx, Hole());
+                        Jump(&loopEnd1);
+                    }
+                }
+                Bind(&loopEnd1);
+                idx = Int32Add(*idx, Int32(1));
+                LoopEnd(&loopHead1);
+                Bind(&loopExit1);
+                Jump(&insertCountVal);
+            }
+            Bind(&insertGreaterDelete);
+            {
+                DEFVARIABLE(j, VariableType::INT32(), Int32Sub(arrayLen, *actualDeleteCount));
+                DEFVARIABLE(ele, VariableType::JS_ANY(), Hole());
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label next(env);
+                Label loopExit(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    Branch(Int32GreaterThan(*j, *start), &next, &loopExit);
+                    Bind(&next);
+                    ele = GetValueFromTaggedArray(*srcElements,
+                        Int32Sub(Int32Add(*j, *actualDeleteCount), Int32(1)));
+
+                    Label setEle(env);
+                    Label isHole(env);
+                    Branch(TaggedIsHole(*ele), &isHole, &setEle);
+                    Bind(&isHole);
+                    {
+                        ele = Undefined();
+                        Jump(&setEle);
+                    }
+                    Bind(&setEle);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *srcElements,
+                        Int32Sub(Int32Add(*j, *insertCount), Int32(1)), *ele);
+                    Jump(&loopEnd);
+                }
+                Bind(&loopEnd);
+                j = Int32Sub(*j, Int32(1));
+                LoopEnd(&loopHead);
+                Bind(&loopExit);
+                Jump(&insertCountVal);
+            }
+            Bind(&insertCountVal);
+            {
+                Label threeArgs(env);
+                Branch(Int32Equal(ChangeIntPtrToInt32(numArgs), Int32(3)), &threeArgs, &setArrayLen); // 3 : three arg
+                Bind(&threeArgs);
+                {
+                    GateRef e = GetCallArg2(numArgs);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *srcElements, *start, e);
+                    Jump(&setArrayLen);
+                }
+            }
+            Bind(&setArrayLen);
+            SetArrayLength(glue, thisValue, newCapacity);
+            Jump(exit);
+        }
     }
 }
 }  // namespace panda::ecmascript::kungfu

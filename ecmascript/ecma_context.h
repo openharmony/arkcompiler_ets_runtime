@@ -176,6 +176,7 @@ public:
     void SetupRegExpResultCache();
     void SetupNumberToStringResultCache();
     void SetupStringSplitResultCache();
+    void SetupStringToListResultCache();
     JSHandle<JSTaggedValue> GetRegExpCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
@@ -235,6 +236,11 @@ public:
     JSHandle<JSTaggedValue> GetStringSplitResultCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringSplitResultCache_));
+    }
+
+    JSHandle<JSTaggedValue> GetStringToListResultCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringToListResultCache_));
     }
 
     void SetStringSplitResultCache(JSTaggedValue newCache)
@@ -516,6 +522,7 @@ private:
     RegExpParserCache *regExpParserCache_ {nullptr};
     JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
+    JSTaggedValue stringToListResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue pointerToIndexDictionary_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};

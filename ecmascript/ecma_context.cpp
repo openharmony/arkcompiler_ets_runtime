@@ -109,6 +109,7 @@ bool EcmaContext::Initialize()
     SetupRegExpGlobalResult();
     SetupNumberToStringResultCache();
     SetupStringSplitResultCache();
+    SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
@@ -738,6 +739,11 @@ void EcmaContext::SetupStringSplitResultCache()
     stringSplitResultCache_ = builtins::StringSplitResultCache::CreateCacheTable(thread_);
 }
 
+void EcmaContext::SetupStringToListResultCache()
+{
+    stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
+}
+
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -748,6 +754,7 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
 
