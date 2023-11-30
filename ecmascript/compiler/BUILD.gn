@@ -376,7 +376,6 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
       "code_signature:liblocal_code_sign_sdk",
     ]
   }
-  deps += hiviewdfx_deps
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
