@@ -70,6 +70,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayPop)                                     \
     V(ArraySlice)                                   \
     V(ArrayValues)                                  \
+    V(ArrayReduce)                                  \
     V(ArrayReverse)                                 \
     V(ArrayPush)                                    \
     V(ArrayIncludes)                                \
@@ -100,7 +101,8 @@ namespace panda::ecmascript::kungfu {
     V(ArrayConstructor)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
-    V(LocaleCompare)
+    V(LocaleCompare)                                \
+    V(SORT)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)  /* list start and math list start */   \
@@ -110,7 +112,6 @@ namespace panda::ecmascript::kungfu {
     V(ATAN)                                         \
     V(ABS)                                          \
     V(FLOOR)  /* math list end */                   \
-    V(SORT)                                         \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
     V(SET_PROTO_ITERATOR)                           \
