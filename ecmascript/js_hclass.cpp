@@ -798,6 +798,9 @@ bool JSHClass::UnregisterOnProtoChain(const JSThread *thread, const JSHandle<JSH
     JSTaggedValue proto = jshclass->GetPrototype();
     ASSERT(proto.IsECMAObject());
     JSTaggedValue protoDetailsValue = JSObject::Cast(proto.GetTaggedObject())->GetJSHClass()->GetProtoChangeDetails();
+    if (protoDetailsValue.IsUndefined()) {
+        return false;
+    }
     ASSERT(protoDetailsValue.IsProtoChangeDetails());
     JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
     ASSERT(!listenersValue.IsUndefined());
