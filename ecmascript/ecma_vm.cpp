@@ -521,7 +521,7 @@ void EcmaVM::DeleteHeapProfile()
     if (heapProfile_ == nullptr) {
         return;
     }
-    const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->Delete(heapProfile_);
+    delete heapProfile_;
     heapProfile_ = nullptr;
 }
 
@@ -538,7 +538,7 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
     if (heapProfile_ != nullptr) {
         return heapProfile_;
     }
-    heapProfile_ = const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->New<HeapProfiler>(this);
+    heapProfile_ = new HeapProfiler(this);
     ASSERT(heapProfile_ != nullptr);
     return heapProfile_;
 }
