@@ -270,8 +270,9 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
     return false;
 }
 
-uint32_t CountLeadingZeros(uint32_t value, uint32_t bits) {
-    if (bits == 1 ) {
+uint32_t CountLeadingZeros(uint32_t value, uint32_t bits)
+{
+    if (bits == 1) {
         return value ^ 1;
     }
     uint32_t upper_half = value >> (bits / 2); // 2 : half
@@ -319,12 +320,12 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         unsignedY = static_cast<uint32_t>(-yValue);
     }
     uint32_t bits = sizeof(uint32_t) * 8; // 8 : bits
-    int xLog2 = 31 - CountLeadingZeros(unsignedX, bits); // 31 : Algorithm implementation 
-    int xDigit = ((xLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation 
+    int xLog2 = 31 - CountLeadingZeros(unsignedX, bits); // 31 : Algorithm implementation
+    int xDigit = ((xLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
     xDigit -= unsignedX < kPowersOf10[xDigit];
 
-    int yLog2 = 31 - CountLeadingZeros(unsignedY, bits); // 31 : Algorithm implementation 
-    int yDigit = ((yLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation 
+    int yLog2 = 31 - CountLeadingZeros(unsignedY, bits); // 31 : Algorithm implementation
+    int yDigit = ((yLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
     yDigit -= unsignedY < kPowersOf10[yDigit];
 
     int res = 0;

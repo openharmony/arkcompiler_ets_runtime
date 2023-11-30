@@ -794,7 +794,9 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                         {
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(0), *accumulator);
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(1), kValue);
+                            // 2 : parameter location
                             SetValueToTaggedArray(VariableType::INT32(), glue, argList, Int32(2), IntToTaggedInt(*k));
+                            // 3 : parameter location
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(3), thisValue);
                             GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
                             GateRef callResult = JSCallDispatch(glue, callbackFnHandle, argsLength, 0,

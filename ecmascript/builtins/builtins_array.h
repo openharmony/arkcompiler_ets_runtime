@@ -79,7 +79,7 @@
     /* Array.prototype.push ( ...items ) */                                 \
     V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
-    V("reduce",         Reduce,           1, ArrayReduce)                       \
+    V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
     V("reduceRight",    ReduceRight,      1, INVALID)                       \
     /* Array.prototype.reverse ( ) */                                       \
