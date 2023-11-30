@@ -561,7 +561,6 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (!handle.IsValid()) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
@@ -704,7 +703,6 @@ bool JSNApi::StopDebugger(uint32_t tid)
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
 
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
 
@@ -724,7 +722,6 @@ bool JSNApi::StopDebugger(uint32_t tid)
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
 
     OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
