@@ -41,6 +41,9 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         key = JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> handlerValue;
+    if (receiver->IsNumber()) {
+        receiver = thread_->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction();
+    }
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
     // When a transition occurs without the shadow property, AOT does not trigger the
     // notifyprototypechange behavior, so for the case where the property does not
@@ -216,7 +219,8 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
 
 JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
-    if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
+    if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) &&
+         !receiver->IsString() && !receiver->IsNumber()) {
         icAccessor_.SetAsMega();
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
