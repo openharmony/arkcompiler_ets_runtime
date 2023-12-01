@@ -1384,6 +1384,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
     JSHandle<JSTaggedValue> methodVal = DeserializeJSTaggedValue();
     JSHandle<Method> method = JSHandle<Method>::Cast(methodVal);
     func->SetMethod(thread_, method);
+    func->InitializeForConcurrentFunction(thread_);
     return funcTag;
 }
 
