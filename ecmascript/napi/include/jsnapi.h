@@ -461,6 +461,7 @@ public:
     bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor();
     bool IsFunction();
+    bool IsJSFunction();
     bool IsProxy();
     bool IsPromise();
     bool IsDataView();

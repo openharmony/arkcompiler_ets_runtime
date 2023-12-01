@@ -3491,6 +3491,12 @@ bool JSValueRef::IsFunction()
     return value.IsHeapObject() && value.IsCallable();
 }
 
+bool JSValueRef::IsJSFunction()
+{
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    return value.IsHeapObject() && value.IsJSFunction();
+}
+
 bool JSValueRef::IsProxy()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSProxy();
