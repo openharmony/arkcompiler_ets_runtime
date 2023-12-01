@@ -394,7 +394,6 @@ bool ZipFile::CheckCoherencyLocalHeader(const ZipEntry &zipEntry, uint16_t &extr
 {
     // current only support store and Z_DEFLATED method
     if ((zipEntry.compressionMethod != Z_DEFLATED) && (zipEntry.compressionMethod != 0)) {
-
         return false;
     }
 
@@ -403,7 +402,6 @@ bool ZipFile::CheckCoherencyLocalHeader(const ZipEntry &zipEntry, uint16_t &extr
     size_t buffSize = sizeof(LocalHeader) + nameSize;
     auto buff = zipFileReader_->ReadBuffer(startPos, buffSize);
     if (buff.size() < buffSize) {
-
         return false;
     }
 
@@ -414,22 +412,18 @@ bool ZipFile::CheckCoherencyLocalHeader(const ZipEntry &zipEntry, uint16_t &extr
     }
     if ((localHeader.signature != LOCAL_HEADER_SIGNATURE) ||
         (zipEntry.compressionMethod != localHeader.compressionMethod)) {
-
         return false;
     }
 
     if (localHeader.nameSize != nameSize && nameSize < MAX_FILE_NAME - 1) {
-
         return false;
     }
     std::string fileName = buff.substr(sizeof(LocalHeader));
     if (zipEntry.fileName != fileName) {
-
         return false;
     }
 
     if (!CheckDataDesc(zipEntry, localHeader)) {
-
         return false;
     }
 
@@ -455,14 +449,12 @@ bool ZipFile::UnzipWithStore(const ZipEntry &zipEntry, const uint16_t extraSize,
         size_t readLen = (remainSize > UNZIP_BUF_OUT_LEN) ? UNZIP_BUF_OUT_LEN : remainSize;
         std::string readBuffer = zipFileReader_->ReadBuffer(startPos, readLen);
         if (readBuffer.empty()) {
-
             return false;
         }
         remainSize -= readLen;
         startPos += readLen;
         dest.write(readBuffer.data(), readBuffer.length());
     }
-
     return true;
 }
 
@@ -474,13 +466,11 @@ bool ZipFile::InitZStream(z_stream &zstream) const
     }
     int32_t zlibErr = inflateInit2(&zstream, -MAX_WBITS);
     if (zlibErr != Z_OK) {
-
         return false;
     }
 
     BytePtr bufOut = new (std::nothrow) Byte[UNZIP_BUF_OUT_LEN];
     if (bufOut == nullptr) {
-
         return false;
     }
 
@@ -609,7 +599,6 @@ bool ZipFile::ExtractFile(const std::string &file, std::ostream &dest) const
 
     uint16_t extraSize = 0;
     if (!CheckCoherencyLocalHeader(zipEntry, extraSize)) {
-
         return false;
     }
 
@@ -621,14 +610,12 @@ bool ZipFile::ExtractFile(const std::string &file, std::ostream &dest) const
     }
 
     return ret;
-
 }
 
 bool ZipFile::ReadZStreamFromMMap(const BytePtr &buffer, void* &dataPtr,
     z_stream &zstream, uint32_t &remainCompressedSize) const
 {
     if (!dataPtr) {
-
         return false;
     }
 
@@ -637,7 +624,6 @@ bool ZipFile::ReadZStreamFromMMap(const BytePtr &buffer, void* &dataPtr,
         size_t remainBytes = (remainCompressedSize > UNZIP_BUF_IN_LEN) ? UNZIP_BUF_IN_LEN : remainCompressedSize;
         size_t readBytes = sizeof(Byte) * remainBytes;
         if (memcpy_s(buffer, readBytes, srcDataPtr, readBytes) != EOK) {
-
             return false;
         }
         srcDataPtr += readBytes;
@@ -653,14 +639,12 @@ std::unique_ptr<FileMapper> ZipFile::CreateFileMapper(const std::string &fileNam
 {
     ZipEntry zipEntry;
     if (!GetEntry(fileName, zipEntry)) {
-
         return nullptr;
     }
 
     ZipPos offset = 0;
     uint32_t length = 0;
     if (!GetDataOffsetRelative(zipEntry, offset, length)) {
-
         return nullptr;
     }
     bool compress = zipEntry.compressionMethod > 0;
@@ -757,12 +741,10 @@ bool ZipFile::ExtractToBufByName(const std::string &fileName, std::unique_ptr<ui
 {
     ZipEntry zipEntry;
     if (!GetEntry(fileName, zipEntry)) {
-
         return false;
     }
     uint16_t extraSize = 0;
     if (!CheckCoherencyLocalHeader(zipEntry, extraSize)) {
-
         return false;
     }
 
@@ -770,7 +752,6 @@ bool ZipFile::ExtractToBufByName(const std::string &fileName, std::unique_ptr<ui
     uint32_t length = zipEntry.compressedSize;
     auto dataTmp = std::make_unique<uint8_t[]>(length);
     if (!zipFileReader_->ReadBuffer(dataTmp.get(), offset, length)) {
-
         dataTmp.reset();
         return false;
     }

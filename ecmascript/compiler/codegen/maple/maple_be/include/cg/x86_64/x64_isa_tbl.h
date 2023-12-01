@@ -29,11 +29,11 @@ namespace x64 {
         {MOP_cmp##SIZE##_i_r, MOP_begin, MOP_cmp##SIZE##_i_m, MOP_begin},                                    \
         {MOP_cmp##SIZE##_m_r, MOP_begin, MOP_begin, MOP_begin},                                              \
         {MOP_begin, MOP_begin, MOP_begin, MOP_begin},                                                        \
-    };
-DEF_X64_CMP_MAPPING_INT(b)
-DEF_X64_CMP_MAPPING_INT(w)
-DEF_X64_CMP_MAPPING_INT(l)
-DEF_X64_CMP_MAPPING_INT(q)
+    }
+DEF_X64_CMP_MAPPING_INT(b);
+DEF_X64_CMP_MAPPING_INT(w);
+DEF_X64_CMP_MAPPING_INT(l);
+DEF_X64_CMP_MAPPING_INT(q);
 
 static inline X64MOP_t GetCmpMop(Operand::OperandType dTy, Operand::OperandType sTy, PrimType primType)
 {

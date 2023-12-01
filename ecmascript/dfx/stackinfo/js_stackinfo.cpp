@@ -409,7 +409,8 @@ uintptr_t ArkGetFunction(int pid, uintptr_t currentPtr, uintptr_t frameType)
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV: {
             funcAddr += sizeof(FrameType);
-            auto topAddress = funcAddr + (static_cast<int>(BuiltinWithArgvFrame::Index::StackArgsTopIndex) * sizeof(uintptr_t));
+            auto topAddress = funcAddr + 
+                (static_cast<int>(BuiltinWithArgvFrame::Index::StackArgsTopIndex) * sizeof(uintptr_t));
             uintptr_t argcAddress = static_cast<uintptr_t>(funcAddr + (static_cast<int>
                                     (BuiltinWithArgvFrame::Index::NumArgsIndex) * sizeof(uintptr_t)));
             if (!ReadUintptrFromAddr(pid, argcAddress, argcAddress, true)) {
@@ -844,7 +845,8 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
 }
 #endif
 
-bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
+bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, 
+    uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
 {
     constexpr size_t FP_SIZE = 8;
     constexpr size_t LR_SIZE = 8;

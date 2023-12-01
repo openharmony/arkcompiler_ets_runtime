@@ -49,7 +49,6 @@ int DecryptAssociateKey(int fd, int dstAppId, int srcAppId)
     arg.arg2_len = sizeof(srcAppId);
     arg.arg2 = reinterpret_cast<void*>(&srcAppId);
     return ioctl(fd, CODE_DECRYPT_CMD_SET_ASSOCIATE_KEY, &arg);
-    
 }
 
 int DecrypRemoveAssociateKey(int fd, int dstAppId, int srcAppId)

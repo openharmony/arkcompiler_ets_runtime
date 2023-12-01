@@ -2124,7 +2124,6 @@ void TypeBytecodeLowering::AddHitBytecodeCount()
     }
 }
 
-
 void TypeBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 {
     // 1: number of value inputs

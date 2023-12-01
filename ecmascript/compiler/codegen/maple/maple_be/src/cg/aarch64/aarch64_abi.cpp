@@ -25,16 +25,18 @@ bool IsAvailableReg(AArch64reg reg)
     switch (reg) {
 /* integer registers */
 #define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID:                                                                                  \
-        return canBeAssigned;
+    case R##ID: {                                                                                \
+        return canBeAssigned;                                                                    \
+    }
 #define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
 #include "aarch64_int_regs.def"
 #undef INT_REG
 #undef INT_REG_ALIAS
 /* fp-simd registers */
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                                   \
-        return canBeAssigned;
+    case V##ID: {                                                                                                 \
+        return canBeAssigned;                                                                                     \
+    }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"
 #undef FP_SIMD_REG
@@ -55,16 +57,18 @@ bool IsCalleeSavedReg(AArch64reg reg)
     switch (reg) {
 /* integer registers */
 #define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID:                                                                                  \
-        return isCalleeSave;
+    case R##ID: {                                                                                \
+        return isCalleeSave;                                                                     \
+    }
 #define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
 #include "aarch64_int_regs.def"
 #undef INT_REG
 #undef INT_REG_ALIAS
 /* fp-simd registers */
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                                   \
-        return isCalleeSave;
+    case V##ID: {                                                                                                 \
+        return isCalleeSave;                                                                                      \
+    }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"
 #undef FP_SIMD_REG
@@ -79,16 +83,18 @@ bool IsParamReg(AArch64reg reg)
     switch (reg) {
 /* integer registers */
 #define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID:                                                                                  \
-        return isParam;
+    case R##ID: {                                                                                \
+        return isParam;                                                                          \
+    }
 #define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
 #include "aarch64_int_regs.def"
 #undef INT_REG
 #undef INT_REG_ALIAS
 /* fp-simd registers */
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                                   \
-        return isParam;
+    case V##ID: {                                                                                                 \
+        return isParam;                                                                                           \
+    }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"
 #undef FP_SIMD_REG
@@ -103,16 +109,18 @@ bool IsSpillReg(AArch64reg reg)
     switch (reg) {
 /* integer registers */
 #define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID:                                                                                  \
-        return isSpill;
+    case R##ID: {                                                                                \
+        return isSpill;                                                                          \
+    }
 #define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
 #include "aarch64_int_regs.def"
 #undef INT_REG
 #undef INT_REG_ALIAS
 /* fp-simd registers */
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                                   \
-        return isSpill;
+    case V##ID: {                                                                                                 \
+        return isSpill;                                                                                           \
+    }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"
 #undef FP_SIMD_REG
@@ -127,16 +135,18 @@ bool IsExtraSpillReg(AArch64reg reg)
     switch (reg) {
 /* integer registers */
 #define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID:                                                                                  \
-        return isExtraSpill;
+    case R##ID: {                                                                                \
+        return isExtraSpill;                                                                     \
+    }
 #define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
 #include "aarch64_int_regs.def"
 #undef INT_REG
 #undef INT_REG_ALIAS
 /* fp-simd registers */
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                                   \
-        return isExtraSpill;
+    case V##ID: {                                                                                                 \
+        return isExtraSpill;                                                                                      \
+    }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"
 #undef FP_SIMD_REG

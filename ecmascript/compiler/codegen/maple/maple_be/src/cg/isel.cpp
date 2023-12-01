@@ -28,7 +28,7 @@ namespace maplebe {
         {abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef},                         \
         {abstract::MOP_str_##SIZE, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef},                    \
         {abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef},                         \
-    };
+    }
 #define DEF_FAST_ISEL_MAPPING_FLOAT(SIZE)                                                            \
     MOperator fastIselMapF##SIZE[Operand::OperandType::kOpdPhi][Operand::OperandType::kOpdPhi] = {   \
         {abstract::MOP_copy_ff_##SIZE, abstract::MOP_copy_fi_##SIZE, abstract::MOP_load_f_##SIZE,    \
@@ -36,16 +36,16 @@ namespace maplebe {
         {abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef},        \
         {abstract::MOP_str_f_##SIZE, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef}, \
         {abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef, abstract::MOP_undef},        \
-    };
+    }
 
-DEF_FAST_ISEL_MAPPING_INT(8)
-DEF_FAST_ISEL_MAPPING_INT(16)
-DEF_FAST_ISEL_MAPPING_INT(32)
-DEF_FAST_ISEL_MAPPING_INT(64)
-DEF_FAST_ISEL_MAPPING_FLOAT(8)
-DEF_FAST_ISEL_MAPPING_FLOAT(16)
-DEF_FAST_ISEL_MAPPING_FLOAT(32)
-DEF_FAST_ISEL_MAPPING_FLOAT(64)
+DEF_FAST_ISEL_MAPPING_INT(8);
+DEF_FAST_ISEL_MAPPING_INT(16);
+DEF_FAST_ISEL_MAPPING_INT(32);
+DEF_FAST_ISEL_MAPPING_INT(64);
+DEF_FAST_ISEL_MAPPING_FLOAT(8);
+DEF_FAST_ISEL_MAPPING_FLOAT(16);
+DEF_FAST_ISEL_MAPPING_FLOAT(32);
+DEF_FAST_ISEL_MAPPING_FLOAT(64);
 
 #define DEF_SEL_MAPPING_TBL(SIZE)                                           \
     MOperator SelMapping##SIZE(bool isInt, uint32 x, uint32 y)              \
@@ -79,8 +79,10 @@ MOperator GetFastIselMop(Operand::OperandType dTy, Operand::OperandType sTy, Pri
     return abstract::MOP_undef;
 }
 
-#define DEF_EXTEND_MAPPING_TBL(TYPE) \
-    [](bool isSigned) -> MOperator { return isSigned ? abstract::MOP_sext_rr_##TYPE : abstract::MOP_zext_rr_##TYPE; }
+#define DEF_EXTEND_MAPPING_TBL(TYPE)                                                            \
+    [](bool isSigned) -> MOperator {                                                            \
+        return isSigned ? abstract::MOP_sext_rr_##TYPE : abstract::MOP_zext_rr_##TYPE;          \
+    }
 using fromToTy = std::pair<uint32, uint32>; /* std::pair<from, to> */
 #define DEF_USE_EXTEND_MAPPING_TBL(FROMSIZE, TOSIZE)                                            \
     {                                                                                           \
