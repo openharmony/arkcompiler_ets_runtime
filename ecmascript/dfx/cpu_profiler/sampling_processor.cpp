@@ -41,6 +41,7 @@ void *SamplingProcessor::Run(void *arg)
     uint64_t startTime = GetMicrosecondsTimeStamp();
     uint64_t endTime = startTime;
     generator->SetThreadStartTime(startTime);
+    generator->AddStartTraceEvent();
     while (generator->GetIsStart()) {
         if (pthread_kill(pid, SIGPROF) != 0) {
             LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
@@ -69,8 +70,10 @@ void *SamplingProcessor::Run(void *arg)
                 generator->AddSample(frame);
             }
         }
+        generator->AddTraceEvent(false);
     }
     generator->SetThreadStopTime();
+    generator->AddTraceEvent(true);
     pthread_setname_np(tid, "OS_GC_WorkerThread");
     if (generator->SemPost(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] post failed";

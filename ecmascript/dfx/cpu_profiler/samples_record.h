@@ -131,7 +131,6 @@ public:
     const std::string GetFileName() const;
     void ClearSampleData();
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
-    uint64_t GetProfileInfoBufferSize() const;
     bool GetIsStart() const;
     void SetIsStart(bool isStart);
     bool GetGcState() const;
@@ -168,6 +167,8 @@ public:
     void ResetFrameLength();
     uint64_t GetCallTimeStamp();
     void SetCallTimeStamp(uint64_t timeStamp);
+    void AddTraceEvent(bool isFinish);
+    void AddStartTraceEvent();
     std::ofstream fileHandle_;
     SamplesQueue *samplesQueue_ {nullptr};
 
@@ -226,6 +227,8 @@ private:
     uint64_t callTimeStamp_ = 0;
     uint32_t timeDeltaThreshold_ = 0;
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
+    int traceEventNodePos_ = 0;
+    uint32_t traceEventSamplePos_ = 0;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_DFX_CPU_PROFILER_SAMPLES_RECORD_H

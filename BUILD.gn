@@ -317,6 +317,7 @@ config("ark_jsruntime_common_config") {
       "ECMASCRIPT_SUPPORT_HEAPPROFILER",
       "ECMASCRIPT_SUPPORT_HEAPSAMPLING",
       "ECMASCRIPT_SUPPORT_SNAPSHOT",
+      "ECMASCRIPT_SUPPORT_TRACING",
     ]
     defines += [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
     defines += ark_profiler_features
@@ -859,6 +860,7 @@ if (!is_mingw && !is_mac && target_os != "ios") {
       "ecmascript/dfx/hprof/string_hashmap.cpp",
       "ecmascript/dfx/stackinfo/js_stackgetter.cpp",
       "ecmascript/base/block_hook_scope.cpp",
+      "ecmascript/dfx/tracing/tracing.cpp",
     ]
   }
 }

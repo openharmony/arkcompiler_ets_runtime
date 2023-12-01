@@ -45,6 +45,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
@@ -264,6 +265,12 @@ EcmaVM::~EcmaVM()
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     DumpCallTimeInfo();
+#endif
+
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    if (tracing_) {
+        DFXJSNApi::StopTracing(this);
+    }
 #endif
 
     // clear c_address: c++ pointer delete
