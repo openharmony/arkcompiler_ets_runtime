@@ -301,7 +301,16 @@ private:
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
     void LowerCheckSafePointAndStackOver(GateRef gate);
+    void LowerLdPrivateProperty(GateRef gate);
+    void LowerStPrivateProperty(GateRef gate);
+    void LowerTestIn(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
+    void LowerDefineFieldByName(GateRef gate);
+    void LowerDefineFieldByValue(GateRef gate);
+    void LowerDefineFieldByIndex(GateRef gate);
+    void LowerToPropertyKey(GateRef gate);
+    void LowerCreatePrivateProperty(GateRef gate);
+    void LowerDefinePrivateProperty(GateRef gate);
     void LowerGetEnv(GateRef gate);
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);

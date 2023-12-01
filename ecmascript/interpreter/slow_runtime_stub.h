@@ -181,6 +181,17 @@ public:
     static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
 
     static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
+    static JSTaggedValue DefineField(JSThread *thread, JSTaggedValue obj, JSTaggedValue propKey, JSTaggedValue value);
+    static JSTaggedValue CreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module);
+    static JSTaggedValue DefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
+    static JSTaggedValue LdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
+    static JSTaggedValue StPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
+    static JSTaggedValue TestIn(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
     static JSTaggedValue UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
                                       JSTaggedValue newjshclass, JSTaggedValue key);
 

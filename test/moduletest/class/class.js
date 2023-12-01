@@ -83,3 +83,27 @@ for (let i = 0; i < 2; i++) {
     }
     print(Cls.prototype.foo.x);
 }
+
+class Class2022 {
+    public = 12;
+    #private = 34;
+    static static_public = 56;
+    static #static_private = 78;
+    static test(obj) {
+        print(obj.public);
+        print(obj.#private);
+        print(obj.static_public);
+        print(obj.#static_private);
+    }
+}
+var class2022 = new Class2022();
+try {
+    Class2022.test(class2022);
+} catch(err) {
+    print(err.name);
+}
+try {
+    Class2022.test(new Proxy(class2022, {}));
+} catch(err) {
+    print(err.name);
+}

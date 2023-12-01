@@ -637,3 +637,40 @@ groups:
         acc: in:top
         prefix: ecma
         format: [pref_op_none]
+      - sig: ecma.definefieldbyname string_id, v:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_id_16_v_8]
+        properties: [string_id]
+      - sig: ecma.definefieldbyvalue v1:in:top, v2:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_v1_8_v2_8]
+      - sig: ecma.definefieldbyindex imm, v:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_imm_32_v_8]
+      - sig: ecma.topropertykey
+        acc: inout:top
+        prefix: ecma
+        format: [pref_op_none]
+      - sig: ecma.createprivateproperty imm1, imm2
+        acc: none
+        prefix: ecma
+        format: [pref_op_imm1_16_imm2_16]
+      - sig: ecma.defineprivateproperty imm1, imm2, v:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_imm1_16_imm2_16_v_8]
+      - sig: ecma.ldprivateproperty imm1, imm2
+        acc: inout:top
+        prefix: ecma
+        format: [pref_op_imm1_16_imm2_16]
+      - sig: ecma.stprivateproperty imm1, imm2, v:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_imm1_16_imm2_16_v_8]
+      - sig: ecma.testin imm1, imm2
+        acc: inout:top
+        prefix: ecma
+        format: [pref_op_imm1_16_imm2_16]

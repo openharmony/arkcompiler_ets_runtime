@@ -11,14 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this.hasOwnProperty: false
-Object.getOwnPropertyNames: 
-Object.getOwnPropertyDescriptor: undefined
-Object.keys(): 
-Reflect.has: false
-Reflect.ownKeys(): 
+this.hasOwnProperty: true
+Object.getOwnPropertyNames: b
+Object.getOwnPropertyDescriptor: [object Object]
+Object.keys(): b
+Reflect.has: true
+Reflect.ownKeys(): b
 Reflect.get: undefined
-Reflect.getOwnPropertyDescriptor(): undefined
+Reflect.getOwnPropertyDescriptor(): [object Object]
 this.hasOwnProperty: true
 Object.getOwnPropertyNames: b
 Object.getOwnPropertyDescriptor: [object Object]

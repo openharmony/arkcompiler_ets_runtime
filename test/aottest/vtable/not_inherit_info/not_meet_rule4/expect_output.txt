@@ -14,4 +14,4 @@
 false
 undefined
 false
-x
+TypeError

@@ -17,3 +17,9 @@ PASS
 10
 1
 undefined
+12
+34
+undefined
+TypeError
+12
+TypeError

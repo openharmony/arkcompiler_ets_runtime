@@ -5970,11 +5970,74 @@ void InterpreterAssembly::HandleWideStpatchvarPrefImm16(
     DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleLdPrivatePropertyImm8Imm16Imm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+}
+
+void InterpreterAssembly::HandleStPrivatePropertyImm8Imm16Imm16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8);
+}
+
+void InterpreterAssembly::HandleTestInImm8Imm16Imm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(TESTIN_IMM8_IMM16_IMM16);
+}
+
 void InterpreterAssembly::HandleCallRuntimeNotifyConcurrentResultPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
+}
+
+void InterpreterAssembly::HandleCallRuntimeDefineFieldByNamePrefId16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeDefineFieldByValuePrefV8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeDefineFieldByIndexPrefImm32V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeToPropertyKeyPrefNone(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE);
+}
+
+void InterpreterAssembly::HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
+}
+
+void InterpreterAssembly::HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
 }
 
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(

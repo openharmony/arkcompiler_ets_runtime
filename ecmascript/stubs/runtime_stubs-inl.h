@@ -1258,6 +1258,90 @@ JSTaggedValue RuntimeStubs::RuntimeGetAsyncIterator(JSThread *thread, const JSHa
     return asyncit.GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeLdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj)
+{
+    JSTaggedValue currentLexicalEnv = lexicalEnv;
+    for (uint32_t i = 0; i < levelIndex; i++) {
+        currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+        ASSERT(!currentLexicalEnv.IsUndefined());
+    }
+    JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+    // private property is invisible for proxy
+    JSHandle<JSTaggedValue> handleObj(thread, obj.IsJSProxy() ? JSProxy::Cast(obj)->GetPrivateField() : obj);
+    JSHandle<JSTaggedValue> handleKey(thread, key);
+    if (handleKey->IsJSFunction()) {  // getter
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        // 0: getter has 0 arg
+        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, handleKey, handleObj, undefined, 0);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSTaggedValue resGetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return resGetter;
+    }
+    PropertyDescriptor desc(thread);
+    if (!JSTaggedValue::IsPropertyKey(handleKey) ||
+        !JSTaggedValue::GetOwnProperty(thread, handleObj, handleKey, desc)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "invalid or cannot find private key", JSTaggedValue::Exception());
+    }
+    JSTaggedValue res = desc.GetValue().GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res;
+}
+
+JSTaggedValue RuntimeStubs::RuntimeStPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value)
+{
+    JSTaggedValue currentLexicalEnv = lexicalEnv;
+    for (uint32_t i = 0; i < levelIndex; i++) {
+        currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+        ASSERT(!currentLexicalEnv.IsUndefined());
+    }
+    JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+    // private property is invisible for proxy
+    JSHandle<JSTaggedValue> handleObj(thread, obj.IsJSProxy() ? JSProxy::Cast(obj)->GetPrivateField() : obj);
+    JSHandle<JSTaggedValue> handleKey(thread, key);
+    JSHandle<JSTaggedValue> handleValue(thread, value);
+    if (handleKey->IsJSFunction()) {  // setter
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        // 1: setter has 1 arg
+        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, handleKey, handleObj, undefined, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(handleValue.GetTaggedValue());
+        JSTaggedValue resSetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return resSetter;
+    }
+    PropertyDescriptor desc(thread);
+    if (!JSTaggedValue::IsPropertyKey(handleKey) ||
+        !JSTaggedValue::GetOwnProperty(thread, handleObj, handleKey, desc)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "invalid or cannot find private key", JSTaggedValue::Exception());
+    }
+    desc.SetValue(handleValue);
+    bool res = JSTaggedValue::DefineOwnProperty(thread, handleObj, handleKey, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(res);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeTestIn(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj)
+{
+    if (!obj.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot use 'in' operator in Non-Object", JSTaggedValue::Exception());
+    }
+    JSTaggedValue currentLexicalEnv = lexicalEnv;
+    for (uint32_t i = 0; i < levelIndex; i++) {
+        currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+        ASSERT(!currentLexicalEnv.IsUndefined());
+    }
+    JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+    JSHandle<JSTaggedValue> handleObj(thread, obj.IsJSProxy() ? JSProxy::Cast(obj)->GetPrivateField() : obj);
+    JSHandle<JSTaggedValue> handleKey(thread, key);
+    bool res = JSTaggedValue::IsPropertyKey(handleKey) && JSTaggedValue::HasProperty(thread, handleObj, handleKey);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(res);
+}
+
 void RuntimeStubs::RuntimeThrow(JSThread *thread, JSTaggedValue value)
 {
     thread->SetException(value);
@@ -2732,6 +2816,104 @@ JSTaggedValue RuntimeStubs::RuntimeUpdateHClass(JSThread *thread,
     JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
 #endif
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue obj,
+                                               JSTaggedValue propKey, JSTaggedValue value)
+{
+    // Do the same thing as Object.defineProperty(obj, propKey, {value: value,
+    //                                                           writable:true, enumerable: true, configurable: true})
+    if (!obj.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "DefineField: obj is not Object", JSTaggedValue::Exception());
+    }
+    JSHandle<JSObject> handleObj(thread, obj);
+    JSHandle<JSTaggedValue> handleValue(thread, value);
+    JSHandle<JSTaggedValue> handleKey = JSTaggedValue::ToPropertyKey(thread, JSHandle<JSTaggedValue>(thread, propKey));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
+    JSHandle<ConstantPool> handleConstpool(thread, constpool);
+    JSHandle<JSTaggedValue> handleModule(thread, module);
+    CString entry = ModuleManager::GetRecordName(handleModule.GetTaggedValue());
+    uint32_t length = handleLexicalEnv->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH;
+    uint32_t startIndex = 0;
+    while (startIndex < length && !handleLexicalEnv->GetProperties(startIndex).IsHole()) {
+        startIndex++;
+    }
+
+    ASSERT(startIndex + count <= length);
+    for (uint32_t i = 0; i < count; i++) {
+        JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
+        handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
+    }
+
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry);
+    JSHandle<ClassLiteral> classLiteral(thread, literalObj);
+    JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
+    uint32_t literalBufferLength = literalBuffer->GetLength();
+    if (literalBufferLength == 0) {
+        return JSTaggedValue::Undefined();
+    }
+    // instace property number is hidden in the last index of literal buffer
+    uint32_t instacePropertyCount = literalBuffer->Get(literalBufferLength - 1).GetInt();
+    ASSERT(startIndex + count + literalBufferLength - (instacePropertyCount == 0) <= length);
+    for (uint32_t i = 0; i < literalBufferLength - 1; i++) {
+        JSTaggedValue literalValue = literalBuffer->Get(i);
+        if (LIKELY(literalValue.IsJSFunction())) {
+            JSFunction *func = JSFunction::Cast(literalValue.GetTaggedObject());
+            func->SetLexicalEnv(thread, handleLexicalEnv.GetTaggedValue());
+            Method::Cast(func->GetMethod())->SetModule(thread, handleModule.GetTaggedValue());
+        }
+        handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
+    }
+    if (instacePropertyCount > 0) {
+        JSHandle<JSSymbol> methodSymbol = factory->NewPublicSymbolWithChar("method");
+        handleLexicalEnv->SetProperties(thread, startIndex + count + literalBufferLength - 1,
+                                        methodSymbol.GetTaggedValue());
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeDefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value)
+{
+    JSTaggedValue currentLexicalEnv = lexicalEnv;
+    for (uint32_t i = 0; i < levelIndex; i++) {
+        currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+        ASSERT(!currentLexicalEnv.IsUndefined());
+    }
+    JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+    // private property is invisible for proxy
+    JSHandle<JSTaggedValue> handleObj(thread, obj.IsJSProxy() ? JSProxy::Cast(obj)->GetPrivateField() : obj);
+    JSHandle<JSTaggedValue> handleKey(thread, key);
+    JSHandle<JSTaggedValue> handleValue(thread, value);
+    PropertyDescriptor desc(thread);
+    if (!JSTaggedValue::IsPropertyKey(handleKey) &&
+        JSTaggedValue::GetOwnProperty(thread, handleObj, handleKey, desc)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "invalid private key or already exists", JSTaggedValue::Exception());
+    }
+    bool extensible = handleObj->IsExtensible(thread);
+    if (!extensible) {
+        // private key should be always extensible
+        handleObj->GetTaggedObject()->GetClass()->SetExtensible(true);
+    }
+    bool result = JSObject::CreateDataPropertyOrThrow(thread, JSHandle<JSObject>::Cast(handleObj),
+                                                      handleKey, handleValue);
+    if (!extensible) {
+        handleObj->GetTaggedObject()->GetClass()->SetExtensible(false);
+    }
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(result);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNotifyDebuggerStatement(JSThread *thread)

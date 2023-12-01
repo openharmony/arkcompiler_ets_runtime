@@ -244,6 +244,15 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
+        case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
@@ -335,6 +344,11 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
             flags |= BytecodeFlags::READ_ENV;
             break;
         default:
@@ -421,6 +435,11 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
         case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
         case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -1558,6 +1577,80 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+        {
+            uint32_t slotId = READ_INST_8_0();
+            uint32_t levelIndex = READ_INST_16_1();
+            uint32_t slotIndex = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(slotId));
+            info.inputs.emplace_back(Immediate(levelIndex));
+            info.inputs.emplace_back(Immediate(slotIndex));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+        {
+            uint32_t slotId = READ_INST_8_0();
+            uint32_t levelIndex = READ_INST_16_1();
+            uint32_t slotIndex = READ_INST_16_3();
+            uint32_t v0 = READ_INST_8_5();
+            info.inputs.emplace_back(Immediate(slotId));
+            info.inputs.emplace_back(Immediate(levelIndex));
+            info.inputs.emplace_back(Immediate(slotIndex));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
+        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+        {
+            uint32_t slotId = READ_INST_8_0();
+            uint32_t levelIndex = READ_INST_16_1();
+            uint32_t slotIndex = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(slotId));
+            info.inputs.emplace_back(Immediate(levelIndex));
+            info.inputs.emplace_back(Immediate(slotIndex));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8: {
+            uint16_t stringId = READ_INST_16_1();
+            uint32_t v0 = READ_INST_8_3();
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8: {
+            uint32_t v0 = READ_INST_8_1();
+            uint32_t v1 = READ_INST_8_2();
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8: {
+            uint32_t index = READ_INST_32_1();
+            uint32_t v0 = READ_INST_8_5();
+            info.inputs.emplace_back(Immediate(index));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16: {
+            uint32_t count = READ_INST_16_1();
+            uint32_t literalId = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(count));
+            info.inputs.emplace_back(Immediate(literalId));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8: {
+            uint32_t levelIndex = READ_INST_16_1();
+            uint32_t slotIndex = READ_INST_16_3();
+            uint32_t v0 = READ_INST_8_5();
+            info.inputs.emplace_back(Immediate(levelIndex));
+            info.inputs.emplace_back(Immediate(slotIndex));
+            info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::INC_IMM8:
         case EcmaOpcode::DEC_IMM8:
@@ -1608,6 +1701,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
         case EcmaOpcode::RESUMEGENERATOR:
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
+        case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
             break;
         case EcmaOpcode::LDTHISBYVALUE_IMM8: {
             uint16_t slotId = READ_INST_8_0();

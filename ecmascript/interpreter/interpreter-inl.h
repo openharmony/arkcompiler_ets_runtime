@@ -1018,7 +1018,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 1;
+    constexpr size_t numCallRuntimeOps = 7;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -4507,6 +4507,50 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(GETASYNCITERATOR_IMM8);
     }
+    HANDLE_OPCODE(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        [[maybe_unused]] uint32_t slotId = READ_INST_8_0();
+        uint32_t levelIndex = READ_INST_16_1();
+        uint32_t slotIndex = READ_INST_16_3();
+        JSTaggedValue obj = GET_ACC();
+        LOG_INST() << "intrinsics::ldprivateproperty" << " levelIndex:" << levelIndex
+                   << ", slotIndex:" << slotIndex << ", obj:" << obj.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::LdPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+    }
+    HANDLE_OPCODE(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        [[maybe_unused]] uint32_t slotId = READ_INST_8_0();
+        uint32_t levelIndex = READ_INST_16_1();
+        uint32_t slotIndex = READ_INST_16_3();
+        uint32_t v0 = READ_INST_8_5();
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_ACC();
+        LOG_INST() << "intrinsics::stprivateproperty" << " levelIndex:" << levelIndex
+                   << ", slotIndex:" << slotIndex << ", v" << v0
+                   <<", obj:" << obj.GetRawData() << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::StPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+    }
+    HANDLE_OPCODE(TESTIN_IMM8_IMM16_IMM16) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        [[maybe_unused]] uint32_t slotId = READ_INST_8_0();
+        uint32_t levelIndex = READ_INST_16_1();
+        uint32_t slotIndex = READ_INST_16_3();
+        JSTaggedValue obj = GET_ACC();
+        LOG_INST() << "intrinsics::testin" << " levelIndex:" << levelIndex
+                   << ", slotIndex:" << slotIndex << ", obj:" << obj.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::TestIn(thread, lexicalEnv, levelIndex, slotIndex, obj);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(TESTIN_IMM8_IMM16_IMM16);
+    }
     HANDLE_OPCODE(DEPRECATED_GETITERATORNEXT_PREF_V8_V8) {
         uint16_t v0 = READ_INST_8_1();
         uint16_t v1 = READ_INST_8_2();
@@ -7280,6 +7324,97 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue funcObj = GetFunction(sp);
         SlowRuntimeStub::NotifyConcurrentResult(thread, acc, funcObj);
         DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8) {
+        uint16_t stringId = READ_INST_16_1();
+        uint32_t v0 = READ_INST_8_3();
+
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
+        JSTaggedValue value = GET_ACC();
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        LOG_INST() << "intrinsics::callruntime.definefieldbyname "
+                   << "v" << v0 << " stringId:" << stringId << ", "
+                   << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8) {
+        uint32_t v0 = READ_INST_8_1();
+        uint32_t v1 = READ_INST_8_2();
+
+        JSTaggedValue obj = GET_VREG_VALUE(v1);
+        JSTaggedValue propKey = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_ACC();
+        LOG_INST() << "intrinsics::callruntime.definefieldbyvalue "
+                   << "v" << v0 << " v" << v1 << ", propKey:"
+                   << propKey.GetRawData() << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8) {
+        uint32_t index = READ_INST_32_1();
+        uint32_t v0 = READ_INST_8_5();
+
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        JSTaggedValue propKey = JSTaggedValue(index);
+        JSTaggedValue value = GET_ACC();
+        LOG_INST() << "intrinsics::callruntime.definefieldbyvalue "
+                   << "v" << v0 << ", index:"
+                   << index << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE) {
+        LOG_INST() << "intrinsics::callruntime.topropertykey";
+        JSHandle<JSTaggedValue> handleAcc(thread, acc);
+        JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, handleAcc).GetTaggedValue();
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        SET_ACC(res);
+        DISPATCH(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        JSTaggedValue constpool = GetConstantPool(sp);
+        JSTaggedValue module = GetEcmaModule(sp);
+        uint32_t count = READ_INST_16_1();
+        uint32_t literalId = READ_INST_16_3();
+        LOG_INST() << "intrinsics::callruntime.createprivateproperty "
+                   << "count:" << count << ", literalId:" << literalId;
+
+        JSTaggedValue res = SlowRuntimeStub::CreatePrivateProperty(thread, lexicalEnv,
+            count, constpool, literalId, module);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        uint32_t levelIndex = READ_INST_16_1();
+        uint32_t slotIndex = READ_INST_16_3();
+        uint32_t v0 = READ_INST_8_5();
+
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        JSTaggedValue value = GET_ACC();
+        LOG_INST() << "intrinsics::callruntime.defineprivateproperty "
+                   << "v" << v0 << ", levelIndex:" << levelIndex
+                   << ", slotIndex:" << slotIndex << ", obj:" << obj.GetRawData()
+                   << ", value:" << value.GetRawData();
+
+        JSTaggedValue res = SlowRuntimeStub::DefinePrivateProperty(thread, lexicalEnv,
+            levelIndex, slotIndex, obj, value);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
     }
 #include "templates/debugger_instruction_handler.inl"
 }
