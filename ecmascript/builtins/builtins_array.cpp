@@ -1628,16 +1628,6 @@ JSTaggedValue BuiltinsArray::ReduceUnStableJSArray(JSThread *thread, JSHandle<JS
     JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
     JSHandle<JSTaggedValue> &callbackFnHandle)
 {
-    // 10. Repeat, while k < len
-    //   a. Let Pk be ToString(k).
-    //   b. Let kPresent be HasProperty(O, Pk).
-    //   c. ReturnIfAbrupt(kPresent).
-    //   d. If kPresent is true, then
-    //     i. Let kValue be Get(O, Pk).
-    //     ii. ReturnIfAbrupt(kValue).
-    //     iii. Let accumulator be Call(callbackfn, undefined, «accumulator, kValue, k, O»).
-    //     iv. ReturnIfAbrupt(accumulator).
-    //   e. Increase k by 1.
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSTaggedValue callResult = JSTaggedValue::Undefined();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -1662,8 +1652,6 @@ JSTaggedValue BuiltinsArray::ReduceUnStableJSArray(JSThread *thread, JSHandle<JS
         }
         k++;
     }
-
-    // 11. Return accumulator.
     return accumulator.GetTaggedValue();
 }
 

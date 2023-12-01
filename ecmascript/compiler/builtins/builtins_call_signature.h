@@ -177,6 +177,7 @@ public:
     static bool IsTypedBuiltin(ID builtinId)
     {
         return (BuiltinsStubCSigns::ID::LocaleCompare == builtinId) ||
+               (BuiltinsStubCSigns::ID::SORT == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
     }
