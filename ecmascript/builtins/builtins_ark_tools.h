@@ -64,7 +64,55 @@
     V("hasDoubleElements",                         HasDoubleElements,                         1, INVALID)     \
     V("hasObjectElements",                         HasObjectElements,                         1, INVALID)     \
     V("arrayBufferDetach",                         ArrayBufferDetach,                         1, INVALID)     \
-    V("haveSameMap",                               HaveSameMap,                               2, INVALID)
+    V("haveSameMap",                               HaveSameMap,                               2, INVALID)     \
+    V("createPrivateSymbol",                       CreatePrivateSymbol,                       1, INVALID)     \
+    V("isArray",                                   IsArray,                                   1, INVALID)     \
+    V("createDataProperty",                        CreateDataProperty,                        3, INVALID)     \
+    V("functionGetInferredName",                   FunctionGetInferredName,                   1, INVALID)     \
+    V("stringLessThan",                            StringLessThan,                            2, INVALID)     \
+    V("stringMaxLength",                           StringMaxLength,                           0, INVALID)     \
+    V("arrayBufferMaxByteLength",                  ArrayBufferMaxByteLength,                  0, INVALID)     \
+    V("typedArrayMaxLength",                       TypedArrayMaxLength,                       0, INVALID)     \
+    V("maxSmi",                                    MaxSmi,                                    0, INVALID)     \
+    V("is64Bit",                                   Is64Bit,                                   0, INVALID)     \
+    V("finalizeOptimization",                      FinalizeOptimization,                      0, INVALID)     \
+    V("ensureFeedbackVectorForFunction",           EnsureFeedbackVectorForFunction,           1, INVALID)     \
+    V("compileBaseline",                           CompileBaseline,                           1, INVALID)     \
+    V("debugGetLoadedScriptIds",                   DebugGetLoadedScriptIds,                   0, INVALID)     \
+    V("toFastProperties",                          ToFastProperties,                          1, INVALID)     \
+    V("abortJS",                                   AbortJS,                                   1, INVALID)     \
+    V("internalizeString",                         InternalizeString,                         1, INVALID)     \
+    V("handleDebuggerStatement",                   HandleDebuggerStatement,                   0, INVALID)     \
+    V("setAllocationTimeout",                      SetAllocationTimeout,                      0, INVALID)     \
+    V("hasFastProperties",                         HasFastProperties,                         1, INVALID)     \
+    V("hasOwnConstDataProperty",                   HasOwnConstDataProperty,                   2, INVALID)     \
+    V("getHoleNaNUpper",                           GetHoleNaNUpper,                           0, INVALID)     \
+    V("getHoleNaNLower",                           GetHoleNaNLower,                           0, INVALID)     \
+    V("systemBreak",                               SystemBreak,                               0, INVALID)     \
+    V("scheduleBreak",                             ScheduleBreak,                             0, INVALID)     \
+    V("enqueueMicrotask",                          EnqueueMicrotask,                          1, INVALID)     \
+    V("debugPrint",                                DebugPrint,                                1, INVALID)     \
+    V("getOptimizationStatus",                     GetOptimizationStatus,                     1, INVALID)     \
+    V("getUndetectable",                           GetUndetectable,                           0, INVALID)     \
+    V("setKeyedProperty",                          SetKeyedProperty,                          3, INVALID)     \
+    V("disassembleFunction",                       DisassembleFunction,                       1, INVALID)     \
+    V("tryMigrateInstance",                        TryMigrateInstance,                        1, INVALID)     \
+    V("inLargeObjectSpace",                        InLargeObjectSpace,                        1, INVALID)     \
+    V("performMicrotaskCheckpoint",                PerformMicrotaskCheckpoint,                0, INVALID)     \
+    V("isJSReceiver",                              IsJSReceiver,                              1, INVALID)     \
+    V("isDictPropertyConstTrackingEnabled",        IsDictPropertyConstTrackingEnabled,        1, INVALID)     \
+    V("allocateHeapNumber",                        AllocateHeapNumber,                        1, INVALID)     \
+    V("constructConsString",                       ConstructConsString,                       1, INVALID)     \
+    V("completeInobjectSlackTracking",             CompleteInobjectSlackTracking,             1, INVALID)     \
+    V("normalizeElements",                         NormalizeElements,                         1, INVALID)     \
+    V("call",                                      Call,                                      2, INVALID)     \
+    V("debugPushPromise",                          DebugPushPromise,                          1, INVALID)     \
+    V("setForceSlowPath",                          SetForceSlowPath,                          1, INVALID)     \
+    V("notifyContextDisposed",                     NotifyContextDisposed,                     0, INVALID)     \
+    V("optimizeObjectForAddingMultipleProperties", OptimizeObjectForAddingMultipleProperties, 2, INVALID)     \
+    V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
+    V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     
+
 
 #ifdef ECMASCRIPT_SUPPORT_CPUPROFILER
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)      \
@@ -171,6 +219,100 @@ public:
     static JSTaggedValue ArrayBufferDetach(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HaveSameMap(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CreatePrivateSymbol(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsArray(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CreateDataProperty(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue FunctionGetInferredName(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StringLessThan(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StringMaxLength(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ArrayBufferMaxByteLength(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue TypedArrayMaxLength(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue MaxSmi(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue Is64Bit(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue FinalizeOptimization(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue EnsureFeedbackVectorForFunction(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CompileBaseline(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DebugGetLoadedScriptIds(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ToFastProperties(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue AbortJS(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue InternalizeString(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HandleDebuggerStatement(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue SetAllocationTimeout(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasFastProperties(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasOwnConstDataProperty(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetHoleNaNUpper(EcmaRuntimeCallInfo *info);
+    
+    static JSTaggedValue GetHoleNaNLower(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue SystemBreak(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ScheduleBreak(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue EnqueueMicrotask(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DebugPrint(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetOptimizationStatus(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetUndetectable(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue SetKeyedProperty(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DisassembleFunction(EcmaRuntimeCallInfo *info);
+    
+    static JSTaggedValue TryMigrateInstance(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue InLargeObjectSpace(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PerformMicrotaskCheckpoint(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsJSReceiver(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsDictPropertyConstTrackingEnabled(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue AllocateHeapNumber(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ConstructConsString(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CompleteInobjectSlackTracking(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue NormalizeElements(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue Call(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue DebugPushPromise(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue SetForceSlowPath(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue NotifyContextDisposed(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue OptimizeObjectForAddingMultipleProperties(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsBeingInterpreted(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ClearFunctionFeedback(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {
