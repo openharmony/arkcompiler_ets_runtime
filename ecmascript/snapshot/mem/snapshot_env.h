@@ -32,27 +32,31 @@ public:
 
     void Initialize();
 
-    void Iterate(const RootVisitor &v);
-
     void ClearEnvMap()
     {
-        objectVector_.clear();
+        rootObjectMap_.clear();
     }
 
-    size_t GetEnvObjectIndex(uintptr_t objectAddr) const
+    void Iterate(const RootVisitor &v);
+
+    uint32_t FindEnvObjectIndex(uintptr_t objectAddr) const
     {
-        auto it = std::find(objectVector_.begin(), objectVector_.end(), objectAddr);
-        if (it == objectVector_.end()) {
-            return MAX_UINT_32;
-        } else {
-            return std::distance(objectVector_.begin(), it);
+        if (rootObjectMap_.find(objectAddr) != rootObjectMap_.end()) {
+            return rootObjectMap_.find(objectAddr)->second;
         }
+        return MAX_UINT_32;
     }
 
-    uintptr_t FindEnvObjectByIndex(size_t index)
+    JSTaggedType RelocateRootObjectAddr(uint32_t index)
     {
-        ASSERT(index < objectVector_.size());
-        return objectVector_.at(index);
+        auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
+        size_t globalConstCount = globalConst->GetConstantCount();
+        if (index < globalConstCount) {
+            JSTaggedValue obj = globalConst->GetGlobalConstantObject(index);
+            return obj.GetRawData();
+        }
+        JSHandle<JSTaggedValue> value = vm_->GetGlobalEnv()->GetNoLazyEnvObjectByIndex(index - globalConstCount);
+        return value->GetRawData();
     }
 
     static constexpr size_t MAX_UINT_32 = 0xFFFFFFFF;
@@ -61,14 +65,12 @@ private:
     NO_MOVE_SEMANTIC(SnapshotEnv);
     NO_COPY_SEMANTIC(SnapshotEnv);
 
-    void HandleObjectField(TaggedObject *objectHeader, CQueue<TaggedObject *> *objectQueue,
-                           std::set<TaggedObject *> *objectSet);
     void InitGlobalConst();
     void InitGlobalEnv();
 
     EcmaVM *vm_;
     ObjectXRay objXRay_;
-    CVector<uintptr_t> objectVector_;
+    CUnorderedMap<uintptr_t, uint32_t> rootObjectMap_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_ENV_H

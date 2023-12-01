@@ -424,8 +424,7 @@ public:
         return val;
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
-    DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize() * RESERVED_POOL_LENGTH, GetLastOffset());
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetLength());
 
     DECL_DUMP()
 

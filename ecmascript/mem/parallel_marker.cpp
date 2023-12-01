@@ -74,8 +74,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
         Region *rootRegion = Region::ObjectAddressToRange(root);
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
-            auto hclass = root->SynchronizedGetClass();
-            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, needBarrier, cb)) {
+            if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
             }
         }
@@ -110,8 +109,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
-            auto hclass = root->SynchronizedGetClass();
-            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, needBarrier, cb)) {
+            if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
             }
         }
@@ -156,8 +154,7 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
     auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                         VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
-            auto hclass = root->SynchronizedGetClass();
-            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, cb)) {
+            if (VisitBodyInObj(root, start, end, cb)) {
                 return;
             }
         }
@@ -184,8 +181,7 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
     auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                        VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
-            auto hclass = root->SynchronizedGetClass();
-            if (!hclass->IsAllTaggedProp() && VisitBodyInObj(root, start, end, cb)) {
+            if (VisitBodyInObj(root, start, end, cb)) {
                 return;
             }
         }
