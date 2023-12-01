@@ -22,13 +22,16 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/stackmap/cg_stackmap.h"
+
 
 namespace panda::ecmascript::kungfu {
 class Module {
 public:
     Module() = default;
-    Module(LLVMModule *module, LLVMAssembler *assembler)
-        : llvmModule_(module), assembler_(assembler)
+    Module(IRModule *module, Assembler *assembler)
+        : irModule_(module), assembler_(assembler)
     {
     }
 
@@ -38,6 +41,11 @@ public:
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
                               uint32_t moduleIndex, const CompilerLog &log);
 
+#ifdef COMPILE_MAPLE
+    void CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+                                      uint32_t moduleIndex);
+#endif
+
     bool IsRelaSection(ElfSecName sec) const
     {
         return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
@@ -46,14 +54,12 @@ public:
     void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const;
 
     void CollectAnModuleSectionDes(ModuleSectionDes &moduleDes, uint64_t textOffset,
-        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const;
+                                   CGStackMapInfo &stackMapInfo) const;
 
     void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
     void CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
-        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const;
+                              CGStackMapInfo &stackMapInfo) const;
 
     uint32_t GetSectionSize(ElfSecName sec) const;
 
@@ -80,9 +86,14 @@ public:
 
     void DestroyModule();
 
-    LLVMModule* GetModule() const
+    IRModule* GetModule() const
     {
-        return llvmModule_;
+        return irModule_;
+    }
+
+    bool IsLLVM() const
+    {
+        return irModule_->GetModuleKind() == MODULE_LLVM;
     }
 
 private:
@@ -114,8 +125,8 @@ private:
         }
     }
 
-    LLVMModule *llvmModule_ {nullptr};
-    LLVMAssembler *assembler_ {nullptr};
+    IRModule *irModule_ {nullptr};
+    Assembler *assembler_ {nullptr};
     // record current module first function index in StubFileInfo/AnFileInfo
     uint32_t startIndex_ {static_cast<uint32_t>(-1)};
     uint32_t funcCount_ {0};
@@ -165,8 +176,9 @@ protected:
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, EcmaVM* vm, const std::string &triple)
-        : FileGenerator(log, logList), vm_(vm), cfg_(triple) {}
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, EcmaVM* vm, const std::string &triple,
+                     bool useLiteCG = false)
+        : FileGenerator(log, logList), vm_(vm), cfg_(triple), useLiteCG_(useLiteCG) {}
 
     ~AOTFileGenerator() override = default;
 
@@ -191,15 +203,6 @@ public:
 
     void SaveSnapshotFile();
 
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &GetPc2StackMapVec()
-    {
-        return pc2CallSiteInfoVec_;
-    }
-    std::vector<LLVMStackMapType::Pc2Deopt> &GetPc2Deopt()
-    {
-        return pc2DeoptVec_;
-    }
-
     void SetCurrentCompileFileName(CString fileName)
     {
         curCompileFileName_ = fileName.c_str();
@@ -212,11 +215,11 @@ private:
     uint64_t RollbackTextSize(Module *module);
 
     AnFileInfo aotInfo_;
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
-    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
+    CGStackMapInfo *stackMapInfo_ = nullptr;
     EcmaVM* vm_;
     CompilationConfig cfg_;
     std::string curCompileFileName_;
+    const bool useLiteCG_;
 };
 
 enum class StubFileKind {

@@ -190,6 +190,64 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
     return addr;
 }
 
+void CodeInfo::SaveFunc2Addr(std::string funcName, uint32_t address)
+{
+    auto itr = func2FuncInfo.find(funcName);
+    if (itr != func2FuncInfo.end()) {
+        itr->second.addr = address;
+        return;
+    }
+    func2FuncInfo.insert(
+        std::pair<std::string, FuncInfo>(funcName, {address, 0, kungfu::CalleeRegAndOffsetVec()}));
+}
+
+void CodeInfo::SaveFunc2FPtoPrevSPDelta(std::string funcName, int32_t fp2PrevSpDelta)
+{
+    auto itr = func2FuncInfo.find(funcName);
+    if (itr != func2FuncInfo.end()) {
+        itr->second.fp2PrevFrameSpDelta = fp2PrevSpDelta;
+        return;
+    }
+    func2FuncInfo.insert(
+        std::pair<std::string, FuncInfo>(funcName, {0, fp2PrevSpDelta, kungfu::CalleeRegAndOffsetVec()}));
+}
+
+void CodeInfo::SaveFunc2CalleeOffsetInfo(std::string funcName, kungfu::CalleeRegAndOffsetVec calleeRegInfo)
+{
+    auto itr = func2FuncInfo.find(funcName);
+    if (itr != func2FuncInfo.end()) {
+        itr->second.calleeRegInfo = calleeRegInfo;
+        return;
+    }
+    func2FuncInfo.insert(
+        std::pair<std::string, FuncInfo>(funcName, {0, 0, calleeRegInfo}));
+}
+
+void CodeInfo::SavePC2DeoptInfo(uint64_t pc, std::vector<uint64_t> deoptInfo)
+{
+    pc2DeoptInfo.insert(std::pair<uint64_t, std::vector<uint64_t>>(pc, deoptInfo));
+}
+
+void CodeInfo::SavePC2CallSiteInfo(uint64_t pc, std::vector<uint64_t> callSiteInfo)
+{
+    pc2CallsiteInfo.insert(std::pair<uint64_t, std::vector<uint64_t>>(pc, callSiteInfo));
+}
+
+const std::map<std::string, CodeInfo::FuncInfo> &CodeInfo::GetFuncInfos() const
+{
+    return func2FuncInfo;
+}
+
+const std::map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2DeoptInfo() const
+{
+    return pc2DeoptInfo;
+}
+
+const std::map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2CallsiteInfo() const
+{
+    return pc2CallsiteInfo;
+}
+
 void CodeInfo::Reset()
 {
     codeInfo_.clear();
@@ -343,7 +401,8 @@ void LLVMAssembler::BuildAndRunPassesFastMode()
 }
 
 LLVMAssembler::LLVMAssembler(LLVMModule *lm, LOptions option)
-    : llvmModule_(lm),
+    : Assembler(),
+      llvmModule_(lm),
       module_(llvmModule_->GetModule()),
       listener_(this)
 {

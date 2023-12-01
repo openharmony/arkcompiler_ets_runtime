@@ -46,66 +46,6 @@ class CompilerLog;
 class MethodLogList;
 class LLVMModule;
 
-struct CodeInfo {
-    using sectionInfo = std::pair<uint8_t *, size_t>;
-    CodeInfo();
-
-    ~CodeInfo();
-
-    class CodeSpace {
-    public:
-        static CodeSpace *GetInstance();
-
-        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
-
-    private:
-        CodeSpace();
-        ~CodeSpace();
-
-        static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
-        static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
-
-        // start point of the buffer reserved for sections required in executing phase
-        uint8_t *reqSecs_ {nullptr};
-        size_t reqBufPos_ {0};
-        // start point of the buffer reserved for sections not required in executing phase
-        uint8_t *unreqSecs_ {nullptr};
-        size_t unreqBufPos_ {0};
-    };
-
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0);
-
-    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize = 0);
-
-    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName);
-
-    uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName);
-
-    void Reset();
-
-    uint8_t *GetSectionAddr(ElfSecName sec) const;
-
-    size_t GetSectionSize(ElfSecName sec) const;
-
-    std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const;
-
-    template <class Callback>
-    void IterateSecInfos(const Callback &cb) const
-    {
-        for (size_t i = 0; i < secInfos_.size(); i++) {
-            if (secInfos_[i].second == 0) {
-                continue;
-            }
-            cb(i, secInfos_[i]);
-        }
-    }
-
-private:
-    std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
-    std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
-    bool alreadyPageAlign_ {false};
-};
-
 enum class FPFlag : uint32_t {
     ELIM_FP = 0,
     RESERVE_FP = 1
@@ -121,11 +61,11 @@ struct LOptions {
         : optLevel(level), genFp(static_cast<uint32_t>(flag)), relocMode(relocMode) {};
 };
 
-class LLVMAssembler {
+class LLVMAssembler : public Assembler {
 public:
     explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
     virtual ~LLVMAssembler();
-    void Run(const CompilerLog &log, bool fastCompileMode);
+    void Run(const CompilerLog &log, bool fastCompileMode) override;
     const LLVMExecutionEngineRef &GetEngine()
     {
         return engine_;
@@ -137,25 +77,9 @@ public:
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
     static kungfu::CalleeRegAndOffsetVec GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log);
 
-    uintptr_t GetSectionAddr(ElfSecName sec) const
-    {
-        return reinterpret_cast<uintptr_t>(codeInfo_.GetSectionAddr(sec));
-    }
-
-    uint32_t GetSectionSize(ElfSecName sec) const
-    {
-        return static_cast<uint32_t>(codeInfo_.GetSectionSize(sec));
-    }
-
     void *GetFuncPtrFromCompiledModule(LLVMValueRef function)
     {
         return LLVMGetPointerToGlobal(engine_, function);
-    }
-
-    template <class Callback>
-    void IterateSecInfos(const Callback &cb) const
-    {
-        codeInfo_.IterateSecInfos(cb);
     }
 
     void SetObjFile(const llvm::object::ObjectFile *obj)
@@ -199,7 +123,6 @@ private:
     LLVMExecutionEngineRef engine_ {nullptr};
     AOTEventListener listener_;
     char *error_ {nullptr};
-    CodeInfo codeInfo_ {};
 };
 
 class LLVMIRGeneratorImpl : public CodeGeneratorImpl {

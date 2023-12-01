@@ -140,18 +140,30 @@ bool StubCompiler::BuildStubModuleAndSave() const
     LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
     LOptions stubOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
     Module* stubM = generator.AddModule(&allocator, "bc_stub", triple_, stubOp, log->OutputASM(), StubFileKind::BC);
-    RunPipeline(stubM->GetModule(), &allocator);
+    if (!stubM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(stubM->GetModule()), &allocator);
 
     LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
     LOptions comOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     Module* comM = generator.AddModule(&allocator, "com_stub", triple_, comOp, log->OutputASM(), StubFileKind::COM);
-    RunPipeline(comM->GetModule(), &allocator);
+    if (!comM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(comM->GetModule()), &allocator);
 
     LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
     LOptions builtinOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     Module* builtinM = generator.AddModule(&allocator, "builtin_stub", triple_, builtinOp, log->OutputASM(),
                                            StubFileKind::BUILTIN);
-    RunPipeline(builtinM->GetModule(), &allocator);
+    if (!builtinM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(builtinM->GetModule()), &allocator);
 
     generator.SaveStubFile(filePath_);
     return true;

@@ -53,6 +53,12 @@
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/js_runtime_options.h"
 
+#ifdef COMPILE_MAPLE
+#include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
+#include "litecg.h"
+#include "lmir_builder.h"
+#endif
+
 namespace panda::ecmascript::kungfu {
 class PassContext;
 
@@ -116,7 +122,7 @@ public:
         return ctx_->GetJSPandaFile();
     }
 
-    LLVMModule* GetAotModule() const
+    IRModule* GetAotModule() const
     {
         return ctx_->GetAOTModule();
     }
@@ -715,28 +721,35 @@ public:
     }
 };
 
-class LLVMIRGenPass {
+class CGIRGenPass {
 public:
-    void CreateCodeGen(LLVMModule *module, bool enableLog)
+    void CreateCodeGen(IRModule *module, bool enableLog)
     {
-        llvmImpl_ = std::make_unique<LLVMIRGeneratorImpl>(module, enableLog);
+#ifdef COMPILE_MAPLE
+        if (module->GetModuleKind() == MODULE_LLVM) {
+            cgImpl_ = std::make_unique<LLVMIRGeneratorImpl>(static_cast<LLVMModule*>(module), enableLog);
+        } else {
+            cgImpl_ = std::make_unique<LiteCGIRGeneratorImpl>(static_cast<LMIRModule*>(module), enableLog);
+        }
+#else
+        cgImpl_ = std::make_unique<LLVMIRGeneratorImpl>(static_cast<LLVMModule*>(module), enableLog);
+#endif
     }
-
     bool Run(PassData *data)
     {
         auto module = data->GetAotModule();
-        TimeScope timescope("LLVMIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("CGIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
         PassOptions *passOptions = data->GetPassOptions();
         bool enableOptInlining = passOptions->EnableOptInlining() && passOptions->EnableTypeLowering();
         CreateCodeGen(module, enableLog);
-        CodeGenerator codegen(llvmImpl_, data->GetMethodName());
+        CodeGenerator codegen(cgImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
                     data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining);
         return true;
     }
 private:
-    std::unique_ptr<CodeGeneratorImpl> llvmImpl_ {nullptr};
+    std::unique_ptr<CodeGeneratorImpl> cgImpl_ {nullptr};
 };
 
 class AsyncFunctionLoweringPass {

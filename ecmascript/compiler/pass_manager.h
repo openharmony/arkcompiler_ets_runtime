@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/pass_options.h"
+#include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -32,7 +33,7 @@ class CompilationConfig;
 
 class PassContext {
 public:
-    PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, LLVMModule *aotModule,
+    PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, IRModule *aotModule,
         PGOProfilerDecoder *decoder)
         : vm_(collector->GetVM()),
           bcInfoCollector_(collector),
@@ -87,7 +88,7 @@ public:
         return bcInfoCollector_;
     }
 
-    LLVMModule* GetAOTModule() const
+    IRModule* GetAOTModule() const
     {
         return aotModule_;
     }
@@ -126,7 +127,7 @@ private:
     CompilationConfig cmpCfg_;
     CompilerLog *log_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
-    LLVMModule *aotModule_ {nullptr};
+    IRModule *aotModule_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
 };
 

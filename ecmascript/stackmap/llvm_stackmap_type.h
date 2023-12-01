@@ -27,6 +27,7 @@
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
+#include "ecmascript/stackmap/cg_stackmap.h"
 
 #include "libpandabase/utils/leb128.h"
 
@@ -229,6 +230,51 @@ struct LLVMStackMap {
             stkMapRecord[i].Print();
         }
     }
+};
+
+class LLVMStackMapInfo : public CGStackMapInfo {
+public:
+    LLVMStackMapInfo() : CGStackMapInfo() {}
+    ~LLVMStackMapInfo() = default;
+
+    const std::vector<LLVMStackMapType::Pc2CallSiteInfo> &GetCallSiteInfoVec() const
+    {
+        return pc2CallSiteInfoVec_;
+    }
+
+    const std::vector<LLVMStackMapType::Pc2Deopt> &GetDeoptInfoVec() const
+    {
+        return pc2DeoptVec_;
+    }
+
+    void AppendCallSiteInfo(const LLVMStackMapType::Pc2CallSiteInfo &pc2CallSiteInfo)
+    {
+        pc2CallSiteInfoVec_.push_back(pc2CallSiteInfo);
+    }
+
+    void AppendDeoptInfo(const LLVMStackMapType::Pc2Deopt &pc2DeoptInfo)
+    {
+        pc2DeoptVec_.push_back(pc2DeoptInfo);
+    }
+
+    void PopCallSiteInfo()
+    {
+        pc2CallSiteInfoVec_.pop_back();
+    }
+
+    void PopDeoptInfo()
+    {
+        pc2DeoptVec_.pop_back();
+    }
+
+    CGStackMapKind GetStackMapKind() const override
+    {
+        return kLLVMStackMapInfo;
+    }
+
+private:
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
+    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_LLVM_STACKMAP_TYPE_H

@@ -148,7 +148,8 @@ int Main(const int argc, const char **argv)
                                 profilerDecoder,
                                 &passOptions);
 
-        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_);
+        bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
+        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
         const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
         CompileValidFiles(passManager, generator, ret, fileInfos);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();

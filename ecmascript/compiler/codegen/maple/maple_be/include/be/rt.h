@@ -53,19 +53,19 @@ public:
     }
 
 protected:
-    constexpr uint64_t kObjectAlignment = 8; /* Word size. Suitable for all Java types. */
+    static constexpr uint64_t kObjectAlignment = 8; /* Word size. Suitable for all Java types. */
 
 #ifdef USE_32BIT_REF
-    constexpr uint32_t kRefFieldSize = 4; /* reference field in java object */
-    constexpr uint32_t kRefFieldAlign = 4;
+    static constexpr uint32_t kRefFieldSize = 4; /* reference field in java object */
+    static constexpr uint32_t kRefFieldAlign = 4;
 #else
-    constexpr uint32_t kRefFieldSize = 8; /* reference field in java object */
-    constexpr uint32_t kRefFieldAlign = 8;
+    static constexpr uint32_t kRefFieldSize = 8; /* reference field in java object */
+    static constexpr uint32_t kRefFieldAlign = 8;
 #endif /* USE_32BIT_REF */
     /* The array length offset is fixed since CONTENT_OFFSET is fixed to simplify code */
-    constexpr int64_t kArrayLengthOffset = 12; /* shadow + monitor + [padding] */
+    static constexpr int64_t kArrayLengthOffset = 12; /* shadow + monitor + [padding] */
     /* The array content offset is aligned to 8B to alow hosting of size-8B elements */
-    constexpr int64_t kArrayContentOffset = 16; /* fixed */
+    static constexpr int64_t kArrayContentOffset = 16; /* fixed */
 
 private:
     RTSupport() {}

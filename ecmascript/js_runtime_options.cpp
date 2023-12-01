@@ -155,7 +155,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
     "--compiler-enable-native-inline:      Enable inline native function: Default: 'false'\n"
     "--compiler-enable-lowering-builtin:   Enable lowering global object: Default: 'false'\n"
-    "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
+    "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
+    "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -253,6 +254,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
          OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
+        {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -858,6 +860,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableLoweringBuiltin(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_LITECG:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerEnableLiteCG(argBool);
                 } else {
                     return false;
                 }

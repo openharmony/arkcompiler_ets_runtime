@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/litecg_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count, bool flag)
@@ -58,17 +59,14 @@ void ArkStackMapBuilder::Dump(const StackMapDumper& dumpInfo) const
 std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t []> stackMapAddr,
     uintptr_t hostCodeSectionAddr, Triple triple)
 {
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec;
-    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec;
-    LLVMStackMapParser parser(pc2CallSiteInfoVec, pc2DeoptVec);
+    LLVMStackMapInfo stackMapInfo;
+    LLVMStackMapParser parser(stackMapInfo);
     auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr, 0);
     if (!result) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    std::pair<std::shared_ptr<uint8_t>, uint32_t> info = GenerateArkStackMap(pc2CallSiteInfoVec, pc2DeoptVec, triple);
-    pc2CallSiteInfoVec.clear();
-    pc2DeoptVec.clear();
+    std::pair<std::shared_ptr<uint8_t>, uint32_t> info = GenerateArkStackMap(stackMapInfo, triple);
     return info;
 }
 
@@ -76,10 +74,10 @@ void ArkStackMapBuilder::Collect(
     std::unique_ptr<uint8_t []> stackMapAddr,
     uintptr_t hostCodeSectionAddr,
     uintptr_t hostCodeSectionOffset,
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec)
+    CGStackMapInfo &stackMapInfo)
 {
-    LLVMStackMapParser parser(pc2CallsiteInfoVec, pc2DeoptVec);
+    LLVMStackMapInfo &llvmStackMapInfo = static_cast<LLVMStackMapInfo&>(stackMapInfo);
+    LLVMStackMapParser parser(llvmStackMapInfo);
     auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr, hostCodeSectionOffset);
     if (!result) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -88,12 +86,10 @@ void ArkStackMapBuilder::Collect(
 }
 
 std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::GenerateArkStackMap(
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
-    Triple triple)
+    CGStackMapInfo &stackMapInfo, Triple triple)
 {
     ARKCallsiteAOTFileInfo AOTFileInfo;
-    GenArkCallsiteAOTFileInfo(pc2CallsiteInfoVec, pc2DeoptVec, AOTFileInfo, triple);
+    GenArkCallsiteAOTFileInfo(stackMapInfo, AOTFileInfo, triple);
     uint32_t secSize = AOTFileInfo.secHead.secSize;
     uint8_t *p = new(std::nothrow) uint8_t[secSize];
     if (p == nullptr) {
@@ -106,6 +102,7 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::GenerateArkSta
     }
     return std::make_pair(ptr, secSize);
 }
+
 void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
 {
     size_t n = info.callsites.size();
@@ -199,7 +196,7 @@ void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t lengt
 
 template <class Vec>
 void ArkStackMapBuilder::SortCallSite(
-    std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
+    const std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
     std::vector<std::pair<uintptr_t, Vec>>& result)
 {
     for (auto &info: infos) {
@@ -289,16 +286,28 @@ void ArkStackMapBuilder::GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deop
     sizeAndArkDeopt.first = total;
 }
 
-void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2stackMapVec,
-    std::vector<LLVMStackMapType::Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result, Triple triple)
+void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMapInfo,
+                                                   ARKCallsiteAOTFileInfo &result, Triple triple)
 {
-    ARKCallsite callsite;
-    uint32_t secSize = 0;
     std::vector<std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>> pc2StackMaps;
     std::vector<std::pair<uintptr_t, LLVMStackMapType::DeoptInfoType>> pc2Deopts;
+    if (stackMapInfo.GetStackMapKind() == CGStackMapInfo::kLiteCGStackMapInfo) {
+        std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2StackMapsVec;
+        std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptInfoVec;
+        const auto &liteCGStackMapInfo = static_cast<const LiteCGStackMapInfo&>(stackMapInfo);
+        liteCGStackMapInfo.ConvertToLLVMStackMapInfo(pc2StackMapsVec, pc2DeoptInfoVec, triple);
+        SortCallSite(pc2StackMapsVec, pc2StackMaps);
+        SortCallSite(pc2DeoptInfoVec, pc2Deopts);
+    } else {
+        const auto &llvmStackMapInfo = static_cast<const LLVMStackMapInfo&>(stackMapInfo);
+        SortCallSite(llvmStackMapInfo.GetCallSiteInfoVec(), pc2StackMaps);
+        SortCallSite(llvmStackMapInfo.GetDeoptInfoVec(), pc2Deopts);
+    }
+    ARKCallsite callsite;
+    uint32_t secSize = 0;
+
     std::vector<intptr_t> CallsitePcs;
-    SortCallSite(pc2stackMapVec, pc2StackMaps);
-    SortCallSite(pc2DeoptVec, pc2Deopts);
+
     CalcCallsitePc(pc2Deopts, pc2StackMaps, CallsitePcs);
     uint32_t callsiteNum = CallsitePcs.size();
     dumper_.callsiteNum = callsiteNum;
