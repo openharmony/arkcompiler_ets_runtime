@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
-class A {
-    constructor() {
-    }
-    async g(x:number) {
-        return x * 2;
-    }
-    async f(x:number) {
-        await this.g(x * 2);
+function foo() {
+    // framevalues should't handle object of unfinished allocation
+    return {
+        value: -0,
+        writable: false,
+        configurable: false
     }
 }
+
+let obj = {}
+
+Object.defineProperty(obj, "foo", foo());

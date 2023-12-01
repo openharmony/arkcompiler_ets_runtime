@@ -524,7 +524,7 @@ public:
     GateRef CheckNullAndConvertToBool(GateRef gate);
     GateRef CheckUndefinedAndConvertToInt32(GateRef gate);
     GateRef StartAllocate();
-    GateRef FinishAllocate();
+    GateRef FinishAllocate(GateRef value);
 
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
