@@ -123,6 +123,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatFloor)                              \
     V(FindElementWithCache)                    \
     V(TryToElementsIndexOrFindInStringTable)   \
+    V(TryGetInternString)                      \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -342,6 +343,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StPatchVar)                         \
     V(DeoptHandler)                       \
     V(ContainerRBTreeForEach)             \
+    V(InsertStringToTable)                \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
     V(DefineField)                        \
@@ -426,6 +428,7 @@ public:
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString);
+    static JSTaggedType TryGetInternString(uintptr_t argGlue, JSTaggedType ecmaString);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -779,6 +782,7 @@ private:
     static inline bool ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                           const JSHandle<JSTaggedValue> &chc,
                                           const JSHandle<ClassLiteral> &classLiteral);
+    static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, EcmaString *string);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

@@ -2539,6 +2539,14 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
     return JSTaggedValue::True().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(InsertStringToTable)
+{
+    RUNTIME_STUBS_HEADER(InsertStringToTable);
+    JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue::Cast(
+        static_cast<void *>(thread->GetEcmaVM()->GetEcmaStringTable()->InsertStringToTable(str)));
+}
+
 DEF_RUNTIME_STUBS(SlowFlattenString)
 {
     RUNTIME_STUBS_HEADER(SlowFlattenString);
@@ -2554,15 +2562,15 @@ JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGl
         return JSTaggedValue(index).GetRawData();
     }
     if (!EcmaStringAccessor(string).IsInternString()) {
-        auto thread = JSThread::GlueToJSThread(argGlue);
-        EcmaString *str =
-            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
-        if (str == nullptr) {
-            return JSTaggedValue::Hole().GetRawData();
-        }
-        return JSTaggedValue::Cast(static_cast<void *>(str));
+        return RuntimeTryGetInternString(argGlue, string);
     }
     return ecmaString;
+}
+
+JSTaggedType RuntimeStubs::TryGetInternString(uintptr_t argGlue, JSTaggedType ecmaString)
+{
+    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    return RuntimeTryGetInternString(argGlue, string);
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,

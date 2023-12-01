@@ -419,6 +419,7 @@ public:
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     inline GateRef GetRawHashFromString(GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
+    inline GateRef GetMixHashcode(GateRef string);
     GateRef GetFirstFromTreeString(GateRef string);
     GateRef GetSecondFromTreeString(GateRef string);
     GateRef GetIsAllTaggedPropFromHClass(GateRef hclass);
@@ -587,7 +588,8 @@ public:
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback);
-    GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
+    GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
+                              ProfileOperation callback, GateRef isInternal, bool canUseIsInternal = false);
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
@@ -597,7 +599,8 @@ public:
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
         GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation());
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation()); // Crawl prototype chain
+        GateRef value, bool useOwn, GateRef isInternal, ProfileOperation callback = ProfileOperation(),
+        bool canUseIsInternal = false); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
         ProfileOperation callback = ProfileOperation());
     GateRef GetParentEnv(GateRef object);
@@ -706,6 +709,7 @@ public:
     GateRef IsFastCall(GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
     GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
+    GateRef GetInternalString(GateRef glue, GateRef key);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator

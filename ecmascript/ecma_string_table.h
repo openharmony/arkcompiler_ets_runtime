@@ -45,6 +45,7 @@ public:
     EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
     EcmaString *TryGetInternString(EcmaString *string);
+    EcmaString *InsertStringToTable(const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
     bool CheckStringTableValidity();

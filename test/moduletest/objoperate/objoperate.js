@@ -47,3 +47,27 @@ var foo = () => {
 };
 foo();
 foo();  // expect no error
+
+var b = new ArrayBuffer(400);
+var v1 = new Int32Array(b);
+var str = '-' + '0';
+var str1 = '4.' + '67';
+var str2 = "jjj" + "kk";
+print(v1[str2]);
+v1[str2] = 5;
+print(v1[str2]);
+
+
+var obj1 = {};
+
+obj1.__proto__ = v1;
+
+print(obj1[str]);
+obj1[str] = 5;
+print(obj1[str]);
+
+v1[4] = 123;
+v1[5] = 23;
+print(obj1[str1]);
+obj1[str1] = 5;
+print(obj1[str1]);
