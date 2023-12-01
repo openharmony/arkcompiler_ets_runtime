@@ -133,8 +133,10 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
         THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::NumberFormat failed", relativeTimeFormat);
     }
     // Display grouping using the default strategy for all locales
-    icu::DecimalFormat* icuDecimalFormat = static_cast<icu::DecimalFormat*>(icuNumberFormat);
-    icuDecimalFormat->setMinimumGroupingDigits(UNUM_MINIMUM_GROUPING_DIGITS_AUTO);
+    if (icuNumberFormat->getDynamicClassID() == icu::DecimalFormat::getStaticClassID()) {
+        icu::DecimalFormat* icuDecimalFormat = static_cast<icu::DecimalFormat*>(icuNumberFormat);
+        icuDecimalFormat->setMinimumGroupingDigits(UNUM_MINIMUM_GROUPING_DIGITS_AUTO);
+    }
 
     // Trans RelativeStyleOption to ICU Style
     UDateRelativeDateTimeFormatterStyle uStyle;
