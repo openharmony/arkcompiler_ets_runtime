@@ -204,7 +204,6 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
-        {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -213,7 +212,7 @@ void LLVMIRBuilder::InitializeHandlers()
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY,
         OpCode::FRAME_STATE, OpCode::STATE_SPLIT, OpCode::FRAME_ARGS,
         OpCode::LOOP_EXIT_DEPEND, OpCode::LOOP_EXIT,
-        OpCode::START_ALLOCATE, OpCode::FRAME_VALUES
+        OpCode::START_ALLOCATE, OpCode::FINISH_ALLOCATE, OpCode::FRAME_VALUES
     };
 }
 
@@ -1345,21 +1344,6 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     }
     Bind(gate, result);
 
-    if (IsLogEnabled()) {
-        SetDebugInfo(gate, result);
-    }
-}
-
-void LLVMIRBuilder::HandleFinishAllocate(GateRef gate)
-{
-    auto g0 = acc_.GetValueIn(gate, 0);
-    VisitFinishAllocate(gate, g0);
-}
-
-void LLVMIRBuilder::VisitFinishAllocate(GateRef gate, GateRef e1)
-{
-    LLVMValueRef result = GetLValue(e1);
-    Bind(gate, result);
     if (IsLogEnabled()) {
         SetDebugInfo(gate, result);
     }

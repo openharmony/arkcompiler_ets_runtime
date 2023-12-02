@@ -175,7 +175,8 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, Gate
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
     }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
-    return builder_.FinishAllocate(array);
+    builder_.FinishAllocate();
+    return array;
 }
 
 GateRef NTypeHCRLowering::NewTaggedArray(size_t length)
@@ -193,7 +194,9 @@ GateRef NTypeHCRLowering::NewTaggedArray(size_t length)
     for (size_t offset = TaggedArray::DATA_OFFSET; offset < endOffset; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), elements, offset, builder_.Hole());
     }
-    return builder_.FinishAllocate(elements);
+    builder_.FinishAllocate();
+
+    return elements;
 }
 
 GateRef NTypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
@@ -286,7 +289,8 @@ GateRef NTypeHCRLowering::NewTaggedArray(GateRef length)
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
     builder_.Bind(&exit);
-    auto ret = builder_.FinishAllocate(*array);
+    builder_.FinishAllocate();
+    auto ret = *array;
     builder_.SubCfgExit();
     return ret;
 }

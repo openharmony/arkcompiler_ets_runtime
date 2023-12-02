@@ -123,7 +123,6 @@ group("ark_aot_ts_test") {
     "forin_non_empty_prototype",
     "forin_special_object",
     "forloop",
-    "framestatesalloc",
     "framestatesasync",
     "framestatesphi",
     "generatormerge",

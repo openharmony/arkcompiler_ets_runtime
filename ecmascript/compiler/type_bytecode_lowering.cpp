@@ -2253,6 +2253,9 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(type));
+    if (hclassIndex == -1) {
+        return;
+    }
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of value ins
     GateRef index = acc_.GetValueIn(gate, 0);
     auto imm = acc_.GetConstantValue(index);
@@ -2268,9 +2271,8 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         return;
     }
     std::vector<uint64_t> inlinedProps;
+    JSHandle<JSHClass> newClass = JSHandle<JSHClass>(thread_, ptManager->QueryHClass(type.first, type.second));
     JSHandle<JSHClass> oldClass = JSHandle<JSHClass>(thread_, objhandle->GetClass());
-    JSHandle<JSHClass> newClass = hclassIndex == -1 ? oldClass :
-        JSHandle<JSHClass>(thread_, ptManager->QueryHClass(type.first, type.second));
     if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
         return;
     }
@@ -2290,7 +2292,6 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         }
     }
 
-    AddProfiling(gate);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef oldObj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
         builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
@@ -2309,7 +2310,7 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         builder_.StoreConstOffset(VariableType::INT64(), newObj, newClass->GetInlinedPropertiesOffset(i),
             builder_.Int64(inlinedProps.at(i)));
     }
-    GateRef ret = builder_.FinishAllocate(newObj);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    builder_.FinishAllocate();
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), newObj);
 }
 }  // namespace panda::ecmascript
