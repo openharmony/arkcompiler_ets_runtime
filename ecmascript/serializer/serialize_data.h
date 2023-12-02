@@ -26,7 +26,7 @@ enum class EncodeFlag : uint8_t {
     // 0x00: old space
     // 0x01: non movable space
     // 0x02: machine code space
-    // 0x03: huge space 
+    // 0x03: huge space
     NEW_OBJECT = 0x00,
     REFERENCE = 0x04,
     WEAK = 0x05,
@@ -83,16 +83,19 @@ public:
         return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
     }
 
-    void WriteUint8(uint8_t data) {
+    void WriteUint8(uint8_t data)
+    {
         data_.EmitChar(data);
     }
 
-    uint8_t ReadUint8() {
+    uint8_t ReadUint8()
+    {
         ASSERT(position_ < Size());
         return data_.GetU8(position_++);
     }
 
-    void WriteEncodeFlag(EncodeFlag flag) {
+    void WriteEncodeFlag(EncodeFlag flag)
+    {
         data_.EmitChar(static_cast<uint8_t>(flag));
     }
 
@@ -207,7 +210,7 @@ public:
     void AlignSpaceObjectSize(size_t &spaceSize, size_t objectSize)
     {
         size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
-        if(UNLIKELY(spaceSize + objectSize > alignRegionSize)) {
+        if (UNLIKELY(spaceSize + objectSize > alignRegionSize)) {
             regionRemainSizeVector_.push_back(alignRegionSize - spaceSize);
             spaceSize = alignRegionSize;
         }

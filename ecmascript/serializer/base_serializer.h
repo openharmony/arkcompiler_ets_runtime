@@ -25,7 +25,8 @@ class Ecmavm;
 class JSThread;
 class BaseSerializer {
 public:
-    explicit BaseSerializer(JSThread *thread) : thread_(thread), vm_(thread->GetEcmaVM()), objXRay_(vm_) {
+    explicit BaseSerializer(JSThread *thread) : thread_(thread), vm_(thread->GetEcmaVM()), objXRay_(vm_)
+    {
         data_.reset(new SerializeData(thread));
     }
     virtual ~BaseSerializer()
@@ -50,12 +51,13 @@ protected:
     bool SerializeReference(TaggedObject *object);
     bool SerializeRootObject(TaggedObject *object);
     template<SerializeType serializeType>
-    void SerializeObjectField(TaggedObject *object, JSType objectType);
+    void SerializeObjectField(TaggedObject *object);
     bool SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeHClassFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeMethodFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);
+    void SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeInObjField(TaggedObject *object, ObjectSlot start, ObjectSlot end);
     SerializedObjectSpace GetSerializedObjectSpace(TaggedObject *object) const;
 

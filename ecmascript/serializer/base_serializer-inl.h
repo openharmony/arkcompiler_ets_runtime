@@ -21,9 +21,9 @@
 namespace panda::ecmascript {
 
 template<SerializeType serializeType>
-void BaseSerializer::SerializeObjectField(TaggedObject *object, JSType objectType)
+void BaseSerializer::SerializeObjectField(TaggedObject *object)
 {
-    auto visitor = [this, objectType](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+    auto visitor = [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
         switch (area) {
             case VisitObjectArea::RAW_DATA:
                 WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
@@ -38,12 +38,7 @@ void BaseSerializer::SerializeObjectField(TaggedObject *object, JSType objectTyp
                 break;
             }
             default:
-                if (serializeType != SerializeType::VALUE_SERIALIZE
-                    || !SerializeSpecialObjIndividually(objectType, root, start, end)) {
-                    for (ObjectSlot slot = start; slot < end; slot++) {
-                        SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
-                    }
-                }
+                SerializeTaggedObjField(serializeType, root, start, end);
                 break;
         }
     };
@@ -56,14 +51,13 @@ void BaseSerializer::SerializeTaggedObject(TaggedObject *object)
 {
     JSHClass *hclass = object->GetClass();
     size_t objectSize = hclass->SizeFromJSHClass(object);
-    JSType objectType = hclass->GetObjectType();
     SerializedObjectSpace space = GetSerializedObjectSpace(object);
     data_->WriteUint8(SerializeData::EncodeNewObject(space));
     data_->WriteUint32(objectSize);
     data_->CalculateSerializedObjectSize(space, objectSize);
     referenceMap_.emplace(object, objectIndex_++);
 
-    SerializeObjectField<serializeType>(object, objectType);
+    SerializeObjectField<serializeType>(object);
 }
 }
 

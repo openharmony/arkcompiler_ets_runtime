@@ -109,7 +109,7 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
 {
     ASSERT(root->GetClass()->IsHClass());
     ObjectSlot slot = start;
-    while(slot < end) {
+    while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case JSHClass::PROTOTYPE_OFFSET: {
@@ -155,7 +155,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
 {
     ASSERT(root->GetClass()->GetObjectType() == JSType::JS_ASYNC_FUNCTION);
     ObjectSlot slot = start;
-    while(slot < end) {
+    while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
@@ -185,7 +185,7 @@ void BaseSerializer::SerializeMethodFieldIndividually(TaggedObject *root, Object
 {
     ASSERT(root->GetClass()->IsMethod());
     ObjectSlot slot = start;
-    while(slot < end) {
+    while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case Method::CONSTANT_POOL_OFFSET:
@@ -213,6 +213,18 @@ void BaseSerializer::SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto)
     } else if (!SerializeReference(proto.GetTaggedObject()) && !SerializeRootObject(proto.GetTaggedObject())) {
         data_->WriteEncodeFlag(EncodeFlag::OBJECT_PROTO);
         data_->WriteUint8(static_cast<uint8_t>(kclass->GetObjectType()));
+    }
+}
+
+void BaseSerializer::SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root,
+                                             ObjectSlot start, ObjectSlot end)
+{
+    JSType objectType = root->GetClass()->GetObjectType();
+    if (serializeType != SerializeType::VALUE_SERIALIZE
+        || !SerializeSpecialObjIndividually(objectType, root, start, end)) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+        }
     }
 }
 
