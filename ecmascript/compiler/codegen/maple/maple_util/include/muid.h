@@ -129,7 +129,7 @@ public:
 };
 
 void MuidInit(MuidContext &status);
-void MuidDecode(MuidContext &status, const unsigned char &data, uint64_t size);
+void MuidDecode(MuidContext &status, const unsigned char &data, size_t size);
 
 template <typename T>
 void FullEncode(T &result, MuidContext &status);

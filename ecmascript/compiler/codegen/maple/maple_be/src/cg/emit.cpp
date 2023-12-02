@@ -183,7 +183,7 @@ AsmLabel Emitter::GetTypeAsmInfoName(PrimType primType) const
 
 void Emitter::EmitFileInfo(const std::string &fileName)
 {
-#if defined(_WIN32) || defined(DARWIN)
+#if defined(_WIN32) || defined(DARWIN) || defined(__APPLE__)
     char *curDirName = getcwd(nullptr, 0);
 #else
     char *curDirName = get_current_dir_name();
