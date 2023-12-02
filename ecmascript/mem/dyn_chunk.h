@@ -85,12 +85,6 @@ public:
         return error_;
     }
 
-    inline uint64_t GetU64(size_t offset) const
-    {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        return *reinterpret_cast<uint64_t *>(buf_ + offset);
-    }
-
     inline uint32_t GetU32(size_t offset) const
     {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

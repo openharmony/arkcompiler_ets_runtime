@@ -445,8 +445,10 @@ JSTaggedValue EcmaContext::FindConstpool(const JSPandaFile *jsPandaFile, panda_f
     return FindConstpool(jsPandaFile, index);
 }
 
-JSTaggedValue EcmaContext::FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index)
+JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
 {
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
     // In the taskpool thread, there is a case where the Function object is serialized before InitForCurrentThread.
     // A constpool is created when a Function is serialized. Slowpath, the default deserialized constpool,
@@ -457,19 +459,12 @@ JSTaggedValue EcmaContext::FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, 
             constpool = FindConstpool(jsPandaFile, index);
         }
     }
-    return constpool;
-}
-
-JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
-{
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
-    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    JSTaggedValue constpool = FindConstpoolWithAOT(jsPandaFile, index);
     if (constpool.IsHole()) {
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(vm_, jsPandaFile, id);
         AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);
         return newConstpool;
     }
+
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 

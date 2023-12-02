@@ -45,7 +45,6 @@ public:
     inline void Reset();
     inline void Reset(uintptr_t begin, uintptr_t end);
     inline void Reset(uintptr_t begin, uintptr_t end, uintptr_t top);
-    inline void ResetTopPointer(uintptr_t top);
     inline uintptr_t Allocate(size_t size);
 
     uintptr_t GetTop() const
@@ -107,7 +106,6 @@ public:
     inline void FillBumpPointer();
 
     inline void ResetBumpPointer(uintptr_t begin, uintptr_t end, uintptr_t top);
-    inline void ResetTopPointer(uintptr_t top);
 
     inline void Free(uintptr_t begin, size_t size, bool isAdd = true);
 

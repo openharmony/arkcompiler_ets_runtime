@@ -35,18 +35,6 @@ public:
         return size;
     }
 
-    static inline size_t ComputeDataSize(size_t elemSize, uint32_t length)
-    {
-        ASSERT(elemSize != 0);
-        return elemSize * length;
-    }
-
-    size_t GetPointerLength()
-    {
-        size_t byteSize = ComputeDataSize(GetArrayLength(), GetByteLength());
-        return AlignUp(byteSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) / sizeof(JSTaggedType);
-    }
-
     inline void *GetData(uint32_t index = 0) const
     {
         return reinterpret_cast<void *>(ToUintPtr(this) + DATA_OFFSET + index * GetByteLength());
@@ -61,7 +49,6 @@ public:
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty ByteArray size
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetPointerLength());
     DECL_DUMP()
 
 private:

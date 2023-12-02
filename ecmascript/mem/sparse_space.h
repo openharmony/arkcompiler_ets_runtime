@@ -61,7 +61,6 @@ public:
 
     void Initialize() override;
     void Reset();
-    void ResetTopPointer(uintptr_t top);
 
     uintptr_t Allocate(size_t size, bool allowGC = true);
     bool Expand();

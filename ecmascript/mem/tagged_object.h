@@ -43,7 +43,6 @@ public:
     }
 
     static constexpr int HCLASS_OFFSET = 0;
-    static constexpr int SIZE = sizeof(MarkWordType);
 
     JSThread* GetJSThread() const;
 

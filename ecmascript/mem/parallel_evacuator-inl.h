@@ -36,7 +36,9 @@ bool ParallelEvacuator::VisitBodyInObj(
     TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
 {
     auto hclass = root->GetClass();
-    ASSERT(!hclass->IsAllTaggedProp());
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
     int index = 0;
     for (ObjectSlot slot = start; slot < end; slot++) {
         TaggedObject *dst = hclass->GetLayout().GetTaggedObject();

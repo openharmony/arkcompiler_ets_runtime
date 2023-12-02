@@ -48,11 +48,6 @@ void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
     ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(top_), (end_ - top_));
 }
 
-void BumpPointerAllocator::ResetTopPointer(uintptr_t top)
-{
-    top_ = top;
-}
-
 uintptr_t BumpPointerAllocator::Allocate(size_t size)
 {
     ASSERT(size != 0);
@@ -144,11 +139,6 @@ void FreeListAllocator::FillBumpPointer()
 void FreeListAllocator::ResetBumpPointer(uintptr_t begin, uintptr_t end, uintptr_t top)
 {
     bpAllocator_.Reset(begin, end, top);
-}
-
-void FreeListAllocator::ResetTopPointer(uintptr_t top)
-{
-    bpAllocator_.ResetTopPointer(top);
 }
 
 // The object will be marked with poison after being put into the freelist when is_asan is true.

@@ -90,7 +90,7 @@ public:
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty Array size
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetLength(), GetLength());
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetLength());
     DECL_DUMP()
 
 private:

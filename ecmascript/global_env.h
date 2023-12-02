@@ -56,17 +56,6 @@ public:
         return result;
     }
 
-    JSHandle<JSTaggedValue> GetNoLazyEnvObjectByIndex(size_t index) const
-    {
-        JSHandle<JSTaggedValue> result = GetGlobalEnvObjectByIndex(index);
-        if (result->IsInternalAccessor()) {
-            JSThread *thread = GetJSThread();
-            AccessorData *accessor = AccessorData::Cast(result->GetTaggedObject());
-            accessor->CallInternalGet(thread, JSHandle<JSObject>::Cast(GetJSGlobalObject()));
-        }
-        return result;
-    }
-
     size_t GetGlobalEnvFieldSize() const
     {
         return FINAL_INDEX;

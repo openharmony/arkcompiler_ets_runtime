@@ -232,13 +232,6 @@ public:
         return reinterpret_cast<Region *>(objAddress & ~DEFAULT_REGION_MASK);
     }
 
-    static size_t GetRegionAvailableSize()
-    {
-        size_t regionHeaderSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t bitsetSize = GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE - regionHeaderSize);
-        return DEFAULT_REGION_SIZE - regionHeaderSize - bitsetSize;
-    }
-
     void ClearMembers()
     {
         if (lock_ != nullptr) {

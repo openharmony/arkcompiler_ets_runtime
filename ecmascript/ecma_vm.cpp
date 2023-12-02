@@ -225,6 +225,9 @@ bool EcmaVM::Initialize()
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
+        snapshotEnv_->Initialize();
+    }
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }

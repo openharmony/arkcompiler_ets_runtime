@@ -72,7 +72,6 @@ private:
     CUnorderedMultiMap<uint32_t, EcmaString *> table_;
     const EcmaVM *vm_{nullptr};
     friend class SnapshotProcessor;
-    friend class BaseDeserializer;
 };
 
 class SingleCharTable : public TaggedArray {

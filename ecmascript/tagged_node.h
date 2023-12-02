@@ -43,6 +43,12 @@ public:
     static constexpr size_t SIZE = DATA_OFFSET;
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
+    void VisitObjects(const EcmaObjectRangeVisitor &visitor)
+    {
+        // no field in this object
+        VisitRangeSlot(visitor);
+    }
+
     static int Hash(JSTaggedValue key)
     {
         if (key.IsDouble() && key.GetDouble() == 0.0) {
@@ -93,13 +99,11 @@ public:
     }
 
     static constexpr size_t NEXT_OFFSET = TaggedNode::SIZE;
+    ACCESSORS(Next, NEXT_OFFSET, DATA_OFFSET);
 
-    ACCESSORS(Next, NEXT_OFFSET, LAST_OFFSET);
- 
-    static constexpr size_t SIZE = LAST_OFFSET;
-    DECL_VISIT_OBJECT(TaggedObject::SIZE, SIZE)
+    static constexpr size_t SIZE = DATA_OFFSET;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(TaggedNode, NEXT_OFFSET, SIZE)
     DECL_DUMP()
-
     static JSHandle<RBTreeNode> Treeing(JSThread *thread, const JSHandle<LinkedNode> &head);
 };
 
@@ -124,7 +128,7 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(Count, uint32_t, COUNT_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT(TaggedObject::SIZE, COUNT_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(TaggedNode, LEFT_OFFSET, COUNT_OFFSET)
 
     void InitRBTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
                         JSHandle<JSTaggedValue> value, int count);

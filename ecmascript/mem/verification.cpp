@@ -29,16 +29,17 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
                               VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 auto hclass = root->GetClass();
-                ASSERT(!hclass->IsAllTaggedProp());
-                int index = 0;
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                    auto attr = layout->GetAttr(index++);
-                    if (attr.IsTaggedRep()) {
-                        VisitObject(slot);
+                if (!hclass->IsAllTaggedProp()) {
+                    int index = 0;
+                    for (ObjectSlot slot = start; slot < end; slot++) {
+                        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+                        auto attr = layout->GetAttr(index++);
+                        if (attr.IsTaggedRep()) {
+                            VisitObject(slot);
+                        }
                     }
+                    return;
                 }
-                return;
             }
             for (ObjectSlot slot = start; slot < end; slot++) {
                 VisitObject(slot);

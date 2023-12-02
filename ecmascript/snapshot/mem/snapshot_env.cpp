@@ -21,17 +21,22 @@
 namespace panda::ecmascript {
 void SnapshotEnv::Initialize()
 {
+#if ECMASCRIPT_ENABLE_SNAPSHOT
     InitGlobalConst();
     InitGlobalEnv();
+#endif
 }
 
 void SnapshotEnv::InitGlobalConst()
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    for (size_t index = 0; index < globalConst->GetConstantCount(); index++) {
+    size_t constantCount = globalConst->GetConstantCount();
+    for (size_t index = 0; index < constantCount; index++) {
         JSTaggedValue objectValue = globalConst->GetGlobalConstantObject(index);
-        if (objectValue.IsHeapObject()) {
-            rootObjectMap_.emplace(ToUintPtr(objectValue.GetTaggedObject()), index);
+        if (objectValue.IsHeapObject() && !objectValue.IsString()) {
+            TaggedObject *object = objectValue.GetTaggedObject();
+            object->GetClass()->SetGlobalConstOrBuiltinsObject(true);
+            objectVector_.emplace_back(ToUintPtr(object));
         }
     }
 }
@@ -39,20 +44,55 @@ void SnapshotEnv::InitGlobalConst()
 void SnapshotEnv::InitGlobalEnv()
 {
     auto globalEnv = vm_->GetGlobalEnv();
-    auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    size_t globalEnvIndexStart = globalConst->GetConstantCount();
-    for (size_t index = 0; index < globalEnv->GetGlobalEnvFieldSize(); index++) {
-        JSHandle<JSTaggedValue> objectValue = globalEnv->GetGlobalEnvObjectByIndex(index);
-        if (objectValue->IsHeapObject() && !objectValue->IsInternalAccessor()) {
-            rootObjectMap_.emplace(ToUintPtr(objectValue->GetTaggedObject()), index + globalEnvIndexStart);
+    CQueue<TaggedObject *> objectQueue;
+    std::set<TaggedObject *> objectSet;
+    objectQueue.emplace(*globalEnv);
+    objectSet.emplace(*globalEnv);
+    while (!objectQueue.empty()) {
+        auto taggedObject = objectQueue.front();
+        if (taggedObject == nullptr) {
+            break;
         }
+        taggedObject->GetClass()->SetGlobalConstOrBuiltinsObject(true);
+        objectVector_.emplace_back(ToUintPtr(taggedObject));
+        objectQueue.pop();
+        HandleObjectField(taggedObject, &objectQueue, &objectSet);
     }
+}
+
+void SnapshotEnv::HandleObjectField(TaggedObject *objectHeader, CQueue<TaggedObject *> *objectQueue,
+                                    std::set<TaggedObject *> *objectSet)
+{
+    auto visitor = [objectQueue, objectSet](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                            VisitObjectArea area) {
+        auto hclass = root->GetClass();
+        int index = 0;
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            if (area == VisitObjectArea::IN_OBJECT && !hclass->IsAllTaggedProp()) {
+                auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+                auto attr = layout->GetAttr(index++);
+                if (!attr.IsTaggedRep()) {
+                    continue;
+                }
+            }
+            auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
+            JSTaggedValue fieldValue(*fieldAddr);
+            if (fieldValue.IsHeapObject() && !fieldValue.IsWeak() && !fieldValue.IsString()
+                && objectSet->find(fieldValue.GetTaggedObject()) == objectSet->end()) {
+                auto object = fieldValue.GetTaggedObject();
+                objectQueue->emplace(object);
+                objectSet->emplace(object);
+            }
+        }
+    };
+    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 void SnapshotEnv::Iterate(const RootVisitor &v)
 {
-    for (auto &it : rootObjectMap_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(it.first))));
+    uint64_t length = objectVector_.size();
+    for (uint64_t i = 0; i < length; i++) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(objectVector_.data()[i]))));
     }
 }
 }  // namespace panda::ecmascript

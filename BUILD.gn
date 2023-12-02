@@ -93,7 +93,6 @@ group("ark_js_unittest") {
   if (host_os != "mac") {
     deps += [
       "ecmascript/pgo_profiler/tests:unittest",
-      "ecmascript/serializer/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/base/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/builtins/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/containers/tests:unittest",
@@ -140,7 +139,6 @@ group("ark_unittest") {
       "ecmascript/pgo_profiler/tests:host_unittest",
       "ecmascript/regexp/tests:host_unittest",
       "ecmascript/require/tests:host_unittest",
-      "ecmascript/serializer/tests:host_unittest",
       "ecmascript/snapshot/tests:host_unittest",
       "ecmascript/tests:host_unittest",
       "ecmascript/ts_types/tests:host_unittest",
@@ -790,9 +788,6 @@ ecma_source = [
   "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.cpp",
   "ecmascript/pgo_profiler/types/pgo_profile_type.cpp",
   "ecmascript/property_accessor.cpp",
-  "ecmascript/serializer/base_deserializer.cpp",
-  "ecmascript/serializer/base_serializer.cpp",
-  "ecmascript/serializer/value_serializer.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm_stackmap_parser.cpp",

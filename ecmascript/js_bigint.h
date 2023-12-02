@@ -157,10 +157,7 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
     static constexpr size_t DATA_OFFSET = SIZE;
-
-    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetPointerLength());
 
     // define BitField
     static constexpr size_t SIGN_BITS = 1;
@@ -176,18 +173,6 @@ private:
     inline uint32_t IsUint32() const
     {
         return GetLength() == 1;
-    }
-
-    inline size_t GetPointerLength()
-    {
-        size_t byteSize = DataSize(this);
-        return AlignUp(byteSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) / sizeof(JSTaggedType);
-    }
-
-    static inline size_t DataSize(BigInt *bigInt)
-    {
-        uint32_t length = bigInt->GetLength();
-        return length * sizeof(uint32_t);
     }
 };
 

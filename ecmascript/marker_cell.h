@@ -33,7 +33,6 @@ public:
     static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-    DECL_VISIT_PRIMITIVE_OBJECT()
 
     // define BitField
     static constexpr size_t IS_DETECTOR_INVALID_BITS = 1;

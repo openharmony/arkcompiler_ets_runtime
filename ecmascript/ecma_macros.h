@@ -472,54 +472,50 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_VISIT_ARRAY(BEGIN_OFFSET, REF_LENGTH, LENGTH)                                                \
-    template <VisitType visitType>                                                                        \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                            \
-    {                                                                                                     \
-        ArrayBodyIterator<visitType, (BEGIN_OFFSET)>::IterateBody(this, visitor, (REF_LENGTH), (LENGTH)); \
+#define DECL_VISIT_ARRAY(BEGIN_OFFSET, LENGTH)                                          \
+    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                          \
+    {                                                                                   \
+        size_t endOffset = (BEGIN_OFFSET) + (LENGTH) * JSTaggedValue::TaggedTypeSize(); \
+        visitor(this, ObjectSlot(ToUintPtr(this) + (BEGIN_OFFSET)),                     \
+                ObjectSlot(ToUintPtr(this) + endOffset), VisitObjectArea::NORMAL);      \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_VISIT_OBJECT(BEGIN_OFFSET, END_OFFSET)                                                       \
-    template <VisitType visitType>                                                                        \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                            \
-    {                                                                                                     \
-        ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateRefBody(this, visitor); \
+#define DECL_VISIT_OBJECT(BEGIN_OFFSET, END_OFFSET)                                   \
+    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                        \
+    {                                                                                 \
+        visitor(this, ObjectSlot(ToUintPtr(this) + (BEGIN_OFFSET)),                   \
+                ObjectSlot(ToUintPtr(this) + (END_OFFSET)), VisitObjectArea::NORMAL); \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_VISIT_PRIMITIVE_OBJECT()                                               \
-    template <VisitType visitType>                                                  \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                      \
-    {                                                                               \
-        PrimitiveObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);   \
+#define DECL_VISIT_NATIVE_FIELD(BEGIN_OFFSET, END_OFFSET)                                     \
+    void VisitRangeSlotForNative(const EcmaObjectRangeVisitor &visitor)                       \
+    {                                                                                         \
+        visitor(this, ObjectSlot(ToUintPtr(this) + (BEGIN_OFFSET)),                           \
+                ObjectSlot(ToUintPtr(this) + (END_OFFSET)), VisitObjectArea::NATIVE_POINTER); \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_VISIT_NATIVE_FIELD(BEGIN_OFFSET, END_OFFSET)                                                    \
-    template <VisitType visitType>                                                                           \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                               \
-    {                                                                                                        \
-        ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateNativeBody(this, visitor); \
-    }                                                                                                        \
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_VISIT_OBJECT_FOR_JS_OBJECT(PARENTCLASS, BEGIN_OFFSET, END_OFFSET)                         \
-    template <VisitType visitType>                                                                     \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                         \
-    {                                                                                                  \
-        VisitObjects<visitType>(visitor);                                                              \
-        JSObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);                             \
-    }                                                                                                  \
-    template <VisitType visitType>                                                                     \
-    void VisitObjects(const EcmaObjectRangeVisitor &visitor)                                           \
-    {                                                                                                  \
-        PARENTCLASS::VisitObjects<visitType>(visitor);                                                 \
-        if ((BEGIN_OFFSET) == (END_OFFSET)) {                                                          \
-            return;                                                                                    \
-        }                                                                                              \
-        ObjectBodyIterator<visitType, (BEGIN_OFFSET),                                                  \
-            (END_OFFSET), SIZE>::IterateRefBody(this, visitor, PARENTCLASS::SIZE);                     \
+#define DECL_VISIT_OBJECT_FOR_JS_OBJECT(PARENTCLASS, BEGIN_OFFSET, END_OFFSET)          \
+    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                          \
+    {                                                                                   \
+        VisitObjects(visitor);                                                          \
+        /* visit in object fields */                                                    \
+        auto objSize = this->GetClass()->GetObjectSize();                               \
+        if (objSize > SIZE) {                                                           \
+            visitor(this, ObjectSlot(ToUintPtr(this) + SIZE),                           \
+                    ObjectSlot(ToUintPtr(this) + objSize), VisitObjectArea::IN_OBJECT); \
+        }                                                                               \
+    }                                                                                   \
+    void VisitObjects(const EcmaObjectRangeVisitor &visitor)                            \
+    {                                                                                   \
+        PARENTCLASS::VisitObjects(visitor);                                             \
+        if ((BEGIN_OFFSET) == (END_OFFSET)) {                                           \
+            return;                                                                     \
+        }                                                                               \
+        visitor(this, ObjectSlot(ToUintPtr(this) + (BEGIN_OFFSET)),                     \
+                ObjectSlot(ToUintPtr(this) + (END_OFFSET)), VisitObjectArea::NORMAL);   \
     }
 
 #if ECMASCRIPT_ENABLE_CAST_CHECK

@@ -345,8 +345,8 @@ public:
     using IsStableElementsBit = IsDictionaryBit::NextFlag;                                        // 20
     using HasConstructorBits = IsStableElementsBit::NextFlag;                                     // 21
     using IsClassConstructorOrPrototypeBit = HasConstructorBits::NextFlag;                        // 22
-    using IsNativeBindingObjectBit = IsClassConstructorOrPrototypeBit::NextFlag;                  // 23
-    using IsTSBit = IsNativeBindingObjectBit::NextFlag;                                           // 24
+    using GlobalConstOrBuiltinsObjectBit = IsClassConstructorOrPrototypeBit::NextFlag;            // 23
+    using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                                     // 24
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
     using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                             // 31
@@ -503,9 +503,9 @@ public:
         SetIsPrototype(flag);
     }
 
-    inline void SetIsNativeBindingObject(bool flag) const
+    inline void SetGlobalConstOrBuiltinsObject(bool flag) const
     {
-        IsNativeBindingObjectBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        GlobalConstOrBuiltinsObjectBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline void SetIsDictionaryMode(bool flag) const
@@ -1259,10 +1259,10 @@ public:
         return IsClassConstructorOrPrototypeBit::Decode(bits) && IsPrototype();
     }
 
-    inline bool IsNativeBindingObject() const
+    inline bool IsGlobalConstOrBuiltinsObject() const
     {
         uint32_t bits = GetBitField();
-        return IsNativeBindingObjectBit::Decode(bits);
+        return GlobalConstOrBuiltinsObjectBit::Decode(bits);
     }
 
     inline bool IsDictionaryMode() const

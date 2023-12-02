@@ -726,8 +726,6 @@ public:
 
     CAST_CHECK(LineEcmaString, IsLineString);
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetPointerLength());
-
     static LineEcmaString *Cast(EcmaString *str)
     {
         return static_cast<LineEcmaString *>(str);
@@ -752,18 +750,6 @@ public:
     {
         uint32_t length = str->GetLength();
         return str->IsUtf16() ? ComputeSizeUtf16(length) : ComputeSizeUtf8(length);
-    }
-
-    static size_t DataSize(EcmaString *str)
-    {
-        uint32_t length = str->GetLength();
-        return str->IsUtf16() ? length * sizeof(uint16_t) : length;
-    }
-
-    size_t GetPointerLength()
-    {
-        size_t byteSize = DataSize(this);
-        return AlignUp(byteSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) / sizeof(JSTaggedType);
     }
 
     uint16_t *GetData() const
@@ -816,7 +802,6 @@ public:
     ACCESSORS_NATIVE_FIELD(ConstantData, uint8_t, CONSTANT_DATA_OFFSET, SIZE);
 
     CAST_CHECK(ConstantString, IsConstantString);
-    DECL_VISIT_OBJECT(RELOCTAED_DATA_OFFSET, ENTITY_ID_OFFSET);
 
     static ConstantString *Cast(EcmaString *str)
     {

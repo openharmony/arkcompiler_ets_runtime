@@ -141,7 +141,7 @@ public:
         return GetPeroidIndex() == PRE_DUMP_PEROID_INDEX;
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetLength());
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
 
     DECL_DUMP()
 

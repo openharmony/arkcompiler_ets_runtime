@@ -171,8 +171,6 @@ using Address = uintptr_t;
 #define WIN_OR_MAC_OR_IOS_PLATFORM false
 #endif
 
-#define ECMASCRIPT_ENABLE_VALUE_SERIALIZER 0
-
 #define STATIC_ASSERT_EQ_ARCH(expect, valueArch32, valueArch64) \
     STATIC_ASSERT_EQ_ARCH32(expect, valueArch32);               \
     STATIC_ASSERT_EQ_ARCH64(expect, valueArch64)

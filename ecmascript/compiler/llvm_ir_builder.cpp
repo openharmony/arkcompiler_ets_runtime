@@ -1464,7 +1464,7 @@ void LLVMIRBuilder::VisitLoad(GateRef gate, GateRef base)
     switch (order.GetOrder()) {
         case MemoryOrder::MEMORY_ORDER_RELEASE: {
             LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
-            break;
+            [[fallthrough]];
         }
         case MemoryOrder::NOT_ATOMIC: {
             break;
@@ -1495,7 +1495,7 @@ void LLVMIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
     switch (order.GetOrder()) {
         case MemoryOrder::MEMORY_ORDER_RELEASE: {
             LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
-            break;
+            [[fallthrough]];
         }
         case MemoryOrder::NOT_ATOMIC: {
             break;

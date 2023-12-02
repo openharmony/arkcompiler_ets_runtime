@@ -83,8 +83,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/regexp/regexp_parser.h"
-#include "ecmascript/serializer/base_deserializer.h"
-#include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
 #ifdef ARK_SUPPORT_INTL
@@ -1040,21 +1038,9 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
     ecmascript::JSThread *thread = vm->GetJSThread();
+    ecmascript::Serializer serializer(thread);
     JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
     JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
-    ecmascript::ValueSerializer serializer(thread);
-    std::unique_ptr<ecmascript::SerializeData> data;
-    if (serializer.WriteValue(thread, arkValue, arkTransfer)) {
-        data = serializer.Release();
-    }
-    if (data == nullptr) {
-        return nullptr;
-    } else {
-        return reinterpret_cast<void *>(data.release());
-    }
-#else
-    ecmascript::Serializer serializer(thread);
     std::unique_ptr<ecmascript::SerializationData> data;
     if (serializer.WriteValue(thread, arkValue, arkTransfer)) {
         data = serializer.Release();
@@ -1064,37 +1050,23 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     } else {
         return reinterpret_cast<void *>(data.release());
     }
-#endif
 }
 
 Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     ecmascript::JSThread *thread = vm->GetJSThread();
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
-    std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
-    ecmascript::BaseDeserializer deserializer(thread, data.release(), hint);
-    JSHandle<JSTaggedValue> result = deserializer.ReadValue();
-    return JSNApiHelper::ToLocal<ObjectRef>(result);
-#else
     std::unique_ptr<ecmascript::SerializationData> data(reinterpret_cast<ecmascript::SerializationData *>(recoder));
     ecmascript::Deserializer deserializer(thread, data.release(), hint);
     JSHandle<JSTaggedValue> result = deserializer.ReadValue();
     return JSNApiHelper::ToLocal<ObjectRef>(result);
-#endif
 }
 
 void JSNApi::DeleteSerializationData(void *data)
 {
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
-    ecmascript::SerializeData *value = reinterpret_cast<ecmascript::SerializeData *>(data);
-    delete value;
-    value = nullptr;
-#else
     ecmascript::SerializationData *value = reinterpret_cast<ecmascript::SerializationData *>(data);
     delete value;
     value = nullptr;
-#endif
 }
 
 void HostPromiseRejectionTracker(const EcmaVM *vm,
@@ -1649,7 +1621,6 @@ bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePoint
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
-    object->GetTaggedObject()->GetClass()->SetIsNativeBindingObject(true);
     return JSTaggedValue::SetProperty(vm->GetJSThread(), object, keyValue, valueValue);
 }
 

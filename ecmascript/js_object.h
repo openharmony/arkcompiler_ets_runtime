@@ -24,7 +24,6 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/layout_visitor.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/method.h"
@@ -358,11 +357,10 @@ public:
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
-    template <VisitType visitType>
     void VisitObjects(const EcmaObjectRangeVisitor &visitor)
     {
         // no field in this object
-        VisitRangeSlot<visitType>(visitor);
+        VisitRangeSlot(visitor);
     }
 };
 

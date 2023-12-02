@@ -44,12 +44,6 @@ public:
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = value;
     }
 
-    void UpdateWeak(uintptr_t value)
-    {
-        // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
-        *reinterpret_cast<JSTaggedType *>(slotAddress_) = value | JSTaggedValue::TAG_WEAK;
-    }
-
     void Clear()
     {
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = JSTaggedValue::VALUE_UNDEFINED;
@@ -77,13 +71,6 @@ public:
     {
         ObjectSlot ret = *this;
         slotAddress_ += sizeof(JSTaggedType);
-        return ret;
-    }
-
-    ObjectSlot operator+=(size_t length)
-    {
-        ObjectSlot ret = *this;
-        slotAddress_ += sizeof(JSTaggedType) * length;
         return ret;
     }
 

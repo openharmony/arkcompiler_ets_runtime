@@ -59,13 +59,14 @@ public:
         }
     }
 
-    template <VisitType visitType>
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
+    void VisitRangeSlot([[maybe_unused]] const EcmaObjectRangeVisitor &v)
     {
-        if (visitType == VisitType::ALL_VISIT) {
-            visitor(this, ObjectSlot(ToUintPtr(this)),
-                ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
-        }
+        // left blank deliberately,only need to visit TaggedObject type object.
+    }
+
+    void VisitObjects([[maybe_unused]] const EcmaObjectRangeVisitor &visitor) const
+    {
+        // left blank deliberately,only need to visit TaggedObject type object.
     }
 
     size_t GetMachineCodeObjectSize()

@@ -525,7 +525,6 @@ enum class ConstantIndex : size_t {
     READ_ONLY_CONSTANT_END = CONSTANT_END,
     JSAPI_CONTAINERS_BEGIN = ARRAYLIST_FUNCTION_INDEX,
     JSAPI_CONTAINERS_END = LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
-
     // ...
 };
 // clang-format on
@@ -599,11 +598,6 @@ public:
     size_t GetConstantCount() const
     {
         return static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
-    }
-
-    size_t GetEmptyArrayIndex() const
-    {
-        return static_cast<size_t>(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     }
 
     size_t GetJSAPIContainersBegin() const

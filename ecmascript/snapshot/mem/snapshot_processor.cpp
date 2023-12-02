@@ -1492,7 +1492,9 @@ bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot sl
         return false;
     }
     auto hclass = root->GetClass();
-    ASSERT(!hclass->IsAllTaggedProp());
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
     auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     auto attr = layout->GetAttr(index++);
     if (attr.GetRepresentation() == Representation::DOUBLE) {
@@ -1642,7 +1644,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
     EncodeBit encodeBit(*value);
     if (!builtinsDeserialize_ && encodeBit.IsReference() && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t index = encodeBit.GetNativePointerOrObjectIndex();
-        *value = vm_->GetSnapshotEnv()->RelocateRootObjectAddr(index);
+        *value = vm_->GetSnapshotEnv()->FindEnvObjectByIndex(index);
         return;
     }
 
@@ -1840,12 +1842,14 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         }
 
         // builtins object reuse
-        size_t index = vm_->GetSnapshotEnv()->FindEnvObjectIndex(ToUintPtr(objectHeader));
-        if (index != SnapshotEnv::MAX_UINT_32) {
-            EncodeBit encodeBit(index);
-            encodeBit.SetGlobalConstOrBuiltins();
-            data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
-            return encodeBit;
+        if (objectHeader->GetClass()->IsGlobalConstOrBuiltinsObject()) {
+            size_t index = vm_->GetSnapshotEnv()->GetEnvObjectIndex(ToUintPtr(objectHeader));
+            if (index != SnapshotEnv::MAX_UINT_32) {
+                EncodeBit encodeBit(index);
+                encodeBit.SetGlobalConstOrBuiltins();
+                data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
+                return encodeBit;
+            }
         }
     }
     auto oldObjHeader = objectHeader;
