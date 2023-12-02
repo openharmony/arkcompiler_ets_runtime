@@ -16,73 +16,80 @@
 #ifndef ECMASCRIPT_BUILTIN_ENTRIES_H
 #define ECMASCRIPT_BUILTIN_ENTRIES_H
 
+#include <atomic>
 #include <cstdint>
+#include <sstream>
 #include <string>
 
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 
+#define BUILTIN_LIST(V)                                                          \
+    V("Function", BT_FUNCTION)                                                   \
+    V("RangeError", BT_RANGEERROR)                                               \
+    V("Error", BT_ERROR)                                                         \
+    V("Object", BT_OBJECT)                                                       \
+    V("SyntaxError", BT_SYNTAXERROR)                                             \
+    V("TypeError", BT_TYPEERROR)                                                 \
+    V("ReferenceError", BT_REFERENCEERROR)                                       \
+    V("URIError", BT_URIERROR)                                                   \
+    V("Symbol", BT_SYMBOL)                                                       \
+    V("EvalError", BT_EVALERROR)                                                 \
+    V("Number", BT_NUMBER)                                                       \
+    V("parseFloat", BT_PARSEFLOAT)                                               \
+    V("Date", BT_DATE)                                                           \
+    V("Boolean", BT_BOOLEAN)                                                     \
+    V("BigInt", BT_BIGINT)                                                       \
+    V("parseInt", BT_PARSEINT)                                                   \
+    V("WeakMap", BT_WEAKMAP)                                                     \
+    V("RegExp", BT_REGEXP)                                                       \
+    V("Set", BT_SET)                                                             \
+    V("Map", BT_MAP)                                                             \
+    V("WeakRef", BT_WEAKREF)                                                     \
+    V("WeakSet", BT_WEAKSET)                                                     \
+    V("FinalizationRegistry", BT_FINALIZATIONREGISTRY)                           \
+    V("Array", BT_ARRAY)                                                         \
+    V("Uint8ClampedArray", BT_UINT8CLAMPEDARRAY)                                 \
+    V("Uint8Array", BT_UINT8ARRAY)                                               \
+    V("TypedArray", BT_TYPEDARRAY)                                               \
+    V("Int8Array", BT_INT8ARRAY)                                                 \
+    V("Uint16Array", BT_UINT16ARRAY)                                             \
+    V("Uint32Array", BT_UINT32ARRAY)                                             \
+    V("Int16Array", BT_INT16ARRAY)                                               \
+    V("Int32Array", BT_INT32ARRAY)                                               \
+    V("Float32Array", BT_FLOAT32ARRAY)                                           \
+    V("Float64Array", BT_FLOAT64ARRAY)                                           \
+    V("BigInt64Array", BT_BIGINT64ARRAY)                                         \
+    V("BigUint64Array", BT_BIGUINT64ARRAY)                                       \
+    V("SharedArrayBuffer", BT_SHAREDARRAYBUFFER)                                 \
+    V("DataView", BT_DATAVIEW)                                                   \
+    V("String", BT_STRING)                                                       \
+    V("ArrayBuffer", BT_ARRAYBUFFER)                                             \
+    V("eval", BT_EVAL)                                                           \
+    V("isFinite", BT_ISFINITE)                                                   \
+    V("ArkPrivate", BT_ARKPRIVATE) /*Readonly*/                                  \
+    V("print", BT_PRINT)                                                         \
+    V("decodeURI", BT_DECODEURI)                                                 \
+    V("decodeURIComponent", BT_DECODEURICOMPONENT)                               \
+    V("isNaN", BT_ISNAN)                                                         \
+    V("encodeURI", BT_ENCODEURI)                                                 \
+    V("encodeURIComponent", BT_ENCODEURICOMPONENT)                               \
+    V("Math", BT_MATH)                                                           \
+    V("JSON", BT_JSON)                                                           \
+    V("Atomics", BT_ATOMICS)                                                     \
+    V("Reflect", BT_REFLECT)                                                     \
+    V("Promise", BT_PROMISE)                                                     \
+    V("Proxy", BT_PROXY)                                                         \
+    V("GeneratorFunction", BT_GENERATORFUNCTION)                                 \
+    V("Intl", BT_INTL)
+
 namespace panda::ecmascript {
+#define BUILTIN_TYPE(name, type) type,
 enum class BuiltinType : int32_t {
-    BT_FUNCTION,
-    BT_RANGEERROR,
-    BT_ERROR,
-    BT_OBJECT,
-    BT_SYNTAXERROR,
-    BT_TYPEERROR,
-    BT_REFERENCEERROR,
-    BT_URIERROR,
-    BT_SYMBOL,
-    BT_EVALERROR,
-    BT_NUMBER,
-    BT_PARSEFLOAT,
-    BT_DATE,
-    BT_BOOLEAN,
-    BT_BIGINT,
-    BT_PARSEINT,
-    BT_WEAKMAP,
-    BT_REGEXP,
-    BT_SET,
-    BT_MAP,
-    BT_WEAKREF,
-    BT_WEAKSET,
-    BT_FINALIZATIONREGISTRY,
-    BT_ARRAY,
-    BT_UINT8CLAMPEDARRAY,
-    BT_UINT8ARRAY,
-    BT_TYPEDARRAY,
-    BT_INT8ARRAY,
-    BT_UINT16ARRAY,
-    BT_UINT32ARRAY,
-    BT_INT16ARRAY,
-    BT_INT32ARRAY,
-    BT_FLOAT32ARRAY,
-    BT_FLOAT64ARRAY,
-    BT_BIGINT64ARRAY,
-    BT_BIGUINT64ARRAY,
-    BT_SHAREDARRAYBUFFER,
-    BT_DATAVIEW,
-    BT_STRING,
-    BT_ARRAYBUFFER,
-    BT_EVAL,
-    BT_ISFINITE,
-    BT_ARKPRIVATE,
-    BT_PRINT,
-    BT_DECODEURI,
-    BT_DECODEURICOMPONENT,
-    BT_ISNAN,
-    BT_ENCODEURI,
-    BT_ENCODEURICOMPONENT,
-    BT_MATH,
-    BT_JSON,
-    BT_ATOMICS,
-    BT_REFLECT,
-    BT_PROMISE,
-    BT_PROXY,
-    BT_GENERATORFUNCTION,
-    BT_INTL,
+    BUILTIN_LIST(BUILTIN_TYPE)
     NUMBER_OF_BUILTINS
 };
+#undef BUILTIN_TYPE
 
 struct BuiltinEntries {
     static constexpr size_t COUNT = static_cast<size_t>(BuiltinType::NUMBER_OF_BUILTINS);
@@ -108,16 +115,7 @@ STATIC_ASSERT_EQ_ARCH(sizeof(BuiltinEntries), BuiltinEntries::SizeArch32, Builti
 
 class BuiltinIndex {
 public:
-    BuiltinIndex(const BuiltinIndex&) = delete;
-    BuiltinIndex& operator=(const BuiltinIndex&) = delete;
-
     static const int32_t NOT_FOUND = -1;
-
-    static BuiltinIndex& GetInstance()
-    {
-        static BuiltinIndex instance;
-        return instance;
-    }
 
     size_t GetBuiltinBoxOffset(JSTaggedValue key) const
     {
@@ -135,85 +133,21 @@ public:
 
     int32_t GetBuiltinIndex(const std::string& key) const
     {
-        auto it = builtinIndex_.find(key);
-        if (it == builtinIndex_.end()) {
+        if (builtinIndex_.find(key) == builtinIndex_.end()) {
             return NOT_FOUND;
         } else {
-            return static_cast<int32_t>(it->second);
+            return static_cast<int32_t>(builtinIndex_.at(key));
         }
-    }
-
-    auto GetBuiltinKeys() -> std::vector<std::string> const
-    {
-        std::vector<std::string> keys;
-        for (const auto& it: builtinIndex_) {
-            keys.emplace_back(it.first);
-        }
-        return keys;
     }
 
 private:
-    std::unordered_map<std::string, BuiltinType> builtinIndex_ = {
-        {"Function", BuiltinType::BT_FUNCTION},
-        {"RangeError", BuiltinType::BT_RANGEERROR},
-        {"Error", BuiltinType::BT_ERROR},
-        {"Object", BuiltinType::BT_OBJECT},
-        {"SyntaxError", BuiltinType::BT_SYNTAXERROR},
-        {"TypeError", BuiltinType::BT_TYPEERROR},
-        {"ReferenceError", BuiltinType::BT_REFERENCEERROR},
-        {"URIError", BuiltinType::BT_URIERROR},
-        {"Symbol", BuiltinType::BT_SYMBOL},
-        {"EvalError", BuiltinType::BT_EVALERROR},
-        {"Number", BuiltinType::BT_NUMBER},
-        {"parseFloat", BuiltinType::BT_PARSEFLOAT},
-        {"Date", BuiltinType::BT_DATE},
-        {"Boolean", BuiltinType::BT_BOOLEAN},
-        {"BigInt", BuiltinType::BT_BIGINT},
-        {"parseInt", BuiltinType::BT_PARSEINT},
-        {"WeakMap", BuiltinType::BT_WEAKMAP},
-        {"RegExp", BuiltinType::BT_REGEXP},
-        {"Set", BuiltinType::BT_SET},
-        {"Map", BuiltinType::BT_MAP},
-        {"WeakRef", BuiltinType::BT_WEAKREF},
-        {"WeakSet", BuiltinType::BT_WEAKSET},
-        {"FinalizationRegistry", BuiltinType::BT_FINALIZATIONREGISTRY},
-        {"Array", BuiltinType::BT_ARRAY},
-        {"Uint8ClampedArray", BuiltinType::BT_UINT8CLAMPEDARRAY},
-        {"Uint8Array", BuiltinType::BT_UINT8ARRAY},
-        {"TypedArray", BuiltinType::BT_TYPEDARRAY},
-        {"Int8Array", BuiltinType::BT_INT8ARRAY},
-        {"Uint16Array", BuiltinType::BT_UINT16ARRAY},
-        {"Uint32Array", BuiltinType::BT_UINT32ARRAY},
-        {"Int16Array", BuiltinType::BT_INT16ARRAY},
-        {"Int32Array", BuiltinType::BT_INT32ARRAY},
-        {"Float32Array", BuiltinType::BT_FLOAT32ARRAY},
-        {"Float64Array", BuiltinType::BT_FLOAT64ARRAY},
-        {"BigInt64Array", BuiltinType::BT_BIGINT64ARRAY},
-        {"BigUint64Array", BuiltinType::BT_BIGUINT64ARRAY},
-        {"SharedArrayBuffer", BuiltinType::BT_SHAREDARRAYBUFFER},
-        {"DataView", BuiltinType::BT_DATAVIEW},
-        {"String", BuiltinType::BT_STRING},
-        {"ArrayBuffer", BuiltinType::BT_ARRAYBUFFER},
-        {"eval", BuiltinType::BT_EVAL},
-        {"isFinite", BuiltinType::BT_ISFINITE},
-        {"ArkPrivate", BuiltinType::BT_ARKPRIVATE},
-        {"print", BuiltinType::BT_PRINT},
-        {"decodeURI", BuiltinType::BT_DECODEURI},
-        {"decodeURIComponent", BuiltinType::BT_DECODEURICOMPONENT},
-        {"isNaN", BuiltinType::BT_ISNAN},
-        {"encodeURI", BuiltinType::BT_ENCODEURI},
-        {"encodeURIComponent", BuiltinType::BT_ENCODEURICOMPONENT},
-        {"Math", BuiltinType::BT_MATH},
-        {"JSON", BuiltinType::BT_JSON},
-        {"Atomics", BuiltinType::BT_ATOMICS},
-        {"Reflect", BuiltinType::BT_REFLECT},
-        {"Promise", BuiltinType::BT_PROMISE},
-        {"Proxy", BuiltinType::BT_PROXY},
-        {"GeneratorFunction", BuiltinType::BT_GENERATORFUNCTION},
-        {"Intl", BuiltinType::BT_INTL},
+#define BUILTIN_MAP(name, type) {name, BuiltinType::type},
+    std::unordered_map<std::string, BuiltinType> builtinIndex_{
+        BUILTIN_LIST(BUILTIN_MAP)
     };
+#undef BUILTIN_MAP
+};
 
-    BuiltinIndex() {}
-}; // class BuiltinIndex
-} // namespace panda::ecmascript
+// #undef BUILTIN_LIST
+}
 #endif // ECMASCRIPT_BUILTIN_ENTRIES_H

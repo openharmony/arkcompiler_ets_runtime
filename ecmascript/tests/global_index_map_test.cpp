@@ -124,4 +124,34 @@ HWTEST_F_L0(GlobalIndexMapTest, GlobalIndexMap_initGlobalEnv)
         }
     }
 }
+
+/**
+ * @tc.name: InitBuiltinEntries
+ * @tc.desc: Check whether BuiltinEntries can be find in the GlobalMap.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(GlobalIndexMapTest, GlobalIndexMap_initBuiltinEntries)
+{
+    JSMutableHandle<PointerToIndexDictionary> globalIndexMap(
+        GlobalIndexMap::GetGlobalIndexMap(thread->GetCurrentEcmaContext()).GetAddress());
+    EXPECT_NE(globalIndexMap.GetTaggedValue().IsHeapObject(), true);
+    GlobalIndexMap::InitGlobalIndexMap(thread, globalIndexMap);
+    GlobalIndexMap::InitBuiltinEntries(thread, globalIndexMap);
+    globalIndexMap.Update(GlobalIndexMap::GetGlobalIndexMap(thread->GetCurrentEcmaContext()));
+    EXPECT_EQ(globalIndexMap.GetTaggedValue().IsHeapObject(), true);
+    auto builtinEntries = thread->GetBuiltinEntries();
+    uint32_t builtinEntriesCount = BuiltinEntries::COUNT;
+    for (uint32_t index = 0; index < builtinEntriesCount; index++) {
+        JSTaggedValue objectValue = builtinEntries.builtin_[index].hClass_;
+        if (objectValue.IsHeapObject()) {
+            GlobalIndex rootIndex;
+            GlobalIndexMap::FindGlobalIndex(globalIndexMap, objectValue, &rootIndex);
+            EXPECT_EQ(static_cast<int>(index), rootIndex.GetBuiltinEntriesId());
+            GlobalIndex builtinEntriesIndex;
+            builtinEntriesIndex.UpdateBuiltinEntriesId(index);
+            EXPECT_EQ(builtinEntriesIndex, rootIndex);
+        }
+    }
+}
 } // namespace panda::test

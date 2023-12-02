@@ -227,6 +227,7 @@ private:
     bool noCheck_ {false};
     const JSThread *thread_ {nullptr};
     bool enableLoweringBuiltin_ {false};
+    BuiltinIndex builtinIndex_ {};
     const CString &recordName_;
 };
 }  // panda::ecmascript::kungfu

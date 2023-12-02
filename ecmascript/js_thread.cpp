@@ -758,19 +758,10 @@ Area *JSThread::GetOrCreateRegExpCache()
 
 void JSThread::InitializeBuiltinObject(const std::string& key)
 {
-    BuiltinIndex& builtins = BuiltinIndex::GetInstance();
-    auto index = builtins.GetBuiltinIndex(key);
+    BuiltinIndex builtins_;
+    auto index = builtins_.GetBuiltinIndex(key);
     ASSERT(index != BuiltinIndex::NOT_FOUND);
-    /*
-        If using `auto globalObject = GetEcmaVM()->GetGlobalEnv()->GetGlobalObject()` here,
-        it will cause incorrect result in multi-context environment. For example:
-
-        ```ts
-        let obj = {};
-        print(obj instanceof Object); // instead of true, will print false
-        ```
-    */
-    auto globalObject = contexts_.back()->GetGlobalEnv()->GetGlobalObject();
+    auto globalObject = GetEcmaVM()->GetGlobalEnv()->GetGlobalObject();
     auto jsObject = JSHandle<JSObject>(this, globalObject);
     auto box = jsObject->GetGlobalPropertyBox(this, key);
     if (box == nullptr) {
@@ -783,11 +774,11 @@ void JSThread::InitializeBuiltinObject(const std::string& key)
     entry.hClass_ = JSTaggedValue::Cast(hclass);
 }
 
+#define INITIALIZE_BUILTIN_OBJECT(name, type)   \
+    InitializeBuiltinObject(name);
 void JSThread::InitializeBuiltinObject()
 {
-    BuiltinIndex& builtins = BuiltinIndex::GetInstance();
-    for (auto key: builtins.GetBuiltinKeys()) {
-        InitializeBuiltinObject(key);
-    }
+    BUILTIN_LIST(INITIALIZE_BUILTIN_OBJECT)
 }
+#undef INITIALIZE_BUILTIN_OBJECT
 }  // namespace panda::ecmascript

@@ -14,9 +14,8 @@
  */
 
 #include "ecmascript/compiler/type_bytecode_lowering.h"
-#include "ecmascript/builtin_entries.h"
-#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
@@ -2165,13 +2164,12 @@ void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     auto value = acc_.GetValueIn(gate, 1);
     auto idx = acc_.GetConstantValue(value);
     auto key = tsManager_->GetStringFromConstantPool(idx);
-    BuiltinIndex& builtin = BuiltinIndex::GetInstance();
-    auto index = builtin.GetBuiltinIndex(key);
-    if (index == builtin.NOT_FOUND) {
+    auto builtinIndex = builtinIndex_.GetBuiltinIndex(key);
+    if (builtinIndex == builtinIndex_.NOT_FOUND) {
         return;
     }
     AddProfiling(gate);
-    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtin.GetBuiltinBoxOffset(key)));
+    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtinIndex_.GetBuiltinBoxOffset(key)));
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     DeleteConstDataIfNoUser(value);
 }

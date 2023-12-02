@@ -73,7 +73,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IteratorFunctionDisMactch,      ITERATORFUNCTIONDISMATCH)     \
     V(NativeCallTargetDisMatch,       NATIVECALLTARGETDISMATCH)     \
     V(ProtoTypeChanged,               PROTOTYPECHANGED)             \
-    V(BuiltinIsHole,                  BUILTINISHOLE)                \
+    V(LoadBuiltinObjectFail,          LOADBUILTINOBJECTFAIL)        \
     V(NewBuiltinCtorFail,             NEWBUILTINCTORFAIL)           \
 
 enum class DeoptType : uint8_t {
