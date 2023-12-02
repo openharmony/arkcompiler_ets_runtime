@@ -641,7 +641,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
     if (debugApp && debugMode) {
-        using WaitForDebugger = void (*)(EcmaVM *);
+        using WaitForDebugger = bool (*)(EcmaVM *);
 
         auto sym = panda::os::library_loader::ResolveSymbol(
             vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "WaitForDebugger");
