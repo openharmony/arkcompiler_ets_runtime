@@ -774,7 +774,13 @@ void AsmInterpreterCall::PushCallNewAndDispatchNative(ExtendedAssembler *assembl
     CallNativeWithArgv(assembler, true);
 }
 
-void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew)
+void AsmInterpreterCall::PushNewTargetAndDispatchNative(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushNewTargetAndDispatchNative));
+    CallNativeWithArgv(assembler, true, true);
+}
+
+void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget)
 {
     Register glue = rdi;
     Register nativeCode = rsi;
@@ -801,7 +807,13 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Push(thisValue);
     // new.target
     if (callNew) {
-        __ Pushq(func);
+        if (hasNewTarget) {
+            Register newTarget = r12;
+            __ Movq(Operand(rbp, DOUBLE_SLOT_SIZE), newTarget);
+            __ Pushq(newTarget);
+        } else {
+            __ Pushq(func);
+        }
     } else {
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     }

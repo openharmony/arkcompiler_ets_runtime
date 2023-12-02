@@ -349,9 +349,7 @@ public:
     using IsTSBit = IsNativeBindingObjectBit::NextFlag;                                           // 24
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
-    using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                             // 31
-    using CanFastCallBit = IsOptimizedBit::NextFlag;                                              // 32
-    using BitFieldLastBit = CanFastCallBit;
+    using BitFieldLastBit = IsJSFunctionBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
@@ -359,9 +357,6 @@ public:
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS =
         PropertyAttributes::OFFSET_BITFIELD_NUM + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
     static constexpr int MAX_OBJECT_SIZE_IN_WORDS = (1U << OFFSET_MAX_OBJECT_SIZE_IN_WORDS) - 1;
-    static constexpr uint64_t OPTIMIZED_BIT = 1LU << IsOptimizedBit::START_BIT;
-    static constexpr uint64_t FASTCALL_BIT = 1LU << CanFastCallBit::START_BIT;
-    static constexpr uint64_t OPTIMIZED_FASTCALL_BITS = OPTIMIZED_BIT | FASTCALL_BIT;
 
     using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::OFFSET_BITFIELD_NUM>;                  // 10
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,
@@ -378,8 +373,7 @@ public:
     inline bool HasReferenceField();
 
     // size need to add inlined property numbers
-    void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
-                    bool isOptimized = false, bool canFastCall = false);
+    void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
 
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
@@ -521,22 +515,6 @@ public:
     inline void SetIsJSFunction(bool flag) const
     {
         IsJSFunctionBit::Set<uint32_t>(flag, GetBitFieldAddr());
-    }
-
-    inline void ClearOptimizedFlags() const
-    {
-        SetIsOptimized(false);
-        SetCanFastCall(false);
-    }
-
-    inline void SetIsOptimized(bool flag) const
-    {
-        IsOptimizedBit::Set<uint32_t>(flag, GetBitFieldAddr());
-    }
-
-    inline void SetCanFastCall(bool flag) const
-    {
-        CanFastCallBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -1282,18 +1260,6 @@ public:
     {
         uint32_t bits = GetBitField();
         return IsJSFunctionBit::Decode(bits);
-    }
-
-    inline bool IsOptimized() const
-    {
-        uint32_t bits = GetBitField();
-        return IsOptimizedBit::Decode(bits);
-    }
-
-    inline bool CanFastCall() const
-    {
-        uint32_t bits = GetBitField();
-        return CanFastCallBit::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const

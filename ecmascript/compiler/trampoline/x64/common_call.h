@@ -137,6 +137,8 @@ public:
 
     static void PushCallNewAndDispatchNative(ExtendedAssembler *assembler);
 
+    static void PushNewTargetAndDispatchNative(ExtendedAssembler *assembler);
+
     static void PushCallRangeAndDispatchNative(ExtendedAssembler *assembler);
 
     static void PushCallArgsAndDispatchNative(ExtendedAssembler *assembler);
@@ -184,7 +186,7 @@ private:
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register methodRegister, Register accRegister = rInvalid);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
-    static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
+    static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode);

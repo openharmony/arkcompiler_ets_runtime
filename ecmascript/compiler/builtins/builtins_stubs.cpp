@@ -328,6 +328,7 @@ DECLARE_BUILTINS(BooleanConstructor)
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
+    Label slowPath2(env);
     Label exit(env);
 
     Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
@@ -338,7 +339,7 @@ DECLARE_BUILTINS(BooleanConstructor)
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -352,6 +353,14 @@ DECLARE_BUILTINS(BooleanConstructor)
                 Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(value));
                 Jump(&exit);
             }
+        }
+        Bind(&slowPath2);
+        {
+            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
+            GateRef argv = GetArgv();
+            auto args = { glue, nativeCode, func, thisValue, numArgs, argv, newTarget };
+            res = CallBuiltinRuntimeWithNewTarget(glue, args, name.c_str());
+            Jump(&exit);
         }
     }
     Bind(&slowPath);
@@ -380,6 +389,7 @@ DECLARE_BUILTINS(NumberConstructor)
     Label thisCollectionObj(env);
     Label slowPath(env);
     Label slowPath1(env);
+    Label slowPath2(env);
     Label exit(env);
 
     Label hasArg(env);
@@ -413,7 +423,7 @@ DECLARE_BUILTINS(NumberConstructor)
             Label intialHClassIsHClass(env);
             GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+            Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
@@ -426,6 +436,14 @@ DECLARE_BUILTINS(NumberConstructor)
                     Store(VariableType::INT64(), glue, *res, valueOffset, *numberValue);
                     Jump(&exit);
                 }
+            }
+            Bind(&slowPath2);
+            {
+                auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
+                GateRef argv = GetArgv();
+                res = CallBuiltinRuntimeWithNewTarget(glue,
+                    { glue, nativeCode, func, thisValue, numArgs, argv, newTarget }, name.c_str());
+                Jump(&exit);
             }
         }
     }
@@ -456,6 +474,7 @@ DECLARE_BUILTINS(DateConstructor)
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
+    Label slowPath2(env);
     Label exit(env);
 
     Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
@@ -466,7 +485,7 @@ DECLARE_BUILTINS(DateConstructor)
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
@@ -521,6 +540,14 @@ DECLARE_BUILTINS(DateConstructor)
                 }
             }
         }
+        Bind(&slowPath2);
+        {
+            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
+            GateRef argv = GetArgv();
+            res = CallBuiltinRuntimeWithNewTarget(glue, { glue, nativeCode, func, thisValue, numArgs, argv, newTarget },
+                name.c_str());
+            Jump(&exit);
+        }
     }
     Bind(&slowPath);
     {
@@ -548,6 +575,7 @@ DECLARE_BUILTINS(ArrayConstructor)
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label slowPath1(env);
+    Label slowPath2(env);
     Label exit(env);
 
     Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
@@ -560,11 +588,11 @@ DECLARE_BUILTINS(ArrayConstructor)
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        Branch(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath);
+        Branch(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath2);
         Bind(&fastGetHclass);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             Label noArg(env);
@@ -640,6 +668,14 @@ DECLARE_BUILTINS(ArrayConstructor)
                     Jump(&exit);
                 }
             }
+        }
+        Bind(&slowPath2);
+        {
+            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
+            GateRef argv = GetArgv();
+            res = CallBuiltinRuntimeWithNewTarget(glue, { glue, nativeCode, func, thisValue, numArgs, argv, newTarget },
+                name.c_str());
+            Jump(&exit);
         }
     }
     Bind(&slowPath);

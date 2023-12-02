@@ -141,6 +141,8 @@ public:
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
                                bool isNew = false, const char* comment = nullptr);
+    GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args,
+                                            const char* comment = nullptr);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -702,9 +704,8 @@ public:
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
-    GateRef GetFunctionHClass(GateRef glue, GateRef method, size_t idx1, size_t idx2, size_t idx3);
-    GateRef IsOptimizedWithBitField(GateRef bitfield);
-    GateRef CanFastCallWithBitField(GateRef bitfield);
+    GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
+    GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator

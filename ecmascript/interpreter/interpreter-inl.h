@@ -784,7 +784,8 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
-    if (func->GetClass()->IsOptimized()) {
+    Method *m = func->GetCallTarget();
+    if (m->IsAotWithCallField()) {
         return GeneratorReEnterAot(thread, context);
     }
 

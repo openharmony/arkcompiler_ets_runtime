@@ -534,13 +534,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptType(type);
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
-            FunctionKind kind = method->GetFunctionKind();
-            ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-            JSHandle<ECMAObject> jsFunc(thread_, CallTarget);
-            JSHandle<JSHClass> oldHclass(thread_, jsFunc->GetClass());
-            // instead of hclass by non_optimized hclass when method ClearAOTFlags
-            JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
-            jsFunc->SynchronizedSetClass(*newHClass);
+            method->ClearAOTFlags();
         }
     }
 }

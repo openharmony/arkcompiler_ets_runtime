@@ -472,7 +472,13 @@ void AsmInterpreterCall::PushCallNewAndDispatchNative(ExtendedAssembler *assembl
     CallNativeWithArgv(assembler, true);
 }
 
-void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew)
+void AsmInterpreterCall::PushNewTargetAndDispatchNative(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(PushNewTargetAndDispatchNative));
+    CallNativeWithArgv(assembler, true, true);
+}
+
+void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget)
 {
     Register glue(X0);
     Register nativeCode(X1);
@@ -480,6 +486,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     Register thisObj(X3);
     Register argc(X4);
     Register argv(X5);
+    Register newTarget(X6);
     Register opArgc(X8);
     Register opArgv(X9);
     Register temp(X10);
@@ -502,16 +509,20 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Bind(&pushThis);
     // newTarget
     if (callNew) {
+        if (hasNewTarget) {
+            // 16: this & newTarget
+            __ Stp(newTarget, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        }
         // 16: this & newTarget
-        __ Stp(callTarget, thisObj, MemoryOperand(currentSlotRegister, -16, AddrMode::PREINDEX));
+        __ Stp(callTarget, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     } else {
         __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         // 16: this & newTarget
-        __ Stp(temp, thisObj, MemoryOperand(currentSlotRegister, -16, AddrMode::PREINDEX));
+        __ Stp(temp, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     }
     // callTarget
     __ Str(callTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(temp, currentSlotRegister, Immediate(40));  // 40: skip frame type, numArgs, func, newTarget and this
+    __ Add(temp, currentSlotRegister, Immediate(QUINTUPLE_SLOT_SIZE));
     __ Add(Register(FP), temp, Operand(argc, LSL, 3));  // 3: argc * 8
 
     __ Add(temp, argc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));

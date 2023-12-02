@@ -1371,7 +1371,7 @@ void TypeHCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
     if (tsManager_->IsFunctionTypeKind(type)) {
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
-        GateRef check = builder_.IsOptimized(func);
+        GateRef check = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
@@ -1391,8 +1391,9 @@ void TypeHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
         auto func = acc_.GetValueIn(gate, 0);
         auto methodIndex = acc_.GetValueIn(gate, 1);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isOptimized = builder_.IsOptimized(func);
         GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
+        GateRef isOptimized = builder_.JudgeAotAndFastCallWithMethod(funcMethodTarget,
+            CircuitBuilder::JudgeMethodType::HAS_AOT);
         GateRef checkFunc = builder_.BoolAnd(isObj, isOptimized);
         GateRef methodTarget = GetObjectFromConstPool(jsFunc, methodIndex);
         GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
@@ -1436,7 +1437,7 @@ void TypeHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isOptimized = builder_.IsOptimizedAndNotFastCall(func);
+        GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
         GateRef check = builder_.BoolAnd(isObj, isOptimized);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -1454,7 +1455,7 @@ void TypeHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isOptimized = builder_.IsOptimizedAndNotFastCall(func);
+        GateRef isOptimized = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_NOTFASTCALL);
         GateRef methodId = builder_.GetMethodId(func);
         GateRef checkOptimized = builder_.BoolAnd(isObj, isOptimized);
         GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));

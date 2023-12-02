@@ -1394,6 +1394,11 @@ DEF_CALL_SIGNATURE(PushCallNewAndDispatchNative)
     PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(PushCallNewAndDispatchNative)
 }
 
+DEF_CALL_SIGNATURE(PushNewTargetAndDispatchNative)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(PushNewTargetAndDispatchNative)
+}
+
 DEF_CALL_SIGNATURE(PushCallNewAndDispatch)
 {
     PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE(PushCallNewAndDispatch)

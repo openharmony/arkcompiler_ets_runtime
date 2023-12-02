@@ -114,6 +114,7 @@ group("ark_aot_ts_test") {
     "exception_case8",
     "exception_case9",
     "exp",
+    "extends_builtins",
     "fast_call_builtins",
     "frame_states",
     "forin_delete_property",

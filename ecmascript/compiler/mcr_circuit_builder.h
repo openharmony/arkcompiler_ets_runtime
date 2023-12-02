@@ -210,26 +210,40 @@ GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef obj)
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
-inline GateRef CircuitBuilder::IsOptimizedAndNotFastCall(GateRef obj)
+inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type)
 {
-    GateRef hClass = LoadHClass(obj);
-    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    GateRef optimizedFastCallBitsInBitfield = Int32And(bitfield, Int32(JSHClass::OPTIMIZED_FASTCALL_BITS));
-    return Equal(optimizedFastCallBitsInBitfield, Int32(JSHClass::OPTIMIZED_BIT));
+    GateRef method = GetMethodFromFunction(jsFunc);
+    return JudgeAotAndFastCallWithMethod(method, type);
 }
 
-inline GateRef CircuitBuilder::IsOptimized(GateRef obj)
+inline GateRef CircuitBuilder::JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type)
 {
-    GateRef hClass = LoadHClass(obj);
-    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsOptimizedBit::START_BIT)), Int32(0));
-}
-
-inline GateRef CircuitBuilder::IsOptimizedWithBitField(GateRef bitfield)
-{
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsOptimizedBit::START_BIT)), Int32(0));
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    switch (type) {
+        case JudgeMethodType::HAS_AOT: {
+            return Int64NotEqual(
+                Int64And(
+                    Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
+                    Int64((1LLU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
+                Int64(0));
+        }
+        case JudgeMethodType::HAS_AOT_FASTCALL: {
+            return Int64Equal(
+                Int64And(
+                    callfield,
+                    Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT)),
+                Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
+        }
+        case JudgeMethodType::HAS_AOT_NOTFASTCALL: {
+            GateRef fastCallField =
+                Int64And(callfield, Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
+            GateRef hasAot = Int64(1LLU << MethodLiteral::IsAotCodeBit::START_BIT);
+            return Int64Equal(fastCallField, hasAot);
+        }
+        default:
+            UNREACHABLE();
+    }
 }
 
 GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
