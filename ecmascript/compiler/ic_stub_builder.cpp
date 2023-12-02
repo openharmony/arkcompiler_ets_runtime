@@ -21,10 +21,9 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
 {
     auto env = GetEnvironment();
     Label receiverIsHeapObject(env);
-    Label receiverNotHeapObject(env);
     Label tryIC(env);
 
-    Branch(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
+    Branch(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
     Bind(&receiverIsHeapObject);
     {
         Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
@@ -37,8 +36,6 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             Branch(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
-                GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-                cachedHandler->WriteVariable(secondValue);
                 Label tryPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
                 Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
@@ -53,29 +50,6 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             Bind(&notHeapObject);
             {
                 Branch(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
-            }
-        }
-    }
-    Bind(&receiverNotHeapObject);
-    {
-        Label tryNumber(env);
-        Label profileNotUndefined(env);
-        Branch(TaggedIsNumber(receiver_), &tryNumber, slowPath_);
-        Bind(&tryNumber);
-        {
-            Branch(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
-            Bind(&profileNotUndefined);
-            {
-                GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
-                GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-                cachedHandler->WriteVariable(secondValue);
-                GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
-                auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(),
-                    glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
-                GateRef hclass = LoadHClass(numberFunction);
-                Branch(BoolAnd(TaggedIsHeapObject(firstValue), Equal(LoadObjectFromWeakRef(firstValue), hclass)),
-                       tryICHandler, slowPath_);
             }
         }
     }
@@ -148,7 +122,9 @@ void ICStubBuilder::LoadICByName(
     Label loadWithHandler(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
+    GateRef secondValue = GetValueFromTaggedArray(
+        profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
     NamedICAccessor(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {

@@ -95,11 +95,6 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByName(JSThread *thread, JSTagg
         if (!cachedHandler.IsHole()) {
             return LoadICWithHandler(thread, receiver, receiver, cachedHandler);
         }
-    } else if (receiver.IsNumber()) {
-        auto hclass = thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction()->GetTaggedObject()->GetClass();
-        if (firstValue.GetWeakReferentUnChecked() == hclass) {
-            return LoadICWithHandler(thread, receiver, receiver, secondValue);
-        }
     }
     return JSTaggedValue::Hole();
 }
@@ -418,12 +413,6 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
     if (LIKELY(handler.IsInt())) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         if (LIKELY(HandlerBase::IsField(handlerInfo))) {
-            if (!receiver.IsNumber()) {
-                return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
-            }
-            ASSERT(receiver.IsNumber());
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            holder = env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype();
             return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         }
         if (LIKELY(HandlerBase::IsString(handlerInfo))) {

@@ -29,7 +29,6 @@
     V(JSTaggedValue, FunctionFunction, FUNCTION_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, FunctionPrototype, FUNCTION_PROTOTYPE_INDEX)                                   \
     V(JSTaggedValue, NumberFunction, NUMBER_FUNCTION_INDEX)                                         \
-    V(JSTaggedValue, NumberPrototype, NUMBER_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, BigIntFunction, BIGINT_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, DateFunction, DATE_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, DatePrototype, DATE_PROTOTYPE_INDEX)                                           \

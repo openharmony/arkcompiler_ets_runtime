@@ -46,15 +46,3 @@ try {
   flag1 = true;
 }
 print(flag1);
-
-// for number inline cache
-const numObj1 = 10928;
-const numObj2 = 123.456;
-const numObj3 = new Number(42);
-for (let i = 0; i < 100; i++) {
-   let res1 = numObj1.toString();
-   let res2 = numObj2.toPrecision(4);
-   let res3 = numObj3.valueOf();
-}
-
-print("number ic load success")

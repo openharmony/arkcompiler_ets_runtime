@@ -1897,23 +1897,8 @@ GateRef StubBuilder::LoadICWithHandler(
             Branch(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
-                Label receiverIsNumber(env);
-                Label receiverNotNumber(env);
-                Branch(TaggedIsNumber(receiver), &receiverIsNumber, &receiverNotNumber);
-                Bind(&receiverIsNumber);
-                {
-                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                    auto numberProto = GetGlobalEnvValue(VariableType::JS_ANY(),
-                        glueGlobalEnv, GlobalEnv::NUMBER_PROTOTYPE_INDEX);
-                    result = LoadFromField(numberProto, handlerInfo);
-                    Jump(&exit);
-                }
-                Bind(&receiverNotNumber);
-                {
-                    result = LoadFromField(*holder, handlerInfo);
-                    Jump(&exit);
-                }
+                result = LoadFromField(*holder, handlerInfo);
+                Jump(&exit);
             }
             Bind(&handlerInfoNotField);
             {

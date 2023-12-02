@@ -800,7 +800,6 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     }
 
     env->SetNumberFunction(thread_, numFunction);
-    env->SetNumberPrototype(thread_, numFuncPrototype);
 }
 void Builtins::InitializeBigIntWithRealm(const JSHandle<GlobalEnv> &realm) const
 {
