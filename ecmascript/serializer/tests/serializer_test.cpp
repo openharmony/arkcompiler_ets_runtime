@@ -403,7 +403,7 @@ public:
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
         ASSERT_NE(resBuffer, nullptr);
-        EXPECT_TRUE((uint64_t)buffer == (uint64_t)resBuffer) << "Not Same pointer!";
+        EXPECT_TRUE(buffer == resBuffer) << "Not Same pointer!";
         for (int32_t i = 0; i < resByteLength; i++) {
             EXPECT_TRUE(static_cast<char *>(resBuffer)[i] == static_cast<char *>(buffer)[i]) << "Not Same Buffer";
         }
@@ -747,7 +747,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
     delete serializer;
 };
 
-static void* detach(void *param1, void *param2, void *hint, void *detachData)
+static void* Detach(void *param1, void *param2, void *hint, void *detachData)
 {
     GTEST_LOG_(INFO) << "detach is running";
     if (param1 == nullptr && param2 == nullptr) {
@@ -759,7 +759,7 @@ static void* detach(void *param1, void *param2, void *hint, void *detachData)
     return nullptr;
 }
 
-static void* attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void *buffer, [[maybe_unused]] void *hint,
+static void* Attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void *buffer, [[maybe_unused]] void *hint,
                     [[maybe_unused]] void *attachData)
 {
     GTEST_LOG_(INFO) << "attach is running";
@@ -783,7 +783,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
 
     JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
-    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), reinterpret_cast<void*>(Detach));
     JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
 
@@ -811,7 +811,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
     JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("xx"));
-    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), reinterpret_cast<void*>(Detach));
     JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(2));
@@ -1175,7 +1175,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
     JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, arrBufTag, 
+    bool success = serializer->WriteValue(thread, arrBufTag,
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize not transfer JSArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1200,7 +1200,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
     JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, arrBufTag, 
+    bool success = serializer->WriteValue(thread, arrBufTag,
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize empty JSArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1220,8 +1220,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
     JSHandle<JSArrayBuffer> jsArrayBuffer = factory->NewJSSharedArrayBuffer(msgBufferLen);
     JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData());
     JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(BufferData);
-    void *Buffer = resNp->GetExternalPointer();
-    if (memcpy_s(Buffer, msgBufferLen, msg.c_str(), msgBufferLen) != EOK) {
+    void *buffer = resNp->GetExternalPointer();
+    if (memcpy_s(buffer, msgBufferLen, msg.c_str(), msgBufferLen) != EOK) {
         EXPECT_TRUE(false) << " memcpy error";
     }
 
@@ -1235,7 +1235,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
     std::thread t1(&JSDeserializerTest::JSSharedArrayBufferTest,
                    jsDeserializerTest, data.release(), jsArrayBuffer, 12, changeStr.c_str());
     t1.join();
-    EXPECT_TRUE(strcmp((char *)Buffer, "world hello") == 0) << "Serialize JSArrayBuffer fail";
+    EXPECT_TRUE(strcmp((char *)buffer, "world hello") == 0) << "Serialize JSArrayBuffer fail";
     delete serializer;
 };
 

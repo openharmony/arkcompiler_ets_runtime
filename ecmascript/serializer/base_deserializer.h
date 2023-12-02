@@ -20,9 +20,8 @@
 #include "ecmascript/serializer/serialize_data.h"
 
 namespace panda::ecmascript {
-class JSThread; 
 class Heap;
-
+class JSThread;
 struct NewConstPoolInfo {
     JSPandaFile *jsPandaFile_ {nullptr};
     panda_file::File::EntityId methodId_;

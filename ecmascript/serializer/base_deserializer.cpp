@@ -56,20 +56,20 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
         encodeFlag = data_->ReadUint8();
     }
     // now new constpool here if newConstPoolInfos_ is not empty
-    for(auto newConstpoolInfo : newConstPoolInfos_) {
+    for (auto newConstpoolInfo : newConstPoolInfos_) {
         DeserializeConstPool(newConstpoolInfo);
         delete newConstpoolInfo;
     }
     newConstPoolInfos_.clear();
 
     // new native binding object here
-    for(auto nativeBindingInfo : nativeBindingInfos_) {
+    for (auto nativeBindingInfo : nativeBindingInfos_) {
         DeserializeNativeBindingObject(nativeBindingInfo);
         delete nativeBindingInfo;
     }
     nativeBindingInfos_.clear();
 
-    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
+    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(static_cast<JSTaggedType>(result)));
 }
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
@@ -194,7 +194,7 @@ void BaseDeserializer::HandleMethodEncodeFlag()
 
 void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
 {
-    ASSERT(JSTaggedValue(objAddr).IsArrayBuffer());
+    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsArrayBuffer());
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
     size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
     bool withNativeAreaAllocator = arrayBuffer->GetWithNativeAreaAllocator();
@@ -204,7 +204,7 @@ void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
 
 void BaseDeserializer::ResetArrayBufferNativePointer(uintptr_t objAddr, void *bufferPointer)
 {
-    ASSERT(JSTaggedValue(objAddr).IsArrayBuffer());
+    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsArrayBuffer());
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
     arrayBuffer->SetWithNativeAreaAllocator(true);
     JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
@@ -215,7 +215,7 @@ void BaseDeserializer::ResetArrayBufferNativePointer(uintptr_t objAddr, void *bu
 
 void BaseDeserializer::ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *constpool)
 {
-    ASSERT(JSTaggedValue(objAddr).IsMethod());
+    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsMethod());
     Method *method = reinterpret_cast<Method *>(objAddr);
     method->SetConstantPool(thread_, JSTaggedValue(constpool), BarrierMode::SKIP_BARRIER);
 }
@@ -433,7 +433,7 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
     }
 }
 
-void BaseDeserializer::AllocateToDifferentSpaces() 
+void BaseDeserializer::AllocateToDifferentSpaces()
 {
     size_t oldSpaceSize = data_->GetOldSpaceSize();
     if (oldSpaceSize > 0) {

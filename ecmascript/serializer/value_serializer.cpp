@@ -204,7 +204,8 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
         } else {
             data_->WriteEncodeFlag(EncodeFlag::ARRAY_BUFFER);
             data_->WriteUint32(arrayLength);
-            JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+            JSNativePointer *np =
+                reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
             data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), arrayLength);
         }
     }
@@ -225,7 +226,7 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
     if (arrayLength > 0) {
         JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
         void *buffer = np->GetExternalPointer();
-        if(JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
+        if (JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
             LOG_ECMA(ERROR) << "ValueSerialize: can't find buffer form shared memory pool";
             notSupport_ = true;
             return;
