@@ -224,8 +224,6 @@ public:
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     JSTaggedValue GetRecordName() const;
 
-    void InitializeForConcurrentFunction(JSThread *thread);
-
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static JSHClass *GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);

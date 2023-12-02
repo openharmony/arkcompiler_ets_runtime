@@ -842,47 +842,4 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
     }
     return JSTaggedValue::Undefined();
 }
-
-void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
-{
-    JSHandle<Method> method(thread, this->GetMethod());
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "JSPandaFile is nullptr";
-        return;
-    }
-    ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    ecmascript::CString recordName = method->GetRecordNameStr();
-
-    // for debugger, to notify the script loaded and parsed which the concurrent function is in
-    auto *notificationMgr = thread->GetEcmaVM()->GetJsDebuggerManager()->GetNotificationManager();
-    notificationMgr->LoadModuleEvent(moduleName, recordName);
-
-    // check ESM or CJS
-    ecmascript::JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
-    if (!hasRecord) {
-        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
-        return;
-    }
-    if (!jsPandaFile->IsModule(recordInfo)) {
-        LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
-        return;
-    }
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<ecmascript::JSTaggedValue> moduleRecord;
-    // check compileMode
-    if (jsPandaFile->IsBundlePack()) {
-        LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
-        moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
-    } else {
-        LOG_ECMA(DEBUG) << "CompileMode is esmodule";
-        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
-    }
-    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
-    JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
-    module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    method->SetModule(thread, module);
-}
 }  // namespace panda::ecmascript
