@@ -776,7 +776,7 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
             if (HandlerBase::IsField(handlerInfo)) {
                 AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
             }
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
         } else if (secondValue.IsPrototypeHandler()) {
             auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
             auto cellValue = prototypeHandler->GetProtoCell();
@@ -861,13 +861,13 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
             if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
                 return;
             }
 
             if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
                 OnHeapMode onHeap =  HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, onHeap);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, onHeap);
                 return;
             }
 
@@ -878,13 +878,13 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     if (secondValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
         if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
             return;
         }
 
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             OnHeapMode onHeap = HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, onHeap);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, onHeap);
             return;
         }
 
@@ -899,7 +899,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, transitionHClass);
                 return;
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, transitionHClass);
@@ -915,7 +915,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (transitionHClassVal.IsJSHClass()) {
             auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
             if (HandlerBase::IsElement(handlerInfo)) {
-                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, transitionHClass);
+                AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, transitionHClass);
                 return;
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, transitionHClass);
@@ -934,7 +934,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         ASSERT(handlerInfoValue.IsInt());
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass);
             return;
         }
         auto holder = prototypeHandler->GetHolder();
@@ -1216,14 +1216,13 @@ void PGOProfiler::AddObjectInfoWithMega(
 
 void PGOProfiler::AddBuiltinsInfo(
     ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-    JSHClass *transitionHClass, OnHeapMode onHeap)
+    OnHeapMode onHeap)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
     if (receiver->IsJSArray()) {
         auto type = receiver->GetObjectType();
         auto elementsKind = receiver->GetElementsKind();
-        auto transitionElementsKind = transitionHClass->GetElementsKind();
-        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind);
+        auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     } else if (receiver->IsTypedArray()) {

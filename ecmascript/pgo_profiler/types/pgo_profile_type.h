@@ -97,34 +97,21 @@ public:
     class BuiltinsArrayId : public BuiltinsId {
     public:
         // BuilitinsArray second bit field
-        static constexpr uint32_t OLD_ELEMENTS_KIND_BITFIELD_NUM = 5;
-        static constexpr uint32_t NEW_ELEMENTS_KIND_BITFIELD_NUM = 5;
-        using OldElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, OLD_ELEMENTS_KIND_BITFIELD_NUM>;
-        using NewElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, NEW_ELEMENTS_KIND_BITFIELD_NUM>;
+        static constexpr uint32_t ELEMENTS_KIND_BITFIELD_NUM = 5;
+        using ElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, ELEMENTS_KIND_BITFIELD_NUM>;
 
         explicit BuiltinsArrayId() = default;
         explicit BuiltinsArrayId(uint32_t id) : BuiltinsId(id) {}
 
         BuiltinsArrayId UpdateElementsKind(ElementsKind kind)
         {
-            id_ = OldElementsKindBits::Update(id_, kind);
+            id_ = ElementsKindBits::Update(id_, kind);
             return *this;
         }
 
         ElementsKind GetElementsKind() const
         {
-            return OldElementsKindBits::Decode(id_);
-        }
-
-        BuiltinsArrayId UpdateTransitionElementsKind(ElementsKind kind)
-        {
-            id_ = NewElementsKindBits::Update(id_, kind);
-            return *this;
-        }
-
-        ElementsKind GetTransitionElementsKind() const
-        {
-            return NewElementsKindBits::Decode(id_);
+            return ElementsKindBits::Decode(id_);
         }
     };
 
@@ -173,11 +160,9 @@ public:
         return type;
     }
 
-    static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind,
-                                           ElementsKind transitionKind)
+    static ProfileType CreateBuiltinsArray(ApEntityId abcId, JSType type, ElementsKind kind)
     {
-        auto id = BuiltinsArrayId().UpdateElementsKind(kind).UpdateTransitionElementsKind(transitionKind)
-                  .SetBuiltinsId(type).GetId();
+        auto id = BuiltinsArrayId().UpdateElementsKind(kind).SetBuiltinsId(type).GetId();
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
