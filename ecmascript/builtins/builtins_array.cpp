@@ -1624,6 +1624,37 @@ JSTaggedValue BuiltinsArray::Push(EcmaRuntimeCallInfo *argv)
     return GetTaggedDouble(len);
 }
 
+JSTaggedValue BuiltinsArray::ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
+    JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
+    JSHandle<JSTaggedValue> &callbackFnHandle)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSTaggedValue callResult = JSTaggedValue::Undefined();
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    while (k < len) {
+        bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, k));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (exists) {
+            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            key.Update(JSTaggedValue(k));
+            JSHandle<JSTaggedValue> thisArgHandle = globalConst->GetHandledUndefined();
+            const uint32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
+            JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(), key.GetTaggedValue(),
+                thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            accumulator.Update(callResult);
+        }
+        k++;
+    }
+    return accumulator.GetTaggedValue();
+}
+
 // 22.1.3.18 Array.prototype.reduce ( callbackfn [ , initialValue ] )
 JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
 {
@@ -1631,7 +1662,6 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Array, Reduce);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
@@ -1694,43 +1724,7 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Reduce(thread, thisObjHandle, callbackFnHandle, accumulator, k, len);
     }
-
-    // 10. Repeat, while k < len
-    //   a. Let Pk be ToString(k).
-    //   b. Let kPresent be HasProperty(O, Pk).
-    //   c. ReturnIfAbrupt(kPresent).
-    //   d. If kPresent is true, then
-    //     i. Let kValue be Get(O, Pk).
-    //     ii. ReturnIfAbrupt(kValue).
-    //     iii. Let accumulator be Call(callbackfn, undefined, «accumulator, kValue, k, O»).
-    //     iv. ReturnIfAbrupt(accumulator).
-    //   e. Increase k by 1.
-    JSTaggedValue callResult = JSTaggedValue::Undefined();
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    while (k < len) {
-        bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, k));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (exists) {
-            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            key.Update(JSTaggedValue(k));
-            JSHandle<JSTaggedValue> thisArgHandle = globalConst->GetHandledUndefined();
-            const uint32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
-            JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(), key.GetTaggedValue(),
-                thisObjVal.GetTaggedValue());
-            callResult = JSFunction::Call(info);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            accumulator.Update(callResult);
-        }
-        k++;
-    }
-
-    // 11. Return accumulator.
-    return accumulator.GetTaggedValue();
+    return ReduceUnStableJSArray(thread, thisHandle, thisObjVal, k, len, accumulator, callbackFnHandle);
 }
 
 // 22.1.3.19 Array.prototype.reduceRight ( callbackfn [ , initialValue ] )

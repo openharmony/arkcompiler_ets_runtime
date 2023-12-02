@@ -290,10 +290,29 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(LastIndexOf,  JS_ANY)                 \
     V(Pop,          JS_ANY)                 \
     V(Slice,        JS_POINTER)             \
+    V(Reduce,       JS_ANY)                 \
     V(Reverse,      JS_POINTER)             \
     V(Push,         JS_ANY)                 \
     V(Values,       JS_POINTER)             \
     V(Includes,     JS_ANY)
+
+DECLARE_BUILTINS(SORT)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsArrayStubBuilder arrayStubBuilder(this);
+    arrayStubBuilder.Sort(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SORT));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 
 BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)
 

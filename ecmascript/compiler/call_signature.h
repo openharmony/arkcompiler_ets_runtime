@@ -474,6 +474,7 @@ private:
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
+    V(FastArraySort)                            \
     V(LocaleCompareNoGc)                        \
     V(StringGetStart)                           \
     V(StringGetEnd)                             \

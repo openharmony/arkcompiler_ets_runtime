@@ -133,6 +133,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSHClassFindProtoTransitions)            \
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
+    V(FastArraySort)                           \
     V(LocaleCompareNoGc)                       \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
@@ -161,6 +162,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
+    V(JSArrayReduceUnStable)              \
     V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
@@ -437,6 +439,7 @@ public:
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
+    static int FastArraySort(JSTaggedType x, JSTaggedType y);
     static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
                                            EcmaString *thatHandle);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);

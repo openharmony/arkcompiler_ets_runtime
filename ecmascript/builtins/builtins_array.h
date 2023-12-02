@@ -79,7 +79,7 @@
     /* Array.prototype.push ( ...items ) */                                 \
     V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
-    V("reduce",         Reduce,           1, INVALID)                       \
+    V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
     V("reduceRight",    ReduceRight,      1, INVALID)                       \
     /* Array.prototype.reverse ( ) */                                       \
@@ -230,6 +230,9 @@ public:
         //   (4) Array.prototype[@@unscopables]()
         return GetArrayPrototypeFunctions().Size() + 4;
     }
+    static JSTaggedValue ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
+        JSHandle<JSTaggedValue> &callbackFnHandle);
 
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \

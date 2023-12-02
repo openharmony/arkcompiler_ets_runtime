@@ -25,6 +25,7 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
+#include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -52,6 +53,7 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info.h"
@@ -67,6 +69,7 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "macros.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
@@ -388,6 +391,24 @@ DEF_RUNTIME_STUBS(CheckAndCopyArray)
     JSHandle<JSArray> receiverHandle(thread, reinterpret_cast<JSArray *>(argReceiver));
     JSArray::CheckAndCopyArray(thread, receiverHandle);
     return receiverHandle->GetElements().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSArrayReduceUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayReduceUnStable);
+    JSHandle<JSTaggedValue> thisHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSMutableHandle<JSTaggedValue> accumulator = JSMutableHandle<JSTaggedValue>(thread,
+        GetHArg<JSTaggedValue>(argv, argc, 4));  // 4: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::ReduceUnStableJSArray(thread, thisHandle, thisObjVal, k, len,
+        accumulator, callbackFnHandle);
+    return ret.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(JSObjectGrowElementsCapacity)
@@ -3002,6 +3023,12 @@ DEF_RUNTIME_STUBS(LocaleCompareWithGc)
     bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
     return builtins::BuiltinsString::LocaleCompareGC(thread, locales, thisHandle, thatHandle,
         options, cacheable).GetRawData();
+}
+
+int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
 }
 
 JSTaggedValue RuntimeStubs::LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,

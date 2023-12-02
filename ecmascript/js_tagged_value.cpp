@@ -270,6 +270,31 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
     return false;
 }
 
+uint32_t CountLeadingZeros(uint32_t value, uint32_t bits)
+{
+    if (bits == 1) {
+        return value ^ 1;
+    }
+    uint32_t upper_half = value >> (bits / 2); // 2 : half
+    uint32_t nextValue = upper_half != 0 ? upper_half : value;
+    uint32_t add = upper_half != 0 ? 0 : (bits / 2); // 2 : half
+    uint32_t nextBits = bits == 1 ? 1 : bits / 2; // 2 : half
+    return CountLeadingZeros(nextValue, nextBits) + add;
+}
+
+const uint32_t kPowersOf10[] = {
+    1,
+    10,
+    100,
+    1000,
+    10 * 1000,
+    100 * 1000,
+    1000 * 1000,
+    10 * 1000 * 1000,
+    100 * 1000 * 1000,
+    1000 * 1000 * 1000,
+};
+
 int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
 {
     ASSERT(x.IsInt() && y.IsInt());
@@ -294,15 +319,30 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         unsignedX = static_cast<uint32_t>(-xValue);
         unsignedY = static_cast<uint32_t>(-yValue);
     }
-    int xDigit = log10(unsignedX);
-    int yDigit = log10(unsignedY);
-    int res;
+    uint32_t bits = sizeof(uint32_t) * 8; // 8 : bits
+    int xLog2 = 31 - CountLeadingZeros(unsignedX, bits); // 31 : Algorithm implementation
+    int xDigit = ((xLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
+    xDigit -= unsignedX < kPowersOf10[xDigit];
+
+    int yLog2 = 31 - CountLeadingZeros(unsignedY, bits); // 31 : Algorithm implementation
+    int yDigit = ((yLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
+    yDigit -= unsignedY < kPowersOf10[yDigit];
+
+    int res = 0;
     if (xDigit > yDigit) {
-        unsignedY *= pow(10, xDigit - yDigit); // 10: decimal
+        // X has fewer digits.  We would like to simply scale up X but that
+        // might overflow, e.g when comparing 9 with 1_000_000_000, 9 would
+        // be scaled up to 9_000_000_000. So we scale up by the next
+        // smallest power and scale down Y to drop one digit. It is OK to
+        // drop one digit from the longer integer since the final digit is
+        // past the length of the shorter integer.
+        unsignedY *= kPowersOf10[xDigit - yDigit - 1];
+        unsignedX /= 10; // 10 : Decimal
         res = 1;
     }
     if (yDigit > xDigit) {
-        unsignedX *= pow(10, yDigit - xDigit); // 10: decimal
+        unsignedX *= kPowersOf10[yDigit - xDigit - 1];
+        unsignedY /= 10; // 10 : Decimal
         res = -1;
     }
     if (unsignedX > unsignedY) {
