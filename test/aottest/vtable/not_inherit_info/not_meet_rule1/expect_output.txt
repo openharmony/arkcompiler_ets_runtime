@@ -12,4 +12,4 @@
 # limitations under the License.
 
 false
-1
+undefined

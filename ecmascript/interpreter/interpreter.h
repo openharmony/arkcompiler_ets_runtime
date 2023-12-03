@@ -31,7 +31,7 @@ class ECMAObject;
 class GeneratorContext;
 
 using EcmaOpcode = BytecodeInstruction::Opcode;
-const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 3;
+const uint8_t EXCEPTION_OPCODE = static_cast<uint8_t>(EcmaOpcode::NOP) + 6;
 
 class EcmaInterpreter {
 public:

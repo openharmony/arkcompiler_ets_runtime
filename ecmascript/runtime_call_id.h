@@ -237,7 +237,14 @@ namespace panda::ecmascript {
     V(LdPatchVar)                   \
     V(StPatchVar)                   \
     V(AsyncGeneratorReject)         \
+    V(LdPrivateProperty)            \
+    V(StPrivateProperty)            \
+    V(TestIn)                       \
     V(NotifyConcurrentResult)       \
+    V(DefineField)                  \
+    V(ToPropertyKey)                \
+    V(CreatePrivateProperty)        \
+    V(DefinePrivateProperty)        \
     V(UpdateHClass)                 \
     V(SetGeneratorState)
 

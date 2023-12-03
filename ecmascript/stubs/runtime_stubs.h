@@ -344,6 +344,12 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ContainerRBTreeForEach)             \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
+    V(DefineField)                        \
+    V(CreatePrivateProperty)              \
+    V(DefinePrivateProperty)              \
+    V(LdPrivateProperty)                  \
+    V(StPrivateProperty)                  \
+    V(TestIn)                             \
     V(UpdateHClass)                       \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
@@ -748,6 +754,18 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline JSTaggedValue RuntimeDefineField(JSThread *thread, JSTaggedValue obj,
+                                                   JSTaggedValue propKey, JSTaggedValue value);
+    static inline JSTaggedValue RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue constpool,
+        uint32_t count, JSTaggedValue lexicalEnv, uint32_t literalId, JSTaggedValue module);
+    static inline JSTaggedValue RuntimeDefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
+    static inline JSTaggedValue RuntimeLdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
+    static inline JSTaggedValue RuntimeStPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
+    static inline JSTaggedValue RuntimeTestIn(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
     static inline bool IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
                                                                  JSTaggedValue key);
     static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,

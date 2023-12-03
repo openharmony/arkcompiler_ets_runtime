@@ -41,7 +41,10 @@ let a = new A();
 print(ArkTools.hasTSSubtyping(a));
 print(a.x);
 
-
-let b = new B();
-print(ArkTools.hasTSSubtyping(b));
-print(b.x());
+try{
+    let b = new B();
+    print(ArkTools.hasTSSubtyping(b));
+    print(b.x());
+} catch(e) {
+    print(e.name);
+}

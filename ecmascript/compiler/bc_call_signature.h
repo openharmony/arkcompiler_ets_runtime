@@ -22,9 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD8)                                 \
-    T(HandleOverflowD9)                                 \
-    T(HandleOverflowDA)                                 \
     T(HandleOverflowDB)                                 \
     T(HandleOverflowDC)                                 \
     T(HandleOverflowDD)                                 \
@@ -277,6 +274,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleNop)                                                          \
     T(HandleSetgeneratorstateImm8)                                        \
     T(HandleGetasynciteratorImm8)                                         \
+    T(HandleLdPrivatePropertyImm8Imm16Imm16)                              \
+    T(HandleStPrivatePropertyImm8Imm16Imm16V8)                            \
+    T(HandleTestInImm8Imm16Imm16)                                         \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
     T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \
@@ -372,7 +372,13 @@ namespace panda::ecmascript::kungfu {
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(V, T, D)                    \
-    T(HandleCallRuntimeNotifyConcurrentResultPrefNone)
+    T(HandleCallRuntimeNotifyConcurrentResultPrefNone)                    \
+    T(HandleCallRuntimeDefineFieldByNamePrefId16V8)                       \
+    T(HandleCallRuntimeDefineFieldByValuePrefV8V8)                        \
+    T(HandleCallRuntimeDefineFieldByIndexPrefImm32V8)                     \
+    T(HandleCallRuntimeToPropertyKeyPrefNone)                             \
+    T(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)                \
+    T(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \

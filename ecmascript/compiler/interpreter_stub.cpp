@@ -575,6 +575,40 @@ DECLARE_ASM_HANDLER(HandleGetasynciteratorImm8)
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETASYNCITERATOR_IMM8));
 }
 
+DECLARE_ASM_HANDLER(HandleLdPrivatePropertyImm8Imm16Imm16)
+{
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef levelIndex = ReadInst16_1(pc);
+    GateRef slotIndex = ReadInst16_3(pc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(LdPrivateProperty), {lexicalEnv,
+        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc});  // acc as obj
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
+}
+
+DECLARE_ASM_HANDLER(HandleStPrivatePropertyImm8Imm16Imm16V8)
+{
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef levelIndex = ReadInst16_1(pc);
+    GateRef slotIndex = ReadInst16_3(pc);
+    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(StPrivateProperty), {lexicalEnv,
+        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleTestInImm8Imm16Imm16)
+{
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef levelIndex = ReadInst16_1(pc);
+    GateRef slotIndex = ReadInst16_3(pc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(TestIn), {lexicalEnv,
+        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc});  // acc as obj
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(TESTIN_IMM8_IMM16_IMM16));
+}
+
 DECLARE_ASM_HANDLER(HandleThrowPatternnoncoerciblePrefNone)
 {
     CallRuntime(glue, RTSTUB_ID(ThrowPatternNonCoercible), {});
@@ -4923,6 +4957,66 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
     GateRef funcObj = GetFunctionFromFrame(GetFrame(sp));
     CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, funcObj});
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByNamePrefId16V8)
+{
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef v0 = ReadInst8_3(pc);
+    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});  // acc as value
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByValuePrefV8V8)
+{
+    GateRef v0 = ReadInst8_1(pc);
+    GateRef v1 = ReadInst8_2(pc);
+    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});  // acc as value
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByIndexPrefImm32V8)
+{
+    GateRef index = ReadInst32_1(pc);
+    GateRef v0 = ReadInst8_5(pc);
+    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef propKey = IntToTaggedInt(index);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});  // acc as value
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeToPropertyKeyPrefNone)
+{
+    GateRef res = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {acc});
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)
+{
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef count = ReadInst16_1(pc);
+    GateRef literalId = ReadInst16_3(pc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreatePrivateProperty), {lexicalEnv,
+        IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module});
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)
+{
+    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef levelIndex = ReadInst16_1(pc);
+    GateRef slotIndex = ReadInst16_3(pc);
+    GateRef v0 = ReadInst8_5(pc);
+    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefinePrivateProperty), {lexicalEnv,
+        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
+    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8));
 }
 
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

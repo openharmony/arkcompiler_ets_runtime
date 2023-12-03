@@ -703,8 +703,35 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             LowerStObjByName(gate, true);
             break;
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+            LowerLdPrivateProperty(gate);
+            break;
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+            LowerStPrivateProperty(gate);
+            break;
+        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+            LowerTestIn(gate);
+            break;
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8:
+            LowerDefineFieldByName(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8:
+            LowerDefineFieldByValue(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
+            LowerDefineFieldByIndex(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
+            LowerToPropertyKey(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+            LowerCreatePrivateProperty(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
+            LowerDefinePrivateProperty(gate);
             break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
@@ -3227,12 +3254,146 @@ void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void SlowPathLowering::LowerLdPrivateProperty(GateRef gate)
+{
+    const int id = RTSTUB_ID(LdPrivateProperty);
+    // 5: number of value inputs + env + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    [[maybe_unused]] GateRef slotId = acc_.GetValueIn(gate, 0);
+    GateRef levelIndex = acc_.GetValueIn(gate, 1);
+    GateRef slotIndex = acc_.GetValueIn(gate, 2);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
+    GateRef obj = acc_.GetValueIn(gate, 4);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerStPrivateProperty(GateRef gate)
+{
+    const int id = RTSTUB_ID(StPrivateProperty);
+    // 6: number of value inputs + env + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 6);
+    [[maybe_unused]] GateRef slotId = acc_.GetValueIn(gate, 0);
+    GateRef levelIndex = acc_.GetValueIn(gate, 1);
+    GateRef slotIndex = acc_.GetValueIn(gate, 2);
+    GateRef obj = acc_.GetValueIn(gate, 3);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 4);
+    GateRef value = acc_.GetValueIn(gate, 5);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj, value});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerTestIn(GateRef gate)
+{
+    const int id = RTSTUB_ID(TestIn);
+    // 5: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    [[maybe_unused]] GateRef slotId = acc_.GetValueIn(gate, 0);
+    GateRef levelIndex = acc_.GetValueIn(gate, 1);
+    GateRef slotIndex = acc_.GetValueIn(gate, 2);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
+    GateRef obj = acc_.GetValueIn(gate, 4);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj});
+    ReplaceHirWithValue(gate, newGate);
+}
+
 void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
 {
     const int id = RTSTUB_ID(NotifyConcurrentResult);
 
     GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0),
                                                   argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC)});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefineFieldByName(GateRef gate)
+{
+    const int id = RTSTUB_ID(DefineField);
+    // 3: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef obj = acc_.GetValueIn(gate, 1);
+    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
+    GateRef value = acc_.GetValueIn(gate, 2);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefineFieldByValue(GateRef gate)
+{
+    const int id = RTSTUB_ID(DefineField);
+    // 3: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef obj = acc_.GetValueIn(gate, 1);
+    GateRef propKey = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 2);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefineFieldByIndex(GateRef gate)
+{
+    const int id = RTSTUB_ID(DefineField);
+    // 3: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef obj = acc_.GetValueIn(gate, 1);
+    GateRef propKey = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef value = acc_.GetValueIn(gate, 2);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerToPropertyKey(GateRef gate)
+{
+    const int id = RTSTUB_ID(ToPropertyKey);
+    // 1: number of acc
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef value = acc_.GetValueIn(gate, 0);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {value});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerCreatePrivateProperty(GateRef gate)
+{
+    const int id = RTSTUB_ID(CreatePrivateProperty);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef count = acc_.GetValueIn(gate, 0);
+    GateRef literalId = acc_.GetValueIn(gate, 1);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 2);
+    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(count), constpool, builder_.ToTaggedInt(literalId), module});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefinePrivateProperty(GateRef gate)
+{
+    const int id = RTSTUB_ID(DefinePrivateProperty);
+    // 5: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    GateRef levelIndex = acc_.GetValueIn(gate, 0);
+    GateRef slotIndex = acc_.GetValueIn(gate, 1);
+    GateRef obj = acc_.GetValueIn(gate, 2);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 3);
+    GateRef value = acc_.GetValueIn(gate, 4);  // acc
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj, value});
     ReplaceHirWithValue(gate, newGate);
 }
 

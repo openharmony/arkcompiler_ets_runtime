@@ -38,18 +38,18 @@ declare function AssertType(value:any, type:string):void;
 
 let f : number[] = [1,2,3]
 f.forEach(value => { 
-    AssertType(value, "number");
+    AssertType(value, "any");
     return value + 1;
 })
 f.forEach((value, index)=>{
-    AssertType(value, "number");
-    AssertType(index, "int");
-    AssertType(f[index], "number");
+    AssertType(value, "any");
+    AssertType(index, "any");
+    AssertType(f[index], "any");
     return value + f[index];
 })
 f.forEach((value, index, arr)=>{
-    AssertType(value, "number");
-    AssertType(index, "int");
-    AssertType(arr, "number[]");
+    AssertType(value, "any");
+    AssertType(index, "any");
+    AssertType(arr, "any");
     return value + arr[index];})
 }

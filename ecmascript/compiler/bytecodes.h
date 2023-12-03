@@ -268,7 +268,7 @@ public:
     static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = CALLRUNTIME_PREFIX_OPCODE_INDEX;
 
     static constexpr uint32_t LAST_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::GETASYNCITERATOR_IMM8);
+        static_cast<uint32_t>(EcmaOpcode::TESTIN_IMM8_IMM16_IMM16);
     static constexpr uint32_t LAST_DEPRECATED_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8);
     static constexpr uint32_t LAST_WIDE_OPCODE =
@@ -276,7 +276,7 @@ public:
     static constexpr uint32_t LAST_THROW_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
     static constexpr uint32_t LAST_CALLRUNTIME_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
+        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
 
     static_assert(CALLRUNTIME_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE));

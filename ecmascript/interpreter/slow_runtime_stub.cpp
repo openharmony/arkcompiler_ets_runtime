@@ -1199,4 +1199,49 @@ JSTaggedValue SlowRuntimeStub::UpdateHClass(JSThread *thread, JSTaggedValue jshc
     JSHandle<JSHClass> newhclass(thread, newjshclass);
     return RuntimeStubs::RuntimeUpdateHClass(thread, oldhclass, newhclass, key);
 }
+
+JSTaggedValue SlowRuntimeStub::DefineField(JSThread *thread, JSTaggedValue obj,
+                                           JSTaggedValue propKey, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, DefineField);
+    return RuntimeStubs::RuntimeDefineField(thread, obj, propKey, value);
+}
+
+JSTaggedValue SlowRuntimeStub::CreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
+{
+    INTERPRETER_TRACE(thread, CreatePrivateProperty);
+    return RuntimeStubs::RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module);
+}
+
+JSTaggedValue SlowRuntimeStub::DefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, DefinePrivateProperty);
+    return RuntimeStubs::RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
+}
+
+JSTaggedValue SlowRuntimeStub::LdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj)
+{
+    INTERPRETER_TRACE(thread, LdPrivateProperty);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    return RuntimeStubs::RuntimeLdPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj);
+}
+
+JSTaggedValue SlowRuntimeStub::StPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value)
+{
+    INTERPRETER_TRACE(thread, StPrivateProperty);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    return RuntimeStubs::RuntimeStPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
+}
+
+JSTaggedValue SlowRuntimeStub::TestIn(JSThread *thread, JSTaggedValue lexicalEnv,
+    uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj)
+{
+    INTERPRETER_TRACE(thread, TestIn);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    return RuntimeStubs::RuntimeTestIn(thread, lexicalEnv, levelIndex, slotIndex, obj);
+}
 }  // namespace panda::ecmascript
