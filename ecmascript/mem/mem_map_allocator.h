@@ -168,7 +168,7 @@ public:
             auto next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(startMem) + newSize);
             while (it != freeList_.end() && next == (*it).second.GetMem()) {
                 newSize += (*it).second.GetSize();
-                freeList_.erase(it++);
+                it = freeList_.erase(it);
                 next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(startMem) + newSize);
                 isEqual = true;
             }
