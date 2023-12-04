@@ -1988,7 +1988,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
             Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
-                result = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
+                result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
         }
@@ -2026,7 +2026,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
             Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
-                result = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
+                result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
         }
@@ -2064,7 +2064,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -2106,7 +2106,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {

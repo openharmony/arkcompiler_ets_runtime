@@ -375,7 +375,7 @@ void DeprecatedSetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    Return(SetPropertyByName(glue, receiver, key, value, false));
+    Return(SetPropertyByName(glue, receiver, key, value, false, True()));
 }
 
 void SetPropertyByNameWithOwnStubBuilder::GenerateCircuit()
@@ -384,7 +384,7 @@ void SetPropertyByNameWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    Return(SetPropertyByName(glue, receiver, key, value, true));
+    Return(SetPropertyByName(glue, receiver, key, value, true, True()));
 }
 
 void GetPropertyByValueStubBuilder::GenerateCircuit()

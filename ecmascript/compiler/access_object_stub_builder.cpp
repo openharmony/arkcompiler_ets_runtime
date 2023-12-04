@@ -39,7 +39,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = GetPropertyByName(glue, receiver, propKey, callback);
+        result = GetPropertyByName(glue, receiver, propKey, callback, True());
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -70,7 +70,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation());
+        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation(), True());
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -103,7 +103,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = SetPropertyByName(glue, receiver, propKey, value, false, callback);
+        result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
