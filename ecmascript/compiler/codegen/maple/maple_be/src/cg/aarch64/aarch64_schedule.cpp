@@ -776,8 +776,8 @@ uint32 AArch64Schedule::DoSchedule()
     nodes.clear();
     (void)nodes.insert(nodes.begin(), scheduleInfo.GetScheduledNodes().begin(), scheduleInfo.GetScheduledNodes().end());
     /* the second to last node is the true last node, because the last is kNodeTypeSeparator node */
-    DEBUG_ASSERT(nodes.size() - 2 >= 0, "size of nodes should be greater than or equal 2");
-    return (nodes[nodes.size() - 2]->GetSchedCycle());
+    DEBUG_ASSERT(nodes.size() - 2 >= 0, "size of nodes should be greater than or equal 2"); // size not less than 2
+    return (nodes[nodes.size() - 2]->GetSchedCycle()); // size-2 get the second to last node
 }
 
 struct RegisterInfoUnit {

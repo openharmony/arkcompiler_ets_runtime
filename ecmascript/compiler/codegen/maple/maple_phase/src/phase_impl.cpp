@@ -113,6 +113,7 @@ void FuncOptimizeIterator::Run(uint32 threadNum, bool isSeq)
     }
 }
 
+constexpr double kMicroseconds2Milli = 1000.0;
 void FuncOptimizeIterator::RunSerial()
 {
     MPLTimer timer;
@@ -142,7 +143,7 @@ void FuncOptimizeIterator::RunSerial()
     if (mplDumpTime) {
         timer.Stop();
         INFO(kLncInfo, "FuncOptimizeIterator::RunSerial (%s): %lf ms", schedulerName.c_str(),
-             timer.ElapsedMicroseconds() / 1000.0);
+             timer.ElapsedMicroseconds() / kMicroseconds2Milli);
     }
 }
 
@@ -165,7 +166,7 @@ void FuncOptimizeIterator::RunParallel(uint32 threadNum, bool isSeq)
     if (mplDumpTime) {
         timer.Stop();
         INFO(kLncInfo, "FuncOptimizeIterator::RunParallel (%s): AddTask() = %lf ms", schedulerName.c_str(),
-             timer.ElapsedMicroseconds() / 1000.0);
+             timer.ElapsedMicroseconds() / kMicroseconds2Milli);
 
         timer.Start();
     }
@@ -178,7 +179,7 @@ void FuncOptimizeIterator::RunParallel(uint32 threadNum, bool isSeq)
     if (mplDumpTime) {
         timer.Stop();
         INFO(kLncInfo, "FuncOptimizeIterator::RunParallel (%s): RunTask() = %lf ms", schedulerName.c_str(),
-             timer.ElapsedMicroseconds() / 1000.0);
+             timer.ElapsedMicroseconds() / kMicroseconds2Milli);
     }
 }
 }  // namespace maple

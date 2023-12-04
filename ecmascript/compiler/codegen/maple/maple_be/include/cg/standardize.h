@@ -60,7 +60,7 @@ private:
     virtual void StdzMov(Insn &insn) = 0;
     virtual void StdzStrLdr(Insn &insn) = 0;
     virtual void StdzBasicOp(Insn &insn) = 0;
-    virtual void StdzUnaryOp(Insn &insn) = 0;
+    virtual void StdzUnaryOp(Insn &insn, CGFunc &cgFunc) = 0;
     virtual void StdzCvtOp(Insn &insn, CGFunc &cgFunc) = 0;
     virtual void StdzShiftOp(Insn &insn, CGFunc &cgFunc) = 0;
     CGFunc *cgFunc;

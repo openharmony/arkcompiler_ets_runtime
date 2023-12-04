@@ -962,12 +962,18 @@ private:
 };
 
 /*
- * add xt, xn, #imm               add  xt, xn, xm
- * ldr xd, [xt]                   ldr xd, [xt]
- * =====================>
- * ldr xd, [xn, #imm]             ldr xd, [xn, xm]
+ * mov  x0, x1
+ * ldr	x0, [x0]        --> ldr x0, [x1]
  *
- * load/store can do extend shift as well
+ * add	x0, x0, #64
+ * ldr	x0, [x0]        --> ldr x0, [x0, #64]
+ * 
+ * add	x0, x7, x0
+ * ldr	x11, [x0]       --> ldr x11, [x0, x7]
+ * 
+ * lsl	x1, x4, #3
+ * add	x0, x0, x1
+ * ldr	d1, [x0]        --> ldr d1, [x0, x4, lsl #3]
  */
 class EnhanceStrLdrAArch64 : public PeepPattern {
 public:
@@ -976,7 +982,12 @@ public:
     void Run(BB &bb, Insn &insn) override;
 
 private:
-    bool IsEnhanceAddImm(MOperator prevMop) const;
+    ImmOperand *GetInsnAddOrSubNewOffset(Insn &insn, ImmOperand &offset);
+    void OptimizeAddrBOI(Insn &insn, MemOperand &memOpnd, Insn &prevInsn);
+    void OptimizeAddrBOrX(Insn &insn, MemOperand &memOpnd, Insn &prevInsn);
+    void OptimizeAddrBOrXShiftExtend(Insn &insn, MemOperand &memOpnd, Insn &shiftExtendInsn);
+    void OptimizeWithAddrrrs(Insn &insn, MemOperand &memOpnd, Insn &addInsn);
+    bool CheckOperandIsDeadFromInsn(const RegOperand &regOpnd, Insn &insn);
 };
 
 /* Eliminate the sxt[b|h|w] w0, w0;, when w0 is satisify following:
@@ -1789,6 +1800,73 @@ protected:
 };
 
 /*
+ * Optimize the following patterns:
+ * and w0, w0, #0x1
+ * cmp w0, #0x0
+ * cset w0, eq
+ * eor w0, w0, #0x1
+ * cbz w0, label
+ * ====>
+ * tbz w0, 0, label
+ */
+class AndCmpCsetEorCbzOpt : public PeepPattern {
+public:
+    explicit AndCmpCsetEorCbzOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
+    ~AndCmpCsetEorCbzOpt() override = default;
+    void Run(BB &bb, Insn &insn) override;
+private:
+    CGFunc *cgFunc;
+};
+
+/*
+ * Optimize the following patterns:
+ * add x0, x0, x1
+ * ldr w0, [x0]
+ * ====>
+ * ldr w0, [x0, x1]
+ */
+class AddLdrOpt : public PeepPattern {
+public:
+    explicit AddLdrOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
+    ~AddLdrOpt() override = default;
+    void Run(BB &bb, Insn &insn) override;
+private:
+    CGFunc *cgFunc;
+};
+
+/*
+ * Optimize the following patterns:
+ * cset x0, eq
+ * eor x0, x0, 0x1
+ * ====>
+ * cset x0, ne
+ */
+class CsetEorOpt : public PeepPattern {
+public:
+    explicit CsetEorOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
+    ~CsetEorOpt() override = default;
+    void Run(BB &bb, Insn &insn) override;
+private:
+    CGFunc *cgFunc;
+};
+
+/*
+ * Optimize the following patterns:
+ * mov x1, #0x5
+ * cmp x0, x1
+ * ====>
+ * cmp x0, #0x5
+ */
+class MoveCmpOpt : public PeepPattern {
+public:
+    explicit MoveCmpOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
+    ~MoveCmpOpt() override = default;
+    void Run(BB &bb, Insn &insn) override;
+private:
+    CGFunc *cgFunc;
+};
+
+/*
  * Replace following pattern:
  * sxtw  x1, w0
  * lsl   x2, x1, #3  ====>  sbfiz x2, x0, #3, #32
@@ -1832,6 +1910,10 @@ private:
         kAndCbzBranchesToTstOpt,
         kZeroCmpBranchesOpt,
         kCselZeroOneToCsetOpt,
+        kAndCmpCsetEorCbzOpt,
+        kAddLdrOpt,
+        kCsetEorOpt,
+        kMoveCmpOpt,
         kPeepholeOptsNum
     };
 };
@@ -1851,6 +1933,7 @@ private:
         kDeleteMovAfterCbzOrCbnzOpt,
         kRemoveSxtBeforeStrOpt,
         kRemoveMovingtoSameRegOpt,
+        kEnhanceStrLdrAArch64Opt,
         kPeepholeOptsNum
     };
 };

@@ -577,64 +577,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             EmitFastLSDA(funcEmitInfo);
         }
     }
-    uint32 size = static_cast<uint32>(cgFunc.GetFunction().GetSymTab()->GetSymbolTableSize());
-    for (uint32 i = 0; i < size; ++i) {
-        MIRSymbol *st = cgFunc.GetFunction().GetSymTab()->GetSymbolFromStIdx(i);
-        if (st == nullptr) {
-            continue;
-        }
-        MIRStorageClass storageClass = st->GetStorageClass();
-        MIRSymKind symKind = st->GetSKind();
-        if (storageClass == kScPstatic && symKind == kStConst) {
-            (void)emitter.Emit("\t.align 3\n");
-            (void)emitter.Emit(st->GetName() + ":\n");
-            if (st->GetKonst()->GetKind() == kConstStr16Const) {
-                MIRStr16Const *str16Const = safe_cast<MIRStr16Const>(st->GetKonst());
-                emitter.EmitStr16Constant(*str16Const);
-                (void)emitter.Emit("\n");
-                continue;
-            }
-            if (st->GetKonst()->GetKind() == kConstStrConst) {
-                MIRStrConst *strConst = safe_cast<MIRStrConst>(st->GetKonst());
-                emitter.EmitStrConstant(*strConst);
-                (void)emitter.Emit("\n");
-                continue;
-            }
-
-            switch (st->GetKonst()->GetType().GetPrimType()) {
-                case PTY_u32: {
-                    MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
-                    (void)emitter.Emit("\t.long ").Emit(static_cast<uint32>(intConst->GetExtValue())).Emit("\n");
-                    emitter.IncreaseJavaInsnCount();
-                    break;
-                }
-                case PTY_f32: {
-                    MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
-                    (void)emitter.Emit("\t.word ").Emit(static_cast<uint32>(floatConst->GetIntValue())).Emit("\n");
-                    emitter.IncreaseJavaInsnCount();
-                    break;
-                }
-                case PTY_f64: {
-                    MIRDoubleConst *doubleConst = safe_cast<MIRDoubleConst>(st->GetKonst());
-                    auto emitF64 = [&](int64 first, int64 second) {
-                        (void)emitter.Emit("\t.word ").Emit(first).Emit("\n");
-                        emitter.IncreaseJavaInsnCount();
-                        (void)emitter.Emit("\t.word ").Emit(second).Emit("\n");
-                        emitter.IncreaseJavaInsnCount();
-                    };
-                    if (CGOptions::IsBigEndian()) {
-                        emitF64(doubleConst->GetIntHigh32(), doubleConst->GetIntLow32());
-                    } else {
-                        emitF64(doubleConst->GetIntLow32(), doubleConst->GetIntHigh32());
-                    }
-                    break;
-                }
-                default:
-                    DEBUG_ASSERT(false, "NYI");
-                    break;
-            }
-        }
-    }
 
     for (auto &it : cgFunc.GetEmitStVec()) {
         /* emit switch table only here */

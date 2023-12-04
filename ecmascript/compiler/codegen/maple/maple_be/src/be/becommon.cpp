@@ -773,7 +773,7 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
             }
 
             uint32 index = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeTable().at(iNode.GetTyIdx()))
-                               ->GetPointedTyIdx();
+                           ->GetPointedTyIdx();
             MIRType *pointedType = GlobalTables::GetTypeTable().GetTypeTable().at(index);
             std::pair<int32, int32> byteBitOffset =
                 GetFieldOffset(static_cast<MIRStructType &>(*pointedType), iNode.GetFieldID());

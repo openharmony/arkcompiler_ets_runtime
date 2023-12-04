@@ -392,7 +392,7 @@ Operand *HandleSelect(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     /* 0,1,2 represent the first opnd and the second opnd and the third opnd of expr */
     bool hasCompare = false;
-    if (HasCompare(expr.Opnd(1)) || HasCompare(expr.Opnd(2))) {
+    if (HasCompare(expr.Opnd(kSecondOpnd)) || HasCompare(expr.Opnd(kThirdOpnd))) {
         hasCompare = true;
     }
     Operand &trueOpnd = *cgFunc.HandleExpr(expr, *expr.Opnd(1));
@@ -1833,7 +1833,7 @@ void CGFunc::CreateLmbcFormalParamInfo()
             primType = type->GetPrimType();
             offset = stackOffset;
             typeSize = static_cast<uint32>(GetBecommon().GetTypeSize(tyIdx));
-            stackOffset += (typeSize + 7) & (-8);
+            stackOffset += (typeSize + k7BitSize) & (kNegative8BitSize);
             LmbcFormalParamInfo *info = GetMemoryPool()->New<LmbcFormalParamInfo>(primType, offset, typeSize);
             lmbcParamVec.push_back(info);
             if (idx == 0 && lmbcFunc.IsFirstArgReturn()) {
@@ -2325,6 +2325,7 @@ void CGFunc::HandleFunction()
     DetermineReturnTypeofCall();
     theCFG->MarkLabelTakenBB();
     theCFG->UnreachCodeAnalysis();
+    EraseUnreachableStackMapInsns();
     if (mirModule.GetSrcLang() == kSrcLangC) {
         theCFG->WontExitAnalysis();
     }

@@ -2762,8 +2762,8 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
             MIRClassType *classType = static_cast<MIRClassType *>(ty);
             const JClassLayout &layout = beCommon.GetJClassLayout(*classType);
             DEBUG_ASSERT(!layout.empty(), "container should not be empty");
-            int32 i1 = fdNode.GetFiledID1() > 0 ? fdNode.GetFiledID1() - 1 : 0;
-            int32 i2 = fdNode.GetFiledID2() > 0 ? fdNode.GetFiledID2() - 1 : 0;
+            int32 i1 = fdNode.GetFieldID1() > 0 ? fdNode.GetFieldID1() - 1 : 0;
+            int32 i2 = fdNode.GetFieldID2() > 0 ? fdNode.GetFieldID2() - 1 : 0;
             int64 offset = layout[i2].GetOffset() - layout[i1].GetOffset();
             return mirModule.GetMIRBuilder()->CreateIntConst(offset, PTY_u32);
         }

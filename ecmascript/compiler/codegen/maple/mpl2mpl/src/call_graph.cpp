@@ -607,9 +607,9 @@ MIRType *CallGraph::GetFuncTypeFromFuncAddr(const BaseNode *base)
         }
         case OP_select: {
             auto *select = static_cast<const TernaryNode *>(base);
-            funcType = GetFuncTypeFromFuncAddr(select->Opnd(1));
+            funcType = GetFuncTypeFromFuncAddr(select->Opnd(kSecondOpnd));
             if (funcType == nullptr) {
-                funcType = GetFuncTypeFromFuncAddr(select->Opnd(2));
+                funcType = GetFuncTypeFromFuncAddr(select->Opnd(kThirdOpnd));
             }
             break;
         }
@@ -1325,11 +1325,9 @@ void DoDevirtual(const Klass &klass, const KlassHierarchy &klassh)
                                                     << ("Devirtualize In function:" + func->GetName()) << '\n';
                                                 LogInfo::MapleLogger() << calleeNode->GetOpCode() << '\n';
                                                 LogInfo::MapleLogger() << "    From:" << calleeFunc->GetName() << '\n';
-                                                LogInfo::MapleLogger()
-                                                    << "    To  :"
-                                                    << GlobalTables::GetFunctionTable()
-                                                           .GetFunctionFromPuidx(calleeNode->GetPUIdx())
-                                                           ->GetName()
+                                                LogInfo::MapleLogger() << "    To  :"
+                                                    << GlobalTables::GetFunctionTable().GetFunctionFromPuidx(
+                                                        calleeNode->GetPUIdx())->GetName()
                                                     << '\n';
                                             }
                                             break;
@@ -1517,11 +1515,8 @@ void DoDevirtual(const Klass &klass, const KlassHierarchy &klassh)
                                     LogInfo::MapleLogger() << ("Devirtualize In function:" + func->GetName()) << '\n';
                                     LogInfo::MapleLogger() << calleeNode->GetOpCode() << '\n';
                                     LogInfo::MapleLogger() << "    From:" << calleeFunc->GetName() << '\n';
-                                    LogInfo::MapleLogger() << "    To  :"
-                                                           << GlobalTables::GetFunctionTable()
-                                                                  .GetFunctionFromPuidx(calleeNode->GetPUIdx())
-                                                                  ->GetName()
-                                                           << '\n';
+                                    LogInfo::MapleLogger() << "    To  :" << GlobalTables::GetFunctionTable()
+                                        .GetFunctionFromPuidx(calleeNode->GetPUIdx())->GetName() << '\n';
                                 }
                                 for (size_t i = 0; i < calleeNode->GetNopndSize(); ++i) {
                                     BaseNode *node = calleeNode->GetNopndAt(i);
@@ -1601,15 +1596,13 @@ void IPODevirtulize::DevirtualFinal()
                 if (GlobalTables::GetGsymTable().GetSymbolFromStrIdx(classType->GetStaticFieldsGStrIdx(i)) == nullptr) {
                     continue;
                 }
-                TyIdx tyIdx = GlobalTables::GetGsymTable()
-                                  .GetSymbolFromStrIdx(classType->GetStaticFieldsPair(i).first)
-                                  ->GetInferredTyIdx();
+                TyIdx tyIdx = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
+                    classType->GetStaticFieldsPair(i).first)->GetInferredTyIdx();
                 if (tyIdx != kInitTyIdx && tyIdx != kNoneTyIdx) {
                     CHECK_FATAL(attribute.GetAttr(FLDATTR_final), "Must be final private");
                     if (debugFlag) {
-                        LogInfo::MapleLogger()
-                            << ("Final Private Static Variable:" + GlobalTables::GetStrTable().GetStringFromStrIdx(
-                                                                       classType->GetStaticFieldsPair(i).first))
+                        LogInfo::MapleLogger() << ("Final Private Static Variable:" +
+                            GlobalTables::GetStrTable().GetStringFromStrIdx(classType->GetStaticFieldsPair(i).first))
                             << '\n';
                     }
                 }

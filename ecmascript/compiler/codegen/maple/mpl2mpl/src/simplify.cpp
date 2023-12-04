@@ -576,14 +576,14 @@ void Simplify::Finish() {}
 //   0xff    8     0xffffffffffffffff
 static uint64 JoinBytes(int byte, uint32 num)
 {
-    CHECK_FATAL(num <= 8, "not support");
+    CHECK_FATAL(num <= 8, "not support"); // just support num less or equal 8, see comment above
     uint64 realByte = static_cast<uint64>(byte % 256);
     if (realByte == 0) {
         return 0;
     }
     uint64 result = 0;
     for (uint32 i = 0; i < num; ++i) {
-        result += (realByte << (i * 8));
+        result += (realByte << (i * k8BitSize));
     }
     return result;
 }
@@ -1132,7 +1132,7 @@ bool MemEntry::ExpandMemset(int64 byte, uint64 size, MIRFunction &func, StmtNode
             return false;
         }
         MIRType *elemType = arrayType->GetElemType();
-        if (elemType->GetSize() < 4) {
+        if (elemType->GetSize() < k4BitSize) {
             MayPrintLog(debug, false, memOpKind,
                         "element size < 4, don't expand it to  avoid to genearte lots of strb/strh");
             return false;
@@ -1268,7 +1268,7 @@ void MemEntry::ExpandMemcpyLowLevel(const MemEntry &srcMem, uint64 copySize, MIR
                 GenerateMemoryCopyPair(mirBuilder, realSrcExpr, realDstExpr, offset + curSize, curSize, tmpRegIdx2);
             // insert order: regassign1, regassign2, iassignoff1, iassignoff2
             InsertBeforeAndMayPrintStmtList(block, stmt, debug, {pair1.first, pair2.first, pair1.second, pair2.second});
-            offset += (2 * curSize);
+            offset += (curSize << 1);
             ++i;
         }
     }
@@ -1356,9 +1356,9 @@ bool MemEntry::ExpandMemcpy(const MemEntry &srcMem, uint64 copySize, MIRFunction
             return false;
         }
         MIRType *elemType = arrayType->GetElemType();
-        if (elemType->GetSize() < 4) {
+        if (elemType->GetSize() < k4ByteSize) {
             MayPrintLog(debug, false, memOpKind,
-                        "element size < 4, don't expand it to  avoid to genearte lots of strb/strh");
+                        "element size < 4, don't expand it to avoid to genearte lots of strb/strh");
             return false;
         }
         size_t elemCnt = arrayType->GetSizeArrayItem(0);
@@ -1678,14 +1678,14 @@ bool SimplifyMemOp::SimplifyMemcpy(StmtNode &stmt, BlockNode &block, bool isLowL
         return false;
     }
     uint32 dstOpndIdx = 0;
-    uint32 dstSizeOpndIdx = 0;  // only used by memcpy_s
-    uint32 srcOpndIdx = 1;
-    uint32 srcSizeOpndIdx = 2;
+    uint32 dstSizeOpndIdx = kFirstOpnd;  // only used by memcpy_s
+    uint32 srcOpndIdx = kSecondOpnd;
+    uint32 srcSizeOpndIdx = kThirdOpnd;
     bool isSafeVersion = memOpKind == MEM_OP_memcpy_s;
     if (isSafeVersion) {
-        dstSizeOpndIdx = 1;
-        srcOpndIdx = 2;
-        srcSizeOpndIdx = 3;
+        dstSizeOpndIdx = kSecondOpnd;
+        srcOpndIdx = kThirdOpnd;
+        srcSizeOpndIdx = kFourthOpnd;
     }
     if (debug) {
         LogInfo::MapleLogger() << "[funcName] " << func->GetName() << std::endl;

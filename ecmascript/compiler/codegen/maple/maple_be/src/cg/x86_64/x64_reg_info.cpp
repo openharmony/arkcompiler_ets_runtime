@@ -115,21 +115,22 @@ Insn *X64RegInfo::BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     X64MOP_t mOp = x64::MOP_begin;
     switch (regSize) {
         case k8BitSize:
-            mOp = x64::MOP_movb_r_m;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movb_r_m: x64::MOP_begin;
             break;
         case k16BitSize:
-            mOp = x64::MOP_movw_r_m;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movw_r_m : x64::MOP_begin;
             break;
         case k32BitSize:
-            mOp = x64::MOP_movl_r_m;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movl_r_m : x64::MOP_movfs_r_m;
             break;
         case k64BitSize:
-            mOp = x64::MOP_movq_r_m;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movq_r_m : x64::MOP_movfd_r_m;
             break;
         default:
             CHECK_FATAL(false, "NIY");
             break;
     }
+    CHECK_FATAL(mOp != x64::MOP_begin, "NIY");
     Insn &insn = GetCurrFunction()->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(phyOpnd).AddOpndChain(memOpnd);
     return &insn;
@@ -140,21 +141,22 @@ Insn *X64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     X64MOP_t mOp = x64::MOP_begin;
     switch (regSize) {
         case k8BitSize:
-            mOp = x64::MOP_movb_m_r;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movb_m_r : x64::MOP_begin;
             break;
         case k16BitSize:
-            mOp = x64::MOP_movw_m_r;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movw_m_r : x64::MOP_begin;
             break;
         case k32BitSize:
-            mOp = x64::MOP_movl_m_r;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movl_m_r : x64::MOP_movfs_m_r;
             break;
         case k64BitSize:
-            mOp = x64::MOP_movq_m_r;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movq_m_r : x64::MOP_movfd_m_r;
             break;
         default:
             CHECK_FATAL(false, "NIY");
             break;
     }
+    CHECK_FATAL(mOp != x64::MOP_begin, "should not happen");
     Insn &insn = GetCurrFunction()->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(memOpnd).AddOpndChain(phyOpnd);
     return &insn;

@@ -128,7 +128,8 @@ void CastOpt::DoComputeCastInfo(CastInfo<T> &castInfo, bool isMeExpr)
             if (sizeBit == 1 && op == OP_sext) {
                 break;
             }
-            if (sizeBit == 1 || sizeBit == 8 || sizeBit == 16 || sizeBit == 32 || sizeBit == 64) {
+            if (sizeBit == k1BitSize || sizeBit == k8BitSize || sizeBit == k16BitSize || sizeBit == k32BitSize ||
+                sizeBit == k64BitSize) {
                 srcType = GetIntegerPrimTypeBySizeAndSign(sizeBit, op == OP_sext);
                 if (srcType == PTY_begin) {
                     break;  // invalid integer type
@@ -219,45 +220,45 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             // Not allowed
             return -1;
         }
-        case 1: {
+        case 1: { // 1 st case in castMatrix, see the comments above
             // first intTrunc, then intTrunc
             // Example: cvt u16 u32 (cvt u32 u64)  ==>  cvt u16 u64
             // first retype, then retype
             // Example: retype i64 u64 (retype u64 ptr)  ==>  retype i64 ptr
             return firstCastKind;
         }
-        case 2: {
+        case 2: { // 2 nd case in castMatrix, see the comments above
             // first fpExt, then fpExt
             // Example: cvt f128 f64 (cvt f64 f32)  ==>  cvt f128 f32
             // first fpExt, then fp2int
             // Example: cvt i64 f64 (cvt f64 f32)  ==>  cvt i64 f32
             return secondCastKind;
         }
-        case 3: {
+        case 3: { // 3 rd case in castMatrix, see the comments above
             if (IsPrimitiveInteger(dstType)) {
                 return firstCastKind;
             }
             return -1;
         }
-        case 4: {
+        case 4: { // 4 th case in castMatrix, see the comments above
             if (IsPrimitiveFloat(dstType)) {
                 return firstCastKind;
             }
             return -1;
         }
-        case 5: {
+        case 5: { // 5 th case in castMatrix, see the comments above
             if (IsPrimitiveInteger(srcType)) {
                 return secondCastKind;
             }
             return -1;
         }
-        case 6: {
+        case 6: { // 6 th case in castMatrix, see the comments above
             if (IsPrimitiveFloat(srcType)) {
                 return secondCastKind;
             }
             return -1;
         }
-        case 7: {
+        case 7: { // 7 th case in castMatrix, see the comments above
             // first integer retype, then sext/zext
             if (IsPrimitiveInteger(srcType) && dstSize >= midSize1) {
                 CHECK_FATAL(srcSize == midSize1, "must be");
@@ -270,7 +271,7 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             }
             return -1;
         }
-        case 8: {
+        case 8: { // 8 th case in castMatrix, see the comments above
             if (srcSize == dstSize) {
                 return CAST_retype;
             } else if (srcSize < dstSize) {
@@ -280,7 +281,7 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             }
         }
             // For integer extension pair
-        case 9: {
+        case 9: { // 9 th case in castMatrix, see the comments above
             // first zext, then sext
             // Extreme example: sext i32 16 (zext u64 8)  ==> zext i32 8
             if (firstCastKind != secondCastKind && midSize2 <= midSize1) {
@@ -314,7 +315,7 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             }
             return -1;
         }
-        case 10: {
+        case 10: { // 10 th case in castMatrix, see the comments above
             // first zext, then int2fp
             if (IsSignedInteger(midType2)) {
                 return secondCastKind;
@@ -322,7 +323,7 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             // To improved: consider unsigned
             return -1;
         }
-        case 11: {
+        case 11: { // 11 st case in castMatrix, see the comments above
             // first retype, then int2fp
             if (IsPrimitiveInteger(srcType)) {
                 if (IsSignedInteger(srcType) != IsSignedInteger(midType1)) {
@@ -334,7 +335,7 @@ int CastOpt::IsEliminableCastPair(CastKind firstCastKind, CastKind secondCastKin
             }
             return -1;
         }
-        case 99: {
+        case 99: { // 99 is this last case in castMatrix, see the comments above
             CHECK_FATAL(false, "invalid cast pair");
         }
         default: {
@@ -438,7 +439,8 @@ BaseNode *MapleCastOpt::SimplifyCastSingle(MIRBuilder &mirBuilder, const BaseNod
         // zextTo32 + read  ==>  read 32
         if (castInfo.kind == CAST_zext && (opndOp == OP_iread || opndOp == OP_regread || opndOp == OP_dread)) {
             uint32 dstSize = GetPrimTypeActualBitSize(castInfo.dstType);
-            if (dstSize == 32 && IsUnsignedInteger(castInfo.dstType) && IsUnsignedInteger(opnd->GetPrimType()) &&
+            if (dstSize == k32BitSize && IsUnsignedInteger(castInfo.dstType) &&
+                IsUnsignedInteger(opnd->GetPrimType()) &&
                 GetPrimTypeActualBitSize(castInfo.srcType) == GetPrimTypeActualBitSize(opnd->GetPrimType())) {
                 opnd->SetPrimType(castInfo.dstType);
                 return opnd;

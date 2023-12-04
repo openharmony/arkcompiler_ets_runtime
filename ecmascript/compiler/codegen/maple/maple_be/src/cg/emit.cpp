@@ -415,7 +415,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             MIRTypeKind kind = mirSymbol.GetType()->GetKind();
             MIRStorageClass storage = mirSymbol.GetStorageClass();
             if (symName.find("classInitProtectRegion") == 0) {
-                Emit(4096);
+                Emit(4096); // symbol name begin with "classInitProtectRegion" align is 4096
             } else if (((kind == kTypeStruct) || (kind == kTypeClass) || (kind == kTypeArray) ||
                         (kind == kTypeUnion)) &&
                        ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic))) {
@@ -2207,9 +2207,11 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
     if (cg->GetMIRModule()->IsCModule()) {
         MIRSymbolTable *lSymTab = cgFunc.GetMirModule().CurFunction()->GetSymTab();
         if (lSymTab != nullptr) {
-            /* anything larger than is created by cg */
-            size_t lsize = cgFunc.GetLSymSize();
+            size_t lsize = lSymTab->GetSymbolTableSize();
             for (size_t i = 0; i < lsize; i++) {
+                if (i < cgFunc.GetLSymSize() && !cg->GetMIRModule()->IsCModule()) {
+                    continue;
+                }
                 MIRSymbol *st = lSymTab->GetSymbolFromStIdx(static_cast<uint32>(i));
                 if (st != nullptr && st->GetStorageClass() == kScPstatic) {
                     /*
@@ -2231,9 +2233,21 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
                     }
                     emittedLocalSym.push_back(localname);
 
-                    Emit(asmInfo->GetSection());
-                    Emit(asmInfo->GetData());
-                    Emit("\n");
+                    /* cg created data should be located in .text */
+                    /* [cgFunc.GetLSymSize(), lSymTab->GetSymbolTableSize()) -> cg created symbol */
+                    if (i < cgFunc.GetLSymSize()) {
+                        if (st->IsThreadLocal()) {
+                            (void)Emit("\t.section\t.tdata,\"awT\",@progbits\n");
+                        } else {
+                            Emit(asmInfo->GetSection());
+                            Emit(asmInfo->GetData());
+                            Emit("\n");
+                        }
+                    } else {
+                        CHECK_FATAL(st->GetStorageClass() == kScPstatic && st->GetSKind() == kStConst, "cg should create constant!");
+                        /* cg created data should be located in .text */
+                        (void)Emit("\t.section\t.text\n");
+                    }
                     EmitAsmLabel(*st, kAsmAlign);
                     EmitAsmLabel(*st, kAsmLocal);
                     MIRType *ty = st->GetType();
@@ -2591,7 +2605,7 @@ void Emitter::EmitGlobalVariable()
                 }
                 std::string secName = stName.substr(0, stName.find(delimiter));
                 /* remove leading "__" in sec name. */
-                secName.erase(0, 2);
+                secName.erase(0, 2); // remove 2 chars "__"
                 Emit("\t.section\t." + secName + ",\"a\",%progbits\n");
             } else {
                 bool isThreadLocal = mirSymbol->IsThreadLocal();

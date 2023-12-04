@@ -217,8 +217,8 @@ void AArch64LiveIntervalAnalysis::ComputeLiveIntervals()
     uint32 currPoint =
         static_cast<uint32>(cgFunc->GetTotalNumberOfInstructions()) + static_cast<uint32>(bfs->sortedBBs.size());
     /* distinguish use/def */
-    CHECK_FATAL(currPoint < (INT_MAX >> 2), "integer overflow check");
-    currPoint = currPoint << 2;
+    CHECK_FATAL(currPoint < (INT_MAX >> k4BitShift), "integer overflow check");
+    currPoint = currPoint << k4BitShift;
     for (size_t bbIdx = bfs->sortedBBs.size(); bbIdx > 0; --bbIdx) {
         BB *bb = bfs->sortedBBs[bbIdx - 1];
 
@@ -251,8 +251,7 @@ void AArch64LiveIntervalAnalysis::ComputeLiveIntervals()
                 UpdateCallInfo();
             }
 
-            /* distinguish use/def */
-            currPoint -= 2;
+            currPoint -= 2; /* 2 for distinguish use/def */
         }
         for (auto lin : bb->GetLiveInRegNO()) {
             if (lin >= kAllRegNum) {

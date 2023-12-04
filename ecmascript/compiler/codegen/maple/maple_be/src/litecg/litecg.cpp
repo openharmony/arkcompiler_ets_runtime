@@ -33,24 +33,31 @@ using namespace maplebe;
 LiteCG::LiteCG(Module &mirModule) : module(mirModule)
 {
     // Create CGOption: set up default options
-    // should we make CGOptions local?
+    // TODO: should we make CGOptions local?
     cgOptions = &CGOptions::GetInstance();
     cgOptions->EnableLiteCG();
-    cgOptions->SetEmitFileType("obj");
+    cgOptions->SetEmitFileType("obj");  // TODO: to kElf
+    // cgOptions->SetTarget(X86_64);
+    // cgOptions->SetDebug();
     cgOptions->SetQuiet(true);
 #if TARGAARCH64
     Triple::GetTriple().Init();
 #endif
+    // cgOptions->GetDumpPhases().insert("*");
+    // cgOptions->FuncFilter("*");
+    // cgOptions->SetDefaultOptions(module);
 
     // module information prepare
     std::string moduleName = module.GetFileName();
     GStrIdx fileNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(moduleName);
 
+    // TODO: is this strictly required?
     GStrIdx nameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("INFO_filename");
     module.PushFileInfoPair(MIRInfoPair(nameStrIdx, fileNameStrIdx.GetIdx()));
     module.PushFileInfoIsString(true);
 
-    module.SetFlavor(kFlavorUnknown);
+    module.SetFlavor(kFlavorUnknown);  // TODO: need a new flavor
+    // module.SetSrcLang(kSrcLangC);     // TODO: fix this
     module.GetImportFiles().clear();
 
     // Setup output file name
@@ -65,11 +72,15 @@ LiteCG &LiteCG::SetOutputType(OutputType config)
 
 LiteCG &LiteCG::SetTargetType(TargetType config)
 {
+    // TODO: update target support
+    // cgOptions->SetTarget(X86_64);
     return *this;
 }
 
 LiteCG &LiteCG::SetDebugType(DebugType config)
 {
+    // TODO: fix the exposed debug options
+    // cgOptions->SetDebug(?);
     return *this;
 }
 
@@ -100,10 +111,12 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
 void LiteCG::DoCG()
 {
     bool timePhases = false;
+    // MPLTimer timer;
+    // timer.Start();
 
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
-    // not sure how to do this.
+    // TODO: not sure how to do this.
     auto cgPhaseManager = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "cg function phasemanager");
     const MaplePhaseInfo *cgPMInfo = MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(&CgFuncPM::id);
     auto *cgfuncPhaseManager = static_cast<CgFuncPM *>(cgPMInfo->GetConstructor()(cgPhaseManager.get()));
@@ -120,6 +133,8 @@ void LiteCG::DoCG()
     if (timePhases) {
         cgfuncPhaseManager->DumpPhaseTime();
     }
+    // timer.Stop();
+    // LogInfo::MapleLogger() << "Mplcg consumed " << timer.ElapsedMilliseconds() << "ms" << '\n';
 }
 
 }  // namespace litecg

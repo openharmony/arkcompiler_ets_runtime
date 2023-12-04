@@ -243,18 +243,6 @@ void X64MemLayout::AssignSpillLocationsToPseudoRegisters()
     }
 }
 
-SymbolAlloc *X64MemLayout::AssignLocationToSpillReg(regno_t vrNum)
-{
-    X64SymbolAlloc *symLoc = memAllocator->GetMemPool()->New<X64SymbolAlloc>();
-    symLoc->SetMemSegment(segSpillReg);
-    uint32 regSize = GetPointerSize();
-    segSpillReg.SetSize(RoundUp(segSpillReg.GetSize(), regSize));
-    symLoc->SetOffset(segSpillReg.GetSize());
-    segSpillReg.SetSize(segSpillReg.GetSize() + regSize);
-    SetSpillRegLocInfo(vrNum, *symLoc);
-    return symLoc;
-}
-
 void X64MemLayout::LayoutReturnRef(int32 &structCopySize, int32 &maxParmStackSize)
 {
     segArgsToStkPass.SetSize(FindLargestActualArea(structCopySize));

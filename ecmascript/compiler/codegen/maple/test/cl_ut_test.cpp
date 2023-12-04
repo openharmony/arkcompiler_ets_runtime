@@ -79,7 +79,7 @@ maplecl::RetCode maplecl::Option<UTCLType>::Parse(ssize_t &argsIndex, const std:
 
     /* In this example, the value of UTCLType must be --UTCLTypeOption */
     if (args[localArgsIndex] == "--UTCLTypeOption") {
-        argsIndex += 2; /* 1 for Option Key, 1 for Value */
+        argsIndex += 2; /* 2 index: 1 for Option Key, 1 for Value */
         err = maplecl::RetCode::noError;
         SetValue(UTCLType("--UTCLTypeOption"));
     } else {

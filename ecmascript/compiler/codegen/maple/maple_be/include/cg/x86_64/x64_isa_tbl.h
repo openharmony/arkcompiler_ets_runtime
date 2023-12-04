@@ -76,12 +76,16 @@ static const SetIselMappingType setSignedIselMapping = {
     DEF_X64_SET_MAPPING_INT(OP_le, setle), DEF_X64_SET_MAPPING_INT(OP_ge, setge), DEF_X64_SET_MAPPING_INT(OP_gt, setg),
     DEF_X64_SET_MAPPING_INT(OP_lt, setl),  DEF_X64_SET_MAPPING_INT(OP_ne, setne), DEF_X64_SET_MAPPING_INT(OP_eq, sete),
 };
+static const SetIselMappingType setFloatIselMapping = {
+    DEF_X64_SET_MAPPING_INT(OP_le, setae), DEF_X64_SET_MAPPING_INT(OP_ge, setae), DEF_X64_SET_MAPPING_INT(OP_gt, seta),
+    DEF_X64_SET_MAPPING_INT(OP_lt, seta),  DEF_X64_SET_MAPPING_INT(OP_ne, setne), DEF_X64_SET_MAPPING_INT(OP_eq, sete),
+};
 #undef DEF_X64_SET_MAPPING_INT
 
-static inline X64MOP_t GetSetCCMop(maple::Opcode opcode, Operand::OperandType dTy, bool isSigned)
+static inline X64MOP_t GetSetCCMop(maple::Opcode opcode, Operand::OperandType dTy, bool isSigned, bool isFloat)
 {
     DEBUG_ASSERT(dTy < Operand::OperandType::kOpdPhi, "illegal operand type");
-    const SetIselMappingType &setIselMapping = isSigned ? setSignedIselMapping : setUnsignedIselMapping;
+    const SetIselMappingType &setIselMapping = isFloat ? setFloatIselMapping : (isSigned ? setSignedIselMapping : setUnsignedIselMapping);
     auto iter = setIselMapping.find(opcode);
     if (iter == setIselMapping.end()) {
         return x64::MOP_begin;

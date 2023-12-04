@@ -36,7 +36,7 @@ bool IsAvailableReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return canBeAssigned;
-// add fp registers here.
+#include "x64_fp_simd_regs.def"
 #undef FP_SIMD_REG
         default:
             return false;
@@ -45,7 +45,7 @@ bool IsAvailableReg(X64reg reg)
 
 bool IsCallerSaveReg(X64reg regNO)
 {
-    return (regNO == R0) || (regNO == R4) || (R2 <= regNO && regNO <= R3) || (R6 <= regNO && regNO <= R7) ||
+    return (regNO == R0) || (regNO == R1) || (R2 <= regNO && regNO <= R3) || (R6 <= regNO && regNO <= R7) ||
            (R8 <= regNO && regNO <= R11) || (V2 <= regNO && regNO <= V7) || (V16 <= regNO && regNO <= V23);
 }
 
@@ -65,6 +65,7 @@ bool IsCalleeSavedReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return isCalleeSave;
+#include "x64_fp_simd_regs.def"
 #undef FP_SIMD_REG
         default:
             return false;
@@ -87,6 +88,7 @@ bool IsParamReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return isParam;
+#include "x64_fp_simd_regs.def"
 #undef FP_SIMD_REG
         default:
             return false;
@@ -109,6 +111,7 @@ bool IsSpillReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return isSpill;
+#include "x64_fp_simd_regs.def"
 #undef FP_SIMD_REG
         default:
             return false;
@@ -131,6 +134,7 @@ bool IsExtraSpillReg(X64reg reg)
 #define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID:                                                                                               \
         return isExtraSpill;
+#include "x64_fp_simd_regs.def"
 #undef FP_SIMD_REG
         default:
             return false;

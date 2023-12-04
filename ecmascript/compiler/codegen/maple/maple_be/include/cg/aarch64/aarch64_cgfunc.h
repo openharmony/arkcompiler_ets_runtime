@@ -28,6 +28,8 @@
 #include "aarch64_call_conv.h"
 
 namespace maplebe {
+enum RematLevel { kRematOff = 0, kRematConst = 1, kRematAddr = 2, kRematDreadLocal = 3, kRematDreadGlobal = 4 };
+
 class LmbcArgInfo {
 public:
     explicit LmbcArgInfo(MapleAllocator &mallocator)
@@ -55,6 +57,7 @@ public:
           hashLabelOpndTable(mallocator.Adapter()),
           hashOfstOpndTable(mallocator.Adapter()),
           hashMemOpndTable(mallocator.Adapter()),
+          stIdx2OverflowResult(mallocator.Adapter()),
           memOpndsRequiringOffsetAdjustment(mallocator.Adapter()),
           memOpndsForStkPassedArguments(mallocator.Adapter()),
           immOpndsRequiringOffsetAdjustment(mallocator.Adapter()),
@@ -836,6 +839,7 @@ private:
     MapleUnorderedMap<LabelIdx, LabelOperand *> hashLabelOpndTable;
     MapleUnorderedMap<OfstRegIdx, OfstOperand *> hashOfstOpndTable;
     MapleUnorderedMap<MemOperand, MemOperand *> hashMemOpndTable;
+    MapleUnorderedMap<StIdx, std::pair<RegOperand*, RegOperand*>> stIdx2OverflowResult;
     /*
      * Local variables, formal parameters that are passed via registers
      * need offset adjustment after callee-saved registers are known.
@@ -955,11 +959,6 @@ private:
     Operand *SelectRoundOperator(RoundType roundType, const TypeCvtNode &node, Operand &opnd0, const BaseNode &parent);
     Operand *SelectAArch64ffs(Operand &argOpnd, PrimType argType);
     Operand *SelectAArch64align(const IntrinsicopNode &intrnNode, bool isUp /* false for align down */);
-    int64 GetOrCreatSpillRegLocation(regno_t vrNum)
-    {
-        AArch64SymbolAlloc *symLoc = static_cast<AArch64SymbolAlloc *>(GetMemlayout()->GetLocOfSpillRegister(vrNum));
-        return static_cast<int64>(GetBaseOffset(*symLoc));
-    }
     void SelectCopyMemOpnd(Operand &dest, PrimType dtype, uint32 dsize, Operand &src, PrimType stype);
     void SelectCopyRegOpnd(Operand &dest, PrimType dtype, Operand::OperandType opndType, uint32 dsize, Operand &src,
                            PrimType stype);

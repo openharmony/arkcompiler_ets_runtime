@@ -319,7 +319,7 @@ bool A64ConstProp::ArithmeticConstReplace(DUInsnInfo &useDUInfo, ImmOperand &con
         /* try aggressive opt in aarch64 add and sub */
         if (newInsn == nullptr && (aT == kAArch64Add || aT == kAArch64Sub)) {
             auto *tempImm = static_cast<ImmOperand *>(constOpnd.Clone(*constPropMp));
-            /* try aarch64 imm shift mode */
+            /* try aarch64 imm shift mode, aarch64 data processing instructions have 12 bits of space for values */
             tempImm->SetValue(tempImm->GetValue() >> 12);
             if (static_cast<AArch64CGFunc *>(cgFunc)->IsOperandImmValid(newMop, tempImm, kInsnThirdOpnd) &&
                 CGOptions::GetInstance().GetOptimizeLevel() < CGOptions::kLevel0) {
@@ -327,7 +327,7 @@ bool A64ConstProp::ArithmeticConstReplace(DUInsnInfo &useDUInfo, ImmOperand &con
             }
             auto *zeroImm = &(static_cast<AArch64CGFunc *>(cgFunc)->CreateImmOperand(0, constOpnd.GetSize(), true));
             /* value in immOpnd is signed */
-            if (MayOverflow(*zeroImm, constOpnd, constOpnd.GetSize() == 64, false, true)) {
+            if (MayOverflow(*zeroImm, constOpnd, constOpnd.GetSize() == k64BitSize, false, true)) {
                 return false;
             }
             /* (constA - var) can not reversal to (var + (-constA)) */
@@ -350,7 +350,7 @@ bool A64ConstProp::ArithmeticConstReplace(DUInsnInfo &useDUInfo, ImmOperand &con
             ReplaceInsnAndUpdateSSA(*useInsn, *newInsn);
             return true;
         }
-    } else if (useDUInfo.GetOperands().size() == 2) {
+    } else if (useDUInfo.GetOperands().size() == kOpndNum2) {
         /* only support add & sub now */
         int64 newValue = 0;
         MOperator newMop = GetFoldMopAndVal(newValue, constOpnd.GetValue(), *useInsn);
@@ -717,6 +717,7 @@ MemOperand *A64StrLdrProp::SelectReplaceMem(const Insn &defInsn, const MemOperan
     Operand *offset = currMemOpnd.GetOffset();
     RegOperand *base = currMemOpnd.GetBaseRegister();
     MOperator opCode = defInsn.GetMachineOpcode();
+    constexpr uint32 kValidShiftAmount = 12;
     switch (opCode) {
         case MOP_xsubrri12:
         case MOP_wsubrri12: {
@@ -744,7 +745,7 @@ MemOperand *A64StrLdrProp::SelectReplaceMem(const Insn &defInsn, const MemOperan
             if (replace != nullptr) {
                 auto &immOpnd = static_cast<ImmOperand &>(defInsn.GetOperand(kInsnThirdOpnd));
                 auto &shiftOpnd = static_cast<BitShiftOperand &>(defInsn.GetOperand(kInsnFourthOpnd));
-                CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount");
+                CHECK_FATAL(shiftOpnd.GetShiftAmount() == kValidShiftAmount, "invalid shiftAmount");
                 int64 defVal = (immOpnd.GetValue() << shiftOpnd.GetShiftAmount());
                 newMemOpnd = HandleArithImmDef(*replace, offset, defVal, currMemOpnd.GetSize());
             }
@@ -756,7 +757,7 @@ MemOperand *A64StrLdrProp::SelectReplaceMem(const Insn &defInsn, const MemOperan
             if (replace != nullptr) {
                 auto &immOpnd = static_cast<ImmOperand &>(defInsn.GetOperand(kInsnThirdOpnd));
                 auto &shiftOpnd = static_cast<BitShiftOperand &>(defInsn.GetOperand(kInsnFourthOpnd));
-                CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount");
+                CHECK_FATAL(shiftOpnd.GetShiftAmount() == kValidShiftAmount, "invalid shiftAmount");
                 int64 defVal = -(immOpnd.GetValue() << shiftOpnd.GetShiftAmount());
                 newMemOpnd = HandleArithImmDef(*replace, offset, defVal, currMemOpnd.GetSize());
             }
@@ -805,7 +806,7 @@ MemOperand *A64StrLdrProp::SelectReplaceMem(const Insn &defInsn, const MemOperan
         }
         case MOP_xadrpl12: {
             if (memPropMode == kPropBase) {
-                if (currMemOpnd.GetSize() >= 128) {
+                if (currMemOpnd.GetSize() >= k128BitSize) {
                     // We can not be sure that the page offset is 16-byte aligned
                     break;
                 }
@@ -886,7 +887,7 @@ RegOperand *A64StrLdrProp::GetReplaceReg(RegOperand &a64Reg)
     if (a64Reg.IsSSAForm()) {
         regno_t ssaIndex = a64Reg.GetRegisterNumber();
         replaceVersions[ssaIndex] = ssaInfo->FindSSAVersion(ssaIndex);
-        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP");
+        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP"); // size <= 2 in A64PROP 
         return &a64Reg;
     }
     return nullptr;

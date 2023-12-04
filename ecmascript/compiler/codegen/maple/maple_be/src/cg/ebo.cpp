@@ -23,6 +23,7 @@
 #endif
 #include "securec.h"
 
+#include "common_utils.h"
 #include "optimize_common.h"
 
 /*
@@ -697,10 +698,10 @@ void Ebo::SimplifyInsn(Insn &insn, bool &insnReplaced, bool opndsConstant, const
         if (insnReplaced) {
             return;
         }
-        if (opndNum >= 2) {
+        if (opndNum > 1) {
             /* special case */
             if (!insn.GetDefRegs().empty() && ResIsNotDefAndUse(insn)) {
-                if ((opndNum == 3) && (insn.GetDefRegs().size() == 1) &&
+                if ((opndNum == kInsnFourthOpnd) && (insn.GetDefRegs().size() == 1) &&
                     (((kInsnSecondOpnd < opnds.size()) && (opnds[kInsnSecondOpnd] != nullptr) &&
                       IsConstantImmOrReg(*opnds[kInsnSecondOpnd])) ||
                      ((kInsnThirdOpnd < opnds.size()) && (opnds[kInsnThirdOpnd] != nullptr) &&

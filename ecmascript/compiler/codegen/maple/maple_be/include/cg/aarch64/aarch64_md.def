@@ -16,8 +16,6 @@
 /* InsnDesc format:
  * {mop, opndMD, properties, latency, name, format, atomicNum, validFunc(nullptr)}
  */
-/* MOP_undef, */
-DEFINE_MOP(MOP_undef, {},0,kLtUndef,"","",0,kUnknownEncodeType,0x00000000)
 
 /* AARCH64 MOVES */
 /* MOP_xmovrr */

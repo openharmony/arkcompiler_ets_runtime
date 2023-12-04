@@ -233,14 +233,14 @@ int32 AArch64RegSavesOpt::CheckCriteria(BB *bb, regno_t reg) const
     /* Already a site to save */
     SavedRegInfo *sp = bbSavedRegs[bb->GetId()];
     if (sp != nullptr && sp->ContainSaveReg(reg)) {
-        return 1;
+        return 1; // 1 means reg saved here, skip!
     }
 
     /* This preceding block has livein OR liveout of reg */
     MapleSet<regno_t> &liveIn = bb->GetLiveInRegNO();
     MapleSet<regno_t> &liveOut = bb->GetLiveOutRegNO();
     if (liveIn.find(reg) != liveIn.end() || liveOut.find(reg) != liveOut.end()) {
-        return 2;
+        return 2; // 2 means has livein/out, skip!
     }
 
     return 0;
@@ -290,7 +290,7 @@ void AArch64RegSavesOpt::DetermineCalleeSaveLocationsDoms()
             continue;
         }
         CalleeBitsType mask = 1;
-        for (uint32 i = 0; i < static_cast<uint32>(sizeof(CalleeBitsType) << 3); ++i) {
+        for (uint32 i = 0; i < static_cast<uint32>(sizeof(CalleeBitsType) << k8BitShift); ++i) {
             if ((c & mask) != 0) {
                 MapleSet<regno_t> &liveIn = bb->GetLiveInRegNO();
                 regno_t reg = ReverseRegBitMap(i);

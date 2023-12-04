@@ -22,6 +22,7 @@ using namespace x64;
 
 #define DEFINE_MOP(...) {__VA_ARGS__},
 const InsnDesc X64CG::kMd[kMopLast] = {
+#include "abstract_mmir.def"
 #include "x64_md.def"
 };
 #undef DEFINE_MOP

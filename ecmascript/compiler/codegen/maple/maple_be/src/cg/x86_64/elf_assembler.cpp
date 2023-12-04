@@ -68,12 +68,28 @@ void ElfAssembler::EmitVariable(int64 symIdx, uint64 sizeInByte, uint8 alignInBy
             UpdateLabel(symIdx, LabelType::kConst, rodataSection->GetDataSize());
             break;
         case kSText:
+            UpdateLabel(symIdx);
+            break;
         case kSDebugInfo:
         case kSDebugAbbrev:
         case kSDebugStr:
         default:
             assert(false && "unprocessed Section in EmitVariable");
             break;
+    }
+}
+
+void ElfAssembler::EmitFloatValue(int64 symIdx, int64 value, size_t valueSize)
+{
+    auto reloffset = codeBuff.size();
+    Encodeb(value, valueSize);
+
+    if (valueSize == 4) {
+        UpdateLabel(symIdx, LabelType::kFloatLabel, reloffset);
+    } else if (valueSize == 8) {
+        UpdateLabel(symIdx, LabelType::kDoubleLabel, reloffset);
+    } else {
+        CHECK_FATAL(false, "--Err: EmitFloatValue only handle float and double value");
     }
 }
 
@@ -271,22 +287,23 @@ void ElfAssembler::EmitNull(uint64 sizeInByte)
     dataSection->AppendData(data, static_cast<size_t>(sizeInByte));
 }
 
-void ElfAssembler::PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte)
+void ElfAssembler::PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte, bool belongsToTextSec)
 {
     Label *label = labelManager.at(symIdx);
     uint64 pos = static_cast<uint64>(label->GetRelOffset());
+    auto secIdx = belongsToTextSec ? textSection->GetIndex() : dataSection->GetIndex();
     if (symAttr == kSALocal) {
         const std::string &symbolName = GetNameFromSymMap(symIdx, true);
         auto index = strTabSection->AddString(symbolName);
         AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((STB_LOCAL << 4) + (STT_OBJECT & 0xf)), 0,
-                        dataSection->GetIndex(), pos, sizeInByte},
+                        secIdx, pos, sizeInByte},
                        symIdx);
     } else {
         const std::string &symbolName = GetNameFromSymMap(symIdx);
         auto index = strTabSection->AddString(symbolName);
         uint8 symInfo = symAttr == kSAGlobal ? STB_GLOBAL : STB_WEAK;
         AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((symInfo << 4) + (STT_OBJECT & 0xf)), 0,
-                        dataSection->GetIndex(), pos, sizeInByte},
+                        secIdx, pos, sizeInByte},
                        symIdx);
     }
 }
@@ -435,7 +452,7 @@ void ElfAssembler::OpImmAndReg(const ImmOpnd &immOpnd, Reg reg, uint8 opCode, ui
         immBit = k32Bits; /* if 32/64bit mode, imm val can not use 16-bit. */
     }
     immBit = isSymbol ? k32Bits : immBit;
-    if (GetRegCodeId(reg) == 0 && (regSize == immBit || (regSize == k64Bits && immBit == k32Bits))) {
+    if (GetRegId(reg) == 0 && (regSize == immBit || (regSize == k64Bits && immBit == k32Bits))) {
         if (HasOpndSizePrefix(reg)) {
             Encodeb(0x66);
         }
@@ -578,7 +595,9 @@ bool ElfAssembler::CanEncodeLabel(int64 labelIdx)
         Label *label = labelManager.at(labelIdx);
         uint32 relOffset = label->GetRelOffset();
         LabelType labelType = label->GetLabelType();
-        if ((labelType == LabelType::kBBLabel || labelType == LabelType::kFunc) && relOffset != 0xFFFFFFFFU) {
+        bool canEncode = (labelType == LabelType::kBBLabel || labelType == LabelType::kFunc ||
+                          labelType == LabelType::kDoubleLabel || labelType == LabelType::kFloatLabel);
+        if (canEncode && relOffset != 0xFFFFFFFFU) {
             size_t offsetSize = 4;
             uint64 offset = static_cast<uint64>((relOffset - codeBuff.size()) - offsetSize);
             Encodeb(offset, offsetSize);
@@ -1318,6 +1337,38 @@ void ElfAssembler::Mov(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
     Encodeb(imm, immSize);
 }
 
+/* floating point mov */
+void ElfAssembler::Mov(Reg srcReg, Reg destReg, bool isMovD) {
+  uint8 srcRegSize = GetRegSize(srcReg);
+  uint8 destRegSize = GetRegSize(destReg);
+  if (srcRegSize == k128Bits || destRegSize == k128Bits) {
+    Encodeb(0x66);
+  }
+  if (srcRegSize == k128Bits) {
+    OpRR(srcReg, destReg, 0x0F, 0x7E);
+  } else if (destRegSize == k128Bits) {
+    OpRR(destReg, srcReg, 0x0F, 0x6E);
+  }
+}
+
+void ElfAssembler::MovF(const Mem &mem, Reg reg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else {
+    Encodeb(0xF2);
+  }
+  OpRM(reg, mem, 0x0F, 0x10);
+}
+
+void ElfAssembler::MovF(Reg reg, const Mem &mem, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else {
+    Encodeb(0xF2);
+  }
+  OpRM(reg, mem, 0x0F, 0x11);
+}
+
 /* movabs */
 void ElfAssembler::Movabs(const ImmOpnd &immOpnd, Reg reg)
 {
@@ -1428,6 +1479,25 @@ void ElfAssembler::Add(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
     OpImmAndMem(immOpnd, mem, 0);
 }
 
+/* add floating point */
+void ElfAssembler::Add(Reg srcReg, Reg destReg, bool isSingle) {
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else{
+        Encodeb(0xF2);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x58);
+}
+
+void ElfAssembler::Add(const Mem &mem, Reg reg, bool isSingle) {
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else{
+        Encodeb(0xF2);
+    }
+    OpRM(reg, mem, 0x0F, 0x58);
+}
+
 /* sub */
 void ElfAssembler::Sub(InsnSize insnSize, Reg srcReg, Reg destReg)
 {
@@ -1453,6 +1523,26 @@ void ElfAssembler::Sub(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 {
     OpImmAndMem(immOpnd, mem, kSubModReg);
 }
+
+/* sub floating point */
+void ElfAssembler::Sub(Reg srcReg, Reg destReg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else{
+    Encodeb(0xF2);
+  }
+  OpRR(destReg, srcReg, 0x0F, 0x5c);
+}
+
+void ElfAssembler::Sub(const Mem &mem, Reg reg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else{
+    Encodeb(0xF2);
+  }
+  OpRM(reg, mem, 0x0F, 0x5c);
+}
+
 
 /* and */
 void ElfAssembler::And(InsnSize insnSize, Reg srcReg, Reg destReg)
@@ -2017,6 +2107,25 @@ void ElfAssembler::Imul(InsnSize insnSize, Reg srcReg, Reg destReg)
     OpRR(destReg, srcReg, 0x0F, 0xAF);
 }
 
+/* mul float */
+void ElfAssembler::Mul(Reg srcReg, Reg destReg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else{
+    Encodeb(0xF2);
+  }
+  OpRR(destReg, srcReg, 0x0F, 0x59);
+}
+
+void ElfAssembler::Mul(const Mem &mem, Reg reg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0xF3);
+  } else{
+    Encodeb(0xF2);
+  }
+  OpRM(reg, mem, 0x0F, 0x59);
+}
+
 /* nop */
 void ElfAssembler::Nop(InsnSize insnSize, const Mem &mem)
 {
@@ -2055,6 +2164,107 @@ void ElfAssembler::Xchg(InsnSize insnSize, Reg srcReg, Reg destReg)
         OpRR(srcReg, destReg, 0x86);
     }
 }
+
+/* floating point */
+void ElfAssembler::MovF(Reg srcReg, Reg destReg, bool isSingle) {
+  bool isXMM = GetRegSize(srcReg) == k128Bits || GetRegSize(destReg) == k128Bits;
+  if (isSingle) {
+    if (isXMM) {
+      Encodeb(0xF3);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x10);
+  } else {
+    if (isXMM) {
+      Encodeb(0xF2);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x10);
+  }
+}
+
+ /* floating point and */
+void ElfAssembler::And(Reg srcReg, Reg destReg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0x100);
+  } else{
+    Encodeb(0x66);
+  }
+  OpRR(destReg, srcReg, 0x0F, 0x54);
+}
+
+void ElfAssembler::And(const Mem &mem, Reg reg, bool isSingle) {
+  if (isSingle) {
+    Encodeb(0x100);
+  } else{
+    Encodeb(0x66);
+  }
+  OpRM(reg, mem, 0x0F, 0x54);
+}
+
+/* floating div */
+void ElfAssembler::Divsd(Reg srcReg, Reg destReg) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0x5E);
+}
+
+void ElfAssembler::Divsd(const Mem &mem, Reg reg) {
+  Encodeb(0xF2);
+  OpRM(reg, mem, 0x0F, 0x5E);
+}
+
+/* convert int2float */
+void ElfAssembler::Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg) {
+  Encodeb(0xF3);
+  OpRR(destReg, srcReg, 0x0F, 0x2A);
+}
+
+void ElfAssembler::Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0x2A);
+}
+
+/*convert float2int */
+void ElfAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0x2C);
+}
+
+void ElfAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
+  Encodeb(0xF3);
+  OpRR(destReg, srcReg, 0x0F, 0x2C);
+}
+
+/* convert float2float */
+void ElfAssembler::Cvtss2sd(Reg srcReg, Reg destReg) {
+  Encodeb(0xF3);
+  OpRR(destReg, srcReg, 0x0F, 0x5A);
+}
+
+void ElfAssembler::Cvtsd2ss(Reg srcReg, Reg destReg) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0x5A);
+}
+
+/* unordered compare */
+void ElfAssembler::Ucomisd(Reg srcReg, Reg destReg) {
+  Encodeb(0x66);
+  OpRR(destReg, srcReg, 0x0F, 0x2E);
+}
+
+void ElfAssembler::Ucomiss(Reg srcReg, Reg destReg) {
+  Encodeb(0x100);
+  OpRR(destReg, srcReg, 0x0F, 0x2E);
+}
+
+/* float sqrt*/
+void ElfAssembler::Sqrtss_r(Reg srcReg, Reg destReg) {
+  Encodeb(0xF3);
+  OpRR(destReg, srcReg, 0x0F, 0x51);
+}
+
+void ElfAssembler::Sqrtsd_r(Reg srcReg, Reg destReg) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0x51);
+}
 /* end of X64 instructions */
 
 /* process stackmap */
@@ -2065,7 +2275,15 @@ void ElfAssembler::RecordStackmap(const std::vector<uint64> &referenceMap,
     if (emitMemoryManager.codeSpace == nullptr) {
         return;
     }
-    emitMemoryManager.pc2CallSiteInfoSaver(emitMemoryManager.codeSpace, codeBuff.size(), referenceMap);
-    emitMemoryManager.pc2DeoptInfoSaver(emitMemoryManager.codeSpace, codeBuff.size(), deoptVreg2LocationInfo);
+    emitMemoryManager.pc2CallSiteInfoSaver(emitMemoryManager.codeSpace, lastModulePC + codeBuff.size(), referenceMap);
+    emitMemoryManager.pc2DeoptInfoSaver(emitMemoryManager.codeSpace, lastModulePC + codeBuff.size(), deoptVreg2LocationInfo);
+}
+
+uint32 ElfAssembler::GetCurModulePC() {
+    return static_cast<uint32>(lastModulePC + codeBuff.size());
+}
+
+void ElfAssembler::SetLastModulePC(uint32 pc) {
+    lastModulePC = pc;
 }
 } /* namespace assembler */

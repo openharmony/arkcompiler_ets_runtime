@@ -126,8 +126,9 @@ private:
 // ((blksize+3)/4+7)/8
 static inline uint32 BlockSize2BitVectorSize(uint32 blkSize)
 {
-    uint32 bitVectorLen = ((blkSize + 3) / 4 + 7) / 8;
-    return ((bitVectorLen + 3) >> 2) << 2;  // round up to word boundary
+    uint32 bitVectorLen = ((blkSize + 3) / 4 + 7) / 8; // the bit vector's length in bytes is ((blksize+3)/4+7)/8
+    constexpr uint32 kRoundUp2Bit = 0xfffffffc;        // 11111111111111111111111111111100
+    return (bitVectorLen + 3) & kRoundUp2Bit;  // add 3 and round up to word boundary
 }
 
 #if MIR_FEATURE_FULL
@@ -834,6 +835,26 @@ public:
         return UINT_MAX;
     }
 
+    void SetCurModulePC(uint32 pc)
+    {
+        curModulePC = pc;
+    }
+    
+    uint32 GetCurModulePC() const
+    {
+        return curModulePC;
+    }
+
+    void SetLastModulePC(uint32 pc) {
+        lastModulePC = pc;
+    }
+
+    uint32 GetLastModulePC() const
+    {
+        return lastModulePC;
+    }
+
+
     bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 
 private:
@@ -931,6 +952,8 @@ private:
     std::map<CalleePair, std::map<double, std::vector<CallerSummary>>> calleeParamAboutDouble;
     std::map<CalleePair, std::map<float, std::vector<CallerSummary>>> calleeParamAboutFloat;
     std::map<PUIdx, std::vector<ImpExpr>> funcImportantExpr;
+    uint32 lastModulePC = 0;
+    uint32 curModulePC = 0;
 };
 #endif  // MIR_FEATURE_FULL
 }  // namespace maple

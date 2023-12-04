@@ -34,7 +34,7 @@ namespace {
 
 bool IsPrefixDetected(std::string_view opt)
 {
-    if (opt.substr(0, 2) == "--") {
+    if (opt.substr(0, 2) == "--") { // whether opt start with 2 char "--"
         return true;
     }
 

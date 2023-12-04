@@ -45,13 +45,13 @@ std::optional<IntVal> operator*(const std::optional<IntVal> &v1, const std::opti
 
     // Perform all calculations in terms of the maximum available signed type.
     // The value will be truncated for an appropriate type when constant is created in PariToExpr function
-    // replace with PTY_i128 when IntVal supports 128bit calculation
+    // TODO: replace with PTY_i128 when IntVal supports 128bit calculation
     return v1 && v2 ? v1->Mul(*v2, PTY_i64) : IntVal(0, PTY_i64);
 }
 
 // Perform all calculations in terms of the maximum available signed type.
 // The value will be truncated for an appropriate type when constant is created in PariToExpr function
-// replace with PTY_i128 when IntVal supports 128bit calculation
+// TODO: replace with PTY_i128 when IntVal supports 128bit calculation
 std::optional<IntVal> AddSub(const std::optional<IntVal> &v1, const std::optional<IntVal> &v2, bool isAdd)
 {
     if (!v1 && !v2) {
@@ -1287,14 +1287,14 @@ MIRConst *ConstantFold::FoldTypeCvtMIRConst(const MIRConst &cst, PrimType fromTy
     if (IsPrimitiveFloat(fromType) && IsPrimitiveFloat(toType)) {
         MIRConst *toConst = nullptr;
         if (GetPrimTypeBitSize(toType) < GetPrimTypeBitSize(fromType)) {
-            DEBUG_ASSERT(GetPrimTypeBitSize(toType) == 32, "We suppot F32 and F64");
+            DEBUG_ASSERT(GetPrimTypeBitSize(toType) == 32, "We suppot F32 and F64"); // just support 32 or 64
             const MIRDoubleConst *fromValue = safe_cast<MIRDoubleConst>(cst);
             ASSERT_NOT_NULL(fromValue);
             float floatValue = static_cast<float>(fromValue->GetValue());
             MIRFloatConst *toValue = GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue);
             toConst = toValue;
         } else {
-            DEBUG_ASSERT(GetPrimTypeBitSize(toType) == 64, "We suppot F32 and F64");
+            DEBUG_ASSERT(GetPrimTypeBitSize(toType) == 64, "We suppot F32 and F64"); // just support 32 or 64
             const MIRFloatConst *fromValue = safe_cast<MIRFloatConst>(cst);
             ASSERT_NOT_NULL(fromValue);
             double doubleValue = static_cast<double>(fromValue->GetValue());
@@ -1331,22 +1331,22 @@ PrimType GetNearestSizePtyp(uint8 bitSize, PrimType ptyp)
 {
     bool isSigned = IsSignedInteger(ptyp);
     bool isFloat = IsPrimitiveFloat(ptyp);
-    if (bitSize == 1) {
+    if (bitSize == 1) { // 1 bit
         return PTY_u1;
     }
-    if (bitSize <= 8) {
+    if (bitSize <= 8) { // 8 bit
         return isSigned ? PTY_i8 : PTY_u8;
     }
-    if (bitSize <= 16) {
+    if (bitSize <= 16) { // 16 bit
         return isSigned ? PTY_i16 : PTY_u16;
     }
-    if (bitSize <= 32) {
+    if (bitSize <= 32) { // 32 bit
         return isFloat ? PTY_f32 : (isSigned ? PTY_i32 : PTY_u32);
     }
-    if (bitSize <= 64) {
+    if (bitSize <= 64) { // 64 bit
         return isFloat ? PTY_f64 : (isSigned ? PTY_i64 : PTY_u64);
     }
-    if (bitSize <= 128) {
+    if (bitSize <= 128) { // 128 bit
         return isFloat ? PTY_f128 : (isSigned ? PTY_i128 : PTY_u128);
     }
     return ptyp;
@@ -1552,7 +1552,7 @@ ConstvalNode *ConstantFold::FoldSignExtend(Opcode opcode, PrimType resultType, u
 // check if truncation is redundant due to dread or iread having same effect
 static bool ExtractbitsRedundant(ExtractbitsNode *x, MIRFunction *f)
 {
-    if (GetPrimTypeSize(x->GetPrimType()) == 8) {
+    if (GetPrimTypeSize(x->GetPrimType()) == k8ByteSize) {
         return false;  // this is trying to be conservative
     }
     BaseNode *opnd = x->Opnd(0);
@@ -1586,7 +1586,7 @@ static bool ExtractbitsRedundant(ExtractbitsNode *x, MIRFunction *f)
     } else {
         return false;
     }
-    return IsPrimitiveInteger(mirType->GetPrimType()) && mirType->GetSize() * 8 == x->GetBitsSize() &&
+    return IsPrimitiveInteger(mirType->GetPrimType()) && mirType->GetSize() * kBitSizePerByte == x->GetBitsSize() &&
            IsSignedInteger(mirType->GetPrimType()) == IsSignedInteger(x->GetPrimType());
 }
 
@@ -1621,7 +1621,7 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldExtractbits(Extra
             result->SetOpnd(opnd->Opnd(0), 0);  // delete the redundant extraction
         }
     }
-    if (offset == 0 && size >= 8 && IsPowerOf2(size)) {
+    if (offset == 0 && size >= k8ByteSize && IsPowerOf2(size)) {
         if (ExtractbitsRedundant(static_cast<ExtractbitsNode *>(result), mirModule->CurFunction())) {
             return std::make_pair(result->Opnd(0), std::nullopt);
         }
@@ -1853,7 +1853,7 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode
                         bsize++;
                         ucst >>= 1;
                     } while (ucst != 0);
-                    if (shrAmt + bsize <= GetPrimTypeSize(primType) * 8) {
+                    if (shrAmt + bsize <= GetPrimTypeSize(primType) * kBitSizePerByte) {
                         fold2extractbits = true;
                         // change to use extractbits
                         result = mirModule->GetMIRBuilder()->CreateExprExtractbits(
@@ -2117,6 +2117,9 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldArray(ArrayNode *
 std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldTernary(TernaryNode *node)
 {
     CHECK_NULL_FATAL(node);
+    constexpr size_t kFirst = 0;
+    constexpr size_t kSecond = 1;
+    constexpr size_t kThird = 2;
     BaseNode *result = node;
     std::vector<PrimType> primTypes;
     std::vector<std::pair<BaseNode *, std::optional<IntVal>>> p;
@@ -2127,19 +2130,19 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldTernary(TernaryNo
         p.push_back(DispatchFold(tempNopnd));
     }
     if (node->GetOpCode() == OP_select) {
-        ConstvalNode *const0 = safe_cast<ConstvalNode>(p[0].first);
+        ConstvalNode *const0 = safe_cast<ConstvalNode>(p[kFirst].first);
         if (const0 != nullptr) {
             MIRIntConst *intConst0 = safe_cast<MIRIntConst>(const0->GetConstVal());
             ASSERT_NOT_NULL(intConst0);
             // Selecting the first value if not 0, selecting the second value otherwise.
             if (!intConst0->IsZero()) {
-                result = PairToExpr(primTypes[1], p[1]);
+                result = PairToExpr(primTypes[kSecond], p[kSecond]);
             } else {
-                result = PairToExpr(primTypes[2], p[2]);
+                result = PairToExpr(primTypes[kThird], p[kThird]);
             }
         } else {
-            ConstvalNode *const1 = safe_cast<ConstvalNode>(p[1].first);
-            ConstvalNode *const2 = safe_cast<ConstvalNode>(p[2].first);
+            ConstvalNode *const1 = safe_cast<ConstvalNode>(p[kSecond].first);
+            ConstvalNode *const2 = safe_cast<ConstvalNode>(p[kThird].first);
             if (const1 != nullptr && const2 != nullptr) {
                 MIRIntConst *intConst1 = safe_cast<MIRIntConst>(const1->GetConstVal());
                 MIRIntConst *intConst2 = safe_cast<MIRIntConst>(const2->GetConstVal());
@@ -2163,9 +2166,9 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldTernary(TernaryNo
                     dconst1 = static_cast<double>(intConst1->GetExtValue());
                     dconst2 = static_cast<double>(intConst2->GetExtValue());
                 }
-                PrimType foldedPrimType = primTypes[1];
+                PrimType foldedPrimType = primTypes[kSecond];
                 if (!IsPrimitiveInteger(foldedPrimType)) {
-                    foldedPrimType = primTypes[2];
+                    foldedPrimType = primTypes[kThird];
                 }
                 if (dconst1 == 1.0 && dconst2 == 0.0) {
                     if (IsPrimitiveInteger(foldedPrimType)) {
@@ -2194,10 +2197,10 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldTernary(TernaryNo
             }
         }
     }
-    BaseNode *e0 = PairToExpr(primTypes[0], p[0]);
-    BaseNode *e1 = PairToExpr(primTypes[1], p[1]);
-    BaseNode *e2 = PairToExpr(primTypes[2], p[2]);  // count up to 3 for ternary node
-    if (e0 != node->Opnd(0) || e1 != node->Opnd(1) || e2 != node->Opnd(2)) {
+    BaseNode *e0 = PairToExpr(primTypes[kFirst], p[kFirst]);
+    BaseNode *e1 = PairToExpr(primTypes[kSecond], p[kSecond]);
+    BaseNode *e2 = PairToExpr(primTypes[kThird], p[kThird]);  // count up to 3 for ternary node
+    if (e0 != node->Opnd(kFirst) || e1 != node->Opnd(kSecond) || e2 != node->Opnd(kThird)) {
         result = mirModule->CurFuncCodeMemPool()->New<TernaryNode>(Opcode(node->GetOpCode()),
                                                                    PrimType(node->GetPrimType()), e0, e1, e2);
     }

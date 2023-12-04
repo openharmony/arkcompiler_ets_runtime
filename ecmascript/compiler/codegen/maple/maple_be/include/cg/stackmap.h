@@ -49,7 +49,7 @@ public:
         deoptVreg2Opnd.insert(std::pair<int32, Operand *>(deoptVreg, &opnd));
     }
 
-    const MapleMap<int32, Operand *> &GetDeoptBundleInfo() const
+    const MapleUnorderedMap<int32, Operand *> &GetDeoptBundleInfo() const
     {
         return deoptVreg2Opnd;
     }
@@ -91,7 +91,7 @@ public:
 
 private:
     // info before RA
-    MapleMap<int32, Operand *> deoptVreg2Opnd;
+    MapleUnorderedMap<int32, Operand *> deoptVreg2Opnd;
     MapleVector<DeoptVregLocationInfo> deoptVreg2LocationInfo;
 };
 

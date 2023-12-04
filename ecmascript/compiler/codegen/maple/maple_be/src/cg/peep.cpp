@@ -169,6 +169,11 @@ bool CGPeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &in
                         return true;
                     }
                 }
+            } else if (opnd.IsList()) {
+                auto &opndList = static_cast<ListOperand&>(opnd).GetOperands();
+                if (find(opndList.begin(), opndList.end(), &regOpnd) != opndList.end()) {
+                    return true;
+                }
             }
 
             if (!opnd.IsRegister()) {
@@ -383,6 +388,11 @@ bool PeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn
                     if (tmpRegOpnd->GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
                         return true;
                     }
+                }
+            } else if (opnd.IsList()) {
+                auto &opndList = static_cast<ListOperand&>(opnd).GetOperands();
+                if (find(opndList.begin(), opndList.end(), &regOpnd) != opndList.end()) {
+                    return true;
                 }
             }
 

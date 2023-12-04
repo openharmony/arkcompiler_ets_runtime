@@ -895,7 +895,7 @@ void MeCFG::ConstructEdgeFreqFromBBFreq()
             continue;
         if (bb->GetSucc().size() == 1) {
             bb->PushBackSuccFreq(bb->GetFrequency());
-        } else if (bb->GetSucc().size() == 2) {
+        } else if (bb->GetSucc().size() == 2) { // bb has 2 succeed
             auto *fallthru = bb->GetSucc(0);
             auto *targetBB = bb->GetSucc(1);
             if (fallthru->GetPred().size() == 1) {
@@ -911,7 +911,7 @@ void MeCFG::ConstructEdgeFreqFromBBFreq()
             } else {
                 CHECK_FATAL(false, "ConstructEdgeFreqFromBBFreq::NYI critical edge");
             }
-        } else if (bb->GetSucc().size() > 2) {
+        } else if (bb->GetSucc().size() > 2) { // bb has 2 succeed
             // switch case, no critical edge is supposted
             for (size_t i = 0; i < bb->GetSucc().size(); ++i) {
                 bb->PushBackSuccFreq(bb->GetSucc(i)->GetFrequency());

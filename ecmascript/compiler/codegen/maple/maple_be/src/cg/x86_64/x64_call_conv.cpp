@@ -80,6 +80,10 @@ int32 CCallConventionInfo::Classification(const BECommon &be, MIRType &mirType,
             classes.push_back(kIntegerClass);
             classes.push_back(kIntegerClass);
             return k16ByteSize;
+        case PTY_f32:
+        case PTY_f64:
+            classes.push_back(kFloatClass);
+            return k8ByteSize;
         case PTY_agg: {
             /*
              * The size of each argument gets rounded up to eightbytes,
@@ -156,6 +160,7 @@ int32 GHCCallConventionInfo::Classification(const BECommon &be, MIRType &mirType
         default:
             CHECK_FATAL(false, "NYI");
     }
+    // TODO:
     return 0;
 }
 
@@ -188,6 +193,13 @@ int32 X64CallConvImpl::LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool is
             AllocateTwoGPParmRegisters(pLoc);
             DEBUG_ASSERT(nextGeneralParmRegNO <= GetCallConvInfo().GetIntParamRegsNum(), "RegNo should be pramRegNO");
         }
+    } else if (classes[0] == kFloatClass) {
+        if (alignedTySize == k8ByteSize) {
+            pLoc.reg0 = AllocateSIMDFPRegister();
+            DEBUG_ASSERT(nextGeneralParmRegNO <= kNumFloatParmRegs, "RegNo should be pramRegNO");
+        } else {
+            CHECK_FATAL(false, "niy");
+        }
     }
     if (pLoc.reg0 == kRinvalid || classes[0] == kMemoryClass) {
         /* being passed in memory */
@@ -208,12 +220,13 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
         /* If the class is INTEGER, the next available register of the sequence %rax, */
         /* %rdx is used. */
         CHECK_FATAL(alignedTySize <= k16ByteSize, "LocateRetVal: illegal number of regs");
-        pLoc.regCount = alignedTySize;
         if ((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize)) {
+            pLoc.regCount = kOneRegister;
             pLoc.reg0 = AllocateGPReturnRegister();
             DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(),
                          "RegNo should be pramRegNO");
         } else if (alignedTySize == k16ByteSize) {
+            pLoc.regCount = kTwoRegister;
             AllocateTwoGPReturnRegisters(pLoc);
             DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(),
                          "RegNo should be pramRegNO");
@@ -223,6 +236,23 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
         } else if (nextGeneralReturnRegNO == kTwoRegister) {
             pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
             pLoc.primTypeOfReg1 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
+        }
+        return 0;
+    } else if (classes[0] == kFloatClass) {
+        /* If the class is SSE, the next available vector register of the sequence %xmm0, */
+        /* %xmm1 is used. */
+        CHECK_FATAL(alignedTySize <= k16ByteSize, "LocateRetVal: illegal number of regs");
+        if (alignedTySize == k8ByteSize) {
+            pLoc.regCount = 1;
+            pLoc.reg0 = AllocateSIMDFPReturnRegister();
+            DEBUG_ASSERT(nextFloatRetRegNO <= kNumFloatReturnRegs, "RegNo should be pramRegNO");
+        } else if (alignedTySize == k16ByteSize) {
+            CHECK_FATAL(false, "niy");
+        }
+        if (nextFloatRetRegNO == kOneRegister) {
+            pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_f64 : retType.GetPrimType();
+        } else if (nextFloatRetRegNO == kTwoRegister) {
+            CHECK_FATAL(false, "niy");
         }
         return 0;
     }

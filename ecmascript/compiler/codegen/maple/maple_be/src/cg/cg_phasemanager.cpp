@@ -41,12 +41,12 @@ namespace maplebe {
 #define JAVALANG (module.IsJavaModule())
 #define CLANG (module.GetSrcLang() == kSrcLangC)
 
-#define RELEASE(pointer)          \
-    do {                          \
-        if (pointer != nullptr) { \
-            delete pointer;       \
-            pointer = nullptr;    \
-        }                         \
+#define RELEASE(pointer)            \
+    do {                            \
+        if ((pointer) != nullptr) { \
+            delete (pointer);       \
+            (pointer) = nullptr;    \
+        }                           \
     } while (0)
 
 namespace {
@@ -77,7 +77,7 @@ void CgFuncPM::GenerateOutPutFile(MIRModule &m)
     if (!cgOptions->SuppressFileInfo()) {
         assm.InitialFileInfo(m.GetInputFileName());
     }
-    // Dwarf info
+    // TODO: Dwarf info
     if (cgOptions->WithDwarf()) {
         assm.EmitDIHeader();
     }

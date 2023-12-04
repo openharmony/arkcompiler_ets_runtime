@@ -43,8 +43,6 @@ constexpr uint32 k32 = sizeof(int) * CHAR_BIT;
 constexpr uint32 k64 = sizeof(int64) * CHAR_BIT;
 constexpr uint32 kU64 = sizeof(uint64) * CHAR_BIT;
 
-enum RematLevel { rematOff = 0, rematConst = 1, rematAddr = 2, rematDreadLocal = 3, rematDreadGlobal = 4 };
-
 template <typename T, typename Comparator = std::less<T>>
 inline bool FindNotIn(const std::set<T, Comparator> &set, const T &item)
 {

@@ -58,17 +58,26 @@ constexpr uint32 k2BitSize = 2;
 constexpr uint32 k3BitSize = 3;
 constexpr uint32 k4BitSize = 4;
 constexpr uint32 k5BitSize = 5;
+constexpr uint32 k7BitSize = 7;
 constexpr uint32 k8BitSize = 8;
 constexpr uint32 k9BitSize = 9;
 constexpr uint32 k10BitSize = 10;
 constexpr uint32 k16BitSize = 16;
 constexpr uint32 k32BitSize = 32;
 constexpr uint32 k64BitSize = 64;
+constexpr uint32 k4BitShift = 2;  /* 4 is 1 << 2; */
+constexpr uint32 k8BitShift = 3;  /* 8 is 1 << 3; */
+constexpr uint32 k16BitShift = 4; /* 8 is 1 << 3; */
+constexpr uint32 k2ByteSize = 2;
+constexpr uint32 k3ByteSize = 3;
+constexpr uint32 k4ByteSize = 4;
+constexpr uint32 k7ByteSize = 7;
+constexpr uint32 k8ByteSize = 8;
 
 inline uint32 GetPrimTypeBitSize(PrimType primType)
 {
     // 1 byte = 8 bits = 2^3 bits
-    return GetPrimTypeSize(primType) << 3;
+    return GetPrimTypeSize(primType) << k8BitShift;
 }
 
 inline uint32 GetPrimTypeActualBitSize(PrimType primType)
@@ -78,7 +87,7 @@ inline uint32 GetPrimTypeActualBitSize(PrimType primType)
         return 1;
     }
     // 1 byte = 8 bits = 2^3 bits
-    return GetPrimTypeSize(primType) << 3;
+    return GetPrimTypeSize(primType) << k8BitShift;
 }
 
 #endif  // MIR_FEATURE_FULL
@@ -361,7 +370,7 @@ public:
         uint32 exp = attrAlign;
         do {
             --exp;
-            res *= 2;
+            res <<= 1;
         } while (exp != 0);
         return res;
     }
@@ -2184,10 +2193,10 @@ public:
     {
         if (fieldSize == 0) {
             return 0;
-        } else if (fieldSize <= 8) {
+        } else if (fieldSize <= k8ByteSize) {
             return 1;
         } else {
-            return (fieldSize + 7) / 8;
+            return (fieldSize + k7ByteSize) / k8ByteSize;
         }
     }  // size not be in bytes
 

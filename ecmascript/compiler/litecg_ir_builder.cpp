@@ -208,6 +208,8 @@ void LiteCGIRBuilder::Build()
     }
     bbID2unmergedPhis_.clear();
 
+    lmirBuilder_->AppendBB(lmirBuilder_->GetLastPosBB());
+
     lmirBuilder_->DumpIRToFile("fini.mpl");
 }
 
@@ -559,6 +561,14 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
                 (e2Type == lmirBuilder_->i64Type) ? e2Value : lmirBuilder_->Cvt(e2Type, lmirBuilder_->i64Type, e2Value);
             Expr tmp3 = lmirBuilder_->Add(lmirBuilder_->i64Type, tmp1, tmp2);
             result = lmirBuilder_->Cvt(lmirBuilder_->i64Type, returnType, tmp3);
+            SaveGate2Expr(gate, result);
+            // set the base reference of derived reference
+            LiteCGValue resultValue = gate2Expr_[gate];
+            if ((e1Type == lmirBuilder_->i64RefType) && (acc_.GetOpCode(e1) != OpCode::CONSTANT)) {
+                lmirBuilder_->SetFunctionDerived2BaseRef(resultValue.pregIdx,
+                                                         lmirBuilder_->GetPregIdxFromExpr(e1Value));
+            }
+            return;
         } else {
             Expr tmp1Expr = (e1Type == returnType) ? e1Value : lmirBuilder_->Cvt(e1Type, returnType, e1Value);
             Expr tmp2Expr = (e2Type == returnType) ? e2Value : lmirBuilder_->Cvt(e2Type, returnType, e2Value);
@@ -692,18 +702,34 @@ void LiteCGIRBuilder::HandleBranch(GateRef gate)
 
 void LiteCGIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse)
 {
-    if (gate2Expr_.count(cmp) == 0) {
+    if ((gate2Expr_.count(cmp) == 0) && (acc_.GetOpCode(cmp) != OpCode::CONSTANT)) {
         OPTIONAL_LOG_COMPILER(ERROR) << "Branch condition gate is nullptr!";
         return;
+    }
+    uint32_t trueWeight = 0;
+    uint32_t falseWeight = 0;
+    if (acc_.HasBranchWeight(gate)) {
+        trueWeight = acc_.GetTrueWeight(gate);
+        falseWeight = acc_.GetFalseWeight(gate);
     }
     BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
     lmirBuilder_->AppendBB(curBB);
     BB &bb = CreateBB();
     BB &trueBB = GetOrCreateBB(btrue);
+    BB &falseBB = GetOrCreateBB(bfalse);
+    // we hope that branch with higher probability can be placed immediatly behind
+    if (trueWeight < falseWeight) {
+        Stmt &stmt = lmirBuilder_->Goto(falseBB);
+        lmirBuilder_->AppendStmt(bb, stmt);
+        lmirBuilder_->AppendBB(bb);
+        Expr cond = GetExprFromGate(cmp);
+        Stmt &condBR = lmirBuilder_->CondGoto(cond, trueBB, true);
+        lmirBuilder_->AppendStmt(curBB, condBR);
+        return;
+    }
     Stmt &stmt = lmirBuilder_->Goto(trueBB);
     lmirBuilder_->AppendStmt(bb, stmt);
     lmirBuilder_->AppendBB(bb);
-    BB &falseBB = GetOrCreateBB(bfalse);
     Expr cond = GetExprFromGate(cmp);
     Stmt &condBR = lmirBuilder_->CondGoto(cond, falseBB, false);
     lmirBuilder_->AppendStmt(curBB, condBR);
@@ -1199,6 +1225,7 @@ bool LiteCGIRBuilder::IsInterpreted() const
 Expr LiteCGIRBuilder::CallingFp(bool /*isCaller*/)
 {
     ASSERT(!IsInterpreted());
+    /* 0:calling 1:its caller */
     Function &func = lmirBuilder_->GetCurFunction();
     return lmirBuilder_->LiteCGGetPregFP(func);
 }
@@ -1558,7 +1585,6 @@ void LiteCGIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     auto machineType = acc_.GetMachineType(e1);
     Expr result;
     if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
-        // ?? I32 or I64 equals to SI in LLVM ??
         result = lmirBuilder_->Trunc(ConvertLiteCGTypeFromGate(e1), lmirBuilder_->i64Type, e1Value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1946,13 +1972,16 @@ void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
     int bbOut = instID2bbID_[acc_.GetId(outs[0])];  // 0: output
 
     BB &trueBB = GetOrCreateBB(bbOut);
-    BB &falseBB = CreateBB();
+    BB &falseBB = lmirBuilder_->CreateBB();
     GateRef cmp = acc_.GetValueIn(gate, 0);  // 0: cond
     Expr cond = GetExprFromGate(cmp);
     BB &curBB = GetOrCreateBB(block);
-    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->CondGoto(cond, trueBB, true));
+    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->CondGoto(cond, falseBB, false));
+    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Goto(trueBB));
     lmirBuilder_->AppendBB(curBB);
-    lmirBuilder_->AppendBB(falseBB);
+    // deopt branch is not expected to be token as often,
+    // just put them to the end of the function
+    lmirBuilder_->AppendToLast(falseBB);
 
     VisitDeoptCheck(gate);
     Expr returnValue = GetExprFromGate(gate);
@@ -1961,7 +1990,6 @@ void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
 
 LiteCGType *LiteCGIRBuilder::GetExperimentalDeoptTy()
 {
-    // GetTaggedHPtrT() == lmirBuilder_->i64RefType ???
     std::vector<LiteCGType *> paramTys = {lmirBuilder_->i64Type, lmirBuilder_->i64RefType, lmirBuilder_->i64RefType};
     LiteCGType *functionType = lmirBuilder_->CreateFuncType(paramTys, lmirBuilder_->i64RefType, false);
     return functionType;

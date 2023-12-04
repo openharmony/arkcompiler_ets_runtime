@@ -37,6 +37,7 @@ namespace x64 {
 /* machine instruction description */
 #define DEFINE_MOP(op, ...) op,
 enum X64MOP_t : maple::uint32 {
+#include "abstract_mmir.def"
 #include "x64_md.def"
     kMopLast
 };

@@ -43,7 +43,7 @@ enum ShiftTypeValue : maple::uint32 {
 
 /* from armv8 manual C1.2.3 */
 maple::uint8 ccEncode[maplebe::kCcLast] = {
-#define CONDCODE(a, encode) encode,
+#define CONDCODE(a, encode) (encode),
 #include "aarch64_cc.def"
 #undef CONDCODE
 };
@@ -135,7 +135,7 @@ void AArch64ObjEmitter::HandleTextSectionGlobalFixup()
 
 void AArch64ObjEmitter::HandleTextSectionFixup()
 {
-    relaSection = memPool->New<RelaSection>(".rela.text", SHT_RELA, SHF_INFO_LINK, textSection->GetIndex(), 8,
+    relaSection = memPool->New<RelaSection>(".rela.text", SHT_RELA, SHF_INFO_LINK, textSection->GetIndex(), k8ByteSize,
                                             *symbolTabSection, *this, *memPool);
     for (auto *content : contents) {
         if (content == nullptr) {
@@ -244,9 +244,11 @@ void AArch64ObjEmitter::AppendTextSectionData()
 
 void AArch64ObjEmitter::AppendGlobalLabel()
 {
+    uint32 lastModulePc = cg->GetMIRModule()->GetLastModulePC();
     auto &contents = GetContents();
-    uint32 offset = 0;
-    for (auto *content : contents) {
+    uint32 offset = lastModulePc;
+    for (size_t i = 0; i < contents.size(); i++) {
+        auto *content = contents[i];
         if (content == nullptr) {
             continue;
         }
@@ -269,6 +271,7 @@ void AArch64ObjEmitter::AppendGlobalLabel()
         }
 
         offset += content->GetTextDataSize();
+        cg->GetMIRModule()->SetCurModulePC(offset);
         RegisterGlobalLabel(funcName, objLabel);
         /* register all the start of switch table */
         const MapleMap<MapleString, uint32> &switchTableOffset = content->GetSwitchTableOffset();
@@ -303,8 +306,9 @@ void AArch64ObjEmitter::AppendSymsToSymTabSec()
 void AArch64ObjEmitter::InitSections()
 {
     (void)memPool->New<DataSection>(" ", SHT_NULL, 0, 0, *this, *memPool);
-    textSection = memPool->New<DataSection>(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 4, *this, *memPool);
-    dataSection = memPool->New<DataSection>(".data", SHT_PROGBITS, SHF_WRITE | SHF_ALLOC, 8, *this, *memPool);
+    textSection =
+        memPool->New<DataSection>(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, k4ByteSize, *this, *memPool);
+    dataSection = memPool->New<DataSection>(".data", SHT_PROGBITS, SHF_WRITE | SHF_ALLOC, k8ByteSize, *this, *memPool);
     strTabSection = memPool->New<StringSection>(".strtab", SHT_STRTAB, 0, 1, *this, *memPool);
     symbolTabSection =
         memPool->New<SymbolSection>(".symtab", SHT_SYMTAB, 0, sizeof(Symbol), *this, *memPool, *strTabSection);
@@ -508,7 +512,7 @@ uint32 AArch64ObjEmitter::GetOpndMachineValue(const Operand &opnd) const
         }
         if (regOpnd.IsOfIntClass()) {
             if (regOpnd.GetRegisterNumber() == RZR) {
-                return regNO - R0 - 2;
+                return regNO - R0 - kRegNum2;
             }
             if (regOpnd.GetRegisterNumber() == RSP) {
                 return regNO - R0 - 1;
@@ -711,8 +715,7 @@ uint32 AArch64ObjEmitter::GenMovImm(const Insn &insn) const
             auto &md = isMovz ? AArch64CG::kMd[MOP_xmovzri16] : AArch64CG::kMd[MOP_xmovnri16];
             opnd |= md.GetMopEncode();
             uint64 bitFieldValue = 0xFFFF;
-            /* hw is 00b, 01b, 10b, or 11b */
-            for (hwFlag = 0; hwFlag < 4; ++hwFlag) {
+            for (hwFlag = 0; hwFlag <= 3; ++hwFlag) { // hwFlag is just from 0(00b) to 3(11b)
                 if (immValue & (bitFieldValue << (k16BitSize * hwFlag))) {
                     break;
                 }
@@ -802,12 +805,10 @@ uint32 AArch64ObjEmitter::GenAddSubShiftImmInsn(const Insn &insn) const
 
 uint32 AArch64ObjEmitter::GenAddSubRegInsn(const Insn &insn) const
 {
-    uint32 operandSize = 4;  // subs insn
-    int32 index = insn.GetOperandSize() == operandSize ? 1 : 0;
+    int32 index = insn.GetOperandSize() == k4ByteSize ? 1 : 0; // subs insn
     /* Rd */
     uint32 opnd = GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd + index));
-    operandSize = 2;
-    if (insn.GetOperandSize() == operandSize) {  // neg, cmp or cmn insn
+    if (insn.GetOperandSize() == k2ByteSize) {  // neg, cmp or cmn insn
         /* Rm */
         opnd |= GetOpndMachineValue(insn.GetOperand(kInsnSecondOpnd)) << kShiftSixteen;
         return opnd;
@@ -1183,11 +1184,18 @@ uint32 AArch64ObjEmitter::GenLoadStoreModeBOrX(const Insn &insn) const
     RegOperand *offsetReg = memOpnd.GetIndexRegister();
     opnd |= GetOpndMachineValue(*offsetReg) << kShiftSixteen;
     std::string extend = memOpnd.GetExtendAsString();
+    uint32 shift = memOpnd.ShiftAmount();
     uint32 option = 0;
     if (extend == "UXTW") {
         option = 0x2;
     } else if (extend == "LSL") {
         option = 0x3;
+        uint32 regSize = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize();
+        // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or 
+        // 3(64-bit def opnd) or 4(128-bit def opnd) in ldr/str insn
+        CHECK_FATAL((shift == k0BitSize) || (regSize == k16BitSize && shift == k1BitSize) ||
+                    (regSize == k32BitSize && shift == k2BitSize) || (regSize == k64BitSize && shift == k3BitSize) ||
+                    (regSize == k128BitSize && shift == k4BitSize), "unsupport LSL amount");
     } else if (extend == "SXTW") {
         option = 0x6;
     } else {
@@ -1195,7 +1203,7 @@ uint32 AArch64ObjEmitter::GenLoadStoreModeBOrX(const Insn &insn) const
         option = 0x7;
     }
     opnd |= option << kShiftThirteen;
-    uint32 s = (memOpnd.ShiftAmount() > 0) ? 1 : 0;
+    uint32 s = (shift > 0) ? 1 : 0;
     opnd |= s << kShiftTwelve;
     return opnd;
 }
@@ -1218,7 +1226,7 @@ uint32 AArch64ObjEmitter::GenLoadStoreRegInsn(const Insn &insn, ObjFuncEmitInfo 
     auto &md = AArch64CG::kMd[mOp];
     uint32 binInsn = md.GetMopEncode();
     // invalid insn generated by the eval node
-    if (static_cast<RegOperand &>(insn.GetOperand(kFirstOpnd)).GetRegisterNumber() == RZR) {
+    if (static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd)).GetRegisterNumber() == RZR) {
         if (mOp == MOP_sldr) {
             binInsn = AArch64CG::kMd[MOP_wldr].GetMopEncode();
         } else if (mOp == MOP_dldr) {
@@ -1243,7 +1251,7 @@ uint32 AArch64ObjEmitter::GenLoadStoreRegInsn(const Insn &insn, ObjFuncEmitInfo 
         if ((((size == k16BitSize) && (offsetValue % k2BitSize) != 0) ||
              ((size == k32BitSize) && (offsetValue % k4BitSize) != 0) ||
              ((size == k64BitSize) && (offsetValue % k8BitSize) != 0)) &&
-            ((offsetValue < 256) && (offsetValue > -257))) {
+            ((offsetValue < k256BitSizeInt) && (offsetValue >= kNegative256BitSize))) {
             uint32 mopEncode = 0;
             // ldur, ldurh, ldurb
             if (insn.IsLoad()) {
@@ -1521,7 +1529,7 @@ uint32 AArch64ObjEmitter::GenLogicalRegInsn(const Insn &insn) const
     /* Rd */
     uint32 opnd = GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd));
 
-    uint32 operandSize = 2;  // mvn insn
+    uint32 operandSize = k2ByteSize;  // mvn insn
     if (insn.GetOperandSize() == operandSize) {
         opnd |= GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd)) << kShiftFive;
         opnd |= GetOpndMachineValue(insn.GetOperand(kInsnSecondOpnd)) << kShiftSixteen;
@@ -1533,7 +1541,7 @@ uint32 AArch64ObjEmitter::GenLogicalRegInsn(const Insn &insn) const
     /* Rm */
     opnd |= GetOpndMachineValue(insn.GetOperand(kInsnThirdOpnd)) << kShiftSixteen;
 
-    operandSize = 4;
+    operandSize = k4ByteSize;
     if (insn.GetOperandSize() == operandSize) {
         BitShiftOperand &bitShiftOpnd = static_cast<BitShiftOperand &>(insn.GetOperand(kInsnFourthOpnd));
         uint32 shift = 0;
@@ -1662,11 +1670,11 @@ uint32 AArch64ObjEmitter::EncodeLogicaImm(uint64 imm, uint32 size) const
 {
     /* the element size */
     uint32 elementSize = size;
-    while (elementSize > 2) {
-        elementSize /= 2;
+    while (elementSize > k2ByteSize) {
+        elementSize >>= 1;
         uint64 mask = (1ULL << elementSize) - 1;
         if ((imm & mask) != ((imm >> elementSize) & mask)) {
-            elementSize *= 2;
+            elementSize <<= 1;
             break;
         }
     }

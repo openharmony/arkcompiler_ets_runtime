@@ -166,7 +166,7 @@ enum GlobalVarAttr {
     VAR_weak,      // weak function defined in this module
     VAR_internal,  // variable defined and only used in this module
     VAR_global,    // exported variable defined in this module
-    VAR_readonly,  // this is additional flag, default is R/W
+    VAR_readonly,  // TODO: this is additional flag, default is R/W
 };
 
 enum IntCmpCondition {
@@ -215,6 +215,12 @@ enum LiteCGTypeKind {
     kLiteCGTypeInstantVector,
     kLiteCGTypeGenericInstant,
 };
+
+// TODO: FieldAttr: do we need to support volatile here?
+// using FieldAttr = AttrKind;
+/* used attribute for field:
+   ATTR_volatile
+ */
 
 using FieldId = uint32_t;
 /* Use FieldId from MIR directly: it's a uint32_t, but with special meaning
@@ -273,6 +279,7 @@ public:
      */
     Type *GetStructType(const String &name);  // query for existing struct type
 
+    // TODO: usage of this function has precondition, should be documented
     FieldOffset GetFieldOffset(StructType *structType, FieldId fieldId);
 
     // for function pointer
@@ -283,9 +290,24 @@ public:
     std::vector<Type *> LiteCGGetFuncParamTypes(Type *type);
 
     Type *LiteCGGetFuncReturnType(Type *type);
-    // still need interface for AddressOfFunction
+    // TODO: still need interface for AddressOfFunction
 
     // Function declaration and definition
+    /* using FunctionBuilder interface for Function creation:
+         // i32 myfunc(i32 param1, i64 param2) { }
+         auto structType = DefineFunction("myfunc")
+                             .Param(i32Type, "param1")
+                             .Param(i64Type, "param2")
+                             .Ret(i32Type)               // optional for void
+                             .Done();
+
+         // i32 myfunc1(i32 param1, i64 param2);
+         auto structType = DeclareFunction("myfunc1")
+                             .Param(i32Type, "param1")
+                             .Param(i64Type, "param2")
+                             .Ret(i32Type)
+                             .Done();
+     */
 
     // This is to enable forwarded call before its definition
     // can return null. caller should check for null.
@@ -304,7 +326,7 @@ public:
     Expr LiteCGGetPregSP();
 
     // var creation
-    // refine the interface for attributes here. and also storage-class?
+    // TODO: refine the interface for attributes here. and also storage-class?
     // initialized to zero if defined here, by default not exported
     Var &CreateGlobalVar(Type *type, const String &name, GlobalVarAttr attr = VAR_internal);
     // initialized to const, by default not exported
@@ -314,6 +336,7 @@ public:
     Var &CreateLocalVar(Type *type, const String &name);
     Var *GetLocalVar(const String &name);
     Var *GetLocalVarFromExpr(Expr inExpr);
+    void SetFunctionDerived2BaseRef(PregIdx derived, PregIdx base);
     PregIdx GetPregIdxFromExpr(const Expr &expr);
     Var &GetParam(Function &function, size_t index) const;
     Expr GenExprFromVar(Var &var);
@@ -353,6 +376,8 @@ public:
     void AppendStmtBeforeBranch(BB &bb, Stmt &stmt);  // append stmt after the first non-jump stmt in back of BB
     bool IsEmptyBB(BB &bb);
     void AppendBB(BB &bb);    // append BB to the back of current function;
+    void AppendToLast(BB &bb);
+    BB &GetLastPosBB();
     BB &GetLastAppendedBB();  // get last appended BB of current function
 
     void SetStmtCallConv(Stmt &stmt, ConvAttr convAttr);
@@ -408,7 +433,7 @@ public:
     Stmt &Iassign(Expr src, Expr addr, Type *baseType, FieldId fieldId = 0);
 
     // expressions
-    Expr Dread(Var &var);  // do we need other forms?
+    Expr Dread(Var &var);  // TODO: do we need other forms?
     inline Expr Dread(Var *var)
     {  // shortcut for read from local-var
         return Dread(*var);
@@ -420,7 +445,7 @@ public:
     PregIdx CreatePreg(Type *mtype);
     Stmt &Regassign(Expr src, PregIdx reg);
     Expr Regread(PregIdx pregIdx);
-    Expr Addrof(Var &var);           // do we need other forms?
+    Expr Addrof(Var &var);           // TODO: do we need other forms?
     Expr ConstVal(Const &constVal);  // a const operand
 
     Expr Lnot(Type *type, Expr src);
@@ -441,6 +466,14 @@ public:
     Expr Or(Type *type, Expr src1, Expr src2);
     Expr Xor(Type *type, Expr src1, Expr src2);
 
+#if 0  // move support for floating point to an optional set of API
+  Expr FAdd(Type *type, Expr src1, Expr src2);
+  Expr FSub(Type *type, Expr src1, Expr src2);
+  Expr FMul(Type *type, Expr src1, Expr src2);
+  Expr FDiv(Type *type, Expr src1, Expr src2);
+  Expr FRem(Type *type, Expr src1, Expr src2);
+#endif
+
     Expr ICmpEQ(Type *type, Expr src1, Expr src2);
     Expr ICmpNE(Type *type, Expr src1, Expr src2);
     // unsigned compare
@@ -454,6 +487,23 @@ public:
     Expr ICmpSGT(Type *type, Expr src1, Expr src2);
     Expr ICmpSGE(Type *type, Expr src1, Expr src2);
     Expr ICmp(Type *type, Expr src1, Expr src2, IntCmpCondition cond);
+
+#if 0  // move support for floating point to an optional set of API
+  Expr FCmpOLT(Type *type, Expr src1, Expr src2); // overflow
+  Expr FCmpOEQ(Type *type, Expr src1, Expr src2);
+  Expr FCmpOLE(Type *type, Expr src1, Expr src2);
+  Expr FCmpOGT(Type *type, Expr src1, Expr src2);
+  Expr FCmpONE(Type *type, Expr src1, Expr src2);
+  Expr FCmpOGE(Type *type, Expr src1, Expr src2);
+  Expr FCmpORD(Type *type, Expr src1, Expr src2);
+  Expr FCmpUNO(Type *type, Expr src1, Expr src2); // underflow
+  Expr FCmpULT(Type *type, Expr src1, Expr src2);
+  Expr FCmpUEQ(Type *type, Expr src1, Expr src2);
+  Expr FCmpULE(Type *type, Expr src1, Expr src2);
+  Expr FCmpUGT(Type *type, Expr src1, Expr src2);
+  Expr FCmpUNE(Type *type, Expr src1, Expr src2);
+  Expr FCmpUGE(Type *type, Expr src1, Expr src2);
+#endif
     Expr FCmp(Type *type, Expr src1, Expr src2, FloatCmpCondition cond);
 
     // Type conversion
@@ -463,6 +513,15 @@ public:
     Expr SExt(Type *fromType, Type *toType, Expr opnd);
     Expr BitCast(Type *fromType, Type *toType, Expr opnd);
     Expr Cvt(Type *fromType, Type *toType, Expr opnd);
+
+#if 0  // move support for floating point to an optional set of API
+  Expr FTrunc(Type *fromType, Type *toType, Expr opnd);
+  Expr FExt(Type *fromType, Type *toType, Expr opnd);
+  Expr FToUI(Type *fromType, Type *toType, Expr opnd);
+  Expr FToSI(Type *fromType, Type *toType, Expr opnd);
+  Expr UIToF(Type *fromType, Type *toType, Expr opnd);
+  Expr SIToF(Type *fromType, Type *toType, Expr opnd);
+#endif
 
     Expr Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse);
 
@@ -508,7 +567,7 @@ public:
 
         StructTypeBuilder &Field(std::string_view fieldName, Type *fieldType)
         {
-            // field type attribute?
+            // TODO: field type attribute?
             fields.push_back(std::make_pair(fieldName, fieldType));
             return *this;
         }
@@ -574,7 +633,7 @@ public:
         ArrayConstBuilder &Dim(const std::vector<T> init)
         {
             for (const auto &value : init) {
-                // fix the element type.
+                // TODO: fix the element type.
                 Const &element = builder.CreateIntConst(builder.i32Type, static_cast<int64_t>(value));
                 Element(element);
             }
@@ -595,6 +654,7 @@ public:
     private:
         LMIRBuilder &builder;
         ArrayConst *arrayConst;
+        // ArrayType *type;
     };
 
     ArrayConstBuilder CreateArrayConst(ArrayType *type)
@@ -607,6 +667,7 @@ public:
         FunctionBuilder(LMIRBuilder &builder_, const String &name_, bool needBody_)
             : builder(builder_), name(name_), needBody(needBody_)
         {
+            // retType = voidType;
             attr = FUNC_internal;
             convAttr = CCall;
             isVargs = false;

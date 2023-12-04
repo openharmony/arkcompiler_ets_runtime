@@ -749,6 +749,10 @@ void CGCFG::UnreachCodeAnalysis()
             ehFunc->GetLSDACallSiteTable()->UpdateCallSite(*unreachBB, *nextReachableBB);
         }
 
+        if (unreachBB->IsUnreachable() == false) {
+            continue;
+        }
+
         unreachBB->GetPrev()->SetNext(unreachBB->GetNext());
         unreachBB->GetNext()->SetPrev(unreachBB->GetPrev());
 
@@ -927,6 +931,9 @@ bool CgHandleCFG::PhaseRun(maplebe::CGFunc &f)
     f.SetTheCFG(cfg);
     /* build control flow graph */
     f.GetTheCFG()->BuildCFG();
+    /* analysis unreachable code */
+    f.GetTheCFG()->UnreachCodeAnalysis();
+    f.EraseUnreachableStackMapInsns();
     return false;
 }
 MAPLE_ANALYSIS_PHASE_REGISTER(CgHandleCFG, handlecfg)

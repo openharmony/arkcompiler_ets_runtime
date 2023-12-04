@@ -54,7 +54,7 @@ void X64GenProEpilog::GenerateCalleeSavedRegs(bool isPush)
         uint32 regSize = regByteSize * kBitsPerByte;
         DEBUG_ASSERT((regSize == k32BitSize || regSize == k64BitSize), "only supported 32/64-bits");
         RegOperand &calleeReg = cgFunc.GetOpndBuilder()->CreatePReg(reg, regSize, regType);
-        calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(static_cast<uint16>(reg), static_cast<int32>(offset)));
+        calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(static_cast<uint16>(reg) - 1, static_cast<int32>(offset)));
         MemOperand &memOpnd = cgFunc.GetOpndBuilder()->CreateMem(baseReg, offset, regSize);
         if (isPush) {
             GeneratePushCalleeSavedRegs(calleeReg, memOpnd, regSize);

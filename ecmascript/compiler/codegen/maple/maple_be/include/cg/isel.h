@@ -37,7 +37,7 @@ public:
 
     void doMPIS();
 
-    CGFunc *GetCurFunc()
+    CGFunc *GetCurFunc() const
     {
         return cgFunc;
     }
@@ -58,11 +58,11 @@ public:
     Operand *SelectCvt(const BaseNode &parent, const TypeCvtNode &node, Operand &opnd0);
     Operand *SelectExtractbits(const BaseNode &parent, const ExtractbitsNode &node, Operand &opnd0);
     Operand *SelectDepositBits(const DepositbitsNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
-    Operand *SelectAbs(UnaryNode &node, Operand &opnd0);
+    virtual Operand *SelectAbs(UnaryNode &node, Operand &opnd0);
     Operand *SelectAlloca(UnaryNode &node, Operand &opnd0);
     Operand *SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent);
     ImmOperand *SelectIntConst(const MIRIntConst &intConst, PrimType primType);
-    void SelectCallCommon(StmtNode &stmt, MPISel &iSel);
+    void SelectCallCommon(StmtNode &stmt, const MPISel &iSel);
     void SelectAdd(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     void SelectSub(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     Operand *SelectShift(const BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
@@ -80,6 +80,8 @@ public:
     virtual void SelectCall(CallNode &callNode) = 0;
     virtual void SelectIcall(IcallNode &icallNode, Operand &opnd0) = 0;
     virtual void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual Operand *SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
+    virtual Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const = 0;
     virtual Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent) = 0;
     virtual Operand *SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent) = 0;
     virtual Operand *SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent) = 0;
@@ -96,7 +98,9 @@ public:
     virtual Operand *SelectSelect(TernaryNode &expr, Operand &cond, Operand &trueOpnd, Operand &falseOpnd,
                                   const BaseNode &parent) = 0;
     virtual Operand *SelectStrLiteral(ConststrNode &constStr) = 0;
-    virtual Operand *SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
+    virtual Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
+    virtual Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
+    virtual Operand *SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual void SelectAsm(AsmNode &node) = 0;
     virtual void SelectAggDassign(MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs) = 0;
     Operand *SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent);
@@ -105,6 +109,31 @@ public:
     Operand *SelectMax(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
     Operand *SelectRetype(TypeCvtNode &node, Operand &opnd0);
     virtual RegOperand &SelectSpecialRegread(PregIdx pregIdx, PrimType primType) = 0;
+    virtual Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
+
+    template <typename T>
+    Operand *SelectLiteral(T &c, MIRFunction &func, uint32 labelIdx) const
+    {
+        MIRSymbol *st = func.GetSymTab()->CreateSymbol(kScopeLocal);
+        std::string lblStr(".LB_");
+        MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
+        std::string funcName = funcSt->GetName();
+        (void)lblStr.append(funcName).append(std::to_string(labelIdx));
+        st->SetNameStrIdx(lblStr);
+        st->SetStorageClass(kScPstatic);
+        st->SetSKind(kStConst);
+        st->SetKonst(&c);
+        PrimType primType = c.GetType().GetPrimType();
+        st->SetTyIdx(TyIdx(primType));
+        uint32 typeBitSize = GetPrimTypeBitSize(primType);
+
+        // TODO: maybe need judge cgFunc->GetMirModule().IsXModule
+        if ((T::GetPrimType() == PTY_f32 || T::GetPrimType() == PTY_f64)) {
+            return &GetOrCreateMemOpndFromSymbol(*st, typeBitSize, 0);
+        }
+        CHECK_FATAL(false, "NIY");
+        return nullptr;
+    }
 
 protected:
     MemPool *isMp;
@@ -115,6 +144,9 @@ protected:
     RegOperand &SelectCopy2Reg(Operand &src, PrimType toType, PrimType fromType);
     RegOperand &SelectCopy2Reg(Operand &src, PrimType toType);
     void SelectIntCvt(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType);
+    void SelectCvtInt2Float(RegOperand &resOpnd, Operand &origOpnd0, PrimType toType, PrimType fromType);
+    void SelectFloatCvt(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType);
+    void SelectCvtFloat2Int(RegOperand &resOpnd, Operand &origOpnd0, PrimType toType, PrimType fromType);
     PrimType GetIntegerPrimTypeFromSize(bool isSigned, uint32 bitSize);
     std::pair<FieldID, MIRType *> GetFieldIdAndMirTypeFromMirNode(const BaseNode &node);
     MirTypeInfo GetMirTypeInfoFormFieldIdAndMirType(FieldID fieldId, MIRType *mirType);
@@ -126,8 +158,8 @@ private:
     void HandleFuncExit();
     void SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPType, Operand &opndRhs);
     void SelectDassignStruct(MIRSymbol &symbol, MemOperand &symbolMem, Operand &opndRhs);
-    virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId = 0) = 0;
-    virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset) = 0;
+    virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId = 0) const = 0;
+    virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset) const = 0;
     virtual Operand &GetTargetRetOperand(PrimType primType, int32 sReg) = 0;
     void SelectBasicOp(Operand &resOpnd, Operand &opnd0, Operand &opnd1, MOperator mOp, PrimType primType);
     /*
@@ -146,6 +178,8 @@ private:
     void SelectMin(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     void SelectMax(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     virtual void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) = 0;
+    /* retype float/double reg to int64 reg, or i64 reg to f64 reg: no changing bit mov */
+    virtual void SelectRetypeFloat(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType) = 0;
 };
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(InstructionSelector, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

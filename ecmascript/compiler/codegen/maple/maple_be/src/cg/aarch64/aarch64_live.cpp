@@ -80,7 +80,7 @@ void AArch64LiveAnalysis::ProcessCallInsnParam(BB &bb, const Insn &insn) const
             return;
         }
     }
-    for (uint32 i = 0; i < 8; ++i) {
+    for (uint32 i = 0; i < 8; ++i) { // do with 8 reg (R0-R7, V0-V7)
         Operand &phyOpndR =
             aarchCGFunc->GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(R0 + i), k64BitSize, kRegTyInt);
         CollectLiveInfo(bb, phyOpndR, true, false);

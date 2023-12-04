@@ -466,7 +466,7 @@ public:
     uint32 GetIntHigh32() const
     {
         auto unsignVal = static_cast<uint64>(value.intValue);
-        return static_cast<uint32>((unsignVal & 0xffffffff00000000) >> 32);
+        return static_cast<uint32>((unsignVal & 0xffffffff00000000) >> k32BitSize);
     }
 
     int64 GetIntValue() const

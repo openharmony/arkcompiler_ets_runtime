@@ -206,7 +206,7 @@ bool MIRParser::ParseSpecialReg(PregIdx &pRegIdx)
         isdigit(lexName[retValSize])) {
         int32 retValNo = lexName[retValSize] - '0';
         for (size_t i = retValSize + 1; (i < lexSize) && isdigit(lexName[i]); ++i) {
-            retValNo = retValNo * 10 + lexName[i] - '0';
+            retValNo = retValNo * 10 + lexName[i] - '0'; // 10 for decimal
         }
         pRegIdx = -kSregRetval0 - retValNo;
         lexer.NextToken();

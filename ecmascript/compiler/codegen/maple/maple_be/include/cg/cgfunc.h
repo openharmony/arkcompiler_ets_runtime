@@ -437,10 +437,10 @@ public:
         return referenceVirtualRegs.count(regNO) != 0;
     }
 
-    const MapleUnorderedSet<regno_t> &GetReferenceRegs() const
-    {
+    const MapleUnorderedSet<regno_t> &GetReferenceRegs() const {
         return referenceVirtualRegs;
     }
+
 
     void AddReferenceStackSlot(int64 offset)
     {
@@ -462,11 +462,10 @@ public:
         pregIdx2Opnd[pregIdx] = &opnd;
     }
 
-    Operand &GetOpndFromPregIdx(size_t pregIdx)
+    Operand *GetOpndFromPregIdx(size_t pregIdx)
     {
         Operand *opnd = pregIdx2Opnd[pregIdx];
-        CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
-        return *opnd;
+        return opnd;
     }
 
     Operand &CreateCfiImmOperand(int64 val, uint32 size) const
@@ -1423,6 +1422,17 @@ public:
         stackMapInsns.emplace_back(&insn);
     }
 
+    void EraseUnreachableStackMapInsns()
+    {
+        for (auto it = stackMapInsns.begin(); it != stackMapInsns.end();) {
+            if ((*it)->GetBB()->IsUnreachable()) {
+                it = stackMapInsns.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
     uint32 GetFirstMapleIrVRegNO() const
     {
         return firstMapleIrVRegNO;
@@ -1549,6 +1559,12 @@ protected:
     int64 GetPseudoRegisterSpillLocation(PregIdx idx)
     {
         const SymbolAlloc *symLoc = memLayout->GetSpillLocOfPseduoRegister(idx);
+        return static_cast<int64>(GetBaseOffset(*symLoc));
+    }
+
+    int64 GetOrCreatSpillRegLocation(regno_t vrNum, uint32 memByteSize) 
+    {
+        auto *symLoc = GetMemlayout()->GetLocOfSpillRegister(vrNum, memByteSize);
         return static_cast<int64>(GetBaseOffset(*symLoc));
     }
 

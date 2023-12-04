@@ -188,8 +188,6 @@ public:
      */
     virtual void AssignSpillLocationsToPseudoRegisters() = 0;
 
-    virtual SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum) = 0;
-
     SymbolAlloc *GetSymAllocInfo(uint32 stIdx)
     {
         DEBUG_ASSERT(stIdx < symAllocTable.size(), "out of symAllocTable's range");
@@ -207,12 +205,23 @@ public:
         return spillLocTable.at(index);
     }
 
-    SymbolAlloc *GetLocOfSpillRegister(regno_t vrNum)
+    SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum, uint32 memByteSize) 
+    {
+        auto *symLoc = CreateSymbolAlloc();
+        symLoc->SetMemSegment(segSpillReg);
+        segSpillReg.SetSize(static_cast<uint32>(RoundUp(segSpillReg.GetSize(), memByteSize)));
+        symLoc->SetOffset(segSpillReg.GetSize());
+        segSpillReg.SetSize(segSpillReg.GetSize() + memByteSize);
+        SetSpillRegLocInfo(vrNum, *symLoc);
+        return symLoc;
+    }
+
+    SymbolAlloc *GetLocOfSpillRegister(regno_t vrNum, uint32 memByteSize) 
     {
         SymbolAlloc *loc = nullptr;
         auto pos = spillRegLocMap.find(vrNum);
         if (pos == spillRegLocMap.end()) {
-            loc = AssignLocationToSpillReg(vrNum);
+            loc = AssignLocationToSpillReg(vrNum, memByteSize);
         } else {
             loc = pos->second;
         }
@@ -290,6 +299,7 @@ protected:
     MemSegment segArgsStkPassed;
     MemSegment segArgsRegPassed;
     MemSegment segArgsToStkPass;
+    MemSegment segSpillReg = MemSegment(kMsSpillReg);
     MapleVector<SymbolAlloc *> symAllocTable; /* index is stindex from StIdx */
     MapleVector<SymbolAlloc *> spillLocTable; /* index is preg idx */
     MapleUnorderedMap<regno_t, SymbolAlloc *> spillRegLocMap;
@@ -297,6 +307,7 @@ protected:
     MapleAllocator *memAllocator;
     CGFunc *cgFunc = nullptr;
     const uint32 stackPtrAlignment;
+    virtual SymbolAlloc *CreateSymbolAlloc() const = 0;
 };
 } /* namespace maplebe */
 

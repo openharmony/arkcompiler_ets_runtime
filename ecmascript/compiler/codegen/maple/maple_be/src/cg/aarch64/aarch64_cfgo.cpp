@@ -20,11 +20,9 @@ namespace maplebe {
 /* Initialize cfg optimization patterns */
 void AArch64CFGOptimizer::InitOptimizePatterns()
 {
-    /* disable the pass that conflicts with cfi */
-    if (!cgFunc->GenCfi() || CGOptions::GetEmitFileType() == CGOptions::kObj) {
-        diffPassPatterns.emplace_back(memPool->New<ChainingPattern>(*cgFunc));
-    }
+    diffPassPatterns.emplace_back(memPool->New<ChainingPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<SequentialJumpPattern>(*cgFunc));
+    // diffPassPatterns.emplace_back(memPool->New<AArch64FlipBRPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<DuplicateBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<UnreachBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<EmptyBBPattern>(*cgFunc));
