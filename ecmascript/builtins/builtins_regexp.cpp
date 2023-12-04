@@ -1793,6 +1793,10 @@ JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTagg
     JSTaggedValue execVal = ObjectFastOperator::FastGetPropertyByValue(thread, regexp.GetTaggedValue(),
                                                                        execHandle.GetTaggedValue());
     if (execVal == env->GetTaggedRegExpExecFunction()) {
+        if (!regexp->IsJSRegExp()) {
+            // throw a TypeError exception.
+            THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have a [[RegExpMatcher]]", JSTaggedValue::Exception());
+        }
         JSTaggedValue result = RegExpBuiltinExec(thread, regexp, JSHandle<JSTaggedValue>(inputStr), useCache);
         // b. ReturnIfAbrupt(result).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

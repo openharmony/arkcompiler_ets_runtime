@@ -56,3 +56,4 @@ aaa
 null
 aaa
 aa
+TypeError: this does not have a [[RegExpMatcher]]
