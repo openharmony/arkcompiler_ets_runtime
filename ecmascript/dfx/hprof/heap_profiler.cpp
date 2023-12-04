@@ -142,7 +142,7 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[ma
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, true);
+    DumpHeapSnapshot(dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC);
 #endif
 }
 
