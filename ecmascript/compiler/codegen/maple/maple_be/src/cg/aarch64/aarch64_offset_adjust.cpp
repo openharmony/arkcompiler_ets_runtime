@@ -62,7 +62,8 @@ void AArch64FPLROffsetAdjustment::AdjustmentOffsetForOpnd(Insn &insn) const
                 regOpnd = aarchCGFunc->GetOrCreateStackBaseRegOperand();
             }
             if (regOpnd.GetRegisterNumber() == RFP) {
-                insn.SetOperand(i, aarchCGFunc->GetOrCreatePhysicalRegisterOperand(stackBaseReg, k64BitSize, kRegTyInt));
+                insn.SetOperand(i,
+                    aarchCGFunc->GetOrCreatePhysicalRegisterOperand(stackBaseReg, k64BitSize, kRegTyInt));
                 replaceFP = true;
             }
         } else if (opnd.IsMemoryAccessOperand()) {
@@ -75,54 +76,56 @@ void AArch64FPLROffsetAdjustment::AdjustmentOffsetForOpnd(Insn &insn) const
     if (replaceFP && !aarchCGFunc->UseFP()) {
         AdjustmentStackPointer(insn);
     }
-      if (insn.IsLoad() || insn.IsStore()) {
-
-          for (uint32 i = 0; i < opndNum; ++i) {
-              Operand &opnd = insn.GetOperand(i);
-              if (opnd.IsMemoryAccessOperand()) {
-                  auto &memOpnd = static_cast<MemOperand &>(opnd);
-                  if ((memOpnd.GetAddrMode() != MemOperand::kAddrModeBOi) || !memOpnd.IsIntactIndexed()) {
+    if (insn.IsLoad() || insn.IsStore()) {
+        for (uint32 i = 0; i < opndNum; ++i) {
+            Operand &opnd = insn.GetOperand(i);
+            if (opnd.IsMemoryAccessOperand()) {
+                auto &memOpnd = static_cast<MemOperand &>(opnd);
+                if ((memOpnd.GetAddrMode() != MemOperand::kAddrModeBOi) || !memOpnd.IsIntactIndexed()) {
                     continue;
-                  }  
-                  if (!aarchCGFunc->IsOperandImmValid(insn.GetMachineOpcode(), &memOpnd, i)) {
-                      MemOperand &newMemOpnd = aarchCGFunc->SplitOffsetWithAddInstruction(
-                      memOpnd, memOpnd.GetSize(), static_cast<AArch64reg>(R16), false, &insn);
-                      insn.SetOperand(i, newMemOpnd);
-                  }
-              }
-          }
-      }  else {
-          for (uint32 i = 0; i < opndNum; ++i) {
-              Operand &opnd = insn.GetOperand(i);
-              if (opnd.IsIntImmediate()) {
-                  auto &immOpnd = static_cast<ImmOperand &>(opnd);
-                  if (!aarchCGFunc->IsOperandImmValid(insn.GetMachineOpcode(), &immOpnd, i)) {
-                      if (insn.GetMachineOpcode() >= MOP_xaddrri24 && insn.GetMachineOpcode() <= MOP_waddrri12) {
-                          PrimType destTy =
-                              static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd)).GetSize() == k64BitSize ? PTY_i64 : PTY_i32;
-                          RegOperand *resOpnd = &static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
-                          ImmOperand &copyImmOpnd =
-                              aarchCGFunc->CreateImmOperand(immOpnd.GetValue(), immOpnd.GetSize(), immOpnd.IsSignedValue());
-                          aarchCGFunc->SelectAddAfterInsn(*resOpnd, insn.GetOperand(kInsnSecondOpnd), copyImmOpnd, destTy, false,
-                                                      insn);
-                          insn.GetBB()->RemoveInsn(insn);
-                      } else if (insn.GetMachineOpcode() == MOP_xsubrri12 || insn.GetMachineOpcode() == MOP_wsubrri12) {
-                          if (immOpnd.IsSingleInstructionMovable()) {
-                              RegOperand &tempReg = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R16, k64BitSize, kRegTyInt);
-                              bool is64bit = insn.GetOperand(kInsnFirstOpnd).GetSize() == k64BitSize;
-                              MOperator tempMovOp = is64bit ? MOP_xmovri64 : MOP_wmovri32;
-                              Insn &tempMov = cgFunc->GetInsnBuilder()->BuildInsn(tempMovOp, tempReg, immOpnd);
-                              insn.SetOperand(i, tempReg);
-                              insn.SetMOP(is64bit ? AArch64CG::kMd[MOP_xsubrrr] : AArch64CG::kMd[MOP_wsubrrr]);
-                              (void)insn.GetBB()->InsertInsnBefore(insn, tempMov);
-                          }
-                      } else {
-                          CHECK_FATAL(false, "NIY");
-                      }
-                  }
-              }
-          }
-      }
+                }
+                if (!aarchCGFunc->IsOperandImmValid(insn.GetMachineOpcode(), &memOpnd, i)) {
+                    MemOperand &newMemOpnd = aarchCGFunc->SplitOffsetWithAddInstruction(
+                        memOpnd, memOpnd.GetSize(), static_cast<AArch64reg>(R16), false, &insn);
+                    insn.SetOperand(i, newMemOpnd);
+                }
+            }
+        }
+    } else {
+        for (uint32 i = 0; i < opndNum; ++i) {
+            Operand &opnd = insn.GetOperand(i);
+            if (opnd.IsIntImmediate()) {
+                auto &immOpnd = static_cast<ImmOperand &>(opnd);
+                if (!aarchCGFunc->IsOperandImmValid(insn.GetMachineOpcode(), &immOpnd, i)) {
+                    if (insn.GetMachineOpcode() >= MOP_xaddrri24 && insn.GetMachineOpcode() <= MOP_waddrri12) {
+                        PrimType destTy =
+                            static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd)).GetSize() == k64BitSize
+                                ? PTY_i64
+                                : PTY_i32;
+                        RegOperand *resOpnd = &static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+                        ImmOperand &copyImmOpnd = aarchCGFunc->CreateImmOperand(immOpnd.GetValue(), immOpnd.GetSize(),
+                                                                                immOpnd.IsSignedValue());
+                        aarchCGFunc->SelectAddAfterInsn(*resOpnd, insn.GetOperand(kInsnSecondOpnd), copyImmOpnd, destTy,
+                                                        false, insn);
+                        insn.GetBB()->RemoveInsn(insn);
+                    } else if (insn.GetMachineOpcode() == MOP_xsubrri12 || insn.GetMachineOpcode() == MOP_wsubrri12) {
+                        if (immOpnd.IsSingleInstructionMovable()) {
+                            RegOperand &tempReg =
+                                aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R16, k64BitSize, kRegTyInt);
+                            bool is64bit = insn.GetOperand(kInsnFirstOpnd).GetSize() == k64BitSize;
+                            MOperator tempMovOp = is64bit ? MOP_xmovri64 : MOP_wmovri32;
+                            Insn &tempMov = cgFunc->GetInsnBuilder()->BuildInsn(tempMovOp, tempReg, immOpnd);
+                            insn.SetOperand(i, tempReg);
+                            insn.SetMOP(is64bit ? AArch64CG::kMd[MOP_xsubrrr] : AArch64CG::kMd[MOP_wsubrrr]);
+                            (void)insn.GetBB()->InsertInsnBefore(insn, tempMov);
+                        }
+                    } else {
+                        CHECK_FATAL(false, "NIY");
+                    }
+                }
+            }
+        }
+    }
 }
 
 void AArch64FPLROffsetAdjustment::AdjustMemBaseReg(Insn &insn, uint32 i, bool &replaceFP) const
@@ -201,9 +204,10 @@ void AArch64FPLROffsetAdjustment::AdjustmentStackPointer(Insn &insn) const
     //       in subsequent steps, which will cause some unknown errors. So, we're going to do a unified
     //       split after all the steps are complete.
     auto *aarch64memlayout = static_cast<AArch64MemLayout*>(aarchCGFunc->GetMemlayout());
-    uint32 offset = static_cast<int32>(aarch64memlayout->SizeOfArgsToStackPass() + cgFunc->GetFunction().GetFrameReseverdSlot());
+    uint32 offset =
+        static_cast<int32>(aarch64memlayout->SizeOfArgsToStackPass() + cgFunc->GetFunction().GetFrameReseverdSlot());
     if (offset == 0) {
-      return;
+        return;
     }
     if (insn.IsLoad() || insn.IsStore()) {
         auto *memOpnd = static_cast<MemOperand*>(insn.GetMemOpnd());
@@ -228,7 +232,8 @@ void AArch64FPLROffsetAdjustment::AdjustmentStackPointer(Insn &insn) const
             case MOP_xaddrri24: {
                 RegOperand &tempReg = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R16, k64BitSize, kRegTyInt);
                 ImmOperand &offsetReg = aarchCGFunc->CreateImmOperand(offset, k64BitSize, false);
-                aarchCGFunc->SelectAddAfterInsn(tempReg, insn.GetOperand(kInsnSecondOpnd), offsetReg, PTY_i64, false, insn);
+                aarchCGFunc->SelectAddAfterInsn(tempReg, insn.GetOperand(kInsnSecondOpnd), offsetReg, PTY_i64, false,
+                                                insn);
                 insn.SetOperand(kInsnSecondOpnd, tempReg);
                 break;
             }

@@ -181,7 +181,7 @@ Type *LMIRBuilder::CreateStructTypeInternal(const String &name,
                                             std::vector<std::pair<std::string_view, Type *>> &fields_)
 {
     FieldVector parentFields;  // parentFields not used.
-    // TODO: not sure about the cost
+    // not sure about the cost
     FieldVector fields;
     for (auto field : fields_) {
         auto strIdx = mirBuilder.GetOrCreateStringIndex(field.first.data());
@@ -211,7 +211,7 @@ ArrayConst &LMIRBuilder::CreateArrayConstInternal(ArrayType *type)
 
 FieldOffset LMIRBuilder::GetFieldOffset(StructType *structType, FieldId fieldId)
 {
-    // TODO: we should avoid access CG internals here
+    // we should avoid access CG internals here
     // return Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, fieldId);
     return std::pair<int32_t, int32_t>(0, 0);
 }
@@ -257,7 +257,7 @@ Type *LMIRBuilder::LiteCGGetFuncReturnType(Type *type)
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(retTypeIndex);
 }
 
-// TODO: not sure it's FUNCATTR_local or FUNCATTR_static
+// not sure it's FUNCATTR_local or FUNCATTR_static
 static const FuncAttrKind FuncAttrMapTable[] = {
     // FUNC_global,   FUNC_weak,     FUNC_internal
     FUNCATTR_extern, FUNCATTR_weak, FUNCATTR_local};
@@ -276,7 +276,7 @@ Function &LMIRBuilder::CreateFunctionInternal(const String &name, Type *retType,
         params.push_back(param);
     }
     auto &function = *mirBuilder.CreateFunction(name, *retType, params, isVargs, needBody);
-    // TODO: check for attr
+    // check for attr
     function.SetAttr(FuncAttrMapTable[attr]);
     function.SetAttr(FuncConvAttrMapTable[convAttr]);
     // It defines a function, add to module
@@ -344,7 +344,7 @@ Expr LMIRBuilder::LiteCGGetPregSP()
     return Regread(kSregSp);
 }
 
-// TODO: not sure it's FUNCATTR_local or FUNCATTR_static
+// not sure it's FUNCATTR_local or FUNCATTR_static
 static const AttrKind VarAttrMapTable[] = {
     // VAR_external, VAR_weak, VAR_internal, VAR_global, VAR_readonly
     ATTR_extern, ATTR_weak, ATTR_local, ATTR_extern, ATTR_readonly};
@@ -432,7 +432,7 @@ Const &LMIRBuilder::CreateDoubleConst(double val)
 
 Const &LMIRBuilder::CreateStrConst(const String &constStr)
 {
-    // TODO: fix the type for string const
+    // fix the type for string const
     return *module.GetMemPool()->New<MIRStrConst>(constStr, *strType);
 }
 
@@ -447,7 +447,7 @@ Const *LMIRBuilder::GetConstFromExpr(const Expr &expr)
 
 BB &LMIRBuilder::CreateBB(bool needLabel)
 {
-    // TODO: not sure block-node is a correct representation
+    // not sure block-node is a correct representation
     // create block statement in current function
     BB &bb = *module.CurFuncCodeMemPool()->New<BlockNode>();
     if (needLabel) {
@@ -537,15 +537,11 @@ Stmt &LMIRBuilder::CondGoto(Expr cond, BB &target, bool inverseCond)
     return *mirBuilder.CreateStmtCondGoto(cond.GetNode(), opcode, GetBBLabelIdx(target));
 }
 
-// TODO: not ready yet
+// not ready yet
 Stmt &LMIRBuilder::CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB,
                                         std::vector<std::pair<int64_t, BB *>> &cases)
 {
     CaseVector switchTable(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
-#if 0
-  for (const std::pair<int64_t, BB&> casePair : cases) {
-  }
-#endif
     return *mirBuilder.CreateStmtSwitch(cond.GetNode(), GetBBLabelIdx(defaultBB), switchTable);
 }
 
@@ -604,7 +600,7 @@ Stmt &LMIRBuilder::IntrinsicCall(IntrinsicId func_, Args &args_, Var *result)
         args.emplace_back(arg.GetNode());
     }
 
-    // TODO: need to fix the type for IntrinsicId
+    // need to fix the type for IntrinsicId
     auto func = static_cast<MIRIntrinsicID>(func_);
     if (result == nullptr) {
         return *mirBuilder.CreateStmtIntrinsicCall(func, args);

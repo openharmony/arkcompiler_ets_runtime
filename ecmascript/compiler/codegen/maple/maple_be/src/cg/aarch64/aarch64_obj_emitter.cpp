@@ -1191,7 +1191,7 @@ uint32 AArch64ObjEmitter::GenLoadStoreModeBOrX(const Insn &insn) const
     } else if (extend == "LSL") {
         option = 0x3;
         uint32 regSize = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize();
-        // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or 
+        // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or
         // 3(64-bit def opnd) or 4(128-bit def opnd) in ldr/str insn
         CHECK_FATAL((shift == k0BitSize) || (regSize == k16BitSize && shift == k1BitSize) ||
                     (regSize == k32BitSize && shift == k2BitSize) || (regSize == k64BitSize && shift == k3BitSize) ||

@@ -127,7 +127,7 @@ public:
         st->SetTyIdx(TyIdx(primType));
         uint32 typeBitSize = GetPrimTypeBitSize(primType);
 
-        // TODO: maybe need judge cgFunc->GetMirModule().IsXModule
+        // maybe need judge cgFunc->GetMirModule().IsXModule
         if ((T::GetPrimType() == PTY_f32 || T::GetPrimType() == PTY_f64)) {
             return &GetOrCreateMemOpndFromSymbol(*st, typeBitSize, 0);
         }

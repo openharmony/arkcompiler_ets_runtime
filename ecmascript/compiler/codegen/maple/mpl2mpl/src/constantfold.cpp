@@ -45,13 +45,13 @@ std::optional<IntVal> operator*(const std::optional<IntVal> &v1, const std::opti
 
     // Perform all calculations in terms of the maximum available signed type.
     // The value will be truncated for an appropriate type when constant is created in PariToExpr function
-    // TODO: replace with PTY_i128 when IntVal supports 128bit calculation
+    // replace with PTY_i128 when IntVal supports 128bit calculation
     return v1 && v2 ? v1->Mul(*v2, PTY_i64) : IntVal(0, PTY_i64);
 }
 
 // Perform all calculations in terms of the maximum available signed type.
 // The value will be truncated for an appropriate type when constant is created in PariToExpr function
-// TODO: replace with PTY_i128 when IntVal supports 128bit calculation
+// replace with PTY_i128 when IntVal supports 128bit calculation
 std::optional<IntVal> AddSub(const std::optional<IntVal> &v1, const std::optional<IntVal> &v2, bool isAdd)
 {
     if (!v1 && !v2) {

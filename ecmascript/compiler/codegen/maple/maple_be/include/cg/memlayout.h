@@ -205,7 +205,7 @@ public:
         return spillLocTable.at(index);
     }
 
-    SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum, uint32 memByteSize) 
+    SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum, uint32 memByteSize)
     {
         auto *symLoc = CreateSymbolAlloc();
         symLoc->SetMemSegment(segSpillReg);
@@ -216,7 +216,7 @@ public:
         return symLoc;
     }
 
-    SymbolAlloc *GetLocOfSpillRegister(regno_t vrNum, uint32 memByteSize) 
+    SymbolAlloc *GetLocOfSpillRegister(regno_t vrNum, uint32 memByteSize)
     {
         SymbolAlloc *loc = nullptr;
         auto pos = spillRegLocMap.find(vrNum);

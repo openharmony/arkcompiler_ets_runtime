@@ -123,7 +123,8 @@ public:
     virtual void EmitLabelValue(int64 symIdx, bool belongsToDataSec = true) = 0;
     virtual void EmitBitFieldValue(uint64 combineBitFieldValue, bool belongsToDataSec = true) = 0;
     virtual void EmitNull(uint64 sizeInByte) = 0;
-    virtual void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte, bool belongsToTextSec = false) = 0;
+    virtual void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte,
+                                  bool belongsToTextSec = false) = 0;
     virtual void FinalizeFileInfo() = 0;
 
     /* emit debug info */

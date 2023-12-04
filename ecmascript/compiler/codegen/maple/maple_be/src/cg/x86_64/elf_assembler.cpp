@@ -84,9 +84,9 @@ void ElfAssembler::EmitFloatValue(int64 symIdx, int64 value, size_t valueSize)
     auto reloffset = codeBuff.size();
     Encodeb(value, valueSize);
 
-    if (valueSize == 4) {
+    if (valueSize == maplebe::k4ByteSize) {
         UpdateLabel(symIdx, LabelType::kFloatLabel, reloffset);
-    } else if (valueSize == 8) {
+    } else if (valueSize == maplebe::k8ByteSize) {
         UpdateLabel(symIdx, LabelType::kDoubleLabel, reloffset);
     } else {
         CHECK_FATAL(false, "--Err: EmitFloatValue only handle float and double value");
@@ -295,16 +295,14 @@ void ElfAssembler::PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 siz
     if (symAttr == kSALocal) {
         const std::string &symbolName = GetNameFromSymMap(symIdx, true);
         auto index = strTabSection->AddString(symbolName);
-        AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((STB_LOCAL << 4) + (STT_OBJECT & 0xf)), 0,
-                        secIdx, pos, sizeInByte},
-                       symIdx);
+        AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((STB_LOCAL << 4) + (STT_OBJECT & 0xf)), 0, secIdx,
+            pos, sizeInByte}, symIdx);
     } else {
         const std::string &symbolName = GetNameFromSymMap(symIdx);
         auto index = strTabSection->AddString(symbolName);
         uint8 symInfo = symAttr == kSAGlobal ? STB_GLOBAL : STB_WEAK;
-        AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((symInfo << 4) + (STT_OBJECT & 0xf)), 0,
-                        secIdx, pos, sizeInByte},
-                       symIdx);
+        AddSymToSymTab({static_cast<Word>(index), static_cast<uint8>((symInfo << 4) + (STT_OBJECT & 0xf)), 0, secIdx,
+            pos, sizeInByte}, symIdx);
     }
 }
 
@@ -1338,35 +1336,38 @@ void ElfAssembler::Mov(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* floating point mov */
-void ElfAssembler::Mov(Reg srcReg, Reg destReg, bool isMovD) {
-  uint8 srcRegSize = GetRegSize(srcReg);
-  uint8 destRegSize = GetRegSize(destReg);
-  if (srcRegSize == k128Bits || destRegSize == k128Bits) {
-    Encodeb(0x66);
-  }
-  if (srcRegSize == k128Bits) {
-    OpRR(srcReg, destReg, 0x0F, 0x7E);
-  } else if (destRegSize == k128Bits) {
-    OpRR(destReg, srcReg, 0x0F, 0x6E);
-  }
+void ElfAssembler::Mov(Reg srcReg, Reg destReg, bool isMovD)
+{
+    uint8 srcRegSize = GetRegSize(srcReg);
+    uint8 destRegSize = GetRegSize(destReg);
+    if (srcRegSize == k128Bits || destRegSize == k128Bits) {
+        Encodeb(0x66);
+    }
+    if (srcRegSize == k128Bits) {
+        OpRR(srcReg, destReg, 0x0F, 0x7E);
+    } else if (destRegSize == k128Bits) {
+        OpRR(destReg, srcReg, 0x0F, 0x6E);
+    }
 }
 
-void ElfAssembler::MovF(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else {
-    Encodeb(0xF2);
-  }
-  OpRM(reg, mem, 0x0F, 0x10);
+void ElfAssembler::MovF(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRM(reg, mem, 0x0F, 0x10);
 }
 
-void ElfAssembler::MovF(Reg reg, const Mem &mem, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else {
-    Encodeb(0xF2);
-  }
-  OpRM(reg, mem, 0x0F, 0x11);
+void ElfAssembler::MovF(Reg reg, const Mem &mem, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRM(reg, mem, 0x0F, 0x11);
 }
 
 /* movabs */
@@ -1480,19 +1481,21 @@ void ElfAssembler::Add(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* add floating point */
-void ElfAssembler::Add(Reg srcReg, Reg destReg, bool isSingle) {
+void ElfAssembler::Add(Reg srcReg, Reg destReg, bool isSingle)
+{
     if (isSingle) {
         Encodeb(0xF3);
-    } else{
+    } else {
         Encodeb(0xF2);
     }
     OpRR(destReg, srcReg, 0x0F, 0x58);
 }
 
-void ElfAssembler::Add(const Mem &mem, Reg reg, bool isSingle) {
+void ElfAssembler::Add(const Mem &mem, Reg reg, bool isSingle)
+{
     if (isSingle) {
         Encodeb(0xF3);
-    } else{
+    } else {
         Encodeb(0xF2);
     }
     OpRM(reg, mem, 0x0F, 0x58);
@@ -1525,24 +1528,25 @@ void ElfAssembler::Sub(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* sub floating point */
-void ElfAssembler::Sub(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else{
-    Encodeb(0xF2);
-  }
-  OpRR(destReg, srcReg, 0x0F, 0x5c);
+void ElfAssembler::Sub(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x5c);
 }
 
-void ElfAssembler::Sub(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else{
-    Encodeb(0xF2);
-  }
-  OpRM(reg, mem, 0x0F, 0x5c);
+void ElfAssembler::Sub(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRM(reg, mem, 0x0F, 0x5c);
 }
-
 
 /* and */
 void ElfAssembler::And(InsnSize insnSize, Reg srcReg, Reg destReg)
@@ -2108,22 +2112,24 @@ void ElfAssembler::Imul(InsnSize insnSize, Reg srcReg, Reg destReg)
 }
 
 /* mul float */
-void ElfAssembler::Mul(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else{
-    Encodeb(0xF2);
-  }
-  OpRR(destReg, srcReg, 0x0F, 0x59);
+void ElfAssembler::Mul(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x59);
 }
 
-void ElfAssembler::Mul(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0xF3);
-  } else{
-    Encodeb(0xF2);
-  }
-  OpRM(reg, mem, 0x0F, 0x59);
+void ElfAssembler::Mul(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0xF3);
+    } else {
+        Encodeb(0xF2);
+    }
+    OpRM(reg, mem, 0x0F, 0x59);
 }
 
 /* nop */
@@ -2166,104 +2172,119 @@ void ElfAssembler::Xchg(InsnSize insnSize, Reg srcReg, Reg destReg)
 }
 
 /* floating point */
-void ElfAssembler::MovF(Reg srcReg, Reg destReg, bool isSingle) {
-  bool isXMM = GetRegSize(srcReg) == k128Bits || GetRegSize(destReg) == k128Bits;
-  if (isSingle) {
-    if (isXMM) {
-      Encodeb(0xF3);
+void ElfAssembler::MovF(Reg srcReg, Reg destReg, bool isSingle)
+{
+    bool isXMM = GetRegSize(srcReg) == k128Bits || GetRegSize(destReg) == k128Bits;
+    if (isSingle) {
+        if (isXMM) {
+            Encodeb(0xF3);
+        }
+        OpRR(destReg, srcReg, 0x0F, 0x10);
+    } else {
+        if (isXMM) {
+            Encodeb(0xF2);
+        }
+        OpRR(destReg, srcReg, 0x0F, 0x10);
     }
-    OpRR(destReg, srcReg, 0x0F, 0x10);
-  } else {
-    if (isXMM) {
-      Encodeb(0xF2);
-    }
-    OpRR(destReg, srcReg, 0x0F, 0x10);
-  }
 }
 
- /* floating point and */
-void ElfAssembler::And(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0x100);
-  } else{
-    Encodeb(0x66);
-  }
-  OpRR(destReg, srcReg, 0x0F, 0x54);
+/* floating point and */
+void ElfAssembler::And(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0x100);
+    } else {
+        Encodeb(0x66);
+    }
+    OpRR(destReg, srcReg, 0x0F, 0x54);
 }
 
-void ElfAssembler::And(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Encodeb(0x100);
-  } else{
-    Encodeb(0x66);
-  }
-  OpRM(reg, mem, 0x0F, 0x54);
+void ElfAssembler::And(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Encodeb(0x100);
+    } else {
+        Encodeb(0x66);
+    }
+    OpRM(reg, mem, 0x0F, 0x54);
 }
 
 /* floating div */
-void ElfAssembler::Divsd(Reg srcReg, Reg destReg) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0x5E);
+void ElfAssembler::Divsd(Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0x5E);
 }
 
-void ElfAssembler::Divsd(const Mem &mem, Reg reg) {
-  Encodeb(0xF2);
-  OpRM(reg, mem, 0x0F, 0x5E);
+void ElfAssembler::Divsd(const Mem &mem, Reg reg)
+{
+    Encodeb(0xF2);
+    OpRM(reg, mem, 0x0F, 0x5E);
 }
 
 /* convert int2float */
-void ElfAssembler::Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Encodeb(0xF3);
-  OpRR(destReg, srcReg, 0x0F, 0x2A);
+void ElfAssembler::Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF3);
+    OpRR(destReg, srcReg, 0x0F, 0x2A);
 }
 
-void ElfAssembler::Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0x2A);
+void ElfAssembler::Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0x2A);
 }
 
 /*convert float2int */
-void ElfAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0x2C);
+void ElfAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0x2C);
 }
 
-void ElfAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Encodeb(0xF3);
-  OpRR(destReg, srcReg, 0x0F, 0x2C);
+void ElfAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF3);
+    OpRR(destReg, srcReg, 0x0F, 0x2C);
 }
 
 /* convert float2float */
-void ElfAssembler::Cvtss2sd(Reg srcReg, Reg destReg) {
-  Encodeb(0xF3);
-  OpRR(destReg, srcReg, 0x0F, 0x5A);
+void ElfAssembler::Cvtss2sd(Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF3);
+    OpRR(destReg, srcReg, 0x0F, 0x5A);
 }
 
-void ElfAssembler::Cvtsd2ss(Reg srcReg, Reg destReg) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0x5A);
+void ElfAssembler::Cvtsd2ss(Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0x5A);
 }
 
 /* unordered compare */
-void ElfAssembler::Ucomisd(Reg srcReg, Reg destReg) {
-  Encodeb(0x66);
-  OpRR(destReg, srcReg, 0x0F, 0x2E);
+void ElfAssembler::Ucomisd(Reg srcReg, Reg destReg)
+{
+    Encodeb(0x66);
+    OpRR(destReg, srcReg, 0x0F, 0x2E);
 }
 
-void ElfAssembler::Ucomiss(Reg srcReg, Reg destReg) {
-  Encodeb(0x100);
-  OpRR(destReg, srcReg, 0x0F, 0x2E);
+void ElfAssembler::Ucomiss(Reg srcReg, Reg destReg)
+{
+    Encodeb(0x100);
+    OpRR(destReg, srcReg, 0x0F, 0x2E);
 }
 
 /* float sqrt*/
-void ElfAssembler::Sqrtss_r(Reg srcReg, Reg destReg) {
-  Encodeb(0xF3);
-  OpRR(destReg, srcReg, 0x0F, 0x51);
+void ElfAssembler::Sqrtss_r(Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF3);
+    OpRR(destReg, srcReg, 0x0F, 0x51);
 }
 
-void ElfAssembler::Sqrtsd_r(Reg srcReg, Reg destReg) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0x51);
+void ElfAssembler::Sqrtsd_r(Reg srcReg, Reg destReg)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0x51);
 }
 /* end of X64 instructions */
 
@@ -2276,14 +2297,17 @@ void ElfAssembler::RecordStackmap(const std::vector<uint64> &referenceMap,
         return;
     }
     emitMemoryManager.pc2CallSiteInfoSaver(emitMemoryManager.codeSpace, lastModulePC + codeBuff.size(), referenceMap);
-    emitMemoryManager.pc2DeoptInfoSaver(emitMemoryManager.codeSpace, lastModulePC + codeBuff.size(), deoptVreg2LocationInfo);
+    emitMemoryManager.pc2DeoptInfoSaver(emitMemoryManager.codeSpace, lastModulePC + codeBuff.size(),
+                                        deoptVreg2LocationInfo);
 }
 
-uint32 ElfAssembler::GetCurModulePC() {
+uint32 ElfAssembler::GetCurModulePC()
+{
     return static_cast<uint32>(lastModulePC + codeBuff.size());
 }
 
-void ElfAssembler::SetLastModulePC(uint32 pc) {
+void ElfAssembler::SetLastModulePC(uint32 pc)
+{
     lastModulePC = pc;
 }
 } /* namespace assembler */

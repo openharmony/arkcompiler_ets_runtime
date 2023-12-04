@@ -771,7 +771,6 @@ public:
     const BlockNode *GetLastPosBody() const
     {
         return bodyLast;
-
     }
     void SetLastPosBody(BlockNode *node)
     {

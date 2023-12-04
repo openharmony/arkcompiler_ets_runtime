@@ -796,7 +796,7 @@ DBGDie *DebugInfo::GetOrCreateTypeDie(MIRType *type)
         case kTypeBitField:
             break;
         default:
-            CHECK_FATAL(false, "TODO: support type");
+            CHECK_FATAL(false, "Not support type now");
             break;
     }
 

@@ -92,9 +92,10 @@ private:
     uint32 GetAggCopySize(uint32 offset1, uint32 offset2, uint32 alignment) const;
     bool IsParamStructCopy(const MIRSymbol &symbol);
     void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
-    void SelectLibCall(const std::string &funcName, std::vector<Operand*> &opndVec,
-                      PrimType primType, Operand* retOpnd, PrimType retType);
-    void SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec, std::vector<PrimType> pt, Operand* retOpnd, PrimType retType);
+    void SelectLibCall(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType,
+                       Operand *retOpnd, PrimType retType);
+    void SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec, std::vector<PrimType> pt,
+                           Operand *retOpnd, PrimType retType);
     void SelectPseduoForReturn(std::vector<RegOperand *> &retRegs);
     RegOperand *PrepareMemcpyParm(MemOperand &memOperand, MOperator mOp);
     RegOperand *PrepareMemcpyParm(uint64 copySize);

@@ -952,7 +952,7 @@ void X64CGFunc::FreeSpillRegMem(regno_t vrNum)
     }
 }
 
-MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 memSize) 
+MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 memSize)
 {
     /* NOTES: must used in RA, not used in other place. */
     if (IsVRegNOForPseudoRegister(vrNum)) {

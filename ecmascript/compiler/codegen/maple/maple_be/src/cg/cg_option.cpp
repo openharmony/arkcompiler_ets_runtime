@@ -471,7 +471,7 @@ bool CGOptions::SolveOptions(bool isDebug)
     }
 
     if (opts::cg::nativeopt.IsEnabledByUser()) {
-        // FIXME: Disabling Looks strage: should be checked by author of the code
+        // Disabling Looks strage: should be checked by author of the code
         DisableNativeOpt();
     }
 

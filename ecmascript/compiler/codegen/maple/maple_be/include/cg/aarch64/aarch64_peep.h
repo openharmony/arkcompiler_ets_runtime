@@ -967,10 +967,10 @@ private:
  *
  * add	x0, x0, #64
  * ldr	x0, [x0]        --> ldr x0, [x0, #64]
- * 
+ *
  * add	x0, x7, x0
  * ldr	x11, [x0]       --> ldr x11, [x0, x7]
- * 
+ *
  * lsl	x1, x4, #3
  * add	x0, x0, x1
  * ldr	d1, [x0]        --> ldr d1, [x0, x4, lsl #3]

@@ -2006,7 +2006,8 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
                 } else {
                     MIRTypeKind kind = ty->GetKind();
                     uint64 valueSize = 0;
-                    bool isFloatTy = (ct->GetKind() == maple::kConstDoubleConst || ct->GetKind() == maple::kConstFloatConst);
+                    bool isFloatTy =
+                        (ct->GetKind() == maple::kConstDoubleConst || ct->GetKind() == maple::kConstFloatConst);
                     auto secType = isFloatTy ? kSText : kSData;
                     assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, secType);
                     if (kind == kTypeStruct || kind == kTypeUnion || kind == kTypeClass) {
@@ -2236,7 +2237,6 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
             DBGDie *twin = di.GetDie(static_cast<uint32>(specAttr->GetU()));
             fnameAttr = LFindAttribute(twin->GetAttrVec(), static_cast<DwAt>(DW_AT_name));
         }
-        /* todo */
     }
     if (attrName == static_cast<uint32>(DW_AT_high_pc)) {
         if (tagName == static_cast<uint32>(DW_TAG_compile_unit)) {

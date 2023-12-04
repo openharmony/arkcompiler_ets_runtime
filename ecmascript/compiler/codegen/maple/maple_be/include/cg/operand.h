@@ -475,7 +475,8 @@ public:
         baseRefOpnd = &regOpnd;
     }
 
-    const RegOperand *GetBaseRefOpnd() const {
+    const RegOperand *GetBaseRefOpnd() const
+    {
         return baseRefOpnd;
     }
 

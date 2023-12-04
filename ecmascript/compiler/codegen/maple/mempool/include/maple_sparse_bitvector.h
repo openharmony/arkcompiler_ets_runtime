@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2023] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OpenArkCompiler is licensed under Mulan PSL v2.
- * You can use this software according to the terms and conditions of the Mulan PSL v2.
- * You may obtain a copy of Mulan PSL v2 at:
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://license.coscl.org.cn/MulanPSL2
- *
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
- * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v2 for more details.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef MEMPOOL_INCLUDE_MAPLE_SPARSE_BITVECTOR_H
@@ -24,17 +24,12 @@
 #include "mempool_allocator.h"
 
 namespace maple {
-template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
-{
-    using BitWord =  unsigned long long;
-    enum {
-        kBitWordSize  = sizeof(BitWord) * CHAR_BIT,
-        kBitWordNum = (bitVectorSize + kBitWordSize - 1) / kBitWordSize
-    };
+template <unsigned bitVectorSize = 64>
+struct MapleSparseBitVectorElement {
+    using BitWord = unsigned long long;
+    enum { kBitWordSize = sizeof(BitWord) * CHAR_BIT, kBitWordNum = (bitVectorSize + kBitWordSize - 1) / kBitWordSize };
 
-    explicit MapleSparseBitVectorElement(unsigned idx) : index(idx), bitVector{0}
-    {
-    }
+    explicit MapleSparseBitVectorElement(unsigned idx) : index(idx), bitVector {0} {}
 
     BitWord GetWord(unsigned idx) const
     {
@@ -48,7 +43,7 @@ template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
 
     void Set(unsigned idx)
     {
-        bitVector[idx / kBitWordSize] |= 1ULL <<(idx % kBitWordSize);
+        bitVector[idx / kBitWordSize] |= 1ULL << (idx % kBitWordSize);
     }
 
     void Reset(unsigned idx)
@@ -69,9 +64,9 @@ template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
             }
         }
         return true;
-  }
+    }
 
-    void ConvertToSet(MapleSet<uint32>& res, unsigned base) const
+    void ConvertToSet(MapleSet<uint32> &res, unsigned base) const
     {
         for (unsigned i = 0; i < kBitWordNum; i++) {
             BitWord tmp = bitVector[i];
@@ -111,7 +106,7 @@ template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
             bitVector[i] &= rhs.bitVector[i];
             changed = changed || (oldBitWord != bitVector[i]);
             if (bitVector[i] != 0) {
-              allzero = false;
+                allzero = false;
             }
         }
         becameZero = allzero;
@@ -122,9 +117,9 @@ template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
     {
         bool changed = false;
         for (unsigned i = 0; i < kBitWordNum; i++) {
-          BitWord oldBitWord = bitVector[i];
-          bitVector[i] |= rhs.bitVector[i];
-          changed = changed || (oldBitWord != bitVector[i]);
+            BitWord oldBitWord = bitVector[i];
+            bitVector[i] |= rhs.bitVector[i];
+            changed = changed || (oldBitWord != bitVector[i]);
         }
         return changed;
     }
@@ -139,7 +134,7 @@ template <unsigned bitVectorSize = 64> struct MapleSparseBitVectorElement
             bitVector[i] &= ~rhs.bitVector[i];
             changed = changed || (oldBitWord != bitVector[i]);
             if (bitVector[i] != 0) {
-              allzero = false;
+                allzero = false;
             }
         }
         becameZero = allzero;
@@ -174,27 +169,21 @@ class MapleSparseBitVector {
     using ElementList = MapleList<MapleSparseBitVectorElement<bitVectorSize>>;
     using ElementListIterator = typename ElementList::iterator;
     using ElementListConstIterator = typename ElementList::const_iterator;
-    using BitWord =  unsigned long long;
+    using BitWord = unsigned long long;
 
 public:
     explicit MapleSparseBitVector(const MapleAllocator &alloc)
-        : allocator(alloc),
-          elementList(allocator.Adapter()),
-          currIter(elementList.begin())
+        : allocator(alloc), elementList(allocator.Adapter()), currIter(elementList.begin())
     {
     }
 
     explicit MapleSparseBitVector(const MapleSparseBitVector &rhs, const MapleAllocator &alloc)
-        : allocator(alloc),
-          elementList(rhs.elementList, allocator.Adapter()),
-          currIter(elementList.begin())
+        : allocator(alloc), elementList(rhs.elementList, allocator.Adapter()), currIter(elementList.begin())
     {
     }
 
     MapleSparseBitVector(const MapleSparseBitVector &rhs)
-        : allocator(rhs.allocator),
-          elementList(rhs.elementList, allocator.Adapter()),
-          currIter(elementList.begin())
+        : allocator(rhs.allocator), elementList(rhs.elementList, allocator.Adapter()), currIter(elementList.begin())
     {
     }
 
@@ -247,7 +236,7 @@ public:
         return (iter->Test(bitNO % bitVectorSize));
     }
 
-    MapleSparseBitVector& operator=(const MapleSparseBitVector& rhs)
+    MapleSparseBitVector &operator=(const MapleSparseBitVector &rhs)
     {
         if (this == &rhs) {
             return *this;
@@ -258,7 +247,7 @@ public:
         return *this;
     }
 
-    bool operator&=(const MapleSparseBitVector& rhs)
+    bool operator&=(const MapleSparseBitVector &rhs)
     {
         if (this == &rhs) {
             return false;
@@ -297,7 +286,7 @@ public:
                 elementList.erase(iterTmp);
                 changed = true;
             }
-        } 
+        }
         if (iter1 != elementList.end()) {
             elementList.erase(iter1, elementList.end());
             changed = true;
@@ -306,7 +295,7 @@ public:
         return changed;
     }
 
-    bool operator|=(const MapleSparseBitVector& rhs)
+    bool operator|=(const MapleSparseBitVector &rhs)
     {
         if (this == &rhs) {
             return false;
@@ -378,8 +367,8 @@ public:
     {
         if (this == &rhs) {
             if (!Empty()) {
-              Clear();
-              return true;
+                Clear();
+                return true;
             }
             return false;
         }
@@ -438,8 +427,8 @@ public:
 private:
     ElementListIterator LowerBoundForImpl(unsigned idx) const
     {
-        ElementListIterator begin = const_cast<MapleSparseBitVector*>(this)->elementList.begin();
-        ElementListIterator end = const_cast<MapleSparseBitVector*>(this)->elementList.end();
+        ElementListIterator begin = const_cast<MapleSparseBitVector *>(this)->elementList.begin();
+        ElementListIterator end = const_cast<MapleSparseBitVector *>(this)->elementList.end();
 
         if (elementList.empty()) {
             currIter = begin;
@@ -481,4 +470,4 @@ private:
     mutable ElementListIterator currIter;
 };
 }  // namespace maple
-#endif  /* MAPLEBE_INCLUDE_CG_SPARSE_BITVECTOR_H */
+#endif /* MAPLEBE_INCLUDE_CG_SPARSE_BITVECTOR_H */

@@ -4781,7 +4781,7 @@ void AArch64CGFunc::SelectCmpOp(Operand &resOpnd, Operand &lhsOpnd, Operand &rhs
     SelectAArch64Cmp(opnd0, *opnd1, !isFloat, GetPrimTypeBitSize(primType));
 
     ConditionCode cc = CC_EQ;
-    // todo : need to handle unordered situation here.
+    // need to handle unordered situation here.
     switch (opcode) {
         case OP_eq:
             cc = CC_EQ;

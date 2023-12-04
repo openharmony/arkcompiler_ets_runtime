@@ -130,13 +130,14 @@ static MOperator GetFastCvtMopI(uint32 fromSize, uint32 toSize, bool isSigned)
         return fastMapping_##TYPE[GetBitIndex(bitSize)];                                           \
     }
 
-#define DEF_FLOAT_MOPERATOR_MAPPING_FUNC(TYPE) [](uint32 bitSize)->MOperator {                                      \
-  /* 8-bits,                16-bits,                   32-bits,                   64-bits */                        \
-  constexpr static std::array<MOperator, kBitIndexEnd> fastMapping_f_##TYPE =                                       \
-      {abstract::MOP_##TYPE##_f_8, abstract::MOP_##TYPE##_f_16,                                                     \
-      abstract::MOP_##TYPE##_f_32, abstract::MOP_##TYPE##_f_64};                                                    \
-  return fastMapping_f_##TYPE[GetBitIndex(bitSize)];                                                                \
-}
+#define DEF_FLOAT_MOPERATOR_MAPPING_FUNC(TYPE)                                                     \
+    [](uint32 bitSize) -> MOperator {                                                              \
+        /* 8-bits,                16-bits,                   32-bits,                   64-bits */ \
+        constexpr static std::array<MOperator, kBitIndexEnd> fastMapping_f_##TYPE = {              \
+            abstract::MOP_##TYPE##_f_8, abstract::MOP_##TYPE##_f_16, abstract::MOP_##TYPE##_f_32,  \
+            abstract::MOP_##TYPE##_f_64};                                                          \
+        return fastMapping_f_##TYPE[GetBitIndex(bitSize)];                                         \
+    }
 
 void HandleDassign(StmtNode &stmt, MPISel &iSel)
 {
@@ -1136,8 +1137,8 @@ void MPISel::SelectCvtInt2Float(RegOperand &resOpnd, Operand &opnd0, PrimType to
         CHECK_FATAL(false, "niy");
     }
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
-    RegOperand &tmpFloatOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(newFromType),
-                          cgFunc->GetRegTyFromPrimTy(newFromType));
+    RegOperand &tmpFloatOpnd =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(newFromType), cgFunc->GetRegTyFromPrimTy(newFromType));
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
     (void)insn.AddOpndChain(tmpFloatOpnd).AddOpndChain(regOpnd0);
     cgFunc->GetCurBB()->AppendInsn(insn);
@@ -1409,8 +1410,8 @@ Operand *MPISel::SelectAbs(UnaryNode &node, Operand &opnd0)
                             *GlobalTables::GetTypeTable().GetTypeTable().at(PTY_f64));
         Operand *opnd1 = SelectFloatingConst(*c, PTY_f64);
 
-        RegOperand &resOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType),
-                             cgFunc->GetRegTyFromPrimTy(primType));
+        RegOperand &resOpnd =
+            cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
         SelectBand(resOpnd, opnd0, *opnd1, primType);
         return &resOpnd;
     } else if (IsUnsignedInteger(primType)) {

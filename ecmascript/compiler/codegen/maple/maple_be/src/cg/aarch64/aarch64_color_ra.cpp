@@ -3549,7 +3549,7 @@ bool GraphColorRegAllocator::GetSpillReg(Insn &insn, LiveRange &lr, const uint32
         /*
          * When a cond branch reg is spilled, it cannot
          * restore the value after the branch since it can be the target from other br.
-         * Todo it properly, it will require creating a intermediate bb for the reload.
+         * To do it properly, it will require creating a intermediate bb for the reload.
          * Use x16, it is taken out from available since it is used as a global in the system.
          */
         lr.SetAssignedRegNO(R16);

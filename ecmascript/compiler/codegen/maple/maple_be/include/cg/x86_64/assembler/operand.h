@@ -137,7 +137,7 @@ enum Reg : uint16 {
 
 static const uint8 kMaxRegNum = 35;
 static const uint8 kRegSizeType = 6;
-// FIXME: TODO: To implement operating 64/32 bit float with 128bit asm insn,
+// To implement operating 64/32 bit float with 128bit asm insn,
 // 32bit/64bit/128bit regs in kRegArray has done some processes same with openArkCompiler.
 static const std::array<std::array<Reg, kMaxRegNum>, kRegSizeType> kRegArray = {
     {{ERR, AL, CL, DL, BL, SPL, BPL, SIL, DIL, R8B, R9B, R10B, R11B, R12B, R13B, R14B, R15B},

@@ -2244,7 +2244,8 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
                             Emit("\n");
                         }
                     } else {
-                        CHECK_FATAL(st->GetStorageClass() == kScPstatic && st->GetSKind() == kStConst, "cg should create constant!");
+                        CHECK_FATAL(st->GetStorageClass() == kScPstatic && st->GetSKind() == kStConst,
+                                    "cg should create constant!");
                         /* cg created data should be located in .text */
                         (void)Emit("\t.section\t.text\n");
                     }

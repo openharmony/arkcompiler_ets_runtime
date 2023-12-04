@@ -440,7 +440,8 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
 
     /* only support no return function */
     MIRType *mirRetType = GlobalTables::GetTypeTable().GetTypeTable().at(static_cast<size_t>(retPrimType));
-    st->SetTyIdx(cgFunc->GetBecommon().BeGetOrCreateFunctionType(mirRetType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
+    st->SetTyIdx(
+        cgFunc->GetBecommon().BeGetOrCreateFunctionType(mirRetType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
 
     /* setup actual parameters */
     ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
@@ -490,8 +491,8 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
     RegOperand *regOpnd = static_cast<RegOperand*>(retOpnd);
     regno_t retRegNo = retMech.GetReg0();
     if (regOpnd->GetRegisterNumber() != retRegNo) {
-        RegOperand &phyRetOpnd = cgFunc->GetOpndBuilder()->CreatePReg(retRegNo, regOpnd->GetSize(),
-                        cgFunc->GetRegTyFromPrimTy(retPrimType));
+        RegOperand &phyRetOpnd =
+            cgFunc->GetOpndBuilder()->CreatePReg(retRegNo, regOpnd->GetSize(), cgFunc->GetRegTyFromPrimTy(retPrimType));
         SelectCopy(*retOpnd, phyRetOpnd, retPrimType);
     }
     return;
@@ -1047,11 +1048,14 @@ static X64MOP_t PickJmpInsn(Opcode brOp, Opcode cmpOp, bool isFloat, bool isSign
         case OP_eq:
             return (brOp == OP_brtrue) ? MOP_je_l : MOP_jne_l;
         case OP_lt:
-            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jl_l : MOP_jb_l)) : (isSigned ? MOP_jge_l : MOP_jae_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jl_l : MOP_jb_l))
+                                       : (isSigned ? MOP_jge_l : MOP_jae_l);
         case OP_le:
-            return (brOp == OP_brtrue) ? (isFloat ? MOP_jae_l:(isSigned ? MOP_jle_l : MOP_jbe_l)) : (isSigned ? MOP_jg_l : MOP_ja_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_jae_l : (isSigned ? MOP_jle_l : MOP_jbe_l))
+                                       : (isSigned ? MOP_jg_l : MOP_ja_l);
         case OP_gt:
-            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jg_l  : MOP_ja_l)) : (isSigned ? MOP_jle_l : MOP_jbe_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jg_l : MOP_ja_l))
+                                       : (isSigned ? MOP_jle_l : MOP_jbe_l);
         case OP_ge:
             return (brOp == OP_brtrue) ? (isSigned ? MOP_jge_l : MOP_jae_l) : (isSigned ? MOP_jl_l : MOP_jb_l);
         default:
@@ -1319,7 +1323,8 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
         resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
         auto nodeOp = node.GetOpCode();
         Opcode parentOp = parent.GetOpCode();
-        bool isSwap = (IsPrimitiveFloat(primOpndType) && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) && (parentOp != OP_brfalse));
+        bool isSwap = (IsPrimitiveFloat(primOpndType) && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) &&
+            (parentOp != OP_brfalse));
         SelectCmp(regOpnd0, regOpnd1, primOpndType, isSwap);
         if (parentOp == OP_brfalse || parentOp == OP_brtrue || parentOp == OP_select) {
             return resOpnd;
@@ -1424,7 +1429,7 @@ void X64MPIsel::SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Ope
         Opcode cmpOpcode = isMin ? OP_lt : OP_gt;
         SelectSelect(resOpnd, opnd0, opnd1, primType, cmpOpcode, primType);
     } else {
-        // TODO: float lt/le need to swap operands, and using seta
+        // float lt/le need to swap operands, and using seta
         CHECK_FATAL(false, "NIY type max or min");
     }
 }
@@ -1433,8 +1438,8 @@ Operand *X64MPIsel::SelectCexp(IntrinsicopNode &node, Operand &opnd0, const Base
 {
     PrimType primType = node.GetPrimType();
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType);
-    Operand &retReg = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType),
-                        cgFunc->GetRegTyFromPrimTy(primType));
+    Operand &retReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
     std::vector<Operand*> opndVec = {&regOpnd0};
     SelectLibCall("exp", opndVec, primType, &retReg, primType);
     return &retReg;
@@ -1453,8 +1458,8 @@ Operand *X64MPIsel::SelectCctz(IntrinsicopNode &node, Operand &opnd0, const Base
     cgFunc->GetCurBB()->AppendInsn(bsfInsn);
 
     PrimType retType = node.GetPrimType();
-    RegOperand &destReg = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType),
-                            cgFunc->GetRegTyFromPrimTy(retType));
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
     // ctz i32 (u32) => cvt u32 -> i32
     // ctz i32 (u64) => cvt u64 -> i32
     SelectIntCvt(destReg, opnd, retType, origPrimType);
@@ -1474,15 +1479,15 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
     cgFunc->GetCurBB()->AppendInsn(bsrInsn);
 
     MOperator mopXor = is64BitClz ? x64::MOP_xorq_i_r : MOP_xorl_i_r;
-    ImmOperand &imm = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType),
-      GetPrimTypeBitSize(origPrimType) - 1);
+    ImmOperand &imm =
+        cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), GetPrimTypeBitSize(origPrimType) - 1);
     Insn &xorInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopXor, X64CG::kMd[mopXor]);
     xorInsn.AddOpndChain(imm).AddOpndChain(opnd);
     cgFunc->GetCurBB()->AppendInsn(xorInsn);
 
     PrimType retType = node.GetPrimType();
-    RegOperand &destReg = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType),
-      cgFunc->GetRegTyFromPrimTy(retType));
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
     SelectIntCvt(destReg, opnd, retType, origPrimType);
     return &destReg;
 }

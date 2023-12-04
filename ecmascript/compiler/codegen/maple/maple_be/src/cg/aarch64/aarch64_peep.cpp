@@ -2103,7 +2103,8 @@ void AArch64PeepHole0::Run(BB &bb, Insn &insn)
         case MOP_sldr:
         case MOP_sstr: {
             if (thisMop == MOP_wstr || thisMop == MOP_xstr) {
-                (static_cast<RemoveIdenticalLoadAndStoreAArch64*>(optimizations[kRemoveIdenticalLoadAndStoreOpt]))->Run(bb, insn);
+                (static_cast<RemoveIdenticalLoadAndStoreAArch64 *>(optimizations[kRemoveIdenticalLoadAndStoreOpt]))
+                    ->Run(bb, insn);
             }
             (static_cast<EnhanceStrLdrAArch64*>(optimizations[kEnhanceStrLdrAArch64Opt]))->Run(bb, insn);
             break;
@@ -2378,14 +2379,15 @@ void RemoveMovingtoSameRegAArch64::Run(BB &bb, Insn &insn)
     }
 }
 
-bool EnhanceStrLdrAArch64::CheckOperandIsDeadFromInsn(const RegOperand &regOpnd, Insn &insn) {
+bool EnhanceStrLdrAArch64::CheckOperandIsDeadFromInsn(const RegOperand &regOpnd, Insn &insn)
+{
     for (uint32 i = 0; i < insn.GetOperandSize(); ++i) {
         auto &opnd = insn.GetOperand(i);
         if (!insn.GetDesc()->GetOpndDes(i)->IsRegDef()) {
             continue;
         }
         // regOpnd is redefined at curInsn
-        if (static_cast<RegOperand&>(opnd).GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
+        if (static_cast<RegOperand &>(opnd).GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
             return true;
         }
     }
@@ -2462,9 +2464,9 @@ void EnhanceStrLdrAArch64::OptimizeAddrBOrXShiftExtend(Insn &insn, MemOperand &m
         shift = static_cast<uint32>(static_cast<ImmOperand&>(shiftExtendInsn.GetOperand(kInsnThirdOpnd)).GetValue());
     }
     const uint32 regSize = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize();
-    // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or 
+    // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or
     // 3(64-bit def opnd) or 4(128-bit def opnd) in ldr/str insn, and in this pattern we only have
-    // 32-bit & 64-bit situation now 
+    // 32-bit & 64-bit situation now
     if ((shift == k0BitSize) || (regSize == k32BitSize && shift == k2BitSize) ||
         (regSize == k64BitSize && shift == k3BitSize)) {
         auto *newMemOpnd = static_cast<AArch64CGFunc&>(cgFunc).CreateMemOperand(MemOperand::kAddrModeBOrX,

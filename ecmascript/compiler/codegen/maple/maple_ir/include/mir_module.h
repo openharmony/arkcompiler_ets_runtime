@@ -845,7 +845,8 @@ public:
         return curModulePC;
     }
 
-    void SetLastModulePC(uint32 pc) {
+    void SetLastModulePC(uint32 pc)
+    {
         lastModulePC = pc;
     }
 
@@ -853,7 +854,6 @@ public:
     {
         return lastModulePC;
     }
-
 
     bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 

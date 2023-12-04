@@ -50,7 +50,8 @@ void TypeTable::Init()
     lastDefaultTyIdx.SetIdx(primTypeIdx);
 }
 
-void TypeTable::Reset() {
+void TypeTable::Reset()
+{
     ReleaseTypes();
     typeHashTable.clear();
     ptrTypeMap.clear();

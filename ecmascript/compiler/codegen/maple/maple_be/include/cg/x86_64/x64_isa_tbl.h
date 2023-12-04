@@ -85,7 +85,8 @@ static const SetIselMappingType setFloatIselMapping = {
 static inline X64MOP_t GetSetCCMop(maple::Opcode opcode, Operand::OperandType dTy, bool isSigned, bool isFloat)
 {
     DEBUG_ASSERT(dTy < Operand::OperandType::kOpdPhi, "illegal operand type");
-    const SetIselMappingType &setIselMapping = isFloat ? setFloatIselMapping : (isSigned ? setSignedIselMapping : setUnsignedIselMapping);
+    const SetIselMappingType &setIselMapping =
+        isFloat ? setFloatIselMapping : (isSigned ? setSignedIselMapping : setUnsignedIselMapping);
     auto iter = setIselMapping.find(opcode);
     if (iter == setIselMapping.end()) {
         return x64::MOP_begin;

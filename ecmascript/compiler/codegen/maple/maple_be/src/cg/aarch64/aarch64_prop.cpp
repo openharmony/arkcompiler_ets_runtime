@@ -887,7 +887,7 @@ RegOperand *A64StrLdrProp::GetReplaceReg(RegOperand &a64Reg)
     if (a64Reg.IsSSAForm()) {
         regno_t ssaIndex = a64Reg.GetRegisterNumber();
         replaceVersions[ssaIndex] = ssaInfo->FindSSAVersion(ssaIndex);
-        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP"); // size <= 2 in A64PROP 
+        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP"); // size <= 2 in A64PROP
         return &a64Reg;
     }
     return nullptr;

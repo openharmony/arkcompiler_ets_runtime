@@ -97,7 +97,7 @@ void AsmAssembler::PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 siz
 
 void AsmAssembler::EmitFloatValue(int64 symIdx, int64 value, size_t valueSize)
 {
-    (void) symIdx;
+    (void)symIdx;
     EmitSizeDirective(valueSize, value, false, true);
 }
 
@@ -606,34 +606,37 @@ void AsmAssembler::Mov(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* floating point mov */
-void AsmAssembler::Mov(Reg srcReg, Reg destReg, bool isMovD) {
-  if (isMovD) {
-    Emit("\tmovd\t");
-  } else {
-    Emit("\tmovq\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Mov(Reg srcReg, Reg destReg, bool isMovD)
+{
+    if (isMovD) {
+        Emit("\tmovd\t");
+    } else {
+        Emit("\tmovq\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::MovF(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tmovss\t");
-  } else {
-    Emit("\tmovsd\t");
-  }
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::MovF(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tmovss\t");
+    } else {
+        Emit("\tmovsd\t");
+    }
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
-void AsmAssembler::MovF(Reg reg, const Mem &mem, bool isSingle) {
-  if (isSingle) {
-    Emit("\tmovss\t");
-  } else {
-    Emit("\tmovsd\t");
-  }
-  EmitRegMem(reg, mem);
-  Emit("\n");
+void AsmAssembler::MovF(Reg reg, const Mem &mem, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tmovss\t");
+    } else {
+        Emit("\tmovsd\t");
+    }
+    EmitRegMem(reg, mem);
+    Emit("\n");
 }
 
 /* movabs */
@@ -772,24 +775,26 @@ void AsmAssembler::Add(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* add floating point */
-void AsmAssembler::Add(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Emit("\taddss\t");
-  } else {
-    Emit("\taddsd\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Add(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\taddss\t");
+    } else {
+        Emit("\taddsd\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Add(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Emit("\taddss\t");
-  } else {
-    Emit("\taddsd\t");
-  }
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::Add(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\taddss\t");
+    } else {
+        Emit("\taddsd\t");
+    }
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
 /* sub */
@@ -839,24 +844,26 @@ void AsmAssembler::Sub(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem
 }
 
 /* sub floating point */
-void AsmAssembler::Sub(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tsubss\t");
-  } else {
-    Emit("\tsubsd\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Sub(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tsubss\t");
+    } else {
+        Emit("\tsubsd\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Sub(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tsubss\t");
-  } else {
-    Emit("\tsubsd\t");
-  }
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::Sub(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tsubss\t");
+    } else {
+        Emit("\tsubsd\t");
+    }
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
 /* and */
@@ -1744,24 +1751,26 @@ void AsmAssembler::Imul(InsnSize insnSize, Reg srcReg, Reg destReg)
 }
 
 /* mul float */
-void AsmAssembler::Mul(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tmulss\t");
-  } else {
-    Emit("\tmulsd\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Mul(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tmulss\t");
+    } else {
+        Emit("\tmulsd\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Mul(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tmulss\t");
-  } else {
-    Emit("\tmulsd\t");
-  }
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::Mul(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tmulss\t");
+    } else {
+        Emit("\tmulsd\t");
+    }
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
 /* nop */
@@ -1807,121 +1816,136 @@ void AsmAssembler::DealWithPseudoInst(const std::string &insn)
 }
 
 /* floating point */
-void AsmAssembler::MovF(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tmovss\t");
-  } else {
-    Emit("\tmovsd\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::MovF(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tmovss\t");
+    } else {
+        Emit("\tmovsd\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
 /* floating point and */
-void AsmAssembler::And(Reg srcReg, Reg destReg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tandps\t");
-  } else {
-    Emit("\tandpd\t");
-  }
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::And(Reg srcReg, Reg destReg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tandps\t");
+    } else {
+        Emit("\tandpd\t");
+    }
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::And(const Mem &mem, Reg reg, bool isSingle) {
-  if (isSingle) {
-    Emit("\tandps\t");
-  } else {
-    Emit("\tandpd\t");
-  }
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::And(const Mem &mem, Reg reg, bool isSingle)
+{
+    if (isSingle) {
+        Emit("\tandps\t");
+    } else {
+        Emit("\tandpd\t");
+    }
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
 /* floating div */
-void AsmAssembler::Divsd(Reg srcReg, Reg destReg) {
-  Emit("\tdivsd\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Divsd(Reg srcReg, Reg destReg)
+{
+    Emit("\tdivsd\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Divsd(const Mem &mem, Reg reg) {
-  Emit("\tdivsd\t");
-  EmitMemReg(mem, reg);
-  Emit("\n");
+void AsmAssembler::Divsd(const Mem &mem, Reg reg)
+{
+    Emit("\tdivsd\t");
+    EmitMemReg(mem, reg);
+    Emit("\n");
 }
 
 /* convert int2float */
-void AsmAssembler::Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Emit("\tcvtsi2ss");
-  EmitInsnSuffix(insnSize);
-  Emit("\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Emit("\tcvtsi2ss");
+    EmitInsnSuffix(insnSize);
+    Emit("\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Emit("\tcvtsi2sd");
-  EmitInsnSuffix(insnSize);
-  Emit("\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Emit("\tcvtsi2sd");
+    EmitInsnSuffix(insnSize);
+    Emit("\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
 /*convert float2int */
-void AsmAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Emit("\tcvttsd2si");
-  EmitInsnSuffix(insnSize);
-  Emit("\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Emit("\tcvttsd2si");
+    EmitInsnSuffix(insnSize);
+    Emit("\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg) {
-  Emit("\tcvtss2si");
-  EmitInsnSuffix(insnSize);
-  Emit("\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg)
+{
+    Emit("\tcvtss2si");
+    EmitInsnSuffix(insnSize);
+    Emit("\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
 /* convert float2float */
-void AsmAssembler::Cvtss2sd(Reg srcReg, Reg destReg) {
-  Emit("\tcvtss2sd\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvtss2sd(Reg srcReg, Reg destReg)
+{
+    Emit("\tcvtss2sd\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Cvtsd2ss(Reg srcReg, Reg destReg) {
-  Emit("\tcvtsd2ss\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Cvtsd2ss(Reg srcReg, Reg destReg)
+{
+    Emit("\tcvtsd2ss\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
 /* unordered compare */
-void AsmAssembler::Ucomisd(Reg srcReg, Reg destReg) {
-  Emit("\tucomisd\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Ucomisd(Reg srcReg, Reg destReg)
+{
+    Emit("\tucomisd\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Ucomiss(Reg srcReg, Reg destReg) {
-  Emit("\tucomiss\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Ucomiss(Reg srcReg, Reg destReg)
+{
+    Emit("\tucomiss\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
 /* float sqrt*/
-void AsmAssembler::Sqrtss_r(Reg srcReg, Reg destReg) {
-  Emit("\tsqrtss\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Sqrtss_r(Reg srcReg, Reg destReg)
+{
+    Emit("\tsqrtss\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 
-void AsmAssembler::Sqrtsd_r(Reg srcReg, Reg destReg) {
-  Emit("\tsqrtsd\t");
-  EmitRegReg(srcReg, destReg);
-  Emit("\n");
+void AsmAssembler::Sqrtsd_r(Reg srcReg, Reg destReg)
+{
+    Emit("\tsqrtsd\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
 }
 /* end of X64 instructions */
 } /* namespace assembler */

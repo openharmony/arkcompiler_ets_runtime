@@ -437,10 +437,10 @@ public:
         return referenceVirtualRegs.count(regNO) != 0;
     }
 
-    const MapleUnorderedSet<regno_t> &GetReferenceRegs() const {
+    const MapleUnorderedSet<regno_t> &GetReferenceRegs() const
+    {
         return referenceVirtualRegs;
     }
-
 
     void AddReferenceStackSlot(int64 offset)
     {
@@ -1562,7 +1562,7 @@ protected:
         return static_cast<int64>(GetBaseOffset(*symLoc));
     }
 
-    int64 GetOrCreatSpillRegLocation(regno_t vrNum, uint32 memByteSize) 
+    int64 GetOrCreatSpillRegLocation(regno_t vrNum, uint32 memByteSize)
     {
         auto *symLoc = GetMemlayout()->GetLocOfSpillRegister(vrNum, memByteSize);
         return static_cast<int64>(GetBaseOffset(*symLoc));
