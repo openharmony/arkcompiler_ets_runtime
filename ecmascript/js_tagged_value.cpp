@@ -860,10 +860,8 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
     }
     if (obj->IsJSFunction() && proto->IsJSFunction()) {
         JSHandle<JSFunction> objFunc = JSHandle<JSFunction>::Cast(obj);
-        JSHandle<JSFunction> protoFunc = JSHandle<JSFunction>::Cast(proto);
         JSTaggedValue objProtoOrHClass(objFunc->GetProtoOrHClass());
-        JSTaggedValue protoOrHClass(protoFunc->GetProtoOrHClass());
-        if (objProtoOrHClass.IsJSHClass() && protoOrHClass.IsJSHClass() && objProtoOrHClass != protoOrHClass) {
+        if (objProtoOrHClass.IsJSHClass() && objFunc->IsDerivedConstructor()) {
             JSHandle<JSHClass> cachedJSHClass = JSHandle<JSHClass>(thread, objProtoOrHClass);
             objFunc->SetProtoOrHClass(thread, cachedJSHClass->GetPrototype());
         }
