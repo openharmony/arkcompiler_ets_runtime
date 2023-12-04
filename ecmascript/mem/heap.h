@@ -371,6 +371,7 @@ public:
     inline size_t GetCommittedSize() const;
 
     inline size_t GetHeapObjectSize() const;
+    size_t GetLiveObjectSize() const;
 
     inline uint32_t GetHeapObjectCount() const;
 
@@ -537,6 +538,8 @@ public:
     {
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
+
+    void TryTriggerFullMarkByNativeSize();
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
     {
