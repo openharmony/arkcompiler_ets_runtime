@@ -193,3 +193,9 @@ m.set(tag1, val);
 m.forEach((a, b)=>{
   print("Tag.t82 == b : ", Tag.t82 == b);
 })
+
+try {
+  "123".padEnd(Math.pow(2, 40))
+} catch (e) {
+    print(e)
+}

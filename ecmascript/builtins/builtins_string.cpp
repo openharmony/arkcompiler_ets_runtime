@@ -2010,7 +2010,9 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 0);
-    int32_t intMaxLength = JSTaggedValue::ToInt32(thread, lengthTag);
+    JSTaggedNumber number = JSTaggedValue::ToNumber(thread, lengthTag);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t intMaxLength  = base::NumberHelper::DoubleToInt64(number.GetNumber());
     int32_t stringLength = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
     if (intMaxLength <= stringLength) {
         return thisHandle.GetTaggedValue();
@@ -2028,8 +2030,11 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
         return thisHandle.GetTaggedValue();
     }
     std::u16string u16strSearch = EcmaStringAccessor(thisHandle).ToU16String();
-    int32_t fillLen = intMaxLength - stringLength;
-    int32_t len = static_cast<int32_t>(stringBuilder.length());
+    int64_t fillLen = intMaxLength - stringLength;
+    int64_t len = static_cast<int64_t>(stringBuilder.length());
+    if (static_cast<size_t>(intMaxLength) >= EcmaString::MAX_STRING_LENGTH) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
     std::u16string fiString;
     for (int32_t i = 0; i < fillLen; ++i) {
         fiString += stringBuilder[i % len];
