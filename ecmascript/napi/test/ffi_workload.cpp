@@ -2176,7 +2176,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Int64)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int64_t num = 0xffffffffffff; // 0xffffffffffff = 超过32位的一个数字
+    int64_t num = 0xffffffffffff; // 0xffffffffffff = A number exceeding 32 bits
     Local<JSValueRef> targetInt = NumberRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2191,7 +2191,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Double)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    double num = 123.456; // 123.456 = 随机构造的一个double
+    double num = 123.456; // 123.456 = random number
     Local<JSValueRef> targetInt = NumberRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2206,7 +2206,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 789; // 123.456 = 随机构造的一个int
+    int num = 789; // 123.456 = random number
     Local<JSValueRef> targetInt = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2221,7 +2221,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_Uint32Value)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    unsigned int num = 456; // 123.456 = 随机构造的一个unsigned int
+    unsigned int num = 456; // 123.456 = random number
     Local<JSValueRef> targetUInt = IntegerRef::NewFromUnsigned(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2251,7 +2251,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new int(123)); // 123 = 随机构造的一个int
+    void *vp1 = static_cast<void *>(new int(123)); // 123 = random number
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2266,7 +2266,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Double)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new double(123.456)); // 123.456 = 随机构造的一个double
+    void *vp1 = static_cast<void *>(new double(123.456)); // 123.456 = random number
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2296,7 +2296,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNativePointer_Long)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *vp1 = static_cast<void *>(new long(123456)); // 123456 = 随机构造的一个long
+    void *vp1 = static_cast<void *>(new long(123456)); // 123456 = random number
     Local<JSValueRef> tag = NativePointerRef::New(vm_, vp1);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2311,8 +2311,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUndefined_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 123; // 123 = 随机构造的一个int
-    Local<JSValueRef> tag = IntegerRef::New(vm_,  num);
+    int num = 123; // 123 = random number
+    Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         bool b = tag->IsUndefined();
@@ -2340,7 +2340,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNull_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 123; // 123 = 随机构造的一个int
+    int num = 123; // 123 = random number
     Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2383,7 +2383,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_WithinInt32_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 456; // 456 = 随机构造的一个int
+    int num = 456; // 456 = random number
     Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2398,7 +2398,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBoolean_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 123; // 123 = 随机构造的一个int
+    int num = 123; // 123 = random number
     Local<JSValueRef> tag = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2525,7 +2525,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDataView_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 0; // 0 = 随机构造的一个int
+    int num = 0; // 0 = random number
     Local<JSValueRef> tag = DataViewRef::New(vm_, ArrayBufferRef::New(vm_, num), num, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2818,7 +2818,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Int)
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new int(123); // 123 = 随机构造的一个int
+    void *ref = new int(123); // 123 = random number
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<int>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<int>;
     gettimeofday(&g_beginTime, nullptr);
@@ -2850,7 +2850,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Double)
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new double(123.456); // 123.456 = 随机构造的一个double
+    void *ref = new double(123.456); // 123.456 = random number
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<double>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<double>;
     gettimeofday(&g_beginTime, nullptr);
@@ -2882,7 +2882,7 @@ HWTEST_F_L0(JSNApiSplTest, Global_SetWeakCallback_Long)
     LocalScope scope(vm_);
     CalculateForTime();
     Global<JSValueRef> global(vm_, BooleanRef::New(vm_, true));
-    void *ref = new long(123456); // 123456 = 随机构造的一个long
+    void *ref = new long(123456); // 123456 = random number
     WeakRefClearCallBack freeGlobalCallBack = FreeGlobalCallBack<long>;
     WeakRefClearCallBack nativeFinalizeCallback = NativeFinalizeCallback<long>;
     gettimeofday(&g_beginTime, nullptr);
@@ -3093,7 +3093,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0}; // 16 = 字符数组的大小
+    char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, local->Length());
@@ -3108,7 +3108,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_0)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0}; // 16 = 字符数组的大小
+    char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, 0);
@@ -3123,7 +3123,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_true)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0}; // 16 = 字符数组的大小
+    char cs[16] = {0}; // 16 =The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, 6, true);
@@ -3138,7 +3138,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all_true)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0}; // 16 = 字符数组的大小
+    char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf8(cs, local->Length(), true);
@@ -3153,7 +3153,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf16)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf16(vm_, u"您好，华为！");
-    char16_t cs[16] = {0}; // 16 = 字符数组的大小
+    char16_t cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteUtf16(cs, 3);
@@ -3168,7 +3168,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteLatin1)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<StringRef> local = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    char cs[16] = {0}; // 16 = 字符数组的大小
+    char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         int length = local->WriteLatin1(cs, 8);
@@ -3247,7 +3247,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_NotifyNativeCalling_Long)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    void *par = new long(123456); // 123456 = 随机构造的long
+    void *par = new long(123456); // 123456 = random number
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         JSNApi::NotifyNativeCalling(vm_, par);
@@ -3288,7 +3288,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 123; // 123 = 随机构造的int
+    int num = 123; // 123 = random number
     Local<JSValueRef> value = IntegerRef::New(vm_, num);
     Local<JSValueRef> transfer = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
@@ -3646,7 +3646,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的数字
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3660,8 +3660,8 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int32_t length = 4; // 4 = 长度
-    int32_t byteOffset = 0; // 0 = 长度
+    int32_t length = 4;     // 4 = length
+    int32_t byteOffset = 0; // 0 = length
     Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, length);
     Local<Uint8ClampedArrayRef> object = Uint8ClampedArrayRef::New(vm_, buffer, byteOffset, length);
     gettimeofday(&g_beginTime, nullptr);
@@ -3676,7 +3676,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsUint8ClampedArray_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的数字
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3690,9 +3690,9 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_True)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    const int32_t length = 30; // 30 = 长度
-    int32_t byteOffset = 4; // 4 = 偏移量
-    int32_t len = 6; // 6 = 长度
+    const int32_t length = 30; // 30 = length
+    int32_t byteOffset = 4;    // 4 = offset
+    int32_t len = 6;           // 6 = length
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
     Local<Int16ArrayRef> object = Int16ArrayRef::New(vm_, arrayBuffer, byteOffset, len);
     gettimeofday(&g_beginTime, nullptr);
@@ -3707,7 +3707,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsInt16Array_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的数字
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3821,7 +3821,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSCollator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3858,7 +3858,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSPluralRules_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3872,7 +3872,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSListFormat_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3904,7 +3904,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3949,7 +3949,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -3969,7 +3969,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_True)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> tagvalue =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    uint32_t argvLength = 6; // 6 = 参数长度
+    uint32_t argvLength = 6; // 6 = argv length
     auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(tagvalue.GetTaggedValue());
@@ -3981,7 +3981,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_True)
         JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
     JSTaggedValue doubleList = TaggedDoubleList::Create(thread_);
     linkedList->SetDoubleList(thread_, doubleList);
-    uint32_t elementsNum = 256; // 256 = 循环次数
+    uint32_t elementsNum = 256; // 256 = Number of cycles
     for (uint32_t i = 0; i < elementsNum; i++) {
         JSHandle<JSTaggedValue> taggedvalue(thread_, JSTaggedValue(i));
         JSAPILinkedList::Add(thread_, linkedList, taggedvalue);
@@ -4003,7 +4003,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -4023,7 +4023,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_True)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> value =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    uint32_t argvLength = 6; // 6 = 参数长度
+    uint32_t argvLength = 6; // 6 = argv length
     auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(value.GetTaggedValue());
@@ -4049,7 +4049,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsList_False)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 10; // 10 = 随机构造的int
+    int num = 10; // 10 = random number
     Local<JSValueRef> object = IntegerRef::New(vm_, num);
     for (int i = 0; i < NUM_COUNT; i++) {
         ASSERT_FALSE(object->IsList());
@@ -4068,7 +4068,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_True)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
     JSHandle<JSTaggedValue> value =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    uint32_t argvLength = 6; // 6 = 参数长度
+    uint32_t argvLength = 6; // 6 = argv length
     auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), argvLength);
     objCallInfo->SetFunction(JSTaggedValue::Undefined());
     objCallInfo->SetThis(value.GetTaggedValue());
@@ -4091,5 +4091,2255 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_True)
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsPlainArray);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsPlainArray_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 10; // 10 = random number
+    Local<JSValueRef> object = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsPlainArray());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsPlainArray);
+}
+
+HWTEST_F_L0(JSNApiSplTest, DateRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    double time = 3.14; // 3.14 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        DateRef::New(vm_, time);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(DateRef::New);
+}
+
+HWTEST_F_L0(JSNApiSplTest, DateRef_ToString)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    double time = 3.14; // 3.14 = random number
+    Local<DateRef> object = DateRef::New(vm_, time);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(DateRef::ToString);
+}
+
+HWTEST_F_L0(JSNApiSplTest, DateRef_GetTime)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    double time = 3.14; // 3.14 = random number
+    Local<DateRef> object = DateRef::New(vm_, time);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTime();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(DateRef::GetTime);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ProxyRef_GetHandler)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
+    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
+    JSObject::SetProperty(thread_, targetHandle, key, value);
+    JSHandle<JSTaggedValue> handlerHandle(
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> proxyTagValue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
+    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxyTagValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetHandler(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ProxyRef::GetHandler);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ProxyRef_GetTarget)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
+    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
+    JSObject::SetProperty(thread_, targetHandle, key, value);
+    JSHandle<JSTaggedValue> handlerHandle(
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> proxyTagValue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
+    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxyTagValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTarget(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ProxyRef::GetTarget);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ProxyRef_IsRevoked)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
+    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(1));
+    JSObject::SetProperty(thread_, targetHandle, key, value);
+    JSHandle<JSTaggedValue> handlerHandle(
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
+    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
+    JSHandle<JSTaggedValue> proxyTagValue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
+    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxyTagValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsRevoked();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ProxyRef::IsRevoked);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_GetSize)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetSize();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::GetSize);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_GetTotalElements)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTotalElements();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::GetTotalElements);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_Get)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Get(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::Get);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_GetKey)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetKey(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::GetKey);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_GetValue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetValue(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::GetValue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        MapRef::New(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::New);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapRef_Set)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Set(vm_, key, value);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapRef::Set);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetSize)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakMapRef> object = WeakMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetSize();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakMapRef::GetSize);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetTotalElements)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakMapRef> object = WeakMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTotalElements();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakMapRef::GetTotalElements);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetKey)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakMapRef> object = WeakMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetKey(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakMapRef::GetKey);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakMapRef_GetValue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakMapRef> object = WeakMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetValue(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakMapRef::GetValue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SetRef_GetSize)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<SetRef> object = SetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetSize();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SetRef::GetSize);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SetRef_GetTotalElements)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<SetRef> object = SetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTotalElements();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SetRef::GetTotalElements);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SetRef_GetValue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<SetRef> object = SetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetValue(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SetRef::GetValue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetSize)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakSetRef> object = WeakSetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetSize();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakSetRef::GetSize);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetTotalElements)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakSetRef> object = WeakSetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetTotalElements();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakSetRef::GetTotalElements);
+}
+
+HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetValue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<WeakSetRef> object = WeakSetRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetValue(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(WeakSetRef::GetValue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapIteratorRef_GetIndex)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
+    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
+    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
+    jsMap->SetLinkedMap(thread_, linkedHashMap);
+    JSHandle<JSTaggedValue> mapValue(jsMap);
+    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread_, mapValue, IterationKind::KEY);
+    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+    mapIterator->SetNextIndex(1);
+    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetIndex();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapIteratorRef::GetIndex);
+}
+
+HWTEST_F_L0(JSNApiSplTest, MapIteratorRef_GetKind)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
+    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
+    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
+    jsMap->SetLinkedMap(thread_, linkedHashMap);
+    JSHandle<JSTaggedValue> mapValue(jsMap);
+    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread_, mapValue, IterationKind::KEY);
+    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+    mapIterator->SetIterationKind(IterationKind::VALUE);
+    mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
+    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetKind(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(MapIteratorRef::GetKind);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SetIteratorRef_GetIndex)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread_);
+    set->SetLinkedSet(thread_, hashSet);
+    JSHandle<JSTaggedValue> setIteratorValue =
+        JSSetIterator::CreateSetIterator(thread_, JSHandle<JSTaggedValue>(set), IterationKind::KEY);
+    JSHandle<JSSetIterator> setIterator = JSHandle<JSSetIterator>::Cast(setIteratorValue);
+    setIterator->SetNextIndex(1);
+    Local<SetIteratorRef> object = JSNApiHelper::ToLocal<SetIteratorRef>(setIteratorValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetIndex();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SetIteratorRef::GetIndex);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SetIteratorRef_GetKind)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread_);
+    set->SetLinkedSet(thread_, hashSet);
+    JSHandle<JSTaggedValue> setIteratorValue =
+        JSSetIterator::CreateSetIterator(thread_, JSHandle<JSTaggedValue>(set), IterationKind::KEY);
+    JSHandle<JSSetIterator> setIterator = JSHandle<JSSetIterator>::Cast(setIteratorValue);
+    setIterator->SetIterationKind(IterationKind::VALUE);
+    setIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
+    Local<SetIteratorRef> object = JSNApiHelper::ToLocal<SetIteratorRef>(setIteratorValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetKind(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SetIteratorRef::GetKind);
+}
+
+HWTEST_F_L0(JSNApiSplTest, GeneratorFunctionRef_IsGenerator)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    Local<GeneratorFunctionRef> object = genObjectRef->GetGeneratorFunction(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsGenerator();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(GeneratorFunctionRef::IsGenerator);
+}
+
+HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorState)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetGeneratorState(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(GeneratorObjectRef::GetGeneratorState);
+}
+
+HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetGeneratorFunction(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(GeneratorObjectRef::GetGeneratorFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, GeneratorObjectRef_GetGeneratorReceiver)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetGeneratorReceiver(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(GeneratorObjectRef::GetGeneratorReceiver);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CollatorRef_GetCompareFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<JSTaggedValue> localeStr = thread_->GlobalConstants()->GetHandledEnUsString();
+    JSHandle<JSTaggedValue> undefinedHandle(thread_, JSTaggedValue::Undefined());
+    JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread_, collator, localeStr, undefinedHandle);
+    JSHandle<JSTaggedValue> collatorTagHandleVal = JSHandle<JSTaggedValue>::Cast(initCollator);
+    Local<CollatorRef> object = JSNApiHelper::ToLocal<CollatorRef>(collatorTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetCompareFunction(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(GeneratorObjectRef::GetCompareFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, DataTimeFormatRef_GetFormatFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> localeCtor = env->GetLocaleFunction();
+    JSHandle<JSLocale> locales =
+        JSHandle<JSLocale>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(localeCtor), localeCtor));
+    icu::Locale icuLocale("zh", "Hans", "Cn", "calendar=chinese");
+    factory->NewJSIntlIcuData(locales, icuLocale, JSLocale::FreeIcuLocale);
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> options = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    options = JSDateTimeFormat::ToDateTimeOptions(thread_, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY,
+        DefaultsOption::ALL);
+    JSHandle<JSTaggedValue> dtfCtor = env->GetDateTimeFormatFunction();
+    JSHandle<JSDateTimeFormat> dtf =
+        JSHandle<JSDateTimeFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(dtfCtor), dtfCtor));
+    dtf = JSDateTimeFormat::InitializeDateTimeFormat(thread_, dtf, JSHandle<JSTaggedValue>::Cast(locales),
+        JSHandle<JSTaggedValue>::Cast(options));
+    JSHandle<JSTaggedValue> dtfTagHandleVal = JSHandle<JSTaggedValue>::Cast(dtf);
+    Local<DataTimeFormatRef> object = JSNApiHelper::ToLocal<DataTimeFormatRef>(dtfTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetFormatFunction(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(DataTimeFormatRef::GetFormatFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberFormatRef_GetFormatFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> ctor = env->GetNumberFormatFunction();
+    JSHandle<JSNumberFormat> numberFormat =
+        JSHandle<JSNumberFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    EXPECT_TRUE(*numberFormat != nullptr);
+    JSHandle<JSTaggedValue> locales(factory->NewFromASCII("zh-Hans-CN"));
+    JSHandle<JSTaggedValue> undefinedOptions(thread_, JSTaggedValue::Undefined());
+    JSNumberFormat::InitializeNumberFormat(thread_, numberFormat, locales, undefinedOptions);
+    JSHandle<JSTaggedValue> numberformatTagHandleVal = JSHandle<JSTaggedValue>::Cast(numberFormat);
+    Local<NumberFormatRef> object = JSNApiHelper::ToLocal<NumberFormatRef>(numberformatTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetFormatFunction(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberFormatRef::GetFormatFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PromiseRejectInfo_PromiseRejectInfo)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, "-3.14");
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, "123.3");
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string("promisereject"));
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PromiseRejectInfo::PromiseRejectInfo);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PromiseRejectInfo_GetPromise)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, "-3.14");
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, "3.14");
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string("promisereject"));
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        promisereject.GetPromise();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PromiseRejectInfo::GetPromise);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PromiseRejectInfo_GetReason)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, "-3.14");
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, "3.14");
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string("promisereject"));
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        promisereject.GetReason();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PromiseRejectInfo::GetReason);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PromiseRejectInfo_GetOperation)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, "-3.14");
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, "3.14");
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string("promisereject"));
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        promisereject.GetOperation();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PromiseRejectInfo::GetOperation);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PromiseRejectInfo_GetData)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, "-3.14");
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, "3.14");
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string("promisereject"));
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        promisereject.GetData();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PromiseRejectInfo::GetData);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_Int32Value)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->Int32Value(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Int32Value);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToNumber)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+    Local<JSValueRef> toValue(toString);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        toString->ToNumber(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToNumber);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsHole)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> res = IntegerRef::New(vm_, 123);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsHole();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsHole);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsTrue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsTrue();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTrue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsSymbol)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsSymbol();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsSymbol);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsObject)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsObject();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsTypedArray)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsTypedArray();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTypedArray);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNativePointer)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsNativePointer();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNativePointer);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsRegExp)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsRegExp();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsRegExp);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayIterator)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 123; // 123 = random number
+    Local<JSValueRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsArrayIterator();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArrayIterator);
+}
+
+HWTEST_F_L0(JSNApiSplTest, EscapeLocalScope_gz)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        EscapeLocalScope test(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(EscapeLocalScope::EscapeLocalScope);
+}
+
+HWTEST_F_L0(JSNApiSplTest, EscapeLocalScope_Escape)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    EscapeLocalScope test(vm_);
+    int num = 3; // 3 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        test.Escape(ArrayRef::New(vm_, num));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(EscapeLocalScope::Escape);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSExecutionScope_gz)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSExecutionScope res(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSExecutionScope::JSExecutionScope);
+}
+
+HWTEST_F_L0(JSNApiSplTest, LocalScope_gz)
+{
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        LocalScope scope(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(LocalScope::LocalScope);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PrimitiveRef_GetValue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 0; // 0 = random number
+    Local<PrimitiveRef> intValue = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->GetValue(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(PrimitiveRef::GetValue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IntegerRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        IntegerRef::New(vm_, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(IntegerRef::New);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IntegerRef_NewFromUnsigned)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    unsigned int res = 123; // 123 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        IntegerRef::NewFromUnsigned(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(IntegerRef::NewFromUnsigned);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IntegerRef_Value)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 0; // 0 = random number
+    Local<IntegerRef> res = IntegerRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(IntegerRef::Value);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberRef_New01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    double res = 64; // 64 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NumberRef::New(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberRef::New01);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberRef_New02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int32_t res = 64; // 64 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NumberRef::New(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberRef::New02);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberRef_New03)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t res = 64; // 64 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NumberRef::New(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberRef::New03);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberRef_New04)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int64_t res = 64; // 64 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NumberRef::New(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberRef::New04);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NumberRef_Value)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int32_t num = 0; // 0 = random number
+    Local<NumberRef> res = NumberRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NumberRef::Value);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Cast)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ObjectRef::Cast(*value);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Cast);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ObjectRef::New(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::New);
+}
+
+void *Detach1()
+{
+    GTEST_LOG_(INFO) << "detach is running";
+    return nullptr;
+}
+
+void Attach1([[maybe_unused]] void *buffer)
+{
+    GTEST_LOG_(INFO) << "attach is running";
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Set01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Set(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Set01);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Set02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Set(vm_, key, value);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Set02);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Set03)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Set(vm_, key, value);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Set03);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetAccessorProperty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<FunctionRef> target1 = FunctionRef::New(vm_, nullptr);
+    Local<FunctionRef> target2 = FunctionRef::New(vm_, nullptr);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->SetAccessorProperty(vm_, key, target1, target2);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::SetAccessorProperty);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Get01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Get(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Get01);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Get02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> object = ObjectRef::New(vm_);
+    int32_t key = 123; // 123 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Get(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Get02);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetOwnProperty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetOwnProperty(vm_, key, attribute);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetOwnProperty);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetOwnPropertyNames)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetOwnPropertyNames(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetOwnPropertyNames);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetAllPropertyNames)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    uint32_t filter = 123; // 123 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetAllPropertyNames(vm_, filter);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetAllPropertyNames);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetOwnEnumerablePropertyNames)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetOwnEnumerablePropertyNames(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetOwnEnumerablePropertyNames);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetPrototype)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetPrototype(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetPrototype);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetPrototype)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> prototype = object->GetPrototype(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->SetPrototype(vm_, prototype);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::SetPrototype);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_DefineProperty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->DefineProperty(vm_, key, attribute);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::DefineProperty);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Has01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Has(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Has01);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Has02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    uint32_t key = 123;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Has(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Has02);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Delete01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Delete(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Delete01);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Delete02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
+    uint32_t key = 123;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Delete(vm_, key);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Delete02);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Freeze)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Freeze(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Freeze);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_Seal)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->Seal(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::Seal);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetNativePointerFieldCount)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    int32_t input = 34; // 34 = random number
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->SetNativePointerFieldCount(input);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::SetNativePointerFieldCount);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetNativePointerFieldCount)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    int32_t input = 34; // 34 = random number
+    object->SetNativePointerFieldCount(input);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetNativePointerFieldCount();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetNativePointerFieldCount);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetNativePointerField)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->SetNativePointerField(33, vp1, callBack, vp2);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::SetNativePointerField);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetNativePointerField)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    object->SetNativePointerField(33, vp1, callBack, vp2);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->GetNativePointerField(33);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ObjectRef::GetNativePointerField);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_GetGlobalObject)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::GetGlobalObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::GetGlobalObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_ExecutePendingJob)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::ExecutePendingJob(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::ExecutePendingJob);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_TriggerGC)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::TriggerGC(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::TriggerGC);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_ThrowException)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::Error(vm_, message);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::ThrowException(vm_, error);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::ThrowException);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_GetAndClearUncaughtException)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::GetAndClearUncaughtException(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::GetAndClearUncaughtException);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_GetUncaughtException)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::GetUncaughtException(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::GetUncaughtException);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_HasPendingException)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::HasPendingException(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::HasPendingException);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_EnableUserUncaughtErrorHandler)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::EnableUserUncaughtErrorHandler);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_StartDebugger)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSNApi::DebugOption res;
+    res.libraryPath = "mytests";
+    res.isDebugMode = true;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::StartDebugger(vm_, res);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::StartDebugger);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_StopDebugger)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::StopDebugger(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSNApi::StopDebugger);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JsiRuntimeCallInfo_GetFunctionRef)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetFunctionRef();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JsiRuntimeCallInfo::GetFunctionRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JsiRuntimeCallInfo_GetNewTargetRef)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetNewTargetRef();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JsiRuntimeCallInfo::GetNewTargetRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JsiRuntimeCallInfo_GetThisRef)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetThisRef();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JsiRuntimeCallInfo::GetThisRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JsiRuntimeCallInfo_GetCallArgRef)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    uint32_t idx = 123;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetCallArgRef(idx);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JsiRuntimeCallInfo::GetCallArgRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionCallScope_Gz)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        FunctionCallScope test(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionCallScope::FunctionCallScope);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsSetIterator_Ture)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<JSTaggedValue> proto = thread_->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
+    JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, proto);
+    JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread_));
+    jsSet->SetLinkedSet(thread_, linkedSet);
+    JSHandle<JSSetIterator> jsSetIter = factory->NewJSSetIterator(jsSet, IterationKind::KEY);
+    JSHandle<JSTaggedValue> setiter = JSHandle<JSTaggedValue>::Cast(jsSetIter);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(JSNApiHelper::ToLocal<JSValueRef>(setiter)->IsSetIterator());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsSetIterator);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsSetIterator_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsSetIterator());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsSetIterator);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsUint16Array_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int32_t num = 30;       // 30 = ArrayBuff length
+    int32_t byteOffset = 4; // 4 = Offset
+    int32_t length = 6;     // 6 = length
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
+    Local<Uint16ArrayRef> object = Uint16ArrayRef::New(vm_, buffer, byteOffset, length);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(object->IsUint16Array());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsUint16Array);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsUint16Array_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsUint16Array());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsUint16Array);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsInt32Array_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int32_t num = 30;       // 30 = ArrayBuff length
+    int32_t byteOffset = 4; // 4 = Offset
+    int32_t length = 6;     // 6 = length
+    Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, num);
+    Local<Int32ArrayRef> object = Int32ArrayRef::New(vm_, buffer, byteOffset, length);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(object->IsInt32Array());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsInt32Array);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsInt32Array_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsInt32Array());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsInt32Array);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsJSPrimitiveString_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsJSPrimitiveString());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSPrimitiveString);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsGeneratorObject_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(genObjectRef->IsGeneratorObject());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsGeneratorObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsGeneratorObject_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsGeneratorObject());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsGeneratorObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsJSPrimitiveSymbol_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsJSPrimitiveSymbol());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSPrimitiveSymbol);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsAsyncGeneratorObject_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    auto factory = vm_->GetFactory();
+    auto env = vm_->GetGlobalEnv();
+    JSHandle<JSAsyncGeneratorObject> asyncGenObj =
+        factory->NewJSAsyncGeneratorObject(env->GetAsyncGeneratorFunctionFunction());
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(asyncGenObj);
+    Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(genObjectRef->IsAsyncGeneratorObject());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsAsyncGeneratorObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsAsyncGeneratorObject_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsAsyncGeneratorObject();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsAsyncGeneratorObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsModuleNamespaceObject_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<ModuleNamespace> moduleNamespace = factory->NewModuleNamespace();
+    JSHandle<JSTaggedValue> modname = JSHandle<JSTaggedValue>::Cast(moduleNamespace);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ObjectRef>(modname)->IsModuleNamespaceObject();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsModuleNamespaceObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsModuleNamespaceObject_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsModuleNamespaceObject();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsModuleNamespaceObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsSharedArrayBuffer_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    auto *factory = vm_->GetFactory();
+    int32_t num = 40; // 40 = ArrayBuffer length
+    JSHandle<JSArrayBuffer> jsArrayBuffer = factory->NewJSSharedArrayBuffer(num);
+    JSHandle<JSTaggedValue> SAbuffer = JSHandle<JSTaggedValue>::Cast(jsArrayBuffer);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(SAbuffer)->IsSharedArrayBuffer();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsSharedArrayBuffer);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsSharedArrayBuffer_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsSharedArrayBuffer();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsSharedArrayBuffer);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsStrictEquals_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object2 = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsStrictEquals(vm_, object2);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsStrictEquals);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsStrictEquals_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> target1 = StringRef::NewFromUtf8(vm_, "1");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsStrictEquals(vm_, target1);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsStrictEquals);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsQueue_Frue)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> proto = thread->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
+    JSHandle<JSHClass> queueClass = factory->NewEcmaHClass(JSAPIQueue::SIZE, JSType::JS_API_QUEUE, proto);
+    JSHandle<JSAPIQueue> jsQueue = JSHandle<JSAPIQueue>::Cast(factory->NewJSObjectWithInit(queueClass));
+    JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIQueue::DEFAULT_CAPACITY_LENGTH);
+    jsQueue->SetLength(thread, JSTaggedValue(0));
+    jsQueue->SetFront(0);
+    jsQueue->SetTail(0);
+    jsQueue->SetElements(thread, newElements);
+    JSHandle<JSTaggedValue> Que = JSHandle<JSTaggedValue>::Cast(jsQueue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(Que)->IsDeque();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsQueue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsQueue_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsQueue();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsQueue);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsStack_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> proto = thread->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
+    JSHandle<JSHClass> stackClass = factory->NewEcmaHClass(JSAPIStack::SIZE, JSType::JS_API_STACK, proto);
+    JSHandle<JSAPIStack> jsStack = JSHandle<JSAPIStack>::Cast(factory->NewJSObjectWithInit(stackClass));
+    jsStack->SetTop(0);
+    JSHandle<JSTaggedValue> stcak = JSHandle<JSTaggedValue>::Cast(jsStack);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(stcak)->IsStack();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsStack);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsStack_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsStack();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsStack);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsTreeMap_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> mapClass = factory->NewEcmaHClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, proto);
+    JSHandle<JSAPITreeMap> jsTreeMap = JSHandle<JSAPITreeMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<TaggedTreeMap> treeMap(thread, TaggedTreeMap::Create(thread));
+    jsTreeMap->SetTreeMap(thread, treeMap);
+    JSHandle<JSTaggedValue> treapp = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(treapp)->IsTreeMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTreeMap);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsTreeMap_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsTreeMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTreeMap);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsTreeSet_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, proto);
+    JSHandle<JSAPITreeSet> jsTreeSet = JSHandle<JSAPITreeSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<TaggedTreeSet> treeSet(thread, TaggedTreeSet::Create(thread));
+    jsTreeSet->SetTreeSet(thread, treeSet);
+    JSHandle<JSTaggedValue> tresett = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(tresett)->IsTreeSet();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTreeSet);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsTreeSet_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object->IsTreeSet();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsTreeSet);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsVector_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> proto = thread->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
+    JSHandle<JSHClass> vectorClass = factory->NewEcmaHClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, proto);
+    JSHandle<JSAPIVector> jsVector = JSHandle<JSAPIVector>::Cast(factory->NewJSObjectWithInit(vectorClass));
+    jsVector->SetLength(0);
+    JSHandle<JSTaggedValue> vectt = JSHandle<JSTaggedValue>::Cast(jsVector);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApiHelper::ToLocal<ArrayRef>(vectt)->IsVector();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsVector);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Parse_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    const char16_t *utf16 = u"您好，华为！";
+    Local<StringRef> str = StringRef::NewFromUtf8(vm_, "abc");
+    Local<StringRef> str2 = StringRef::NewFromUtf16(vm_, utf16);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSON::Parse(vm_, str);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Parse);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSON::Parse(vm_, str2);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Parse);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Stringify)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSON::Stringify(vm_, object);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Stringify);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Error)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::Error(vm_, StringRef::NewFromUtf8(vm_, "test error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Error);
+}
+
+HWTEST_F_L0(JSNApiSplTest, RangeError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::RangeError(vm_, StringRef::NewFromUtf8(vm_, "test range error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::RangeError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ReferenceError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::ReferenceError(vm_, StringRef::NewFromUtf8(vm_, "test reference error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ReferenceError);
+}
+HWTEST_F_L0(JSNApiSplTest, SyntaxError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::SyntaxError(vm_, StringRef::NewFromUtf8(vm_, "test syntax error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SyntaxError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, TypeError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::TypeError(vm_, StringRef::NewFromUtf8(vm_, "test type error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::TypeError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, AggregateError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::AggregateError(vm_, StringRef::NewFromUtf8(vm_, "test aggregate error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::AggregateError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, EvalError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "test eval error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::EvalError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, OOMError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (void)Exception::OOMError(vm_, StringRef::NewFromUtf8(vm_, "test out of memory error"));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::OOMError);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CreateEcmaVM)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSRuntimeOptions option;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+        JSNApi::DestroyJSVM(workerVm);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::CreateEcmaVM);
+}
+
+HWTEST_F_L0(JSNApiSplTest, PostFork)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    RuntimeOption option;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::PostFork(vm_, option);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::PostFork);
+}
+
+HWTEST_F_L0(JSNApiSplTest, addWorker)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSRuntimeOptions option;
+    gettimeofday(&g_beginTime, nullptr);
+    EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::addWorker(vm_, workerVm);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::addWorker);
+    JSNApi::DestroyJSVM(workerVm);
+}
+
+HWTEST_F_L0(JSNApiSplTest, DeleteWorker)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSRuntimeOptions option;
+    EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::addWorker(vm_, workerVm);
+        JSNApi::DeleteWorker(vm_, workerVm);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::DeleteWorker);
+    JSNApi::DestroyJSVM(workerVm);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsBundle)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::IsBundle(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBundle);
 }
 }
