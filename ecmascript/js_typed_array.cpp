@@ -650,9 +650,8 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
     // Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    // If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
+        return JSTaggedValue::Undefined();
     }
 
     DISALLOW_GARBAGE_COLLECTION;
