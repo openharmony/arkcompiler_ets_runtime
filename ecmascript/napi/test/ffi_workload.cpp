@@ -2206,7 +2206,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IntegerValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    int num = 789; // 123.456 = random number
+    int num = 789; // 789 = random number
     Local<JSValueRef> targetInt = IntegerRef::New(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -2221,7 +2221,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_Uint32Value)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    unsigned int num = 456; // 123.456 = random number
+    unsigned int num = 456; // 456 = random number
     Local<JSValueRef> targetUInt = IntegerRef::NewFromUnsigned(vm_, num);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -6331,7 +6331,7 @@ HWTEST_F_L0(JSNApiSplTest, DeleteWorker)
     JSNApi::DestroyJSVM(workerVm);
 }
 
-HWTEST_F_L0(JSNApiSplTest, IsBundle)
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBundle)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -6341,5 +6341,1901 @@ HWTEST_F_L0(JSNApiSplTest, IsBundle)
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::IsBundle);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_SetBundle)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::SetBundle(vm_, false);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SetBundle);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_SetAssetPath)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::SetAssetPath(vm_, str);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SetAssetPath);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSNApi_GetAssetPath)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    gettimeofday(&g_beginTime, nullptr);
+    JSNApi::SetAssetPath(vm_, str);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        std::string res = JSNApi::GetAssetPath(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::GetAssetPath);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_SetBundleName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::SetBundleName(vm_, str);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SetBundleName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_GetBundleName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    JSNApi::SetBundleName(vm_, str);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        std::string res = JSNApi::GetBundleName(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::GetBundleName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_GetModuleName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::SetModuleName(vm_, str);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SetModuleName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_SetModuleName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string str = "11";
+    JSNApi::SetModuleName(vm_, str);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        std::string res = JSNApi::GetModuleName(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::GetModuleName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_SetLoop)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::SetLoop(vm_, data);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::SetLoop);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_InitForConcurrentFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Deleter deleter = nullptr;
+    void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    bool callNative = true;
+    size_t nativeBindingsize = 15;
+    Local<FunctionRef> res =
+        FunctionRef::NewClassFunction(vm_, FunCallback, deleter, cb, callNative, nativeBindingsize);
+    ASSERT_TRUE(res->IsFunction());
+    Local<JSValueRef> res1 = res->GetFunctionPrototype(vm_);
+    void *taskInfo = nullptr;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::InitForConcurrentFunction(vm_, res1, taskInfo);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::InitForConcurrentFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_Rethrow)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        TryCatch tryCatch(vm_);
+        tryCatch.Rethrow();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Rethrow);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_InitForConcurrentThread)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    ConcurrentCallback concurrentCallback_ { nullptr };
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSNApi::InitForConcurrentThread(vm_, concurrentCallback_, data);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::InitForConcurrentThread);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_JsiRuntimeCallInfo)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JsiRuntimeCallInfo();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::JsiRuntimeCallInfo);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_GetThread)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetThread();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::GetThread);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_GetArgsNumber)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JsiRuntimeCallInfo object;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        object.GetArgsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::GetArgsNumber);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_HasCaught_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::Error(vm_, message);
+    JSNApi::ThrowException(vm_, error);
+    TryCatch tryCatch(vm_);
+    ASSERT_TRUE(tryCatch.HasCaught());
+    vm_->GetJSThread()->ClearException();
+    JSNApi::ThrowException(vm_, error);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        tryCatch.HasCaught();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::HasCaught);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_HasCaught_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::Error(vm_, message);
+    JSNApi::ThrowException(vm_, error);
+    TryCatch tryCatch(vm_);
+    tryCatch.GetAndClearException();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        tryCatch.HasCaught();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::HasCaught);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_Undefined)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSValueRef::Undefined(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Undefined);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_Null)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSValueRef::Null(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::Null);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSValueRef::True(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::True);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToBoolean)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->ToBoolean(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToBoolean::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->ToBoolean(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToBoolean::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->ToBoolean(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToBoolean::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->ToBoolean(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToBoolean::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->ToBoolean(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToBoolean::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToObject)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->ToObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToObject::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->ToObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToObject::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->ToObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToObject::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->ToObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToObject::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->ToObject(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToObject::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_ToString)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToString::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToString::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToString::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToString::BooleanRef);
+    Local<JSValueRef> toTarget(stringUtf8);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        toTarget->ToString(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::ToString::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsFalse)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = false;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsFalse();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsFalse::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsFalse();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsFalse::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsFalse();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsFalse::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->IsFalse();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsFalse::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsFalse();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsFalse::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsNumber)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNumber::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNumber::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNumber::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->IsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNumber::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsNumber();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsNumber::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    int64_t maxInt64 = std::numeric_limits<int64_t>::max();
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, 2147483646);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<NumberRef> resUnit64 = NumberRef::New(vm_, maxInt64);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<BigIntRef> maxBigintInt64 = BigIntRef::New(vm_, maxInt64);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::NumberRef32);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit64->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::NumberRef64);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::BigIntRefU64);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintInt64->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::BigIntRefI64);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsBigInt2)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    bool inputBool = true;
+    std::string testUtf8 = "Hello world";
+    Local<BooleanRef> resBool = BooleanRef::New(vm_, inputBool);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resBool->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsBigInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsBigInt::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArray)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArray::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArray::NumberRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArray2)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 3; // 3 = ArrayBuffer Length
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, num);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArray::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArray::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        arrayObject->IsArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsArray::ArrayRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSArray)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    int length = 3;            // 3 = ArrayBuffer Length
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        arrayObject->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::ArrayRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsJSArray2)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSArray *arr = JSArray::ArrayCreate(thread_, JSTaggedNumber(0)).GetObject<JSArray>();
+    JSHandle<JSTaggedValue> obj(thread_, arr);
+    Local<JSValueRef> JSArrayObject = JSNApiHelper::ToLocal<JSValueRef>(obj);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSArrayObject->IsJSArray(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsJSArray::JSArrayObject);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsConstructor)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsConstructor();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsConstructor::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsConstructor();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsConstructor::NumberRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsConstructor2)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    EcmaVM *ecmaVM = thread_->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    JSHandle<JSFunction> func = thread_->GetEcmaVM()->GetFactory()->NewJSFunction(env, static_cast<void *>(nullptr),
+        FunctionKind::BASE_CONSTRUCTOR);
+    JSHandle<JSObject> nullHandle(thread_, JSTaggedValue::Null());
+    JSHandle<JSObject> obj = JSObject::ObjectCreate(thread_, nullHandle);
+    JSHandle<JSTaggedValue> objValue(obj);
+    [[maybe_unused]] bool makeConstructor = JSFunction::MakeConstructor(thread_, func, objValue);
+    JSHandle<JSTaggedValue> funcHandle(func);
+    Local<JSValueRef> funConstructor = JSNApiHelper::ToLocal<JSValueRef>(funcHandle);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsConstructor();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsConstructor::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsConstructor();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsConstructor::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        funConstructor->IsConstructor();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsConstructor::funConstructor);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsDate)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    double timeRef = 1.1; // 1.1 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<DateRef> dateRef = DateRef::New(vm_, timeRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsDate();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsDate::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsDate();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsDate::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsDate();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsDate::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsDate();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsDate::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        dateRef->IsDate();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsDate::DateRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsError)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::Error(vm_, message);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsError();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsError::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsError();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsError::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsError();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsError::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsError();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsError::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        error->IsError();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsError::Exception::Error);
+}
+
+HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMap)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 0;               // 0 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<MapRef> mapRef = MapRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsMap::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsMap::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsMap::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsMap::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        mapRef->IsMap();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsMap::MapRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Local_operator01)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 13;              // 13 = random number
+    int length = 3;            // 3 = ArrayBufer length
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<JSValueRef> integerVaule(intValue);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<JSValueRef> NumberVaule(resUnit32);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<JSValueRef> bigIntVaule(maxBigintUint64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<JSValueRef> stringVaule(stringUtf8);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<JSValueRef> arrayVaule(arrayObject);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator::ArrayRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Local_operator02)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 13;              // 13 = random number
+    int length = 3;            // 3 = ArrayBufer length
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue->IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator2::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32->IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator2::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator2::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8->IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator2::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        arrayObject->IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::Operator2::ArrayRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Local_IsEmpty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    int num = 13;              // 13 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<JSValueRef> JSvalue;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsEmpty::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        resUnit32.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsEmpty::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsEmpty::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        stringUtf8.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsEmpty::StringRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSvalue.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsEmpty);
+}
+
+HWTEST_F_L0(JSNApiSplTest, Local_IsNull)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 13; // 13 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<JSValueRef> JSvalue;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        intValue.IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsNull::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        JSvalue.IsNull();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(Local::IsNull);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_ToLocal)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 13; // 13 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    CopyableGlobal<IntegerRef> copyGlobal(vm_, intValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobal.ToLocal();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::ToLocal);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_Empty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 13; // 13 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    CopyableGlobal<IntegerRef> copyGlobal(vm_, intValue);
+    EXPECT_FALSE(copyGlobal.IsEmpty());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobal.Empty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::Empty);
+    EXPECT_TRUE(copyGlobal.IsEmpty());
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_operator)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    int num = 13; // 13 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    CopyableGlobal<IntegerRef> copyGlobal(vm_, intValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        (*copyGlobal)->IsInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::Operator);
+    EXPECT_TRUE((*copyGlobal)->IsInt());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobal->IsInt();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::Operator2);
+    EXPECT_TRUE(copyGlobal->IsInt());
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_IsEmpty)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string testUtf8 = "Hello world";
+    int num = 13; // 13 = random number
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, num);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    CopyableGlobal<StringRef> copyGlbString(vm_, stringUtf8);
+    CopyableGlobal<IntegerRef> copyGlobal(vm_, intValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlbString.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsEmpty::StringRef::first);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobal.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsEmpty::IntegerRef);
+    copyGlbString.Empty();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlbString.IsEmpty();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsEmpty::StringRef::Second);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_SetWeak_IsWeak_ClearWeak)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    CopyableGlobal<JSValueRef> copyGlobalback(vm_, stringUtf8);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalback.IsWeak();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsWeak::First);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalback.SetWeak();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeak);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalback.IsWeak();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsWeak::Second);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalback.ClearWeak();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::ClearWeak);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalback.IsWeak();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::IsWeak::three);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_SetWeakCallback)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    double doubleSize = 1.1; // 1.1 = random number
+    long longSize = 123456;  // 123456 = random number
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    CopyableGlobal<JSValueRef> copyGlobalStr(vm_, stringUtf8);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalStr.SetWeakCallback(&inputUnit32, FreeGlobalCallBack<uint32_t>,
+                NativeFinalizeCallback<uint32_t>);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeakCallback::Uint32);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalStr.SetWeakCallback(&maxUint64, FreeGlobalCallBack<uint64_t>,
+                NativeFinalizeCallback<uint64_t>);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeakCallback::Uint64);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalStr.SetWeakCallback(&doubleSize, FreeGlobalCallBack<double>,
+                NativeFinalizeCallback<double>);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeakCallback::Double);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalStr.SetWeakCallback(&longSize, FreeGlobalCallBack<long>,
+                NativeFinalizeCallback<long>);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeakCallback::Long);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobalStr.SetWeakCallback(&testUtf8, FreeGlobalCallBack<std::string>,
+                NativeFinalizeCallback<std::string>);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::SetWeakCallback::String);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    uint64_t minUint64 = std::numeric_limits<uint64_t>::min();
+    int64_t maxInt64 = std::numeric_limits<int64_t>::max();
+    int64_t minInt64 = std::numeric_limits<int64_t>::min();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        BigIntRef::New(vm_, maxUint64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::New::Uint64::Max);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        BigIntRef::New(vm_, minUint64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::New::Uint64::Min);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        BigIntRef::New(vm_, maxInt64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::New::Int64::Max);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        BigIntRef::New(vm_, minInt64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::New::Int64::Min);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_CreateBigWords)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    bool sign = false;
+    uint32_t size = 3; // 3 = random number
+    const uint64_t words[3] = {
+        std::numeric_limits<uint64_t>::min() - 1,
+        std::numeric_limits<uint64_t>::min(),
+        std::numeric_limits<uint64_t>::max(),
+    };
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        BigIntRef::CreateBigWords(vm_, sign, size, words);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::CreateBigWords);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_GetWordsArraySize)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    bool sign = false;
+    uint32_t size = 3; // 3 = random number
+    const uint64_t words[3] = {
+        std::numeric_limits<uint64_t>::min() - 1,
+        std::numeric_limits<uint64_t>::min(),
+        std::numeric_limits<uint64_t>::max(),
+    };
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm_, sign, size, words);
+    Local<BigIntRef> bigWordsRef(bigWords);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        bigWordsRef->GetWordsArraySize();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::GetWordsArraySize);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_GetWordsArray)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    bool sign = false;
+    uint32_t size = 3; // 3 = random number
+    const uint64_t words[3] = {
+        std::numeric_limits<uint64_t>::min() - 1,
+        std::numeric_limits<uint64_t>::min(),
+        std::numeric_limits<uint64_t>::max(),
+    };
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm_, sign, size, words);
+    Local<BigIntRef> bigWordsRef(bigWords);
+    bool resultSignBit = true;
+    uint64_t *resultWords = new uint64_t[3]();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        bigWordsRef->GetWordsArray(&resultSignBit, size, resultWords);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::GetWordsArray::Uint64);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_BigIntToInt64)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    int64_t toNum;
+    bool lossless = true;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->BigIntToInt64(vm_, &toNum, &lossless);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::BigIntToInt64);
+}
+
+HWTEST_F_L0(JSNApiSplTest, BigIntRef_BigIntToUint64)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    uint64_t toNum;
+    bool lossless = true;
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        maxBigintUint64->BigIntToUint64(vm_, &toNum, &lossless);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(BigIntRef::BigIntToUint64);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SymbolRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> description = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        SymbolRef::New(vm_, description);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SymbolRef::New::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, SymbolRef_GetDescription)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> description = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    Local<SymbolRef> symbol = SymbolRef::New(vm_, description);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        symbol->GetDescription(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(SymbolRef::GetDescription);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NativePointerRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    void *vps = static_cast<void *>(new std::string("test"));
+    void *vpd = new double(123.456);
+    void *vpc = new char('a');
+    void *vpl = new long(123456);
+    void *vpi = new int(123);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vps);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::String);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpd);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Double);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpc);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Char);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpl);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Long);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpi);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Int);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NativePointerRef_New_Fun)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    NativePointerCallback callBack = nullptr;
+    void *vps = static_cast<void *>(new std::string("test"));
+    void *vps1 = static_cast<void *>(new std::string("test"));
+    void *vpd = new double(123.456);
+    void *vpd1 = new double(123.456);
+    void *vpc = new char('a');
+    void *vpc1 = new char('e');
+    void *vpl = new long(123456);
+    void *vpl1 = new long(123456);
+    void *vpi = new int(123);
+    void *vpi1 = new int(123);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vps, callBack, vps1, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Fun::String);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpd, callBack, vpd1, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Fun::Double);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpc, callBack, vpc1, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Fun::Char);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpl, callBack, vpl1, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Fun::Long);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        NativePointerRef::New(vm_, vpi, callBack, vpi1, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::New::Fun::Int);
+}
+
+HWTEST_F_L0(JSNApiSplTest, NativePointerRef_Value)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    void *vps = static_cast<void *>(new std::string("test"));
+    void *vps1 = static_cast<void *>(new std::string("test"));
+    void *vpd = new double(123.456);
+    void *vpd1 = new double(123.456);
+    void *vpc = new char('a');
+    void *vpc1 = new char('c');
+    void *vpl = new long(123456);
+    void *vpl1 = new long(123456);
+    void *vpi = new int(123);
+    void *vpi1 = new int(123);
+    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
+    Local<NativePointerRef> res_vpd = NativePointerRef::New(vm_, vpd, NativeAreaAllocator::FreeBufferFunc, vpd1, 0);
+    Local<NativePointerRef> res_vpc = NativePointerRef::New(vm_, vpc, NativeAreaAllocator::FreeBufferFunc, vpc1, 0);
+    Local<NativePointerRef> res_vpl = NativePointerRef::New(vm_, vpl, NativeAreaAllocator::FreeBufferFunc, vpl1, 0);
+    Local<NativePointerRef> res_vpi = NativePointerRef::New(vm_, vpi, NativeAreaAllocator::FreeBufferFunc, vpi1, 0);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res_vps->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::Value::String);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res_vpd->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::Value::Double);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res_vpc->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::Value::Char);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res_vpl->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::Value::Long);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res_vpi->Value();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(NativePointerRef::Value::Int);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        FunctionRef::New(vm_, FunCallback);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::New);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_NewClassFunction)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::NewClassFunction);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_Call)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    uint32_t inputUnit32 = 32; // 32 = random number
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+    Local<JSValueRef> targetBool = BooleanRef::New(vm_, false);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    std::vector<Local<JSValueRef>> argumentsInt;
+    std::vector<Local<JSValueRef>> argumentsBool;
+    std::vector<Local<JSValueRef>> argumentsNum;
+    std::vector<Local<JSValueRef>> argumentsBig;
+    argumentsInt.emplace_back(intValue);
+    argumentsBool.emplace_back(targetBool);
+    argumentsNum.emplace_back(resUnit32);
+    argumentsBig.emplace_back(maxBigintUint64);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunCallback);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        callback->Call(vm_, JSValueRef::Undefined(vm_), argumentsInt.data(), argumentsInt.size());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Call::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        callback->Call(vm_, JSValueRef::Undefined(vm_), argumentsBool.data(), argumentsBool.size());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Call::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        callback->Call(vm_, JSValueRef::Undefined(vm_), argumentsNum.data(), argumentsNum.size());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Call::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        callback->Call(vm_, JSValueRef::Undefined(vm_), argumentsBig.data(), argumentsBig.size());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Call::BigIntRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_Call2)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    std::vector<Local<JSValueRef>> argumentsStr;
+    argumentsStr.emplace_back(stringUtf8);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunCallback);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        callback->Call(vm_, JSValueRef::Undefined(vm_), argumentsStr.data(), argumentsStr.size());
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Call::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_Constructor)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
+    Local<JSValueRef> argv[1];          // 1 = Array Size
+    int num = 1.3;                      // 1.3 = random number
+    argv[0] = NumberRef::New(vm_, 1.3); // 0 = The first element
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        cls->Constructor(vm_, argv, 1);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Constructor);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_GetFunctionPrototype)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
+    Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        [[maybe_unused]] Local<JSValueRef> funcProtoType = setLocal->GetFunctionPrototype(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::GetFunctionPrototype);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_Inherit)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
+    Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
+    JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
+    Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        mapLocal->Inherit(vm_, setLocal);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::Inherit);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_SetName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> res = FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
+    Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "origin test");
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->SetName(vm_, origin);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::SetName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_GetName)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> res = FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
+    Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "origin test");
+    res->SetName(vm_, origin);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->GetName(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::GetName);
+}
+
+HWTEST_F_L0(JSNApiSplTest, FunctionRef_IsNative)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<FunctionRef> res = FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        res->IsNative(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(FunctionRef::IsNative);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ArrayRef_New)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 3);
+        EXPECT_TRUE(arrayObj->IsArray(vm_));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::New);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ArrayRef_Length)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 3);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        arrayObj->Length(vm_);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::Length);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ArrayRef_SetValueAt)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 1);
+    uint32_t inputUnit32 = 32;
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    std::string testUtf8 = "Hello world";
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+    Local<JSValueRef> targetBool = BooleanRef::New(vm_, false);
+    Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObj, 0, intValue);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::SetValueAt::IntegerRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObj, 0, targetBool);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::SetValueAt::BooleanRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObj, 0, resUnit32);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::SetValueAt::NumberRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObj, 0, maxBigintUint64);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::SetValueAt::BigIntRef);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObj, 0, stringUtf8);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::SetValueAt::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, ArrayRef_GetValueAt)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 1);
+    std::string testUtf8 = "Hello world";
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm_, testUtf8.c_str());
+    ArrayRef::SetValueAt(vm_, arrayObj, 0, stringUtf8);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ArrayRef::GetValueAt(vm_, arrayObj, 0);
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(ArrayRef::GetValueAt::StringRef);
+}
+
+HWTEST_F_L0(JSNApiSplTest, CopyableGlobal_GetEcmaVM)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, 13);
+    CopyableGlobal<IntegerRef> copyGlobal(vm_, intValue);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        copyGlobal.GetEcmaVM();
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(CopyableGlobal::GetEcmaVM);
 }
 }
