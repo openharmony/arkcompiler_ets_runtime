@@ -2785,6 +2785,11 @@ inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
     return env_->GetBuilder()->TryGetHashcodeFromString(string);
 }
 
+inline GateRef StubBuilder::GetMixHashcode(GateRef string)
+{
+    return Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+}
+
 inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
 {
     GateRef jsHclass = LoadHClass(obj);

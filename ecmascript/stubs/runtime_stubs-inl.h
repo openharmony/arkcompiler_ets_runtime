@@ -3008,5 +3008,16 @@ JSTaggedValue RuntimeStubs::ArrayNumberSort(JSThread *thread, JSHandle<JSObject>
     }
     return thisObj.GetTaggedValue();
 }
+
+JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, EcmaString *string)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    EcmaString *str =
+        thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
+    if (str == nullptr) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    return JSTaggedValue::Cast(static_cast<void *>(str));
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

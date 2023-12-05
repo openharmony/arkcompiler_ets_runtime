@@ -192,6 +192,21 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     return strFlat;
 }
 
+EcmaString *EcmaStringTable::InsertStringToTable(const JSHandle<EcmaString> &strHandle)
+{
+    auto strFlat = EcmaStringAccessor::Flatten(vm_, strHandle, MemSpaceType::OLD_SPACE);
+    if (EcmaStringAccessor(strFlat).NotTreeString()) {
+        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(strFlat));
+        if (objectRegion->InYoungSpace()) {
+            JSHandle<EcmaString> resultHandle(vm_->GetJSThread(), strFlat);
+            strFlat = EcmaStringAccessor::CopyStringToOldSpace(vm_,
+                resultHandle, EcmaStringAccessor(strFlat).GetLength(), EcmaStringAccessor(strFlat).IsUtf8());
+        }
+    }
+    InternString(strFlat);
+    return strFlat;
+}
+
 EcmaString *EcmaStringTable::TryGetInternString(EcmaString *string)
 {
     return GetString(string);

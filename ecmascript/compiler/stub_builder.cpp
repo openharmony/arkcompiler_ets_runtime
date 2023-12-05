@@ -2736,6 +2736,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     env->SubCfgEntry(&entry);
     DEFVARIABLE(key, VariableType::JS_ANY(), keyValue);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(isInternal, VariableType::BOOL(), True());
     Label isNumberOrStringSymbol(env);
     Label notNumber(env);
     Label isStringOrSymbol(env);
@@ -2791,8 +2792,21 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                     Jump(&getByName);
                     Bind(&notIntenalString);
                     {
-                        key = CallRuntime(glue, RTSTUB_ID(NewInternalString), { *key });
-                        Jump(&getByName);
+                        Label notFind(env);
+                        Label find(env);
+                        // if key can't find in stringtabele, key is not propertyname for a object
+                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *key });
+                        Branch(TaggedIsHole(res), &notFind, &find);
+                        Bind(&notFind);
+                        {
+                            isInternal = False();
+                            Jump(&getByName);
+                        }
+                        Bind(&find);
+                        {
+                            key = res;
+                            Jump(&getByName);
+                        }
                     }
                 }
                 Bind(&notString);
@@ -2802,7 +2816,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&getByName);
             {
-                result = GetPropertyByName(glue, receiver, *key, callback);
+                result = GetPropertyByName(glue, receiver, *key, callback, *isInternal, true);
                 Jump(&exit);
             }
         }
@@ -2813,7 +2827,8 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback)
+GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
+                                       ProfileOperation callback, GateRef isInternal, bool canUseIsInternal)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2861,6 +2876,11 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         }
         Bind(&notSIndexObj);
         {
+            if (canUseIsInternal) {
+                Label findProperty(env);
+                Branch(isInternal, &findProperty, &loopExit);
+                Bind(&findProperty);
+            }
             Label isDicMode(env);
             Label notDicMode(env);
             Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
@@ -3586,8 +3606,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-    ProfileOperation callback)
+GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+    bool useOwn, GateRef isInternal, ProfileOperation callback, bool canUseIsInternal)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -3654,6 +3674,15 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     }
     Bind(&notSIndexObj);
     {
+        if (canUseIsInternal) {
+            Label findProperty(env);
+            if (useOwn) {
+                Branch(isInternal, &findProperty, &ifEnd);
+            } else {
+                Branch(isInternal, &findProperty, &loopExit);
+            }
+            Bind(&findProperty);
+        }
         Label isDicMode(env);
         Label notDicMode(env);
         // if branch condition : LIKELY(!hclass->IsDictionaryMode())
@@ -3837,7 +3866,6 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         LoopEnd(&loopHead);
         Bind(&afterLoop);
     }
-
     Label holeEntryNotNegtiveOne(env);
     Label holeEntryIfEnd(env);
     Branch(Int32NotEqual(*receiverHoleEntry, Int32(-1)), &holeEntryNotNegtiveOne, &holeEntryIfEnd);
@@ -3885,6 +3913,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     env->SubCfgEntry(&subEntry1);
     DEFVARIABLE(varKey, VariableType::JS_ANY(), key);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(isInternal, VariableType::BOOL(), True());
     Label isNumberOrStringSymbol(env);
     Label notNumber(env);
     Label isStringOrSymbol(env);
@@ -3942,8 +3971,21 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                     Branch(IsInternalString(*varKey), &setByName, &notIntenalString);
                     Bind(&notIntenalString);
                     {
-                        varKey = CallRuntime(glue, RTSTUB_ID(NewInternalString), { *varKey });
-                        Jump(&setByName);
+                        Label notFind(env);
+                        Label find(env);
+                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *varKey });
+                        Branch(TaggedIsHole(res), &notFind, &find);
+                        Bind(&notFind);
+                        {
+                            varKey = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { *varKey });
+                            isInternal = False();
+                            Jump(&setByName);
+                        }
+                        Bind(&find);
+                        {
+                            varKey = res;
+                            Jump(&setByName);
+                        }
                     }
                 }
             }
@@ -3951,7 +3993,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, callback);
+                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn,  *isInternal, callback, true);
                 Jump(&exit);
             }
         }
@@ -4325,7 +4367,7 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     Branch(TaggedIsHeapObject(obj), &fastpath, &slowpath);
     Bind(&fastpath);
     {
-        result = GetPropertyByName(glue, obj, key, callback);
+        result = GetPropertyByName(glue, obj, key, callback, True());
         Branch(TaggedIsHole(*result), &slowpath, &exit);
     }
     Bind(&slowpath);
@@ -4376,6 +4418,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
     env->SubCfgEntry(&entry);
     DEFVARIABLE(keyVar, VariableType::JS_ANY(), key);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(isInternal, VariableType::BOOL(), True());
     Label exit(env);
     Label fastPath(env);
     Label slowPath(env);
@@ -4394,13 +4437,26 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
             Jump(&getByName);
             Bind(&notIntenalString);
             {
-                keyVar = CallRuntime(glue, RTSTUB_ID(NewInternalString), { *keyVar });
-                Jump(&getByName);
+                Label notFind(env);
+                Label find(env);
+                GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *keyVar });
+                Branch(TaggedIsHole(res), &notFind, &find);
+                Bind(&notFind);
+                {
+                    keyVar = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { key });
+                    isInternal = False();
+                    Jump(&getByName);
+                }
+                Bind(&find);
+                {
+                    keyVar = res;
+                    Jump(&getByName);
+                }
             }
         }
         Bind(&getByName);
 
-        result = SetPropertyByName(glue, obj, *keyVar, value, false, callback);
+        result = SetPropertyByName(glue, obj, *keyVar, value, false, *isInternal, callback, true);
         Label notHole(env);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
