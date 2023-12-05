@@ -365,3 +365,31 @@ try {
 } catch (e) {
     print(e)
 }
+
+// test RegExp.prototype.xx
+print(RegExp.prototype.dotAll)
+print(RegExp.prototype.global)
+print(RegExp.prototype.hasIndices)
+print(RegExp.prototype.ignoreCase)
+print(RegExp.prototype.multiline)
+print(RegExp.prototype.sticky)
+print(RegExp.prototype.unicode)
+print(RegExp.prototype.lastIndex)
+print(RegExp.prototype.flags)
+print(RegExp.prototype.source)
+try {
+    RegExp.prototype.test("abc")
+} catch (e) {
+    print(e.name)
+}
+try {
+    RegExp.prototype.exec("abc")
+} catch (e) {
+    print(e.name)
+}
+print(RegExp.prototype.toString())
+Object.defineProperty(RegExp.prototype, "global", {
+    value: true
+})
+var flags = RegExp.prototype.flags;
+print(flags);

@@ -80,6 +80,7 @@ public:
                                          JSHandle<JSTaggedValue> thisObj,
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
+    static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -106,8 +107,8 @@ private:
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
 
-    static bool GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                 const uint8_t mask);
+    static JSTaggedValue GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                          const JSHandle<JSTaggedValue> &constructor, const uint8_t mask);
     // 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
     static JSTaggedValue RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                            const JSHandle<JSTaggedValue> &inputStr, bool useCache);

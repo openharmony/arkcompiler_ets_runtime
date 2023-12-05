@@ -56,4 +56,18 @@ aaa
 null
 aaa
 aa
-TypeError: this does not have a [[RegExpMatcher]]
+TypeError: this does not have [[RegExpMatcher]]
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+undefined
+
+(?:)
+TypeError
+TypeError
+/(?:)/
+g
