@@ -61,7 +61,7 @@
     /* Object.isSealed ( O ) */                                                     \
     V("isSealed",                 IsSealed,                 1, INVALID)             \
     /* Object.keys ( O ) */                                                         \
-    V("keys",                     Keys,                     1, INVALID)             \
+    V("keys",                     Keys,                     1, ObjectKeys)          \
     /* Object.preventExtensions ( O ) */                                            \
     V("preventExtensions",        PreventExtensions,        1, INVALID)             \
     /* Object.seal ( O ) */                                                         \
