@@ -355,3 +355,13 @@ var regexp4 = /a*/g;
 regexp4.lastIndex = 1;
 print(regexp3.exec('aaabab'));
 print(regexp4.exec('aaabaa'));
+
+const v43 = /V[\d-\d]/ys;
+const o54 = {
+    __proto__: v43,
+};
+try {
+    o54.test(Map);
+} catch (e) {
+    print(e)
+}
