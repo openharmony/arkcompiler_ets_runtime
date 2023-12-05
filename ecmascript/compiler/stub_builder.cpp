@@ -2840,6 +2840,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Label loopEnd(env);
     Label loopExit(env);
     Label afterLoop(env);
+    Label findProperty(env);
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
@@ -2877,12 +2878,13 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Bind(&notSIndexObj);
         {
             if (canUseIsInternal) {
-                Label findProperty(env);
                 Branch(isInternal, &findProperty, &loopExit);
-                Bind(&findProperty);
+            } else {
+                Jump(&findProperty);
             }
             Label isDicMode(env);
             Label notDicMode(env);
+            Bind(&findProperty);
             Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
             Bind(&notDicMode);
             {
@@ -3621,6 +3623,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Label loopEnd(env);
     Label loopExit(env);
     Label afterLoop(env);
+    Label findProperty(env);
     if (!useOwn) {
         // a do-while loop
         Jump(&loopHead);
@@ -3675,16 +3678,17 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&notSIndexObj);
     {
         if (canUseIsInternal) {
-            Label findProperty(env);
             if (useOwn) {
                 Branch(isInternal, &findProperty, &ifEnd);
             } else {
                 Branch(isInternal, &findProperty, &loopExit);
             }
-            Bind(&findProperty);
+        } else {
+            Jump(&findProperty);
         }
         Label isDicMode(env);
         Label notDicMode(env);
+        Bind(&findProperty);
         // if branch condition : LIKELY(!hclass->IsDictionaryMode())
         Branch(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
         Bind(&notDicMode);
