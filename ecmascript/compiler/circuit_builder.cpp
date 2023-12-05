@@ -757,6 +757,12 @@ GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
+void CircuitBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, function, offset, value);
+}
+
 void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::LEXICAL_ENV_OFFSET);

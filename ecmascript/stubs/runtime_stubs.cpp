@@ -2834,16 +2834,19 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
     JSHandle<JSBoundFunction> boundFunc(info->GetFunction());
-    JSHandle<JSFunction> targetFunc(thread, boundFunc->GetBoundTarget());
-    if (targetFunc->IsClassConstructor()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot called without 'new'",
-                                    JSTaggedValue::Exception());
+    if (boundFunc->GetBoundTarget().IsJSFunction()) {
+        JSHandle<JSFunction> targetFunc(thread, boundFunc->GetBoundTarget());
+        if (targetFunc->IsClassConstructor()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot called without 'new'",
+                                        JSTaggedValue::Exception());
+        }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
     const uint32_t boundLength = boundArgs->GetLength();
     const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(targetFunc),
+    EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread,
+        JSHandle<JSTaggedValue>(thread, boundFunc->GetBoundTarget()),
         info->GetThis(), undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (boundLength == 0) {

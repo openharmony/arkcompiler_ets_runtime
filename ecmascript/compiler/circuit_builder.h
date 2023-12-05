@@ -274,6 +274,7 @@ public:
     GateRef IsEcmaObject(GateRef obj);
 
     // Set
+    void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
 

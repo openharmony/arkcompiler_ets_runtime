@@ -107,8 +107,9 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
     return std::make_pair(JSTaggedValue::Hole(), true);
 }
 
-template<bool UseOwn>
-JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+template<ObjectFastOperator::Status status>
+JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
+                                                    JSTaggedValue key)
 {
     INTERPRETER_TRACE(thread, GetPropertyByName);
     // no gc when return hole
@@ -140,6 +141,9 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 auto value = JSObject::Cast(holder)->GetProperty(hclass, attr);
                 if (UNLIKELY(attr.IsAccessor())) {
+                    if (GetInternal(status)) {
+                        return value;
+                    }
                     return CallGetter(thread, receiver, holder, value);
                 }
                 ASSERT(!value.IsAccessor());
@@ -156,13 +160,16 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 auto value = dict->GetValue(entry);
                 auto attr = dict->GetAttributes(entry);
                 if (UNLIKELY(attr.IsAccessor())) {
+                    if (GetInternal(status)) {
+                        return value;
+                    }
                     return CallGetter(thread, receiver, holder, value);
                 }
                 ASSERT(!value.IsAccessor());
                 return value;
             }
         }
-        if (UseOwn) {
+        if (UseOwn(status)) {
             break;
         }
         holder = hclass->GetPrototype();
@@ -171,7 +178,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
     return JSTaggedValue::Undefined();
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                     JSTaggedValue value)
 {
@@ -220,7 +227,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                         if (receiverHoleEntry == -1 && holder == receiver) {
                             receiverHoleEntry = entry;
                         }
-                        if (UseOwn) {
+                        if (UseOwn(status)) {
                             break;
                         }
                         holder = hclass->GetPrototype();
@@ -257,7 +264,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 return JSTaggedValue::Undefined();
             }
         }
-        if (UseOwn) {
+        if (UseOwn(status)) {
             break;
         }
         holder = hclass->GetPrototype();
@@ -283,7 +290,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
     return JSTaggedValue::Undefined();
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {
     INTERPRETER_TRACE(thread, GetPropertyByIndex);
@@ -327,7 +334,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
                 return value;
             }
         }
-        if (UseOwn) {
+        if (UseOwn(status)) {
             break;
         }
         holder = JSObject::Cast(holder)->GetJSHClass()->GetPrototype();
@@ -337,7 +344,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
     return JSTaggedValue::Undefined();
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                      JSTaggedValue value)
 {
@@ -402,7 +409,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             }
             return JSTaggedValue::Hole();
         }
-        if (UseOwn) {
+        if (UseOwn(status)) {
             break;
         }
         holder = JSObject::Cast(holder)->GetJSHClass()->GetPrototype();
@@ -411,7 +418,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
     return AddPropertyByIndex(thread, receiver, index, value);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     INTERPRETER_TRACE(thread, GetPropertyByValue);
@@ -421,7 +428,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
     // fast path
     auto index = TryToElementsIndex(key);
     if (LIKELY(index >= 0)) {
-        return GetPropertyByIndex<UseOwn>(thread, receiver, index);
+        return GetPropertyByIndex<status>(thread, receiver, index);
     }
     if (!key.IsNumber()) {
         if (key.IsString() && !EcmaStringAccessor(key).IsInternString()) {
@@ -432,12 +439,12 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
             // Maybe moved by GC
             receiver = receiverHandler.GetTaggedValue();
         }
-        return ObjectFastOperator::GetPropertyByName<UseOwn>(thread, receiver, key);
+        return ObjectFastOperator::GetPropertyByName<status>(thread, receiver, key);
     }
     return JSTaggedValue::Hole();
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                      JSTaggedValue value)
 {
@@ -448,7 +455,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
     // fast path
     auto index = TryToElementsIndex(key);
     if (LIKELY(index >= 0)) {
-        return SetPropertyByIndex<UseOwn>(thread, receiver, index, value);
+        return SetPropertyByIndex<status>(thread, receiver, index, value);
     }
     if (!key.IsNumber()) {
         if (key.IsString()) {
@@ -466,7 +473,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         } else {
             ObjectOperator::UpdateDetector(thread, receiver, key);
         }
-        return ObjectFastOperator::SetPropertyByName<UseOwn>(thread, receiver, key, value);
+        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value);
     }
     return JSTaggedValue::Hole();
 }
@@ -496,7 +503,8 @@ bool ObjectFastOperator::FastSetPropertyByIndex(JSThread *thread, JSTaggedValue 
                                       JSHandle<JSTaggedValue>(thread, value), true);
 }
 
-JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTaggedValue receiver,
+                                                        JSTaggedValue key)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByName);
     ASSERT(key.IsStringOrSymbol());
@@ -506,7 +514,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
         // Maybe moved by GC
         receiver = receiverHandler.GetTaggedValue();
     }
-    JSTaggedValue result = ObjectFastOperator::GetPropertyByName(thread, receiver, key);
+    JSTaggedValue result = ObjectFastOperator::GetPropertyByName<Status::GetInternal>(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
             JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();

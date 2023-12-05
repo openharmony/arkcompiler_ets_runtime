@@ -1555,8 +1555,8 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-    auto result = ObjectFastOperator::SetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
-                                                               value.GetTaggedValue());
+    auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue());
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1568,8 +1568,8 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
                                   const JSHandle<JSTaggedValue> &value)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-    auto result =
-        ObjectFastOperator::SetPropertyByIndex<true>(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
+    auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
+            (thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1815,7 +1815,8 @@ void JSObject::EnumerableOwnPropertyNamesHelper(JSThread *thread, const JSHandle
         }
         JSTaggedValue value = JSTaggedValue::Hole();
         if (fastMode) {
-            value = ObjectFastOperator::GetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+            value = ObjectFastOperator::GetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                    (thread, obj.GetTaggedValue(), key.GetTaggedValue());
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
         if (value.IsHole()) {

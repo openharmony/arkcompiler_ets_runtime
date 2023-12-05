@@ -23,26 +23,43 @@
 namespace panda::ecmascript {
 class ObjectFastOperator final {
 public:
+    enum class Status: uint8_t {
+        None = 0x00UL,
+        UseOwn = 0x01UL,
+        GetInternal = 0x1UL << 1,
+    };
+
+    static inline bool UseOwn(Status status)
+    {
+        return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::UseOwn)) > 0;
+    }
+    
+    static inline bool GetInternal(Status status)
+    {
+        return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::GetInternal)) > 0;
+    }
+
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,
                                                                 JSTaggedValue receiver, JSTaggedValue key);
-    template<bool UseOwn = false>
-    static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    template<Status status = Status::None>
+    static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
+                                                  JSTaggedValue key);
 
-    template<bool UseOwn = false>
+    template<Status status = Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value);
 
-    template<bool UseOwn = false>
+    template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
-    template<bool UseOwn = false>
+    template<Status status = Status::None>
     static inline JSTaggedValue SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
 
-    template<bool UseOwn = false>
+    template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
-    template<bool UseOwn = false>
+    template<Status status = Status::None>
     static inline JSTaggedValue SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                    JSTaggedValue value);
 

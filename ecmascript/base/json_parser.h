@@ -283,12 +283,13 @@ protected:
         size_t size = propertyList.size() - start;
         JSHandle<JSObject> obj = factory_->NewJSObject(initialJSObjectClass_);
         for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
-            JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<true>(thread_, obj.GetTaggedValue(),
-                propertyList[start + i].GetTaggedValue(), propertyList[start + i + 1].GetTaggedValue());
+            JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
+            JSHandle<JSTaggedValue> valueHandle = propertyList[start + i + 1];
+            JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+                (thread_, obj.GetTaggedValue(), keyHandle.GetTaggedValue(), valueHandle.GetTaggedValue());
             if (res.IsHole()) {
                 // slow path
-                JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(obj), propertyList[start + i],
-                                           propertyList[start + i + 1], true);
+                JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(obj), keyHandle, valueHandle, true);
             }
         }
         return JSHandle<JSTaggedValue>(obj);

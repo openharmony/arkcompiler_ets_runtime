@@ -327,6 +327,8 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR, accessor);
     accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::NameGetter));
     SetConstant(ConstantIndex::FUNCTION_NAME_ACCESSOR, accessor);
+    accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::LengthGetter));
+    SetConstant(ConstantIndex::FUNCTION_LENGTH_ACCESSOR, accessor);
     accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
                                             reinterpret_cast<void *>(JSArray::LengthGetter));
     SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
