@@ -20,10 +20,11 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <map>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <map>
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
@@ -78,7 +79,7 @@ template<size_t ElementAlign, typename... Ts>
 struct AlignedStruct;
 struct AlignedPointer;
 }
-}  // namespace ecmascript  
+}  // namespace ecmascript
 
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
@@ -154,7 +155,6 @@ public:
     {
         return IsEmpty() || GetAddress()->IsHole();
     }
-
 
     explicit inline Local(uintptr_t addr) : address_(addr) {}
 
@@ -621,7 +621,6 @@ class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
     static inline ObjectRef *Cast(JSValueRef *value)
     {
-        // check
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
@@ -679,8 +678,6 @@ public:
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
-    // Inherit Prototype from parent function
-    // set this.Prototype.__proto__ to parent.Prototype, set this.__proto__ to parent function
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);
     void SetName(const EcmaVM *vm, Local<StringRef> name);
     Local<StringRef> GetName(const EcmaVM *vm);
@@ -1283,12 +1280,13 @@ public:
 private:
     static int vmCount_;
     static bool initialize_;
-    static std::unordered_map<uint32_t, std::pair<EcmaVM *, const DebuggerPostTask>> debugInfo_;
+    static std::shared_mutex mutex_;
+    static std::unordered_map<uint32_t, EcmaVM *> vmMap_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
 
-    static EcmaVM *GetEcmaVMByTid(uint32_t tid);
-    static const DebuggerPostTask &GetDebuggerTaskByTid(uint32_t tid);
+    static EcmaVM *GetEcmaVM(uint32_t tid);
+    static void AddEcmaVM(uint32_t tid, EcmaVM *vm);
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);

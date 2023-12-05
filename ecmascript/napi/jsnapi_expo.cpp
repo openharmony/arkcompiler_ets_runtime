@@ -178,7 +178,7 @@ using ecmascript::Log;
 using ecmascript::PatchErrorCode;
 using ecmascript::RegExpParser;
 using ecmascript::base::NumberHelper;
-template <typename T> 
+template <typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 template <typename T>
 using JSMutableHandle = ecmascript::JSMutableHandle<T>;
@@ -192,7 +192,8 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
-std::unordered_map<uint32_t, std::pair<EcmaVM *, const DebuggerPostTask>> JSNApi::debugInfo_ {};
+std::shared_mutex JSNApi::mutex_;
+std::unordered_map<uint32_t, EcmaVM *> JSNApi::vmMap_ {};
 static Mutex *mutex = new panda::Mutex();
 #define XPM_PROC_PREFIX "/proc/"
 #define XPM_PROC_SUFFIX "/xpm_region"
@@ -2937,8 +2938,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
                                         [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    EcmaVM *vm = GetEcmaVMByTid(tid);
-    const DebuggerPostTask &realDebuggerPostTask = GetDebuggerTaskByTid(tid);
+    EcmaVM *vm = GetEcmaVM(tid);
     if (vm == nullptr) {
         return false;
     }
@@ -2948,7 +2948,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    using StartDebuggerForSocketPair = bool (*)(EcmaVM *, uint32_t, const DebuggerPostTask &, int);
+    using StartDebuggerForSocketPair = bool (*)(EcmaVM *, uint32_t, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
@@ -2956,7 +2956,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(vm, tid, realDebuggerPostTask, socketfd);
+    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(vm, tid, socketfd);
     if (!ret) {
         // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
@@ -2970,20 +2970,21 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-EcmaVM *JSNApi::GetEcmaVMByTid(uint32_t tid)
+EcmaVM *JSNApi::GetEcmaVM(uint32_t tid)
 {
-    if (debugInfo_.find(tid) == debugInfo_.end()) {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    if (vmMap_.find(tid) == vmMap_.end()) {
         return nullptr;
     }
-    return debugInfo_[tid].first;
+    return vmMap_[tid];
 }
 
-const DebuggerPostTask &JSNApi::GetDebuggerTaskByTid(uint32_t tid)
+void JSNApi::AddEcmaVM(uint32_t tid, EcmaVM *vm)
 {
-    if (debugInfo_.find(tid) == debugInfo_.end()) {
-        return {};
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    if (vmMap_.find(tid) == vmMap_.end()) {
+        vmMap_.emplace(tid, vm);
     }
-    return debugInfo_[tid].second;
 }
 
 bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
@@ -2999,9 +3000,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     if (vm == nullptr) {
         return false;
     }
-    if (debugInfo_.find(tid) == debugInfo_.end()) {
-        debugInfo_.emplace(tid, std::make_pair(vm, debuggerPostTask));
-    }
 
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
@@ -3014,21 +3012,34 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << libraryPath << " " << errno;
         return false;
     }
+    AddEcmaVM(tid, vm);
     vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode && debugApp);
     vm->GetJsDebuggerManager()->SetIsDebugApp(debugApp);
     bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
+    // store debugger postTask in inspector.
+    using StoreDebuggerPostTask = void (*)(uint32_t, const DebuggerPostTask &);
+    auto symOfStoreDebuggerPostTask = panda::os::library_loader::ResolveSymbol(
+        vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "StoreDebuggerPostTask");
+    if (!symOfStoreDebuggerPostTask) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerPostTask symbol fail: " <<
+            symOfStoreDebuggerPostTask.Error().ToString();
+        return false;
+    }
+    reinterpret_cast<StoreDebuggerPostTask>(symOfStoreDebuggerPostTask.Value())(tid, debuggerPostTask);
+
     if (debugApp && debugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
 
-        auto sym = panda::os::library_loader::ResolveSymbol(
+        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
             vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "WaitForDebugger");
-        if (!sym) {
-            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol fail: " << sym.Error().ToString();
+        if (!symOfWaitForDebugger) {
+            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
+                symOfWaitForDebugger.Error().ToString();
             return false;
         }
-        reinterpret_cast<WaitForDebugger>(sym.Value())(vm);
+        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
     return ret;
 #else
@@ -3080,7 +3091,7 @@ bool JSNApi::StopDebugger(uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
-    EcmaVM *vm = GetEcmaVMByTid(tid);
+    EcmaVM *vm = GetEcmaVM(tid);
     if (vm == nullptr) {
         return false;
     }
@@ -3600,7 +3611,7 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
 }
 
 Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
-{   
+{
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     JSThread *thread = vm->GetJSThread();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();

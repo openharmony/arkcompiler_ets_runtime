@@ -1649,6 +1649,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
         Label insertGreaterDelete(env);
         Label insertCountVal(env);
         Label setArrayLen(env);
+        Label trimCheck(env);
         Branch(Int32LessThan(*insertCount, *actualDeleteCount), &insertLessDelete, &insertGreaterDelete);
         Bind(&insertLessDelete);
         {
@@ -1701,10 +1702,12 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 i = Int32Add(*i, Int32(1));
                 LoopEnd(&loopHead);
                 Bind(&loopExit);
+                Jump(&trimCheck);
             }
 
             Label trim(env);
             Label noTrim(env);
+            Bind(&trimCheck);
             Branch(BoolAnd(Int32GreaterThan(oldCapacity, newCapacity),
                 Int32GreaterThan(Int32Sub(newCapacity, oldCapacity),
                 Int32(TaggedArray::MAX_END_UNUSED))), &trim, &noTrim);
