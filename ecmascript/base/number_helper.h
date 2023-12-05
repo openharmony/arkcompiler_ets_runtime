@@ -60,7 +60,6 @@ static constexpr uint64_t DOUBLE_HIDDEN_BIT = 1ULL << DOUBLE_SIGNIFICAND_SIZE;
 static constexpr int32_t MINUS_ZERO_LOBITS = static_cast<int32_t>(0);
 static constexpr int32_t MINUS_ZERO_HIBITS = static_cast<int32_t>(1) << 31;
 static constexpr int64_t MINUS_ZERO_BITS = (static_cast<uint64_t>(MINUS_ZERO_HIBITS) << 32) | MINUS_ZERO_LOBITS;
-
 static constexpr size_t INT64_BITS = 64;
 static constexpr size_t INT32_BITS = 32;
 static constexpr size_t INT16_BITS = 16;
@@ -72,6 +71,10 @@ static constexpr size_t INT64_HEX_DIGITS = INT64_BITS / 4;
 static constexpr size_t INT32_HEX_DIGITS = INT32_BITS / 4;
 static constexpr size_t INT16_HEX_DIGITS = INT16_BITS / 4;
 static constexpr size_t INT8_HEX_DIGITS = INT8_BITS / 4;
+
+static constexpr int EXPONENTBIAS  = DOUBLE_EXPONENT_BIAS + DOUBLE_SIGNIFICAND_SIZE;
+static constexpr int kDENORMAL = -EXPONENTBIAS + 1;
+static constexpr uint64_t kINFINITY = 0x7FF0'0000'0000'0000;
 
 // help defines for random
 static constexpr int RIGHT12 = 12;

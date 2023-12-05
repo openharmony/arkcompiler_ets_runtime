@@ -282,7 +282,6 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     }
     // 4. ReturnIfAbrupt(f).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     double digit = digitInt.GetNumber();
     if (digit < base::MIN_FRACTION || digit > base::MAX_FRACTION) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "fraction must be 0 to 100", JSTaggedValue::Exception());
@@ -293,6 +292,12 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     if (std::isnan(valueNumber)) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         return globalConst->GetNanCapitalString();
+    }
+    if (!std::isfinite(valueNumber)) {
+        if (valueNumber < 0) {
+            return GetTaggedString(thread, "-Infinity");
+        }
+        return GetTaggedString(thread, "Infinity");
     }
     // 9. If x  1021, then
     //    a. Let m = ToString(x).
