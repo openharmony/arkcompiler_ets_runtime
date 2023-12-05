@@ -41,16 +41,16 @@ LiteCG::LiteCG(Module &mirModule) : module(mirModule)
 #if TARGAARCH64
     Triple::GetTriple().Init();
 #endif
-
     // module information prepare
     std::string moduleName = module.GetFileName();
     GStrIdx fileNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(moduleName);
 
+    // is this strictly required?
     GStrIdx nameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("INFO_filename");
     module.PushFileInfoPair(MIRInfoPair(nameStrIdx, fileNameStrIdx.GetIdx()));
     module.PushFileInfoIsString(true);
 
-    module.SetFlavor(kFlavorUnknown);
+    module.SetFlavor(kFlavorUnknown);  // need a new flavor
     module.GetImportFiles().clear();
 
     // Setup output file name
@@ -65,11 +65,15 @@ LiteCG &LiteCG::SetOutputType(OutputType config)
 
 LiteCG &LiteCG::SetTargetType(TargetType config)
 {
+    // update target support
+    // cgOptions->SetTarget(X86_64)
     return *this;
 }
 
 LiteCG &LiteCG::SetDebugType(DebugType config)
 {
+    // fix the exposed debug options
+    // cgOptions->SetDebug(?)
     return *this;
 }
 
@@ -100,7 +104,6 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
 void LiteCG::DoCG()
 {
     bool timePhases = false;
-
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
     // not sure how to do this.

@@ -257,11 +257,6 @@ public:
     }
 
     void FreeSpillRegMem(regno_t vrNum);
-    int64 GetOrCreatSpillRegLocation(regno_t vrNum)
-    {
-        auto symLoc = GetMemlayout()->GetLocOfSpillRegister(vrNum);
-        return static_cast<int64>(GetBaseOffset(*symLoc));
-    }
 
 private:
     MapleSet<x64::X64reg> calleeSavedRegs;

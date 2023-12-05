@@ -113,8 +113,6 @@ public:
      */
     virtual void AssignSpillLocationsToPseudoRegisters() override;
 
-    virtual SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum) override;
-
     uint32 GetSizeOfSpillReg() const
     {
         return segSpillReg.GetSize();
@@ -161,7 +159,11 @@ private:
     MemSegment segLocals = MemSegment(kMsLocals); /* these are accessed via Frame Pointer */
     MemSegment segGrSaveArea = MemSegment(kMsGrSaveArea);
     MemSegment segVrSaveArea = MemSegment(kMsVrSaveArea);
-    MemSegment segSpillReg = MemSegment(kMsSpillReg);
+
+    SymbolAlloc *CreateSymbolAlloc() const override
+    {
+        return memAllocator->GetMemPool()->New<X64SymbolAlloc>();
+    }
 };
 }  // namespace maplebe
 #endif  // MAPLEBE_INCLUDE_CG_X86_64_MEMLAYOUT_H

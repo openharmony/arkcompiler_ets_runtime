@@ -41,11 +41,11 @@
  */
 #if defined(__i386__) || defined(__x86_64__) || defined(__vax__)
 #define DECODE(n, input, output) \
-    ((output)[(n)] = (*reinterpret_cast<unsigned int *>(const_cast<unsigned char *>(&input[(n)*4]))))
+    ((output)[(n)] = (*reinterpret_cast<unsigned int *>(const_cast<unsigned char *>(&(input)[(n)*4]))))
 #else
 #define DECODE(n, input, output)                                                          \
-    ((output)[(n)] = (unsigned int)input[(n)*4] | ((unsigned int)input[(n)*4 + 1] << 8) | \
-                     ((unsigned int)input[(n)*4 + 2] << 16) | ((unsigned int)input[(n)*4 + 3] << 24))
+    ((output)[(n)] = (unsigned int)(input)[(n)*4] | ((unsigned int)(input)[(n)*4 + 1] << 8) | \
+                     ((unsigned int)(input)[(n)*4 + 2] << 16) | ((unsigned int)(input)[(n)*4 + 3] << 24))
 #endif
 
 /*

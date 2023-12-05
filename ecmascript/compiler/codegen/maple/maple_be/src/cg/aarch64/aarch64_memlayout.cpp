@@ -524,18 +524,6 @@ void AArch64MemLayout::AssignSpillLocationsToPseudoRegisters()
     }
 }
 
-SymbolAlloc *AArch64MemLayout::AssignLocationToSpillReg(regno_t vrNum)
-{
-    AArch64SymbolAlloc *symLoc = memAllocator->GetMemPool()->New<AArch64SymbolAlloc>();
-    symLoc->SetMemSegment(segSpillReg);
-    uint32 regSize = cgFunc->IsExtendReg(vrNum) ? k8ByteSize : cgFunc->GetVRegSize(vrNum);
-    segSpillReg.SetSize(RoundUp(segSpillReg.GetSize(), regSize));
-    symLoc->SetOffset(segSpillReg.GetSize());
-    segSpillReg.SetSize(segSpillReg.GetSize() + regSize);
-    SetSpillRegLocInfo(vrNum, *symLoc);
-    return symLoc;
-}
-
 uint64 AArch64MemLayout::StackFrameSize() const
 {
     uint64 total = segArgsRegPassed.GetSize() + static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved() +

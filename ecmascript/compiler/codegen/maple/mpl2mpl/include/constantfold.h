@@ -28,13 +28,11 @@ public:
     explicit ConstantFold(MIRModule &mod) : FuncOptimizeImpl(mod, nullptr, false), mirModule(&mod) {}
 
     // Fold an expression.
-    //
     // It returns a new expression if there was something to fold, or
     // nullptr otherwise.
     BaseNode *Fold(BaseNode *node);
 
     // Simplify a statement
-    //
     // It returns the original statement or the changed statement if a
     // simplification happened. If the statement can be deleted after a
     // simplification, it returns nullptr.

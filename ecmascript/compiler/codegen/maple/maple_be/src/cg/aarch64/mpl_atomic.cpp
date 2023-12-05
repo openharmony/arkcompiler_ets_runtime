@@ -25,7 +25,7 @@ MemOrd MemOrdFromU32(uint32 val)
 {
     /* 6 is the size of tab below. 2 is memory_order_consume, it is Disabled. */
     CHECK_FATAL(val <= kMaxSizeOfTab, "Illegal number for MemOrd: %u", val);
-    CHECK_FATAL(val != 2, "Illegal number for MemOrd: %u", val);
+    CHECK_FATAL(val != 2, "Illegal number for MemOrd: %u", val); // 2 is memory_order_consume
     static std::array<MemOrd, kMaxSizeOfTab + 1> tab = {
         MemOrd::kNotAtomic,
         MemOrd::memory_order_relaxed,

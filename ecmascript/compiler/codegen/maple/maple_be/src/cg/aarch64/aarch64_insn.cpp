@@ -92,7 +92,7 @@ void A64OpndEmitVisitor::Visit(maplebe::ImmOperand *v)
     float result = std::pow(2, exp) * mantissa;
 
     std::stringstream ss;
-    ss << std::setprecision(10) << result;
+    ss << std::setprecision(10) << result; // float aligned with 10 characters
     std::string res;
     ss >> res;
     size_t dot = res.find('.');
@@ -208,7 +208,8 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
         if (opndProp->IsMemLow12()) {
             (void)emitter.Emit("#:lo12:");
         }
-        (void)emitter.Emit(v->GetSymbol()->GetName());
+        PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
+        (void)emitter.Emit(v->GetSymbol()->GetName() + std::to_string(pIdx));
     } else if (addressMode == MemOperand::kAddrModeLo12Li) {
         (void)emitter.Emit("[");
         EmitIntReg(*v->GetBaseRegister());
@@ -292,11 +293,8 @@ void A64OpndEmitVisitor::Visit(ExtendShiftOperand *v)
 
 void A64OpndEmitVisitor::Visit(BitShiftOperand *v)
 {
-    (void)emitter
-        .Emit((v->GetShiftOp() == BitShiftOperand::kLSL)
-                  ? "LSL #"
-                  : ((v->GetShiftOp() == BitShiftOperand::kLSR) ? "LSR #" : "ASR #"))
-        .Emit(v->GetShiftAmount());
+    (void)emitter.Emit((v->GetShiftOp() == BitShiftOperand::kLSL) ? "LSL #" :
+        ((v->GetShiftOp() == BitShiftOperand::kLSR) ? "LSR #" : "ASR #")).Emit(v->GetShiftAmount());
 }
 
 void A64OpndEmitVisitor::Visit(StImmOperand *v)

@@ -63,7 +63,7 @@ struct MirFuncT {  // 28B
     // count; the bitvector's size is given by
     // BlockSize2BitvectorSize(frameSize)
     // uint16 numlabels; // removed. label table size
-    // StmtNode **lbl2stmt; // lbl2stmt table, removed;
+    // StmtNode **lbl2stmt; // lbl2stmt table, removed
     // the first statement immediately follow MirFuncT
     // since it starts with expression, BaseNodeT* is returned
     void *FirstInst() const

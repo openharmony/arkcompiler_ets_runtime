@@ -103,10 +103,10 @@ const std::vector<X64reg> floatReturnRegs {};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(CCallConventionInfo)
-const std::vector<X64reg> intParmRegs {R7, R6, R3, R2, R8, R9};
-const std::vector<X64reg> intReturnRegs {R0, R3};
-const std::vector<X64reg> floatParmRegs {V8, V9, V10, V11, V12, V13, V14, V15};
-const std::vector<X64reg> floatReturnRegs {V8, V9};
+const std::vector<X64reg> intParmRegs {R7, R6, R2, R1, R8, R9};
+const std::vector<X64reg> intReturnRegs {R0, R2};
+const std::vector<X64reg> floatParmRegs {V0, V1, V2, V3, V4, V5, V6, V7};
+const std::vector<X64reg> floatReturnRegs {V0, V1};
 
 int32 ClassifyAggregate(MIRType &mirType, uint64 sizeOfTy, std::vector<ArgumentClass> &classes) const;
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
@@ -199,6 +199,11 @@ private:
         }
     }
 
+    X64reg AllocateSIMDFPRegister()
+    {
+        return (nextFloatRegNO < kNumFloatParmRegs) ? kFloatParmRegs[nextFloatRegNO++] : kRinvalid;
+    }
+
     X64reg AllocateGPReturnRegister()
     {
         const std::vector<X64reg> &intReturnRegs = GetCallConvInfo().GetIntReturnRegs();
@@ -216,12 +221,20 @@ private:
         }
     }
 
+    X64reg AllocateSIMDFPReturnRegister()
+    {
+        return (nextFloatRetRegNO < kNumFloatReturnRegs) ?
+                kFloatReturnRegs[nextFloatRetRegNO++] : kRinvalid;
+    }
+
     BECommon &beCommon;
     CallConvKind convKind = kCCall;
     uint64 paramNum = 0;              /* number of all types of parameters processed so far */
     int32 nextGeneralParmRegNO = 0;   /* number of integer parameters processed so far */
     int32 nextGeneralReturnRegNO = 0; /* number of integer return processed so far */
     int32 nextStackArgAdress = 0;
+    uint32 nextFloatRegNO = 0;
+    uint32 nextFloatRetRegNO = 0;
 };
 } /* namespace maplebe */
 

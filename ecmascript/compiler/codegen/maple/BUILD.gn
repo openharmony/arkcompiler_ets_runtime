@@ -80,10 +80,7 @@ config("mapleallcompilecfg") {
       "-fPIC",
       "-fPIE",
     ]
-    cflags_cc += [
-      "-fPIC",
-      "-fPIE",
-    ]
+    cflags_cc += [ "-fPIC" ]
   } else {
     cflags_c += [ "-fno-stack-protector" ]
     cflags_cc += [ "-fno-stack-protector" ]

@@ -437,16 +437,16 @@ bool AArch64ICOIfThenElsePattern::CheckModifiedRegister(Insn &insn,
 
     /* add/sub insn's dest register does not exist in cmp insn. */
     if (cgFunc->GetTheCFG()->IsAddOrSubInsn(insn)) {
-        RegOperand &insnDestReg = static_cast<RegOperand &>(insn.GetOperand(0));
+        RegOperand &insnDestReg = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
         if (flagOpnd) {
-            RegOperand &cmpReg = static_cast<RegOperand &>(cmpInsn->GetOperand(0));
+            RegOperand &cmpReg = static_cast<RegOperand &>(cmpInsn->GetOperand(kInsnFirstOpnd));
             if (insnDestReg.GetRegisterNumber() == cmpReg.GetRegisterNumber()) {
                 return false;
             }
         } else {
-            RegOperand &cmpReg1 = static_cast<RegOperand &>(cmpInsn->GetOperand(1));
-            if (cmpInsn->GetOperand(2).IsRegister()) {
-                RegOperand &cmpReg2 = static_cast<RegOperand &>(cmpInsn->GetOperand(2));
+            RegOperand &cmpReg1 = static_cast<RegOperand &>(cmpInsn->GetOperand(kInsnSecondOpnd));
+            if (cmpInsn->GetOperand(kInsnThirdOpnd).IsRegister()) {
+                RegOperand &cmpReg2 = static_cast<RegOperand &>(cmpInsn->GetOperand(kInsnThirdOpnd));
                 if (insnDestReg.GetRegisterNumber() == cmpReg1.GetRegisterNumber() ||
                     insnDestReg.GetRegisterNumber() == cmpReg2.GetRegisterNumber()) {
                     return false;
@@ -820,7 +820,7 @@ bool AArch64ICOMorePredsPattern::Optimize(BB &curBB)
         if (succsBB->GetKind() != BB::kBBFallthru) {
             return false;
         }
-        if (succsBB->NumPreds() > 2) {
+        if (succsBB->NumPreds() > k2BitSize) {
             return false;
         }
     }

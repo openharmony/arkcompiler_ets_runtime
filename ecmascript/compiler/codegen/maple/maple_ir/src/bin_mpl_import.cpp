@@ -47,7 +47,7 @@ int64 BinaryMplImport::ReadInt64()
     // casts to avoid sign extension
     uint32 x0 = static_cast<uint32>(ReadInt());
     uint64 x1 = static_cast<uint32>(ReadInt());
-    return static_cast<int64>((x1 << 32) + x0);
+    return static_cast<int64>((x1 << 32) + x0); // x1 left shift 32 bit to join with x0
 }
 
 // LEB128
@@ -58,7 +58,7 @@ int64 BinaryMplImport::ReadNum()
     uint64 b = static_cast<uint64>(Read());
     while (b >= 0x80) {
         y += ((b - 0x80) << n);
-        n += 7;
+        n += k7BitSize;
         b = static_cast<uint64>(Read());
     }
     b = (b & 0x3F) - (b & 0x40);
@@ -1496,12 +1496,12 @@ EAConnectionGraph *BinaryMplImport::ReadEaCgField()
     EAConnectionGraph *newEaCg = mod.GetMemPool()->New<EAConnectionGraph>(&mod, &mod.GetMPAllocator(), funcStr, true);
     newEaCg->ResizeNodes(nodesSize, nullptr);
     InEaCgNode(*newEaCg);
-    CHECK_FATAL(newEaCg->GetNode(0)->IsObjectNode(), "must be");
-    CHECK_FATAL(newEaCg->GetNode(1)->IsReferenceNode(), "must be");
-    CHECK_FATAL(newEaCg->GetNode(2)->IsFieldNode(), "must be");
-    newEaCg->globalField = static_cast<EACGFieldNode *>(newEaCg->GetNode(2));
-    newEaCg->globalObj = static_cast<EACGObjectNode *>(newEaCg->GetNode(0));
-    newEaCg->globalRef = static_cast<EACGRefNode *>(newEaCg->GetNode(1));
+    CHECK_FATAL(newEaCg->GetNode(kFirstOpnd)->IsObjectNode(), "must be");
+    CHECK_FATAL(newEaCg->GetNode(kSecondOpnd)->IsReferenceNode(), "must be");
+    CHECK_FATAL(newEaCg->GetNode(kThirdOpnd)->IsFieldNode(), "must be");
+    newEaCg->globalField = static_cast<EACGFieldNode *>(newEaCg->GetNode(kThirdOpnd));
+    newEaCg->globalObj = static_cast<EACGObjectNode *>(newEaCg->GetNode(kFirstOpnd));
+    newEaCg->globalRef = static_cast<EACGRefNode *>(newEaCg->GetNode(kSecondOpnd));
     CHECK_FATAL(newEaCg->globalField && newEaCg->globalObj && newEaCg->globalRef, "must be");
     int32 nodeSize = ReadInt();
     for (int j = 0; j < nodeSize; ++j) {

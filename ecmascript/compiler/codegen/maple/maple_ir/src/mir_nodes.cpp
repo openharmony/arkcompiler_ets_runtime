@@ -1234,8 +1234,9 @@ void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent)
         }
     }
     LogInfo::MapleLogger() << " {\n";
+    constexpr int32 spaceNum = 2;
     for (auto it = nrets.begin(); it != nrets.end(); it++) {
-        PrintIndentation(indent + 2);
+        PrintIndentation(indent + spaceNum);
         StIdx stIdx = (it)->first;
         RegFieldPair regFieldPair = it->second;
         if (!regFieldPair.IsReg()) {
@@ -1437,15 +1438,16 @@ void BlockNode::Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable
         if (theSymTab != nullptr || thePregTab != nullptr) {
             // print the locally declared type names
             if (theMIRModule->CurFunction()->HaveTypeNameTab()) {
+                constexpr int32 spaceNum = 2;
                 for (auto it : theMIRModule->CurFunction()->GetGStrIdxToTyIdxMap()) {
                     const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(it.first);
                     MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(it.second);
                     PrintIndentation(indent + 1);
                     LogInfo::MapleLogger() << "type %" << name << " ";
                     if (type->GetKind() != kTypeByName) {
-                        type->Dump(indent + 2, true);
+                        type->Dump(indent + spaceNum, true);
                     } else {
-                        type->Dump(indent + 2);
+                        type->Dump(indent + spaceNum);
                     }
                     LogInfo::MapleLogger() << '\n';
                 }

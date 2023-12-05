@@ -44,7 +44,7 @@ void Standardize::DoStandardize()
             } else if (insn->IsBasicOp()) {
                 StdzBasicOp(*insn);
             } else if (insn->IsUnaryOp()) {
-                StdzUnaryOp(*insn);
+                StdzUnaryOp(*insn, *cgFunc);
             } else if (insn->IsConversion()) {
                 StdzCvtOp(*insn, *cgFunc);
             } else if (insn->IsShift()) {
@@ -62,19 +62,20 @@ void Standardize::AddressMapping(Insn &insn)
     Operand &dest = insn.GetOperand(kInsnFirstOpnd);
     Operand &src1 = insn.GetOperand(kInsnSecondOpnd);
     uint32 destSize = dest.GetSize();
+    bool isInt = (static_cast<RegOperand&>(dest).GetRegisterType() == kRegTyInt);
     MOperator mOp = abstract::MOP_undef;
     switch (destSize) {
         case k8BitSize:
-            mOp = abstract::MOP_copy_rr_8;
+            mOp = isInt ? abstract::MOP_copy_rr_8 : abstract::MOP_undef;
             break;
         case k16BitSize:
-            mOp = abstract::MOP_copy_rr_16;
+            mOp = isInt ? abstract::MOP_copy_rr_16 : abstract::MOP_undef;
             break;
         case k32BitSize:
-            mOp = abstract::MOP_copy_rr_32;
+            mOp = isInt ? abstract::MOP_copy_rr_32 : abstract::MOP_copy_ff_32;
             break;
         case k64BitSize:
-            mOp = abstract::MOP_copy_rr_64;
+            mOp = isInt ? abstract::MOP_copy_rr_64 : abstract::MOP_copy_ff_64;
             break;
         default:
             break;

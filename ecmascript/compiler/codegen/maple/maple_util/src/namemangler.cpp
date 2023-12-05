@@ -53,7 +53,8 @@ static inline char *AllocCodecBuf(size_t maxLen)
         return nullptr;
     }
     // each char may have 2 more char, so give out the max space buffer
-    return reinterpret_cast<char *>(malloc((maxLen <= kLocalCodebufSize) ? 3 * maxLen : 3 * kMaxCodecbufSize));
+    constexpr int multi = 3;
+    return reinterpret_cast<char *>(malloc((maxLen <= kLocalCodebufSize) ? multi * maxLen : multi * kMaxCodecbufSize));
 }
 
 static inline void FreeCodecBuf(char *buf)
@@ -122,7 +123,7 @@ std::string EncodeName(const std::string &name)
             buf[pos++] = '_';
             unsigned char n = c >> 4;  // get the high 4 bit and calculate
             buf[pos++] = GETHEXCHARU(n);
-            n = static_cast<unsigned char>(c - static_cast<unsigned char>(n << 4));  // revert
+            n = static_cast<unsigned char>(c - static_cast<unsigned char>(n << 4));  // revert the high 4 bit
             buf[pos++] = GETHEXCHARU(n);
         } else {
             str16.clear();
@@ -176,11 +177,14 @@ static inline bool UpdatePrimType(bool primType, int splitNo, uint32_t ch)
     return primType;
 }
 
-const int kNumLimit = 10;
-const int kCodeOffset3 = 12;
-const int kCodeOffset2 = 8;
-const int kCodeOffset = 4;
-const int kJavaStrLength = 5;
+namespace {
+constexpr int kNumLimit = 10;
+constexpr int kCodeOffset3 = 12;
+constexpr int kCodeOffset2 = 8;
+constexpr int kCodeOffset = 4;
+constexpr int kJavaStrLength = 5;
+constexpr size_t k64BitShift = 6; // 64 is 1 << 6
+}
 
 std::string DecodeName(const std::string &name)
 {
@@ -232,19 +236,19 @@ std::string DecodeName(const std::string &name)
                 uint8_t b4 = (c <= '9') ? c - '0' : c - 'a' + kNumLimit;
                 uint32_t codepoint = (b1 << kCodeOffset3) | (b2 << kCodeOffset2) | (b3 << kCodeOffset) | b4;
                 str16 += (char16_t)codepoint;
-                unsigned int n = UTF16ToUTF8(str, str16, 1, false);
-                if ((n >> 16) == 2) {  // the count of str equal 2 to 4, use array to save the utf8 results
+                unsigned int count = UTF16ToUTF8(str, str16, 1, false) >> 16; // shift 16 to get count
+                if (count == 2) {  // the count of str equal 2 to 4, use array to save the utf8
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                } else if ((n >> 16) == 3) {
+                } else if (count == 3) {
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2];
-                } else if ((n >> 16) == 4) {
+                    newName[pos++] = str[2]; // 2 is index of third char
+                } else if (count == 4) {
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2];
-                    newName[pos++] = str[3];
+                    newName[pos++] = str[2]; // 2 is index of third char
+                    newName[pos++] = str[3]; // 3 is index of fourth char
                 }
             } else {
                 c = static_cast<unsigned char>(namePtr[i++]);
@@ -443,22 +447,22 @@ unsigned UTF16ToUTF8(std::string &str, const std::u16string &str16, unsigned sho
         }
         if (codePoint <= 0x7F) {
             str += static_cast<char>(codePoint);
-            retNum += 1;  // one UTF8 char
+            retNum += 1;  // 1 UTF8 char
         } else if (codePoint <= 0x7FF) {
             str += static_cast<char>(0xC0 + (codePoint >> kCodepointOffset1));
             str += static_cast<char>(0x80 + (codePoint & 0x3F));
-            retNum += 2;  // two UTF8 chars
+            retNum += 2;  // 2 UTF8 chars
         } else if (codePoint <= 0xFFFF) {
             str += static_cast<char>(0xE0 + ((codePoint >> kCodepointOffset2) & 0xF));
             str += static_cast<char>(0x80 + ((codePoint >> kCodepointOffset1) & 0x3F));
             str += static_cast<char>(0x80 + (codePoint & 0x3F));
-            retNum += 3;  // three UTF8 chars
+            retNum += 3;  // 3 UTF8 chars
         } else {
             str += static_cast<char>(0xF0 + ((codePoint >> kCodepointOffset3) & 0x7));
             str += static_cast<char>(0x80 + ((codePoint >> kCodepointOffset2) & 0x3F));
             str += static_cast<char>(0x80 + ((codePoint >> kCodepointOffset1) & 0x3F));
             str += static_cast<char>(0x80 + (codePoint & 0x3F));
-            retNum += 4;  // four UTF8 chars
+            retNum += 4;  // 4 UTF8 chars
         }
         count++;
         if (num == count) {
@@ -526,7 +530,7 @@ unsigned UTF8ToUTF16(std::u16string &str16, const std::string &str8, unsigned sh
             } else {
                 str16 += static_cast<char16_t>(ChangeEndian16(static_cast<uint16_t>(codePoint)));
             }
-            retNum += 1;  // one utf16
+            retNum += 1;  // 1 utf16
         } else {
             codePoint -= 0x10000;
             if (isBigEndian || num == 1) {
@@ -537,7 +541,7 @@ unsigned UTF8ToUTF16(std::u16string &str16, const std::string &str8, unsigned sh
                     ChangeEndian16(static_cast<uint16_t>((codePoint >> kCodeAfterMinusOffset) | 0xD800)));
                 str16 += static_cast<char16_t>(ChangeEndian16((codePoint & 0x3FF) | 0xDC00));
             }
-            retNum += 2;  // two utf16
+            retNum += 2;  // 2 utf16
         }
         count++;
         // only convert num elmements
@@ -595,7 +599,7 @@ uint64_t GetLEB128Encode(int64_t val, bool isUnsigned)
         if (!done) {
             byte |= 0x80;
         }
-        res |= (static_cast<uint64_t>(byte) << (count++ << 3));  // each byte need 8 bit
+        res |= (static_cast<uint64_t>(byte) << (count++ << 3));  // each byte need 8 bit (left shift 3)
     } while (!done);
     return res;
 }
@@ -624,7 +628,7 @@ size_t GetUleb128Size(uint64_t v)
 {
     DEBUG_ASSERT(v && "if v == 0, __builtin_clzll(v) is not defined");
     size_t clz = static_cast<size_t>(__builtin_clzll(v));
-    // num of 7-bit groups
+    // num of 7-bit groups, (64 - clz + 6) / 7
     return size_t((64 - clz + 6) / 7);
 }
 
@@ -636,7 +640,7 @@ size_t GetSleb128Size(int32_t v)
     int end = ((v >= 0) ? 0 : -1);
 
     while (hasMore) {
-        hasMore = (rem != end) || ((rem & 1) != ((v >> 6) & 1));  // judege whether has More valid rem
+        hasMore = (rem != end) || ((rem & 1) != ((v >> k64BitShift) & 1));  // judege whether has More valid rem
         size++;
         v = rem;
         rem >>= static_cast<int>(kGreybackOffset);  // intended signed shift: block codedex here

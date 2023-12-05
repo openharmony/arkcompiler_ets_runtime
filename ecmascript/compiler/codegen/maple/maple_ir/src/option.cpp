@@ -299,8 +299,8 @@ bool Options::SolveOptions(bool isDebug) const
     maplecl::CopyIfEnabled(genPGOReport, opts::mpl2mpl::genPGOReport);
 
     if (opts::mpl2mpl::inlineCache.IsEnabledByUser()) {
-        if (opts::mpl2mpl::inlineCache != 0 && opts::mpl2mpl::inlineCache != 1 && opts::mpl2mpl::inlineCache != 2 &&
-            opts::mpl2mpl::inlineCache != 3) {
+        if (opts::mpl2mpl::inlineCache != 0 && opts::mpl2mpl::inlineCache != 1 &&
+            opts::mpl2mpl::inlineCache != 2 && opts::mpl2mpl::inlineCache != 3) { // expecting 0, 1, 2, 3
             LogInfo::MapleLogger(kLlErr) << "expecting 0,1,2,3 or empty for --inlineCache\n";
             return false;
         }

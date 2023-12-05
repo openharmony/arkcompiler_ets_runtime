@@ -113,9 +113,9 @@ MIRFunction *Clone::CloneFunction(MIRFunction &originalFunction, const std::stri
     std::string fullName = originalFunction.GetBaseClassName();
     const std::string &signature = originalFunction.GetSignature();
     fullName = fullName.append(namemangler::kNameSplitterStr)
-                   .append(newBaseFuncName)
-                   .append(namemangler::kNameSplitterStr)
-                   .append(signature);
+                       .append(newBaseFuncName)
+                       .append(namemangler::kNameSplitterStr)
+                       .append(signature);
     MIRFunction *newFunc =
         mirBuilder.CreateFunction(fullName, *retType, argument, false, originalFunction.GetBody() != nullptr);
     CHECK_FATAL(newFunc != nullptr, "create cloned function failed");

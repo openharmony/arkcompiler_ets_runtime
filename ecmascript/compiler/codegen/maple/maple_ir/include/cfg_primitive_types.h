@@ -64,7 +64,8 @@ struct PrimitiveTypeProperty {
     bool IsAddress() const
     {
         if (type == PTY_u64 || type == PTY_u32) {
-            if ((type == PTY_u64 && GetPointerSize() == 8) || (type == PTY_u32 && GetPointerSize() == 4)) {
+            if ((type == PTY_u64 && GetPointerSize() == 8) || // PTY_u64 with 8 byte pointer
+                (type == PTY_u32 && GetPointerSize() == 4)) { // PTY_u32 with 4 byte pointer
                 return true;
             } else {
                 return false;
@@ -82,7 +83,8 @@ struct PrimitiveTypeProperty {
     bool IsPointer() const
     {
         if (type == PTY_u64 || type == PTY_u32) {
-            if ((type == PTY_u64 && GetPointerSize() == 8) || (type == PTY_u32 && GetPointerSize() == 4)) {
+            if ((type == PTY_u64 && GetPointerSize() == 8) || // PTY_u64 with 8 byte pointer
+                (type == PTY_u32 && GetPointerSize() == 4)) { // PTY_u32 with 4 byte pointer
                 return true;
             } else {
                 return false;

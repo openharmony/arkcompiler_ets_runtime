@@ -470,6 +470,16 @@ public:
         return isHigh8Bit;
     }
 
+    void SetBaseRefOpnd(RegOperand &regOpnd)
+    {
+        baseRefOpnd = &regOpnd;
+    }
+
+    const RegOperand *GetBaseRefOpnd() const
+    {
+        return baseRefOpnd;
+    }
+
     bool operator==(const RegOperand &o) const;
 
     bool operator<(const RegOperand &o) const;
@@ -495,6 +505,7 @@ protected:
     uint64 vecElementSize = 0; /* size of vector element in each lane */
     bool if64Vec = false;      /* operand returning 64x1's int value in FP/Simd register */
     bool isHigh8Bit = false;
+    RegOperand *baseRefOpnd = nullptr;
 }; /* class RegOperand */
 
 enum VaryType : uint8 {
@@ -1968,7 +1979,8 @@ enum RegOpndDescProp : maple::uint64 {
 };
 
 /* bit 16-23 for imm */
-enum ImmOpndDescProp : maple::uint64 {};
+enum ImmOpndDescProp : maple::uint64 {
+};
 
 /* bit 24-31 for mem */
 enum MemOpndDescProp : maple::uint64 {

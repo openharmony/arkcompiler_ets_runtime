@@ -952,7 +952,7 @@ void X64CGFunc::FreeSpillRegMem(regno_t vrNum)
     }
 }
 
-MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)
+MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 memSize)
 {
     /* NOTES: must used in RA, not used in other place. */
     if (IsVRegNOForPseudoRegister(vrNum)) {
@@ -964,19 +964,20 @@ MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)
 
     auto p = spillRegMemOperands.find(vrNum);
     if (p == spillRegMemOperands.end()) {
-        auto it = reuseSpillLocMem.find(bitSize);
+        uint32 memBitSize = k64BitSize;
+        auto it = reuseSpillLocMem.find(memBitSize);
         if (it != reuseSpillLocMem.end()) {
             MemOperand *memOpnd = it->second->GetOne();
             if (memOpnd != nullptr) {
-                spillRegMemOperands.emplace(std::pair<regno_t, MemOperand *>(vrNum, memOpnd));
+                spillRegMemOperands.emplace(std::pair<regno_t, MemOperand*>(vrNum, memOpnd));
                 return memOpnd;
             }
         }
 
         RegOperand &baseOpnd = GetOrCreateStackBaseRegOperand();
-        int32 offset = GetOrCreatSpillRegLocation(vrNum);
-        MemOperand *memOpnd = &GetOpndBuilder()->CreateMem(baseOpnd, offset, bitSize);
-        spillRegMemOperands.emplace(std::pair<regno_t, MemOperand *>(vrNum, memOpnd));
+        int32 offset = GetOrCreatSpillRegLocation(vrNum, memBitSize / kBitsPerByte);
+        MemOperand *memOpnd = &GetOpndBuilder()->CreateMem(baseOpnd, offset, memBitSize);
+        spillRegMemOperands.emplace(std::pair<regno_t, MemOperand*>(vrNum, memOpnd));
         return memOpnd;
     } else {
         return p->second;

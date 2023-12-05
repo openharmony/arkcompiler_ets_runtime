@@ -492,6 +492,13 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
 void AOTFileGenerator::CompileLatestModuleThenDestroy()
 {
     Module *latestModule = GetLatestModule();
+#ifdef COMPILE_MAPLE
+    static uint32_t lastModulePC = 0;
+    if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
+        LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
+        lmirModule->GetModule()->SetLastModulePC(lastModulePC);
+    }
+#endif
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
@@ -503,6 +510,12 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
         CollectCodeInfo(latestModule, latestModuleIdx);
     }
     // message has been put into aotInfo, so latestModule could be destroyed
+#ifdef COMPILE_MAPLE
+    if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
+        LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
+        lastModulePC = lmirModule->GetModule()->GetCurModulePC();
+    }
+#endif
     latestModule->DestroyModule();
 }
 

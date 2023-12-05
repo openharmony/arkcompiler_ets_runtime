@@ -695,7 +695,7 @@ template("host_aot_js_test_action") {
     }
 
     if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg"
+      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     args = [
@@ -997,7 +997,7 @@ template("host_aot_test_action") {
     }
 
     if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg"
+      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     args = [
@@ -1084,7 +1084,7 @@ template("host_aot_test_action") {
     }
 
     if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg"
+      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     args = [
@@ -1354,7 +1354,7 @@ template("host_typeinfer_test_action") {
     }
 
     if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg"
+      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     args = [

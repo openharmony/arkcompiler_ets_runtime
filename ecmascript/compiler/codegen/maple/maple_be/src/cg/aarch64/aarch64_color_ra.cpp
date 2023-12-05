@@ -82,7 +82,7 @@ void LiveUnit::PrintLiveUnit() const
 
 bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
 {
-    if (rematLev == rematOff)
+    if (rematLev == kRematOff)
         return false;
 
     switch (op) {
@@ -105,7 +105,7 @@ bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
             return IsBitmaskImmediate(uval, GetSpillSize());
         }
         case OP_addrof: {
-            if (rematLev < rematAddr) {
+            if (rematLev < kRematAddr) {
                 return false;
             }
             const MIRSymbol *symbol = rematInfo.sym;
@@ -138,7 +138,7 @@ bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
             return true;
         }
         case OP_dread: {
-            if (rematLev < rematDreadLocal) {
+            if (rematLev < kRematDreadLocal) {
                 return false;
             }
             const MIRSymbol *symbol = rematInfo.sym;
@@ -165,7 +165,7 @@ bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
             if (!immOpnd.IsInBitSize(kMaxImmVal12Bits, 0)) {
                 return false;
             }
-            if (rematLev < rematDreadGlobal && !symbol->IsLocal()) {
+            if (rematLev < kRematDreadGlobal && !symbol->IsLocal()) {
                 return false;
             }
             return true;
@@ -473,14 +473,14 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange &lr) const
     auto *a64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     CG *cg = a64CGFunc->GetCG();
 
-    if (cg->GetRematLevel() >= rematConst && lr.IsRematerializable(*a64CGFunc, rematConst)) {
-        lr.SetRematLevel(rematConst);
-    } else if (cg->GetRematLevel() >= rematAddr && lr.IsRematerializable(*a64CGFunc, rematAddr)) {
-        lr.SetRematLevel(rematAddr);
-    } else if (cg->GetRematLevel() >= rematDreadLocal && lr.IsRematerializable(*a64CGFunc, rematDreadLocal)) {
-        lr.SetRematLevel(rematDreadLocal);
-    } else if (cg->GetRematLevel() >= rematDreadGlobal && lr.IsRematerializable(*a64CGFunc, rematDreadGlobal)) {
-        lr.SetRematLevel(rematDreadGlobal);
+    if (cg->GetRematLevel() >= kRematConst && lr.IsRematerializable(*a64CGFunc, kRematConst)) {
+        lr.SetRematLevel(kRematConst);
+    } else if (cg->GetRematLevel() >= kRematAddr && lr.IsRematerializable(*a64CGFunc, kRematAddr)) {
+        lr.SetRematLevel(kRematAddr);
+    } else if (cg->GetRematLevel() >= kRematDreadLocal && lr.IsRematerializable(*a64CGFunc, kRematDreadLocal)) {
+        lr.SetRematLevel(kRematDreadLocal);
+    } else if (cg->GetRematLevel() >= kRematDreadGlobal && lr.IsRematerializable(*a64CGFunc, kRematDreadGlobal)) {
+        lr.SetRematLevel(kRematDreadGlobal);
     }
 
     auto calculatePriorityFunc = [&lr, &bbNum, &numDefs, &numUses, &pri, this](uint32 bbID) {
@@ -498,7 +498,7 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange &lr) const
 #else  /* USE_BB_FREQUENCY */
             if (bb->GetLoop() != nullptr) {
                 uint32 loopFactor;
-                if (lr.GetNumCall() > 0 && lr.GetRematLevel() == rematOff) {
+                if (lr.GetNumCall() > 0 && lr.GetRematLevel() == kRematOff) {
                     loopFactor = bb->GetLoop()->GetLoopLevel() * kAdjustWeight;
                 } else {
                     loopFactor = bb->GetLoop()->GetLoopLevel() / kAdjustWeight;
@@ -513,16 +513,16 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange &lr) const
     };
     ForEachBBArrElem(lr.GetBBMember(), calculatePriorityFunc);
 
-    if (lr.GetRematLevel() == rematAddr || lr.GetRematLevel() == rematConst) {
+    if (lr.GetRematLevel() == kRematAddr || lr.GetRematLevel() == kRematConst) {
         if (numDefs <= 1 && numUses <= 1) {
             pri = -0xFFFF;
         } else {
             pri /= kRematWeight;
         }
-    } else if (lr.GetRematLevel() == rematDreadLocal) {
-        pri /= 4;
-    } else if (lr.GetRematLevel() == rematDreadGlobal) {
-        pri /= 2;
+    } else if (lr.GetRematLevel() == kRematDreadLocal) {
+        pri /= 4; // divide 4 to lower priority
+    } else if (lr.GetRematLevel() == kRematDreadGlobal) {
+        pri /= 2; // divide 2 to lower priority
     }
 
     lr.SetPriority(pri);
@@ -1283,8 +1283,8 @@ void GraphColorRegAllocator::ComputeLiveRanges()
 
     auto currPoint = static_cast<uint32>(cgFunc->GetTotalNumberOfInstructions() + bfs->sortedBBs.size());
     /* distinguish use/def */
-    CHECK_FATAL(currPoint < (INT_MAX >> 2), "integer overflow check");
-    currPoint = currPoint << 2;
+    CHECK_FATAL(currPoint < (INT_MAX >> 2), "integer overflow check"); // multiply by 4 to distinguish def or use reg
+    currPoint = currPoint << 2; // multiply by 4 to distinguish def or use reg
     for (size_t bbIdx = bfs->sortedBBs.size(); bbIdx > 0; --bbIdx) {
         BB *bb = bfs->sortedBBs[bbIdx - 1];
         bbVec[bb->GetId()] = bb;
@@ -1331,7 +1331,7 @@ void GraphColorRegAllocator::ComputeLiveRanges()
 
             ComputeLiveRangesUpdateIfInsnIsCall(*insn);
             /* distinguish use/def */
-            currPoint -= 2;
+            currPoint -= k2BitSize;
         }
         ComputeLiveRangesUpdateLiveUnitInsnRange(*bb, currPoint);
         /* move one more step for each BB */
@@ -1584,7 +1584,7 @@ void GraphColorRegAllocator::Separate()
             continue;
         }
 #endif /* OPTIMIZE_FOR_PROLOG */
-        if (lr->GetRematLevel() != rematOff) {
+        if (lr->GetRematLevel() != kRematOff) {
             unconstrained.emplace_back(lr);
         } else if (HaveAvailableColor(*lr, lr->GetNumBBConflicts() + static_cast<uint32>(lr->GetPregvetoSize()) +
                                                static_cast<uint32>(lr->GetForbiddenSize()))) {
@@ -1730,7 +1730,7 @@ regno_t GraphColorRegAllocator::FindColorForLr(const LiveRange &lr) const
     }
 
 #ifdef MOVE_COALESCE
-    if (lr.GetNumCall() == 0 || (lr.GetNumDefs() + lr.GetNumUses() <= 2)) {
+    if (lr.GetNumCall() == 0 || (lr.GetNumDefs() + lr.GetNumUses() <= kRegNum2)) {
         for (const auto &it : lr.GetPrefs()) {
             reg = it + base;
             if ((FindIn(*currRegSet, reg) || FindIn(*nextRegSet, reg)) && !lr.GetForbidden(reg) &&
@@ -1772,7 +1772,7 @@ regno_t GraphColorRegAllocator::TryToAssignCallerSave(const LiveRange &lr) const
 
     regno_t reg = 0;
 #ifdef MOVE_COALESCE
-    if (lr.GetNumCall() == 0 || (lr.GetNumDefs() + lr.GetNumUses() <= 2)) {
+    if (lr.GetNumCall() == 0 || (lr.GetNumDefs() + lr.GetNumUses() <= kRegNum2)) {
         for (const auto &it : lr.GetPrefs()) {
             reg = it + base;
             if ((FindIn(*currRegSet, reg)) && !lr.GetForbidden(reg) && !lr.GetPregveto(reg) && !lr.GetCallDef(reg)) {
@@ -3113,7 +3113,7 @@ void GraphColorRegAllocator::SpillOperandForSpillPost(Insn &insn, const Operand 
         isLastInsn = true;
     }
 
-    if (lr->GetRematLevel() != rematOff) {
+    if (lr->GetRematLevel() != kRematOff) {
         std::string comment = " REMATERIALIZE for spill vreg: " + std::to_string(regNO);
         if (isLastInsn) {
             for (auto tgtBB : insn.GetBB()->GetSuccs()) {
@@ -3260,7 +3260,7 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn &insn, const Operand &opnd, bool
 
     Insn *spillDefInsn = nullptr;
     if (isDef) {
-        if (lr->GetRematLevel() == rematOff) {
+        if (lr->GetRematLevel() == kRematOff) {
             lr->SetSpillReg(pregNO);
             Insn *nextInsn = insn.GetNextMachineInsn();
             MemOperand *memOpnd = GetSpillOrReuseMem(*lr, regSize, isOutOfRange, insn, forCall ? false : true);
@@ -3299,7 +3299,7 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn &insn, const Operand &opnd, bool
 
     std::vector<Insn *> spillUseInsns;
     std::string comment;
-    if (lr->GetRematLevel() != rematOff) {
+    if (lr->GetRematLevel() != kRematOff) {
         spillUseInsns = lr->Rematerialize(a64CGFunc, phyOpnd);
         comment = " REMATERIALIZE vreg: " + std::to_string(regNO);
     } else {
@@ -3796,7 +3796,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpnd(Insn &insn, const Operand &op
     bool needCallerSave = false;
     if (lr->GetNumCall() && !isCalleeReg) {
         if (isDef) {
-            needCallerSave = NeedCallerSave(insn, *lr, isDef) && lr->GetRematLevel() == rematOff;
+            needCallerSave = NeedCallerSave(insn, *lr, isDef) && lr->GetRematLevel() == kRematOff;
         } else {
             needCallerSave = !lr->GetProcessed();
         }
@@ -4078,7 +4078,7 @@ RegOperand *GraphColorRegAllocator::CreateSpillFillCode(const RegOperand &opnd, 
         RegOperand *regopnd =
             &a64cgfunc->GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(spreg), opnd.GetSize(), rtype);
 
-        if (lr->GetRematLevel() != rematOff) {
+        if (lr->GetRematLevel() != kRematOff) {
             if (isdef) {
                 return nullptr;
             } else {

@@ -19,24 +19,34 @@
 #include "common_utils.h"
 #include "mempool.h"
 #include "mempool_allocator.h"
+#include "maple_sparse_bitvector.h"
 
 namespace maplebe {
 class SparseDataInfo {
-    /*
-     * SparseDataInfo has the same imterface like DataInfo
-     * it can be used when the data member is small while the data
-     * range is big.like in live analysis, in some extreme case the
-     * vreg num range is 10k while in each bb, the max num of is 30+.
-     */
+/*
+ * SparseDataInfo has the same imterface like DataInfo
+ * it can be used when the data member is small while the data
+ * range is big.like in live analysis, in some extreme case the
+ * vreg num range is 10k while in each bb, the max num of is 30+
+*/
 public:
-    SparseDataInfo(uint32 bitNum, MapleAllocator &alloc) : info(alloc.Adapter()), maxRegNum(bitNum) {}
+    SparseDataInfo(uint32 bitNum, const MapleAllocator &alloc) : allocator(alloc), info(allocator), maxRegNum(bitNum) {}
 
-    SparseDataInfo(const SparseDataInfo &other, MapleAllocator &alloc)
-        : info(other.info, alloc.Adapter()), maxRegNum(other.maxRegNum)
+    SparseDataInfo(const SparseDataInfo &other, const MapleAllocator &alloc)
+        : allocator(alloc),
+          info(other.info, allocator),
+          maxRegNum(other.maxRegNum)
     {
     }
 
-    SparseDataInfo &Clone(MapleAllocator &alloc)
+    SparseDataInfo(const SparseDataInfo &other)
+        : allocator(other.allocator),
+          info(other.info, allocator),
+          maxRegNum(other.maxRegNum)
+    {
+    }
+
+    SparseDataInfo &Clone(MapleAllocator &alloc) const
     {
         auto *dataInfo = alloc.New<SparseDataInfo>(*this, alloc);
         return *dataInfo;
@@ -44,24 +54,35 @@ public:
 
     ~SparseDataInfo() = default;
 
+    SparseDataInfo &operator=(const SparseDataInfo &other)
+    {
+        if (this == &other) {
+            return *this;
+        }
+        allocator = other.GetAllocator();
+        info = other.GetInfo();
+        maxRegNum = other.GetMaxRegNum();
+        return *this;
+    }
+
     void SetBit(uint32 bitNO)
     {
-        info.insert(bitNO);
+        info.Set(bitNO);
     }
 
     void ResetBit(uint32 bitNO)
     {
-        info.erase(bitNO);
+        info.Reset(bitNO);
     }
 
     bool TestBit(uint32 bitNO) const
     {
-        return info.find(bitNO) != info.end();
+        return info.Test(bitNO);
     }
 
     bool NoneBit() const
     {
-        return info.empty();
+        return info.Empty();
     }
 
     size_t Size() const
@@ -69,9 +90,19 @@ public:
         return maxRegNum;
     }
 
-    const MapleSet<uint32> &GetInfo() const
+    const MapleAllocator &GetAllocator() const
+    {
+        return allocator;
+    }
+
+    const MapleSparseBitVector<> &GetInfo() const
     {
         return info;
+    }
+
+    uint32 GetMaxRegNum() const
+    {
+        return maxRegNum;
     }
 
     bool IsEqual(const SparseDataInfo &secondInfo) const
@@ -79,67 +110,52 @@ public:
         return info == secondInfo.GetInfo();
     }
 
-    bool IsEqual(const MapleSet<uint32> &LiveInfoBak) const
+    bool IsEqual(const MapleSparseBitVector<> &liveInfoBak) const
     {
-        return info == LiveInfoBak;
+        return info == liveInfoBak;
     }
 
     void AndBits(const SparseDataInfo &secondInfo)
     {
-        for (auto it = info.begin(); it != info.end();) {
-            if (!secondInfo.TestBit(*it)) {
-                it = info.erase(it);
-            } else {
-                ++it;
-            }
-        }
+        info &= secondInfo.info;
     }
 
     void OrBits(const SparseDataInfo &secondInfo)
     {
-        for (auto data : secondInfo.GetInfo()) {
-            info.insert(data);
-        }
+        info |= secondInfo.info;
     }
 
     /* if bit in secondElem is 1, bit in current DataInfo is set 0 */
     void Difference(const SparseDataInfo &secondInfo)
     {
-        for (auto it = info.begin(); it != info.end();) {
-            if (secondInfo.TestBit(*it)) {
-                it = info.erase(it);
-            } else {
-                ++it;
-            }
-        }
+        info.Diff(secondInfo.info);
     }
 
     void ResetAllBit()
     {
-        info.clear();
+        info.Clear();
     }
 
-    void EnlargeCapacityToAdaptSize(uint32 bitNO)
+    void EnlargeCapacityToAdaptSize(uint32 /* bitNO */) const
     {
         /* add one more size for each enlarge action */
     }
 
     void ClearDataInfo()
     {
-        info.clear();
+        info.Clear();
     }
 
-    template <typename T>
+    template<typename T>
     void GetBitsOfInfo(T &wordRes) const
     {
-        wordRes = info;
+        info.ConvertToSet(wordRes);
     }
 
 private:
-    /* long type has 8 bytes, 64 bits */
-    static constexpr int32 kWordSize = 64;
-    MapleSet<uint32> info;
+    MapleAllocator allocator;
+    MapleSparseBitVector<> info;
     uint32 maxRegNum;
 };
-} /* namespace maplebe */
-#endif /* MAPLEBE_INCLUDE_CG_INSN_H */
+}  /* namespace maplebe */
+#endif  /* MAPLEBE_INCLUDE_CG_SPARSE_DATAINFO_H */

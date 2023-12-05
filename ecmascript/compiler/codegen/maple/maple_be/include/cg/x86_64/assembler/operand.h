@@ -24,19 +24,20 @@ namespace assembler {
 using ImmOpnd = std::pair<int64, bool>;
 
 /* Use 16 bits to represent a register:
-   The high 8 bits is register's size,
-   the low 4 bits is register's id,
-   the fifth bit from right to left is used to identity register rip,
-   the eighth bit from right to left is used to determine whether
-       it is the high 8-bit register or the lower 8-bit register.
+   The high 8 bits is register's size.
+   The low 4 bits is register's id.
+   The fifth bit from right to left is used to identity register rip, the bit equals 1 represents the RIP register.
+   The sixth bit from right to left is used to identity float register, the bit equals 1 represents the float register.
+   The eighth bit from right to left is used to determine whether
+       it is the high 8-bit register or the lower 8-bit register, the bit equals 1 represents the lower 8-bit register.
   The specific distribution of the 16 bits is shown below:
-  +-----------------------------------+-----------+-----------+-------+-------------------+
-  |  15  14  13  12  11  10   9   8   |     7     |   6   5   |   4   |   3   2   1   0   |
-  +-----------------------------------+-----------+-----------+-------+-------------------+
-  |         Reg's size in bits        | H/L8-reg  |   unuse   | IsRIP |     Reg's id      |
-  +-----------------------------------+-----------+-----------+-------+-------------------+
-  |   0   0   0   0   0   0   0   0   |     0     |   0   0   |   0   |   0   0   0   0   |
-  +-----------------------------------+-----------+-----------+-------+-------------------+
+  +-----------------------------------+-----------+-------+---------+-------+-------------------+
+  |  15  14  13  12  11  10   9   8   |     7     |   6   |    5    |   4   |   3   2   1   0   |
+  +-----------------------------------+-----------+-------+---------+-------+-------------------+
+  |         Reg's size in bits        | H/L8-reg  | unuse | IsFloat | IsRIP |     Reg's id      |
+  +-----------------------------------+-----------+-------+---------+-------+-------------------+
+  |   0   0   0   0   0   0   0   0   |     0     |   0   |    0    |   0   |   0   0   0   0   |
+  +-----------------------------------+-----------+-------+---------+------+--------------------+
 */
 enum Reg : uint16 {
     XMM0 = 0x8000,
@@ -55,6 +56,7 @@ enum Reg : uint16 {
     XMM13,
     XMM14,
     XMM15,
+    MMX0 = 0x4020, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7,
     RAX = 0x4000,
     RCX,
     RDX,
@@ -134,19 +136,28 @@ enum Reg : uint16 {
 };
 
 static const uint8 kMaxRegNum = 35;
-static const uint8 kRegSizeType = 5;
+static const uint8 kRegSizeType = 6;
+// To implement operating 64/32 bit float with 128bit asm insn,
+// 32bit/64bit/128bit regs in kRegArray has done some processes same with openArkCompiler.
 static const std::array<std::array<Reg, kMaxRegNum>, kRegSizeType> kRegArray = {
-    {{ERR, AL, BL, CL, DL, SPL, BPL, SIL, DIL, R8B, R9B, R10B, R11B, R12B, R13B, R14B, R15B},
-     {ERR, AH, BH, CH, DH},
-     {ERR, AX, BX, CX, DX, SP, BP, SI, DI, R8W, R9W, R10W, R11W, R12W, R13W, R14W, R15W},
-     {ERR, EAX, EBX, ECX, EDX, ESP, EBP, ESI, EDI, R8D, R9D, R10D, R11D, R12D, R13D, R14D, R15D},
-     {ERR, RAX,  RBX,  RCX,  RDX,  RSP,  RBP,  RSI,  RDI,  R8,   R9,   R10,   R11,   R12,   R13,   R14,   R15,
-      RIP, XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15}}};
+    {{ERR, AL, CL, DL, BL, SPL, BPL, SIL, DIL, R8B, R9B, R10B, R11B, R12B, R13B, R14B, R15B},
+     {ERR, AH, CH, DH, BH},
+     {ERR, AX, CX, DX, BX, SP, BP, SI, DI, R8W, R9W, R10W, R11W, R12W, R13W, R14W, R15W},
+     {ERR, EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, R8D, R9D, R10D, R11D, R12D, R13D, R14D, R15D, ERR,
+      XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15},
+     {ERR, RAX,  RCX,  RDX,  RBX,  RSP,  RBP,  RSI,  RDI,  R8,   R9,   R10,   R11,   R12,   R13,   R14,   R15,
+      RIP, XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15},
+     {ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR, ERR,
+      XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15}}
+      };
 
 static const std::unordered_map<Reg, std::string> kRegStrMap = {
     {XMM0, "xmm0"},   {XMM1, "xmm1"},   {XMM2, "xmm2"},   {XMM3, "xmm3"},   {XMM4, "xmm4"},   {XMM5, "xmm5"},
     {XMM6, "xmm6"},   {XMM7, "xmm7"},   {XMM8, "xmm8"},   {XMM9, "xmm9"},   {XMM10, "xmm10"}, {XMM11, "xmm11"},
-    {XMM12, "xmm12"}, {XMM13, "xmm13"}, {XMM14, "xmm14"}, {XMM15, "xmm15"}, {RAX, "rax"},     {RDX, "rdx"},
+    {XMM12, "xmm12"}, {XMM13, "xmm13"}, {XMM14, "xmm14"}, {XMM15, "xmm15"},
+    {MMX0, "mmx0"}, {MMX1, "mmx1"}, {MMX2, "mmx2"}, {MMX3, "mmx3"}, {MMX4, "mmx4"}, {MMX5, "mmx5"}, {MMX6, "mmx6"},
+    {MMX7, "mmx7"},
+    {RAX, "rax"},     {RDX, "rdx"},
     {RCX, "rcx"},     {RBX, "rbx"},     {RSP, "rsp"},     {RBP, "rbp"},     {RSI, "rsi"},     {RDI, "rdi"},
     {R8, "r8"},       {R9, "r9"},       {R10, "r10"},     {R11, "r11"},     {R12, "r12"},     {R13, "r13"},
     {R14, "r14"},     {R15, "r15"},     {RIP, "rip"},     {EAX, "eax"},     {ECX, "ecx"},     {EDX, "edx"},
@@ -221,6 +232,8 @@ enum class LabelType {
     kLocalUninitialized,
     kStrLabel,
     kJmpLabel,
+    kFloatLabel,
+    kDoubleLabel,
     /* for debug */
     kDebugStrLabel,
 };

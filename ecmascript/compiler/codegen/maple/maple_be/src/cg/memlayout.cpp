@@ -73,9 +73,9 @@ uint32 MemLayout::FindLargestActualArea(int32 &aggCopySize)
     aggCopySize = static_cast<int32>(maxCopyStackSize);
     /* GetPointerSize() * 2's pow 2 is 4, set the low 4 bit of maxActualSize to 0 */
     if (CGOptions::IsArm64ilp32()) {
-        maxActualSize = RoundUp(maxActualSize, k8ByteSize * 2);
+        maxActualSize = RoundUp(maxActualSize, k8ByteSize << 1);
     } else {
-        maxActualSize = RoundUp(maxActualSize, GetPointerSize() * 2);
+        maxActualSize = RoundUp(maxActualSize, GetPointerSize() << 1);
     }
     return maxActualSize;
 }

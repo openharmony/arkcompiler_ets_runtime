@@ -297,8 +297,8 @@ MIRFunction *MIRBuilder::CreateFunction(const std::string &name, const MIRType &
         }
     }
     funcSymbol->SetTyIdx(GlobalTables::GetTypeTable()
-                             .GetOrCreateFunctionType(returnType.GetTypeIndex(), funcVecType, funcVecAttrs, isVarg)
-                             ->GetTypeIndex());
+                         .GetOrCreateFunctionType(returnType.GetTypeIndex(), funcVecType, funcVecAttrs, isVarg)
+                         ->GetTypeIndex());
     auto *funcType = static_cast<MIRFuncType *>(funcSymbol->GetType());
     fn->SetMIRFuncType(funcType);
     funcSymbol->SetFunction(fn);
@@ -843,7 +843,7 @@ ArrayNode *MIRBuilder::CreateExprArray(const MIRType &arrayType, BaseNode *op1, 
 {
     ArrayNode *arrayNode = CreateExprArray(arrayType, op1);
     arrayNode->GetNopnd().push_back(op2);
-    arrayNode->SetNumOpnds(2);
+    arrayNode->SetNumOpnds(2); // 2 operands
     return arrayNode;
 }
 
@@ -1198,7 +1198,7 @@ IfStmtNode *MIRBuilder::CreateStmtIfThenElse(BaseNode *cond)
     ifStmt->SetThenPart(thenBlock);
     auto *elseBlock = GetCurrentFuncCodeMp()->New<BlockNode>();
     ifStmt->SetElsePart(elseBlock);
-    ifStmt->SetNumOpnds(3);
+    ifStmt->SetNumOpnds(3); // 3 operands
     return ifStmt;
 }
 

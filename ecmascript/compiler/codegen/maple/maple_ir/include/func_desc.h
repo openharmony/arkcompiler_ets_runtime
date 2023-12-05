@@ -122,13 +122,13 @@ struct FuncDesc {
             case RI::kAliasParam1:
                 return 1;
             case RI::kAliasParam2:
-                return 2;
+                return 2; // 2 is kAliasParam2
             case RI::kAliasParam3:
-                return 3;
+                return 3; // 3 is kAliasParam3
             case RI::kAliasParam4:
-                return 4;
+                return 4; // 4 is kAliasParam4
             case RI::kAliasParam5:
-                return 5;
+                return 5; // 5 is kAliasParam5
             default: {
                 CHECK_FATAL(false, "Impossible.");
             }

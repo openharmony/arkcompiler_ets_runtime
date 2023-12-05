@@ -56,8 +56,13 @@ void X64Standardize::StdzBasicOp(Insn &insn)
     insn.AddOpndChain(src2).AddOpndChain(dest);
 }
 
-void X64Standardize::StdzUnaryOp(Insn &insn)
+void X64Standardize::StdzUnaryOp(Insn &insn, CGFunc &cgFunc)
 {
+    MOperator mOp = insn.GetMachineOpcode();
+    if (mOp == abstract::MOP_neg_f_32 || mOp == abstract::MOP_neg_f_64) {
+        StdzFloatingNeg(insn, cgFunc);
+        return;
+    }
     X64MOP_t directlyMappingMop = GetMopFromAbstraceIRMop(insn.GetMachineOpcode());
     insn.SetMOP(X64CG::kMd[directlyMappingMop]);
     Operand &dest = insn.GetOperand(kInsnFirstOpnd);
@@ -73,13 +78,15 @@ void X64Standardize::StdzCvtOp(Insn &insn, CGFunc &cgFunc)
     uint32 srcSize = OpndSrcSize;
     switch (insn.GetMachineOpcode()) {
         case abstract::MOP_zext_rr_64_8:
-            destSize = k32BitSize;
-            break;
         case abstract::MOP_zext_rr_64_16:
-            destSize = k32BitSize;
-            break;
         case abstract::MOP_zext_rr_64_32:
             destSize = k32BitSize;
+            break;
+        case abstract::MOP_cvt_fr_u32:
+            srcSize = k64BitSize;
+            break;
+        case abstract::MOP_cvt_rf_u32:
+            destSize = k64BitSize;
             break;
         default:
             break;
@@ -102,6 +109,58 @@ void X64Standardize::StdzCvtOp(Insn &insn, CGFunc &cgFunc)
     } else {
         CHECK_FATAL(false, "NIY mapping");
     }
+}
+
+/* x86 does not have floating point neg instruction
+ * neg_f   operand0  operand1
+ * ==>
+ * movd    xmm0 R1
+ * 64: movabsq 0x8000000000000000 R2
+ *     xorq R2 R1
+ * 32: xorl 0x80000000 R1
+ * movd R1 xmm0
+*/
+void X64Standardize::StdzFloatingNeg(Insn &insn, CGFunc &cgFunc)
+{
+    MOperator mOp = insn.GetMachineOpcode();
+    uint32 bitSize = mOp == abstract::MOP_neg_f_32 ? k32BitSize : k64BitSize;
+
+    // mov dest -> tmpOperand0
+    MOperator movOp = mOp == abstract::MOP_neg_f_32 ? x64::MOP_movd_fr_r : x64::MOP_movq_fr_r;
+    RegOperand *tmpOperand0 = &cgFunc.GetOpndBuilder()->CreateVReg(bitSize, kRegTyInt);
+    Insn &movInsn0 = cgFunc.GetInsnBuilder()->BuildInsn(movOp, X64CG::kMd[movOp]);
+    Operand &dest = insn.GetOperand(kInsnFirstOpnd);
+    movInsn0.AddOpndChain(dest).AddOpndChain(*tmpOperand0);
+    insn.GetBB()->InsertInsnBefore(insn, movInsn0);
+
+    // 32 : xorl   0x80000000         tmpOperand0
+    // 64 : movabs 0x8000000000000000 tmpOperand1
+    //      xorq   tmpOperand1        tmpOperand0
+    ImmOperand &imm = cgFunc.GetOpndBuilder()->CreateImm(bitSize, (static_cast<int64>(1) << (bitSize - 1)));
+    if (mOp == abstract::MOP_neg_f_64) {
+        Operand *tmpOperand1 = &cgFunc.GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+        Insn &movabs = cgFunc.GetInsnBuilder()->BuildInsn(x64::MOP_movabs_i_r, X64CG::kMd[x64::MOP_movabs_i_r]);
+        movabs.AddOpndChain(imm).AddOpndChain(*tmpOperand1);
+        insn.GetBB()->InsertInsnBefore(insn, movabs);
+
+        MOperator xorOp = x64::MOP_xorq_r_r;
+        Insn &xorq = cgFunc.GetInsnBuilder()->BuildInsn(xorOp, X64CG::kMd[xorOp]);
+        xorq.AddOpndChain(*tmpOperand1).AddOpndChain(*tmpOperand0);
+        insn.GetBB()->InsertInsnBefore(insn, xorq);
+    } else {
+        MOperator xorOp = x64::MOP_xorl_i_r;
+        Insn &xorq = cgFunc.GetInsnBuilder()->BuildInsn(xorOp, X64CG::kMd[xorOp]);
+        xorq.AddOpndChain(imm).AddOpndChain(*tmpOperand0);
+        insn.GetBB()->InsertInsnBefore(insn, xorq);
+    }
+
+    // mov tmpOperand0 -> dest
+    Insn &movq = cgFunc.GetInsnBuilder()->BuildInsn(movOp, X64CG::kMd[movOp]);
+    movq.AddOpndChain(*tmpOperand0).AddOpndChain(dest);
+    insn.GetBB()->InsertInsnBefore(insn, movq);
+
+    insn.GetBB()->RemoveInsn(insn);
+    return;
 }
 
 void X64Standardize::StdzShiftOp(Insn &insn, CGFunc &cgFunc)

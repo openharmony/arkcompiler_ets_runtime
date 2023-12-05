@@ -32,9 +32,10 @@ private:
     void StdzMov(Insn &insn) override;
     void StdzStrLdr(Insn &insn) override;
     void StdzBasicOp(Insn &insn) override;
-    void StdzUnaryOp(Insn &insn) override;
+    void StdzUnaryOp(Insn &insn, CGFunc &cgFunc) override;
     void StdzCvtOp(Insn &insn, CGFunc &cgFunc) override;
     void StdzShiftOp(Insn &insn, CGFunc &cgFunc) override;
+    void StdzFloatingNeg(Insn &insn, CGFunc &cgFunc);
 };
 }  // namespace maplebe
 #endif /* MAPLEBE_INCLUDEX_64_STANDARDIZE_H */

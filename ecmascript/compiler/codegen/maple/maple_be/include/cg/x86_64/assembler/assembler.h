@@ -117,12 +117,14 @@ public:
     /* Indirect strings refer to string pointers, such as "char *buf". */
     virtual void EmitIndirectString(int64 strSymIdx, bool belongsToDataSec = true) = 0;
     virtual void EmitIntValue(int64 value, size_t valueSize, bool belongsToDataSec = true) = 0;
+    virtual void EmitFloatValue(int64 symIdx, int64 value, size_t valueSize) = 0;
     virtual void EmitAddrValue(int64 symIdx, int32 symAddrOfs, int32 structFieldOfs, bool belongsToDataSec = true) = 0;
     virtual void EmitAddrOfFuncValue(int64 symIdx, bool belongsToDataSec = true) = 0;
     virtual void EmitLabelValue(int64 symIdx, bool belongsToDataSec = true) = 0;
     virtual void EmitBitFieldValue(uint64 combineBitFieldValue, bool belongsToDataSec = true) = 0;
     virtual void EmitNull(uint64 sizeInByte) = 0;
-    virtual void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte) = 0;
+    virtual void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte,
+                                  bool belongsToTextSec = false) = 0;
     virtual void FinalizeFileInfo() = 0;
 
     /* emit debug info */
@@ -174,6 +176,10 @@ public:
     virtual void Mov(InsnSize insnSize, const Mem &mem, Reg reg) = 0;
     virtual void Mov(InsnSize insnSize, Reg reg, const Mem &mem) = 0;
     virtual void Mov(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) = 0;
+    /* floating point mov */
+    virtual void Mov(Reg srcReg, Reg destReg, bool isMovD = true) = 0;
+    virtual void MovF(const Mem &mem, Reg reg, bool isSingle = true) = 0;
+    virtual void MovF(Reg reg, const Mem &mem, bool isSingle = true) = 0;
     /* movabs */
     virtual void Movabs(const ImmOpnd &immOpnd, Reg reg) = 0;
     virtual void Movabs(int64 symIdx, Reg reg) = 0;
@@ -195,12 +201,18 @@ public:
     virtual void Add(InsnSize insnSize, const Mem &mem, Reg reg) = 0;
     virtual void Add(InsnSize insnSize, Reg reg, const Mem &mem) = 0;
     virtual void Add(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) = 0;
+    /* add floating point */
+    virtual void Add(Reg srcReg, Reg destReg, bool isSingle = true) = 0;
+    virtual void Add(const Mem &mem, Reg reg, bool isSingle = true) = 0;
     /* sub */
     virtual void Sub(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
     virtual void Sub(InsnSize insnSize, const ImmOpnd &immOpnd, Reg reg) = 0;
     virtual void Sub(InsnSize insnSize, const Mem &mem, Reg reg) = 0;
     virtual void Sub(InsnSize insnSize, Reg reg, const Mem &mem) = 0;
     virtual void Sub(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) = 0;
+    /* sub floating point */
+    virtual void Sub(Reg srcReg, Reg destReg, bool isSingle = true) = 0;
+    virtual void Sub(const Mem &mem, Reg reg, bool isSingle = true) = 0;
     /* and */
     virtual void And(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
     virtual void And(InsnSize insnSize, const Mem &mem, Reg reg) = 0;
@@ -326,6 +338,9 @@ public:
     virtual void Leave() = 0;
     /* imul */
     virtual void Imul(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
+    /* mul float */
+    virtual void Mul(Reg srcReg, Reg destReg, bool isSingle = true) = 0;
+    virtual void Mul(const Mem &mem, Reg reg, bool isSingle = true) = 0;
     /* nop */
     virtual void Nop(InsnSize insnSize, const Mem &mem) = 0;
     virtual void Nop() = 0;
@@ -334,9 +349,34 @@ public:
     virtual void Xchg(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
     /* pseudo insn */
     virtual void DealWithPseudoInst(const std::string &insn) = 0;
+    /* floating point */
+    virtual void MovF(Reg srcReg, Reg destReg, bool isSingle = true) = 0;
+    /* floating point and */
+    virtual void And(Reg srcReg, Reg destReg, bool isSingle = true) = 0;
+    virtual void And(const Mem &mem, Reg reg, bool isSingle = true) = 0;
+    /* floating div */
+    virtual void Divsd(Reg srcReg, Reg destReg) = 0;
+    virtual void Divsd(const Mem &mem, Reg reg) = 0;
+    /* convert int2float */
+    virtual void Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
+    virtual void Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
+    /*convert float2int */
+    virtual void Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
+    virtual void Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg) = 0;
+    /* convert float2float */
+    virtual void Cvtss2sd(Reg srcReg, Reg destReg) = 0;
+    virtual void Cvtsd2ss(Reg srcReg, Reg destReg) = 0;
+    /* unordered compare */
+    virtual void Ucomisd(Reg srcReg, Reg destReg) = 0;
+    virtual void Ucomiss(Reg srcReg, Reg destReg) = 0;
+    /* float sqrt*/
+    virtual void Sqrtss_r(Reg srcReg, Reg destReg) = 0;
+    virtual void Sqrtsd_r(Reg srcReg, Reg destReg) = 0;
     /* end of X64 instructions */
     /* process stackmap */
     virtual void RecordStackmap(const std::vector<uint64> &referenceMap, const std::vector<uint64> &deoptInfo) = 0;
+    virtual uint32 GetCurModulePC() = 0;
+    virtual void SetLastModulePC(uint32 pc) = 0;
 
 protected:
     std::ofstream outStream;

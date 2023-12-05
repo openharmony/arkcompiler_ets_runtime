@@ -29,6 +29,11 @@ MIRType *TypeTable::CreateMirType(uint32 primTypeIdx) const
 
 TypeTable::TypeTable()
 {
+    Init();
+}
+
+void TypeTable::Init()
+{
     // enter the primitve types in type_table_
     typeTable.push_back(static_cast<MIRType *>(nullptr));
     DEBUG_ASSERT(typeTable.size() == static_cast<size_t>(PTY_void), "use PTY_void as the first index to type table");
@@ -45,6 +50,24 @@ TypeTable::TypeTable()
     lastDefaultTyIdx.SetIdx(primTypeIdx);
 }
 
+void TypeTable::Reset()
+{
+    ReleaseTypes();
+    typeHashTable.clear();
+    ptrTypeMap.clear();
+    refTypeMap.clear();
+    typeTable.clear();
+    Init();
+}
+
+void TypeTable::ReleaseTypes()
+{
+    for (auto index = static_cast<uint32>(PTY_void); index < typeTable.size(); ++index) {
+        delete typeTable[index];
+        typeTable[index] = nullptr;
+    }
+}
+
 void TypeTable::SetTypeWithTyIdx(const TyIdx &tyIdx, MIRType &type)
 {
     CHECK_FATAL(tyIdx < typeTable.size(), "array index out of range");
@@ -59,10 +82,7 @@ void TypeTable::SetTypeWithTyIdx(const TyIdx &tyIdx, MIRType &type)
 
 TypeTable::~TypeTable()
 {
-    for (auto index = static_cast<uint32>(PTY_void); index < typeTable.size(); ++index) {
-        delete typeTable[index];
-        typeTable[index] = nullptr;
-    }
+    ReleaseTypes();
 }
 
 void TypeTable::PutToHashTable(MIRType *mirType)
@@ -478,14 +498,32 @@ FPConstTable::~FPConstTable()
 
 GSymbolTable::GSymbolTable()
 {
+    Init();
+}
+
+void GSymbolTable::Init()
+{
     symbolTable.push_back(static_cast<MIRSymbol *>(nullptr));
 }
 
-GSymbolTable::~GSymbolTable()
+void GSymbolTable::Reset()
+{
+    ReleaseSymbols();
+    symbolTable.clear();
+    strIdxToStIdxMap.clear();
+    Init();
+}
+
+void GSymbolTable::ReleaseSymbols()
 {
     for (MIRSymbol *symbol : symbolTable) {
         delete symbol;
     }
+}
+
+GSymbolTable::~GSymbolTable()
+{
+    ReleaseSymbols();
 }
 
 MIRSymbol *GSymbolTable::CreateSymbol(uint8 scopeID)
@@ -527,7 +565,7 @@ void GSymbolTable::Dump(bool isLocal, int32 indent) const
     }
 }
 
-GlobalTables GlobalTables::globalTables;
+thread_local GlobalTables GlobalTables::globalTables;
 GlobalTables &GlobalTables::GetGlobalTables()
 {
     return globalTables;

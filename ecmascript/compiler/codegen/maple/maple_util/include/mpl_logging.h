@@ -225,7 +225,7 @@ private:
         }                                                                                        \
     } while (0)
 
-#define CHECK_NULL_FATAL(ptr) CHECK_FATAL(ptr != nullptr, "Failed with nullptr.")
+#define CHECK_NULL_FATAL(ptr) CHECK_FATAL((ptr) != nullptr, "Failed with nullptr.")
 
 #if ENABLE_ASSERT
 #define DEBUG_ASSERT(cond, fmt, ...)                                                             \
@@ -236,7 +236,7 @@ private:
         }                                                                                        \
     } while (0)
 
-#define ASSERT_NOT_NULL(ptr) DEBUG_ASSERT(ptr != nullptr, "Failed with nullptr.")
+#define ASSERT_NOT_NULL(ptr) DEBUG_ASSERT((ptr) != nullptr, "Failed with nullptr.")
 #else
 #define DEBUG_ASSERT(cond, fmt, ...)
 #define ASSERT_NOT_NULL(ptr)

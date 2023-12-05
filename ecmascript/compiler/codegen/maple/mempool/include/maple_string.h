@@ -64,7 +64,7 @@ public:
 
     MapleString &operator=(const char c)
     {
-        data = static_cast<char *>(memPool->Malloc(2 * sizeof(char)));
+        data = static_cast<char *>(memPool->Malloc(sizeof(char) << 1));
         CHECK_FATAL(data != nullptr, "nullptr check");
         data[0] = c;
         data[1] = '\0';

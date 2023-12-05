@@ -106,7 +106,7 @@ uint32 GetJumpTargetIdx(const Insn &insn)
             return kInsnFirstOpnd;
         }
         case MOP_xbr: {
-            DEBUG_ASSERT(insn.GetOperandSize() == 2, "ERR");
+            DEBUG_ASSERT(insn.GetOperandSize() == 2, "ERR"); // must have 2
             return kInsnSecondOpnd;
         }
             /* conditional jump */

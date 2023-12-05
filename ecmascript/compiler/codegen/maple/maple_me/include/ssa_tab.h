@@ -35,7 +35,7 @@ public:
           versionStTable(*versMp),
           originalStTable(*memPool, *mod),
           stmtsSSAPart(versMp),
-          defBBs4Ost(16, nullptr, versAlloc.Adapter())
+          defBBs4Ost(16, nullptr, versAlloc.Adapter()) // preallocation 16 element memory
     {
     }
 
@@ -49,7 +49,7 @@ public:
     void AddDefBB4Ost(OStIdx oidx, BBId bbid)
     {
         if (oidx >= defBBs4Ost.size()) {
-            defBBs4Ost.resize(oidx + 16, nullptr);
+            defBBs4Ost.resize(oidx + k16BitSize, nullptr); // expand 16 element memory
         }
         if (defBBs4Ost[oidx] == nullptr) {
             defBBs4Ost[oidx] = versAlloc.GetMemPool()->New<MapleSet<BBId>>(versAlloc.Adapter());

@@ -235,17 +235,13 @@ public:
         return *this >> bits.value;
     }
 
-    //
     // Comparison operators that compare values obtained from primitive type.
-    //
     /// @note Note that these functions work as follows:
     ///          1) sign or zero extend both values (*this and/or rhs) to the new bit-width
     ///             obtained from pType depending on their original signedness;
     ///             or truncate the values if their original bit-width is greater than new one
     ///          2) then perform the operation itself on new given values that have the same bit-width and sign
-    ///
     /// @warning it's better to avoid using these function in favor of operator==, operator< etc
-    ///
     bool Equal(const IntVal &rhs, PrimType pType) const
     {
         return TruncOrExtend(pType) == rhs.TruncOrExtend(pType);
@@ -261,18 +257,14 @@ public:
         return TruncOrExtend(pType) > rhs.TruncOrExtend(pType);
     }
 
-    //
     // Arithmetic and bitwise operators that allow creating a new value
     // with the bit-width and sign obtained from primitive type
-    //
     /// @note Note that these functions work as follows:
     ///          1) sign or zero extend both values (*this and rhs) to the new bit-width
     ///             obtained from pType depending on their original signedness;
     ///             or truncate the values if their original bit-width is greater than new one
     ///          2) then perform the operation itself on new given values that have the same bit-width and sign
-    ///
     /// @warning it's better to avoid using these function in favor of operator+, operator- etc
-    ///
     IntVal Add(const IntVal &val, PrimType pType) const
     {
         return TruncOrExtend(pType) + val.TruncOrExtend(pType);
