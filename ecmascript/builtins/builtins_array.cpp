@@ -1966,12 +1966,12 @@ JSTaggedValue BuiltinsArray::Shift(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (thisHandle->IsStableJSArray(thread)) {
-        return JSStableArray::Shift(JSHandle<JSArray>::Cast(thisHandle), argv);
-    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (thisHandle->IsStableJSArray(thread) && JSObject::IsArrayLengthWritable(thread, thisObjHandle)) {
+        return JSStableArray::Shift(JSHandle<JSArray>::Cast(thisHandle), argv);
+    }
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).

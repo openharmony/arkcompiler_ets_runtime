@@ -279,6 +279,8 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
     bool newWritable = false;
     if (!newLenDesc.HasWritable() || newLenDesc.IsWritable()) {
         newWritable = true;
+    } else {
+        newLenDesc.SetWritable(true);
     }
     // 15. Else,
     // 15a. Need to defer setting the [[Writable]] attribute to false in case
@@ -286,6 +288,9 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
     // 15b. Let newWritable be false. (It's initialized as "false" anyway.)
     // 15c. Set newLenDesc.[[Writable]] to true.
     // (Not needed.)
+    if (!JSObject::DefineOwnProperty(thread, array, lengthKeyHandle, newLenDesc)) {
+        return false;
+    }
 
     // Most of steps 16 through 19 is implemented by JSArray::SetCapacity.
     JSArray::SetCapacity(thread, array, oldLen, newLen);

@@ -18,7 +18,34 @@ function f() {
   return a.pop();
 }
 try{
-	f();
+    f();
 } catch (e) {
-	print(e instanceof TypeError)
+    print(e instanceof TypeError)
+}
+
+function f1() {
+    let x = [0,0,0,0,0];
+    Object.defineProperty(x, 'length', {value : 4, enumerable : true});
+}
+try{
+    f1();
+} catch (e) {
+    print(e instanceof TypeError)
+}
+
+let array = [];
+Object.defineProperty(array, 'length', {writable: false});
+print(array.length);
+try {
+    array.shift()
+} catch (e) {
+   print(e instanceof TypeError)
+}
+let object = { length: 0 };
+Object.defineProperty(object, 'length', {writable: false});
+print(object.length);
+try {
+    Array.prototype.shift.call(object)
+} catch {
+    print("true")
 }
