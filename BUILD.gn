@@ -961,7 +961,7 @@ ohos_source_set("libark_jsruntime_set") {
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
-  if (ark_standalone_build || target_os == "ios") {
+  if (ark_standalone_build || is_arkui_x) {
     deps += [ "$ark_third_party_root/zlib:libz" ]
   } else {
     deps += [ "$ark_third_party_root/zlib:shared_libz" ]
