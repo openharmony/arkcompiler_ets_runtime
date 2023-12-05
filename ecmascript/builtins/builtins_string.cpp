@@ -23,6 +23,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
+#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_symbol.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -385,7 +386,11 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        pos = static_cast<uint32_t>(posVal.ToInt32());
+        if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
+            pos = thisLen;
+        } else {
+            pos = static_cast<uint32_t>(posVal.ToInt32());
+        }
     }
     uint32_t end = std::min(std::max(pos, 0U), thisLen);
     int32_t start = static_cast<int32_t>(end - searchLen);
@@ -1579,7 +1584,11 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        pos = posVal.ToInt32();
+        if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
+            pos = thisLen;
+        } else {
+            pos = posVal.ToInt32();
+        }
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
     if (static_cast<uint32_t>(pos) + searchLen > thisLen) {

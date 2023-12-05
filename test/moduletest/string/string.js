@@ -199,3 +199,7 @@ try {
 } catch (e) {
     print(e)
 }
+
+print("abc".startsWith("a", Infinity))
+print("abc".startsWith("a", -Infinity))
+print("abc".endsWith("c", Infinity))
