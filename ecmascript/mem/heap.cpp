@@ -1251,6 +1251,11 @@ void Heap::NotifyHighSensitive(bool isStart)
 
 bool Heap::NeedStopCollection()
 {
+    // gc is not allowed during value serialize
+    if (onSerializeEvent_) {
+        return true;
+    }
+
     if (!InSensitiveStatus()) {
         return false;
     }

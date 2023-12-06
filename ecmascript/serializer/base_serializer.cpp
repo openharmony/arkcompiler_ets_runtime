@@ -44,7 +44,7 @@ void BaseSerializer::WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize)
 {
     if (fieldSize > 0) {
         data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
-        data_->WriteUint32(fieldSize / sizeof(JSTaggedType));
+        data_->WriteUint32(fieldSize);
         data_->WriteRawData(reinterpret_cast<uint8_t *>(beginAddr), fieldSize);
     }
 }
@@ -158,6 +158,13 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
+            // hash filed
+            case sizeof(TaggedObject): {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue(0)); // 0: reset hash filed
+                slot++;
+                break;
+            }
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::LEXICAL_ENV_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET: {
@@ -167,8 +174,9 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 break;
             }
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
-                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
-                data_->WriteJSTaggedType(0U);
+                data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
+                data_->WriteUint32(sizeof(uintptr_t));
+                data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
                 slot++;
                 break;
             }

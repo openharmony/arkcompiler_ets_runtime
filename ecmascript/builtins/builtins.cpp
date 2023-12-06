@@ -894,6 +894,7 @@ void Builtins::LazyInitializeDate(const JSHandle<GlobalEnv> &env) const
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Date));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetDateFunction(thread_, accessor);
+    env->SetDatePrototype(thread_, accessor);
 }
 
 void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjHClass) const
@@ -1295,6 +1296,8 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Set));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsSetFunction(thread_, accessor);
+    env->SetSetPrototype(thread_, accessor);
+    env->SetSetProtoValuesFunction(thread_, accessor);
 }
 
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
@@ -1365,6 +1368,7 @@ void Builtins::LazyInitializeMap(const JSHandle<GlobalEnv> &env) const
     SetLazyAccessor(globalObject, key, accessor);
     env->SetBuiltinsMapFunction(thread_, accessor);
     env->SetMapPrototype(thread_, accessor);
+    env->SetMapProtoEntriesFunction(thread_, accessor);
 }
 
 void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
@@ -2162,6 +2166,7 @@ void Builtins::LazyInitialize##Type(const JSHandle<GlobalEnv> &env) const       
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Type));   \
     SetLazyAccessor(globalObject, key, accessor);                                                                   \
     env->Set##Type##Function(thread_, accessor);                                                                    \
+    env->Set##Type##FunctionPrototype(thread_, accessor);                                                           \
 }
 
 BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_LAZY_INITIALIZE)
@@ -2461,6 +2466,7 @@ void Builtins::LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const
     auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::DataView));
     SetLazyAccessor(globalObject, key, accessor);
     env->SetDataViewFunction(thread_, accessor);
+    env->SetDataViewPrototype(thread_, accessor);
 }
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
