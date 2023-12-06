@@ -716,7 +716,9 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
-        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm).Run(data->GetCfg());
+        bool liteCG = data->GetTSManager()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
+        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
+            .Run(data->GetCfg());
         return true;
     }
 };
