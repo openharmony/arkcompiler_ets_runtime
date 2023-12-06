@@ -395,6 +395,7 @@ group("ark_asm_single_step_test") {
     "weakcollectionswithsymbol",
     "yieldstar",
     "getpropertybyic",
+    "regressarraybuffer",
   ]
 
   deps = []
