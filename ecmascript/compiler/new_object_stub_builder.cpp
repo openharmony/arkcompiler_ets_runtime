@@ -964,6 +964,8 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
     protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(TaggedIsHeapObject(*protoOrHclass), &isHeapObject, &callRuntime);
+    Bind(&isHeapObject);
     Branch(IsJSHClass(*protoOrHclass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
     auto objectType = GetObjectType(*protoOrHclass);

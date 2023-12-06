@@ -1105,6 +1105,26 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
         {
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(0));
             GateRef outProps = Int32Sub(numberOfProps, inlinedProperties);
+            Label ChangeToDict(env);
+            Label notChangeToDict(env);
+            Label afterDictChangeCon(env);
+            Branch(Int32GreaterThanOrEqual(numberOfProps, Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY)),
+                &ChangeToDict, &notChangeToDict);
+            {
+                Bind(&ChangeToDict);
+                {
+                    attr = SetDictionaryOrderFieldInPropAttr(*attr,
+                        Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
+                    GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
+                        { receiver, *array, key, value, IntToTaggedInt(*attr), TaggedTrue() });
+                    SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
+                    result = Undefined();
+                    Jump(&exit);
+                }
+                Bind(&notChangeToDict);
+                Jump(&afterDictChangeCon);
+            }
+            Bind(&afterDictChangeCon);
             Label isArrayFull(env);
             Label arrayNotFull(env);
             Label afterArrLenCon(env);
@@ -1112,28 +1132,8 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             {
                 Bind(&isArrayFull);
                 {
-                    Label ChangeToDict(env);
-                    Label notChangeToDict(env);
-                    Label afterDictChangeCon(env);
                     GateRef maxNonInlinedFastPropsCapacity =
                         Int32Sub(Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY), inlinedProperties);
-                    Branch(Int32GreaterThanOrEqual(*length, maxNonInlinedFastPropsCapacity),
-                        &ChangeToDict, &notChangeToDict);
-                    {
-                        Bind(&ChangeToDict);
-                        {
-                            attr = SetDictionaryOrderFieldInPropAttr(*attr,
-                                Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
-                            GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
-                                { receiver, *array, key, value, IntToTaggedInt(*attr), TaggedTrue() });
-                            SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
-                            result = Undefined();
-                            Jump(&exit);
-                        }
-                        Bind(&notChangeToDict);
-                        Jump(&afterDictChangeCon);
-                    }
-                    Bind(&afterDictChangeCon);
                     GateRef capacity = ComputeNonInlinedFastPropsCapacity(glue, *length,
                         maxNonInlinedFastPropsCapacity);
                     array = CallRuntime(glue, RTSTUB_ID(CopyArray),
