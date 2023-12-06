@@ -2771,7 +2771,7 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    
+
     base::FlattenArgs args = { sourceLen, 0, depthNum };
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 6. Perform ? FlattenIntoArray(A, O, sourceLen, 0, depthNum).
