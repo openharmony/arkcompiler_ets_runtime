@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import platform
+import re
 import shutil
 import signal
 import stat
@@ -50,6 +51,8 @@ def parse_args():
                         help="ark frontend conversion binary tool")
     parser.add_argument('--LD_LIBRARY_PATH',
                         dest='ld_library_path', default=None, help='LD_LIBRARY_PATH')
+    parser.add_argument('--icu-path',
+                        dest='icu_path', help='icu-data-path')
     parser.add_argument('--out-dir',
                         default=None, help='target out dir')
     return parser.parse_args()
@@ -83,6 +86,8 @@ def check_args(args):
             args.ark_tool = current_ark_tool if os.path.exists(current_ark_tool) else test_tool_ark_tool
     if args.ld_library_path is None:
         args.ld_library_path = RegressTestConfig.DEFAULT_LIBS_DIR
+    if args.icu_path is None:
+        args.icu_path = RegressTestConfig.ICU_PATH
     if args.out_dir is None:
         args.out_dir = RegressTestConfig.PROJECT_BASE_OUT_DIR
     else:
@@ -204,15 +209,23 @@ class RegressTestPrepare:
             start_index = input_file_path.find(RegressTestConfig.REGRESS_GIT_REPO)
             if start_index != -1:
                 test_case_path = input_file_path[start_index + len(RegressTestConfig.REGRESS_GIT_REPO) + 1:]
-                if test_case_path in self.skil_test:
+                file_extensions = ['.out', '.txt', '.abc']
+                pattern = r'({})$'.format('|'.join(re.escape(ext) for ext in file_extensions))
+                if re.search(pattern, test_case_path) or test_case_path in self.skil_test:
                     continue
+                out_flle = input_file_path.replace('.js', '.out')
+                expect_file_exits = os.path.exists(out_flle)
                 src_dir = RegressTestConfig.REGRESS_TEST_CASE_DIR
                 out_dir = self.args.test_case_out_dir
                 self.mk_dst_dir(input_file_path, src_dir, out_dir)
                 output_test_case_path = self.change_extension(test_case_path)
                 output_file = os.path.join(self.args.test_case_out_dir, output_test_case_path)
-                command = [self.args.ark_frontend_binary, input_file_path, f'--output={output_file}']
+                command = [self.args.ark_frontend_binary]
+                command.extend([input_file_path, f'--output={output_file}'])
                 exec_command(command)
+                if expect_file_exits:
+                    out_file_path = os.path.join(self.args.test_case_out_dir, test_case_path.replace('.js', '.out'))
+                    shutil.copy(out_flle, out_file_path)
 
     def mk_dst_dir(self, file, src_dir, dist_dir):
         idx = file.rfind(src_dir)
@@ -286,7 +299,9 @@ def read_expect_file(expect_file, test_case_file):
         lines = file_object.readlines()
         lines = [line for line in lines if not line.strip().startswith('#')]
         expect_output = ''.join(lines)
-        expect_output_str = expect_output.replace('*%(basename)s', test_case_file)
+        expect_file = test_case_file.replace('regresstest/', '')
+        test_file_path = os.path.join(RegressTestConfig.REGRESS_BASE_TEST_DIR, expect_file)
+        expect_output_str = expect_output.replace('*%(basename)s', test_file_path)
     return expect_output_str
 
 
@@ -300,21 +315,27 @@ def open_write_file(file_path, append):
     return file_object
 
 
+def open_result_excel(file_path):
+    file_descriptor = os.open(file_path, os.O_RDWR | os.O_CREAT | os.O_APPEND, stat.S_IRUSR | stat.S_IWUSR)
+    file_object = os.fdopen(file_descriptor, "w+")
+    return file_object
+
+
 def run_test_case_with_expect(command, test_case_file, expect_file, result_file, timeout):
     ret_code = 0
     expect_output_str = read_expect_file(expect_file, test_case_file)
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
             out, err = process.communicate(timeout=timeout)
-            out_str = out.decode('UTF-8')
-            err_str = err.decode('UTF-8')
+            out_str = out.decode('UTF-8').strip()
+            err_str = err.decode('UTF-8').strip()
             ret_code = process.poll()
-            if ret_code == 0 and (out_str == expect_output_str or err_str == expect_output_str):
+            if ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip()):
                 write_result_file(f'PASS {test_case_file} \n', result_file)
                 out_put_std(ret_code, command, f'PASS: {test_case_file}')
                 return True
             else:
-                msg = f'FAIL: {test_case_file} \nexpect: [{expect_output_str}]\nbut got: [{out_str}]'
+                msg = f'FAIL: {test_case_file} \nexpect: [{expect_output_str}]\nbut got: [{err_str}]'
                 out_put_std(ret_code, command, msg)
                 write_result_file(f'FAIL {test_case_file} \n', result_file)
                 return False
@@ -335,7 +356,7 @@ def run_test_case_with_assert(command, test_case_file, result_file, timeout):
             ret_code = process.poll()
             err_str = err.decode('UTF-8')
             if ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
-                out_put_std(ret_code, command, f'FAIL: {test_case_file} \nerr: {str(err)}')
+                out_put_std(ret_code, command, f'FAIL: {test_case_file} \nerr: {str(err_str)}')
                 write_result_file(f'FAIL {test_case_file} \n', result_file)
                 return False
             else:
@@ -379,7 +400,8 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestC
         asm_arg1 = "--enable-force-gc=true"
         if unforced_gc:
             asm_arg1 = "--enable-force-gc=false"
-        command = [args.ark_tool, asm_arg1, test_case]
+        icu_path = f"--icu-data-path={args.icu_path}"
+        command = [args.ark_tool, asm_arg1, icu_path, test_case]
         expect_file = test_file.replace('.abc', '.out')
         test_res = run_test_case_file(command, test_case_file, expect_file, result_file, timeout)
         if test_res:
