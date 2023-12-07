@@ -61,3 +61,6 @@ d,發,給,点点滴滴多
 a,c,c,cc,a
 Tag.t82 == b :  true
 RangeError: Invalid string length
+false
+true
+true
