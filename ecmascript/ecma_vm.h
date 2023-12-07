@@ -94,6 +94,7 @@ using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleK
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 using DeviceDisconnectCallback = std::function<bool()>;
+using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
@@ -464,6 +465,20 @@ public:
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
     void HandleUncaughtException(JSTaggedValue exception);
+    void RegisterUncatchableErrorHandler(const UncatchableErrorHandler &uncatchableErrorHandler)
+    {
+        uncatchableErrorHandler_ = uncatchableErrorHandler;
+    }
+
+    // handle uncatchable errors, such as oom
+    void HandleUncatchableError()
+    {
+        if (uncatchableErrorHandler_ != nullptr) {
+            panda::TryCatch trycatch(this);
+            uncatchableErrorHandler_(trycatch);
+        }
+    }
+
     void DumpCallTimeInfo();
 
     FunctionCallTimer *GetCallTimer() const
@@ -602,6 +617,8 @@ private:
     bool isProfiling_ {false};
 
     DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
+
+    UncatchableErrorHandler uncatchableErrorHandler_ {nullptr};
 
     friend class Snapshot;
     friend class SnapshotProcessor;

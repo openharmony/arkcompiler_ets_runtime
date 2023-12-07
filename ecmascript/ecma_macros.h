@@ -326,6 +326,16 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_UNCATCHABLE_ERROR(thread, type, message)                   \
+    do {                                                                 \
+        EcmaVM *_ecmaVm = (thread)->GetEcmaVM();                         \
+        ObjectFactory *_factory = _ecmaVm->GetFactory();                 \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message); \
+        (thread)->SetException(_error.GetTaggedValue());                 \
+        _ecmaVm->HandleUncatchableError();                               \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, value) \
     do {                                                       \
         if (!(thread)->HasPendingException()) {                \
@@ -383,8 +393,8 @@
     THROW_ERROR(thread, ErrorType::TYPE_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_OOM_ERROR(thread, message)               \
-    THROW_ERROR(thread, ErrorType::OOM_ERROR, message)
+#define THROW_OOM_ERROR(thread, message)                \
+    THROW_UNCATCHABLE_ERROR(thread, ErrorType::OOM_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_TERMINATION_ERROR(thread, message)               \

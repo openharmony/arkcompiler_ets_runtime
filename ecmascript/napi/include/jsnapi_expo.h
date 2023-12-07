@@ -1112,6 +1112,8 @@ public:
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
+    using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+
     struct NativeBindingInfo {
         static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
         void *env = nullptr;
@@ -1140,6 +1142,7 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
+    static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
