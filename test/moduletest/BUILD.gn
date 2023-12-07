@@ -20,7 +20,6 @@ group("ark_js_moduletest") {
     "array",
     "arrayfindlast",
     "arrayflat",
-    "arrayflatmap",
     "arrayfindindex",
     "arrayfindlastindex",
     "arrayforeach",
@@ -182,7 +181,6 @@ group("ark_asm_test") {
     "array",
     "arrayfindlast",
     "arrayflat",
-    "arrayflatmap",
     "arrayfindlastindex",
     "arrayfindindex",
     "arrayforeach",
@@ -259,6 +257,7 @@ group("ark_asm_test") {
     "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
+    "regressparseInt",
     "setobjectwithproto",
     "spreadoperator",
     "stackoverflow",
@@ -316,7 +315,6 @@ group("ark_asm_single_step_test") {
     "arrayfindindex",
     "arrayfindlast",
     "arrayflat",
-    "arrayflatmap",
     "arrayfindlastindex",
     "arrayforeach",
     "arrayjoin",
@@ -398,6 +396,7 @@ group("ark_asm_single_step_test") {
     "weakcollectionswithsymbol",
     "yieldstar",
     "getpropertybyic",
+    "regressarraybuffer",
   ]
 
   deps = []

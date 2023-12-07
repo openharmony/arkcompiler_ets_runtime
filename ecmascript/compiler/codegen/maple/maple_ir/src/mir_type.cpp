@@ -205,13 +205,13 @@ bool NeedCvtOrRetype(PrimType origin, PrimType compared)
 uint8 GetPointerSize()
 {
 #if TARGX86 || TARGARM32 || TARGVM
-    return 4;
+    return k4ByteSize;
 #elif TARGX86_64
-    return 8;
+    return k8ByteSize;
 #elif TARGAARCH64
     DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
                  "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? 4 : 8;
+    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k4ByteSize : k8ByteSize;
     return size;
 #else
 #error "Unsupported target"
@@ -221,13 +221,13 @@ uint8 GetPointerSize()
 uint8 GetP2Size()
 {
 #if TARGX86 || TARGARM32 || TARGVM
-    return 2;
+    return k2ByteSize;
 #elif TARGX86_64
-    return 3;
+    return k3ByteSize;
 #elif TARGAARCH64
     DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
                  "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? 2 : 3;
+    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k2ByteSize : k3ByteSize;
     return size;
 #else
 #error "Unsupported target"
@@ -252,7 +252,7 @@ PrimType GetLoweredPtrType()
 
 PrimType GetExactPtrPrimType()
 {
-    return (GetPointerSize() == 8) ? PTY_a64 : PTY_a32;
+    return (GetPointerSize() == k8ByteSize) ? PTY_a64 : PTY_a32;
 }
 
 // answer in bytes; 0 if unknown
@@ -1405,7 +1405,7 @@ size_t MIRStructType::GetSize() const
             }
         }
     }
-    if (byteOfst * 8 < bitOfst) {
+    if ((byteOfst << k8BitShift) < bitOfst) {
         byteOfst = (bitOfst >> shiftNum) + 1;
     }
     byteOfst = RoundUp(byteOfst, GetAlign());
@@ -2177,7 +2177,7 @@ int64 MIRStructType::GetBitOffsetFromStructBaseAddr(FieldID fieldID)
             // Is this field is crossing the align boundary of its base type?
             // for example:
             // struct Expamle {
-            //      int32 fld1 : 30;
+            //      int32 fld1 : 30
             //      int32 fld2 : 3;  // 30 + 3 > 32(= int32 align), cross the align boundary, start from next int32
             //      boundary
             // }
@@ -2191,9 +2191,9 @@ int64 MIRStructType::GetBitOffsetFromStructBaseAddr(FieldID fieldID)
             // boundary where the container is the same size as the underlying type of the bit field.
             // for example:
             // struct Example {
-            //     int32 fld1 : 5;
-            //     int32      : 0; // force the next field to be aligned on int32 align boundary
-            //     int32 fld3 : 4;
+            //     int32 fld1 : 5
+            //     int32      : 0 // force the next field to be aligned on int32 align boundary
+            //     int32 fld3 : 4
             // }
             if ((!GetTypeAttrs().IsPacked() && ((allocedBitSize / fieldTypeSizeBits) !=
                                                 ((allocedBitSize + fieldBitSize - 1u) / fieldTypeSizeBits))) ||

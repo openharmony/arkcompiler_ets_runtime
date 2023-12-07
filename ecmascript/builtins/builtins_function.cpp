@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_stable_array.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
@@ -174,60 +175,75 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     // 5. ReturnIfAbrupt(F)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 6. Let targetHasLength be HasOwnProperty(Target, "length").
     auto globalConst = thread->GlobalConstants();
+    JSTaggedValue functionLengthAccessor = globalConst->GetFunctionLengthAccessor();
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
-    bool targetHasLength =
-        JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(targetFunction), lengthKey);
-    // 7. ReturnIfAbrupt(targetHasLength).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    double lengthValue = 0.0;
-    // 8. If targetHasLength is true, then
-    if (targetHasLength) {
-        // a. Let targetLen be Get(Target, "length").
-        JSHandle<JSTaggedValue> targetLen = JSObject::GetProperty(thread, target, lengthKey).GetValue();
-        // b. ReturnIfAbrupt(targetLen).
+    JSTaggedValue lengthProperty =
+        ObjectFastOperator::FastGetPropertyByName(thread, target.GetTaggedValue(), lengthKey.GetTaggedValue());
+    if (!lengthProperty.IsAccessor() || functionLengthAccessor != lengthProperty) {
+        // 6. Let targetHasLength be HasOwnProperty(Target, "length").
+        bool targetHasLength =
+            JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(targetFunction), lengthKey);
+        // 7. ReturnIfAbrupt(targetHasLength).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-        // c. If Type(targetLen) is not Number, let L be 0.
-        // d. Else,
-        //    i. Let targetLen be ToInteger(targetLen).
-        //    ii. Let L be the larger of 0 and the result of targetLen minus the number of elements of args.
-        if (targetLen->IsNumber()) {
-            // argv include thisArg
-            lengthValue =
-                std::max(0.0, JSTaggedValue::ToNumber(thread, targetLen).GetNumber() - static_cast<double>(argsLength));
+        double lengthValue = 0.0;
+        // 8. If targetHasLength is true, then
+        if (targetHasLength) {
+            // a. Let targetLen be Get(Target, "length").
+            JSHandle<JSTaggedValue> targetLen = JSObject::GetProperty(thread, target, lengthKey).GetValue();
+            // b. ReturnIfAbrupt(targetLen).
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+            // c. If Type(targetLen) is not Number, let L be 0.
+            // d. Else,
+            //    i. Let targetLen be ToInteger(targetLen).
+            //    ii. Let L be the larger of 0 and the result of targetLen minus the number of elements of args.
+            if (targetLen->IsNumber()) {
+                // argv include thisArg
+                lengthValue =
+                    std::max(0.0, JSTaggedValue::ToNumber(thread, targetLen).GetNumber() -
+                             static_cast<double>(argsLength));
+            }
         }
+        // 9. Else let L be 0.
+
+        // 10. Let status be DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L,
+        //     [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
+        PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(lengthValue)),
+                                false, false, true);
+        [[maybe_unused]] bool status =
+            JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(boundFunction), lengthKey, desc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // 11. Assert: status is not an abrupt completion.
+        ASSERT_PRINT(status, "DefinePropertyOrThrow failed");
     }
-    // 9. Else let L be 0.
 
-    // 10. Let status be DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L,
-    //     [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(lengthValue)), false, false, true);
-    [[maybe_unused]] bool status =
-        JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(boundFunction), lengthKey, desc);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 11. Assert: status is not an abrupt completion.
-    ASSERT_PRINT(status, "DefinePropertyOrThrow failed");
-
-    // 12. Let targetName be Get(Target, "name").
+    JSTaggedValue functionNameAccessor = globalConst->GetFunctionNameAccessor();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
-    // 13. ReturnIfAbrupt(targetName).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue nameProperty =
+        ObjectFastOperator::FastGetPropertyByName(thread, target.GetTaggedValue(), nameKey.GetTaggedValue());
+    if (!nameProperty.IsAccessor() || functionNameAccessor != nameProperty) {
+        // 12. Let targetName be Get(Target, "name").
+        JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue(); // aaaaaa
+        // 13. ReturnIfAbrupt(targetName).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
-    // 14. If Type(targetName) is not String, let targetName be the empty string.
-    // 15. Perform SetFunctionName(F, targetName, "bound").
-    if (!targetName->IsString()) {
-        JSHandle<JSTaggedValue> emptyString(factory->GetEmptyString());
-        status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction), emptyString, boundName);
-    } else {
-        status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction), targetName, boundName);
+        JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
+        // 14. If Type(targetName) is not String, let targetName be the empty string.
+        // 15. Perform SetFunctionName(F, targetName, "bound").
+        [[maybe_unused]] bool status;
+        if (!targetName->IsString()) {
+            JSHandle<JSTaggedValue> emptyString(factory->GetEmptyString());
+            status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction),
+                                                 emptyString, boundName);
+        } else {
+            status = JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(boundFunction),
+                                                 targetName, boundName);
+        }
+        // Assert: status is not an abrupt completion.
+        ASSERT_PRINT(status, "DefinePropertyOr failed");
     }
-    // Assert: status is not an abrupt completion.
-    ASSERT_PRINT(status, "SetFunctionName failed");
 
     // 16. Return F.
     return boundFunction.GetTaggedValue();

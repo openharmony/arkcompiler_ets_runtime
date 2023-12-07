@@ -44,20 +44,21 @@ public:
     {
         ASSERT(str.size() <= static_cast<size_t>(INT_MAX));
         auto len = static_cast<int>(str.size());
+        if (len <= 0) {
+            return;
+        }
         const char *cur = str.c_str();
-        const char *end = cur + len;
-        while (cur < end) {
-            int dstSize = chunkSize_ - current_;
-            int writeSize = std::min(static_cast<int>(end - cur), dstSize);
-            if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-            }
-            cur += writeSize;
-            current_ += writeSize;
+        if (current_ + len > chunkSize_) {
+            chunk_.reserve(current_ + len);
+        }
+        int dstSize = static_cast<int>(chunk_.capacity()) - current_;
+        if (memcpy_s(chunk_.data() + current_, dstSize, cur, len) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+        current_ += len;
 
-            if (current_ == chunkSize_) {
-                WriteChunk();
-            }
+        if (current_ >= chunkSize_) {
+            WriteChunk();
         }
     }
 

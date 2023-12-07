@@ -22,6 +22,14 @@ DEFINE_MOP(MOP_begin, {},0,0,"","",0)
  * and using AT&T style assembly
  */
 
+/* X64 MOVES */
+// TODO: fix intruction opnds, prop, latency, format and length
+// TODO: the encoding and enumeration seems too verbose
+// TODO: understand how other system represent these MOPs (especially for x86-64)
+// TODO: this is still an experiment
+// TODO: should make sure the convention is consistent with (AT&T style?)
+// TODO: how the general Machine instruction is designed?
+
 /* mov */
 DEFINE_MOP(MOP_movb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
 DEFINE_MOP(MOP_movb_i_r, {&OpndDesc::Imm8,&OpndDesc::Reg8ID},ISMOVE,kLtAlu,"movb","0,1",1)
@@ -46,9 +54,21 @@ DEFINE_MOP(MOP_movq_i_r, {&OpndDesc::Imm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"mo
 DEFINE_MOP(MOP_movq_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg64ID},ISLOAD,kLtAlu,"movq","0,1",1)
 DEFINE_MOP(MOP_movq_r_m, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE,kLtAlu,"movq","0,1",1)
 
+/* floating point mov */
+DEFINE_MOP(MOP_movd_fr_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg32ID},ISSTORE,kLtAlu,"movd","0,1",1)
+DEFINE_MOP(MOP_movq_fr_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg64ID},ISSTORE,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movq_r_fr, {&OpndDesc::Reg64IS,&OpndDesc::Reg128FD},ISSTORE,kLtAlu,"movq","0,1",1)
+DEFINE_MOP(MOP_movfs_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movss","0,1",1)
+DEFINE_MOP(MOP_movfd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movsd","0,1",1)
+DEFINE_MOP(MOP_movfs_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movss","0,1",1)
+DEFINE_MOP(MOP_movfs_r_m, {&OpndDesc::Reg128FS,&OpndDesc::Mem128D},ISSTORE,kLtAlu,"movss","0,1",1)
+DEFINE_MOP(MOP_movfd_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg128FD},ISLOAD,kLtAlu,"movsd","0,1",1)
+DEFINE_MOP(MOP_movfd_r_m, {&OpndDesc::Reg128FS,&OpndDesc::Mem128D},ISSTORE,kLtAlu,"movsd","0,1",1)
+
 /* movabs */
 //The movabs instruction to load arbitrary 64-bit constant into register and to load/store integer register from/to arbitrary constant 64-bit address is available
-DEFINE_MOP(MOP_movabs_i_r, {&OpndDesc::StImm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
+DEFINE_MOP(MOP_movabs_i_r, {&OpndDesc::Imm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
+DEFINE_MOP(MOP_movabs_s_r, {&OpndDesc::StImm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
 DEFINE_MOP(MOP_movabs_l_r, {&OpndDesc::Lbl64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
 
 /* push & pop & lea */
@@ -115,6 +135,11 @@ DEFINE_MOP(MOP_addb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"ad
 DEFINE_MOP(MOP_addw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"addw","0,1",1)
 DEFINE_MOP(MOP_addl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"addl","0,1",1)
 DEFINE_MOP(MOP_addq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"addq","0,1",1)
+/* add floating point */
+DEFINE_MOP(MOP_adds_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"addss","0,1",1)
+DEFINE_MOP(MOP_adds_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"addss","0,1",1)
+DEFINE_MOP(MOP_addd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"addsd","0,1",1)
+DEFINE_MOP(MOP_addd_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"addsd","0,1",1)
 /* sub */
 DEFINE_MOP(MOP_subb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"subb","0,1",1)
 DEFINE_MOP(MOP_subw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"subw","0,1",1)
@@ -136,6 +161,11 @@ DEFINE_MOP(MOP_subb_i_m, {&OpndDesc::Imm8,&OpndDesc::Mem8D},ISBASICOP,kLtAlu,"su
 DEFINE_MOP(MOP_subw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"subw","0,1",1)
 DEFINE_MOP(MOP_subl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"subl","0,1",1)
 DEFINE_MOP(MOP_subq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"subq","0,1",1)
+/* sub floating point */
+DEFINE_MOP(MOP_subs_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"subss","0,1",1)
+DEFINE_MOP(MOP_subs_m_r, {&OpndDesc::Mem32S,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"subss","0,1",1)
+DEFINE_MOP(MOP_subd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"subsd","0,1",1)
+DEFINE_MOP(MOP_subd_m_r, {&OpndDesc::Mem64S,&OpndDesc::Reg128FDS},ISBASICOP,kLtAlu,"subsd","0,1",1)
 /* and */
 DEFINE_MOP(MOP_andb_r_r, {&OpndDesc::Reg8IS,&OpndDesc::Reg8IDS},ISBASICOP,kLtAlu,"andb","0,1",1)
 DEFINE_MOP(MOP_andw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},ISBASICOP,kLtAlu,"andw","0,1",1)
@@ -200,6 +230,11 @@ DEFINE_MOP(MOP_xorw_i_m, {&OpndDesc::Imm16,&OpndDesc::Mem16D},ISBASICOP,kLtAlu,"
 DEFINE_MOP(MOP_xorl_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem32D},ISBASICOP,kLtAlu,"xorl","0,1",1)
 DEFINE_MOP(MOP_xorq_i_m, {&OpndDesc::Imm32,&OpndDesc::Mem64D},ISBASICOP,kLtAlu,"xorq","0,1",1)
 
+DEFINE_MOP(MOP_bsrq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64ID},ISBASICOP,kLtAlu,"bsrq","0,1",1)
+DEFINE_MOP(MOP_bsrl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32ID},ISBASICOP,kLtAlu,"bsrl","0,1",1)
+
+DEFINE_MOP(MOP_bsfq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64ID},ISBASICOP,kLtAlu,"bsfq","0,1",1)
+DEFINE_MOP(MOP_bsfl_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32ID},ISBASICOP,kLtAlu,"bsfl","0,1",1)
 /* UnaryOp */
 /* neg */
 DEFINE_MOP(MOP_negb_r, {&OpndDesc::Reg8IDS},ISUNARYOP,kLtAlu,"negb","0",1)
@@ -446,7 +481,12 @@ DEFINE_MOP(MOP_imulw_r_r, {&OpndDesc::Reg16IS,&OpndDesc::Reg16IDS},0,kLtAlu,"imu
 DEFINE_MOP(MOP_imull_r_r, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IDS},0,kLtAlu,"imull","0,1",1)
 DEFINE_MOP(MOP_imulq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"imulq","0,1",1)
 
+/* mul float */
+DEFINE_MOP(MOP_mulfs_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},0,kLtAlu,"mulss","0,1",1)
+DEFINE_MOP(MOP_mulfd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},0,kLtAlu,"mulsd","0,1",1)
+
 /* nop */
+// TODO: still not clear why we need so many forms of nop (except for patch)
 DEFINE_MOP(MOP_nopb, {&OpndDesc::Mem8S},0,kLtAlu,"nopb","",1)
 DEFINE_MOP(MOP_nopw, {&OpndDesc::Mem16S},0,kLtAlu,"nopw","",1)
 DEFINE_MOP(MOP_nopl, {&OpndDesc::Mem32S},0,kLtAlu,"nopl","",1)
@@ -459,10 +499,39 @@ DEFINE_MOP(MOP_bswapq_r, {&OpndDesc::Reg64IDS},0,kLtAlu,"bswapq","0",1)
 /* xchg */
 DEFINE_MOP(MOP_xchgb_r_r, {&OpndDesc::Reg8IDS,&OpndDesc::Reg8IDS},0,kLtAlu,"xchgb","0,1",1)
 
-/* end of X64 instructions */
-
 /* invalid operation */
 DEFINE_MOP(MOP_movq_i_m, {&OpndDesc::Imm64,&OpndDesc::Mem64D},0,kLtAlu,"invalid","0,1",1)
 
+/* floating point and */
+DEFINE_MOP(MOP_andd_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FDS},0,kLtAlu,"andpd","0,1",1)
+DEFINE_MOP(MOP_ands_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FDS},0,kLtAlu,"andps","0,1",1)
+
+/* floating div */
+DEFINE_MOP(MOP_divsd_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FDS},0,kLtAlu,"divsd","0,1",1)
+DEFINE_MOP(MOP_divsd_m, {&OpndDesc::Mem64S, &OpndDesc::Reg128FDS},0,kLtAlu,"divsd","0,1",1)
+
+/* convert int2float */
+DEFINE_MOP(MOP_cvtsi2ssq_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsi2ssq","0,1",1)
+DEFINE_MOP(MOP_cvtsi2ssl_r, {&OpndDesc::Reg32IS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsi2ssl","0,1",1)
+DEFINE_MOP(MOP_cvtsi2sdq_r, {&OpndDesc::Reg64IS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsi2sdq","0,1",1)
+DEFINE_MOP(MOP_cvtsi2sdl_r, {&OpndDesc::Reg32IS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsi2sdl","0,1",1)
+
+/*convert float2int */
+DEFINE_MOP(MOP_cvttsd2siq_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg64ID},0,kLtAlu,"cvttsd2siq","0,1",1)
+DEFINE_MOP(MOP_cvttsd2sil_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg32ID},0,kLtAlu,"cvttsd2sil","0,1",1)
+DEFINE_MOP(MOP_cvttss2siq_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg64ID},0,kLtAlu,"cvttss2siq","0,1",1)
+DEFINE_MOP(MOP_cvttss2sil_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg32ID},0,kLtAlu,"cvttss2sil","0,1",1)
+
+/* convert float2float */
+DEFINE_MOP(MOP_cvtss2sd_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtss2sd","0,1",1)
+DEFINE_MOP(MOP_cvtsd2ss_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsd2ss","0,1",1)
+
+DEFINE_MOP(MOP_ucomisd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FS},0,kLtAlu,"ucomisd","0,1",1)
+
+/* floating point sqrt */
+DEFINE_MOP(MOP_sqrts_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"sqrtss","0,1",1)
+DEFINE_MOP(MOP_sqrtd_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"sqrtsd","0,1",1)
+
 /* pseudo operation */
 DEFINE_MOP(MOP_pseudo_ret_int, {&OpndDesc::Reg64IS},0,kLtUndef,"//MOP_pseudo_ret_int","", 0)
+/* end of X64 instructions */

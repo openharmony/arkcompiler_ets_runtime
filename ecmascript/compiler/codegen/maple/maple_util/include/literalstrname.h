@@ -35,12 +35,12 @@ public:
             const char *dataStart = reinterpret_cast<const char *>(data);
             const char *end = dataStart + len;
             while (dataStart < end) {
-                hash = (hash << 5) - hash + static_cast<uint32_t>(*dataStart++);  // calculate the hash code of data
+                hash = (hash << 5) - hash + static_cast<uint32_t>(*dataStart++); // 5 to calculate the hash code of data
             }
         } else {
             const char16_t *end = data + len;
             while (data < end) {
-                hash = (static_cast<unsigned int>(hash) << 5) - hash + *data++;  // calculate the hash code of data
+                hash = (static_cast<unsigned int>(hash) << 5) - hash + *data++; // 5 to calculate the hash code of data
             }
         }
         return hash;

@@ -48,6 +48,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "ecmascript/dfx/tracing/tracing.h"
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "syspara/parameter.h"
 #endif
@@ -493,6 +494,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     isVerifying_ = false;
 #endif
     JSFinalizationRegistry::CheckAndCall(thread_);
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    auto tracing = GetEcmaVM()->GetTracing();
+    if (tracing != nullptr) {
+        tracing->TraceEventRecordMemory();
+    }
+#endif
 }
 
 void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)

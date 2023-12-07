@@ -21,6 +21,7 @@
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
+#include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/method.h"
@@ -523,22 +524,6 @@ std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
     return std::move(profileInfo_);
 }
 
-uint64_t SamplesRecord::GetProfileInfoBufferSize() const
-{
-    uint64_t size = sizeof(struct ProfileInfo);
-
-    for (int i = 0; i < MAX_NODE_COUNT; ++i) {
-        size += profileInfo_->nodes[i].codeEntry.functionName.size();
-        size += profileInfo_->nodes[i].codeEntry.moduleName.size();
-        size += profileInfo_->nodes[i].codeEntry.url.size();
-        size += profileInfo_->nodes[i].children.size() * sizeof(int);
-    }
-    size += profileInfo_->samples.size() * sizeof(int);
-    size += profileInfo_->timeDeltas.size() * sizeof(int);
-
-    return size;
-}
-
 void SamplesRecord::SetBeforeGetCallNapiStackFlag(bool flag)
 {
     beforeCallNapi_.store(flag);
@@ -810,6 +795,51 @@ void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
                 codeEntry.url = JS_PATH + key + ".js";
             }
         }
+    }
+}
+
+void SamplesRecord::AddStartTraceEvent()
+{
+    uint64_t tid = profileInfo_->tid;
+    auto vm = CpuProfiler::GetVmbyTid(tid);
+    if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler get vm from tid failed";
+        return;
+    }
+
+    Tracing *tracing = vm->GetTracing();
+    if (tracing == nullptr || !tracing->IsTracing()) {
+        LOG_ECMA(INFO) << "not in tracing state";
+        return;
+    }
+
+    tracing->TraceEventRecordCpuProfilerStart(profileInfo_.get());
+}
+
+void SamplesRecord::AddTraceEvent(bool isFinish)
+{
+    const uint32_t samplesCountPerEvent = 100;
+    if (!isFinish && (profileInfo_->samples.size() - traceEventSamplePos_ < samplesCountPerEvent)) {
+        return;
+    }
+
+    uint64_t tid = profileInfo_->tid;
+    auto vm = CpuProfiler::GetVmbyTid(tid);
+    if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler get vm from tid failed";
+        return;
+    }
+
+    Tracing *tracing = vm->GetTracing();
+    if (tracing == nullptr || !tracing->IsTracing()) {
+        LOG_ECMA(INFO) << "not in tracing state";
+        return;
+    }
+
+    tracing->TraceEventRecordCpuProfiler(profileInfo_.get(), traceEventNodePos_, traceEventSamplePos_);
+
+    if (isFinish) {
+        tracing->TraceEventRecordCpuProfilerEnd(profileInfo_.get());
     }
 }
 

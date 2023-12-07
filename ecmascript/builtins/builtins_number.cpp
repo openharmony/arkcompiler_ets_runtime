@@ -192,6 +192,7 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> arg2 = GetCallArg(argv, 1);
     int32_t radix = 0;
+    bool negative = false;
 
     if (!arg2->IsUndefined()) {
         // 7. Let R = ToInt32(radix).
@@ -203,14 +204,20 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if ((radix == base::DECIMAL || radix == 0)) {
         int32_t elementIndex = 0;
-        if (EcmaStringAccessor(numberString).ToInt(&elementIndex)) {
+        if (EcmaStringAccessor(numberString).ToInt(&elementIndex, &negative)) {
+            if (elementIndex == 0 && negative == true) {
+                return JSTaggedValue(-0.0);
+            }
             return GetTaggedInt(elementIndex);
         }
     }
     CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
 
-    JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix);
+    JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix, &negative);
+    if (result.GetNumber() == 0 && negative == true) {
+        return JSTaggedValue(-0.0);
+    }
     return JSTaggedValue::TryCastDoubleToInt32(result.GetNumber());
 }
 

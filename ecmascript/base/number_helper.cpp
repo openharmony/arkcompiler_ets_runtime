@@ -298,7 +298,7 @@ JSTaggedValue NumberHelper::DoubleToPrecision(JSThread *thread, double number, i
     return DoubleToExponential(thread, number, digit - 1);
 }
 
-JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix)
+JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative)
 {
     auto p = const_cast<uint8_t *>(start);
     JSTaggedValue nanResult = BuiltinsBase::GetTaggedDouble(NAN_VALUE);
@@ -308,9 +308,8 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
     }
 
     // 2. sign bit
-    bool negative = false;
     if (*p == '-') {
-        negative = true;
+        *negative = true;
         RETURN_IF_CONVERSION_END(++p, end, nanResult);
     } else if (*p == '+') {
         RETURN_IF_CONVERSION_END(++p, end, nanResult);
@@ -373,7 +372,7 @@ JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const 
         return nanResult;
     }
 
-    if (negative) {
+    if (*negative) {
         result = -result;
     }
     return BuiltinsBase::GetTaggedDouble(result);

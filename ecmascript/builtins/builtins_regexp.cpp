@@ -297,9 +297,74 @@ JSTaggedValue BuiltinsRegExp::GetFlags(EcmaRuntimeCallInfo *argv)
     }
     // 3. Let result be the empty String.
     // 4. ~ 19.
-    ASSERT(JSHandle<JSObject>::Cast(thisObj)->IsJSRegExp());
+    if (!JSHandle<JSObject>::Cast(thisObj)->IsJSRegExp()) {
+        return GetAllFlagsInternal(thread, thisObj);
+    }
     uint8_t flagsBits = static_cast<uint8_t>(JSRegExp::Cast(thisObj->GetTaggedObject())->GetOriginalFlags().GetInt());
     return FlagsBitsToString(thread, flagsBits);
+}
+
+JSTaggedValue BuiltinsRegExp::GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
+    uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
+    size_t flagsLen = 0;
+    JSHandle<EcmaString> emptyString = factory->GetEmptyString();
+    JSHandle<JSTaggedValue> hasIndicesKey(factory->NewFromASCII("hasIndices"));
+    JSHandle<JSTaggedValue> hasIndicesResult = JSObject::GetProperty(thread, thisObj, hasIndicesKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (hasIndicesResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'd';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
+    JSHandle<JSTaggedValue> globalResult = JSObject::GetProperty(thread, thisObj, globalKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (globalResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'g';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> ignoreCaseKey(factory->NewFromASCII("ignoreCase"));
+    JSHandle<JSTaggedValue> ignoreCaseResult = JSObject::GetProperty(thread, thisObj, ignoreCaseKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (ignoreCaseResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'i';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> multilineKey(factory->NewFromASCII("multiline"));
+    JSHandle<JSTaggedValue> multilineResult = JSObject::GetProperty(thread, thisObj, multilineKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (multilineResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'm';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> dotAllKey(factory->NewFromASCII("dotAll"));
+    JSHandle<JSTaggedValue> dotAllResult = JSObject::GetProperty(thread, thisObj, dotAllKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (dotAllResult->ToBoolean()) {
+        flagsStr[flagsLen] = 's';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> unicodeKey(globalConstants->GetHandledUnicodeString());
+    JSHandle<JSTaggedValue> unicodeResult = JSObject::GetProperty(thread, thisObj, unicodeKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (unicodeResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'u';
+        flagsLen++;
+    }
+    JSHandle<JSTaggedValue> stickyKey(globalConstants->GetHandledStickyString());
+    JSHandle<JSTaggedValue> stickyResult = JSObject::GetProperty(thread, thisObj, stickyKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, emptyString.GetTaggedValue());
+    if (stickyResult->ToBoolean()) {
+        flagsStr[flagsLen] = 'y';
+        flagsLen++;
+    }
+    flagsStr[flagsLen] = '\0';
+    JSHandle<EcmaString> flagsString = factory->NewFromUtf8(flagsStr, flagsLen);
+    delete[] flagsStr;
+
+    return flagsString.GetTaggedValue();
 }
 
 // 20.2.5.4
@@ -310,8 +375,8 @@ JSTaggedValue BuiltinsRegExp::GetGlobal(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetGlobal);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_GLOBAL);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_GLOBAL);
 }
 
 // 22.2.6.6
@@ -322,8 +387,8 @@ JSTaggedValue BuiltinsRegExp::GetHasIndices(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetHasIndices);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_HASINDICES);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_HASINDICES);
 }
 
 // 20.2.5.5
@@ -334,8 +399,8 @@ JSTaggedValue BuiltinsRegExp::GetIgnoreCase(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetIgnoreCase);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_IGNORECASE);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_IGNORECASE);
 }
 
 // 20.2.5.7
@@ -346,8 +411,8 @@ JSTaggedValue BuiltinsRegExp::GetMultiline(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetMultiline);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_MULTILINE);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_MULTILINE);
 }
 
 JSTaggedValue BuiltinsRegExp::GetDotAll(EcmaRuntimeCallInfo *argv)
@@ -357,8 +422,8 @@ JSTaggedValue BuiltinsRegExp::GetDotAll(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetDotAll);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_DOTALL);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_DOTALL);
 }
 
 // 20.2.5.10
@@ -378,7 +443,21 @@ JSTaggedValue BuiltinsRegExp::GetSource(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue::Exception());
     }
     if (!thisObj->IsJSRegExp()) {
-        // throw a TypeError exception.
+        // a. If SameValue(R, %RegExp.prototype%) is true, return "(?:)".
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+        JSHandle<JSTaggedValue> objConstructor = JSTaggedValue::GetProperty(thread, thisObj, constructorKey).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+        JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+        if (objConstructor->IsJSFunction() && constructor->IsJSFunction()) {
+            JSHandle<GlobalEnv> objRealm = JSObject::GetFunctionRealm(thread, objConstructor);
+            JSHandle<GlobalEnv> ctorRealm = JSObject::GetFunctionRealm(thread, constructor);
+            if (objRealm->GetRegExpPrototype() == thisObj && *objRealm == *ctorRealm) {
+                JSHandle<EcmaString> result = thread->GetEcmaVM()->GetFactory()->NewFromASCII("(?:)");
+                return result.GetTaggedValue();
+            }
+        }
+        // b. throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have [[OriginalSource]]", JSTaggedValue::Exception());
     }
     // 5. Let src be the value of R’s [[OriginalSource]] internal slot.
@@ -399,8 +478,8 @@ JSTaggedValue BuiltinsRegExp::GetSticky(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetSticky);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_STICKY);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_STICKY);
 }
 
 // 20.2.5.15
@@ -411,8 +490,8 @@ JSTaggedValue BuiltinsRegExp::GetUnicode(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, RegExp, GetUnicode);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
-    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_UTF16);
-    return GetTaggedBoolean(result);
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    return GetFlagsInternal(thread, thisObj, constructor, RegExpParser::FLAG_UTF16);
 }
 
 // 21.2.4.2
@@ -1501,27 +1580,40 @@ uint32_t BuiltinsRegExp::AdvanceStringIndex(const JSHandle<JSTaggedValue> &input
     return index + 2;
 }
 
-bool BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const uint8_t mask)
+JSTaggedValue BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                               const JSHandle<JSTaggedValue> &constructor, const uint8_t mask)
 {
     BUILTINS_API_TRACE(thread, RegExp, GetFlagsInternal);
     // 1. Let R be the this value.
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!obj->IsECMAObject()) {
         // throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", false);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue(false));
     }
     // 3. If R does not have an [[OriginalFlags]] internal slot, throw a TypeError exception.
     JSHandle<JSObject> patternObj = JSHandle<JSObject>::Cast(obj);
     if (!patternObj->IsJSRegExp()) {
-        // throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have [[OriginalFlags]]", false);
+        // a. If SameValue(R, %RegExp.prototype%) is true, return undefined.
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+        JSHandle<JSTaggedValue> objConstructor = JSTaggedValue::GetProperty(thread, obj, constructorKey).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+        if (objConstructor->IsJSFunction() && constructor->IsJSFunction()) {
+            JSHandle<GlobalEnv> objRealm = JSObject::GetFunctionRealm(thread, objConstructor);
+            JSHandle<GlobalEnv> ctorRealm = JSObject::GetFunctionRealm(thread, constructor);
+            if (objRealm->GetRegExpPrototype() == obj && *objRealm == *ctorRealm) {
+                return JSTaggedValue::Undefined();
+            }
+        }
+        // b. throw a TypeError exception.
+        THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have [[OriginalFlags]]", JSTaggedValue(false));
     }
     // 4. Let flags be the value of R’s [[OriginalFlags]] internal slot.
     JSHandle<JSRegExp> regexpObj(thread, JSRegExp::Cast(obj->GetTaggedObject()));
     // 5. If flags contains the code unit "[flag]", return true.
     // 6. Return false.
     uint8_t flags = static_cast<uint8_t>(regexpObj->GetOriginalFlags().GetInt());
-    return flags & mask;
+    return GetTaggedBoolean(flags & mask);
 }
 
 // 22.2.7.8
@@ -1792,7 +1884,7 @@ JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTagg
     JSHandle<JSTaggedValue> execHandle = globalConst->GetHandledExecString();
     JSTaggedValue execVal = ObjectFastOperator::FastGetPropertyByValue(thread, regexp.GetTaggedValue(),
                                                                        execHandle.GetTaggedValue());
-    if (execVal == env->GetTaggedRegExpExecFunction()) {
+    if (execVal == env->GetTaggedRegExpExecFunction() && regexp->IsJSRegExp()) {
         JSTaggedValue result = RegExpBuiltinExec(thread, regexp, JSHandle<JSTaggedValue>(inputStr), useCache);
         // b. ReturnIfAbrupt(result).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

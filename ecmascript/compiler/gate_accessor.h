@@ -598,6 +598,7 @@ public:
     void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
     bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
+    void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);
@@ -661,8 +662,6 @@ private:
     void GetOuts(GateRef gate, std::vector<GateRef>& outs) const;
 
     void GetInStates(GateRef gate, std::vector<GateRef>& ins) const;
-
-    void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
 
     Circuit *circuit_;
 

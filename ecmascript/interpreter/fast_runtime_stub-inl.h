@@ -170,43 +170,43 @@ JSTaggedValue FastRuntimeStub::CallSetter(JSThread *thread, JSTaggedValue receiv
     return ObjectFastOperator::CallSetter(thread, receiver, value, accessorValue);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {
-    return ObjectFastOperator::GetPropertyByIndex<UseOwn>(thread, receiver, index);
+    return ObjectFastOperator::GetPropertyByIndex<status>(thread, receiver, index);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
-    return ObjectFastOperator::GetPropertyByValue<UseOwn>(thread, receiver, key);
+    return ObjectFastOperator::GetPropertyByValue<status>(thread, receiver, key);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
-    return ObjectFastOperator::GetPropertyByName<UseOwn>(thread, receiver, key);
+    return ObjectFastOperator::GetPropertyByName<status>(thread, receiver, key);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                  JSTaggedValue value)
 {
-    return ObjectFastOperator::SetPropertyByName<UseOwn>(thread, receiver, key, value);
+    return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                   JSTaggedValue value)
 {
-    return ObjectFastOperator::SetPropertyByIndex<UseOwn>(thread, receiver, index, value);
+    return ObjectFastOperator::SetPropertyByIndex<status>(thread, receiver, index, value);
 }
 
-template<bool UseOwn>
+template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value)
 {
-    return ObjectFastOperator::SetPropertyByValue<UseOwn>(thread, receiver, key, value);
+    return ObjectFastOperator::SetPropertyByValue<status>(thread, receiver, key, value);
 }
 
 JSTaggedValue FastRuntimeStub::GetGlobalOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)

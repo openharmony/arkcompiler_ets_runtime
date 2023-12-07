@@ -48,6 +48,8 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             func->SetPropertyInlinedProps(thread, PROTOTYPE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             accessor = globalConst->GetHandledFunctionNameAccessor();
             func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+            accessor = globalConst->GetHandledFunctionLengthAccessor();
+            func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
                 // Not duplicate codes, it will slow the performace if combining and put outside!
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -75,6 +77,8 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     } else if (HasAccessor(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
         func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+        accessor = globalConst->GetHandledFunctionLengthAccessor();
+        func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
     }
 }
 
@@ -159,6 +163,32 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
 
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
 {
+    if (self->IsBoundFunction()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        JSHandle<JSBoundFunction> boundFunction(self);
+        JSHandle<JSTaggedValue> target(thread, boundFunction->GetBoundTarget());
+
+        JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
+        JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
+        JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
+
+        JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, boundName);
+        JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
+        JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
+
+        EcmaString *newString;
+        if (!targetName->IsString()) {
+            JSHandle<EcmaString> emptyString = factory->GetEmptyString();
+            newString = *factory->ConcatFromString(concatString, emptyString);
+        } else {
+            JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(targetName);
+            newString = *factory->ConcatFromString(concatString, functionName);
+        }
+
+        return JSTaggedValue(newString);
+    }
+
     JSTaggedValue method = JSHandle<JSFunction>::Cast(self)->GetMethod();
     if (method.IsUndefined()) {
         return JSTaggedValue::Undefined();
@@ -180,6 +210,42 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromStdString(funcName).GetTaggedValue();
+}
+
+JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject> &self)
+{
+    // LengthGetter only support BoundFunction
+    if (self->IsBoundFunction()) {
+        JSMutableHandle<JSBoundFunction> boundFunction(thread, self.GetTaggedValue());
+        JSHandle<JSTaggedValue> arguments(thread, boundFunction->GetBoundArguments());
+        uint32_t argsLength = TaggedArray::Cast(arguments->GetTaggedObject())->GetLength();
+        while (boundFunction->GetBoundTarget().IsBoundFunction()) {
+            boundFunction.Update(boundFunction->GetBoundTarget());
+            argsLength += TaggedArray::Cast(boundFunction->GetBoundArguments())->GetLength();
+        }
+
+        JSHandle<JSTaggedValue> target(thread, boundFunction->GetBoundTarget());
+        JSHandle<JSFunctionBase> targetFunction = JSHandle<JSFunctionBase>::Cast(target);
+        JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+
+        bool targetHasLength =
+            JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(targetFunction), lengthKey);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        uint32_t lengthValue = 0;
+        if (targetHasLength) {
+            JSHandle<JSTaggedValue> targetLength = JSObject::GetProperty(thread, target, lengthKey).GetValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (targetLength->IsNumber()) {
+                lengthValue =
+                    std::max(0u, static_cast<uint32_t>(JSTaggedValue::ToNumber(thread, targetLength).GetNumber()) -
+                             argsLength);
+            }
+        }
+        return JSTaggedValue(lengthValue);
+    }
+
+    JSHandle<JSFunction> func(self);
+    return JSTaggedValue(func->GetLength());
 }
 
 bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,

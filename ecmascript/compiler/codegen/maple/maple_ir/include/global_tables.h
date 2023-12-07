@@ -104,6 +104,10 @@ public:
     TypeTable &operator=(const TypeTable &) = delete;
     ~TypeTable();
 
+    void Init();
+    void Reset();
+    void ReleaseTypes();
+
     std::vector<MIRType *> &GetTypeTable()
     {
         return typeTable;
@@ -600,10 +604,7 @@ public:
 
     ~StringTable()
     {
-        stringTableMap.clear();
-        for (auto it : stringTable) {
-            delete it;
-        }
+        ReleaseStrings();
     }
 
     void Init()
@@ -611,6 +612,21 @@ public:
         // initialize 0th entry of stringTable with an empty string
         T *ptr = new T;
         stringTable.push_back(ptr);
+    }
+
+    void Reset()
+    {
+        ReleaseStrings();
+        stringTable.clear();
+        Init();
+    }
+
+    void ReleaseStrings()
+    {
+        stringTableMap.clear();
+        for (auto it : stringTable) {
+            delete it;
+        }
     }
 
     U GetStrIdxFromName(const T &str) const
@@ -751,6 +767,11 @@ public:
     STypeNameTable() = default;
     virtual ~STypeNameTable() = default;
 
+    void Reset()
+    {
+        gStrIdxToTyIdxMap.clear();
+    }
+
     const std::unordered_map<GStrIdx, TyIdx, GStrIdxHash> &GetGStridxToTyidxMap() const
     {
         return gStrIdxToTyIdxMap;
@@ -778,10 +799,22 @@ class FunctionTable {
 public:
     FunctionTable()
     {
-        funcTable.push_back(nullptr);
-    }  // puIdx 0 is reserved
+        Init();
+    }
 
     virtual ~FunctionTable() = default;
+
+    void Init()
+    {
+        // puIdx 0 is reserved
+        funcTable.push_back(nullptr);
+    }
+
+    void Reset()
+    {
+        funcTable.clear();
+        Init();
+    }
 
     std::vector<MIRFunction *> &GetFuncTable()
     {
@@ -810,6 +843,10 @@ public:
     GSymbolTable(const GSymbolTable &) = delete;
     GSymbolTable &operator=(const GSymbolTable &) = delete;
     ~GSymbolTable();
+
+    void Init();
+    void Reset();
+    void ReleaseSymbols();
 
     MIRModule *GetModule()
     {
@@ -887,6 +924,13 @@ public:
     std::unordered_map<std::u16string, MIRSymbol *> &GetConstU16StringPool()
     {
         return constU16StringPool;
+    }
+
+    void Reset()
+    {
+        constMap.clear();
+        importedLiteralNames.clear();
+        constU16StringPool.clear();
     }
 
     void InsertConstPool(GStrIdx strIdx, MIRConst *cst)
@@ -971,6 +1015,20 @@ public:
         return *(globalTables.intConstTablePtr);
     }
 
+    static void Reset()
+    {
+        globalTables.typeTable.Reset();
+        globalTables.typeNameTable.Reset();
+        globalTables.functionTable.Reset();
+        globalTables.gSymbolTable.Reset();
+        globalTables.constPool.Reset();
+        globalTables.fpConstTablePtr = FPConstTable::Create();
+        globalTables.intConstTablePtr = IntConstTable::Create();
+        globalTables.gStringTable.Reset();
+        globalTables.uStrTable.Reset();
+        globalTables.u16StringTable.Reset();
+    }
+
     GlobalTables(const GlobalTables &globalTables) = delete;
     GlobalTables(const GlobalTables &&globalTables) = delete;
     GlobalTables &operator=(const GlobalTables &globalTables) = delete;
@@ -984,7 +1042,7 @@ private:
         u16StringTable.Init();
     }
     virtual ~GlobalTables() = default;
-    static GlobalTables globalTables;
+    thread_local static GlobalTables globalTables;
 
     TypeTable typeTable;
     STypeNameTable typeNameTable;

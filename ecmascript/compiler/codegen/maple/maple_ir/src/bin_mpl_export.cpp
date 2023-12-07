@@ -382,9 +382,9 @@ void BinaryMplExport::Write(uint8 b)
 void BinaryMplExport::WriteInt(int32 x)
 {
     Write(static_cast<uint8>(static_cast<uint32>(x) & 0xFF));
-    Write(static_cast<uint8>((static_cast<uint32>(x) >> 8) & 0xFF));
-    Write(static_cast<uint8>((static_cast<uint32>(x) >> 16) & 0xFF));
-    Write(static_cast<uint8>((static_cast<uint32>(x) >> 24) & 0xFF));
+    Write(static_cast<uint8>((static_cast<uint32>(x) >> 8) & 0xFF));  // shift 8 to get 9th-16th bits
+    Write(static_cast<uint8>((static_cast<uint32>(x) >> 16) & 0xFF)); // shift 16 to get 17th-24th bits
+    Write(static_cast<uint8>((static_cast<uint32>(x) >> 24) & 0xFF)); // shift 24 to get high 8 bits
 }
 
 void BinaryMplExport::ExpandFourBuffSize()
@@ -396,16 +396,16 @@ void BinaryMplExport::Fixup(size_t i, int32 x)
 {
     constexpr int fixupCount = 4;
     CHECK(i <= buf.size() - fixupCount, "Index out of bound in BinaryMplImport::Fixup()");
-    buf[i] = static_cast<uint8>(static_cast<uint32>(x) & 0xFF);
-    buf[i + 1] = static_cast<uint8>((static_cast<uint32>(x) >> 8) & 0xFF);
-    buf[i + 2] = static_cast<uint8>((static_cast<uint32>(x) >> 16) & 0xFF);
-    buf[i + 3] = static_cast<uint8>((static_cast<uint32>(x) >> 24) & 0xFF);
+    buf[i + kFirstField] = static_cast<uint8>(static_cast<uint32>(x) & 0xFF);
+    buf[i + kSecondField] = static_cast<uint8>((static_cast<uint32>(x) >> 8) & 0xFF);  // shift 8 to get 9th-16th bits
+    buf[i + kThirdField] = static_cast<uint8>((static_cast<uint32>(x) >> 16) & 0xFF);  // shift 16 to get 17th-24th bits
+    buf[i + kFourthField] = static_cast<uint8>((static_cast<uint32>(x) >> 24) & 0xFF); // shift 24 to get high 8 bits
 }
 
 void BinaryMplExport::WriteInt64(int64 x)
 {
     WriteInt(static_cast<int32>(static_cast<uint64>(x) & 0xFFFFFFFF));
-    WriteInt(static_cast<int32>((static_cast<uint64>(x) >> 32) & 0xFFFFFFFF));
+    WriteInt(static_cast<int32>((static_cast<uint64>(x) >> k32BitSize) & 0xFFFFFFFF));
 }
 
 // LEB128
@@ -413,8 +413,9 @@ void BinaryMplExport::WriteNum(int64 x)
 {
     while (x < -0x40 || x >= 0x40) {
         Write(static_cast<uint8>((static_cast<uint64>(x) & 0x7F) + 0x80));
-        x = x >> 7;  // This is a compress algorithm, do not cast int64 to uint64. If do so, small negtivate number like
-                     // -3 will occupy 9 bits and we will not get the compressed benefit.
+        x = x >> 7; // LEB128 is a compress algorithm, save 1 bit subsequent falg and 7 bits data in 1 byte.
+                    // Do not cast int64 to uint64. If do so, small negtivate number like
+                    // -3 will occupy 9 bits and we will not get the compressed benefit.
     }
     Write(static_cast<uint8>(static_cast<uint64>(x) & 0x7F));
 }
@@ -1214,15 +1215,15 @@ void BinaryMplExport::WriteContentField4mplt(int fieldNum, uint64 *fieldStartP)
     WriteInt(fieldNum);  // size of Content item
 
     WriteNum(kBinStrStart);
-    fieldStartP[0] = buf.size();
+    fieldStartP[kFirstField] = buf.size();
     ExpandFourBuffSize();
 
     WriteNum(kBinTypeStart);
-    fieldStartP[1] = buf.size();
+    fieldStartP[kSecondField] = buf.size();
     ExpandFourBuffSize();
 
     WriteNum(kBinCgStart);
-    fieldStartP[2] = buf.size();
+    fieldStartP[kThirdField] = buf.size();
     ExpandFourBuffSize();
 
     Fixup(totalSizeIdx, buf.size() - totalSizeIdx);

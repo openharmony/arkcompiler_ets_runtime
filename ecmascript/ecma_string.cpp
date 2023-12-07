@@ -841,7 +841,7 @@ bool EcmaString::ToElementIndex(uint32_t *index)
     return false;
 }
 
-bool EcmaString::ToInt(int32_t *index)
+bool EcmaString::ToInt(int32_t *index, bool *negative)
 {
     uint32_t len = GetLength();
     if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {  // NOLINTNEXTLINEreadability-magic-numbers)
@@ -850,7 +850,6 @@ bool EcmaString::ToInt(int32_t *index)
     if (UNLIKELY(IsUtf16())) {
         return false;
     }
-    bool negative = false;
     CVector<uint8_t> buf;
     const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
     uint32_t c = data[0];
@@ -861,12 +860,12 @@ bool EcmaString::ToInt(int32_t *index)
         return len == 1;
     }
     if(c == '-' && len > 1){
-        negative = true;
+        *negative = true;
         loopStart = 1;
     }
 
     if (ToUInt64FromLoopStart(&n, loopStart, data) && n <= std::numeric_limits<int32_t>::max()) {
-        *index = negative ? -n : n;
+        *index = *negative ? -n : n;
         return true;
     }
     return false;

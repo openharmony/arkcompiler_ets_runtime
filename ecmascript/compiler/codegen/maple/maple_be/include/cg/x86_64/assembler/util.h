@@ -46,6 +46,7 @@ static const uint8 k8Bits = 8;
 static const uint8 k16Bits = 16;
 static const uint8 k32Bits = 32;
 static const uint8 k64Bits = 64;
+static const uint8 k128Bits = 128;
 
 inline bool Is8Bits(uint32 val)
 {

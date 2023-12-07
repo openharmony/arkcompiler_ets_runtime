@@ -52,81 +52,88 @@ public:
 
     void AddListener(RuntimeListener *listener)
     {
-        listener_ = listener;
+        if (listener != nullptr) {
+            listeners_.emplace_back(listener);
+        }
     }
-    void RemoveListener()
+    void RemoveListener(RuntimeListener *listener)
     {
-        listener_ = nullptr;
+        for (auto it = listeners_.begin(); it != listeners_.end(); ++it) {
+            if (*it == listener) {
+                listeners_.erase(it);
+                return;
+            }
+        }
     }
 
     void LoadModuleEvent(std::string_view name, std::string_view entryPoint) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            listener_->LoadModule(name, entryPoint);
+        for (auto it: listeners_) {
+            it->LoadModule(name, entryPoint);
         }
     }
 
     void BytecodePcChangedEvent(JSThread *thread, Method *method, uint32_t bcOffset) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<Method> methodHandle(thread, method);
-            listener_->BytecodePcChanged(thread, methodHandle, bcOffset);
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        JSHandle<Method> methodHandle(thread, method);
+        for (auto it: listeners_) {
+            it->BytecodePcChanged(thread, methodHandle, bcOffset);
         }
     }
 
     void DebuggerStmtEvent(JSThread *thread, Method *method, uint32_t bcOffset) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            JSHandle<Method> methodHandle(thread, method);
-            listener_->HandleDebuggerStmt(methodHandle, bcOffset);
+        JSHandle<Method> methodHandle(thread, method);
+        for (auto it: listeners_) {
+            it->HandleDebuggerStmt(methodHandle, bcOffset);
         }
     }
 
     void NativeCallingEvent(const void *nativeAddress) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            listener_->NativeCalling(nativeAddress);
+        for (auto it: listeners_) {
+            it->NativeCalling(nativeAddress);
         }
     }
 
     void NativeReturnJSEvent() const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            listener_->NativeReturnJS();
+        for (auto it: listeners_) {
+            it->NativeReturnJS();
         }
     }
 
     void VmStartEvent() const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            listener_->VmStart();
+        for (auto it: listeners_) {
+            it->VmStart();
         }
     }
     void VmDeathEvent() const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            listener_->VmDeath();
+        for (auto it: listeners_) {
+            it->VmDeath();
         }
     }
 
     void MethodEntryEvent(JSThread *thread, Method *method, JSTaggedValue env) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            JSHandle<Method> methodHandle(thread, method);
-            JSHandle<JSTaggedValue> envHandle(thread, env);
-            listener_->MethodEntry(methodHandle, envHandle);
+        JSHandle<Method> methodHandle(thread, method);
+        JSHandle<JSTaggedValue> envHandle(thread, env);
+        for (auto it: listeners_) {
+            it->MethodEntry(methodHandle, envHandle);
         }
     }
     void MethodExitEvent(JSThread *thread, Method *method) const
     {
-        if (UNLIKELY(listener_ != nullptr)) {
-            JSHandle<Method> methodHandle(thread, method);
-            listener_->MethodExit(methodHandle);
+        JSHandle<Method> methodHandle(thread, method);
+        for (auto it: listeners_) {
+            it->MethodExit(methodHandle);
         }
     }
 private:
-    RuntimeListener *listener_ {nullptr};
+    std::vector<RuntimeListener*> listeners_;
 };
 }  // panda::ecmascript::tooling
 

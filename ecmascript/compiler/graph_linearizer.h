@@ -268,12 +268,13 @@ public:
         size_t loopIndex {0};
     };
 
-    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk,
-        bool onlyBB = false, bool loopInvariantCodeMotion = false)
-        : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit),
-        acc_(circuit), gateIdToGateInfo_(chunk), regionList_(chunk),
-        regionRootList_(chunk), loops_(chunk),
-        onlyBB_(onlyBB), loopInvariantCodeMotion_(loopInvariantCodeMotion) {}
+    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk, bool onlyBB = false,
+                    bool loopInvariantCodeMotion = false, bool enableLiteCG = false)
+        : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit), acc_(circuit),
+          gateIdToGateInfo_(chunk), regionList_(chunk), regionRootList_(chunk), loops_(chunk), onlyBB_(onlyBB),
+          loopInvariantCodeMotion_(loopInvariantCodeMotion), enableLiteCG_(enableLiteCG)
+    {
+    }
 
     void Run(ControlFlowGraph &result);
 
@@ -281,6 +282,12 @@ public:
     {
         return GateToRegion(gate)->GetState();
     }
+
+    bool enableLiteCG() const
+    {
+        return enableLiteCG_;
+    }
+
 private:
     enum class ScheduleModel { LIR, JS_OPCODE };
     enum class ScheduleState { NONE, FIXED, SELECTOR, SCHEDELABLE };
@@ -468,7 +475,7 @@ private:
 
     bool onlyBB_ {false}; // dont schedule
     bool loopInvariantCodeMotion_ {false};
-
+    bool enableLiteCG_ {false};
     friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
     friend class GateScheduler;

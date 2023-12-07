@@ -18,8 +18,6 @@
 #include "x64_cg.h"
 #include "insn.h"
 
-#define __ assmbler.
-
 namespace {
 using namespace maple;
 
@@ -145,6 +143,9 @@ Reg X64Emitter::TransferReg(Operand *opnd) const
         case k64BitSize:
             regType = X64CG::kR64List;
             break;
+        case k128BitSize:
+            regType = X64CG::kR128List;
+            break;
         default:
             FATAL(kLncFatal, "unkown reg size");
             break;
@@ -159,7 +160,7 @@ pair<int64, bool> X64Emitter::TransferImm(Operand *opnd)
     if (v->GetKind() == Operand::kOpdStImmediate) {
         uint32 symIdx = v->GetSymbol()->GetNameStrIdx().get();
         const string &symName = v->GetName();
-        __ StoreNameIntoSymMap(symIdx, symName);
+        assmbler.StoreNameIntoSymMap(symIdx, symName);
         return pair<int64, bool>(symIdx, true);
     } else {
         return pair<int64, bool>(v->GetValue(), false);
@@ -195,7 +196,7 @@ Mem X64Emitter::TransferMem(Operand *opnd, uint32 funcUniqueId)
             } else {
                 symIdx = symbol->GetNameStrIdx().get();
             }
-            __ StoreNameIntoSymMap(symIdx, symbolName);
+            assmbler.StoreNameIntoSymMap(symIdx, symbolName);
             mem.disp.first = symIdx;
         }
         if (ofset->GetValue() != 0) {
@@ -224,7 +225,7 @@ int64 X64Emitter::TransferLabel(Operand *opnd, uint32 funcUniqueId)
 {
     LabelOperand *v = static_cast<LabelOperand *>(opnd);
     int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, v->GetLabelIndex());
-    __ StoreNameIntoSymMap(labelSymIdx, v->GetParentFunc());
+    assmbler.StoreNameIntoSymMap(labelSymIdx, v->GetParentFunc());
     return labelSymIdx;
 }
 
@@ -232,7 +233,7 @@ uint32 X64Emitter::TransferFuncName(Operand *opnd)
 {
     FuncNameOperand *v = static_cast<FuncNameOperand *>(opnd);
     uint32 funcSymIdx = v->GetFunctionSymbol()->GetNameStrIdx().get();
-    __ StoreNameIntoSymMap(funcSymIdx, v->GetName());
+    assmbler.StoreNameIntoSymMap(funcSymIdx, v->GetName());
     return funcSymIdx;
 }
 
@@ -259,1134 +260,1250 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
     switch (mop) {
         /* mov */
         case x64::MOP_movb_r_r:
-            __ Mov(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movw_r_r:
-            __ Mov(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movl_r_r:
-            __ Mov(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movq_r_r:
-            __ Mov(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movb_m_r:
-            __ Mov(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Mov(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movw_m_r:
-            __ Mov(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Mov(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movl_m_r:
-            __ Mov(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Mov(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movq_m_r:
-            __ Mov(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Mov(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movb_i_r:
-            __ Mov(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movw_i_r:
-            __ Mov(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movl_i_r:
-            __ Mov(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movq_i_r:
-            __ Mov(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Mov(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movb_i_m:
-            __ Mov(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movw_i_m:
-            __ Mov(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movl_i_m:
-            __ Mov(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movb_r_m:
-            __ Mov(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movw_r_m:
-            __ Mov(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movl_r_m:
-            __ Mov(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_movq_r_m:
-            __ Mov(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Mov(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            break;
+        /* floating point mov */
+        case x64::MOP_movd_fr_r:
+            assmbler.Mov(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_movq_fr_r:
+        case x64::MOP_movq_r_fr:
+            assmbler.Mov(TransferReg(opnd0), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_movfs_r_r:
+            assmbler.MovF(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_movfd_r_r:
+            assmbler.MovF(TransferReg(opnd0), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_movfs_m_r:
+            assmbler.MovF(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            break;
+        case x64::MOP_movfs_r_m:
+            assmbler.MovF(TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            break;
+        case x64::MOP_movfd_m_r:
+            assmbler.MovF(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_movfd_r_m:
+            assmbler.MovF(TransferReg(opnd0), TransferMem(opnd1, funcUniqueId), false);
             break;
         /* movzx */
         case x64::MOP_movzbw_r_r:
-            __ MovZx(kB, kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovZx(kB, kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movzbl_r_r:
-            __ MovZx(kB, kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovZx(kB, kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movzbq_r_r:
-            __ MovZx(kB, kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovZx(kB, kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movzwl_r_r:
-            __ MovZx(kW, kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovZx(kW, kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movzwq_r_r:
-            __ MovZx(kW, kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovZx(kW, kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movzbw_m_r:
-            __ MovZx(kB, kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovZx(kB, kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movzbl_m_r:
-            __ MovZx(kB, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovZx(kB, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movzbq_m_r:
-            __ MovZx(kB, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovZx(kB, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movzwl_m_r:
-            __ MovZx(kW, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovZx(kW, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movzwq_m_r:
-            __ MovZx(kW, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovZx(kW, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* movsx */
         case x64::MOP_movsbw_r_r:
-            __ MovSx(kB, kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kB, kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movsbl_r_r:
-            __ MovSx(kB, kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kB, kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movsbq_r_r:
-            __ MovSx(kB, kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kB, kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movswl_r_r:
-            __ MovSx(kW, kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kW, kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movswq_r_r:
-            __ MovSx(kW, kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kW, kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movslq_r_r:
-            __ MovSx(kL, kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.MovSx(kL, kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movsbw_m_r:
-            __ MovSx(kB, kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kB, kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movsbl_m_r:
-            __ MovSx(kB, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kB, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movsbq_m_r:
-            __ MovSx(kB, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kB, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movswl_m_r:
-            __ MovSx(kW, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kW, kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movswq_m_r:
-            __ MovSx(kW, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kW, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_movslq_m_r:
-            __ MovSx(kL, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.MovSx(kL, kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* add */
         case x64::MOP_addb_r_r:
-            __ Add(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Add(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addw_r_r:
-            __ Add(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Add(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addl_r_r:
-            __ Add(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Add(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addq_r_r:
-            __ Add(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Add(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addb_i_r:
-            __ Add(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Add(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addw_i_r:
-            __ Add(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Add(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addl_i_r:
-            __ Add(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Add(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addq_i_r:
-            __ Add(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Add(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_addb_m_r:
-            __ Add(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Add(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_addw_m_r:
-            __ Add(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Add(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_addl_m_r:
-            __ Add(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Add(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_addq_m_r:
-            __ Add(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Add(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_addb_r_m:
-            __ Add(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addw_r_m:
-            __ Add(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addl_r_m:
-            __ Add(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addq_r_m:
-            __ Add(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addb_i_m:
-            __ Add(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addw_i_m:
-            __ Add(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addl_i_m:
-            __ Add(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_addq_i_m:
-            __ Add(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Add(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            break;
+        /* add floating point */
+        case x64::MOP_adds_r_r:
+            assmbler.Add(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_adds_m_r:
+            assmbler.Add(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            break;
+        case x64::MOP_addd_r_r:
+            assmbler.Add(TransferReg(opnd0), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_addd_m_r:
+            assmbler.Add(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1), false);
             break;
         /* movabs */
         case x64::MOP_movabs_i_r:
-            __ Movabs(TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Movabs(TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_movabs_l_r:
-            __ Movabs(TransferLabel(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Movabs(TransferLabel(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* push */
         case x64::MOP_pushq_r:
-            __ Push(kQ, TransferReg(opnd0));
+            assmbler.Push(kQ, TransferReg(opnd0));
             break;
         /* pop */
         case x64::MOP_popq_r:
-            __ Pop(kQ, TransferReg(opnd0));
+            assmbler.Pop(kQ, TransferReg(opnd0));
             break;
         /* lea */
         case x64::MOP_leaw_m_r:
-            __ Lea(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Lea(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_leal_m_r:
-            __ Lea(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Lea(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_leaq_m_r:
-            __ Lea(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Lea(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* sub , sbb */
         case x64::MOP_subb_r_r:
-            __ Sub(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subw_r_r:
-            __ Sub(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subl_r_r:
-            __ Sub(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subq_r_r:
-            __ Sub(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subb_i_r:
-            __ Sub(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subw_i_r:
-            __ Sub(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subl_i_r:
-            __ Sub(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subq_i_r:
-            __ Sub(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sub(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_subb_m_r:
-            __ Sub(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Sub(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_subw_m_r:
-            __ Sub(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Sub(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_subl_m_r:
-            __ Sub(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Sub(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_subq_m_r:
-            __ Sub(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Sub(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_subb_r_m:
-            __ Sub(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subw_r_m:
-            __ Sub(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subl_r_m:
-            __ Sub(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subq_r_m:
-            __ Sub(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subb_i_m:
-            __ Sub(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subw_i_m:
-            __ Sub(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subl_i_m:
-            __ Sub(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_subq_i_m:
-            __ Sub(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sub(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            break;
+        /* sub floating point */
+        case x64::MOP_subs_r_r:
+            assmbler.Sub(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_subs_m_r:
+            assmbler.Sub(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            break;
+        case x64::MOP_subd_r_r:
+            assmbler.Sub(TransferReg(opnd0), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_subd_m_r:
+            assmbler.Sub(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1), false);
             break;
         /* and */
         case x64::MOP_andb_r_r:
-            __ And(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.And(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andw_r_r:
-            __ And(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.And(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andl_r_r:
-            __ And(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.And(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andq_r_r:
-            __ And(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.And(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andb_i_r:
-            __ And(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.And(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andw_i_r:
-            __ And(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.And(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andl_i_r:
-            __ And(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.And(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andq_i_r:
-            __ And(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.And(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_andb_m_r:
-            __ And(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.And(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_andw_m_r:
-            __ And(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.And(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_andl_m_r:
-            __ And(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.And(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_andq_m_r:
-            __ And(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.And(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_andb_r_m:
-            __ And(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andw_r_m:
-            __ And(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andl_r_m:
-            __ And(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andq_r_m:
-            __ And(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andb_i_m:
-            __ And(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andw_i_m:
-            __ And(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andl_i_m:
-            __ And(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_andq_i_m:
-            __ And(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.And(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* or */
         case x64::MOP_orb_r_r:
-            __ Or(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Or(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orw_r_r:
-            __ Or(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Or(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orl_r_r:
-            __ Or(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Or(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orq_r_r:
-            __ Or(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Or(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orb_m_r:
-            __ Or(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Or(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_orw_m_r:
-            __ Or(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Or(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_orl_m_r:
-            __ Or(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Or(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_orq_m_r:
-            __ Or(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Or(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_orb_i_r:
-            __ Or(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Or(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orw_i_r:
-            __ Or(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Or(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orl_i_r:
-            __ Or(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Or(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orq_i_r:
-            __ Or(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Or(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_orb_r_m:
-            __ Or(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orw_r_m:
-            __ Or(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orl_r_m:
-            __ Or(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orq_r_m:
-            __ Or(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orb_i_m:
-            __ Or(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orw_i_m:
-            __ Or(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orl_i_m:
-            __ Or(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_orq_i_m:
-            __ Or(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Or(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* xor */
         case x64::MOP_xorb_r_r:
-            __ Xor(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorw_r_r:
-            __ Xor(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorl_r_r:
-            __ Xor(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorq_r_r:
-            __ Xor(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorb_i_r:
-            __ Xor(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorw_i_r:
-            __ Xor(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorl_i_r:
-            __ Xor(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorq_i_r:
-            __ Xor(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Xor(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_xorb_m_r:
-            __ Xor(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Xor(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_xorw_m_r:
-            __ Xor(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Xor(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_xorl_m_r:
-            __ Xor(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Xor(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_xorq_m_r:
-            __ Xor(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Xor(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_xorb_r_m:
-            __ Xor(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorw_r_m:
-            __ Xor(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorl_r_m:
-            __ Xor(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorq_r_m:
-            __ Xor(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorb_i_m:
-            __ Xor(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorw_i_m:
-            __ Xor(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorl_i_m:
-            __ Xor(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_xorq_i_m:
-            __ Xor(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Xor(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* not */
         case x64::MOP_notb_r:
-            __ Not(kB, TransferReg(opnd0));
+            assmbler.Not(kB, TransferReg(opnd0));
             break;
         case x64::MOP_notw_r:
-            __ Not(kW, TransferReg(opnd0));
+            assmbler.Not(kW, TransferReg(opnd0));
             break;
         case x64::MOP_notl_r:
-            __ Not(kL, TransferReg(opnd0));
+            assmbler.Not(kL, TransferReg(opnd0));
             break;
         case x64::MOP_notq_r:
-            __ Not(kQ, TransferReg(opnd0));
+            assmbler.Not(kQ, TransferReg(opnd0));
             break;
         case x64::MOP_notb_m:
-            __ Not(kB, TransferMem(opnd0, funcUniqueId));
+            assmbler.Not(kB, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_notw_m:
-            __ Not(kW, TransferMem(opnd0, funcUniqueId));
+            assmbler.Not(kW, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_notl_m:
-            __ Not(kL, TransferMem(opnd0, funcUniqueId));
+            assmbler.Not(kL, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_notq_m:
-            __ Not(kQ, TransferMem(opnd0, funcUniqueId));
+            assmbler.Not(kQ, TransferMem(opnd0, funcUniqueId));
             break;
         /* neg */
         case x64::MOP_negb_r:
-            __ Neg(kB, TransferReg(opnd0));
+            assmbler.Neg(kB, TransferReg(opnd0));
             break;
         case x64::MOP_negw_r:
-            __ Neg(kW, TransferReg(opnd0));
+            assmbler.Neg(kW, TransferReg(opnd0));
             break;
         case x64::MOP_negl_r:
-            __ Neg(kL, TransferReg(opnd0));
+            assmbler.Neg(kL, TransferReg(opnd0));
             break;
         case x64::MOP_negq_r:
-            __ Neg(kQ, TransferReg(opnd0));
+            assmbler.Neg(kQ, TransferReg(opnd0));
             break;
         case x64::MOP_negb_m:
-            __ Neg(kB, TransferMem(opnd0, funcUniqueId));
+            assmbler.Neg(kB, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_negw_m:
-            __ Neg(kW, TransferMem(opnd0, funcUniqueId));
+            assmbler.Neg(kW, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_negl_m:
-            __ Neg(kL, TransferMem(opnd0, funcUniqueId));
+            assmbler.Neg(kL, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_negq_m:
-            __ Neg(kQ, TransferMem(opnd0, funcUniqueId));
+            assmbler.Neg(kQ, TransferMem(opnd0, funcUniqueId));
             break;
         /* div, cwd, cdq, cqo */
         case x64::MOP_idivw_r:
-            __ Idiv(kW, TransferReg(opnd0));
+            assmbler.Idiv(kW, TransferReg(opnd0));
             break;
         case x64::MOP_idivl_r:
-            __ Idiv(kL, TransferReg(opnd0));
+            assmbler.Idiv(kL, TransferReg(opnd0));
             break;
         case x64::MOP_idivq_r:
-            __ Idiv(kQ, TransferReg(opnd0));
+            assmbler.Idiv(kQ, TransferReg(opnd0));
             break;
         case x64::MOP_idivw_m:
-            __ Idiv(kW, TransferMem(opnd0, funcUniqueId));
+            assmbler.Idiv(kW, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_idivl_m:
-            __ Idiv(kL, TransferMem(opnd0, funcUniqueId));
+            assmbler.Idiv(kL, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_idivq_m:
-            __ Idiv(kQ, TransferMem(opnd0, funcUniqueId));
+            assmbler.Idiv(kQ, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_divw_r:
-            __ Div(kW, TransferReg(opnd0));
+            assmbler.Div(kW, TransferReg(opnd0));
             break;
         case x64::MOP_divl_r:
-            __ Div(kL, TransferReg(opnd0));
+            assmbler.Div(kL, TransferReg(opnd0));
             break;
         case x64::MOP_divq_r:
-            __ Div(kQ, TransferReg(opnd0));
+            assmbler.Div(kQ, TransferReg(opnd0));
             break;
         case x64::MOP_divw_m:
-            __ Div(kW, TransferMem(opnd0, funcUniqueId));
+            assmbler.Div(kW, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_divl_m:
-            __ Div(kL, TransferMem(opnd0, funcUniqueId));
+            assmbler.Div(kL, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_divq_m:
-            __ Div(kQ, TransferMem(opnd0, funcUniqueId));
+            assmbler.Div(kQ, TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_cwd:
-            __ Cwd();
+            assmbler.Cwd();
             break;
         case x64::MOP_cdq:
-            __ Cdq();
+            assmbler.Cdq();
             break;
         case x64::MOP_cqo:
-            __ Cqo();
+            assmbler.Cqo();
             break;
         /* shl */
         case x64::MOP_shlb_r_r:
-            __ Shl(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlw_r_r:
-            __ Shl(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shll_r_r:
-            __ Shl(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlq_r_r:
-            __ Shl(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlb_i_r:
-            __ Shl(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlw_i_r:
-            __ Shl(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shll_i_r:
-            __ Shl(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlq_i_r:
-            __ Shl(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shl(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shlb_r_m:
-            __ Shl(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shlw_r_m:
-            __ Shl(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shll_r_m:
-            __ Shl(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shlq_r_m:
-            __ Shl(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shlb_i_m:
-            __ Shl(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shlw_i_m:
-            __ Shl(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shll_i_m:
-            __ Shl(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shlq_i_m:
-            __ Shl(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shl(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* sar */
         case x64::MOP_sarb_r_r:
-            __ Sar(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarw_r_r:
-            __ Sar(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarl_r_r:
-            __ Sar(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarq_r_r:
-            __ Sar(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarb_i_r:
-            __ Sar(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarw_i_r:
-            __ Sar(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarl_i_r:
-            __ Sar(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarq_i_r:
-            __ Sar(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Sar(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sarb_r_m:
-            __ Sar(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarw_r_m:
-            __ Sar(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarl_r_m:
-            __ Sar(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarq_r_m:
-            __ Sar(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarb_i_m:
-            __ Sar(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarw_i_m:
-            __ Sar(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarl_i_m:
-            __ Sar(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_sarq_i_m:
-            __ Sar(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Sar(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* shr */
         case x64::MOP_shrb_r_r:
-            __ Shr(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrw_r_r:
-            __ Shr(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrl_r_r:
-            __ Shr(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrq_r_r:
-            __ Shr(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrb_i_r:
-            __ Shr(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrw_i_r:
-            __ Shr(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrl_i_r:
-            __ Shr(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrq_i_r:
-            __ Shr(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Shr(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_shrb_r_m:
-            __ Shr(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrw_r_m:
-            __ Shr(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrl_r_m:
-            __ Shr(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrq_r_m:
-            __ Shr(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrb_i_m:
-            __ Shr(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrw_i_m:
-            __ Shr(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrl_i_m:
-            __ Shr(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_shrq_i_m:
-            __ Shr(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Shr(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         /* jmp */
         case x64::MOP_jmpq_r:
-            __ Jmp(TransferReg(opnd0));
+            assmbler.Jmp(TransferReg(opnd0));
             break;
         case x64::MOP_jmpq_m:
-            __ Jmp(TransferMem(opnd0, funcUniqueId));
+            assmbler.Jmp(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_jmpq_l:
-            __ Jmp(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jmp(TransferLabel(opnd0, funcUniqueId));
             break;
         /* je, jne */
         case x64::MOP_je_l:
-            __ Je(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Je(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_ja_l:
-            __ Ja(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Ja(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jae_l:
-            __ Jae(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jae(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jne_l:
-            __ Jne(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jne(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jb_l:
-            __ Jb(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jb(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jbe_l:
-            __ Jbe(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jbe(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jg_l:
-            __ Jg(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jg(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jge_l:
-            __ Jge(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jge(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jl_l:
-            __ Jl(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jl(TransferLabel(opnd0, funcUniqueId));
             break;
         case x64::MOP_jle_l:
-            __ Jle(TransferLabel(opnd0, funcUniqueId));
+            assmbler.Jle(TransferLabel(opnd0, funcUniqueId));
             break;
         /* cmp */
         case x64::MOP_cmpb_r_r:
-            __ Cmp(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpw_r_r:
-            __ Cmp(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpl_r_r:
-            __ Cmp(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpq_r_r:
-            __ Cmp(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpb_i_r:
-            __ Cmp(kB, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kB, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpw_i_r:
-            __ Cmp(kW, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kW, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpl_i_r:
-            __ Cmp(kL, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kL, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpq_i_r:
-            __ Cmp(kQ, TransferImm(opnd0), TransferReg(opnd1));
+            assmbler.Cmp(kQ, TransferImm(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmpb_m_r:
-            __ Cmp(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmp(kB, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmpw_m_r:
-            __ Cmp(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmp(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmpl_m_r:
-            __ Cmp(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmp(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmpq_m_r:
-            __ Cmp(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmp(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmpb_r_m:
-            __ Cmp(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kB, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpw_r_m:
-            __ Cmp(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kW, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpl_r_m:
-            __ Cmp(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kL, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpq_r_m:
-            __ Cmp(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kQ, TransferReg(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpb_i_m:
-            __ Cmp(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kB, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpw_i_m:
-            __ Cmp(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kW, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpl_i_m:
-            __ Cmp(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kL, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_cmpq_i_m:
-            __ Cmp(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
+            assmbler.Cmp(kQ, TransferImm(opnd0), TransferMem(opnd1, funcUniqueId));
             break;
         case x64::MOP_testq_r_r:
-            __ Test(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Test(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         /* setcc */
         case x64::MOP_seta_r:
-            __ Seta(TransferReg(opnd0));
+            assmbler.Seta(TransferReg(opnd0));
             break;
         case x64::MOP_setae_r:
-            __ Setae(TransferReg(opnd0));
+            assmbler.Setae(TransferReg(opnd0));
             break;
         case x64::MOP_setb_r:
-            __ Setb(TransferReg(opnd0));
+            assmbler.Setb(TransferReg(opnd0));
             break;
         case x64::MOP_seto_r:
-            __ Seto(TransferReg(opnd0));
+            assmbler.Seto(TransferReg(opnd0));
             break;
         case x64::MOP_setbe_r:
-            __ Setbe(TransferReg(opnd0));
+            assmbler.Setbe(TransferReg(opnd0));
             break;
         case x64::MOP_sete_r:
-            __ Sete(TransferReg(opnd0));
+            assmbler.Sete(TransferReg(opnd0));
             break;
         case x64::MOP_setg_r:
-            __ Setg(TransferReg(opnd0));
+            assmbler.Setg(TransferReg(opnd0));
             break;
         case x64::MOP_setge_r:
-            __ Setge(TransferReg(opnd0));
+            assmbler.Setge(TransferReg(opnd0));
             break;
         case x64::MOP_setl_r:
-            __ Setl(TransferReg(opnd0));
+            assmbler.Setl(TransferReg(opnd0));
             break;
         case x64::MOP_setle_r:
-            __ Setle(TransferReg(opnd0));
+            assmbler.Setle(TransferReg(opnd0));
             break;
         case x64::MOP_setne_r:
-            __ Setne(TransferReg(opnd0));
+            assmbler.Setne(TransferReg(opnd0));
             break;
         case x64::MOP_seta_m:
-            __ Seta(TransferMem(opnd0, funcUniqueId));
+            assmbler.Seta(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setae_m:
-            __ Setae(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setae(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setb_m:
-            __ Setb(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setb(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_seto_m:
-            __ Seto(TransferMem(opnd0, funcUniqueId));
+            assmbler.Seto(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setbe_m:
-            __ Setbe(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setbe(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_sete_m:
-            __ Sete(TransferMem(opnd0, funcUniqueId));
+            assmbler.Sete(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setl_m:
-            __ Setl(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setl(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setle_m:
-            __ Setle(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setle(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setg_m:
-            __ Setg(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setg(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setge_m:
-            __ Setge(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setge(TransferMem(opnd0, funcUniqueId));
             break;
         case x64::MOP_setne_m:
-            __ Setne(TransferMem(opnd0, funcUniqueId));
+            assmbler.Setne(TransferMem(opnd0, funcUniqueId));
             break;
         /* cmova & cmovae */
         case x64::MOP_cmovaw_r_r:
-            __ Cmova(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmova(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmoval_r_r:
-            __ Cmova(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmova(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaq_r_r:
-            __ Cmova(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmova(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaw_m_r:
-            __ Cmova(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmova(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmoval_m_r:
-            __ Cmova(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmova(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaq_m_r:
-            __ Cmova(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmova(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaew_r_r:
-            __ Cmovae(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovae(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovael_r_r:
-            __ Cmovae(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovae(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaeq_r_r:
-            __ Cmovae(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovae(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaew_m_r:
-            __ Cmovae(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovae(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovael_m_r:
-            __ Cmovae(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovae(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovaeq_m_r:
-            __ Cmovae(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovae(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* cmovb & cmovbe */
         case x64::MOP_cmovbw_r_r:
-            __ Cmovb(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovb(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbl_r_r:
-            __ Cmovb(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovb(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbq_r_r:
-            __ Cmovb(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovb(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbw_m_r:
-            __ Cmovb(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovb(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbl_m_r:
-            __ Cmovb(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovb(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbq_m_r:
-            __ Cmovb(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovb(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbew_r_r:
-            __ Cmovbe(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovbe(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbel_r_r:
-            __ Cmovbe(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovbe(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbeq_r_r:
-            __ Cmovbe(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovbe(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbew_m_r:
-            __ Cmovbe(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovbe(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbel_m_r:
-            __ Cmovbe(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovbe(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovbeq_m_r:
-            __ Cmovbe(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovbe(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* cmove */
         case x64::MOP_cmovew_r_r:
-            __ Cmove(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmove(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovel_r_r:
-            __ Cmove(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmove(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmoveq_r_r:
-            __ Cmove(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmove(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovew_m_r:
-            __ Cmove(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmove(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovel_m_r:
-            __ Cmove(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmove(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmoveq_m_r:
-            __ Cmove(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmove(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* cmovg & cmovge */
         case x64::MOP_cmovgw_r_r:
-            __ Cmovg(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovg(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgl_r_r:
-            __ Cmovg(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovg(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgq_r_r:
-            __ Cmovg(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovg(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgw_m_r:
-            __ Cmovg(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovg(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgl_m_r:
-            __ Cmovg(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovg(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgq_m_r:
-            __ Cmovg(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovg(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgew_r_r:
-            __ Cmovge(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovge(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgel_r_r:
-            __ Cmovge(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovge(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgeq_r_r:
-            __ Cmovge(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovge(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgew_m_r:
-            __ Cmovge(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovge(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgel_m_r:
-            __ Cmovge(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovge(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovgeq_m_r:
-            __ Cmovge(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovge(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* cmovl & cmovle */
         case x64::MOP_cmovlw_r_r:
-            __ Cmovl(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovl(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovll_r_r:
-            __ Cmovl(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovl(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlq_r_r:
-            __ Cmovl(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovl(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlw_m_r:
-            __ Cmovl(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovl(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovll_m_r:
-            __ Cmovl(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovl(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlq_m_r:
-            __ Cmovl(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovl(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlew_r_r:
-            __ Cmovle(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovle(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlel_r_r:
-            __ Cmovle(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovle(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovleq_r_r:
-            __ Cmovle(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovle(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlew_m_r:
-            __ Cmovle(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovle(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovlel_m_r:
-            __ Cmovle(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovle(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovleq_m_r:
-            __ Cmovle(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovle(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         /* cmovne */
         case x64::MOP_cmovnew_r_r:
-            __ Cmovne(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovne(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovnel_r_r:
-            __ Cmovne(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovne(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovneq_r_r:
-            __ Cmovne(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovne(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovnew_m_r:
-            __ Cmovne(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovne(kW, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovnel_m_r:
-            __ Cmovne(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovne(kL, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovneq_m_r:
-            __ Cmovne(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            assmbler.Cmovne(kQ, TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
             break;
         case x64::MOP_cmovow_r_r:
-            __ Cmovo(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovo(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovol_r_r:
-            __ Cmovo(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovo(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_cmovoq_r_r:
-            __ Cmovo(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Cmovo(kQ, TransferReg(opnd0), TransferReg(opnd1));
             break;
         /* call */
         case x64::MOP_callq_r: {
-            __ Call(kQ, TransferReg(opnd0));
+            assmbler.Call(kQ, TransferReg(opnd0));
             if (insn.GetStackMap() != nullptr) {
                 auto referenceMap = insn.GetStackMap()->GetReferenceMap().SerializeInfo();
                 auto deoptInfo = insn.GetStackMap()->GetDeoptInfo().SerializeInfo();
-                __ RecordStackmap(referenceMap, deoptInfo);
+                assmbler.RecordStackmap(referenceMap, deoptInfo);
             }
             break;
         }
         case x64::MOP_callq_l: {
-            __ Call(kQ, TransferFuncName(opnd0));
+            assmbler.Call(kQ, TransferFuncName(opnd0));
             if (insn.GetStackMap() != nullptr) {
                 auto referenceMap = insn.GetStackMap()->GetReferenceMap().SerializeInfo();
                 auto deoptInfo = insn.GetStackMap()->GetDeoptInfo().SerializeInfo();
-                __ RecordStackmap(referenceMap, deoptInfo);
+                assmbler.RecordStackmap(referenceMap, deoptInfo);
             }
             break;
         }
 
         case x64::MOP_callq_m: {
-            __ Call(kQ, TransferMem(opnd0, funcUniqueId));
+            assmbler.Call(kQ, TransferMem(opnd0, funcUniqueId));
             if (insn.GetStackMap() != nullptr) {
                 auto referenceMap = insn.GetStackMap()->GetReferenceMap().SerializeInfo();
                 auto deoptInfo = insn.GetStackMap()->GetDeoptInfo().SerializeInfo();
-                __ RecordStackmap(referenceMap, deoptInfo);
+                assmbler.RecordStackmap(referenceMap, deoptInfo);
             }
             break;
         }
 
         /* ret */
         case x64::MOP_retq:
-            __ Ret();
+            assmbler.Ret();
             break;
         case x64::MOP_leaveq:
-            __ Leave();
+            assmbler.Leave();
             break;
         /* imul */
         case x64::MOP_imulw_r_r:
-            __ Imul(kW, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Imul(kW, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_imull_r_r:
-            __ Imul(kL, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Imul(kL, TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_imulq_r_r:
-            __ Imul(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Imul(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        /* mul float */
+        case x64::MOP_mulfs_r_r:
+            assmbler.Mul(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_mulfd_r_r:
+            assmbler.Mul(TransferReg(opnd0), TransferReg(opnd1), false);
             break;
         /* nop */
         case x64::MOP_nop:
-            __ Nop();
+            assmbler.Nop();
             break;
         /* byte swap */
         case x64::MOP_bswapl_r:
-            __ Bswap(kL, TransferReg(opnd0));
+            assmbler.Bswap(kL, TransferReg(opnd0));
             break;
         case x64::MOP_bswapq_r:
-            __ Bswap(kQ, TransferReg(opnd0));
+            assmbler.Bswap(kQ, TransferReg(opnd0));
             break;
         case x64::MOP_xchgb_r_r:
-            __ Xchg(kB, TransferReg(opnd0), TransferReg(opnd1));
+            assmbler.Xchg(kB, TransferReg(opnd0), TransferReg(opnd1));
             break;
         /* pseudo instruction */
         case x64::MOP_pseudo_ret_int:
-            __ DealWithPseudoInst(curMd.GetName());
+            assmbler.DealWithPseudoInst(curMd.GetName());
+            break;
+        /* floating point and */
+        case x64::MOP_andd_r_r:
+            assmbler.And(TransferReg(opnd0), TransferReg(opnd1), false);
+            break;
+        case x64::MOP_ands_r_r:
+            assmbler.And(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        /* floating div */
+        case x64::MOP_divsd_r:
+            assmbler.Divsd(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_divsd_m:
+            assmbler.Divsd(TransferMem(opnd0, funcUniqueId), TransferReg(opnd1));
+            break;
+        /* convert int2float */
+        case x64::MOP_cvtsi2ssq_r:
+            assmbler.Cvtsi2ss(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvtsi2ssl_r:
+            assmbler.Cvtsi2ss(kL, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvtsi2sdq_r:
+            assmbler.Cvtsi2sd(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvtsi2sdl_r:
+            assmbler.Cvtsi2sd(kL, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        /*convert float2int */
+        case x64::MOP_cvttsd2siq_r:
+            assmbler.Cvttsd2si(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvttsd2sil_r:
+            assmbler.Cvttsd2si(kL, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvttss2siq_r:
+            assmbler.Cvttss2si(kQ, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvttss2sil_r:
+            assmbler.Cvttss2si(kL, TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        /* convert float2float */
+        case x64::MOP_cvtss2sd_r:
+            assmbler.Cvtss2sd(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cvtsd2ss_r:
+            assmbler.Cvtsd2ss(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        /* unordered compare */
+        case x64::MOP_ucomisd_r_r:
+            assmbler.Ucomisd(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_sqrts_r_r:
+            assmbler.Sqrtss_r(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_sqrtd_r_r:
+            assmbler.Sqrtsd_r(TransferReg(opnd0), TransferReg(opnd1));
             break;
         default: {
             insn.Dump();
@@ -1402,7 +1519,7 @@ void X64Emitter::EmitFunctionHeader(CGFunc &cgFunc)
     const MIRSymbol *funcSymbol = cgFunc.GetFunction().GetFuncSymbol();
     uint32 symIdx = funcSymbol->GetNameStrIdx().get();
     const string &symName = funcSymbol->GetName();
-    __ StoreNameIntoSymMap(symIdx, symName);
+    assmbler.StoreNameIntoSymMap(symIdx, symName);
 
     SymbolAttr funcAttr = kSAGlobal;
     if (funcSymbol->GetFunction()->GetAttr(FUNCATTR_weak)) {
@@ -1414,9 +1531,9 @@ void X64Emitter::EmitFunctionHeader(CGFunc &cgFunc)
     }
     if (cgFunc.GetFunction().GetAttr(FUNCATTR_section)) {
         const string &sectionName = cgFunc.GetFunction().GetAttrs().GetPrefixSectionName();
-        __ EmitFunctionHeader(symIdx, funcAttr, &sectionName);
+        assmbler.EmitFunctionHeader(symIdx, funcAttr, &sectionName);
     } else {
-        __ EmitFunctionHeader(symIdx, funcAttr, nullptr);
+        assmbler.EmitFunctionHeader(symIdx, funcAttr, nullptr);
     }
 }
 
@@ -1429,18 +1546,18 @@ void X64Emitter::EmitBBHeaderLabel(CGFunc &cgFunc, LabelIdx labIdx, uint32 freq)
     bbLabel.append("__");
     bbLabel.append(to_string(labIdx));
     int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, static_cast<int64>(labIdx));
-    __ StoreNameIntoSymMap(labelSymIdx, bbLabel);
+    assmbler.StoreNameIntoSymMap(labelSymIdx, bbLabel);
 
     if (cgFunc.GetCG()->GenerateVerboseCG()) {
         const string &labelName = cgFunc.GetFunction().GetLabelTab()->GetName(labIdx);
         /* If label name has @ as its first char, it is not from MIR */
         if (!labelName.empty() && labelName.at(0) != '@') {
-            __ EmitBBLabel(labelSymIdx, true, freq, &labelName);
+            assmbler.EmitBBLabel(labelSymIdx, true, freq, &labelName);
         } else {
-            __ EmitBBLabel(labelSymIdx, true, freq);
+            assmbler.EmitBBLabel(labelSymIdx, true, freq);
         }
     } else {
-        __ EmitBBLabel(labelSymIdx);
+        assmbler.EmitBBLabel(labelSymIdx);
     }
 }
 
@@ -1452,7 +1569,7 @@ void X64Emitter::EmitJmpTable(const CGFunc &cgFunc)
         DEBUG_ASSERT(st->IsReadOnly(), "NYI");
         uint32 symIdx = st->GetNameStrIdx().get();
         const string &symName = st->GetName();
-        __ StoreNameIntoSymMap(symIdx, symName);
+        assmbler.StoreNameIntoSymMap(symIdx, symName);
 
         MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
         CHECK_NULL_FATAL(arrayConst);
@@ -1464,10 +1581,10 @@ void X64Emitter::EmitJmpTable(const CGFunc &cgFunc)
             uint32 labelIdx = lblConst->GetValue();
             string labelName = ".L." + to_string(funcUniqueId) + "__" + to_string(labelIdx);
             int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, labelIdx);
-            __ StoreNameIntoSymMap(labelSymIdx, labelName);
+            assmbler.StoreNameIntoSymMap(labelSymIdx, labelName);
             labelSymIdxs.push_back(labelSymIdx);
         }
-        __ EmitJmpTableElem(symIdx, labelSymIdxs);
+        assmbler.EmitJmpTableElem(symIdx, labelSymIdxs);
     }
 }
 
@@ -1483,7 +1600,7 @@ void X64Emitter::EmitFunctionFoot(CGFunc &cgFunc)
     } else if (!funcSymbol->GetFunction()->GetAttr(FUNCATTR_static)) {
         funcAttr = kSAGlobal;
     }
-    __ EmitFunctionFoot(symIdx, funcAttr);
+    assmbler.EmitFunctionFoot(symIdx, funcAttr);
 }
 
 uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
@@ -1544,7 +1661,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
                     DEBUG_ASSERT(false, "should not run here");
                 }
             } else {
-                __ EmitNull(elemSize);
+                assmbler.EmitNull(elemSize);
             }
             sEmitInfo->IncreaseTotalSize(elemSize);
             sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
@@ -1561,7 +1678,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
             uint64 psize = (totalSize % nextAlign == 0) ? 0 : (nextAlign - (totalSize % nextAlign));
             /* element is uninitialized, emit null constant. */
             if (psize != 0) {
-                __ EmitNull(psize);
+                assmbler.EmitNull(psize);
                 sEmitInfo->IncreaseTotalSize(psize);
                 sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
             }
@@ -1577,7 +1694,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
 
     uint64 opSize = sizeInByte - sEmitInfo->GetTotalSize();
     if (opSize != 0) {
-        __ EmitNull(opSize);
+        assmbler.EmitNull(opSize);
     }
     return valueSize;
 }
@@ -1663,11 +1780,11 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
                 static_cast<uint64>(iNum) *
                 static_cast<uint64>(GetSymbolSize(arrayCt.GetConstVecItem(0)->GetType().GetTypeIndex()));
             if (unInSizeInByte != 0) {
-                __ EmitNull(unInSizeInByte);
+                assmbler.EmitNull(unInSizeInByte);
             }
         } else {
             uint64 sizeInByte = GetSymbolSize(elmTyIdx) * dim;
-            __ EmitNull(sizeInByte);
+            assmbler.EmitNull(sizeInByte);
         }
     }
     return valueSize;
@@ -1697,8 +1814,8 @@ void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
         DEBUG_ASSERT(structType != nullptr, "EmitScalarConstant: non-zero fieldID for non-structure");
         structFieldOfs = Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, symAddr.GetFieldID()).first;
     }
-    __ StoreNameIntoSymMap(symIdx, addrName);
-    __ EmitAddrValue(symIdx, symAddrOfs, structFieldOfs, belongsToDataSec);
+    assmbler.StoreNameIntoSymMap(symIdx, addrName);
+    assmbler.EmitAddrValue(symIdx, symAddrOfs, structFieldOfs, belongsToDataSec);
 }
 
 uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, bool isIndirect)
@@ -1717,8 +1834,8 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
 
             uint32 symIdx = symAddrSym->GetNameStrIdx();
             const string &name = symAddrSym->GetName();
-            __ StoreNameIntoSymMap(symIdx, name);
-            __ EmitAddrOfFuncValue(symIdx, belongsToDataSec);
+            assmbler.StoreNameIntoSymMap(symIdx, name);
+            assmbler.EmitAddrOfFuncValue(symIdx, belongsToDataSec);
             break;
         }
         case kConstInt: {
@@ -1728,7 +1845,7 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
                 DEBUG_ASSERT(false, "actual value is larger than expected");
             }
             int64 value = intCt.GetExtValue();
-            __ EmitIntValue(value, elemSize, belongsToDataSec);
+            assmbler.EmitIntValue(value, elemSize, belongsToDataSec);
             break;
         }
         case kConstLblConst: {
@@ -1737,8 +1854,8 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
             uint32 funcUniqueId = lbl.GetPUIdx();
             string labelName = ".L." + to_string(funcUniqueId) + "__" + to_string(labelIdx);
             int64 symIdx = CalculateLabelSymIdx(funcUniqueId, labelIdx);
-            __ StoreNameIntoSymMap(symIdx, labelName);
-            __ EmitLabelValue(symIdx, belongsToDataSec);
+            assmbler.StoreNameIntoSymMap(symIdx, labelName);
+            assmbler.EmitLabelValue(symIdx, belongsToDataSec);
             break;
         }
         case kConstStrConst: {
@@ -1748,11 +1865,11 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
                 string strName = ".LSTR__" + to_string(strIdx);
                 int64 strSymIdx = CalculateStrLabelSymIdx(GlobalTables::GetGsymTable().GetSymbolTableSize(), strIdx);
                 stringPtr.push_back(strIdx);
-                __ StoreNameIntoSymMap(strSymIdx, strName);
-                __ EmitIndirectString(strSymIdx, belongsToDataSec);
+                assmbler.StoreNameIntoSymMap(strSymIdx, strName);
+                assmbler.EmitIndirectString(strSymIdx, belongsToDataSec);
             } else {
                 const string &ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(strCt.GetValue());
-                __ EmitDirectString(ustr, belongsToDataSec);
+                assmbler.EmitDirectString(ustr, belongsToDataSec);
             }
             break;
         }
@@ -1813,7 +1930,7 @@ void X64Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo, bool belon
         while (structEmitInfo.GetCombineBitFieldWidth() > charBitWidth) {
             uint8 shift = flag ? (structEmitInfo.GetCombineBitFieldWidth() - charBitWidth) : 0U;
             uint64 tmp = (structEmitInfo.GetCombineBitFieldValue() >> shift) & kGetLow8Bits;
-            __ EmitBitFieldValue(tmp, belongsToDataSec);
+            assmbler.EmitBitFieldValue(tmp, belongsToDataSec);
             structEmitInfo.DecreaseCombineBitFieldWidth(charBitWidth);
             uint64 value =
                 flag ? structEmitInfo.GetCombineBitFieldValue() - (tmp << structEmitInfo.GetCombineBitFieldWidth())
@@ -1839,7 +1956,7 @@ void X64Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo, bool belon
     }
     if (structEmitInfo.GetCombineBitFieldWidth() != 0) {
         uint64 value = structEmitInfo.GetCombineBitFieldValue() & kGetLow8Bits;
-        __ EmitBitFieldValue(value, belongsToDataSec);
+        assmbler.EmitBitFieldValue(value, belongsToDataSec);
     }
     CHECK_FATAL(charBitWidth != 0, "divide by zero");
     if ((structEmitInfo.GetNextFieldOffset() % charBitWidth) != 0) {
@@ -1853,9 +1970,6 @@ void X64Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo, bool belon
 
 void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
 {
-    if (!cgFunc.GetCG()->GetMIRModule()->IsCModule()) {
-        return;
-    }
     /* function local pstatic initialization */
     MIRSymbolTable *lSymTab = cgFunc.GetFunction().GetSymTab();
     if (lSymTab != nullptr) {
@@ -1880,7 +1994,7 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
                 emittedLocalSym.push_back(symbolName);
 
                 uint32 symIdx = symbol->GetNameStrIdx().get();
-                __ StoreNameIntoSymMap(symIdx, symbolName, true);
+                assmbler.StoreNameIntoSymMap(symIdx, symbolName, true);
 
                 MIRConst *ct = symbol->GetKonst();
                 MIRType *ty = symbol->GetType();
@@ -1888,21 +2002,36 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
                 uint8 alignInByte = GetSymbolAlign(*symbol);
                 if (ct == nullptr) {
                     alignInByte = GetSymbolAlign(*symbol, true);
-                    __ EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, kSBss);
+                    assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, kSBss);
                 } else {
                     MIRTypeKind kind = ty->GetKind();
                     uint64 valueSize = 0;
-                    __ EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, kSData);
+                    bool isFloatTy =
+                        (ct->GetKind() == maple::kConstDoubleConst || ct->GetKind() == maple::kConstFloatConst);
+                    auto secType = isFloatTy ? kSText : kSData;
+                    assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, secType);
                     if (kind == kTypeStruct || kind == kTypeUnion || kind == kTypeClass) {
                         valueSize = EmitStructure(*ct, *cgFunc.GetCG());
                     } else if (IsPrimitiveVector(ty->GetPrimType())) {
                         valueSize = EmitVector(*ct);
                     } else if (kind == kTypeArray) {
                         valueSize = EmitArray(*ct, *cgFunc.GetCG());
+                    } else if (isFloatTy) {
+                        MIRType &elmType = ct->GetType();
+                        uint64 elemSize = elmType.GetSize();
+                        if (ct->GetKind() == maple::kConstDoubleConst) {
+                            MIRDoubleConst &dCt = static_cast<MIRDoubleConst&>(*ct);
+                            int64 value = dCt.GetIntValue();
+                            assmbler.EmitFloatValue(symIdx, value, elemSize);
+                        } else {
+                            MIRFloatConst &fCt = static_cast<MIRFloatConst&>(*ct);
+                            int64 value = fCt.GetIntValue();
+                            assmbler.EmitFloatValue(symIdx, value, elemSize);
+                        }
                     } else {
                         valueSize = EmitSingleElement(*ct, true);
                     }
-                    __ PostEmitVariable(symIdx, kSALocal, valueSize);
+                    assmbler.PostEmitVariable(symIdx, kSALocal, valueSize, isFloatTy);
                 }
             }
         }
@@ -1914,7 +2043,7 @@ void X64Emitter::EmitStringPointers()
     for (uint32 strIdx : stringPtr) {
         string ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(strIdx);
         int64 strSymIdx = CalculateStrLabelSymIdx(GlobalTables::GetGsymTable().GetSymbolTableSize(), strIdx);
-        __ EmitDirectString(ustr, true, strSymIdx);
+        assmbler.EmitDirectString(ustr, true, strSymIdx);
     }
 }
 
@@ -1947,7 +2076,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
             if (mirSymbol->IsGctibSym()) {
                 continue;
             }
-            __ StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
+            assmbler.StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
             SectionKind secKind;
             if (mirSymbol->IsThreadLocal()) {
                 secKind = kSTbss;
@@ -1957,7 +2086,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                 secKind = kSComm;
                 alignInByte = GetSymbolAlign(*mirSymbol, true);
             }
-            __ EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, secKind);
+            assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, secKind);
             continue;
         }
         MIRTypeKind kind = mirType->GetKind();
@@ -1965,11 +2094,11 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
         if (storageClass == kScGlobal || (storageClass == kScFstatic && !mirSymbol->IsReadOnly())) {
             MIRConst *mirConst = mirSymbol->GetKonst();
             uint64 valueSize = 0;
-            __ StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
+            assmbler.StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
             if (mirSymbol->IsThreadLocal()) {
-                __ EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSTdata);
+                assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSTdata);
             } else {
-                __ EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSData);
+                assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSData);
             }
             if (IsPrimitiveVector(mirType->GetPrimType())) {
                 valueSize = EmitVector(*mirConst);
@@ -1984,13 +2113,13 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
             } else {
                 DEBUG_ASSERT(false, "EmitGlobalVariable: Unknown mirKind");
             }
-            __ PostEmitVariable(symIdx, kSAGlobal, valueSize);
+            assmbler.PostEmitVariable(symIdx, kSAGlobal, valueSize);
         } else if (mirSymbol->IsReadOnly()) { /* If symbol is const & static */
             MIRConst *mirConst = mirSymbol->GetKonst();
-            __ StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
+            assmbler.StoreNameIntoSymMap(symIdx, mirSymbol->GetName());
             if (mirConst == nullptr) {
                 alignInByte = GetSymbolAlign(*mirSymbol, true);
-                __ EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSComm);
+                assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSComm);
             } else {
                 SymbolAttr symAttr = kSAGlobal;
                 if (mirSymbol->IsWeak()) {
@@ -1999,7 +2128,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                            (storageClass == kScFstatic && mirSymbol->sectionAttr == UStrIdx(0))) {
                     symAttr = kSAStatic;
                 }
-                __ EmitVariable(symIdx, sizeInByte, alignInByte, symAttr, kSRodata);
+                assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, symAttr, kSRodata);
                 if (IsPrimitiveVector(mirType->GetPrimType())) {
                     (void)EmitVector(*mirConst, false);
                 } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
@@ -2025,6 +2154,9 @@ void X64Emitter::Run(CGFunc &cgFunc)
 {
     X64CGFunc &x64CGFunc = static_cast<X64CGFunc &>(cgFunc);
     uint32 funcUniqueId = cgFunc.GetUniqueID();
+
+    assmbler.SetLastModulePC(cgFunc.GetMirModule().GetLastModulePC());
+
     /* emit local variable(s) if exists */
     EmitLocalVariable(cgFunc);
 
@@ -2032,7 +2164,8 @@ void X64Emitter::Run(CGFunc &cgFunc)
     EmitFunctionHeader(cgFunc);
 
     /* emit instructions */
-    FOR_ALL_BB(bb, &x64CGFunc) {
+    FOR_ALL_BB(bb, &x64CGFunc)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
@@ -2042,7 +2175,8 @@ void X64Emitter::Run(CGFunc &cgFunc)
             EmitBBHeaderLabel(cgFunc, bb->GetLabIdx(), bb->GetFrequency());
         }
 
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             EmitInsn(*insn, funcUniqueId);
         }
     }
@@ -2052,7 +2186,9 @@ void X64Emitter::Run(CGFunc &cgFunc)
 
     EmitFunctionFoot(cgFunc);
 
-    __ ClearLocalSymMap();
+    cgFunc.GetMirModule().SetCurModulePC(assmbler.GetCurModulePC());
+
+    assmbler.ClearLocalSymMap();
 }
 
 bool CgEmission::PhaseRun(CGFunc &f)
@@ -2067,7 +2203,7 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
 {
     MapleVector<DBGDieAttr *> attrvec = die.GetAttrVec();
     if (attrName == static_cast<uint32>(DW_AT_low_pc) && tagName == static_cast<uint32>(DW_TAG_compile_unit)) {
-        __ EmitDwFormAddr(true);
+        assmbler.EmitDwFormAddr(true);
     }
     if (attrName == static_cast<uint32>(DW_AT_low_pc) && tagName == static_cast<uint32>(DW_TAG_subprogram)) {
         /* if decl, name should be found; if def, we try DW_AT_specification */
@@ -2085,10 +2221,10 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
         MapleMap<MIRFunction *, std::pair<LabelIdx, LabelIdx>>::iterator it = CG::GetFuncWrapLabels().find(mfunc);
         if (it != CG::GetFuncWrapLabels().end()) {
             /* it is a <pair> */
-            __ EmitLabel(mfunc->GetPuidx(), (*it).second.first);
+            assmbler.EmitLabel(mfunc->GetPuidx(), (*it).second.first);
         } else {
             PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
-            __ EmitLabel(pIdx, attr.GetId()); /* maybe deadbeef */
+            assmbler.EmitLabel(pIdx, attr.GetId()); /* maybe deadbeef */
         }
     }
     if (attrName == static_cast<uint32>(DW_AT_low_pc) && tagName == static_cast<uint32>(DW_TAG_label)) {
@@ -2104,11 +2240,11 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
     }
     if (attrName == static_cast<uint32>(DW_AT_high_pc)) {
         if (tagName == static_cast<uint32>(DW_TAG_compile_unit)) {
-            __ EmitDwFormData8();
+            assmbler.EmitDwFormData8();
         }
     }
     if (attrName != static_cast<uint32>(DW_AT_high_pc) && attrName != static_cast<uint32>(DW_AT_low_pc)) {
-        __ EmitDwFormAddr();
+        assmbler.EmitDwFormAddr();
     }
 }
 
@@ -2117,15 +2253,15 @@ void X64Emitter::EmitDwFormRef4(DBGDie &die, const DBGDieAttr &attr, DwAt attrNa
     if (attrName == static_cast<uint32>(DW_AT_type)) {
         DBGDie *die0 = di.GetDie(static_cast<uint32>(attr.GetU()));
         if (die0->GetOffset()) {
-            __ EmitDwFormRef4(die0->GetOffset());
+            assmbler.EmitDwFormRef4(die0->GetOffset());
         } else {
             /* unknown type, missing mplt */
-            __ EmitDwFormRef4(di.GetDummyTypeDie()->GetOffset(), true);
+            assmbler.EmitDwFormRef4(di.GetDummyTypeDie()->GetOffset(), true);
         }
     } else if (attrName == static_cast<uint32>(DW_AT_specification) || attrName == static_cast<uint32>(DW_AT_sibling)) {
         DBGDie *die0 = di.GetDie(static_cast<uint32>(attr.GetU()));
         DEBUG_ASSERT(die0->GetOffset(), "");
-        __ EmitDwFormRef4(die0->GetOffset());
+        assmbler.EmitDwFormRef4(die0->GetOffset());
     } else if (attrName == static_cast<uint32>(DW_AT_object_pointer)) {
         GStrIdx thisIdx = GlobalTables::GetStrTable().GetStrIdxFromName(kDebugMapleThis);
         DBGDie *that = LFindChildDieWithName(die, static_cast<DwTag>(DW_TAG_formal_parameter), thisIdx);
@@ -2133,12 +2269,12 @@ void X64Emitter::EmitDwFormRef4(DBGDie &die, const DBGDieAttr &attr, DwAt attrNa
             what is the name for 'this' used in mapleir?
             this has to be with respect to a function */
         if (that) {
-            __ EmitDwFormRef4(that->GetOffset());
+            assmbler.EmitDwFormRef4(that->GetOffset());
         } else {
-            __ EmitDwFormRef4(attr.GetU());
+            assmbler.EmitDwFormRef4(attr.GetU());
         }
     } else {
-        __ EmitDwFormRef4(attr.GetU(), false, true);
+        assmbler.EmitDwFormRef4(attr.GetU(), false, true);
     }
 }
 
@@ -2147,7 +2283,7 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
 {
     if (attrName == static_cast<uint32>(DW_AT_high_pc)) {
         if (tagName == static_cast<uint32>(DW_TAG_compile_unit)) {
-            __ EmitDwFormData8();
+            assmbler.EmitDwFormData8();
         } else if (tagName == static_cast<uint32>(DW_TAG_subprogram)) {
             DBGDieAttr *name = LFindAttribute(attrvec, static_cast<DwAt>(DW_AT_name));
             if (name == nullptr) {
@@ -2186,10 +2322,10 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
                 startLabelFuncPuIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
                 startLabelIdx = lowpc->GetId();
             }
-            __ EmitDwFormData8(endLabelFuncPuIdx, startLabelFuncPuIdx, endLabelIdx, startLabelIdx);
+            assmbler.EmitDwFormData8(endLabelFuncPuIdx, startLabelFuncPuIdx, endLabelIdx, startLabelIdx);
         }
     } else {
-        __ EmitDwFormData(attr.GetI(), k8Bytes);
+        assmbler.EmitDwFormData(attr.GetI(), k8Bytes);
     }
 }
 
@@ -2198,26 +2334,26 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
     MapleVector<DBGDieAttr *> &attrvec = die.GetAttrVec();
     switch (attr.GetDwForm()) {
         case DW_FORM_string:
-            __ EmitDwFormString(GlobalTables::GetStrTable().GetStringFromStrIdx(attr.GetId()));
+            assmbler.EmitDwFormString(GlobalTables::GetStrTable().GetStringFromStrIdx(attr.GetId()));
             break;
         case DW_FORM_strp:
-            __ EmitDwFormStrp(attr.GetId(), GlobalTables::GetStrTable().StringTableSize());
+            assmbler.EmitDwFormStrp(attr.GetId(), GlobalTables::GetStrTable().StringTableSize());
             break;
         case DW_FORM_data1:
-            __ EmitDwFormData(attr.GetI(), k1Byte);
+            assmbler.EmitDwFormData(attr.GetI(), k1Byte);
             break;
         case DW_FORM_data2:
-            __ EmitDwFormData(attr.GetI(), k2Bytes);
+            assmbler.EmitDwFormData(attr.GetI(), k2Bytes);
             break;
         case DW_FORM_data4:
-            __ EmitDwFormData(attr.GetI(), k4Bytes);
+            assmbler.EmitDwFormData(attr.GetI(), k4Bytes);
             break;
         case DW_FORM_data8:
             EmitDwFormData8(attr, attrName, tagName, di, attrvec);
             break;
         case DW_FORM_sec_offset:
             if (attrName == static_cast<uint32>(DW_AT_stmt_list)) {
-                __ EmitDwFormSecOffset();
+                assmbler.EmitDwFormSecOffset();
             }
             break;
         case DW_FORM_addr:
@@ -2230,17 +2366,17 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
             DBGExprLoc *elp = attr.GetPtr();
             switch (elp->GetOp()) {
                 case DW_OP_call_frame_cfa:
-                    __ EmitDwFormExprlocCfa(elp->GetOp());
+                    assmbler.EmitDwFormExprlocCfa(elp->GetOp());
                     break;
                 case DW_OP_addr:
-                    __ EmitDwFormExprlocAddr(elp->GetOp(),
-                                             GlobalTables::GetStrTable()
-                                                 .GetStringFromStrIdx(static_cast<uint32>(elp->GetGvarStridx()))
-                                                 .c_str());
+                    assmbler.EmitDwFormExprlocAddr(elp->GetOp(),
+                                                   GlobalTables::GetStrTable()
+                                                   .GetStringFromStrIdx(static_cast<uint32>(elp->GetGvarStridx()))
+                                                   .c_str());
                     break;
                 case DW_OP_fbreg:
-                    __ EmitDwFormExprlocFbreg(elp->GetOp(), elp->GetFboffset(),
-                                              namemangler::GetSleb128Size(elp->GetFboffset()));
+                    assmbler.EmitDwFormExprlocFbreg(elp->GetOp(), elp->GetFboffset(),
+                                                    namemangler::GetSleb128Size(elp->GetFboffset()));
                     break;
                 case DW_OP_breg0:
                 case DW_OP_breg1:
@@ -2250,10 +2386,10 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
                 case DW_OP_breg5:
                 case DW_OP_breg6:
                 case DW_OP_breg7:
-                    __ EmitDwFormExprlocBregn(elp->GetOp(), GetDwOpName(elp->GetOp()));
+                    assmbler.EmitDwFormExprlocBregn(elp->GetOp(), GetDwOpName(elp->GetOp()));
                     break;
                 default:
-                    __ EmitDwFormExprloc(uintptr(elp));
+                    assmbler.EmitDwFormExprloc(uintptr(elp));
                     break;
             }
             break;
@@ -2268,7 +2404,7 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
 
 void X64Emitter::EmitDIDebugInfoSection(DebugInfo &mirdi)
 {
-    __ EmitDIDebugInfoSectionHeader(mirdi.GetDebugInfoLength());
+    assmbler.EmitDIDebugInfoSectionHeader(mirdi.GetDebugInfoLength());
     /*
      * 7.5.1.2 type unit header
      * currently empty...
@@ -2352,7 +2488,7 @@ void X64Emitter::UpdateAttrAndEmit(const string &sfile, DebugInfo &mirdi, DBGAbb
 
 void X64Emitter::EmitDIDebugAbbrevSection(DebugInfo &mirdi)
 {
-    __ EmitDIDebugAbbrevSectionHeader();
+    assmbler.EmitDIDebugAbbrevSectionHeader();
 
     /* construct a list of DI abbrev entries
        1. DW_TAG_compile_unit 0x11
@@ -2364,8 +2500,8 @@ void X64Emitter::EmitDIDebugAbbrevSection(DebugInfo &mirdi)
         }
         CHECK_FATAL(maple::GetDwTagName(diae->GetTag()) != nullptr,
                     "GetDwTagName return null in X64Emitter::EmitDIDebugAbbrevSection");
-        __ EmitDIDebugAbbrevDiae(verbose, diae->GetAbbrevId(), diae->GetTag(), maple::GetDwTagName(diae->GetTag()),
-                                 diae->GetWithChildren());
+        assmbler.EmitDIDebugAbbrevDiae(verbose, diae->GetAbbrevId(), diae->GetTag(),
+                                       maple::GetDwTagName(diae->GetTag()), diae->GetWithChildren());
 
         MapleVector<uint32> &apl = diae->GetAttrPairs(); /* attribute pair list */
 
@@ -2374,13 +2510,13 @@ void X64Emitter::EmitDIDebugAbbrevSection(DebugInfo &mirdi)
                         "GetDwAtName return null in X64Emitter::EmitDIDebugAbbrevSection");
             CHECK_FATAL(maple::GetDwFormName(unsigned(apl[i + 1])) != nullptr,
                         "GetDwFormName return null in X64Emitter::EmitDIDebugAbbrevSection");
-            __ EmitDIDebugAbbrevDiaePairItem(verbose, apl[i], apl[1 + 1], maple::GetDwAtName(unsigned(apl[i])),
-                                             maple::GetDwFormName(unsigned(apl[i + 1])));
+            assmbler.EmitDIDebugAbbrevDiaePairItem(verbose, apl[i], apl[1 + 1], maple::GetDwAtName(unsigned(apl[i])),
+                                                   maple::GetDwFormName(unsigned(apl[i + 1])));
         }
-        __ EmitDIDebugSectionEnd(kSDebugAbbrev);
-        __ EmitDIDebugSectionEnd(kSDebugAbbrev);
+        assmbler.EmitDIDebugSectionEnd(kSDebugAbbrev);
+        assmbler.EmitDIDebugSectionEnd(kSDebugAbbrev);
     }
-    __ EmitDIDebugSectionEnd(kSDebugAbbrev);
+    assmbler.EmitDIDebugSectionEnd(kSDebugAbbrev);
 }
 
 void X64Emitter::EmitDIDebugStrSection()
@@ -2392,8 +2528,8 @@ void X64Emitter::EmitDIDebugStrSection()
         (void)debugStrs.emplace_back(name);
         (void)strps.emplace_back(it);
     }
-    __ EmitDIDebugStrSection(strps, debugStrs, GlobalTables::GetGsymTable().GetSymbolTableSize(),
-                             GlobalTables::GetStrTable().StringTableSize());
+    assmbler.EmitDIDebugStrSection(strps, debugStrs, GlobalTables::GetGsymTable().GetSymbolTableSize(),
+                                   GlobalTables::GetStrTable().StringTableSize());
 }
 
 void X64Emitter::EmitDebugInfo(CG &cg)
@@ -2402,12 +2538,12 @@ void X64Emitter::EmitDebugInfo(CG &cg)
         return;
     }
     SetupDBGInfo(cg.GetMIRModule()->GetDbgInfo());
-    __ EmitDIHeaderFileInfo();
+    assmbler.EmitDIHeaderFileInfo();
     EmitDIDebugInfoSection(*(cg.GetMIRModule()->GetDbgInfo()));
     EmitDIDebugAbbrevSection(*(cg.GetMIRModule()->GetDbgInfo()));
-    __ EmitDIDebugARangesSection();
-    __ EmitDIDebugRangesSection();
-    __ EmitDIDebugLineSection();
+    assmbler.EmitDIDebugARangesSection();
+    assmbler.EmitDIDebugRangesSection();
+    assmbler.EmitDIDebugLineSection();
     EmitDIDebugStrSection();
 }
 

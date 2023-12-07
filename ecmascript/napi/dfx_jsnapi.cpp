@@ -19,6 +19,7 @@
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -49,6 +50,7 @@ using JSHandle = ecmascript::JSHandle<T>;
 using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
+using ecmascript::Tracing;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
@@ -470,23 +472,6 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
 #endif
 }
 
-uint64_t DFXJSNApi::GetProfileInfoBufferSize([[maybe_unused]] const EcmaVM *vm)
-{
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (vm == nullptr) {
-        return 0;
-    }
-    CpuProfiler *profiler = vm->GetProfiler();
-    if (profiler == nullptr) {
-        return 0;
-    }
-    return profiler->GetProfileInfoBufferSize();
-#else
-    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
-    return 0;
-#endif
-}
-
 void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -656,5 +641,67 @@ bool DFXJSNApi::SuspendVMById(EcmaVM *hostVm, uint32_t tid)
         LOG_ECMA(INFO) << "The worker thread, SuspendVMById succeeded: " << success;
         return success;
     }
+}
+
+bool DFXJSNApi::StartTracing([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] std::string &categories)
+{
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    if (vm == nullptr) {
+        return false;
+    }
+    Tracing *tracing = vm->GetTracing();
+    if (tracing == nullptr) {
+        tracing = new Tracing(vm);
+        const_cast<EcmaVM *>(vm)->SetTracing(tracing);
+    }
+    tracing->StartTracing(categories);
+    return true;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler tracing";
+    return false;
+#endif
+}
+
+std::unique_ptr<std::vector<TraceEvent>> DFXJSNApi::StopTracing([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    if (vm == nullptr) {
+        return nullptr;
+    }
+    Tracing *tracing = vm->GetTracing();
+    if (tracing == nullptr) {
+        LOG_ECMA(ERROR) << "StopTracing tracing is nullptr";
+        return nullptr;
+    }
+    auto traceEvents = tracing->StopTracing();
+    if (traceEvents == nullptr) {
+        LOG_ECMA(ERROR) << "trace events is nullptr";
+    }
+    delete tracing;
+    tracing = nullptr;
+    const_cast<EcmaVM *>(vm)->SetTracing(nullptr);
+    return traceEvents;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler tracing";
+    return nullptr;
+#endif
+}
+
+void DFXJSNApi::GetTracingBufferUseage([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] double &percentFull,
+                                       [[maybe_unused]] uint32_t &eventCount, [[maybe_unused]] double &value)
+{
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    if (vm == nullptr) {
+        return;
+    }
+    ecmascript::Tracing *tracing = vm->GetTracing();
+    if (tracing == nullptr) {
+        LOG_ECMA(ERROR) << "GetTracingBufferUseage tracing is nullptr";
+    } else {
+        tracing->GetBufferUseage(percentFull, eventCount, value);
+    }
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler tracing";
+#endif
 }
 } // namespace panda

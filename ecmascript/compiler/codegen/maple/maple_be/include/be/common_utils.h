@@ -74,6 +74,7 @@ constexpr int32 k256BitSizeInt = 256;
 constexpr int32 k512BitSizeInt = 512;
 constexpr int32 k1024BitSizeInt = 1024;
 
+constexpr int32 kNegative8BitSize = -8;
 constexpr int32 kNegative256BitSize = -256;
 constexpr int32 kNegative512BitSize = -512;
 constexpr int32 kNegative1024BitSize = -1024;
@@ -89,6 +90,7 @@ constexpr uint32 k14ByteSize = 14;
 constexpr uint32 k15ByteSize = 15;
 constexpr uint32 k16ByteSize = 16;
 constexpr uint32 k32ByteSize = 32;
+constexpr uint32 k64ByteSize = 64;
 
 constexpr int32 k1ByteSizeInt = 1;
 constexpr int32 k2ByteSizeInt = 2;
@@ -161,7 +163,8 @@ constexpr uint32 kParmMemcpySize = 40;
 constexpr int32 kDivide2 = 2;
 constexpr int32 kRegNum2 = 2;
 constexpr int32 kStepNum2 = 2;
-constexpr int32 kSign4ByteSize = 4;
+constexpr int32 kInsnNum2 = 2;
+constexpr int32 kOpndNum2 = 2;
 
 /* alignment in bytes of uint8 */
 constexpr uint8 kAlignOfU8 = 3;

@@ -36,6 +36,7 @@ class Progress;
 struct ProfileInfo;
 struct JsFrameInfo;
 struct SamplingInfo;
+struct TraceEvent;
 }
 class DFXJSNApi;
 using EcmaVM = ecmascript::EcmaVM;
@@ -45,6 +46,7 @@ using ProfileInfo = ecmascript::ProfileInfo;
 using JsFrameInfo = ecmascript::JsFrameInfo;
 using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
+using TraceEvent = ecmascript::TraceEvent;
 
 class PUBLIC_API DFXJSNApi {
 public:
@@ -91,7 +93,6 @@ public:
     static void StartCpuProfilerForInfo(const EcmaVM *vm,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
-    static uint64_t GetProfileInfoBufferSize(const EcmaVM *vm);
 
     enum class PUBLIC_API ProfilerType : uint8_t { CPU_PROFILER, HEAP_PROFILER };
 
@@ -115,6 +116,11 @@ public:
     static bool CheckSafepoint(const EcmaVM *vm);
     static void ResumeVMById(EcmaVM *vm, uint32_t tid);
     static bool SuspendVMById(EcmaVM *vm, uint32_t tid);
+
+    // tracing
+    static bool StartTracing(const EcmaVM *vm, std::string &categories);
+    static std::unique_ptr<std::vector<TraceEvent>> StopTracing(const EcmaVM *vm);
+    static void GetTracingBufferUseage(const EcmaVM *vm, double &percentFull, uint32_t &eventCount, double &value);
 };
 }
 #endif

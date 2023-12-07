@@ -22,3 +22,15 @@ var person:{[key:string]:any} = {
 }
 print(person.gender)
 print(person.age)
+
+let info:{} = {
+    ["name"] : "jack",
+    ["address"] : 8848 + "street",
+
+    get getter(): any {
+        return this.name;
+    }
+}
+print(info.name);
+print(info.address);
+print(info.getter);

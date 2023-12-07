@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/graph_linearizer.h"
+#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
@@ -71,13 +72,33 @@ public:
         auto startGate = acc_.GetStateRoot();
         acc_.SetMark(startGate, MarkCode::VISITED);
         pendingList_.emplace_back(startGate);
-
+        bool litecg = linearizer_->enableLiteCG();
         while (!pendingList_.empty()) {
             auto curGate = pendingList_.back();
             pendingList_.pop_back();
             VisitStateGate(curGate);
             if (acc_.GetOpCode(curGate) != OpCode::LOOP_BACK) {
                 auto uses = acc_.Uses(curGate);
+                // The LiteCG backend is unable to perform branch prediction scheduling, thus requiring advance
+                // preparation
+                if (litecg && acc_.GetOpCode(curGate) == OpCode::IF_BRANCH && acc_.HasBranchWeight(curGate)) {
+                    std::vector<GateRef> outs;
+                    acc_.GetOutStates(curGate, outs);
+                    GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
+                    GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
+                    if (acc_.GetTrueWeight(curGate) >= acc_.GetFalseWeight(curGate)) {
+                        std::swap(bTrue, bFalse);
+                    }
+                    if (acc_.GetMark(bTrue) == MarkCode::NO_MARK) {
+                        acc_.SetMark(bTrue, MarkCode::VISITED);
+                        pendingList_.emplace_back(bTrue);
+                    }
+                    if (acc_.GetMark(bFalse) == MarkCode::NO_MARK) {
+                        acc_.SetMark(bFalse, MarkCode::VISITED);
+                        pendingList_.emplace_back(bFalse);
+                    }
+                    continue;
+                }
                 for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
                     if (acc_.IsStateIn(useIt) && acc_.IsState(*useIt) && acc_.GetMark(*useIt) == MarkCode::NO_MARK) {
                         acc_.SetMark(*useIt, MarkCode::VISITED);

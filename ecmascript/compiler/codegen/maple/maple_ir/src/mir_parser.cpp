@@ -1154,6 +1154,7 @@ bool MIRParser::ParseCallReturnPair(CallReturnPair &retpair)
         // parse type
         lexer.NextToken();
         TyIdx tyidx(0);
+        // RegreadNode regreadexpr;
         bool ret = ParsePrimType(tyidx);
         if (ret != true) {
             Error("call ParsePrimType failed in ParseCallReturns");
@@ -3185,9 +3186,9 @@ bool MIRParser::ParseExprTernary(BaseNodePtr &expr)
         Error("expect 3 operands for ternary operator ");
         return false;
     }
-    ternaryNode->SetOpnd(opndVec[0], 0);
-    ternaryNode->SetOpnd(opndVec[1], 1);
-    ternaryNode->SetOpnd(opndVec[2], 2);
+    ternaryNode->SetOpnd(opndVec[kFirstOpnd], kFirstOpnd);
+    ternaryNode->SetOpnd(opndVec[kSecondOpnd], kSecondOpnd);
+    ternaryNode->SetOpnd(opndVec[kThirdOpnd], kThirdOpnd);
     lexer.NextToken();
     return true;
 }

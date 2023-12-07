@@ -286,6 +286,10 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
             LowerTypedStObjByValue(gate);
             break;
+        case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
+            LowerTypedStOwnByValue(gate);
+            break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
@@ -341,6 +345,9 @@ void TypeBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::INSTANCEOF_IMM8_V8:
             LowerInstanceOf(gate);
+            break;
+        case EcmaOpcode::CREATEEMPTYOBJECT:
+            LowerCreateEmptyObject(gate);
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
@@ -2244,6 +2251,44 @@ void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
 
     result = builder_.OrdinaryHasInstance(obj, target);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+}
+
+void TypeBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+
+    JSHandle<JSFunction> objectFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    JSTaggedValue protoOrHClass = objectFunc->GetProtoOrHClass();
+    JSHClass *objectHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
+    size_t objectSize = objectHC->GetObjectSize();
+
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef size = builder_.IntPtr(objectHC->GetObjectSize());
+
+    builder_.StartAllocate();
+    GateRef object = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+
+    // initialization
+    for (size_t offset = JSObject::SIZE; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
+        builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
+    }
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
+                              builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray);
+    builder_.FinishAllocate(object);
+
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), object);
+}
+
+void TypeBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
+{
+    // StOwnByValue is rarely used, so the callruntime solution is used
+    AddProfiling(gate);
+    return;
 }
 
 void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)

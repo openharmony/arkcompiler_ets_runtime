@@ -56,12 +56,13 @@ public:
     void EmitDirectString(const std::string &ustr, bool belongsToDataSec, int64 strSymIdx, bool emitAscii) override;
     void EmitIndirectString(int64 strSymIdx, bool belongsToDataSec) override;
     void EmitIntValue(int64 value, size_t valueSize, bool belongsToDataSec) override;
+    void EmitFloatValue(int64 symIdx, int64 value, size_t valueSize) override;
     void EmitAddrValue(int64 symIdx, int32 symAddrOfs, int32 structFieldOfs, bool belongsToDataSec) override;
     void EmitAddrOfFuncValue(int64 symIdx, bool belongsToDataSec) override;
     void EmitLabelValue(int64 symIdx, bool belongsToDataSec) override;
     void EmitBitFieldValue(uint64 combineBitFieldValue, bool belongsToDataSec) override;
     void EmitNull(uint64 sizeInByte) override;
-    void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte) override;
+    void PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 sizeInByte, bool belongsToTextSec) override;
     void FinalizeFileInfo() override {}
 
     /* emit debug info */
@@ -154,6 +155,10 @@ public:
     void Mov(InsnSize insnSize, const Mem &mem, Reg reg) override;
     void Mov(InsnSize insnSize, Reg reg, const Mem &mem) override;
     void Mov(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) override;
+    /* floating point mov */
+    void Mov(Reg srcReg, Reg destReg, bool isMovD) override;
+    void MovF(const Mem &mem, Reg reg, bool isSingle) override;
+    void MovF(Reg reg, const Mem &mem, bool isSingle) override;
     /* movabs */
     void Movabs(const ImmOpnd &immOpnd, Reg reg) override;
     void Movabs(int64 symIdx, Reg reg) override;
@@ -175,12 +180,18 @@ public:
     void Add(InsnSize insnSize, const Mem &mem, Reg reg) override;
     void Add(InsnSize insnSize, Reg reg, const Mem &mem) override;
     void Add(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) override;
+    /* add floating point */
+    void Add(Reg srcReg, Reg destReg, bool isSingle) override;
+    void Add(const Mem &mem, Reg reg, bool isSingle) override;
     /* sub */
     void Sub(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     void Sub(InsnSize insnSize, const ImmOpnd &immOpnd, Reg reg) override;
     void Sub(InsnSize insnSize, const Mem &mem, Reg reg) override;
     void Sub(InsnSize insnSize, Reg reg, const Mem &mem) override;
     void Sub(InsnSize insnSize, const ImmOpnd &immOpnd, const Mem &mem) override;
+    /* sub floating point */
+    void Sub(Reg srcReg, Reg destReg, bool isSingle) override;
+    void Sub(const Mem &mem, Reg reg, bool isSingle) override;
     /* and */
     void And(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     void And(InsnSize insnSize, const Mem &mem, Reg reg) override;
@@ -306,6 +317,9 @@ public:
     void Leave() override;
     /* imul */
     void Imul(InsnSize insnSize, Reg srcReg, Reg destReg) override;
+    /* mul float */
+    void Mul(Reg srcReg, Reg destReg, bool isSingle) override;
+    void Mul(const Mem &mem, Reg reg, bool isSingle) override;
     /* nop */
     void Nop(InsnSize insnSize, const Mem &mem) override;
     void Nop() override;
@@ -314,9 +328,34 @@ public:
     void Xchg(InsnSize insnSize, Reg srcReg, Reg destReg) override;
     /* pseudo insn */
     void DealWithPseudoInst(const std::string &insn) override;
+    /* floating point */
+    void MovF(Reg srcReg, Reg destReg, bool isSingle) override;
+    /* floating point and */
+    void And(Reg srcReg, Reg destReg, bool isSingle) override;
+    void And(const Mem &mem, Reg reg, bool isSingle) override;
+    /* floating div */
+    void Divsd(Reg srcReg, Reg destReg) override;
+    void Divsd(const Mem &mem, Reg reg) override;
+    /* convert int2float */
+    void Cvtsi2ss(InsnSize insnSize, Reg srcReg, Reg destReg) override;
+    void Cvtsi2sd(InsnSize insnSize, Reg srcReg, Reg destReg) override;
+    /*convert float2int */
+    void Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg) override;
+    void Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg) override;
+    /* convert float2float */
+    void Cvtss2sd(Reg srcReg, Reg destReg) override;
+    void Cvtsd2ss(Reg srcReg, Reg destReg) override;
+    /* unordered compare */
+    void Ucomisd(Reg srcReg, Reg destReg) override;
+    void Ucomiss(Reg srcReg, Reg destReg) override;
+    /* float sqrt*/
+    void Sqrtss_r(Reg srcReg, Reg destReg) override;
+    void Sqrtsd_r(Reg srcReg, Reg destReg) override;
     /* end of X64 instructions */
     /* process stackmap */
     void RecordStackmap(const std::vector<uint64> &referenceMap, const std::vector<uint64> &deoptInfo) override {}
+    uint32 GetCurModulePC() override { return 0; }
+    void SetLastModulePC(uint32 pc) override {}
 
 private:
     void EmitComment(std::string comment)

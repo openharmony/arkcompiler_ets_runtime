@@ -65,10 +65,11 @@ public:
     }
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS(Method, METHOD_OFFSET, LAST_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LAST_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LENGTH_OFFSET)
     DECL_DUMP()
 };
 
@@ -120,6 +121,7 @@ public:
     static bool PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
                                 bool mayThrow);
     static JSTaggedValue NameGetter(JSThread *thread, const JSHandle<JSObject> &self);
+    static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self);
     static bool NameSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
                            bool mayThrow);
     static void SetFunctionNameNoPrefix(JSThread *thread, JSFunction *func, JSTaggedValue name);

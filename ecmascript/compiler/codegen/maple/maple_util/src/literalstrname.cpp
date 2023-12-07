@@ -32,11 +32,12 @@ std::string LiteralStrName::GetHexStr(const uint8_t *bytes, uint32_t len)
     if (bytes == nullptr) {
         return std::string();
     }
+    constexpr uint8_t k16BitShift = 4; // 16 is 1 << 4
     std::string str(mplConstStr, 0, (len << 1) + kConstStringLen);
     for (unsigned i = 0; i < len; ++i) {
-        str[2 * i + kConstStringLen] =
-            kMplDigits[(bytes[i] & 0xf0) >> 4];  // get the hex value of upper 4 bits of bytes[i]
-        str[2 * i + kConstStringLen + 1] =
+        str[(i << 1) + kConstStringLen] =
+            kMplDigits[(bytes[i] & 0xf0) >> k16BitShift];  // get the hex value of upper 4 bits of bytes[i]
+        str[(i << 1) + kConstStringLen + 1] =
             kMplDigits[bytes[i] & 0x0f];  // get the hex value of lower 4 bits of bytes[i]
     }
     return str;
@@ -47,12 +48,14 @@ std::string LiteralStrName::GetHexStr(const uint8_t *bytes, uint32_t len)
 // where s[i] is the value of swapping the upper 8 bits and lower 8 bits of data[i].
 int32_t LiteralStrName::CalculateHashSwapByte(const char16_t *data, uint32_t len)
 {
+    constexpr uint32_t k32BitShift = 5; // 32 is 1 << 5
+    constexpr char16_t kByteShift = 8;
     uint32_t hash = 0;
     const char16_t *end = data + len;
     while (data < end) {
-        hash = (hash << 5) - hash;
+        hash = (hash << k32BitShift) - hash;
         char16_t val = *data++;
-        hash += (((val << 8) & 0xff00) | ((val >> 8) & 0xff));
+        hash += (((val << kByteShift) & 0xff00) | ((val >> kByteShift) & 0xff));
     }
     return static_cast<int32_t>(hash);
 }

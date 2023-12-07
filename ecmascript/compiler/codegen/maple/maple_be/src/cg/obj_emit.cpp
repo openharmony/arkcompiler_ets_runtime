@@ -33,12 +33,12 @@ void ObjEmitter::EmitFuncBinaryCode(ObjFuncEmitInfo &objFuncEmitInfo)
     CGFunc &cgFunc = objFuncEmitInfo.GetCGFunc();
     objFuncEmitInfo.SetFuncName(cgFunc.GetName());
 
-    int labelSize = cgFunc.GetLab2BBMap().size() + 1;
+    int labelSize = cgFunc.GetLab2BBMap().size() + cgFunc.GetLabelAndValueMap().size() + 1;
     std::vector<uint32> label2Offset(labelSize, 0xFFFFFFFFULL);
     EmitInstructions(objFuncEmitInfo, label2Offset);
     objFuncEmitInfo.UpdateMethodCodeSize();
 
-    int symbolSize = cgFunc.GetFunction().GetSymTab()->GetTable().size() + 1;
+    int symbolSize = cgFunc.GetLabelIdx() + 1;
     std::vector<uint32> symbol2Offset(symbolSize, 0xFFFFFFFFULL);
     EmitFunctionSymbolTable(objFuncEmitInfo, symbol2Offset);
     EmitSwitchTable(objFuncEmitInfo, symbol2Offset);
@@ -112,6 +112,20 @@ void ObjEmitter::EmitSwitchTable(ObjFuncEmitInfo &objFuncEmitInfo, const std::ve
 
 void ObjEmitter::WriteObjFile()
 {
+    const auto &emitMemorymanager = CGOptions::GetInstance().GetEmitMemoryManager();
+    if (emitMemorymanager.codeSpace != nullptr) {
+        for (auto *section : sections) {
+            if (section->GetType() == SHT_NOBITS) {
+                continue;
+            }
+            if (section == textSection) {
+                uint8 *memSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
+                    textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
+                memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), section->GetDataSize());
+            }
+        }
+        return;
+    }
     /* write header */
     Emit(&header, sizeof(header));
 
@@ -119,13 +133,6 @@ void ObjEmitter::WriteObjFile()
     for (auto *section : sections) {
         if (section->GetType() == SHT_NOBITS) {
             continue;
-        }
-        if (section == textSection) {
-            const auto &emitMemorymanager = CGOptions::GetInstance().GetEmitMemoryManager();
-            uint8 *memSpace =
-                emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace, textSection->GetDataSize(),
-                                                      textSection->GetAlign(), textSection->GetName().c_str());
-            memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), section->GetDataSize());
         }
 
         SetFileOffset(section->GetOffset());

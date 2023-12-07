@@ -22,7 +22,7 @@
 
 namespace maplebe {
 /* Field-ID 0 is assigned to the top level structure. (Field-ID also defaults to 0 if it is not a structure.) */
-MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId)
+MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId) const
 {
     PrimType symType;
     int32 fieldOffset = 0;
@@ -38,7 +38,7 @@ MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, Fie
     uint32 opndSz = (symType == PTY_agg) ? k64BitSize : GetPrimTypeBitSize(symType);
     return GetOrCreateMemOpndFromSymbol(symbol, opndSz, fieldOffset);
 }
-MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset)
+MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset) const
 {
     MIRStorageClass storageClass = symbol.GetStorageClass();
     MemOperand *result = nullptr;
@@ -211,15 +211,15 @@ void X64MPIsel::SelectParmListForAggregate(BaseNode &argExpr, X64CallConvImpl &p
         CreateCallStructParamPassByStack(memOpnd, argSize, ploc.memOffset);
     } else {
         CHECK_FATAL(ploc.fpSize == 0, "Unknown call parameter state");
-        CreateCallStructParamPassByReg(memOpnd, ploc.reg0, 0);
+        CreateCallStructParamPassByReg(memOpnd, ploc.reg0, kFirstReg);
         if (ploc.reg1 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg1, 1);
+            CreateCallStructParamPassByReg(memOpnd, ploc.reg1, kSecondOpnd);
         }
         if (ploc.reg2 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg2, 2);
+            CreateCallStructParamPassByReg(memOpnd, ploc.reg2, kThirdOpnd);
         }
         if (ploc.reg3 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg3, 3);
+            CreateCallStructParamPassByReg(memOpnd, ploc.reg3, kFourthOpnd);
         }
     }
 }
@@ -229,11 +229,13 @@ void X64MPIsel::SelectParmListForAggregate(BaseNode &argExpr, X64CallConvImpl &p
  * to load the parameter value into the corresponding register.
  * We return a list of registers to the call instruction because
  * they may be needed in the register allocation phase.
+ * fp Num is a return value which is the number of vector
+ * registers used;
  */
-void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds)
+void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32 &fpNum)
 {
     paramPassByReg.clear();
-
+    fpNum = 0;
     /* for IcallNode, the 0th operand is the function pointer */
     size_t argBegin = 0;
     if (naryNode.GetOpCode() == OP_icall || naryNode.GetOpCode() == OP_icallproto) {
@@ -273,6 +275,9 @@ void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds)
             RegOperand &parmRegOpnd = cgFunc->GetOpndBuilder()->CreatePReg(ploc.reg0, GetPrimTypeBitSize(primType),
                                                                            cgFunc->GetRegTyFromPrimTy(primType));
             paramPassByReg.push_back({&parmRegOpnd, argOpnd, primType});
+            if (x64::IsFPSIMDRegister(static_cast<X64reg>(ploc.reg0))) {
+                fpNum++;
+            }
         } else {
             /* load to stack memory */
             RegOperand &baseOpnd =
@@ -380,12 +385,12 @@ void X64MPIsel::SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize)
             SelectCopy(memOpndLhs, memOpndRhs, PTY_a64);
         }
     } else {
-        /* adopt rep insn in x64's isa */
+        /* adopt memcpy */
         std::vector<Operand *> opndVec;
         opndVec.push_back(PrepareMemcpyParm(lhs, MOP_leaq_m_r));
         opndVec.push_back(PrepareMemcpyParm(rhs, MOP_leaq_m_r));
         opndVec.push_back(PrepareMemcpyParm(copySize));
-        SelectLibCallNoReturn("memcpy", opndVec, PTY_a64);
+        SelectLibCall("memcpy", opndVec, PTY_a64, nullptr, PTY_void);
         return;
     }
     /* take care of extra content at the end less than the unit */
@@ -407,16 +412,17 @@ void X64MPIsel::SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize)
     SelectCopy(memOpndLhs, memOpndRhs, extraTy);
 }
 
-void X64MPIsel::SelectLibCallNoReturn(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType)
+void X64MPIsel::SelectLibCall(const std::string &funcName, std::vector<Operand*> &opndVec, PrimType primType,
+                              Operand* retOpnd, PrimType retType)
 {
-    /* generate libcall withou return value */
+    /* generate libcall */
     std::vector<PrimType> pt(opndVec.size(), primType);
-    SelectLibCallNArg(funcName, opndVec, pt);
+    SelectLibCallNArg(funcName, opndVec, pt, retOpnd, retType);
     return;
 }
 
 void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec,
-                                  std::vector<PrimType> pt)
+                                  std::vector<PrimType> pt, Operand* retOpnd, PrimType retPrimType)
 {
     std::string newName = funcName;
     MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
@@ -427,14 +433,15 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
     /* setup the type of the callee function */
     std::vector<TyIdx> vec;
     std::vector<TypeAttrs> vecAt;
-    for (size_t i = 1; i < opndVec.size(); ++i) {
+    for (size_t i = 0; i < opndVec.size(); ++i) {
         vec.emplace_back(GlobalTables::GetTypeTable().GetTypeTable()[static_cast<size_t>(pt[i])]->GetTypeIndex());
         vecAt.emplace_back(TypeAttrs());
     }
 
     /* only support no return function */
-    MIRType *retType = GlobalTables::GetTypeTable().GetTypeTable().at(static_cast<size_t>(PTY_void));
-    st->SetTyIdx(cgFunc->GetBecommon().BeGetOrCreateFunctionType(retType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
+    MIRType *mirRetType = GlobalTables::GetTypeTable().GetTypeTable().at(static_cast<size_t>(retPrimType));
+    st->SetTyIdx(
+        cgFunc->GetBecommon().BeGetOrCreateFunctionType(mirRetType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
 
     /* setup actual parameters */
     ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
@@ -463,12 +470,46 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
     ListOperand &retOpnds = cgFunc->GetOpndBuilder()->CreateList();
     Insn &callInsn = AppendCall(x64::MOP_callq_l, targetOpnd, paramOpnds, retOpnds);
 
-    callInsn.SetRetType(Insn::kRegInt);
-    if (retType != nullptr) {
-        callInsn.SetRetSize(static_cast<uint32>(retType->GetSize()));
-        callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(retType->GetPrimType()));
+    bool isFloat = IsPrimitiveFloat(retPrimType);
+    Insn::RetType insnRetType = isFloat ? Insn::kRegFloat : Insn::kRegInt;
+    callInsn.SetRetType(insnRetType);
+    /* no ret function */
+    if (retOpnd == nullptr) {
+        return;
+    }
+
+    CCLocInfo retMech;
+    parmLocator.LocateRetVal(*(GlobalTables::GetTypeTable().GetTypeTable().at(retPrimType)), retMech);
+    if (retMech.GetRegCount() <= 0 || retMech.GetRegCount() > 1) {
+        CHECK_FATAL(false, "just support one register return");
+    }
+    if (mirRetType != nullptr) {
+        callInsn.SetRetSize(static_cast<uint32>(mirRetType->GetSize()));
+        callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(mirRetType->GetPrimType()));
+    }
+    CHECK_FATAL(retOpnd->IsRegister(), "niy");
+    RegOperand *regOpnd = static_cast<RegOperand*>(retOpnd);
+    regno_t retRegNo = retMech.GetReg0();
+    if (regOpnd->GetRegisterNumber() != retRegNo) {
+        RegOperand &phyRetOpnd =
+            cgFunc->GetOpndBuilder()->CreatePReg(retRegNo, regOpnd->GetSize(), cgFunc->GetRegTyFromPrimTy(retPrimType));
+        SelectCopy(*retOpnd, phyRetOpnd, retPrimType);
     }
     return;
+}
+
+Operand *X64MPIsel::SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const
+{
+    CHECK_FATAL(primType == PTY_f64 || primType == PTY_f32, "wrong const");
+    uint32 labelIdxTmp = cgFunc->GetLabelIdx();
+    Operand *result = nullptr;
+    if (primType == PTY_f64) {
+        result = SelectLiteral(static_cast<MIRDoubleConst&>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
+    } else {
+        result = SelectLiteral(static_cast<MIRFloatConst&>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
+    }
+    cgFunc->SetLabelIdx(labelIdxTmp);
+    return result;
 }
 
 RegOperand *X64MPIsel::PrepareMemcpyParm(MemOperand &memOperand, MOperator mOp)
@@ -570,7 +611,14 @@ void X64MPIsel::SelectCall(CallNode &callNode)
     Operand &targetOpnd = cgFunc->GetOpndBuilder()->CreateFuncNameOpnd(*fsym);
 
     ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
-    SelectParmList(callNode, paramOpnds);
+    uint32 fpNum = 0;
+    SelectParmList(callNode, paramOpnds, fpNum);
+    /* x64abi： rax = with variable arguments passes information about the number of vector registers used */
+    if (fn->IsVarargs()) {
+        ImmOperand &fpNumImm = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, fpNum);
+        RegOperand &raxOpnd = cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, k64BitSize, kRegTyInt);
+        SelectCopy(raxOpnd, fpNumImm, PTY_i64);
+    }
 
     MIRType *retType = fn->GetReturnType();
     ListOperand &retOpnds = cgFunc->GetOpndBuilder()->CreateList();
@@ -586,8 +634,9 @@ void X64MPIsel::SelectCall(CallNode &callNode)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto &opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
-            callInsn.AddDeoptBundleInfo(elem.first, opnd);
+            auto *opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
+            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), PTY_i32);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
@@ -602,7 +651,8 @@ void X64MPIsel::SelectIcall(IcallNode &iCallNode, Operand &opnd0)
 {
     RegOperand &targetOpnd = SelectCopy2Reg(opnd0, iCallNode.Opnd(0)->GetPrimType());
     ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
-    SelectParmList(iCallNode, paramOpnds);
+    uint32 fpNum = 0;
+    SelectParmList(iCallNode, paramOpnds, fpNum);
 
     MIRType *retType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iCallNode.GetRetTyIdx());
     if (iCallNode.GetOpCode() == OP_icallproto) {
@@ -623,8 +673,9 @@ void X64MPIsel::SelectIcall(IcallNode &iCallNode, Operand &opnd0)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto &opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
-            callInsn.AddDeoptBundleInfo(elem.first, opnd);
+            auto *opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
+            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), PTY_i32);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
@@ -746,7 +797,7 @@ void X64MPIsel::GenCVaStartIntrin(RegOperand &opnd, uint32 stkOffset)
 
 void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
 {
-    DEBUG_ASSERT(intrnNode.NumOpnds() == 2, "must be 2 operands");
+    DEBUG_ASSERT(intrnNode.NumOpnds() == kOpndNum2, "must be 2 operands");
     MIRIntrinsicID intrinsic = intrnNode.GetIntrinsic();
     // add
     PrimType type = intrnNode.Opnd(0)->GetPrimType();
@@ -789,7 +840,7 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
  * it is mainly used in proepilog */
 void X64MPIsel::SelectCVaStart(const IntrinsiccallNode &intrnNode)
 {
-    DEBUG_ASSERT(intrnNode.NumOpnds() == 2, "must be 2 operands");
+    DEBUG_ASSERT(intrnNode.NumOpnds() == kOpndNum2, "must be 2 operands");
     /* 2 operands, but only 1 needed. Don't need to emit code for second operand
      *
      * va_list is a passed struct with an address, load its address
@@ -930,7 +981,7 @@ Operand *X64MPIsel::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &paren
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
     if (storageClass == maple::kScText && symbol->GetSKind() == maple::kStFunc) {
         ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*symbol, 0, 0);
-        X64MOP_t mOp = x64::MOP_movabs_i_r;
+        X64MOP_t mOp = x64::MOP_movabs_s_r;
         Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
         addrInsn.AddOpndChain(stOpnd).AddOpndChain(resReg);
         cgFunc->GetCurBB()->AppendInsn(addrInsn);
@@ -980,7 +1031,16 @@ Operand *X64MPIsel::SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &par
     return &resOpnd;
 }
 
-static X64MOP_t PickJmpInsn(Opcode brOp, Opcode cmpOp, bool isSigned)
+/*
+ * unorded   ZF, PF, CF  ==> 1,1,1
+ * above     ZF, PF, CF  ==> 0,0,0
+ * below     ZF, PF, CF  ==> 0,0,1
+ * equal     ZF, PF, CF  ==> 1,0,0
+ *
+ * To distinguish between less than(only check whether CF = 1 or not) and unorderd(CF=1),
+ * So ** judging gt/ge by swaping operands is used to represent lt/le in float**
+ */
+static X64MOP_t PickJmpInsn(Opcode brOp, Opcode cmpOp, bool isFloat, bool isSigned)
 {
     switch (cmpOp) {
         case OP_ne:
@@ -988,11 +1048,14 @@ static X64MOP_t PickJmpInsn(Opcode brOp, Opcode cmpOp, bool isSigned)
         case OP_eq:
             return (brOp == OP_brtrue) ? MOP_je_l : MOP_jne_l;
         case OP_lt:
-            return (brOp == OP_brtrue) ? (isSigned ? MOP_jl_l : MOP_jb_l) : (isSigned ? MOP_jge_l : MOP_jae_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jl_l : MOP_jb_l))
+                                       : (isSigned ? MOP_jge_l : MOP_jae_l);
         case OP_le:
-            return (brOp == OP_brtrue) ? (isSigned ? MOP_jle_l : MOP_jbe_l) : (isSigned ? MOP_jg_l : MOP_ja_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_jae_l : (isSigned ? MOP_jle_l : MOP_jbe_l))
+                                       : (isSigned ? MOP_jg_l : MOP_ja_l);
         case OP_gt:
-            return (brOp == OP_brtrue) ? (isSigned ? MOP_jg_l : MOP_ja_l) : (isSigned ? MOP_jle_l : MOP_jbe_l);
+            return (brOp == OP_brtrue) ? (isFloat ? MOP_ja_l : (isSigned ? MOP_jg_l : MOP_ja_l))
+                                       : (isSigned ? MOP_jle_l : MOP_jbe_l);
         case OP_ge:
             return (brOp == OP_brtrue) ? (isSigned ? MOP_jge_l : MOP_jae_l) : (isSigned ? MOP_jl_l : MOP_jb_l);
         default:
@@ -1021,6 +1084,7 @@ void X64MPIsel::SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &
     } else {
         PrimType primType;
         Opcode condOpcode = condNode.GetOpCode();
+        // op_ne
         if (!kOpcodeInfo.IsCompare(condOpcode)) {
             primType = condNode.GetPrimType();
             ImmOperand &imm0 = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(primType), 0);
@@ -1029,8 +1093,8 @@ void X64MPIsel::SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &
         } else {
             primType = static_cast<CompareNode &>(condNode).GetOpndType();
         }
-        DEBUG_ASSERT(!IsPrimitiveFloat(primType), "unsupported float");
-        jmpOperator = PickJmpInsn(opcode, condOpcode, IsSignedInteger(primType));
+        bool isFloat = IsPrimitiveFloat(primType);
+        jmpOperator = PickJmpInsn(opcode, condOpcode, isFloat, IsSignedInteger(primType));
         cgFunc->SetCurBBKind(BB::kBBIf);
     }
     /* gen targetOpnd, .L.xxx__xx */
@@ -1061,7 +1125,7 @@ Operand *X64MPIsel::SelectStrLiteral(ConststrNode &constStr)
     if (c->GetPrimType() == PTY_ptr) {
         ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*labelSym, 0, 0);
         RegOperand &addrOpnd = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, cgFunc->GetRegTyFromPrimTy(PTY_a64));
-        Insn &addrOfInsn = (cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_movabs_i_r, X64CG::kMd[x64::MOP_movabs_i_r]));
+        Insn &addrOfInsn = (cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_movabs_s_r, X64CG::kMd[x64::MOP_movabs_s_r]));
         addrOfInsn.AddOpndChain(stOpnd).AddOpndChain(addrOpnd);
         cgFunc->GetCurBB()->AppendInsn(addrOfInsn);
         return &addrOpnd;
@@ -1076,7 +1140,7 @@ Operand &X64MPIsel::GetTargetRetOperand(PrimType primType, int32 sReg)
     regno_t retReg = 0;
     switch (sReg) {
         case kSregRetval0:
-            retReg = x64::RAX;
+            retReg = IsPrimitiveFloat(primType) ? x64::V0 : x64::RAX;
             break;
         case kSregRetval1:
             retReg = x64::RDX;
@@ -1109,10 +1173,10 @@ Operand *X64MPIsel::SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, 
 
 void X64MPIsel::SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType)
 {
+    uint32 bitSize = GetPrimTypeBitSize(primType);
+    SelectCopy(resOpnd, opnd0, primType);
+    RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType);
     if (IsSignedInteger(primType) || IsUnsignedInteger(primType)) {
-        uint32 bitSize = GetPrimTypeBitSize(primType);
-        SelectCopy(resOpnd, opnd0, primType);
-        RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType);
         X64MOP_t mOp = (bitSize == k64BitSize)
                            ? x64::MOP_imulq_r_r
                            : (bitSize == k32BitSize) ? x64::MOP_imull_r_r
@@ -1121,8 +1185,13 @@ void X64MPIsel::SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, Prim
         Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
         insn.AddOpndChain(regOpnd1).AddOpndChain(resOpnd);
         cgFunc->GetCurBB()->AppendInsn(insn);
-    } else {
-        CHECK_FATAL(false, "NIY");
+    } else if (IsPrimitiveFloat(primType)) {
+        X64MOP_t mOp = (bitSize == k64BitSize) ? x64::MOP_mulfd_r_r :
+                                                 (bitSize == k32BitSize) ? x64::MOP_mulfs_r_r : x64::MOP_begin;
+        CHECK_FATAL(mOp != x64::MOP_begin, "NIY mapping");
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+        insn.AddOpndChain(regOpnd1).AddOpndChain(resOpnd);
+        cgFunc->GetCurBB()->AppendInsn(insn);
     }
 }
 
@@ -1206,6 +1275,11 @@ Operand *X64MPIsel::SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType 
         RegOperand &resOpnd = cgFunc->GetOpndBuilder()->CreateVReg(bitSize, cgFunc->GetRegTyFromPrimTy(primType));
         SelectCopy(resOpnd, ((opcode == OP_div) ? raxOpnd : rdxOpnd), primType);
         return &resOpnd;
+    } else if (IsPrimitiveFloat(primType)) {
+        X64MOP_t divMOp = x64::MOP_divsd_r;
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(divMOp, opnd1, opnd0);
+        cgFunc->GetCurBB()->AppendInsn(insn);
+        return &opnd0;
     } else {
         CHECK_FATAL(false, "NIY");
     }
@@ -1219,6 +1293,7 @@ Operand *X64MPIsel::SelectLnot(const UnaryNode &node, Operand &opnd0, const Base
         resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
         RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
         ImmOperand &immOpnd = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(dtype), 0);
+        //op_eq
         SelectCmp(regOpnd0, immOpnd, dtype);
         SelectCmpResult(*resOpnd, OP_eq, dtype, dtype);
     } else {
@@ -1228,6 +1303,15 @@ Operand *X64MPIsel::SelectLnot(const UnaryNode &node, Operand &opnd0, const Base
     return resOpnd;
 }
 
+/*
+ * unorded   ZF, PF, CF  ==> 1,1,1
+ * above     ZF, PF, CF  ==> 0,0,0
+ * below     ZF, PF, CF  ==> 0,0,1
+ * equal     ZF, PF, CF  ==> 1,0,0
+ *
+ * To distinguish between less than(only check whether CF = 1 or not) and unorderd(CF=1),
+ * So ** lt/le in float is replaced by judging gt/ge and swaping operands **
+ */
 Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
     PrimType dtype = node.GetPrimType();
@@ -1237,12 +1321,15 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
     RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primOpndType, node.Opnd(1)->GetPrimType());
     if (!IsPrimitiveVector(node.GetPrimType())) {
         resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        SelectCmp(regOpnd0, regOpnd1, primOpndType);
+        auto nodeOp = node.GetOpCode();
         Opcode parentOp = parent.GetOpCode();
+        bool isSwap = (IsPrimitiveFloat(primOpndType) && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) &&
+            (parentOp != OP_brfalse));
+        SelectCmp(regOpnd0, regOpnd1, primOpndType, isSwap);
         if (parentOp == OP_brfalse || parentOp == OP_brtrue || parentOp == OP_select) {
             return resOpnd;
         }
-        SelectCmpResult(*resOpnd, node.GetOpCode(), dtype, primOpndType);
+        SelectCmpResult(*resOpnd, nodeOp, dtype, primOpndType);
     } else {
         /* vector operand */
         CHECK_FATAL(false, "NIY");
@@ -1250,25 +1337,33 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
     return resOpnd;
 }
 
-void X64MPIsel::SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType)
+void X64MPIsel::SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, bool isSwap)
 {
+    x64::X64MOP_t cmpMOp = x64::MOP_begin;
     if (IsPrimitiveInteger(primType)) {
-        x64::X64MOP_t cmpMOp = GetCmpMop(opnd0.GetKind(), opnd1.GetKind(), primType);
-        DEBUG_ASSERT(cmpMOp != x64::MOP_begin, "unsupported mOp");
-        Insn &cmpInsn = (cgFunc->GetInsnBuilder()->BuildInsn(cmpMOp, X64CG::kMd[cmpMOp]));
-        cmpInsn.AddOpndChain(opnd1).AddOpndChain(opnd0);
-        cgFunc->GetCurBB()->AppendInsn(cmpInsn);
+        cmpMOp = GetCmpMop(opnd0.GetKind(), opnd1.GetKind(), primType);
+    } else if (IsPrimitiveFloat(primType)) {
+        cmpMOp = x64::MOP_ucomisd_r_r;
     } else {
         CHECK_FATAL(false, "NIY");
     }
+    DEBUG_ASSERT(cmpMOp != x64::MOP_begin, "unsupported mOp");
+    Insn &cmpInsn = (cgFunc->GetInsnBuilder()->BuildInsn(cmpMOp, X64CG::kMd[cmpMOp]));
+    if (isSwap) {
+        cmpInsn.AddOpndChain(opnd0).AddOpndChain(opnd1);
+    } else {
+        cmpInsn.AddOpndChain(opnd1).AddOpndChain(opnd0);
+    }
+    cgFunc->GetCurBB()->AppendInsn(cmpInsn);
 }
 
 void X64MPIsel::SelectCmpResult(RegOperand &resOpnd, Opcode opCode, PrimType primType, PrimType primOpndType)
 {
-    bool isSigned = !IsPrimitiveUnsigned(primOpndType);
+    bool isFloat = IsPrimitiveFloat(primOpndType);
+    bool isSigned = (!IsPrimitiveUnsigned(primOpndType) && !IsPrimitiveFloat(primOpndType));
     /* set result -> u8 */
     RegOperand &tmpResOpnd = cgFunc->GetOpndBuilder()->CreateVReg(k8BitSize, cgFunc->GetRegTyFromPrimTy(PTY_u8));
-    x64::X64MOP_t setMOp = GetSetCCMop(opCode, tmpResOpnd.GetKind(), isSigned);
+    x64::X64MOP_t setMOp = GetSetCCMop(opCode, tmpResOpnd.GetKind(), isSigned, isFloat);
     DEBUG_ASSERT(setMOp != x64::MOP_begin, "unsupported mOp");
     Insn &setInsn = cgFunc->GetInsnBuilder()->BuildInsn(setMOp, X64CG::kMd[setMOp]);
     setInsn.AddOpndChain(tmpResOpnd);
@@ -1334,8 +1429,67 @@ void X64MPIsel::SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Ope
         Opcode cmpOpcode = isMin ? OP_lt : OP_gt;
         SelectSelect(resOpnd, opnd0, opnd1, primType, cmpOpcode, primType);
     } else {
+        // float lt/le need to swap operands, and using seta
         CHECK_FATAL(false, "NIY type max or min");
     }
+}
+
+Operand *X64MPIsel::SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
+{
+    PrimType primType = node.GetPrimType();
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType);
+    Operand &retReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
+    std::vector<Operand*> opndVec = {&regOpnd0};
+    SelectLibCall("exp", opndVec, primType, &retReg, primType);
+    return &retReg;
+}
+
+Operand *X64MPIsel::SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
+{
+    CHECK_FATAL(opnd0.IsImmediate() || opnd0.IsRegister(), "unhandled operand type here!");
+    PrimType origPrimType = node.Opnd(0)->GetPrimType();
+    RegOperand &opnd = SelectCopy2Reg(opnd0, origPrimType);
+
+    bool is64BitCtz = node.GetIntrinsic() == INTRN_C_ctz64;
+    MOperator mopBsf = is64BitCtz ? x64::MOP_bsfq_r_r : x64::MOP_bsfl_r_r;
+    Insn &bsfInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsf, X64CG::kMd[mopBsf]);
+    bsfInsn.AddOpndChain(opnd).AddOpndChain(opnd);
+    cgFunc->GetCurBB()->AppendInsn(bsfInsn);
+
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
+    // ctz i32 (u32) => cvt u32 -> i32
+    // ctz i32 (u64) => cvt u64 -> i32
+    SelectIntCvt(destReg, opnd, retType, origPrimType);
+    return &destReg;
+}
+
+Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
+{
+    CHECK_FATAL(opnd0.IsImmediate() || opnd0.IsRegister(), "unhandled operand type here!");
+    PrimType origPrimType = node.Opnd(0)->GetPrimType();
+    RegOperand &opnd = SelectCopy2Reg(opnd0, origPrimType);
+
+    bool is64BitClz = node.GetIntrinsic() == INTRN_C_clz64;
+    MOperator mopBsr = is64BitClz ? x64::MOP_bsrq_r_r : x64::MOP_bsrl_r_r;
+    Insn &bsrInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsr, X64CG::kMd[mopBsr]);
+    bsrInsn.AddOpndChain(opnd).AddOpndChain(opnd);
+    cgFunc->GetCurBB()->AppendInsn(bsrInsn);
+
+    MOperator mopXor = is64BitClz ? x64::MOP_xorq_i_r : MOP_xorl_i_r;
+    ImmOperand &imm =
+        cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(origPrimType), GetPrimTypeBitSize(origPrimType) - 1);
+    Insn &xorInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopXor, X64CG::kMd[mopXor]);
+    xorInsn.AddOpndChain(imm).AddOpndChain(opnd);
+    cgFunc->GetCurBB()->AppendInsn(xorInsn);
+
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
+    SelectIntCvt(destReg, opnd, retType, origPrimType);
+    return &destReg;
 }
 
 Operand *X64MPIsel::SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
@@ -1389,6 +1543,51 @@ RegOperand &X64MPIsel::GetTargetBasicPointer(PrimType primType)
                                                 cgFunc->GetRegTyFromPrimTy(primType));
 }
 
+void X64MPIsel::SelectRetypeFloat(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType)
+{
+    uint32 fromSize = GetPrimTypeBitSize(fromType);
+    [[maybe_unused]] uint32 toSize = GetPrimTypeBitSize(toType);
+    DEBUG_ASSERT(fromSize == toSize, "retype bit widith doesn' match");
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
+    MOperator mOp = x64::MOP_begin;
+    if (fromSize == k32BitSize) {
+        mOp = IsPrimitiveFloat(fromType) ? x64::MOP_movd_fr_r : x64::MOP_begin;
+    } else if (fromSize == k64BitSize) {
+        mOp = IsPrimitiveFloat(fromType) ? x64::MOP_movq_fr_r : x64::MOP_movq_r_fr;
+    } else {
+        CHECK_FATAL(false, "niy");
+    }
+    CHECK_FATAL(mOp != x64::MOP_begin, "NIY");
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    (void)insn.AddOpndChain(regOpnd0).AddOpndChain(resOpnd);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return;
+}
+
+Operand *X64MPIsel::SelectSqrt(UnaryNode &node, Operand &src, const BaseNode &parent)
+{
+    PrimType dtype = node.GetPrimType();
+    if (!IsPrimitiveFloat(dtype)) {
+        DEBUG_ASSERT(false, "should be float type");
+        return nullptr;
+    }
+    auto bitSize = GetPrimTypeBitSize(dtype);
+    MOperator mOp = x64::MOP_begin;
+    if (bitSize == k64BitSize) {
+        mOp = MOP_sqrtd_r_r;
+    } else if (bitSize == k32BitSize) {
+        mOp = MOP_sqrts_r_r;
+    } else {
+        CHECK_FATAL(false, "niy");
+    }
+    RegOperand &regOpnd0 = SelectCopy2Reg(src, dtype);
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    Operand &retReg = cgFunc->GetOpndBuilder()->CreateVReg(bitSize, cgFunc->GetRegTyFromPrimTy(dtype));
+
+    (void)insn.AddOpndChain(regOpnd0).AddOpndChain(retReg);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return &retReg;
+}
 void X64MPIsel::SelectAsm(AsmNode &node)
 {
     cgFunc->SetHasAsm();

@@ -211,7 +211,7 @@ TokenKind MIRLexer::GetHexConst(uint32 valStart, bool negative)
     uint64 tmp = static_cast<uint32>(HexCharToDigit(c));
     c = GetNextCurrentCharWithUpperCheck();
     while (isxdigit(c)) {
-        tmp = (tmp << 4) + static_cast<uint32>(HexCharToDigit(c));
+        tmp = (tmp << k16BitShift) + static_cast<uint32>(HexCharToDigit(c));
         c = GetNextCurrentCharWithUpperCheck();
     }
     theIntVal = static_cast<int64>(static_cast<uint64>(tmp));
@@ -363,7 +363,7 @@ TokenKind MIRLexer::GetTokenWithPrefixPercent()
         theIntVal = HexCharToDigit(c);
         c = GetNextCurrentCharWithUpperCheck();
         while (isdigit(c)) {
-            theIntVal = (theIntVal * 10) + HexCharToDigit(c);
+            theIntVal = (theIntVal * 10) + HexCharToDigit(c); // 10 for decimal
             DEBUG_ASSERT(theIntVal >= 0, "int value overflow");
             c = GetNextCurrentCharWithUpperCheck();
         }
@@ -428,7 +428,8 @@ TokenKind MIRLexer::GetTokenWithPrefixQuotation()
 {
     if (GetCharAtWithUpperCheck(curIdx + 1) == '\'') {
         theIntVal = GetCharAtWithUpperCheck(curIdx);
-        curIdx += 2;
+        constexpr uint32 hexLength = 2;
+        curIdx += hexLength;
         return TK_intconst;
     }
     return TK_invalid;
@@ -479,7 +480,7 @@ TokenKind MIRLexer::GetTokenWithPrefixDoubleQuotation()
                     const uint32 hexShift = 4;
                     const uint32 hexLength = 2;
                     uint8 c1 = Char2num(GetCharAtWithLowerCheck(curIdx + 1));
-                    uint8 c2 = Char2num(GetCharAtWithLowerCheck(curIdx + 2));
+                    uint8 c2 = Char2num(GetCharAtWithLowerCheck(curIdx + hexLength));
                     uint32 cNew = (c1 << hexShift) + c2;
                     line[curIdx - shift] = cNew;
                     curIdx += hexLength;

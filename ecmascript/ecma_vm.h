@@ -48,6 +48,7 @@ class JSNativePointer;
 class Program;
 class GCStats;
 class CpuProfiler;
+class Tracing;
 class RegExpExecResultCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
@@ -432,6 +433,18 @@ public:
     }
 #endif
 
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    Tracing *GetTracing() const
+    {
+        return tracing_;
+    }
+
+    void SetTracing(Tracing *tracing)
+    {
+        tracing_ = tracing;
+    }
+#endif
+
     std::shared_ptr<PGOProfiler> GetPGOProfiler() const
     {
         return pgoProfiler_;
@@ -567,6 +580,9 @@ private:
     EcmaParamConfiguration ecmaParamConfiguration_;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *profiler_ {nullptr};
+#endif
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    Tracing *tracing_ {nullptr};
 #endif
     FunctionCallTimer *callTimer_ {nullptr};
     JSObjectResizingStrategy *strategy_ {nullptr};

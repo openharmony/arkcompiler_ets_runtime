@@ -23,7 +23,7 @@ std::string GetNthStr(size_t index)
             return "1st";
         case 1:
             return "2nd";
-        case 2:
+        case 2: // 2 is third index from 0
             return "3rd";
         default: {
             std::ostringstream oss;

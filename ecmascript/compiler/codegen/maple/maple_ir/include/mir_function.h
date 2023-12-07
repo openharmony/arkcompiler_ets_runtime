@@ -764,6 +764,19 @@ public:
         body = node;
     }
 
+    BlockNode *GetLastPosBody()
+    {
+        return bodyLast;
+    }
+    const BlockNode *GetLastPosBody() const
+    {
+        return bodyLast;
+    }
+    void SetLastPosBody(BlockNode *node)
+    {
+        bodyLast = node;
+    }
+
     SrcPosition &GetSrcPosition()
     {
         DEBUG_ASSERT(GetFuncSymbol() != nullptr, "null ptr check");
@@ -1387,6 +1400,17 @@ public:
         return referedPregs;
     }
 
+    void SetDerived2BaseRef(PregIdx deriveRef, PregIdx baseRef)
+    {
+        CHECK_FATAL(derived2BaseRef.find(deriveRef) == derived2BaseRef.end(), "derived2BaseRef double set");
+        derived2BaseRef[deriveRef] = baseRef;
+    }
+
+    const MapleUnorderedMap<PregIdx, PregIdx> &GetDerived2BaseRef() const
+    {
+        return derived2BaseRef;
+    }
+
     bool IsReferedRegsValid() const
     {
         return referedRegsValid;
@@ -1533,6 +1557,7 @@ private:
     MapleAllocator codeMemPoolAllocator {nullptr};
     uint32 callTimes = 0;
     BlockNode *body = nullptr;
+    BlockNode *bodyLast = nullptr;
     FuncAttrs funcAttrs {};
     uint32 flag = 0;
     uint16 hashCode = 0;   // for methodmetadata order
@@ -1543,6 +1568,7 @@ private:
     MapleMap<uint32, uint32> *freqFirstMap = nullptr;  // save bb frequency in its first_stmt, key is stmtId
     MapleMap<uint32, uint32> *freqLastMap = nullptr;   // save bb frequency in its last_stmt, key is stmtId
     MapleSet<uint32> referedPregs {module->GetMPAllocator().Adapter()};
+    MapleUnorderedMap<PregIdx, PregIdx> derived2BaseRef {module->GetMPAllocator().Adapter()};
     bool referedRegsValid = false;
     bool hasVlaOrAlloca = false;
     bool withLocInfo = true;
@@ -1585,7 +1611,7 @@ private:
     // count; the bitvector's size is given by
     // BlockSize2BitvectorSize(frameSize)
     // uint16 numlabels; // removed. label table size
-    // StmtNode **lbl2stmt; // lbl2stmt table, removed;
+    // StmtNode **lbl2stmt // lbl2stmt table, removed
     // to hold unmangled class and function names
     MeFunction *meFunc = nullptr;
     EAConnectionGraph *eacg = nullptr;

@@ -414,8 +414,7 @@ void EACGFieldNode::DumpDotFile(std::ostream &fout, std::map<EACGBaseNode *, boo
     }
     dumped[this] = true;
     std::string name = GetName(nullptr);
-    std::string label;
-    label = GetName(irMap) + "\\nFIdx : " + std::to_string(GetFieldID()) + "\\n";
+    std::string label = GetName(irMap) + "\\nFIdx : " + std::to_string(GetFieldID()) + "\\n";
     std::string color;
     GetNodeFormatInDot(label, color);
     std::string style;
@@ -860,10 +859,7 @@ void EAConnectionGraph::DumpDotFile(const IRMap *irMap, bool dumpPt, MapleVector
 void EAConnectionGraph::CountObjEAStatus() const
 {
     int sum = 0;
-    int eaCount[4];  // There are four EAStatus.
-    for (size_t i = 0; i < 4; ++i) {
-        eaCount[i] = 0;
-    }
+    int eaCount[4] = {0};  // There are 4 EAStatus.
     for (EACGBaseNode *node : nodes) {
         if (node == nullptr) {
             continue;

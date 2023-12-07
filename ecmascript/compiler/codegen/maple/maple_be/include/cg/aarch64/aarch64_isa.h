@@ -20,6 +20,7 @@
 
 #define DEFINE_MOP(op, ...) op,
 enum AArch64MopT : maple::uint32 {
+#include "abstract_mmir.def"
 #include "aarch64_md.def"
     kMopLast
 };

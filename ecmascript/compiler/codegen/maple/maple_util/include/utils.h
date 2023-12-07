@@ -53,8 +53,12 @@ template <uint8_t Scale, typename T>
 struct ToDigitImpl {
 };
 
+constexpr uint8_t kOctalNum = 8;
+constexpr uint8_t kDecimalNum = 10;
+constexpr uint8_t kHexadecimalNum = 16;
+
 template <typename T>
-struct ToDigitImpl<10, T> {
+struct ToDigitImpl<kDecimalNum, T> {
     static T DoIt(char c)
     {
         if (utils::IsDigit(c)) {
@@ -65,7 +69,7 @@ struct ToDigitImpl<10, T> {
 };
 
 template <typename T>
-struct ToDigitImpl<8, T> {
+struct ToDigitImpl<kOctalNum, T> {
     static T DoIt(char c)
     {
         if (c >= '0' && c < '8') {
@@ -76,24 +80,24 @@ struct ToDigitImpl<8, T> {
 };
 
 template <typename T>
-struct ToDigitImpl<16, T> {
+struct ToDigitImpl<kHexadecimalNum, T> {
     static T DoIt(char c)
     {
         if (utils::IsDigit(c)) {
             return c - '0';
         }
         if (c >= 'a' && c <= 'f') {
-            return c - 'a' + 10;
+            return c - 'a' + kDecimalNum;
         }
         if (c >= 'A' && c <= 'F') {
-            return c - 'A' + 10;
+            return c - 'A' + kDecimalNum;
         }
         return std::numeric_limits<T>::max();
     }
 };
 }  // namespace __ToDigitImpl
 
-template <uint8_t Scale = 10, typename T = uint8_t>
+template <uint8_t Scale = __ToDigitImpl::kDecimalNum, typename T = uint8_t>
 constexpr T ToDigit(char c)
 {
     return __ToDigitImpl::ToDigitImpl<Scale, T>::DoIt(c);

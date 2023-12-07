@@ -713,13 +713,17 @@ int32 AArch64WebKitJSCC::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
     if (classes[0] == kIntegerClass) {
         if ((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize)) {
             pLoc.reg0 = AllocateGPRetRegister();
-        } else {
+            pLoc.regCount += 1;
+            pLoc.primTypeOfReg0 = alignedTySize == k4ByteSize ? PTY_i32 : PTY_i64;
+    } else {
             CHECK_FATAL(false, "should not go here");
         }
     } else if (classes[0] == kFloatClass) {
         if ((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize)) {
             pLoc.reg0 = AllocateSIMDFPRetRegister();
-        } else {
+            pLoc.regCount += 1;
+            pLoc.primTypeOfReg0 = alignedTySize == k4ByteSize ? PTY_f32 : PTY_f64;
+    } else {
             CHECK_FATAL(false, "should not go here");
         }
     }

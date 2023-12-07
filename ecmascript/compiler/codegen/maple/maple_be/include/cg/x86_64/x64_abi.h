@@ -25,6 +25,12 @@ using namespace maple;
 
 namespace x64 {
 
+constexpr int32 kNumFloatParmRegs = 8;
+constexpr int32 kNumFloatReturnRegs = 2;
+
+constexpr X64reg kFloatParmRegs[kNumFloatParmRegs] = { V0, V1, V2, V3, V4, V5, V6, V7 };
+constexpr X64reg kFloatReturnRegs[kNumFloatReturnRegs] = { V0, V1 };
+
 /*
  * Refer to：
  * x64-bit Architecture.

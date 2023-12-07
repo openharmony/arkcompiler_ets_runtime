@@ -33,6 +33,8 @@ Module *CreateModuleWithName(const std::string &name)
 void ReleaseModule(Module *module)
 {
     delete module;
+    // clean current globals
+    GlobalTables::Reset();
 }
 
 bool Expr::IsDread() const
@@ -210,6 +212,7 @@ ArrayConst &LMIRBuilder::CreateArrayConstInternal(ArrayType *type)
 FieldOffset LMIRBuilder::GetFieldOffset(StructType *structType, FieldId fieldId)
 {
     // we should avoid access CG internals here
+    // return Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, fieldId);
     return std::pair<int32_t, int32_t>(0, 0);
 }
 
@@ -385,6 +388,11 @@ Var *LMIRBuilder::GetLocalVarFromExpr(Expr inExpr)
     return GetCurFunction().GetSymbolTabItem(static_cast<DreadNode *>(node)->GetStIdx().Idx(), true);
 }
 
+void LMIRBuilder::SetFunctionDerived2BaseRef(PregIdx derived, PregIdx base)
+{
+    return GetCurFunction().SetDerived2BaseRef(derived, base);
+}
+
 PregIdx LMIRBuilder::GetPregIdxFromExpr(const Expr &expr)
 {
     auto *node = expr.GetNode();
@@ -488,10 +496,20 @@ void LMIRBuilder::AppendBB(BB &bb)
     module.CurFunction()->GetBody()->AddStatement(&bb);
 }
 
+void LMIRBuilder::AppendToLast(BB &bb)
+{
+    module.CurFunction()->GetLastPosBody()->AddStatement(&bb);
+}
+
 BB &LMIRBuilder::GetLastAppendedBB()
 {
-    BB *pb = dynamic_cast<BB *>(module.CurFunction()->GetBody()->GetLast());
+    BB *pb = dynamic_cast<BB *>(module.CurFunction()->GetLastPosBody()->GetLast());
     return *pb;
+}
+
+BB &LMIRBuilder::GetLastPosBB()
+{
+    return *module.CurFunction()->GetLastPosBody();
 }
 
 LabelIdx GetBBLabelIdx(BB &bb)

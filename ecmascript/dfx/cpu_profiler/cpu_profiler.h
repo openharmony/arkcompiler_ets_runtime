@@ -88,7 +88,6 @@ public:
 
     void StartCpuProfilerForInfo();
     std::unique_ptr<struct ProfileInfo> StopCpuProfilerForInfo();
-    uint64_t GetProfileInfoBufferSize() const;
     void StartCpuProfilerForFile(const std::string &fileName);
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
@@ -100,6 +99,7 @@ public:
     virtual ~CpuProfiler();
 
     static CMap<pthread_t, const EcmaVM *> profilerMap_;
+    static EcmaVM *GetVmbyTid(pthread_t tid);
 private:
     static Mutex synchronizationMutex_;
 

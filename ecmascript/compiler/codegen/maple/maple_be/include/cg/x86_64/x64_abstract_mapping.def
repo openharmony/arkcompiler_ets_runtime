@@ -26,6 +26,8 @@ DEFINE_MAPPING(abstract::MOP_copy_rr_8,   x64::MOP_movb_r_r)
 DEFINE_MAPPING(abstract::MOP_copy_rr_16,  x64::MOP_movw_r_r)
 DEFINE_MAPPING(abstract::MOP_copy_rr_32,  x64::MOP_movl_r_r)
 DEFINE_MAPPING(abstract::MOP_copy_rr_64,  x64::MOP_movq_r_r)
+DEFINE_MAPPING(abstract::MOP_copy_ff_32,  x64::MOP_movfs_r_r)
+DEFINE_MAPPING(abstract::MOP_copy_ff_64,  x64::MOP_movfd_r_r)
 
 /* str/load */
 DEFINE_MAPPING(abstract::MOP_str_8,       x64::MOP_movb_r_m)
@@ -36,6 +38,12 @@ DEFINE_MAPPING(abstract::MOP_load_8,      x64::MOP_movb_m_r)
 DEFINE_MAPPING(abstract::MOP_load_16,     x64::MOP_movw_m_r)
 DEFINE_MAPPING(abstract::MOP_load_32,     x64::MOP_movl_m_r)
 DEFINE_MAPPING(abstract::MOP_load_64,     x64::MOP_movq_m_r)
+
+/* str/load floating point */
+DEFINE_MAPPING(abstract::MOP_str_f_64,    x64::MOP_movfd_r_m)
+DEFINE_MAPPING(abstract::MOP_load_f_64,   x64::MOP_movfd_m_r)
+DEFINE_MAPPING(abstract::MOP_str_f_32,    x64::MOP_movfs_r_m)
+DEFINE_MAPPING(abstract::MOP_load_f_32,   x64::MOP_movfs_m_r)
 
 /* shift -- shl/ashr/lshr */
 DEFINE_MAPPING(abstract::MOP_shl_8,       x64::MOP_shlb_r_r)
@@ -72,6 +80,13 @@ DEFINE_MAPPING(abstract::MOP_sub_8,       x64::MOP_subb_r_r)
 DEFINE_MAPPING(abstract::MOP_sub_16,      x64::MOP_subw_r_r)
 DEFINE_MAPPING(abstract::MOP_sub_32,      x64::MOP_subl_r_r)
 DEFINE_MAPPING(abstract::MOP_sub_64,      x64::MOP_subq_r_r)
+DEFINE_MAPPING(abstract::MOP_add_f_32,    x64::MOP_adds_r_r)
+DEFINE_MAPPING(abstract::MOP_add_f_64,    x64::MOP_addd_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_f_32,    x64::MOP_subs_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_f_64,    x64::MOP_subd_r_r)
+DEFINE_MAPPING(abstract::MOP_sub_f_32,    x64::MOP_subs_r_r)
+DEFINE_MAPPING(abstract::MOP_and_f_64,    x64::MOP_andd_r_r)
+DEFINE_MAPPING(abstract::MOP_and_f_32,    x64::MOP_ands_r_r)
 
 /* UnaryOp */
 DEFINE_MAPPING(abstract::MOP_not_8,       x64::MOP_notb_r)
@@ -96,4 +111,19 @@ DEFINE_MAPPING(abstract::MOP_zext_rr_64_16,     x64::MOP_movzwl_r_r)
 DEFINE_MAPPING(abstract::MOP_sext_rr_64_16,     x64::MOP_movswq_r_r)
 DEFINE_MAPPING(abstract::MOP_zext_rr_64_32,     x64::MOP_movl_r_r)
 DEFINE_MAPPING(abstract::MOP_sext_rr_64_32,     x64::MOP_movslq_r_r)
-DEFINE_MAPPING(abstract::MOP_sext_rr_64_32,     x64::MOP_movslq_r_r)
+
+/* Floating CvtOp int2float */
+DEFINE_MAPPING(abstract::MOP_cvt_fr_u64,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_fr_u32,    x64::MOP_cvtsi2sdq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_fr_i32,    x64::MOP_cvtsi2sdl_r)
+DEFINE_MAPPING(abstract::MOP_cvt_fr_i64,    x64::MOP_cvtsi2sdq_r)
+
+/* Floating CvtOp float2int */
+DEFINE_MAPPING(abstract::MOP_cvt_rf_u32,    x64::MOP_cvttss2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_rf_u64,    x64::MOP_cvttsd2siq_r)
+DEFINE_MAPPING(abstract::MOP_cvt_rf_i32,    x64::MOP_cvttss2sil_r)
+DEFINE_MAPPING(abstract::MOP_cvt_rf_i64,    x64::MOP_cvttsd2siq_r)
+
+/* Floating CvtOp float2float */
+DEFINE_MAPPING(abstract::MOP_cvt_ff_64_32,   x64::MOP_cvtss2sd_r)
+DEFINE_MAPPING(abstract::MOP_cvt_ff_32_64,   x64::MOP_cvtsd2ss_r)

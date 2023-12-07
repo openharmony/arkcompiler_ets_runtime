@@ -133,18 +133,19 @@ void X64MoveRegArgs::GenerateMovInsn(ArgInfo &argInfo, X64reg reg2)
     RegOperand &regOpnd = x64CGFunc->GetOpndBuilder()->CreatePReg(argInfo.reg, opndSize, argInfo.regType);
     MemOperand *memOpnd = &x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
 
-    MOperator mOp;
+    MOperator mOp = x64::MOP_begin;
     if (opndSize == k64BitSize) {
-        mOp = x64::MOP_movq_r_m;
+        mOp = argInfo.regType == kRegTyInt ? x64::MOP_movq_r_m : x64::MOP_movfd_r_m;
     } else if (opndSize == k32BitSize) {
-        mOp = x64::MOP_movl_r_m;
+        mOp = argInfo.regType == kRegTyInt ? x64::MOP_movl_r_m : x64::MOP_movfs_r_m;
     } else if (opndSize == k16BitSize) {
-        mOp = x64::MOP_movw_r_m;
+        mOp = argInfo.regType == kRegTyInt ? x64::MOP_movw_r_m : x64::MOP_begin;
     } else if (opndSize == k8BitSize) {
-        mOp = x64::MOP_movb_r_m;
+        mOp = argInfo.regType == kRegTyInt ? x64::MOP_movb_r_m : x64::MOP_begin;
     } else {
         CHECK_FATAL(false, "NIY");
     }
+    CHECK_FATAL(mOp != x64::MOP_begin, "NIY");
     Insn &insn = x64CGFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(regOpnd).AddOpndChain(*memOpnd);
     x64CGFunc->GetCurBB()->AppendInsn(insn);
@@ -189,26 +190,28 @@ void X64MoveRegArgs::LoadStackArgsToVReg(MIRSymbol &mirSym)
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
     PrimType stype = mirSym.GetType()->GetPrimType();
     uint32 opndSize = GetPrimTypeBitSize(stype);
+    RegType regType = cgFunc->GetRegTyFromPrimTy(stype);
     auto symLoc = static_cast<const X64SymbolAlloc *>(x64CGFunc->GetMemlayout()->GetSymAllocInfo(mirSym.GetStIndex()));
     int32 stOffset = x64CGFunc->GetBaseOffset(*symLoc);
     RegOperand *baseOpnd = static_cast<RegOperand *>(x64CGFunc->GetBaseReg(*symLoc));
     MemOperand &memOpnd = x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
     PregIdx pregIdx = x64CGFunc->GetFunction().GetPregTab()->GetPregIdxFromPregno(mirSym.GetPreg()->GetPregNo());
     RegOperand &dstRegOpnd = x64CGFunc->GetOpndBuilder()->CreateVReg(
-        x64CGFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx), opndSize, cgFunc->GetRegTyFromPrimTy(stype));
+        x64CGFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx), opndSize, regType);
 
     MOperator mOp;
     if (opndSize == k64BitSize) {
-        mOp = x64::MOP_movq_m_r;
+        mOp = regType == kRegTyInt ? x64::MOP_movq_m_r : x64::MOP_movfd_m_r;
     } else if (opndSize == k32BitSize) {
-        mOp = x64::MOP_movl_m_r;
+        mOp = regType == kRegTyInt ? x64::MOP_movl_m_r  : x64::MOP_movfs_m_r;
     } else if (opndSize == k16BitSize) {
-        mOp = x64::MOP_movw_m_r;
+        mOp = regType == kRegTyInt ? x64::MOP_movw_m_r : x64::MOP_begin;
     } else if (opndSize == k8BitSize) {
-        mOp = x64::MOP_movb_m_r;
+        mOp = regType == kRegTyInt ? x64::MOP_movb_m_r : x64::MOP_begin;
     } else {
         CHECK_FATAL(false, "NIY");
     }
+    CHECK_FATAL(mOp != x64::MOP_begin, "should not happen");
     Insn &insn = x64CGFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(memOpnd).AddOpndChain(dstRegOpnd);
     if (x64CGFunc->GetCG()->GenerateVerboseCG()) {
@@ -234,16 +237,17 @@ void X64MoveRegArgs::MoveArgsToVReg(const CCLocInfo &ploc, MIRSymbol &mirSym)
 
     MOperator mOp;
     if (srcBitSize == k64BitSize) {
-        mOp = x64::MOP_movq_r_r;
+        mOp = (regType == kRegTyInt) ? x64::MOP_movq_r_r : x64::MOP_movfd_r_r;
     } else if (srcBitSize == k32BitSize) {
-        mOp = x64::MOP_movl_r_r;
+        mOp = (regType == kRegTyInt) ? x64::MOP_movl_r_r : x64::MOP_movfs_r_r;
     } else if (srcBitSize == k16BitSize) {
-        mOp = x64::MOP_movw_r_r;
+        mOp = (regType == kRegTyInt) ? x64::MOP_movw_r_r : x64::MOP_begin;
     } else if (srcBitSize == k8BitSize) {
-        mOp = x64::MOP_movb_r_r;
+        mOp = (regType == kRegTyInt) ? x64::MOP_movb_r_r : x64::MOP_begin;
     } else {
         CHECK_FATAL(false, "NIY");
     }
+    CHECK_FATAL(mOp != x64::MOP_begin, "should not happen");
     Insn &insn = x64CGFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(srcRegOpnd).AddOpndChain(dstRegOpnd);
     if (x64CGFunc->GetCG()->GenerateVerboseCG()) {

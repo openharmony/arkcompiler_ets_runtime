@@ -216,6 +216,12 @@ enum LiteCGTypeKind {
     kLiteCGTypeGenericInstant,
 };
 
+// FieldAttr: do we need to support volatile here?
+// using FieldAttr = AttrKind
+/* used attribute for field:
+   ATTR_volatile
+ */
+
 using FieldId = uint32_t;
 /* Use FieldId from MIR directly: it's a uint32_t, but with special meaning
    for FieldId == 0: refer to the "whole" of the type
@@ -273,6 +279,7 @@ public:
      */
     Type *GetStructType(const String &name);  // query for existing struct type
 
+    // usage of this function has precondition, should be documented
     FieldOffset GetFieldOffset(StructType *structType, FieldId fieldId);
 
     // for function pointer
@@ -286,6 +293,21 @@ public:
     // still need interface for AddressOfFunction
 
     // Function declaration and definition
+    /* using FunctionBuilder interface for Function creation:
+         // i32 myfunc(i32 param1, i64 param2) { }
+         auto structType = DefineFunction("myfunc")
+                             .Param(i32Type, "param1")
+                             .Param(i64Type, "param2")
+                             .Ret(i32Type)               // optional for void
+                             .Done();
+
+         // i32 myfunc1(i32 param1, i64 param2);
+         auto structType = DeclareFunction("myfunc1")
+                             .Param(i32Type, "param1")
+                             .Param(i64Type, "param2")
+                             .Ret(i32Type)
+                             .Done();
+     */
 
     // This is to enable forwarded call before its definition
     // can return null. caller should check for null.
@@ -314,6 +336,7 @@ public:
     Var &CreateLocalVar(Type *type, const String &name);
     Var *GetLocalVar(const String &name);
     Var *GetLocalVarFromExpr(Expr inExpr);
+    void SetFunctionDerived2BaseRef(PregIdx derived, PregIdx base);
     PregIdx GetPregIdxFromExpr(const Expr &expr);
     Var &GetParam(Function &function, size_t index) const;
     Expr GenExprFromVar(Var &var);
@@ -353,6 +376,8 @@ public:
     void AppendStmtBeforeBranch(BB &bb, Stmt &stmt);  // append stmt after the first non-jump stmt in back of BB
     bool IsEmptyBB(BB &bb);
     void AppendBB(BB &bb);    // append BB to the back of current function;
+    void AppendToLast(BB &bb);
+    BB &GetLastPosBB();
     BB &GetLastAppendedBB();  // get last appended BB of current function
 
     void SetStmtCallConv(Stmt &stmt, ConvAttr convAttr);

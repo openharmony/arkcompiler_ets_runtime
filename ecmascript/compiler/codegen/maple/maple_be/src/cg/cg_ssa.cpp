@@ -51,7 +51,7 @@ void CGSSAInfo::ConstructSSA()
 void CGSSAInfo::MarkInsnsInSSA(Insn &insn)
 {
     CHECK_FATAL(insn.GetId() == 0, "insn is not clean !!"); /* change to assert*/
-    insnCount += 2;
+    insnCount += kInsnNum2;
     insn.SetId(static_cast<uint32>(insnCount));
 }
 

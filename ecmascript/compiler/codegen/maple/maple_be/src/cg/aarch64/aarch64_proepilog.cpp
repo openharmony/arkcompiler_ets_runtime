@@ -779,7 +779,7 @@ BB *AArch64GenProEpilog::IsolateFastPath(BB &bb)
         if (first->GetSuccs().front()->GetPreds().size() != 1) {
             return nullptr;
         }
-        if (first->GetSuccs().front()->NumInsn() > 2) { /* avoid a insn is used to debug */
+        if (first->GetSuccs().front()->NumInsn() > kInsnNum2) { /* avoid a insn is used to debug */
             return nullptr;
         }
         if (second->GetSuccs().empty()) {
@@ -1384,8 +1384,8 @@ void AArch64GenProEpilog::GeneratePushUnnamedVarargRegs()
         for (uint32 i = start_regno + static_cast<uint32>(R0); i < static_cast<uint32>(R8); i++) {
             uint32 tmpOffset = 0;
             if (CGOptions::IsBigEndian()) {
-                if ((dataSizeBits >> 3) < 8) {
-                    tmpOffset += 8U - (dataSizeBits >> 3);
+                if ((dataSizeBits >> k8BitShift) < k8BitSize) {
+                    tmpOffset += k8BitSize - (dataSizeBits >> k8BitShift);
                 }
             }
             Operand *stackLoc;
@@ -1412,8 +1412,8 @@ void AArch64GenProEpilog::GeneratePushUnnamedVarargRegs()
             for (uint32 i = start_regno + static_cast<uint32>(V0); i < static_cast<uint32>(V8); i++) {
                 uint32 tmpOffset = 0;
                 if (CGOptions::IsBigEndian()) {
-                    if ((dataSizeBits >> 3) < 16) {
-                        tmpOffset += 16U - (dataSizeBits >> 3);
+                    if ((dataSizeBits >> k8BitShift) < k16BitSize) {
+                        tmpOffset += k16BitSize - (dataSizeBits >> k8BitShift);
                     }
                 }
                 Operand *stackLoc;

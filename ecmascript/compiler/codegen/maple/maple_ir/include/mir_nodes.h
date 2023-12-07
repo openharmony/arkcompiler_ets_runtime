@@ -32,6 +32,8 @@ namespace maple {
 constexpr size_t kFirstOpnd = 0;
 constexpr size_t kSecondOpnd = 1;
 constexpr size_t kThirdOpnd = 2;
+constexpr size_t kFourthOpnd = 3;
+constexpr size_t kOpndNum = 3;
 
 extern MIRModule *theMIRModule;
 extern void EmitStr(const MapleString &mplStr);
@@ -899,9 +901,9 @@ public:
 
     TernaryNode(Opcode o, PrimType typ, BaseNode *e0, BaseNode *e1, BaseNode *e2) : BaseNode(o, typ, kOperandNumTernary)
     {
-        topnd[0] = e0;
-        topnd[1] = e1;
-        topnd[2] = e2;
+        topnd[kFirstOpnd] = e0;
+        topnd[kSecondOpnd] = e1;
+        topnd[kThirdOpnd] = e2;
     }
 
     virtual ~TernaryNode() = default;
@@ -912,9 +914,9 @@ public:
     TernaryNode *CloneTree(MapleAllocator &allocator) const override
     {
         auto *node = allocator.GetMemPool()->New<TernaryNode>(*this);
-        node->topnd[0] = topnd[0]->CloneTree(allocator);
-        node->topnd[1] = topnd[1]->CloneTree(allocator);
-        node->topnd[2] = topnd[2]->CloneTree(allocator);
+        node->topnd[kFirstOpnd] = topnd[kFirstOpnd]->CloneTree(allocator);
+        node->topnd[kSecondOpnd] = topnd[kSecondOpnd]->CloneTree(allocator);
+        node->topnd[kThirdOpnd] = topnd[kThirdOpnd]->CloneTree(allocator);
         return node;
     }
 
@@ -1382,7 +1384,7 @@ public:
         tyIdx = idx;
     }
 
-    FieldID GetFiledID1() const
+    FieldID GetFieldID1() const
     {
         return fieldID1;
     }
@@ -1392,7 +1394,7 @@ public:
         fieldID1 = id;
     }
 
-    FieldID GetFiledID2() const
+    FieldID GetFieldID2() const
     {
         return fieldID2;
     }
@@ -2956,13 +2958,13 @@ public:
         return node;
     }
 
-    BaseNode *Opnd(size_t i = 0) const override
+    BaseNode *Opnd(size_t i = kFirstOpnd) const override
     {
-        if (i == 0) {
-            return UnaryStmtNode::Opnd(0);
-        } else if (i == 1) {
+        if (i == kFirstOpnd) {
+            return UnaryStmtNode::Opnd(kFirstOpnd);
+        } else if (i == kSecondOpnd) {
             return thenPart;
-        } else if (i == 2) {
+        } else if (i == kThirdOpnd) {
             DEBUG_ASSERT(elsePart != nullptr, "IfStmtNode has wrong numOpnds field, the elsePart is nullptr");
             DEBUG_ASSERT(numOpnds == kOperandNumTernary,
                          "IfStmtNode has wrong numOpnds field, the elsePart is nullptr");
@@ -3209,16 +3211,16 @@ public:
 
     BaseNode *Opnd(size_t i) const override
     {
-        if (i == 0) {
+        if (i == kFirstOpnd) {
             return startExpr;
         }
-        if (i == 1) {
+        if (i == kSecondOpnd) {
             return condExpr;
         }
-        if (i == 2) {
+        if (i == kThirdOpnd) {
             return incrExpr;
         }
-        return *(&doBody + i - 3);
+        return *(&doBody + i - kOpndNum);
     }
 
     size_t NumOpnds() const override
@@ -3228,16 +3230,16 @@ public:
 
     void SetOpnd(BaseNode *node, size_t i) override
     {
-        if (i == 0) {
+        if (i == kFirstOpnd) {
             startExpr = node;
         }
-        if (i == 1) {
+        if (i == kSecondOpnd) {
             SetContExpr(node);
         }
-        if (i == 2) {
+        if (i == kThirdOpnd) {
             incrExpr = node;
         } else {
-            *(&doBody + i - 3) = static_cast<BlockNode *>(node);
+            *(&doBody + i - kOpndNum) = static_cast<BlockNode *>(node);
         }
     }
 
@@ -3479,7 +3481,7 @@ public:
     {
         uint32 res = 1;
         for (uint32 i = 0; i < alignLog2; i++) {
-            res *= 2;
+            res <<= 1;
         }
         return res;
     }

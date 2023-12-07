@@ -336,7 +336,7 @@ uint32 Insn::GetMemoryByteSize() const
     if (IsLoadStorePair()) {
         res = res << 1;
     }
-    res = res >> 3;
+    res = res >> k8BitShift;
     return res;
 }
 

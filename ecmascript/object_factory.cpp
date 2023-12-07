@@ -600,6 +600,7 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
 
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
+    cloneFunc->SetLength(func->GetLength());
     return cloneFunc;
 }
 
@@ -1506,7 +1507,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
     JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
     {
-        PropertyAttributes attributes = PropertyAttributes::Default(false, false, true);
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
@@ -1725,7 +1726,47 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFun
     JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
 
+    // set hclass layout
+    uint32_t fieldOrder = 0;
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
+        fieldOrder++;
+    }
+
+    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
+    // not set name in-object property on class which may have a name() method
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                 thread_->GlobalConstants()->GetHandledNameString().GetTaggedValue(), attributes);
+        fieldOrder++;
+    }
+    
+    {
+        hclass->SetLayout(thread_, layoutInfoHandle);
+        hclass->SetNumberOfProps(fieldOrder);
+    }
+
     JSHandle<JSBoundFunction> bundleFunction = JSHandle<JSBoundFunction>::Cast(NewJSObject(hclass));
+
+    // set properties
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
+    bundleFunction->SetPropertyInlinedProps(thread_, JSFunction::NAME_INLINE_PROPERTY_INDEX,
+                                            accessor.GetTaggedValue());
+    accessor = globalConst->GetHandledFunctionLengthAccessor();
+    bundleFunction->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX,
+                                            accessor.GetTaggedValue());
+
     bundleFunction->SetBoundTarget(thread_, target);
     bundleFunction->SetBoundThis(thread_, boundThis);
     bundleFunction->SetBoundArguments(thread_, args);

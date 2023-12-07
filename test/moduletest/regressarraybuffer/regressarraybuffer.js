@@ -12,13 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-{
-    class MyArray extends Array {
-        static get [Symbol.species]() {
-            return this;
-        }
-    }
-    const wannabe = new MyArray();
-    const result = wannabe.flatMap(x => [x, x]);
-    print(result instanceof MyArray);//t
+var a = new Uint8Array(0x7fffffff >> 1);
+a.x = 1;
+try {
+	Object.entries(a)
+} catch (e) {
+	print(e instanceof RangeError);
 }

@@ -181,11 +181,6 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
     return profileInfo;
 }
 
-uint64_t CpuProfiler::GetProfileInfoBufferSize() const
-{
-    return generator_->GetProfileInfoBufferSize();
-}
-
 void CpuProfiler::SetCpuSamplingInterval(int interval)
 {
     interval_ = static_cast<uint32_t>(interval);
@@ -571,5 +566,11 @@ bool CpuProfiler::GetBuildNapiStack()
 bool CpuProfiler::GetOutToFile()
 {
     return outToFile_;
+}
+
+EcmaVM* CpuProfiler::GetVmbyTid(pthread_t tid)
+{
+    LockHolder lock(synchronizationMutex_);
+    return const_cast<EcmaVM *>(profilerMap_[tid]);
 }
 } // namespace panda::ecmascript

@@ -52,7 +52,7 @@ void LiveAnalysis::InitAndGetDefUse()
 /* Out[BB] = Union all of In[Succs(BB)] */
 bool LiveAnalysis::GenerateLiveOut(BB &bb)
 {
-    const MapleSet<uint32> bbLiveOutBak(bb.GetLiveOut()->GetInfo());
+    const MapleSparseBitVector<> bbLiveOutBak(bb.GetLiveOut()->GetInfo());
     for (auto succBB : bb.GetSuccs()) {
         if (succBB->GetLiveInChange() && !succBB->GetLiveIn()->NoneBit()) {
             bb.LiveOutOrBits(*succBB->GetLiveIn());
@@ -75,7 +75,7 @@ bool LiveAnalysis::GenerateLiveOut(BB &bb)
 bool LiveAnalysis::GenerateLiveIn(BB &bb)
 {
     LocalMapleAllocator allocator(stackMp);
-    const MapleSet<uint32> bbLiveInBak(bb.GetLiveIn()->GetInfo());
+    const MapleSparseBitVector<> bbLiveInBak(bb.GetLiveIn()->GetInfo());
     if (!bb.GetInsertUse()) {
         bb.SetLiveInInfo(*bb.GetUse());
         bb.SetInsertUse(true);
@@ -207,10 +207,10 @@ void LiveAnalysis::InsertInOutOfCleanupBB()
     }
     SparseDataInfo cleanupBBLi = *(cleanupBB->GetLiveIn());
     /* registers need to be ignored: (reg < 8) || (29 <= reg && reg <= 32) */
-    for (uint32 i = 1; i < 8; ++i) {
+    for (uint32 i = 1; i < 8; ++i) { // reset 8 reg for R0-R7
         cleanupBBLi.ResetBit(i);
     }
-    for (uint32 j = 29; j <= 32; ++j) {
+    for (uint32 j = 29; j <= 32; ++j) { // registers 29 ~ 32 need to be ignored
         cleanupBBLi.ResetBit(j);
     }
 
@@ -245,7 +245,8 @@ void LiveAnalysis::GetBBDefUse(BB &bb)
         return;
     }
 
-    FOR_BB_INSNS_REV(insn, &bb) {
+    FOR_BB_INSNS_REV(insn, &bb)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -414,7 +415,9 @@ void LiveAnalysis::Dump() const
 void LiveAnalysis::DumpInfo(const SparseDataInfo &info) const
 {
     uint32 count = 1;
-    for (auto x : info.GetInfo()) {
+    std::set<uint32> res;
+    info.GetInfo().ConvertToSet(res);
+    for (uint32 x : res) {
         LogInfo::MapleLogger() << x << " ";
         ++count;
         /* 20 output one line */

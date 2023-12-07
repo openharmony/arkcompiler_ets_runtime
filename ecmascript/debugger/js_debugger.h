@@ -100,7 +100,7 @@ public:
     }
     ~JSDebugger() override
     {
-        notificationMgr_->RemoveListener();
+        notificationMgr_->RemoveListener(this);
     }
 
     void RegisterHooks(PtHooks *hooks) override

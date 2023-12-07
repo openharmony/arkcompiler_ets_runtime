@@ -958,7 +958,7 @@ public:
 
     // binary
     OpMeExpr(int32 exprID, Opcode o, PrimType t, MeExpr *opnd0, MeExpr *opnd1, bool order = true)
-        : MeExpr(exprID, kMeOpOp, o, t, 2), tyIdx(TyIdx(0))
+        : MeExpr(exprID, kMeOpOp, o, t, 2), tyIdx(TyIdx(0)) // 2 operand
     {
         if (order == true) {
             SetOpnd(0, opnd0);
@@ -1103,7 +1103,7 @@ public:
                 hasAddressValue = opnds[1]->HasAddressValue();
             }
         } else {
-            hasAddressValue = opnds[1]->HasAddressValue() || opnds[2]->HasAddressValue();
+            hasAddressValue = opnds[1]->HasAddressValue() || opnds[kThirdOpnd]->HasAddressValue();
         }
     }
     bool HasAddressValue() override

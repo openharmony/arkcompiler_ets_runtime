@@ -117,17 +117,17 @@ BaseNode *ExtConstantFold::ExtFoldTernary(TernaryNode *node)
 {
     CHECK_NULL_FATAL(node);
     BaseNode *result = nullptr;
-    result = DispatchFold(node->Opnd(0));
-    if (result != node->Opnd(0)) {
-        node->SetOpnd(result, 0);
+    result = DispatchFold(node->Opnd(kFirstOpnd));
+    if (result != node->Opnd(kFirstOpnd)) {
+        node->SetOpnd(result, kFirstOpnd);
     }
-    result = DispatchFold(node->Opnd(1));
-    if (result != node->Opnd(1)) {
-        node->SetOpnd(result, 1);
+    result = DispatchFold(node->Opnd(kSecondOpnd));
+    if (result != node->Opnd(kSecondOpnd)) {
+        node->SetOpnd(result, kSecondOpnd);
     }
-    result = DispatchFold(node->Opnd(2));
-    if (result != node->Opnd(2)) {
-        node->SetOpnd(result, 2);
+    result = DispatchFold(node->Opnd(kThirdOpnd));
+    if (result != node->Opnd(kThirdOpnd)) {
+        node->SetOpnd(result, kThirdOpnd);
     }
     return node;
 }
@@ -193,7 +193,7 @@ BaseNode *ExtConstantFold::ExtFoldIor(BinaryNode *node)
     if (isWorkable) {
         std::sort(uniqOperands.begin(), uniqOperands.end());
         uniqOperands.erase(std::unique(uniqOperands.begin(), uniqOperands.end()), uniqOperands.end());
-        if ((uniqOperands.size() >= 2) &&
+        if ((uniqOperands.size() >= 2) && // operand count is not less than 2
             (uniqOperands[uniqOperands.size() - 1] == uniqOperands[0] + static_cast<int64>(uniqOperands.size()) - 1)) {
             PrimType nPrimType = node->GetPrimType();
             BaseNode *diffVal;
@@ -256,7 +256,7 @@ BaseNode *ExtConstantFold::ExtFoldXand(BinaryNode *node)
         uint64 rcVal = static_cast<MIRIntConst *>(rcConstVal)->GetExtValue();
 
         bool isWorkable = true;
-        for (uint64 i = 0; i < 64; i++) {
+        for (uint64 i = 0; i < k64BitSize; i++) {
             if ((lmVal & (1UL << i)) == (rmVal & (1UL << i)) && (lcVal & (1UL << i)) != (rcVal & (1UL << i))) {
                 isWorkable = false;
                 break;

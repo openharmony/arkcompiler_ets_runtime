@@ -1194,7 +1194,7 @@ bool LocalVarSaveInsnPattern::CheckSecondInsn()
 bool LocalVarSaveInsnPattern::CheckAndGetUseInsn(Insn &firstInsn)
 {
     InsnSet useInsnSet = cgFunc.GetRD()->FindUseForRegOpnd(firstInsn, kInsnFirstOpnd, false);
-    if (useInsnSet.size() != 2) { /* secondInsn and another useInsn */
+    if (useInsnSet.size() != 2) { /* 2 for secondInsn and another useInsn */
         return false;
     }
 

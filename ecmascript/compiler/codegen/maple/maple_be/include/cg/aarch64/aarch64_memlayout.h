@@ -154,8 +154,6 @@ public:
 
     void AssignSpillLocationsToPseudoRegisters() override;
 
-    SymbolAlloc *AssignLocationToSpillReg(regno_t vrNum) override;
-
     uint64 StackFrameSize() const;
 
     uint32 RealStackFrameSize() const;
@@ -207,7 +205,6 @@ public:
 private:
     MemSegment segRefLocals = MemSegment(kMsRefLocals);
     /* callee saved register R19-R28 (10) */
-    MemSegment segSpillReg = MemSegment(kMsSpillReg);
     MemSegment segLocals = MemSegment(kMsLocals); /* these are accessed via Frame Pointer */
     MemSegment segGrSaveArea = MemSegment(kMsGrSaveArea);
     MemSegment segVrSaveArea = MemSegment(kMsVrSaveArea);
@@ -220,6 +217,11 @@ private:
     void LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, std::vector<MIRSymbol *> &returnDelays);
     void LayoutEAVariales(std::vector<MIRSymbol *> &tempVar);
     void LayoutReturnRef(std::vector<MIRSymbol *> &returnDelays, int32 &structCopySize, int32 &maxParmStackSize);
+
+    SymbolAlloc *CreateSymbolAlloc() const override
+    {
+        return memAllocator->GetMemPool()->New<AArch64SymbolAlloc>();
+    }
 };
 } /* namespace maplebe */
 

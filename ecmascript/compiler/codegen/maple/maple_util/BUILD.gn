@@ -21,7 +21,6 @@ src_libmplutil = [
   "src/file_layout.cpp",
   "src/file_utils.cpp",
   "src/mpl_scheduler.cpp",
-  "src/itab_util.cpp",
   "src/mpl_timer.cpp",
   "src/profile.cpp",
   "src/string_utils.cpp",

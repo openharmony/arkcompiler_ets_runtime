@@ -355,3 +355,41 @@ var regexp4 = /a*/g;
 regexp4.lastIndex = 1;
 print(regexp3.exec('aaabab'));
 print(regexp4.exec('aaabaa'));
+
+const v43 = /V[\d-\d]/ys;
+const o54 = {
+    __proto__: v43,
+};
+try {
+    o54.test(Map);
+} catch (e) {
+    print(e)
+}
+
+// test RegExp.prototype.xx
+print(RegExp.prototype.dotAll)
+print(RegExp.prototype.global)
+print(RegExp.prototype.hasIndices)
+print(RegExp.prototype.ignoreCase)
+print(RegExp.prototype.multiline)
+print(RegExp.prototype.sticky)
+print(RegExp.prototype.unicode)
+print(RegExp.prototype.lastIndex)
+print(RegExp.prototype.flags)
+print(RegExp.prototype.source)
+try {
+    RegExp.prototype.test("abc")
+} catch (e) {
+    print(e.name)
+}
+try {
+    RegExp.prototype.exec("abc")
+} catch (e) {
+    print(e.name)
+}
+print(RegExp.prototype.toString())
+Object.defineProperty(RegExp.prototype, "global", {
+    value: true
+})
+var flags = RegExp.prototype.flags;
+print(flags);

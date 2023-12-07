@@ -87,7 +87,7 @@ public:
 
     /* Used for GCTIB pattern merging */
     std::string FindGCTIBPatternName(const std::string &name) const override;
-    enum : uint8 { kR8LowList, kR8HighList, kR16List, kR32List, kR64List };
+    enum : uint8 { kR8LowList, kR8HighList, kR16List, kR32List, kR64List, kR128List };
     bool IsEffectiveCopy(Insn &insn) const final;
     bool IsTargetInsn(MOperator mOp) const final;
     bool IsClinitInsn(MOperator mOp) const final;

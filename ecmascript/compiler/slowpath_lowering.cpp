@@ -2544,9 +2544,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &defaultLabel);
     builder_.Bind(&defaultLabel);
     {
-        GateRef hClass = builder_.LoadHClass(result);
-        builder_.SetPropertyInlinedProps(glue_, result, hClass, builder_.ToTaggedInt(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        builder_.SetLengthToFunction(glue_, result, length);
         GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
         builder_.SetHomeObjectToFunction(glue_, result, builder_.GetHomeObjectFromFunction(jsFunc));
@@ -2821,9 +2819,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
         &exceptionExit, &defaultLabel);
     builder_.Bind(&defaultLabel);
     {
-        GateRef hclass = builder_.LoadHClass(result);
-        builder_.SetPropertyInlinedProps(glue_, result, hclass, builder_.ToTaggedInt(length),
-            builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
+        builder_.SetLengthToFunction(glue_, result, length);
         GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
         builder_.Jump(&successExit);

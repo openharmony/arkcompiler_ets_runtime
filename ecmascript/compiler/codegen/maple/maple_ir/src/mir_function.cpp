@@ -615,9 +615,9 @@ void MIRFunction::SetBaseClassFuncNames(GStrIdx strIdx)
     size_t pos = name.find(delimiter);
     if (pos == std::string::npos) {
         delimiter = namemangler::kNameSplitterStr;
-        width = 3;  // delimiter width
+        width = 3;  // delimiter "_7C" width is 3
         pos = name.find(delimiter);
-        // make sure it is not __7C, but ___7C ok
+        // make sure it is not __7C, but ___7C ok. stop find loop if last 2 char is '_'
         while (pos != std::string::npos && (name[pos - 1] == '_' && name[pos - 2] != '_')) {
             pos = name.find(delimiter, pos + width);
         }
@@ -634,6 +634,7 @@ void MIRFunction::SetBaseClassFuncNames(GStrIdx strIdx)
         }
         baseFuncSigStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcNameWithType);
         size_t newPos = name.find(delimiter, pos + width);
+        // make sure it is not __7C, but ___7C ok. stop find loop if last 2 char is '_'
         while (newPos != std::string::npos && (name[newPos - 1] == '_' && name[newPos - 2] != '_')) {
             newPos = name.find(delimiter, newPos + width);
         }
@@ -711,6 +712,7 @@ void MIRFunction::NewBody()
 {
     codeMemPool = GetCodeMemPool();
     SetBody(codeMemPool->New<BlockNode>());
+    SetLastPosBody(codeMemPool->New<BlockNode>());
     // If mir_function.has been seen as a declaration, its symtab has to be moved
     // from module mempool to function mempool.
     MIRSymbolTable *oldSymTable = GetSymTab();

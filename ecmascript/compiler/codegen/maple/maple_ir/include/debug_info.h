@@ -35,7 +35,7 @@ namespace maple {
 #define YEL "\x1B[33m"
 
 const uint32 kDbgDefaultVal = 0xdeadbeef;
-#define HEX(val) std::hex << "0x" << val << std::dec
+#define HEX(val) std::hex << "0x" << (val) << std::dec
 
 class MIRModule;
 class MIRType;
