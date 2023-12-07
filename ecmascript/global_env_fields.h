@@ -27,8 +27,11 @@
     V(JSTaggedValue, ObjectFunctionPrototype, OBJECT_FUNCTION_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ObjectFunctionPrototypeClass, OBJECT_FUNCTION_PROTOTYPE_CLASS_INDEX)           \
     V(JSTaggedValue, SharedObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, SharedObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)         \
     V(JSTaggedValue, FunctionFunction, FUNCTION_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, FunctionPrototype, FUNCTION_PROTOTYPE_INDEX)                                   \
+    V(JSTaggedValue, SharedFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                      \
+    V(JSTaggedValue, SharedConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                        \
     V(JSTaggedValue, NumberFunction, NUMBER_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, NumberPrototype, NUMBER_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, BigIntFunction, BIGINT_FUNCTION_INDEX)                                         \

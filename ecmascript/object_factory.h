@@ -227,6 +227,10 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
                                        MemSpaceType spaceType = OLD_SPACE);
+    JSHandle<JSFunction> NewJSSharedFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
+        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = OLD_SPACE);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 

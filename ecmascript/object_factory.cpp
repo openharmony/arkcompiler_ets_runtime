@@ -1482,6 +1482,17 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
     return newObj;
 }
 
+JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
+    FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId, MemSpaceType spaceType)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
+    JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
+    uint32_t threadID = thread_->GetThreadId();
+    JSHandle<JSSharedFunction>(sfunc)->SetOwnerID(0xFFFFFFFF00000000 | threadID);
+    return sfunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
                                                   FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
                                                   MemSpaceType spaceType)

@@ -142,6 +142,11 @@ public:
             case JSType::JS_ITERATOR:
                 JSObject::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::JS_SHARED_OBJECT: {
+                auto jsSharedObject = JSSharedObject::Cast(object);
+                jsSharedObject->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
                 JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
