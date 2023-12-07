@@ -167,6 +167,21 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
     return thread->GetEcmaVM()->GetFactory()->NewFromUtf8(buf).GetTaggedValue();
 }
 
+bool inline IsDenormal(uint64_t x)
+{
+    return (x & kINFINITY) == 0;
+}
+
+int inline Exponent(double x)
+{
+    uint64_t value =  base::bit_cast<uint64_t>(x);
+    if (IsDenormal(value)) {
+        return kDENORMAL;
+    }
+    int biased = static_cast<int>((value & kINFINITY) >> DOUBLE_SIGNIFICAND_SIZE);
+    return biased - EXPONENTBIAS;
+}
+
 JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int radix)
 {
     static constexpr int BUFFER_SIZE = 2240; // 2240: The size of the character array buffer
@@ -221,7 +236,7 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     }
 
     ASSERT(radix >= MIN_RADIX && radix <= MAX_RADIX);
-    while (integer / radix > MAX_MANTISSA) {
+    while (Exponent(integer / radix) > 0) {
         integer /= radix;
         buffer[--integerCursor] = '0';
     }

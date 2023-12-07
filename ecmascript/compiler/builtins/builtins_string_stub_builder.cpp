@@ -103,12 +103,15 @@ void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef 
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(doubleValue, VariableType::FLOAT64(), Double(0));
     Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label next(env);
     Label posTagNotUndefined(env);
     Label posTagIsInt(env);
     Label posTagNotInt(env);
+    Label isINF(env);
+    Label isNotINF(env);
     Label posNotGreaterLen(env);
     Label posGreaterLen(env);
     Label posNotLessZero(env);
@@ -139,6 +142,9 @@ void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef 
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                 Bind(&posTagIsDouble);
+                doubleValue = GetDoubleOfTDouble(posTag);
+                Branch(DoubleIsINF(*doubleValue), &posGreaterLen, &isNotINF);
+                Bind(&isNotINF);
                 pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
@@ -171,10 +177,13 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(doubleValue, VariableType::FLOAT64(), Double(0));
     Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label next(env);
     Label posTagNotUndefined(env);
+    Label isINF(env);
+    Label isNotINF(env);
     Label posTagIsInt(env);
     Label posTagNotInt(env);
     Label posNotGreaterLen(env);
@@ -201,13 +210,20 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
                 GateRef posTag = GetCallArg0(numArgs);
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                pos = GetInt32OfTInt(posTag);
-                Jump(&next);
+                {
+                    pos = GetInt32OfTInt(posTag);
+                    Jump(&next);
+                }
                 Bind(&posTagNotInt);
-                Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
-                Bind(&posTagIsDouble);
-                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
-                Jump(&next);
+                {
+                    Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                    Bind(&posTagIsDouble);
+                    doubleValue = GetDoubleOfTDouble(posTag);
+                    Branch(DoubleIsINF(*doubleValue), exit, &isNotINF);
+                    Bind(&isNotINF);
+                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
+                    Jump(&next);
+                }
             }
             Bind(&next);
             {

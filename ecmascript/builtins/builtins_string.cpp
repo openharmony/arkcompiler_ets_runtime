@@ -258,6 +258,10 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        double valueNumber = posVal.GetNumber();
+        if (!std::isfinite(valueNumber)) {
+            return factory->GetEmptyString().GetTaggedValue();
+        }
         pos = posVal.ToInt32();
     }
     if (pos < 0 || pos >= thisLen) {
@@ -289,6 +293,10 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        double valueNumber = posVal.GetNumber();
+        if (!std::isfinite(valueNumber)) {
+            return GetTaggedDouble(base::NAN_VALUE);
+        }
         pos = posVal.ToInt32();
     }
     if (pos < 0 || pos >= thisLen) {
