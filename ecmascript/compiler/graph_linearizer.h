@@ -166,14 +166,14 @@ public:
         dominatedRegions_.clear();
     }
 
-    void SetLoopNumber(size_t loopNumber)
+    void SetLoopNumber(int32_t loopNumber)
     {
         loopNumber_ = static_cast<int32_t>(loopNumber);
     }
 
-    size_t GetLoopNumber() const
+    int32_t GetLoopNumber() const
     {
-        return static_cast<size_t>(loopNumber_);
+        return static_cast<int32_t>(loopNumber_);
     }
 
     bool HasLoopNumber() const
@@ -181,7 +181,7 @@ public:
         return loopNumber_ >= 0;
     }
 
-    GateRegion* GetDominator()
+    GateRegion* GetDominator() const
     {
         return iDominator_;
     }
@@ -191,7 +191,7 @@ public:
         return dominatedRegions_;
     }
 
-    int32_t GetDepth()
+    int32_t GetDepth() const
     {
         return depth_;
     }
@@ -201,29 +201,19 @@ public:
         loopIndex_ = loopIndex;
     }
 
-    int32_t GetLoopIndex()
+    int32_t GetLoopIndex() const
     {
         return loopIndex_;
     }
 
-    void SetLoopDepth(size_t loopDepth)
+    void SetLoopDepth(int32_t loopDepth)
     {
         loopDepth_ = loopDepth;
     }
 
-    size_t GetLoopDepth()
+    int32_t GetLoopDepth() const
     {
         return loopDepth_;
-    }
-
-    void SetInnerLoopIndex(int innerLoopIndex)
-    {
-        innerLoopIndex_ = innerLoopIndex;
-    }
-
-    int GetInnerLoopIndex()
-    {
-        return innerLoopIndex_;
     }
 
 private:
@@ -235,9 +225,8 @@ private:
         DEAD
     };
     static constexpr int32_t INVALID_DEPTH = -1;
+    static constexpr int32_t INVALID_INDEX = -1;
     size_t id_ {0};
-    size_t loopDepth_ {0}; // the loop nesting level of this block
-    int innerLoopIndex_ {-1}; // number of the innermost loop of this block
     int32_t depth_ {INVALID_DEPTH};
     GateRegion* iDominator_ {nullptr};
     ChunkVector<GateRef> gateList_;
@@ -246,8 +235,9 @@ private:
     ChunkVector<GateRegion*> dominatedRegions_;
     GateRef state_ {Circuit::NullGate()};
     StateKind stateKind_ {StateKind::OTHER};
-    int32_t loopNumber_ {INVALID_DEPTH};
-    int32_t loopIndex_ {INVALID_DEPTH};
+    int32_t loopNumber_ {INVALID_INDEX};
+    int32_t loopIndex_ {INVALID_INDEX};
+    int32_t loopDepth_ {INVALID_DEPTH};
     friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
     friend class GateScheduler;
@@ -266,6 +256,7 @@ public:
         ChunkVector<GateRegion*>* loopExits {nullptr};
         LoopInfo* outer {nullptr};
         size_t loopIndex {0};
+        size_t loopDepth {0};
     };
 
     GraphLinearizer(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk, bool onlyBB = false,

@@ -68,3 +68,17 @@ triple(c, 0);
 triple2(a);
 print(a[2]);
 print(c[2]);
+
+function TestIfCase() {
+    let arr: Int32Array =  new Int32Array(1000);
+    let arr2: Int32Array = new Int32Array(1000);
+
+    for (let i:number = 0; i < arr2.length; i++) {
+        if (i < arr.length) {
+            arr[i];
+            arr2[i];
+        }
+    }
+}
+
+TestIfCase();

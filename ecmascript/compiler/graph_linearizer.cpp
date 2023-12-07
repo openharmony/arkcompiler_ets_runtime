@@ -126,8 +126,7 @@ public:
                 case OpCode::IF_SUCCESS: {
                     linearizer_->CreateGateRegion(gate);
                     if (linearizer_->onlyBB_) {
-                        GateRegion* region = linearizer_->GateToRegion(gate);
-                        currentRegion_ = region;
+                        currentRegion_ = linearizer_->GateToRegion(gate);
                     }
                     break;
                 }
@@ -146,7 +145,7 @@ public:
                     break;
                 default: {
                     if (linearizer_->onlyBB_) {
-                        auto& info = linearizer_->GetGateInfo(gate);
+                        auto &info = linearizer_->GetGateInfo(gate);
                         info.region = currentRegion_;
                         linearizer_->BindGate(gate, currentRegion_);
                     }
@@ -352,7 +351,6 @@ public:
         ComputeLoopNumber();
         ComputeLoopInfo();
         ComputeLoopTree();
-        ComputeLoopDepth();
         if (linearizer_->IsLogEnabled()) {
             for (size_t i = 0; i < numLoops_; i++) {
                 auto& loopInfo = linearizer_->loops_[i];
@@ -402,6 +400,7 @@ public:
                 loopInfo.loopHead = loopHead;
                 loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
                 loopInfo.loopIndex = loopNumber;
+                loopInfo.loopHead->loopIndex_ = loopInfo.loopIndex;
             }
             if (curRegion != loopHead) {
                 loopInfo.loopBodys->SetBit(curRegion->GetId());
@@ -521,32 +520,21 @@ public:
     {
         // enter inner loop
         if (succ->HasLoopNumber()) {
+            ASSERT_PRINT(succ->loopIndex_ != GateRegion::INVALID_INDEX, "GateRegion's index should be assigned");
             auto& innerLoop = linearizer_->loops_[succ->GetLoopNumber()];
             innerLoop.outer = loopInfo;
+            if (loopInfo != nullptr) {
+                innerLoop.loopDepth = loopInfo->loopDepth + 1;
+            } else {
+                innerLoop.loopDepth = 1;
+            }
+            succ->loopDepth_ = innerLoop.loopDepth;
             loopInfo = &innerLoop;
         } else if (loopInfo != nullptr) {
             succ->loopIndex_ = static_cast<int32_t>(loopInfo->loopIndex);
+            succ->loopDepth_ = static_cast<int32_t>(loopInfo->loopDepth);
         }
         return loopInfo;
-    }
-
-    void ComputeLoopDepth()
-    {
-        auto size = linearizer_->regionList_.size();
-        for (size_t cur = 0; cur < size; cur++) {
-            GateRegion* region = linearizer_->regionList_[cur];
-            int loopDepth = 0;
-            int innerLoopIndex = -1;
-            for (int i = static_cast<int>(numLoops_) - 1; i >= 0; i--) {
-                auto& loopInfo = linearizer_->loops_[i];
-                if (loopInfo.loopBodys->TestBit(cur)) {
-                    loopDepth++;
-                    innerLoopIndex = i;
-                }
-            }
-            region->SetLoopDepth(loopDepth);
-            region->SetInnerLoopIndex(innerLoopIndex);
-        }
     }
 
     size_t Push(GateRegion *region, size_t depth)
