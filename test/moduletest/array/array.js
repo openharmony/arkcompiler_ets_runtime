@@ -363,3 +363,14 @@ var target1 = [];
 var obj = new Proxy(target1, {get: getTrap, has: () => true});
 print([].concat(obj));
 print(Array.prototype.concat.apply(obj))
+
+const v55 = new Float64Array();
+const v98 = [-5.335880620598348e+307,1.0,1.0,2.220446049250313e-16,-1.6304390272817058e+308];
+function f99(a100) {
+}
+function f110() {
+    v98[2467] = v55;
+}
+Object.defineProperty(f99, Symbol.species, { configurable: true, enumerable: true, value: f110 });
+v98.constructor = f99;
+print(JSON.stringify(v98.splice(4)));
