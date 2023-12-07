@@ -240,6 +240,20 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ASSERT_NO_ABRUPT_COMPLETION(thread) ASSERT(!(thread)->HasPendingException());
 
+#define DECL_CHECK_OWNERSHIP()                                                                   \
+    inline bool IsOwnedByThread(JSThread* thread) {                                              \
+        uint32_t threadID = thread->GetThreadId();                                               \
+        uint64_t ownerID = GetOwnerID();                                                         \
+        return (ownerID & 0xffffffff) == threadID;                                               \
+    }
+
+#define DECL_SET_OWNERSHIP()                                                                     \
+    inline void SetOwnerByThread(uint32_t threadID) {                                            \
+        uint64_t ownerID = GetOwnerID();                                                         \
+        ownerID = (ownerID & 0xFFFFFFFF00000000) | threadID;                                     \
+        SetOwnerID(ownerID);                                                                     \
+    }
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_DATE_VALUE(name, code, isLocal)                                                       \
     static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                          \

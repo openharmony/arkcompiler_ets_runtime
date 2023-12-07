@@ -271,6 +271,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             CString objName = CString("JSObject");  // Ctor-name
             return GetString(objName);
         }
+        case JSType::JS_SHARED_OBJECT: {
+            return GetString("JSSharedObject");
+        }
+        case JSType::JS_SHARED_FUNCTION: {
+            return GetString("JSSharedFunction");
+        }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
@@ -603,7 +609,7 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
         nodeType = NodeType::HIDDEN;
     } else if (type == JSType::JS_ARRAY || type == JSType::JS_TYPED_ARRAY) {
         nodeType = NodeType::ARRAY;
-    } else if (type == JSType::JS_OBJECT) {
+    } else if (type == JSType::JS_OBJECT || type == JSType::JS_SHARED_OBJECT) {
         nodeType = NodeType::OBJECT;
     } else if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
         nodeType = NodeType::CLOSURE;

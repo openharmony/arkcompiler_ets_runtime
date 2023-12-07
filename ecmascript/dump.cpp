@@ -134,6 +134,7 @@ using PendingJob = panda::ecmascript::job::PendingJob;
 static constexpr uint32_t DUMP_TYPE_OFFSET = 12;
 static constexpr uint32_t DUMP_PROPERTY_OFFSET = 20;
 static constexpr uint32_t DUMP_ELEMENT_OFFSET = 2;
+static constexpr uint32_t DUMP_UNSIGNED_LONG_LONG_OFFSET = 16;
 
 CString JSHClass::DumpJSType(JSType type)
 {
@@ -161,10 +162,14 @@ CString JSHClass::DumpJSType(JSType type)
             return "NativePointer";
         case JSType::JS_OBJECT:
             return "Object";
+        case JSType::JS_SHARED_OBJECT:
+            return  "SharedObject";
         case JSType::JS_FUNCTION_BASE:
             return "Function Base";
         case JSType::JS_FUNCTION:
             return "Function";
+        case JSType::JS_SHARED_FUNCTION:
+            return "Shared Function";
         case JSType::JS_ERROR:
             return "Error";
         case JSType::JS_EVAL_ERROR:
@@ -710,6 +715,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSFunctionBase::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_OBJECT:
+            needDumpHClass = true;
+            JSSharedObject::Cast(obj)->Dump(os);
+            break;
         case JSType::GLOBAL_ENV:
             GlobalEnv::Cast(obj)->Dump(os);
             break;
@@ -718,6 +727,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_FUNCTION:
             needDumpHClass = true;
             JSFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_FUNCTION:
+            needDumpHClass = true;
+            JSSharedFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_BOUND_FUNCTION:
             needDumpHClass = true;
@@ -1591,6 +1604,22 @@ void VTable::Dump(std::ostream &os) const
         os << " ] ";
         os << "\n";
     }
+}
+
+void JSSharedObject::Dump(std::ostream &os) const
+{
+    os << " - OwnerID: ";
+    os << std::hex << std::setfill('0') << std::setw(DUMP_UNSIGNED_LONG_LONG_OFFSET) << GetOwnerID();
+    os << "\n";
+    JSObject::Dump(os);
+}
+
+void JSSharedFunction::Dump(std::ostream &os) const
+{
+    os << " - OwnerID: ";
+    os << std::hex << std::setfill('0') << std::setw(DUMP_UNSIGNED_LONG_LONG_OFFSET) << GetOwnerID();
+    os << "\n";
+    JSFunction::Dump(os);
 }
 
 void JSFunction::Dump(std::ostream &os) const
@@ -3878,9 +3907,15 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_GLOBAL_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_OBJECT:
+            JSSharedObject::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_FUNCTION_BASE:
         case JSType::JS_FUNCTION:
             JSFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SHARED_FUNCTION:
+            JSSharedFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_BOUND_FUNCTION:
             JSBoundFunction::Cast(obj)->DumpForSnapshot(vec);
@@ -4554,6 +4589,16 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<Reference> &vec) const
 {
+}
+
+void JSSharedObject::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedFunction::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const

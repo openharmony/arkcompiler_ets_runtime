@@ -981,6 +981,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_ITERATOR: {
             break;
         }
+        case JSType::JS_SHARED_OBJECT: {
+            ThreadID threadID = thread_->GetThreadID();
+            JSSharedObject::Cast(*obj)->SetOwnerID(0xFFFFFFFF00000000 | threadID);
+        }
+        case JSType::JS_SHARED_FUNCTION: {
+            ThreadID threadID = thread_->GetThreadID();
+            JSSharedFunction::Cast(*obj)->SetOwnerID(0xFFFFFFFF00000000 | threadID);
+        }
 #ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL: {
             JSIntl::Cast(*obj)->SetFallbackSymbol(thread_, JSTaggedValue::Undefined());
@@ -1727,6 +1735,11 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     JSHandle<JSFunction> jsfunc = NewJSFunction(env, method);
     return jsfunc;
 }
+
+// JSHandle<JSSharedObject> ObjectFactory::NewJSSharedObject()
+// {
+//     JSHandle<JSHClass> hclass = NewEcmaHClass(JS::SIZE, JSType::JS_BOUND_FUNCTION, proto);
+// }
 
 JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFunctionBase> &target,
                                                             const JSHandle<JSTaggedValue> &boundThis,

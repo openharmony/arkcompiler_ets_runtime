@@ -459,6 +459,17 @@ public:
     DECL_DUMP()
 };
 
+class JSSharedFunction : public JSFunction {
+public:
+    CAST_CHECK(JSSharedFunction, IsSharedObjectFunction);
+    static constexpr size_t OWNER_ID_OFFSET = JSFunction::SIZE;
+    ACCESSORS_PRIMITIVE_FIELD(OwnerID, uint64_t, OWNER_ID_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+    DECL_CHECK_OWNERSHIP();
+    DECL_SET_OWNERSHIP();
+    DECL_DUMP()
+};
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JSFUNCTION_H

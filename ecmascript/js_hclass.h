@@ -75,9 +75,11 @@ struct Reference;
 #define JSTYPE_DECL       /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
     INVALID = 0,          /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_OBJECT,        /* JS_OBJECT_FIRST ////////////////////////////////////////////////////////////////////// */ \
+        JS_SHARED_OBJECT, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_REALM,         /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_BASE, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION,      /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_FUNCTION,            /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROXY_REVOC_FUNCTION,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
@@ -855,6 +857,11 @@ public:
         return GetObjectType() >= JSType::JS_FUNCTION_FIRST && GetObjectType() <= JSType::JS_FUNCTION_LAST;
     }
 
+    bool IsJSSharedFunction() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_FUNCTION;
+    }
+
     inline bool IsJSError() const
     {
         JSType jsType = GetObjectType();
@@ -1527,6 +1534,11 @@ public:
     inline bool IsModuleNamespace() const
     {
         return GetObjectType() == JSType::JS_MODULE_NAMESPACE;
+    }
+
+    inline bool IsJSSharedObject() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_OBJECT;
     }
 
     inline void SetElementsKind(ElementsKind kind)

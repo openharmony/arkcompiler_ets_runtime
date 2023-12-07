@@ -158,6 +158,11 @@ public:
                 jsFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
+            case JSType::JS_SHARED_FUNCTION: {
+                auto jsSharedFunction = JSSharedFunction::Cast(object);
+                jsSharedFunction->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
             case JSType::JS_GENERATOR_FUNCTION: {
                 auto jsGeneratorFunction = JSGeneratorFunction::Cast(object);
                 jsGeneratorFunction->VisitRangeSlot<visitType>(visitor);

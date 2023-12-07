@@ -60,7 +60,9 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
         case JSType::JS_OBJECT:
+        case JSType::JS_SHARED_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
+        case JSType::JS_SHARED_FUNCTION:
             return true;
         default:
             break;

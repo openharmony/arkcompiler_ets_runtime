@@ -508,6 +508,7 @@ public:
     bool IsClassPrototype() const;
     bool IsJSFunction() const;
     bool IsJSFunctionBase() const;
+    bool IsSharedObjectFunction() const;
     bool CheckIsJSFunctionBase() const;
     bool IsECMAObject() const;
     bool IsJSPrimitiveRef() const;
@@ -643,6 +644,8 @@ public:
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
     bool IsModuleNamespace() const;
+    bool IsJSSharedObject() const;
+    bool IsJSSharedFunction() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
