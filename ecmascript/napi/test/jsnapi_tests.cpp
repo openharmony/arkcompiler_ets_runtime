@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,30 +14,62 @@
  */
 
 #include <cstddef>
-
-#include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins.h"
+#include "ecmascript/builtins/builtins_function.h"
+#include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ecma_global_storage.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/js_map.h"
+#include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_set_iterator.h"
+#include "ecmascript/js_regexp.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_weak_container.h"
+#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_generator_object.h"
+#include "ecmascript/js_regexp.h"
+#include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_internals.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tests/test_helper.h"
-#include "ecmascript/js_generator_object.h"
+#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/tagged_tree.h"
+#include "ecmascript/weak_vector.h"
 #include "gtest/gtest.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
+using namespace panda::ecmascript::kungfu;
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
+using PGOProfilerManager = panda::ecmascript::pgo::PGOProfilerManager;
+using FunctionForRef = Local<JSValueRef> (*)(JsiRuntimeCallInfo *);
 class JSNApiTests : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -66,11 +98,10 @@ public:
         JSNApi::DestroyJSVM(vm_);
     }
 
-    template<typename T>
-    void TestNumberRef(T val, TaggedType expected)
+    template <typename T> void TestNumberRef(T val, TaggedType expected)
     {
         LocalScope scope(vm_);
-        Local<NumberRef> obj= NumberRef::New(vm_, val);
+        Local<NumberRef> obj = NumberRef::New(vm_, val);
         ASSERT_TRUE(obj->IsNumber());
         JSTaggedType res = JSNApiHelper::ToJSTaggedValue(*obj).GetRawData();
         ASSERT_EQ(res, expected);
@@ -99,13 +130,13 @@ protected:
     EcmaVM *vm_ = nullptr;
 };
 
-Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo* info)
+Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo *info)
 {
     EscapeLocalScope scope(info->GetVM());
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
-void WeakRefCallback(EcmaVM* vm)
+void WeakRefCallback(EcmaVM *vm)
 {
     LocalScope scope(vm);
     Local<ObjectRef> object = ObjectRef::New(vm);
@@ -137,6 +168,15 @@ HWTEST_F_L0(JSNApiTests, ThreadIdCheck)
     EXPECT_TRUE(vm_->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId());
 }
 
+/**
+ * @tc.number: ffi_interface_api_001
+ * @tc.name: RegisterFunction
+ * @tc.desc:Through the FunctionRef:: New method, we can obtain a reference to the function, register and execute it,
+ * confirm that the return value is an array, and the length of the array is the same as the length of
+ * the passed in parameter list.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, RegisterFunction)
 {
     LocalScope scope(vm_);
@@ -144,8 +184,7 @@ HWTEST_F_L0(JSNApiTests, RegisterFunction)
     ASSERT_TRUE(!callback.IsEmpty());
     std::vector<Local<JSValueRef>> arguments;
     arguments.emplace_back(JSValueRef::Undefined(vm_));
-    Local<JSValueRef> result =
-        callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
     ASSERT_TRUE(result->IsArray(vm_));
     Local<ArrayRef> array(result);
     ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
@@ -183,6 +222,13 @@ HWTEST_F_L0(JSNApiTests, SetProperty)
     ASSERT_EQ(Local<ArrayRef>(propertyGet)->Length(vm_), 3U); // 3 : test case of input
 }
 
+/**
+ * @tc.number: ffi_interface_api_002
+ * @tc.name: JsonParser
+ * @tc.desc:Construct a BufferRef function to determine whether it is a Get
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, JsonParser)
 {
     LocalScope scope(vm_);
@@ -190,7 +236,7 @@ HWTEST_F_L0(JSNApiTests, JsonParser)
     ASSERT_FALSE(globalObject.IsEmpty());
     ASSERT_TRUE(globalObject->IsObject());
 
-    const char *const test{R"({"orientation": "portrait"})"};
+    const char * const test { R"({"orientation": "portrait"})" };
     Local<ObjectRef> jsonString = StringRef::NewFromUtf8(vm_, test);
 
     Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
@@ -212,6 +258,14 @@ HWTEST_F_L0(JSNApiTests, StrictEqual)
     ASSERT_TRUE(origin->IsStrictEquals(vm_, target1));
 }
 
+/**
+ * @tc.number: ffi_interface_api_003
+ * @tc.name: InstanceOf
+ * @tc.desc:Verifying whether the InstanceOf method can correctly determine whether an object is an
+ * instance of another object.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, InstanceOf)
 {
     LocalScope scope(vm_);
@@ -233,6 +287,13 @@ HWTEST_F_L0(JSNApiTests, TypeOf)
     ASSERT_EQ(typeString->ToString(), "number");
 }
 
+/**
+ * @tc.number: ffi_interface_api_004
+ * @tc.name: Symbol
+ * @tc.desc: Determine if it is a symbol type
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Symbol)
 {
     LocalScope scope(vm_);
@@ -243,27 +304,45 @@ HWTEST_F_L0(JSNApiTests, Symbol)
     ASSERT_TRUE(symbol->IsSymbol());
 }
 
+/**
+ * @tc.number: ffi_interface_api_005
+ * @tc.name: StringUtf8_001
+ * @tc.desc:
+ * Utf8Length：Read the non Chinese value length of StringRef according to utf8 type
+ * WriteUtf8：Write the non Chinese value of StringRef to the char array buffer
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, StringUtf8_001)
 {
     LocalScope scope(vm_);
     std::string test = "Hello world";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Utf8Length(vm_), 12);          // 12 : length of testString("Hello World")
-    char buffer[12];                                      // 12 : length of testString
+    EXPECT_EQ(testString->Utf8Length(vm_), 12);       // 12 : length of testString("Hello World")
+    char buffer[12];                                  // 12 : length of testString
     EXPECT_EQ(testString->WriteUtf8(buffer, 12), 12); // 12 : length of testString("Hello World")
     std::string res(buffer);
     ASSERT_EQ(res, test);
 }
 
+/**
+ * @tc.number: ffi_interface_api_006
+ * @tc.name: StringUtf8_002
+ * @tc.desc:
+ * Utf8Length：Read the non Chinese value length of StringRef according to utf8 type
+ * WriteUtf8：Write the non Chinese value of StringRef to the char array buffer
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, StringUtf8_002)
 {
     LocalScope scope(vm_);
     std::string test = "年";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Utf8Length(vm_), 4);          // 4 : length of testString("年")
-    char buffer[4];                                      // 4 : length of testString
+    EXPECT_EQ(testString->Utf8Length(vm_), 4);      // 4 : length of testString("年")
+    char buffer[4];                                 // 4 : length of testString
     EXPECT_EQ(testString->WriteUtf8(buffer, 4), 4); // 4 : length of testString("年")
     std::string res(buffer);
     ASSERT_EQ(res, test);
@@ -296,6 +375,15 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
     EXPECT_EQ(buffer2[2], 'b');
 }
 
+/**
+ * @tc.number: ffi_interface_api_007
+ * @tc.name: StringLatin1_001
+ * @tc.desc:
+ * WriteLatin1：Write the Chinese value of StringRef to the char array buffer
+ * Length：Obtain the length of the Chinese value of StringRef
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, StringLatin1_001)
 {
     LocalScope scope(vm_);
@@ -309,6 +397,15 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_001)
     EXPECT_EQ(buffer[0], '-'); // '-' == 0x2D
 }
 
+/**
+ * @tc.number: ffi_interface_api_008
+ * @tc.name: StringLatin1_002
+ * @tc.desc:
+ * WriteLatin1：Write the non Chinese value of StringRef to the char array buffer
+ * Length：Obtain the length of the non Chinese value of StringRef
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, StringLatin1_002)
 {
     LocalScope scope(vm_);
@@ -326,6 +423,14 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_002)
     EXPECT_EQ(buffer[4], '3');
 }
 
+/**
+ * @tc.number: ffi_interface_api_009
+ * @tc.name: ToType
+ * @tc.desc:
+ * ToString：Obtain the length of the non Chinese value of StringRef
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ToType)
 {
     LocalScope scope(vm_);
@@ -344,27 +449,27 @@ HWTEST_F_L0(JSNApiTests, TypeValue)
     Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123");
     Local<JSValueRef> toValue(toString);
 
-    ASSERT_EQ(toString->Int32Value(vm_), -123);        // -123 : test case of input
+    ASSERT_EQ(toString->Int32Value(vm_), -123); // -123 : test case of input
     ASSERT_EQ(toString->BooleaValue(), true);
     ASSERT_EQ(toString->Uint32Value(vm_), 4294967173U); // 4294967173 : test case of input
-    ASSERT_EQ(toString->IntegerValue(vm_), -123);      // -123 : test case of input
+    ASSERT_EQ(toString->IntegerValue(vm_), -123);       // -123 : test case of input
 }
 
-void* detach()
+void *detach()
 {
     GTEST_LOG_(INFO) << "detach is running";
     return nullptr;
 }
 
-void attach([[maybe_unused]] void* buffer)
+void attach([[maybe_unused]] int *buffer)
 {
     GTEST_LOG_(INFO) << "attach is running";
 }
 
-static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
+static panda::JSNApi::NativeBindingInfo *CreateNativeBindingInfo(void *attach, void *detach)
 {
     GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
-    panda::JSNApi::NativeBindingInfo* info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
+    panda::JSNApi::NativeBindingInfo *info = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
     info->attachData = attach;
     info->detachData = detach;
     return info;
@@ -373,13 +478,15 @@ static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, v
 HWTEST_F_L0(JSNApiTests, CreateNativeObject)
 {
     LocalScope scope(vm_);
-    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void *>(attach), reinterpret_cast<void *>(detach));
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
-    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
-        [](void* data, [[maybe_unused]] void* info) {
-            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(
+        vm_, reinterpret_cast<void *>(info),
+        [](void *data, [[maybe_unused]] void *info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
-        }, nullptr, nativeBindingSize);
+        },
+        nullptr, nativeBindingSize);
     Local<ObjectRef> object = ObjectRef::New(vm_);
     bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
     ASSERT_TRUE(result);
@@ -395,6 +502,13 @@ HWTEST_F_L0(JSNApiTests, CreateNativeObject)
     ASSERT_FALSE(object->Has(vm_, key));
 }
 
+/**
+ * @tc.number: ffi_interface_api_010
+ * @tc.name: DefineProperty
+ * @tc.desc: Set Key values and corresponding attribute values
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, DefineProperty)
 {
     LocalScope scope(vm_);
@@ -433,6 +547,14 @@ HWTEST_F_L0(JSNApiTests, DeleteProperty)
     ASSERT_FALSE(object->Has(vm_, key));
 }
 
+/**
+ * @tc.number: ffi_interface_api_011
+ * @tc.name: GetProtoType
+ * @tc.desc:Verify that the GetPrototype method correctly returns the prototype of the function or object,
+ * and verify that the returned prototype is of an object type.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, GetProtoType)
 {
     LocalScope scope(vm_);
@@ -444,20 +566,32 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 
-    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(attach), reinterpret_cast<void*>(detach));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void *>(attach), reinterpret_cast<void *>(detach));
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
-    Local<NativePointerRef> nativeInfo = NativePointerRef::New(vm_, reinterpret_cast<void*>(info),
-        [](void* data, [[maybe_unused]] void* info) {
-            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo*>(data);
+    Local<NativePointerRef> nativeInfo = NativePointerRef::New(
+        vm_, reinterpret_cast<void *>(info),
+        [](void *data, [[maybe_unused]] void *info) {
+            auto externalInfo = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(data);
             delete externalInfo;
-        }, nullptr, nativeBindingSize);
+        },
+        nullptr, nativeBindingSize);
     bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
     ASSERT_TRUE(result);
     protoType = object->GetPrototype(vm_);
     ASSERT_TRUE(protoType->IsObject());
 }
 
-void CheckReject(JsiRuntimeCallInfo* info)
+/*
+ * @tc.number: ffi_interface_api_012
+ * @tc.name: CheckReject
+ * @tc.desc: The function of CheckReject is similar to that of CheckResolve,
+ * but it is used to check whether a function call provides the correct cause of the error,
+ * which is achieved through ASSERT_ EQ (Local<StringRef>(reason) ->ToString(),
+ * check if the value of this string is equal to "Reject".
+ * @tc.type: FUNC
+ * @tc.require:  parameter info
+ */
+void CheckReject(JsiRuntimeCallInfo *info)
 {
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
@@ -465,7 +599,7 @@ void CheckReject(JsiRuntimeCallInfo* info)
     ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
 }
 
-Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo* info)
+Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
 {
     LocalScope scope(info->GetVM());
     CheckReject(info);
@@ -489,7 +623,17 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
-void CheckResolve(JsiRuntimeCallInfo* info)
+/*
+ * @tc.number: ffi_interface_api_013
+ * @tc.name: CheckResolve_New_Reject
+ * @tc.desc: Verify whether a specific function call provided the correct parameters (a number 300.3),
+ * where ASSERT_ TRUE (value ->IsNumber()) Check if this parameter is a number.
+ * New:Used to verify whether the creation of a new PromiseCapabilityRef object was successful.
+ * Reject:Used to verify whether the reason for rejecting the Promise object was successfully obtained.
+ * @tc.type: FUNC
+ * @tc.require:  parameter  info
+ */
+void CheckResolve(JsiRuntimeCallInfo *info)
 {
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> value = info->GetCallArgRef(0);
@@ -497,7 +641,7 @@ void CheckResolve(JsiRuntimeCallInfo* info)
     ASSERT_EQ(Local<NumberRef>(value)->Value(), 300.3); // 300.3 : test case of input
 }
 
-Local<JSValueRef> ResolvedCallback(JsiRuntimeCallInfo* info)
+Local<JSValueRef> ResolvedCallback(JsiRuntimeCallInfo *info)
 {
     LocalScope scope(info->GetVM());
     CheckResolve(info);
@@ -521,7 +665,17 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
     vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
-HWTEST_F_L0(JSNApiTests, Constructor)
+
+/**
+ * @tc.number: ffi_interface_api_014
+ * @tc.name: Constructor_IsObject
+ * @tc.desc: Used to verify whether the creation of a new PromiseCapabilityRef object was successful.
+ *           Used to verify whether obtaining a PromiseRef object was successful.
+             IsObject：Determine if it is an object
+ * @tc.type: FUNC
+ * @tc.require:  parameter isobject
+ */
+HWTEST_F_L0(JSNApiTests, Constructor_IsObject)
 {
     LocalScope scope(vm_);
     Local<ObjectRef> object = JSNApi::GetGlobalObject(vm_);
@@ -534,6 +688,14 @@ HWTEST_F_L0(JSNApiTests, Constructor)
     ASSERT_EQ(result->ToNumber(vm_)->Value(), 1.3); // 1.3 : size of arguments
 }
 
+/**
+ * @tc.number: ffi_interface_api_015
+ * @tc.name: Constructor_IsBuffer
+ * @tc.desc: Construct a BufferRef function to determine whether it is a Buffer.
+ * 			 The constructor used to verify the success of the FunctionRef class.
+ * @tc.type: FUNC
+ * @tc.require:  parameter  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ArrayBuffer)
 {
     LocalScope scope(vm_);
@@ -593,6 +755,15 @@ HWTEST_F_L0(JSNApiTests, DataView)
     ASSERT_TRUE(dataView->IsUndefined());
 }
 
+/**
+ * @tc.number: ffi_interface_api_016
+ * @tc.name: Int8Array_IsUndefined
+ * @tc.desc:Using the functions of Int8Array and verifying if its attribute values are correct.
+ *          Used to determine whether a given object represents an undefined value.
+            Determine if it is an int8 array.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Int8Array)
 {
     LocalScope scope(vm_);
@@ -603,12 +774,21 @@ HWTEST_F_L0(JSNApiTests, Int8Array)
     // 5 : offset of byte, 6 : length
     Local<Int8ArrayRef> typedArray = Int8ArrayRef::New(vm_, arrayBuffer, 5, 6);
     ASSERT_TRUE(typedArray->IsInt8Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 6U); // 6 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 5U); // 5 : offset of byte
+    ASSERT_EQ(typedArray->ByteLength(vm_), 6U);  // 6 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 5U);  // 5 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_017
+ * @tc.name: Uint8Array_ ByteLength_ByteOffset_ArrayLength_GetArrayBuffer
+ * @tc.desc:Using the functions of Uint8Array and verifying if its attribute values are correct.
+ * 		    Used to verify whether the length, offset, array length, and associated
+ * ArrayBufferRef object of the bytes obtained from the array were successful.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Uint8Array)
 {
     LocalScope scope(vm_);
@@ -625,6 +805,13 @@ HWTEST_F_L0(JSNApiTests, Uint8Array)
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_018
+ * @tc.name: Uint8ClampedArray
+ * @tc.desc:Using the functions of Uint8ClampedArray and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Uint8ClampedArray)
 {
     LocalScope scope(vm_);
@@ -641,6 +828,13 @@ HWTEST_F_L0(JSNApiTests, Uint8ClampedArray)
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_019
+ * @tc.name: Int16Array
+ * @tc.desc:Using the functions of Int16Array and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Int16Array)
 {
     LocalScope scope(vm_);
@@ -651,12 +845,19 @@ HWTEST_F_L0(JSNApiTests, Int16Array)
     // 4 : offset of byte, 6 : length
     Local<Int16ArrayRef> typedArray = Int16ArrayRef::New(vm_, arrayBuffer, 4, 6);
     ASSERT_TRUE(typedArray->IsInt16Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 12U);  // 12 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);   // 4 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 12U); // 12 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_020
+ * @tc.name: Uint16Array
+ * @tc.desc:Using the functions of Uint16Array and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Uint16Array)
 {
     LocalScope scope(vm_);
@@ -667,12 +868,20 @@ HWTEST_F_L0(JSNApiTests, Uint16Array)
     // 4 : offset of byte, 6 : length
     Local<Uint16ArrayRef> typedArray = Uint16ArrayRef::New(vm_, arrayBuffer, 4, 6);
     ASSERT_TRUE(typedArray->IsUint16Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 12U);  // 12 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);   // 4 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 12U); // 12 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/*
+ * @tc.number: ffi_interface_api_021
+ * @tc.name: Uint32Array
+ * @tc.desc: Verify that the Uint32Array method correctly created a Uint32Array with the specified length and offset,
+ * and verify that its attribute values match expectations.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Uint32Array)
 {
     LocalScope scope(vm_);
@@ -683,12 +892,19 @@ HWTEST_F_L0(JSNApiTests, Uint32Array)
     // 4 : offset of byte, 6 : length
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     ASSERT_TRUE(typedArray->IsUint32Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 24U);  // 24 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);   // 4 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_022
+ * @tc.name: Int32Array
+ * @tc.desc:Using the functions of Int32Array and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, Int32Array)
 {
     LocalScope scope(vm_);
@@ -699,9 +915,9 @@ HWTEST_F_L0(JSNApiTests, Int32Array)
     // 4 : offset of byte, 6 : length
     Local<Int32ArrayRef> typedArray = Int32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     ASSERT_TRUE(typedArray->IsInt32Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 24U);  // 24 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);   // 4 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
@@ -715,9 +931,9 @@ HWTEST_F_L0(JSNApiTests, Float32Array)
     // 4 : offset of byte, 6 : length
     Local<Float32ArrayRef> typedArray = Float32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     ASSERT_TRUE(typedArray->IsFloat32Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 24U);  // 24 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);   // 4 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
@@ -731,9 +947,9 @@ HWTEST_F_L0(JSNApiTests, Float64Array)
     // 8 : offset of byte, 6 : length
     Local<Float64ArrayRef> typedArray = Float64ArrayRef::New(vm_, arrayBuffer, 8, 6);
     ASSERT_TRUE(typedArray->IsFloat64Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 48U);  // 48 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);   // 8 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
@@ -747,12 +963,19 @@ HWTEST_F_L0(JSNApiTests, BigInt64Array)
     // 8 : offset of byte, 6 : length
     Local<BigInt64ArrayRef> typedArray = BigInt64ArrayRef::New(vm_, arrayBuffer, 8, 6);
     ASSERT_TRUE(typedArray->IsBigInt64Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 48U);  // 48 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);   // 8 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
+/**
+ * @tc.number: ffi_interface_api_023
+ * @tc.name: IsBigInt64Array
+ * @tc.desc: Used to determine whether a given object is a BigInt64Array.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, BigUint64Array)
 {
     LocalScope scope(vm_);
@@ -763,13 +986,23 @@ HWTEST_F_L0(JSNApiTests, BigUint64Array)
     // 8 : offset of byte, 6 : length
     Local<BigUint64ArrayRef> typedArray = BigUint64ArrayRef::New(vm_, arrayBuffer, 8, 6);
     ASSERT_TRUE(typedArray->IsBigUint64Array());
-    ASSERT_EQ(typedArray->ByteLength(vm_), 48U);  // 48 : length of bytes
-    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);   // 8 : offset of byte
-    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U);  // 6 : length of array
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
 }
 
-HWTEST_F_L0(JSNApiTests, Error)
+/**
+ * @tc.number: ffi_interface_api_024
+ * @tc.name: Error_ThrowException_HasPendingException
+ * @tc.desc:
+ * Error：Build error message
+ * ThrowException：Throw an exception, error is the exception information
+ * HasPendingException：Determine if there are any uncaught exceptions
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, Error_ThrowException_HasPendingException)
 {
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
@@ -791,6 +1024,14 @@ HWTEST_F_L0(JSNApiTests, RangeError)
     ASSERT_TRUE(thread_->HasPendingException());
 }
 
+/**
+ * @tc.number: ffi_interface_api_025
+ * @tc.name: TypeError
+ * @tc.desc:Tested the ability to create and throw a type error exception, and verified whether the exception
+ * was correctly recognized and handled.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, TypeError)
 {
     LocalScope scope(vm_);
@@ -824,6 +1065,14 @@ HWTEST_F_L0(JSNApiTests, SyntaxError)
     ASSERT_TRUE(thread_->HasPendingException());
 }
 
+/**
+ * @tc.number: ffi_interface_api_026
+ * @tc.name: OOMError
+ * @tc.desc:Create and throw a memory overflow error exception function, and verify
+ * whether the exception is correctly recognized and handled.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, OOMError)
 {
     LocalScope scope(vm_);
@@ -919,15 +1168,13 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_002)
     ASSERT_TRUE(success1);
 
     JSHandle<JSTaggedValue> sonHandle = JSNApiHelper::ToJSHandle(weakMapLocal);
-    JSHandle<JSObject> sonObj =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(sonHandle), sonHandle);
+    JSHandle<JSObject> sonObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(sonHandle), sonHandle);
 
     JSHandle<JSTaggedValue> fatherHandle = JSNApiHelper::ToJSHandle(weakSetLocal);
     JSHandle<JSObject> fatherObj =
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(fatherHandle), fatherHandle);
 
-    JSHandle<JSTaggedValue> sonMethod =
-        JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>(sonObj), property1String);
+    JSHandle<JSTaggedValue> sonMethod = JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>(sonObj), property1String);
     JSHandle<JSTaggedValue> fatherMethod =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>(fatherObj), property1String);
     bool same = JSTaggedValue::SameValue(sonMethod, fatherMethod);
@@ -999,10 +1246,9 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     JSHandle<JSTaggedValue> funcFuncPrototypeValue(funcFuncPrototype);
 
     JSHandle<JSHClass> funcFuncProtoIntanceClass =
-       factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
+        factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncPrototypeValue);
     // new with NewJSFunctionByHClass::function Class
-    JSHandle<JSFunction> protoFunc =
-       factory->NewJSFunctionByHClass(ctor, funcFuncProtoIntanceClass);
+    JSHandle<JSFunction> protoFunc = factory->NewJSFunctionByHClass(ctor, funcFuncProtoIntanceClass);
     EXPECT_TRUE(*protoFunc != nullptr);
     // add method in funcnction
     PropertyDescriptor desc1 = PropertyDescriptor(thread_, addMethod);
@@ -1016,10 +1262,9 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
     JSHandle<JSTaggedValue> funcFuncNoProtoPrototypeValue(funcFuncNoProtoPrototype);
 
     JSHandle<JSHClass> funcFuncNoProtoProtoIntanceClass =
-       factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncNoProtoPrototypeValue);
+        factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, funcFuncNoProtoPrototypeValue);
     // new with NewJSFunctionByHClass::function Class
-    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByHClass(ctor,
-        funcFuncNoProtoProtoIntanceClass);
+    JSHandle<JSFunction> noProtoFunc = factory->NewJSFunctionByHClass(ctor, funcFuncNoProtoProtoIntanceClass);
     EXPECT_TRUE(*noProtoFunc != nullptr);
     // set property that has same key with fater type
     PropertyDescriptor desc2 = PropertyDescriptor(thread_, defaultString);
@@ -1045,8 +1290,8 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSHandle<JSTaggedValue> clsObj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     ASSERT_TRUE(clsObj->IsClassConstructor());
 
-    JSTaggedValue accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(
-                                                           JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+    JSTaggedValue accessor =
+        JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
 }
 
@@ -1080,16 +1325,21 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     delete ref2;
 }
 
+/**
+ * @tc.number: ffi_interface_api_027
+ * @tc.name: TriggerGC_OLD_GC
+ * @tc.desc: GC trigger, gcType is the trigger type
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 {
     vm_->SetEnableForceGC(false);
     auto globalEnv = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> jsFunc = globalEnv->GetArrayFunction();
-    JSHandle<JSObject> objVal1 =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
-    JSHandle<JSObject> objVal2 =
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
+    JSHandle<JSObject> objVal1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
+    JSHandle<JSObject> objVal2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
     JSObject *newObj2 = *objVal2;
     JSTaggedValue canBeGcValue(newObj2);
 
@@ -1109,21 +1359,14 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     vm_->SetEnableForceGC(true);
 }
 
-HWTEST_F_L0(JSNApiTests, ExecuteModuleBuffer)
-{
-    const char *fileName = "__JSNApiTests_ExecuteModuleBuffer.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    bool executeResult =
-        JSNApi::ExecuteModuleBuffer(vm_, reinterpret_cast<const uint8_t *>(data), sizeof(data), fileName);
-    EXPECT_FALSE(executeResult);
-}
-
+/* @tc.number: ffi_interface_api_028
+ * @tc.name: addWorker_DeleteWorker
+ * @tc.desc:
+ * addWorker：Using a WorkerVm as a parameter to modify the workInfo of the current vm
+ * DeleteWorker：Delete WorkerVm
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
     JSRuntimeOptions option;
@@ -1136,6 +1379,14 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
     EXPECT_FALSE(hasDeleted);
 }
 
+/**
+ * @tc.number: ffi_interface_api_029
+ * @tc.name: PrimitiveRef_GetValue
+ * @tc.desc:Create an IntegerRef object with an initial value of 0
+ * and test whether the GetValue method can correctly return the associated JSValueRef object.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, PrimitiveRef_GetValue)
 {
     auto factory = vm_->GetFactory();
@@ -1146,8 +1397,7 @@ HWTEST_F_L0(JSNApiTests, PrimitiveRef_GetValue)
     EXPECT_TRUE(*jsValue == nullptr);
 
     JSHandle<JSTaggedValue> nullHandle(thread_, JSTaggedValue::Null());
-    JSHandle<JSHClass> jsClassHandle =
-        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
+    JSHandle<JSHClass> jsClassHandle = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
     TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
     JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
     Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
@@ -1193,6 +1443,14 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
     EXPECT_EQ(minBigintInt64Val->GetDigit(1), static_cast<uint32_t>(((-minInt64) >> BigInt::DATEBITS) & 0xffffffff));
 }
 
+/**
+ * @tc.number: ffi_interface_api_030
+ * @tc.name: BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySize
+ * @tc.desc:
+ * IsBigInt：Determine if it is bigint
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySize)
 {
     bool sign = false;
@@ -1223,6 +1481,16 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySiz
     delete[] resultWords;
 }
 
+/**
+ * @tc.number: ffi_interface_api_031
+ * @tc.name: DateRef_New_ToString_GetTime_BigIntRef_CreateBigWords_GetWordsArray
+ * @tc.desc:The purpose of testing is to verify whether the DateRef method correctly converts time to Date type
+ * and converts Date type to string type, while also verifying whether its operation to obtain time is correct.
+ * 			Used to verify the success of creating a BigIntRef object and obtaining a
+ * word array of large integer objects.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, DateRef_New_ToString_GetTime)
 {
     double time = 1.1;
@@ -1254,6 +1522,15 @@ HWTEST_F_L0(JSNApiTests, PromiseRef_Finally)
     ASSERT_TRUE(catchPromise2->IsPromise());
 }
 
+/*
+ * @tc.number: ffi_interface_api_032
+ * @tc.name: JSNApi_SerializeValue
+ * @tc.desc: The main function of Undefined is to initialize some variables for subsequent testing,
+ * testing the correctness and reliability of the JSNApi:: SerializeValue function,
+ * and ensuring that it can serialize values correctly.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
 {
     LocalScope scope(vm_);
@@ -1261,21 +1538,31 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
     ASSERT_TRUE(!callback.IsEmpty());
     std::vector<Local<JSValueRef>> arguments;
     arguments.emplace_back(JSValueRef::Undefined(vm_));
-    Local<JSValueRef> result =
-        callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
     ASSERT_TRUE(result->IsArray(vm_));
     Local<ArrayRef> array(result);
     ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
-    void* res = nullptr;
+    void *res = nullptr;
     res = JSNApi::SerializeValue(vm_, result, result);
     EXPECT_TRUE(res);
 }
 
+/*
+ * @tc.number: ffi_interface_api_033
+ * @tc.name: JSNApi_SetHostPromiseRejectionTracker_Call
+ * @tc.desc: Can the host Promise reject callback function of the JavaScript virtual machine be set correctly.
+ * @         Using the functions of Uint8Array and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, JSNApi_SetHostPromiseRejectionTracker)
 {
     void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    // 设置 JavaScript 虚拟机的宿主 Promise 拒绝回调函数为 data 所指向的函数。
     JSNApi::SetHostPromiseRejectionTracker(vm_, data, data);
+    // 首先获取GetJS虚拟机中的当前线程->GetCurrentEcmaContext获取当前上下文->从上下文中获取Promise拒绝回调函数
     PromiseRejectCallback res = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
+    // 检查回调函数的地址是否等于我们之前设置的 data 的地址
     ASSERT_EQ(res, reinterpret_cast<ecmascript::PromiseRejectCallback>(data));
 }
 
@@ -1297,6 +1584,14 @@ HWTEST_F_L0(JSNApiTests, NumberRef_New)
     ASSERT_TRUE(res1->IsNumber());
 }
 
+/**
+ * @tc.number: ffi_interface_api_034
+ * @tc.name: ObjectRef_GetOwnEnumerablePropertyNames
+ * @tc.desc:Use the GetOwnEnumerablePropertyNames method to obtain all enumerable property names of the object
+ * and return an ArrayRef object.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
 {
     LocalScope scope(vm_);
@@ -1305,6 +1600,17 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
     ASSERT_TRUE(res->IsArray(vm_));
 }
 
+/**
+ * @tc.number: ffi_interface_api_035
+ * @tc.name: ObjectRef_SetNativePointerFieldCount_GetNativePointerFieldCount
+ * @tc.desc:
+ * SetNativePointerFieldCount：Set the count value of the local pointer field to count
+ * GetNativePointerField：Get native pointer object
+ * SetNativePointerField：Set native pointer properties, including pointers, callback methods,
+ * data, and number of bindings
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFieldCount)
 {
     LocalScope scope(vm_);
@@ -1314,15 +1620,23 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
     int32_t res = object->GetNativePointerFieldCount();
     ASSERT_EQ(res, input);
     NativePointerCallback callBack = nullptr;
-    void *vp1 = static_cast<void*>(new std::string("test"));
-    void *vp2 = static_cast<void*>(new std::string("test"));
-    std::string *sp1 = static_cast<std::string*>(vp1);
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    std::string *sp1 = static_cast<std::string *>(vp1);
     object->SetNativePointerField(33, vp1, callBack, vp2);
     void *res1 = object->GetNativePointerField(33);
-    std::string *sp2 = static_cast<std::string*>(res1);
+    std::string *sp2 = static_cast<std::string *>(res1);
     ASSERT_EQ(sp1, sp2);
 }
 
+/**
+ * @tc.number: ffi_interface_api_036
+ * @tc.name: FunctionRef_GetFunctionPrototype_SetName_GetName
+ * @tc.desc:Mainly used to verify the correctness of methods such as creating, obtaining prototypes,
+ * setting names, and obtaining FunctionRef objects.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
 {
     LocalScope scope(vm_);
@@ -1330,10 +1644,11 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     bool callNative = true;
     size_t nativeBindingsize = 15;
-    Local<FunctionRef> res = FunctionRef::NewClassFunction(vm_, FunctionCallback,
-                                                           deleter, cb, callNative, nativeBindingsize);
+    Local<FunctionRef> res =
+        FunctionRef::NewClassFunction(vm_, FunctionCallback, deleter, cb, callNative, nativeBindingsize);
     ASSERT_TRUE(res->IsFunction());
     Local<JSValueRef> res1 = res->GetFunctionPrototype(vm_);
+    ASSERT_TRUE(res->IsFunction());
     ASSERT_TRUE(!res1->IsArray(vm_));
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
     res->SetName(vm_, origin);
@@ -1351,9 +1666,17 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetAssetPath_GetAssetPath)
     ASSERT_EQ(str, res);
     void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     JSNApi::SetLoop(vm_, data);
-    void* res1 = vm_->GetLoop();
+    void *res1 = vm_->GetLoop();
     ASSERT_EQ(res1, data);
 }
+
+/**
+ * @tc.number: ffi_interface_api_037
+ * @tc.name: SetAssetPath
+ * @tc.desc:The resource file path used to verify the success of the setup program.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 
 HWTEST_F_L0(JSNApiTests, JSValueRef_ToNativePointer)
 {
@@ -1384,7 +1707,7 @@ HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
     generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
 
     JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread_,  generatorContextVal.GetTaggedValue());
+    genObjHandleVal->SetGeneratorContext(thread_, generatorContextVal.GetTaggedValue());
 
     JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
     Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
@@ -1392,6 +1715,14 @@ HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
     ASSERT_TRUE(res->IsGeneratorFunction());
 }
 
+/**
+ * @tc.number: ffi_interface_api_038
+ * @tc.name: BigIntToInt64
+ * @tc.desc:Is the method of converting BigInt objects to 64 bit signed integers correct, and is it able to
+ * handle lossless conversions correctly.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, BigIntToInt64)
 {
     LocalScope scope(vm_);
@@ -1405,14 +1736,22 @@ HWTEST_F_L0(JSNApiTests, BigIntToInt64)
     EXPECT_TRUE(num != num1);
 }
 
+/**
+ * @tc.number: ffi_interface_api_039
+ * @tc.name: BigIntToUint64
+ * @tc.desc:Is the method for converting BigInt objects to 64 bit unsigned integers correct and can lossless
+ * conversions be handled correctly.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, BigIntToUint64)
 {
     LocalScope scope(vm_);
     uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
     Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
     EXPECT_TRUE(maxBigintUint64->IsBigInt());
-    uint64_t  num = -11;
-    uint64_t  num1 = num;
+    uint64_t num = -11;
+    uint64_t num1 = num;
     bool lossless = true;
     maxBigintUint64->BigIntToUint64(vm_, &num, &lossless);
     EXPECT_TRUE(num != num1);
@@ -1427,6 +1766,16 @@ HWTEST_F_L0(JSNApiTests, BooleanRef_New)
     EXPECT_TRUE(res->BooleaValue());
 }
 
+/**
+ * @tc.number: ffi_interface_api_040
+ * @tc.name: NewFromUnsigned
+ * @tc.desc:Verify that the NewFromUnsigned method of IntegerRef can correctly create an IntegerRef object
+ * representing unsigned integers, and that the value of the object is correct.
+ * Value () method to obtain the value of this object, and then assert that this value is equal to
+ * the input unsigned integer 1.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, NewFromUnsigned)
 {
     LocalScope scope(vm_);
@@ -1454,6 +1803,13 @@ HWTEST_F_L0(JSNApiTests, SetModuleName_GetModuleName)
     ASSERT_EQ(str, res);
 }
 
+/**
+ * @tc.number: ffi_interface_api_041
+ * @tc.name: IsBundle
+ * @tc.desc: Determine if it is a type of Bundle
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, IsBundle)
 {
     LocalScope scope(vm_);
@@ -1461,6 +1817,13 @@ HWTEST_F_L0(JSNApiTests, IsBundle)
     ASSERT_EQ(res, true);
 }
 
+/**
+ * @tc.number: ffi_interface_api_042
+ * @tc.name: ObjectRef_Delete
+ * @tc.desc:MapRef_GetSize_GetTotalElements_Get_GetKey_GetValue_New_Set
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, MapRef_GetSize_GetTotalElements_Get_GetKey_GetValue_New_Set)
 {
     LocalScope scope(vm_);
@@ -1488,6 +1851,15 @@ HWTEST_F_L0(JSNApiTests, GetSourceCode)
     EXPECT_TRUE(res);
 }
 
+/**
+ * @tc.number: ffi_interface_api_043
+ * @tc.name: ObjectRef_Delete_GetSourceCode
+ * @tc.desc:Verify that the Delete method of the Object Ref object correctly deletes a property and that
+ * the object no longer contains the property.
+ * Using the functions of getsourcecode and verifying if its attribute values are correct.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ObjectRef_Delete)
 {
     LocalScope scope(vm_);
@@ -1500,6 +1872,14 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_Delete)
     ASSERT_FALSE(object->Has(vm_, key));
 }
 
+
+/**
+ * @tc.number: ffi_interface_api_044
+ * @tc.name: Has
+ * @tc.desc: Used to verify whether a given check object has the specified properties.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ObjectRef_Set1)
 {
     LocalScope scope(vm_);
@@ -1516,12 +1896,20 @@ HWTEST_F_L0(JSNApiTests, NativePointerRef_New)
 {
     LocalScope scope(vm_);
     NativePointerCallback callBack = nullptr;
-    void *vp1 = static_cast<void*>(new std::string("test"));
-    void *vp2 = static_cast<void*>(new std::string("test"));
-    Local<NativePointerRef> res =  NativePointerRef::New(vm_, vp1, callBack, vp2, 0);
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    Local<NativePointerRef> res = NativePointerRef::New(vm_, vp1, callBack, vp2, 0);
     ASSERT_EQ(res->Value(), vp1);
 }
 
+
+/**
+ * @tc.number: ffi_interface_api_045
+ * @tc.name: PromiseRejectInfo_GetData
+ * @tc.desc:Construct a BufferRef function to determine whether it is a ObjectRef_Has_Delete
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, ObjectRef_Has_Delete)
 {
     LocalScope scope(vm_);
@@ -1539,6 +1927,15 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_Has_Delete)
     ASSERT_FALSE(res3);
 }
 
+/**
+ * @tc.number: ffi_interface_api_046
+ * @tc.name: PromiseRejectInfo_GetData
+ * @tc.desc:Mainly tested whether the GetData method of the PromiseRejectInfo object can correctly return
+ * the incoming data, and whether the GetPromise and GetReason methods can correctly return Promise and the
+ * reason for rejection.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, PromiseRejectInfo_GetData)
 {
     LocalScope scope(vm_);
@@ -1546,16 +1943,28 @@ HWTEST_F_L0(JSNApiTests, PromiseRejectInfo_GetData)
     Local<JSValueRef> promise(toString);
     Local<StringRef> toString1 = StringRef::NewFromUtf8(vm_, "123.3");
     Local<JSValueRef> reason(toString1);
-    void *data = static_cast<void*>(new std::string("test"));
-    PromiseRejectInfo  promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    void *data = static_cast<void *>(new std::string("test"));
+    // 创建一个PromiseRejectInfo对象,并传入被拒绝的Promise,拒绝的原因,拒绝事件类型以及自定义数据
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    // 从上一步创建的PromiseRejectInfo对象中获取被拒绝的Promise,并在下面断言被拒绝的Promise与原始Promise相同
     Local<JSValueRef> promise_res = promisereject.GetPromise();
+    // 获取拒绝的原因,并在下面断言拒绝原因与原始拒绝原因相同
     Local<JSValueRef> reason_res = promisereject.GetReason();
     ASSERT_EQ(promise_res->ToString(vm_)->ToString(), promise->ToString(vm_)->ToString());
     ASSERT_EQ(reason_res->ToString(vm_)->ToString(), reason->ToString(vm_)->ToString());
-    void* dataRes = promisereject.GetData();
+    // 获取自定义数据,并在下面断言自定义数据与传入的数据相同
+    void *dataRes = promisereject.GetData();
     ASSERT_EQ(dataRes, data);
 }
 
+/**
+ * @tc.number: ffi_interface_api_047
+ * @tc.name: FunctionCallScope
+ * @tc.desc:Create and use the function call scope function, and verify whether the depth of function calls is
+ * correct when entering and exiting the scope.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
 HWTEST_F_L0(JSNApiTests, FunctionCallScope)
 {
     {
@@ -1570,108 +1979,123 @@ HWTEST_F_L0(JSNApiTests, AotTrigger)
     std::string bundle;
     std::string module;
     int32_t trigger = -1;
-    JSNApi::SetRequestAotCallback(
-        vm_, [&](const std::string &bundleName, const std::string &moduleName, int32_t triggerMode) -> bool {
+    JSNApi::SetRequestAotCallback(vm_,
+        [&](const std::string &bundleName, const std::string &moduleName, int32_t triggerMode) -> bool {
             bundle = bundleName;
             module = moduleName;
             trigger = triggerMode;
             return 100;
         });
     ASSERT_FALSE(ecmascript::pgo::PGOProfilerManager::GetInstance()->RequestAot("com.test.test", "requestAot",
-                                                                                RequestAotMode::RE_COMPILE_ON_IDLE));
+        RequestAotMode::RE_COMPILE_ON_IDLE));
     ASSERT_EQ(bundle, "com.test.test");
     ASSERT_EQ(module, "requestAot");
     ASSERT_EQ(trigger, 0);
 }
 
-HWTEST_F_L0(JSNApiTests, JSNApiInternalsTest)
-{
-#define CHECK_VALUE(VAL) ASSERT_EQ(JSValueRefInternals::VAL, JSTaggedValue::VAL)
-    CHECK_VALUE(BIT_PER_BYTE);
-    CHECK_VALUE(TAG_BITS_SIZE);
-    CHECK_VALUE(TAG_BITS_SHIFT);
-    CHECK_VALUE(TAG_MARK);
-    CHECK_VALUE(TAG_INT);
-    CHECK_VALUE(TAG_INT32_INC_MAX);
-    CHECK_VALUE(TAG_INT32_DEC_MIN);
-    CHECK_VALUE(TAG_OBJECT);
-    CHECK_VALUE(TAG_WEAK);
-    CHECK_VALUE(TAG_NULL);
-    CHECK_VALUE(TAG_SPECIAL);
-    CHECK_VALUE(TAG_BOOLEAN);
-    CHECK_VALUE(TAG_EXCEPTION);
-    CHECK_VALUE(TAG_OPTIMIZED_OUT);
-    CHECK_VALUE(TAG_SPECIAL_MASK);
-    CHECK_VALUE(TAG_BOOLEAN_MASK);
-    CHECK_VALUE(TAG_HEAPOBJECT_MASK);
-    CHECK_VALUE(TAG_WEAK_MASK);
-    CHECK_VALUE(VALUE_HOLE);
-    CHECK_VALUE(VALUE_NULL);
-    CHECK_VALUE(VALUE_FALSE);
-    CHECK_VALUE(VALUE_TRUE);
-    CHECK_VALUE(VALUE_UNDEFINED);
-    CHECK_VALUE(VALUE_EXCEPTION);
-    CHECK_VALUE(VALUE_ZERO);
-    CHECK_VALUE(VALUE_OPTIMIZED_OUT);
-    CHECK_VALUE(INT_SIGN_BIT_OFFSET);
-    CHECK_VALUE(DOUBLE_ENCODE_OFFSET_BIT);
-    CHECK_VALUE(DOUBLE_ENCODE_OFFSET);
-    CHECK_VALUE(VALUE_POSITIVE_ZERO);
-    CHECK_VALUE(VALUE_NEGATIVE_ZERO);
-#undef CHECK_VALUE
-}
-
-HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNumberRef)
-{
-    // double
-    TestNumberRef(0., JSTaggedValue::DOUBLE_ENCODE_OFFSET);
-    TestNumberRef(NAN, base::bit_cast<TaggedType>(ecmascript::base::NAN_VALUE) + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
-
-    // int32_t
-    TestNumberRef(static_cast<int32_t>(0), JSTaggedValue::TAG_INT);
-    TestNumberRef(INT32_MIN, static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
-    TestNumberRef(INT32_MAX, static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
-
-    // uint32_t
-    TestNumberRef(static_cast<uint32_t>(0), JSTaggedValue::TAG_INT);
-    TestNumberRef(static_cast<uint32_t>(INT32_MAX), static_cast<uint32_t>(INT32_MAX) | JSTaggedValue::TAG_INT);
-    auto val = static_cast<uint32_t>(INT32_MAX + 1UL);
-    TestNumberRef(val, ConvertDouble(static_cast<double>(val)));
-    TestNumberRef(UINT32_MAX, ConvertDouble(static_cast<double>(UINT32_MAX)));
-
-    // int64_t
-    TestNumberRef(static_cast<int64_t>(INT32_MIN), static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
-    TestNumberRef(static_cast<int64_t>(INT32_MAX), static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
-    TestNumberRef(INT64_MIN, ConvertDouble(static_cast<double>(INT64_MIN)));
-    TestNumberRef(INT64_MAX, ConvertDouble(static_cast<double>(INT64_MAX)));
-}
-
-HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestBooleanRef)
+/**
+ * @tc.number: ffi_interface_api_048
+ * @tc.name: FunctionRef_New_GetFunctionPrototype
+ * @tc.desc:The Inheritance Characteristics of Function References and the Function of Obtaining Function Headers
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, FunctionRef_New_GetFunctionPrototype)
 {
     LocalScope scope(vm_);
-    bool input = true;
-    Local<BooleanRef> res = BooleanRef::New(vm_, input);
-    EXPECT_TRUE(res->IsBoolean());
-    EXPECT_TRUE(res->BooleaValue());
-    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_TRUE);
-
-    input = false;
-    res = BooleanRef::New(vm_, input);
-    EXPECT_TRUE(res->IsBoolean());
-    EXPECT_FALSE(res->BooleaValue());
-    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_FALSE);
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
+    Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
+    JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
+    Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
+    JSHandle<JSTaggedValue> setPrototype(thread_, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> mapPrototype(thread_, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> mapPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, mapPrototype));
+    bool same = JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
+    ASSERT_FALSE(same);
+    mapLocal->Inherit(vm_, setLocal);
+    JSHandle<JSTaggedValue> sonHandle = JSNApiHelper::ToJSHandle(mapLocal);
+    JSHandle<JSTaggedValue> sonPrototype(thread_, JSHandle<JSFunction>::Cast(sonHandle)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> sonPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, sonPrototype));
+    bool same2 = JSTaggedValue::SameValue(setPrototype, sonPrototypeProto);
+    ASSERT_TRUE(same2);
+    Local<FunctionRef> son1 = FunctionRef::New(vm_, FunctionCallback, nullptr);
+    son1->Inherit(vm_, mapLocal);
+    JSHandle<JSFunction> son1Handle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(son1));
+    ASSERT_TRUE(son1Handle->HasFunctionPrototype());
 }
 
-HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNullUndefined)
+/*
+ * @tc.number: ffi_interface_api_049
+ * @tc.name: PrintExceptionInfo
+ * @tc.desc: Obtain and print abnormal information correctly.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
 {
     LocalScope scope(vm_);
-    Local<JSValueRef> null = JSValueRef::Null(vm_);
-    ASSERT_TRUE(null->IsNull());
-    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*null).GetRawData(), JSTaggedValue::VALUE_NULL);
-
-    Local<JSValueRef> undefined = JSValueRef::Undefined(vm_);
-    ASSERT_TRUE(undefined->IsUndefined());
-    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*undefined).GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    vm_ = JSNApi::CreateJSVM(option);
+    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
+    thread_ = vm_->GetJSThread();
+    JSNApi::PrintExceptionInfo(vm_);
 }
 
-}  // namespace panda::test
+/*
+ * @tc.number: ffi_interface_api_050
+ * @tc.name: IsNull
+ * @tc.desc: Verify that localnull correctly represents a null value, ensuring that the JavaScript virtual machine
+ * can handle null values correctly.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsNull)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> localNull = JSValueRef::Null(vm_);
+    ASSERT_TRUE(localNull->IsNull());
+}
+
+/*
+ * @tc.number: ffi_interface_api_051
+ * @tc.name: IsNativePointer
+ * @tc.desc: Verify that a NativePointerRef object created with a local pointer is correctly
+ * recognized as a local pointer.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsNativePointer)
+{
+    LocalScope scope(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    Local<NativePointerRef> res = NativePointerRef::New(vm_, vp1, callBack, vp2, 0);
+    ASSERT_TRUE(res->IsNativePointer());
+}
+
+/*
+ * @tc.number: ffi_interface_api_052
+ * @tc.name: ToType_ToBoolean_ToString_ToObject
+ * @tc.desc: Verify whether the ToType method of the JavaScript virtual machine can correctly convert string types to
+ * the corresponding JavaScript data types.
+ * Among them, there is the result of checking the string "-1.3" when it is converted to a Boolean value.
+ * Check if the string wrapped in JSValueRef yields a result of "-1.3" when converted to a string.
+ * Check if the string wrapped in JSValueRef actually becomes an object when converted to an object.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToType_ToBoolean_ToString_ToObject)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-1.3");
+    Local<JSValueRef> toValue(toString);
+
+    ASSERT_EQ(toString->ToNumber(vm_)->Value(), -1.3);
+    ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
+    ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-1.3");
+    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject());
+}
+} // namespace panda::test
