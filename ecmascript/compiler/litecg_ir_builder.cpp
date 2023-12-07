@@ -446,6 +446,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::EXTRACT_VALUE, &LiteCGIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
         {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
+        {OpCode::FINISH_ALLOCATE, &LiteCGIRBuilder::HandleFinishAllocate},
     };
     illegalOpHandlers_ = {OpCode::NOP,
                           OpCode::CIRCUIT_ROOT,
@@ -1396,6 +1397,18 @@ void LiteCGIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleFinishAllocate(GateRef gate)
+{
+    GateRef g0 = acc_.GetValueIn(gate, 0);
+    VisitFinishAllocate(gate, g0);
+}
+
+void LiteCGIRBuilder::VisitFinishAllocate(GateRef gate, GateRef e1)
+{
+    Expr result = GetExprFromGate(e1);
     SaveGate2Expr(gate, result);
 }
 
