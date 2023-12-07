@@ -48,6 +48,7 @@
                   "header": {
                     "header_files": [
                       "jsnapi.h",
+                      "jsnapi_expo.h",
                       "dfx_jsnapi.h"
                     ],
                     "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
@@ -58,6 +59,7 @@
                     "header": {
                       "header_files": [
                         "jsnapi.h",
+                        "jsnapi_expo.h",
                         "dfx_jsnapi.h"
                       ],
                       "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
@@ -68,6 +70,7 @@
                       "header": {
                         "header_files": [
                           "jsnapi.h",
+                          "jsnapi_expo.h",
                           "dfx_jsnapi.h"
                         ],
                         "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"

@@ -775,6 +775,7 @@ ecma_source = [
   "ecmascript/module/module_data_extractor.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/napi/jsnapi.cpp",
+  "ecmascript/napi/jsnapi_expo.cpp",
   "ecmascript/object_factory.cpp",
   "ecmascript/object_operator.cpp",
   "ecmascript/patch/patch_loader.cpp",
