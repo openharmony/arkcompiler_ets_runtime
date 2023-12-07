@@ -2467,17 +2467,25 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // add this to join stack to avoid circular call
+    auto context = thread->GetCurrentEcmaContext();
+    bool noCircular = context->JoinStackPushFastPath(thisHandle);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
+    }
     // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
 
     // 6. If len is zero, return the empty String.
     if (len == 0) {
+        // pop this from join stack
+        context->JoinStackPopFastPath(thisHandle);
         return GetTaggedString(thread, "");
     }
 
@@ -2510,21 +2518,21 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     for (int64_t k = 0; k < len; k++) {
         JSTaggedValue next = globalConst->GetEmptyString();
         JSHandle<JSTaggedValue> nextElement = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
         if (!nextElement->IsUndefined() && !nextElement->IsNull()) {
             JSHandle<JSTaggedValue> nextValueHandle = nextElement;
             JSHandle<JSTaggedValue> key = globalConst->GetHandledToLocaleStringString();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, nextValueHandle, undefined, 2); // 2: two args
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
             info->SetCallArg(locales.GetTaggedValue(), options.GetTaggedValue());
             JSTaggedValue callResult = JSFunction::Invoke(info, key);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
             next = callResult;
         }
         JSHandle<JSTaggedValue> nextHandle(thread, next);
         JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, nextHandle);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
         CString nextString = ConvertToString(*nextStringHandle);
         if (k > 0) {
             concatStr += STRING_SEPERATOR;
@@ -2534,6 +2542,8 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
         concatStr += nextString;
     }
 
+    // pop this from join stack
+    context->JoinStackPopFastPath(thisHandle);
     // 13. Return R.
     return factory->NewFromUtf8(concatStr).GetTaggedValue();
 }

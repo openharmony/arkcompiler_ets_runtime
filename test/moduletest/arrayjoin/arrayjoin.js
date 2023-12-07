@@ -52,3 +52,12 @@ arr5.push(arr6);
 arr6.push(arr4);
 print(arr4.toString());
 print(arr4.toString());
+
+var arr7 = [
+    {
+        toLocaleString() {
+            return [1, arr7];
+        }
+    }
+];
+print(arr7.toLocaleString());
