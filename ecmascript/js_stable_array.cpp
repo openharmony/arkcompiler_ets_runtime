@@ -87,15 +87,14 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
 }
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
-                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount)
+                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount,
+                                    JSTaggedValue newArray)
 {
     JSThread *thread = argv->GetThread();
     uint32_t len = receiver->GetArrayLength();
     uint32_t argc = argv->GetArgsNumber();
 
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(actualDeleteCount));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);

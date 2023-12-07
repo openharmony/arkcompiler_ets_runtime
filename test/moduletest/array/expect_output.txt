@@ -116,3 +116,4 @@ Expected TypeError caught in lastIndexOf when fromIndex is symbol.
 CallbackFn is not callable
 ,,baz
 ,,baz
+{"0":-1.6304390272817058e+308,"length":1}

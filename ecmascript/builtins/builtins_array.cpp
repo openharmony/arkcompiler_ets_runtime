@@ -2311,14 +2311,14 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     if (len + insertCount - actualDeleteCount > base::MAX_SAFE_INTEGER) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
     }
-
-    if (thisHandle->IsStableJSArray(thread)) {
-        return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount, actualDeleteCount);
-    }
     // 12. Let A be ArraySpeciesCreate(O, actualDeleteCount).
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
                                                          JSTaggedNumber(static_cast<double>(actualDeleteCount)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount,
+            actualDeleteCount, newArray);
+    }
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 14. Let k be 0.
     // 15. Repeat, while k < actualDeleteCount

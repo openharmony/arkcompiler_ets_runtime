@@ -27,8 +27,8 @@ public:
     enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
-                                uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount);
+    static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
+                                uint32_t insertCount, uint32_t actualDeleteCount, JSTaggedValue newArray);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
