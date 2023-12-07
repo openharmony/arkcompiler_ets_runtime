@@ -461,7 +461,7 @@ public:
 
 class JSSharedFunction : public JSFunction {
 public:
-    CAST_CHECK(JSSharedFunction, IsSharedObjectFunction);
+    CAST_CHECK(JSSharedFunction, IsJSSharedFunction);
     static constexpr size_t OWNER_ID_OFFSET = JSFunction::SIZE;
     ACCESSORS_PRIMITIVE_FIELD(OwnerID, uint64_t, OWNER_ID_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);

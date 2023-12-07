@@ -159,6 +159,18 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
+        case JSType::JS_SHARED_OBJECT: {
+            JSSharedObject * sObj = reinterpret_cast<JSSharedObject *>(object);
+            uint64_t ownerID = sObj->GetOwnerID();
+            sObj->SetOwnerID(ownerID & OWNER_ID_SET_THREAD_ID_TO_ZERO);
+            break;
+        }
+        case JSType::JS_SHARED_FUNCTION: {
+            JSSharedFunction * sObj = reinterpret_cast<JSSharedFunction *>(object);
+            uint64_t ownerID = sObj->GetOwnerID();
+            sObj->SetOwnerID(ownerID & OWNER_ID_SET_THREAD_ID_TO_ZERO);
+            break;
+        }
         default:
             break;
     }

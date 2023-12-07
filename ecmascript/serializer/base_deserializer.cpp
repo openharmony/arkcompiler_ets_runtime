@@ -205,14 +205,27 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
         newConstPoolInfos_.back()->slotAddr_ = addr + Method::CONSTANT_POOL_OFFSET;
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
-    if (object->GetClass()->IsJSNativePointer()) {
-        JSNativePointer *nativePointer = reinterpret_cast<JSNativePointer *>(object);
-        if (nativePointer->GetDeleter() != nullptr) {
-            thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+    JSType type = object->GetClass()->GetObjectType();
+    switch (type) {
+        case JSType::JS_NATIVE_POINTER: {
+            JSNativePointer *nativePointer = reinterpret_cast<JSNativePointer *>(object);
+            if (nativePointer->GetDeleter() != nullptr) {
+                thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+            }
+            break;
         }
-    } else if (object->GetClass()->IsJSFunction()) {
-        // defer initialize concurrent function until constpool is set
-        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
+        case JSType::JS_SHARED_OBJECT: {
+            JSSharedObject *sObj = reinterpret_cast<JSSharedObject *>(object);
+            sObj->SetOwnerByThread(thread_->GetThreadId());
+            break;
+        }
+        case JSType::JS_SHARED_FUNCTION: {
+            JSSharedFunction *sFunc = reinterpret_cast<JSSharedFunction *>(object);
+            sFunc->SetOwnerByThread(thread_->GetThreadId());
+            break;
+        }
+        default:
+            break;
     }
     UpdateMaybeWeak(slot, addr, isWeak);
     if (!isRoot) {

@@ -50,6 +50,7 @@ enum IntegrityLevel { SEALED, FROZEN };
 
 enum PositionKind { UNKNOWN = 0, INDEXED_PROPERTY = 1, INLINE_NAMED_PROPERTY = 2, OUT_NAMED_PROPERTY = 3 };
 enum PropertyKind { KEY = 0, VALUE, KEY_VALUE };
+static constexpr uint64_t OWNER_ID_SET_THREAD_ID_TO_ZERO = 0xFFFFFFFF00000000ULL;
 
 // ecma6.0 6.2.4 The Property Descriptor Specification Type
 class PropertyDescriptor final {

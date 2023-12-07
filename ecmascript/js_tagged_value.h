@@ -508,7 +508,6 @@ public:
     bool IsClassPrototype() const;
     bool IsJSFunction() const;
     bool IsJSFunctionBase() const;
-    bool IsSharedObjectFunction() const;
     bool CheckIsJSFunctionBase() const;
     bool IsECMAObject() const;
     bool IsJSPrimitiveRef() const;
