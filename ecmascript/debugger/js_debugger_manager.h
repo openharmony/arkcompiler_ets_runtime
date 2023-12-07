@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_DEBUGGER_JS_DEBUGGER_MANAGER_H
 #define ECMASCRIPT_DEBUGGER_JS_DEBUGGER_MANAGER_H
 
+#include <shared_mutex>
+#include <unordered_map>
+
 #include "ecmascript/debugger/hot_reload_manager.h"
 #include "ecmascript/debugger/notification_manager.h"
 #include "ecmascript/debugger/dropframe_manager.h"
@@ -182,6 +185,9 @@ public:
         return dropframeManager_.GetPromiseQueueSizeRecordOfTopFrame();
     }
 
+    static void AddJsDebuggerManager(uint32_t tid, JsDebuggerManager *jsDebuggerManager);
+    static JsDebuggerManager* GetJsDebuggerManager(uint32_t tid);
+
 private:
     bool isDebugMode_ {false};
     bool isDebugApp_ {false};
@@ -197,6 +203,9 @@ private:
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
+
+    static std::unordered_map<uint32_t, JsDebuggerManager *> jsDebuggerManagerMap_;
+    static std::shared_mutex mutex_;
 };
 }  // panda::ecmascript::tooling
 
