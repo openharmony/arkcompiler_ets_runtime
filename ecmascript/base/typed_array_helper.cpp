@@ -170,7 +170,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     // 9. Let len be ? LengthOfArrayLike(arrayLike).
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     JSTaggedNumber lenTemp =
-        JSTaggedValue::ToLength(thread, JSObject::GetProperty(thread, objectArg, lengthKey).GetValue());
+        JSTaggedValue::ToLength(thread, JSTaggedValue::GetProperty(thread, objectArg, lengthKey).GetValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint64_t rawLen = lenTemp.GetNumber();
     // 10. Perform ? AllocateTypedArrayBuffer(O, len).
@@ -189,7 +189,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        JSHandle<JSTaggedValue> kValue = JSObject::GetProperty(thread, objectArg, kKey).GetValue();
+        JSHandle<JSTaggedValue> kValue = JSTaggedValue::GetProperty(thread, objectArg, kKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), kKey, kValue, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

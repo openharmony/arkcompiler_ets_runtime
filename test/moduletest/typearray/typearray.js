@@ -274,9 +274,20 @@ try {
     print(error.name);
 }
 
-
 const v21 = new SharedArrayBuffer(32);
 const v22 = new BigInt64Array(v21);
 Atomics.or(v22, Int16Array, false);
 print(v22);
 print(Atomics.wait(v22, false, true));
+
+var arr13 = { [0]: 1, [1]: 20, [2]: 300, [3]: 4000, length: 4};
+var proxy = new Proxy(arr13, {
+    get: function(target, name) {
+        if (name == Symbol.iterator) {
+            return undefined;
+        }
+        return target[name];
+    }
+})
+var arr14 = new Uint8Array(proxy);
+print(arr13.length == arr14.length)
