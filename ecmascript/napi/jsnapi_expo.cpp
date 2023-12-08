@@ -2175,6 +2175,33 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     return JSNApiHelper::ToLocal<JSValueRef>(resultValue);
 }
 
+Local<JSValueRef> FunctionRef::ConstructorOptimize(const EcmaVM *vm,
+    JSValueRef* argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    int32_t length)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(func, ERROR);
+    JSHandle<JSTaggedValue> newTarget = func;
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, newTarget, length);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    for (int32_t i = 0; i < length; i++) {
+        JSTaggedValue arg = JSTaggedValue::Undefined();
+        if (argv[i] != nullptr) {
+            arg = JSNApiHelper::ToJSTaggedValue(argv[i]);
+        }
+        info->SetCallArg(i, arg);
+    }
+    JSTaggedValue result = JSFunction::ConstructInternal(info);
+
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> resultValue(thread, result);
+    return JSNApiHelper::ToLocal<JSValueRef>(resultValue);
+}
+
 Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
