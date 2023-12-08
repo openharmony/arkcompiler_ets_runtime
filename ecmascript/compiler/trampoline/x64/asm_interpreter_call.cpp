@@ -687,6 +687,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
     Register newSpRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG1);
     __ Bind(&pushFrameState);
     {
+        StackOverflowCheck(assembler, glueRegister, numVregsRegister, tempRegister, temp2Register, stackOverflow);
         __ Movq(rsp, newSpRegister);
 
         PushFrameState(assembler, prevSpRegister, fpRegister,

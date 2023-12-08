@@ -30,3 +30,15 @@ try {
         print("stack overflow2!");
     }
 }
+
+function foo2()
+{
+    foo2()
+}
+try {
+    foo2()
+} catch (e) {
+    if ((e instanceof RangeError)) {
+        print("stack overflow!");
+    }
+}
