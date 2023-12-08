@@ -15,6 +15,9 @@
 
 #include "ecmascript/compiler/file_generators.h"
 
+#include "ecmascript/common.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -110,19 +113,19 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, S
             funcSize = codeBuff + assembler->GetSectionSize(ElfSecName::TEXT) - entrys[j];
         }
         kungfu::CalleeRegAndOffsetVec info = assembler->GetCalleeReg2Offset(func, log);
-        stubInfo.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
-                          funcSize, info);
+        stubInfo.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entrys[j] - codeBuff,
+                          AOTFileManager::STUB_FILE_INDEX, moduleIndex, delta, funcSize, info);
         ASSERT(!cs->GetName().empty());
         addr2name[entrys[j]] = cs->GetName();
     }
 }
 
-void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo, uint32_t fileIndex,
                                   uint32_t moduleIndex, const CompilerLog &log)
 {
 #ifdef COMPILE_MAPLE
     if (irModule_->GetModuleKind() != MODULE_LLVM) {
-        CollectFuncEntryInfoByLiteCG(addr2name, aotInfo, moduleIndex);
+        CollectFuncEntryInfoByLiteCG(addr2name, aotInfo, fileIndex, moduleIndex);
         return;
     }
 #endif
@@ -179,7 +182,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         bool isMainFunc = found != std::string::npos;
         uint64_t offset = funcEntry - textAddr + aotInfo.GetCurTextSecOffset();
         aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
-                         offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+                         offset, fileIndex, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
@@ -190,7 +193,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
 
 #ifdef COMPILE_MAPLE
 void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
-                                          uint32_t moduleIndex)
+                                          uint32_t fileIndex, uint32_t moduleIndex)
 {
     std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
     std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
@@ -244,7 +247,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         bool isMainFunc = found != std::string::npos;
         uint64_t offset = funcEntry;
         aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
-                         offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+                         offset, fileIndex, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
@@ -341,7 +344,8 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
         } else {
             funSize = asmModule_.GetBufferSize() - entryOffset;
         }
-        stubInfo_.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
+        stubInfo_.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entryOffset,
+                           AOTFileManager::STUB_FILE_INDEX, bridgeModuleIdx, 0, funSize);
         ASSERT(!cs->GetName().empty());
         addr2name[entryOffset] = cs->GetName();
     }
@@ -400,7 +404,9 @@ void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
 {
     std::map<uintptr_t, std::string> addr2name;
     uint32_t lastEntryIdx = aotInfo_.GetEntrySize();
-    module->CollectFuncEntryInfo(addr2name, aotInfo_, moduleIdx, GetLog());
+    pgo::ApEntityId abcId = INVALID_INDEX;
+    pgo::PGOProfilerManager::GetInstance()->GetPandaFileId(curCompileFileName_.c_str(), abcId);
+    module->CollectFuncEntryInfo(addr2name, aotInfo_, abcId, moduleIdx, GetLog());
     aotInfo_.MappingEntryFuncsToAbcFiles(curCompileFileName_, lastEntryIdx, aotInfo_.GetEntrySize());
     ModuleSectionDes des;
     uint64_t textOffset = RollbackTextSize(module);

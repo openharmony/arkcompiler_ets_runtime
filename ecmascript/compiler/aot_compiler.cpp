@@ -101,9 +101,12 @@ int Main(const int argc, const char **argv)
         PGOProfilerDecoder profilerDecoder;
 
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
-        if (!cPreprocessor.HandleTargetCompilerMode(cOptions) ||
-            !cPreprocessor.HandlePandaFileNames(argc, argv)) {
+        if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return 1;
+        }
+        if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
+            // no need to compile in partial mode without any ap files.
+            return 0;
         }
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);

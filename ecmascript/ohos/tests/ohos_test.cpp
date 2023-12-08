@@ -198,6 +198,7 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
     ASSERT_FALSE(preProcessor.HandleTargetCompilerMode(cOptions));
 
     ASSERT_TRUE(cOptions.profilerIn_.empty());
+    unlink(runtimeAp.c_str());
     unlink(baselineAp.c_str());
     rmdir(pgoDir);
 }

@@ -417,7 +417,6 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
     }
-
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread,
         jsPandaFile.get(), recordName, excuteFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);

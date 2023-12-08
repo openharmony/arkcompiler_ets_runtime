@@ -49,6 +49,32 @@ std::string GetHelper()
     return str;
 }
 
+bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string &files)
+{
+    bool ret = true;
+    LocalScope scope(vm);
+    std::string entry = runtimeOptions.GetEntryPoint();
+#if defined(PANDA_TARGET_WINDOWS)
+    arg_list_t fileNames = base::StringHelper::SplitString(files, ";");
+#else
+    arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
+#endif
+    ClockScope execute;
+    for (const auto &fileName : fileNames) {
+        auto res = JSNApi::Execute(vm, fileName, entry);
+        if (!res) {
+            std::cerr << "Cannot execute panda file '" << fileName << "' with entry '" << entry << "'" << std::endl;
+            ret = false;
+            break;
+        }
+    }
+    auto totalTime = execute.TotalSpentTime();
+    if (runtimeOptions.IsEnablePrintExecuteTime()) {
+        std::cout << "execute pandafile spent time " << totalTime << "ms" << std::endl;
+    }
+    return ret;
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -89,30 +115,13 @@ int Main(const int argc, const char **argv)
         return -1;
     }
 
+    if (runtimeOptions.WasAOTOutputFileSet()) {
+        JSNApi::LoadAotFile(vm, "");
+    }
+
     bool isMergeAbc = runtimeOptions.GetMergeAbc();
     JSNApi::SetBundle(vm, !isMergeAbc);
-    {
-        LocalScope scope(vm);
-        std::string entry = runtimeOptions.GetEntryPoint();
-#if defined(PANDA_TARGET_WINDOWS)
-        arg_list_t fileNames = base::StringHelper::SplitString(files, ";");
-#else
-        arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
-#endif
-        ClockScope execute;
-        for (const auto &fileName : fileNames) {
-            auto res = JSNApi::Execute(vm, fileName, entry);
-            if (!res) {
-                std::cerr << "Cannot execute panda file '" << fileName << "' with entry '" << entry << "'" << std::endl;
-                ret = false;
-                break;
-            }
-        }
-        auto totalTime = execute.TotalSpentTime();
-        if (runtimeOptions.IsEnablePrintExecuteTime()) {
-            std::cout << "execute pandafile spent time " << totalTime << "ms" << std::endl;
-        }
-    }
+    ret = ExecutePandaFile(vm, runtimeOptions, files);
 
     JSNApi::DestroyJSVM(vm);
     return ret ? 0 : -1;

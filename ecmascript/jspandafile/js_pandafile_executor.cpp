@@ -16,11 +16,14 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -67,7 +70,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    LoadAOTFilesForFile(vm, jsPandaFile.get());
+    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
@@ -124,7 +127,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     auto vm = thread->GetEcmaVM();
-    LoadAOTFilesForFile(vm, jsPandaFile.get());
+    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
     JSRecordInfo recordInfo;
@@ -167,7 +170,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    LoadAOTFilesForFile(vm, jsPandaFile.get());
+    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     bool isBundle = jsPandaFile->IsBundlePack();
 
@@ -237,19 +240,16 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     return result;
 }
 
-void JSPandaFileExecutor::LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile)
+void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]]JSPandaFile *jsPandaFile)
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
-        auto aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        std::string aotFileBaseName(vm->GetModuleName());
+        auto *aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
         if (vm->GetJSOptions().WasAOTOutputFileSet()) {
-            AnFileDataManager::GetInstance()->SetEnable(true);
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
-            vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFilename);
+            aotFileBaseName = JSFilePath::GetBaseName(aotFilename);
         }
-        if (aotFM->IsLoad(jsPandaFile)) {
-            uint32_t index = aotFM->GetAnFileIndex(jsPandaFile);
-            jsPandaFile->SetAOTFileInfoIndex(index);
-        }
+        aotFM->BindPandaFilesInAotFile(aotFileBaseName, aotFileBaseName);
     }
 }
 
@@ -266,7 +266,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     auto vm = thread->GetEcmaVM();
-    LoadAOTFilesForFile(vm, jsPandaFile.get());
+    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
     JSRecordInfo recordInfo;
@@ -332,7 +332,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    LoadAOTFilesForFile(vm, jsPandaFile.get());
+    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;

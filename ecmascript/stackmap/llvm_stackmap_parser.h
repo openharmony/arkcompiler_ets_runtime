@@ -48,8 +48,6 @@ public:
         return enableLog_;
     }
 
-    void PUBLIC_API CalculateFuncFpDelta(LLVMStackMapType::Func2FpDelta info, uint32_t moduleIndex);
-
     LLVMStackMapParser(LLVMStackMapInfo &stackMapInfo, bool enableLog = false)
         : stackMapInfo(stackMapInfo),
           enableLog_(enableLog)

@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
 #include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
@@ -29,6 +30,7 @@
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/map.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
@@ -146,6 +148,7 @@ public:
 
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
+    static constexpr uint32_t STUB_FILE_INDEX = 1;
 
     void LoadStubFile(const std::string &fileName);
     static bool LoadAnFile(const std::string &fileName);
@@ -156,9 +159,11 @@ public:
     void Iterate(const RootVisitor &v);
 
     const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
-    bool IsLoad(const JSPandaFile *jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+    uint32_t GetFileIndex(uint32_t anFileInfoIndex, CString abcNormalizedName) const;
+    std::list<CString> GetPandaFiles(uint32_t aotFileInfoIndex);
     uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
+    void BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName);
     void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
                              std::string_view entryPoint);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
@@ -177,7 +182,12 @@ public:
 
 private:
     using MultiConstantPoolMap = CMap<int32_t, JSTaggedValue>; // key: constpool id, value: constantpool
-    using FileNameToMultiConstantPoolMap = CMap<CString, MultiConstantPoolMap>;
+    
+    struct PandaCpInfo {
+        uint32_t fileIndex_;
+        MultiConstantPoolMap multiCpsMap_;
+    };
+    using FileNameToMultiConstantPoolMap = CMap<CString, PandaCpInfo>;
     using AIDatum = CUnorderedMap<uint32_t, FileNameToMultiConstantPoolMap>; // key: ai file index
 
     static void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
