@@ -185,6 +185,7 @@ using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 
 using PathHelper = ecmascript::base::PathHelper;
 using ModulePathHelper = ecmascript::ModulePathHelper;
+using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -192,8 +193,6 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
-std::shared_mutex JSNApi::mutex_;
-std::unordered_map<uint32_t, EcmaVM *> JSNApi::vmMap_ {};
 static Mutex *mutex = new panda::Mutex();
 #define XPM_PROC_PREFIX "/proc/"
 #define XPM_PROC_SUFFIX "/xpm_region"
@@ -2921,7 +2920,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (!handle.IsValid()) {
-        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
+        LOG_ECMA(ERROR) << "[StartDebuggerForOldProcess] Get library handle fail: " << option.libraryPath;
         return false;
     }
 
@@ -2970,17 +2969,17 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
                                         [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    EcmaVM *vm = GetEcmaVM(tid);
-    if (vm == nullptr) {
+    JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
+    if (jsDebuggerManager == nullptr) {
         return false;
     }
-    const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
     if (!handle.IsValid()) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
         return false;
     }
 
-    using StartDebuggerForSocketPair = bool (*)(EcmaVM *, uint32_t, int);
+    using StartDebuggerForSocketPair = bool (*)(uint32_t, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
@@ -2988,35 +2987,18 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(vm, tid, socketfd);
+    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(tid, socketfd);
     if (!ret) {
         // Reset the config
-        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        jsDebuggerManager->SetDebugMode(false);
         panda::os::library_loader::LibraryHandle libraryHandle(nullptr);
-        vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(libraryHandle));
+        jsDebuggerManager->SetDebugLibraryHandle(std::move(libraryHandle));
     }
     return ret;
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
-}
-
-EcmaVM *JSNApi::GetEcmaVM(uint32_t tid)
-{
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    if (vmMap_.find(tid) == vmMap_.end()) {
-        return nullptr;
-    }
-    return vmMap_[tid];
-}
-
-void JSNApi::AddEcmaVM(uint32_t tid, EcmaVM *vm)
-{
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    if (vmMap_.find(tid) == vmMap_.end()) {
-        vmMap_.emplace(tid, vm);
-    }
 }
 
 bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
@@ -3034,7 +3016,8 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     }
 
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
         return false;
     }
@@ -3044,28 +3027,28 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << libraryPath << " " << errno;
         return false;
     }
-    AddEcmaVM(tid, vm);
-    vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
-    vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode && debugApp);
-    vm->GetJsDebuggerManager()->SetIsDebugApp(debugApp);
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
+    jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
+    jsDebuggerManager->SetIsDebugApp(debugApp);
     bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
     // store debugger postTask in inspector.
-    using StoreDebuggerPostTask = void (*)(uint32_t, const DebuggerPostTask &);
-    auto symOfStoreDebuggerPostTask = panda::os::library_loader::ResolveSymbol(
-        vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "StoreDebuggerPostTask");
-    if (!symOfStoreDebuggerPostTask) {
-        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerPostTask symbol fail: " <<
-            symOfStoreDebuggerPostTask.Error().ToString();
+    using StoreDebuggerInfo = void (*)(uint32_t, EcmaVM *, const DebuggerPostTask &);
+    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
+    if (!symOfStoreDebuggerInfo) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
+            symOfStoreDebuggerInfo.Error().ToString();
         return false;
     }
-    reinterpret_cast<StoreDebuggerPostTask>(symOfStoreDebuggerPostTask.Value())(tid, debuggerPostTask);
+    reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
 
     if (debugApp && debugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
 
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
-            vm->GetJsDebuggerManager()->GetDebugLibraryHandle(), "WaitForDebugger");
+            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
         if (!symOfWaitForDebugger) {
             LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
                 symOfWaitForDebugger.Error().ToString();
@@ -3122,15 +3105,14 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 bool JSNApi::StopDebugger(uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-#if !defined(PANDA_TARGET_IOS)
-    EcmaVM *vm = GetEcmaVM(tid);
-    if (vm == nullptr) {
+    JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
+    if (jsDebuggerManager == nullptr) {
         return false;
     }
 
-    const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
+    const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
 
-    using StopOldDebug = void (*)(void *, const std::string &);
+    using StopOldDebug = void (*)(uint32_t, const std::string &);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopOldDebug");
     if (!sym) {
@@ -3138,19 +3120,10 @@ bool JSNApi::StopDebugger(uint32_t tid)
         return false;
     }
 
-    reinterpret_cast<StopOldDebug>(sym.Value())(vm, "PandaDebugger");
+    reinterpret_cast<StopOldDebug>(sym.Value())(tid, "PandaDebugger");
 
-    vm->GetJsDebuggerManager()->SetDebugMode(false);
+    jsDebuggerManager->SetDebugMode(false);
     return true;
-#else
-    if (vm == nullptr) {
-        return false;
-    }
-
-    OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
-    vm->GetJsDebuggerManager()->SetDebugMode(false);
-    return true;
-#endif // PANDA_TARGET_IOS
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;

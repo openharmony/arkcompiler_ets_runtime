@@ -615,7 +615,7 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t
         }
     } else {
         debugOption.isDebugMode = true;
-        return JSNApi::JSNApi::NotifyDebugMode(
+        return JSNApi::NotifyDebugMode(
             tid, vm, option.libraryPath, debugOption, instanceId, debuggerPostTask, true, true);
     }
 }
