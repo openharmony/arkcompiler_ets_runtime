@@ -16,6 +16,7 @@ group("ark_js_moduletest") {
 
   test_list = [
     "addelementinternal",
+    "addpropertybyname",
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
@@ -177,6 +178,7 @@ group("ark_asm_test") {
 
   test_list = [
     "addelementinternal",
+    "addpropertybyname",
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
@@ -311,6 +313,7 @@ group("ark_asm_single_step_test") {
 
   test_list = [
     "addelementinternal",
+    "addpropertybyname",
     "allocatearraybuffer",
     "arrayfindindex",
     "arrayfindlast",
