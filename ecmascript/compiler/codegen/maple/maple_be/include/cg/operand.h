@@ -480,7 +480,8 @@ public:
         return baseRefOpnd;
     }
 
-    RegOperand *GetBaseRefOpnd() {
+    RegOperand *GetBaseRefOpnd()
+    {
         return baseRefOpnd;
     }
 

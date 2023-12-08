@@ -77,7 +77,8 @@ private:
 
     /* lt/le in float is replaced by gt/ge on swaped operands */
     void SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, bool isSwap = false);
-    void SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType, PrimType primOpndType);
+    void SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType,
+        PrimType primOpndType);
     void SelectCmpResult(RegOperand &resOpnd, Opcode opCode, PrimType primType, PrimType primOpndType);
     void SelectSelect(Operand &resOpnd, Operand &trueOpnd, Operand &falseOpnd, PrimType primType, Opcode cmpOpcode,
                       PrimType cmpPrimType);

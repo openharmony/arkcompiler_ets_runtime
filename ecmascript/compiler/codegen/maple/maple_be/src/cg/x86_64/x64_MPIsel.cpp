@@ -1371,13 +1371,15 @@ void X64MPIsel::SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, boo
     cgFunc->GetCurBB()->AppendInsn(cmpInsn);
 }
 
-void X64MPIsel::SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType, PrimType primOpndType)
+void X64MPIsel::SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType,
+                                 PrimType primOpndType)
 {
     /* float eq using cmpeqsd is same with llvm */
     x64::X64MOP_t eqMOp = x64::MOP_cmpeqsd_r_r;
     Insn &setInsn = cgFunc->GetInsnBuilder()->BuildInsn(eqMOp, X64CG::kMd[eqMOp]);
 
-    auto &regOpnd1 = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primOpndType), cgFunc->GetRegTyFromPrimTy(primOpndType));
+    auto &regOpnd1 = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primOpndType),
+        cgFunc->GetRegTyFromPrimTy(primOpndType));
     SelectCopy(regOpnd1, opnd1, primOpndType);
     /* CMPEQSD xmm1, xmm2  =>  CMPSD xmm1, xmm2, 0 */
     setInsn.AddOpndChain(opnd0).AddOpndChain(regOpnd1);
@@ -1385,7 +1387,8 @@ void X64MPIsel::SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &o
 
     /* set result -> u64/u32 */
     auto tmpResType = (primOpndType == maple::PTY_f64) ? PTY_u64 :PTY_u32;
-    RegOperand &tmpResOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(tmpResType), cgFunc->GetRegTyFromPrimTy(tmpResType));
+    RegOperand &tmpResOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(tmpResType),
+        cgFunc->GetRegTyFromPrimTy(tmpResType));
     SelectRetypeFloat(tmpResOpnd, regOpnd1, tmpResType, primOpndType);
     /* cvt u64/u32 -> primType */
     SelectIntCvt(resOpnd, tmpResOpnd, primResType, tmpResType);

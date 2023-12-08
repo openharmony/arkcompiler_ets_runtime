@@ -133,7 +133,8 @@ void ElfAssembler::EmitFunctionHeader(int64 symIdx, SymbolAttr funcAttr, const s
     const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemoryManager.funcAddressSaver != nullptr) {
         const std::string &funcName = GetNameFromSymMap(symIdx);
-        emitMemoryManager.funcAddressSaver(emitMemoryManager.codeSpace, funcName, static_cast<uint32>(lastModulePC + codeBuff.size()));
+        emitMemoryManager.funcAddressSaver(emitMemoryManager.codeSpace, funcName,
+            static_cast<uint32>(lastModulePC + codeBuff.size()));
     }
     UpdateLabel(symIdx, LabelType::kFunc, static_cast<uint32>(codeBuff.size()));
 }
@@ -2277,14 +2278,16 @@ void ElfAssembler::Ucomiss(Reg srcReg, Reg destReg)
     OpRR(destReg, srcReg, 0x0F, 0x2E);
 }
 
-void ElfAssembler::Cmpsd(Reg srcReg, Reg destReg, uint8 imm) {
-  Encodeb(0xF2);
-  OpRR(destReg, srcReg, 0x0F, 0xC2);
-  Encodeb(imm);
+void ElfAssembler::Cmpsd(Reg srcReg, Reg destReg, uint8 imm)
+{
+    Encodeb(0xF2);
+    OpRR(destReg, srcReg, 0x0F, 0xC2);
+    Encodeb(imm);
 }
 
-void ElfAssembler::Cmpeqsd(Reg srcReg, Reg destReg) {
-  Cmpsd(srcReg, destReg, 0);
+void ElfAssembler::Cmpeqsd(Reg srcReg, Reg destReg)
+{
+    Cmpsd(srcReg, destReg, 0);
 }
 
 /* float sqrt*/

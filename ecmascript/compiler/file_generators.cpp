@@ -493,9 +493,6 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
-    if (vm_->IsEnableJit()) {
-        lastModulePC = 0;
-    }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
         LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
         lastModulePC = AlignUp(lastModulePC, AOTFileInfo::PAGE_ALIGN);

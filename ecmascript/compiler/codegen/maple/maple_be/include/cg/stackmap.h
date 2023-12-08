@@ -49,7 +49,8 @@ public:
         deoptVreg2Opnd.insert(std::pair<int32, Operand *>(deoptVreg, &opnd));
     }
 
-    void ReplaceDeoptBundleInfo(int32 deoptVreg, Operand &opnd) {
+    void ReplaceDeoptBundleInfo(int32 deoptVreg, Operand &opnd)
+    {
         deoptVreg2Opnd.insert_or_assign(deoptVreg, &opnd);
     }
 

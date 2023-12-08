@@ -495,35 +495,43 @@ class LSRALinearScanRegAllocator : public RegAllocator {
             return (inCleanUpState == kRegAllInFirstbb) || (inCleanUpState == kRegAllOutCleanup);
         }
 
-        uint32 GetSpillSize() const {
+        uint32 GetSpillSize() const
+        {
             return spillSize;
         }
 
-        void SetSpillSize(uint32 size) {
+        void SetSpillSize(uint32 size)
+        {
             spillSize = size;
         }
 
-        uint32 GetMaxDefSize() const {
+        uint32 GetMaxDefSize() const
+        {
             return maxDefSize;
         }
 
-        void SetMaxDefSize(uint32 size) {
+        void SetMaxDefSize(uint32 size)
+        {
             maxDefSize = size;
         }
 
-        uint32 GetMaxUseSize() const {
+        uint32 GetMaxUseSize() const
+        {
             return maxUseSize;
         }
 
-        void SetMaxUseSize(uint32 size) {
+        void SetMaxUseSize(uint32 size)
+        {
             maxUseSize = size;
         }
 
-        bool IsNoNeedReloadPosition(uint32 insnId) const {
+        bool IsNoNeedReloadPosition(uint32 insnId) const
+        {
             return (noReloadPos.find(insnId) != noReloadPos.end());
         }
 
-        void AddNoNeedReloadPosition(uint32 insnId) {
+        void AddNoNeedReloadPosition(uint32 insnId)
+        {
             noReloadPos.insert(insnId);
         }
     private:

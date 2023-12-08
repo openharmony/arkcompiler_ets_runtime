@@ -116,7 +116,7 @@ void ObjEmitter::WriteObjFile()
     if (emitMemorymanager.codeSpace != nullptr) {
         DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
         uint8 *memSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-                textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
+            textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
         memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), textSection->GetDataSize());
         return;
     }
