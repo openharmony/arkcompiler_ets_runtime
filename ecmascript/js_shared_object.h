@@ -23,14 +23,8 @@ namespace panda::ecmascript {
 class JSSharedObject : public JSObject {
 public:
     CAST_CHECK(JSSharedObject, IsJSSharedObject);
-
-    static constexpr size_t OWNER_ID_OFFSET = JSObject::SIZE;
-    ACCESSORS_PRIMITIVE_FIELD(OwnerID, uint64_t, OWNER_ID_OFFSET, LAST_OFFSET)
-    DEFINE_ALIGN_SIZE(LAST_OFFSET);
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OWNER_ID_OFFSET, OWNER_ID_OFFSET)
-    DECL_CHECK_OWNERSHIP();
-    DECL_SET_OWNERSHIP();
-    DECL_DUMP()
+    static constexpr size_t SIZE = JSObject::SIZE;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_JS_SHARED_OBJECT_H

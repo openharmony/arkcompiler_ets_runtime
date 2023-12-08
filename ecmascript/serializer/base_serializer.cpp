@@ -92,7 +92,7 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
 {
     switch (objectType) {
         case JSType::HCLASS:
-            SerializeHClassFieldIndividually(root, start, end);
+            SerializeHClassFieldIndividually(root, objectType, start, end);
             return true;
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
@@ -105,7 +105,8 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
     }
 }
 
-void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, JSType objectType,
+                                                      ObjectSlot start, ObjectSlot end)
 {
     ASSERT(root->GetClass()->IsHClass());
     ObjectSlot slot = start;
@@ -115,7 +116,11 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
             case JSHClass::PROTOTYPE_OFFSET: {
                 JSHClass *kclass = reinterpret_cast<JSHClass *>(root);
                 JSTaggedValue proto = kclass->GetPrototype();
-                SerializeObjectProto(kclass, proto);
+                if (objectType == JSType::JS_SHARED_OBJECT || objectType == JSType::JS_SHARED_FUNCTION) {
+                    SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                } else {
+                    SerializeObjectProto(kclass, proto);
+                }
                 slot++;
                 break;
             }
@@ -220,7 +225,16 @@ void BaseSerializer::SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto)
         data_->WriteJSTaggedValue(proto);
     } else if (!SerializeReference(proto.GetTaggedObject()) && !SerializeRootObject(proto.GetTaggedObject())) {
         data_->WriteEncodeFlag(EncodeFlag::OBJECT_PROTO);
-        data_->WriteUint8(static_cast<uint8_t>(kclass->GetObjectType()));
+        JSType type = kclass->GetObjectType();
+        data_->WriteUint8(static_cast<uint8_t>(type));
+        switch (type) {
+            case JSType::JS_SHARED_OBJECT:
+            case JSType::JS_SHARED_FUNCTION:
+                SerializeJSTaggedValue(proto);
+                break;
+            default:
+                break;
+        }
     }
 }
 

@@ -51,6 +51,7 @@ enum IntegrityLevel { SEALED, FROZEN };
 enum PositionKind { UNKNOWN = 0, INDEXED_PROPERTY = 1, INLINE_NAMED_PROPERTY = 2, OUT_NAMED_PROPERTY = 3 };
 enum PropertyKind { KEY = 0, VALUE, KEY_VALUE };
 static constexpr uint64_t OWNER_ID_SET_THREAD_ID_TO_ZERO = 0xFFFFFFFF00000000ULL;
+static constexpr uint64_t OWNER_ID_MASK = 0x00000000FFFFFFFFULL;
 
 // ecma6.0 6.2.4 The Property Descriptor Specification Type
 class PropertyDescriptor final {
@@ -330,8 +331,10 @@ private:
 class ECMAObject : public TaggedObject {
 public:
     static constexpr int HASH_INDEX = 0;
-    static constexpr int FUNCTION_EXTRA_INDEX = 1;
-    static constexpr int RESOLVED_MAX_SIZE = 2;
+    // the high 32nd bit indicates whether a shared object is frozen, 0 means not frozen, 1 means frozen
+    static constexpr int EXTREF_AND_OWNER_INDEX = 1;
+    static constexpr int FUNCTION_EXTRA_INDEX = 2;
+    static constexpr int RESOLVED_MAX_SIZE = 3;
 
     CAST_CHECK(ECMAObject, IsECMAObject);
 
@@ -356,6 +359,11 @@ public:
         const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
+    void InitializeExtRefAndOwner(EcmaVM *vm);
+    void SetOwnerThreadID(JSThread* thread, uint32_t threadID);
+    bool IsOwned(uint32_t threadID);
+    void FreezeObj(JSThread* thread);
+    bool IsFrozen();
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 

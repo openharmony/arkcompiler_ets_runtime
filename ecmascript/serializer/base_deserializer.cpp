@@ -214,14 +214,10 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
             }
             break;
         }
-        case JSType::JS_SHARED_OBJECT: {
-            JSSharedObject *sObj = reinterpret_cast<JSSharedObject *>(object);
-            sObj->SetOwnerByThread(thread_->GetThreadId());
-            break;
-        }
+        case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            JSSharedFunction *sFunc = reinterpret_cast<JSSharedFunction *>(object);
-            sFunc->SetOwnerByThread(thread_->GetThreadId());
+            ECMAObject *sObj = reinterpret_cast<ECMAObject *>(object);
+            sObj->SetOwnerThreadID(thread_, thread_->GetThreadId());
             break;
         }
         default:

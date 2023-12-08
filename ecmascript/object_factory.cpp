@@ -981,14 +981,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_ITERATOR: {
             break;
         }
-        case JSType::JS_SHARED_OBJECT: {
-            uint32_t threadID = thread_->GetThreadId();
-            JSSharedObject::Cast(*obj)->SetOwnerID(OWNER_ID_SET_THREAD_ID_TO_ZERO | threadID);
-            break;
-        }
+        case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
             uint32_t threadID = thread_->GetThreadId();
-            JSSharedFunction::Cast(*obj)->SetOwnerID(OWNER_ID_SET_THREAD_ID_TO_ZERO | threadID);
+            obj->SetOwnerThreadID(thread_, threadID);
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1489,7 +1485,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
     JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
     uint32_t threadID = thread_->GetThreadId();
-    JSHandle<JSSharedFunction>(sfunc)->SetOwnerID(0xFFFFFFFF00000000 | threadID);
+    sfunc->SetOwnerThreadID(thread_, threadID);
     return sfunc;
 }
 
