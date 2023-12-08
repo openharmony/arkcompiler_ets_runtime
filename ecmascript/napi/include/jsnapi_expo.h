@@ -676,6 +676,7 @@ public:
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
+    Local<JSValueRef> ConstructorOptimize(const EcmaVM *vm, JSValueRef* argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);
@@ -1112,6 +1113,8 @@ public:
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
+    using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+
     struct NativeBindingInfo {
         static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
         void *env = nullptr;
@@ -1140,6 +1143,7 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
+    static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);

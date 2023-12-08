@@ -62,13 +62,14 @@ ArrayBoundsCheckElimination::Bound::Bound(int lower, GateRef lowerGate, int uppe
 ArrayBoundsCheckElimination::Bound::Bound(TypedBinOp op, GateRef gate, int constant)
 {
     switch (op) {
-        case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_EQ: {
             lower_ = constant;
             lowerGate_ = gate;
             upper_ = constant;
             upperGate_ = gate;
             break;
-        case TypedBinOp::TYPED_NOTEQ:
+        }
+        case TypedBinOp::TYPED_NOTEQ: {
             lower_ = INT_MIN;
             lowerGate_ = Circuit::NullGate();
             upper_ = INT_MAX;
@@ -82,20 +83,25 @@ ArrayBoundsCheckElimination::Bound::Bound(TypedBinOp op, GateRef gate, int const
                 }
             }
             break;
-        case TypedBinOp::TYPED_GREATEREQ:
+        }
+        case TypedBinOp::TYPED_GREATEREQ: {
             lower_ = constant;
             lowerGate_ = gate;
             upper_ = INT_MAX;
             upperGate_ = Circuit::NullGate();
             break;
-        case TypedBinOp::TYPED_LESSEQ:
+        }
+        case TypedBinOp::TYPED_LESSEQ: {
             lower_ = INT_MIN;
             lowerGate_ = Circuit::NullGate();
             upper_ = constant;
             upperGate_ = gate;
             break;
-        default:
+        }
+        default: {
+            LOG_ECMA(FATAL) << "unknown binary op";
             UNREACHABLE();
+        }
     }
 }
 
@@ -118,7 +124,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::AndOp(Bound *bo
             if (bLowerGateRegion) {
                 bLowerDominatorDepth = bLowerGateRegion->GetDepth();
             }
-            set = (boundLowerDominatorDepth > bLowerDominatorDepth);
+            set = (boundLowerDominatorDepth < bLowerDominatorDepth);
         }
         if (set) {
             bound->lower_ = b->lower_;
@@ -143,7 +149,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::AndOp(Bound *bo
             if (bUpperGateRegion) {
                 bUpperDominatorDepth = bUpperGateRegion->GetDepth();
             }
-            set = (boundUpperDominatorDepth > bUpperDominatorDepth);
+            set = (boundUpperDominatorDepth < bUpperDominatorDepth);
         }
         if (set) {
             bound->upper_ = b->upper_;
@@ -284,12 +290,14 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoPhi(GateRef g
             && InLoop(stateIn, value)) {
             auto unOp = acc_.GetTypedUnAccessor(value).GetTypedUnOp();
             switch (unOp) {
-                case TypedUnOp::TYPED_INC:
+                case TypedUnOp::TYPED_INC: {
                     hasUpper = false;
                     break;
-                case TypedUnOp::TYPED_DEC:
+                }
+                case TypedUnOp::TYPED_DEC: {
                     hasLower = false;
                     break;
+                }
                 default:
                     break;
             }
@@ -450,17 +458,15 @@ void ArrayBoundsCheckElimination::UpdateBound(IntegerStack &pushed, GateRef x, T
         // Cannot Represent c > INT_MAX, do not update bounds
         if (constValue == INT_MAX && instrValue == Circuit::NullGate()) {
             return;
-        } else {
-            constValue++;
         }
+        constValue++;
     } else if (op == TypedBinOp::TYPED_LESS) { // x > 3 -> x >= 2
         op = TypedBinOp::TYPED_LESSEQ;
         // Cannot Represent c < INT_MIN, do not update bounds
         if (constValue == INT_MIN && instrValue == Circuit::NullGate()) {
             return;
-        } else {
-            constValue--;
         }
+        constValue--;
     }
     Bound *bound = new Bound(op, instrValue, constValue);
     UpdateBound(pushed, x, bound);
@@ -502,7 +508,7 @@ bool ArrayBoundsCheckElimination::InArrayBound(Bound *bound, GateRef length, Gat
     }
 
     if (bound->Lower() >= 0 && bound->LowerGate() == Circuit::NullGate() &&
-       bound->Upper() < 0 && bound->UpperGate() != Circuit::NullGate()) {
+        bound->Upper() < 0 && bound->UpperGate() != Circuit::NullGate()) {
         if (length != Circuit::NullGate() && bound->UpperGate() == length) {
             return true;
         }
@@ -704,13 +710,14 @@ void ArrayBoundsCheckElimination::ProcessIf(IntegerStack &pushed, GateRegion *pa
             case TypedBinOp::TYPED_GREATER:
             case TypedBinOp::TYPED_GREATEREQ:
             case TypedBinOp::TYPED_EQ:
-            case TypedBinOp::TYPED_NOTEQ:
+            case TypedBinOp::TYPED_NOTEQ: {
                 if (cond == OpCode::IF_TRUE) {
                     op = TypedBinaryMetaData::GetRevCompareOp(op);
                 }
                 AddIfCondition(pushed, x, y, op);
                 AddIfCondition(pushed, y, x, TypedBinaryMetaData::GetSwapCompareOp(op));
                 break;
+            }
             default:
                 break;
         }
@@ -925,7 +932,7 @@ void ArrayBoundsCheckElimination::CalcBounds(GateRegion *block, GateRegion *loop
     auto& dominatedRegions_ = block->GetDominatedRegions();
     for (size_t i = 0; i < dominatedRegions_.size(); i++) {
         GateRegion *nex = dominatedRegions_[i];
-        if (block->IsLoopHead() && (block->GetInnerLoopIndex() == nex->GetInnerLoopIndex()
+        if (block->IsLoopHead() && (block->GetLoopIndex() == nex->GetLoopIndex()
             || nex->GetLoopDepth() > block->GetLoopDepth())) {
             CalcBounds(nex, block);
         } else {
