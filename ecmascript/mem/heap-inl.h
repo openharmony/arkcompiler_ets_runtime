@@ -265,11 +265,11 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
+            DumpHeapSnapshotBeforeOOM();
+            ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
             if (UNLIKELY(object == nullptr)) {
-                DumpHeapSnapshotBeforeOOM();
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
             }
-            ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
         }
     }
     return object;

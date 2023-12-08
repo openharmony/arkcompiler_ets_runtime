@@ -244,7 +244,7 @@ void Heap::Destroy()
 
 void Heap::Prepare()
 {
-    MEM_ALLOCATE_AND_GC_TRACE(GetEcmaVM(), HeapPrepare);
+    MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
@@ -504,7 +504,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 
 void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)
 {
-    GetEcmaVM()->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
         oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
@@ -518,7 +518,7 @@ void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool Non
 
 void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
 {
-    GetEcmaVM()->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
 }
@@ -809,7 +809,7 @@ bool Heap::CheckOngoingConcurrentMarking()
         TRACE_GC(GCStats::Scope::ScopeId::WaitConcurrentMarkFinished, GetEcmaVM()->GetEcmaGCStats());
         if (thread_->IsMarking()) {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Heap::CheckOngoingConcurrentMarking");
-            MEM_ALLOCATE_AND_GC_TRACE(GetEcmaVM(), WaitConcurrentMarkingFinished);
+            MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
             GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
             WaitConcurrentMarkingFinished();
         } else {

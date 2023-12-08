@@ -2759,6 +2759,11 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     }
 }
 
+void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
+{
+    ecmaVm->RegisterUncatchableErrorHandler(handler);
+}
+
 void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
 {
     if (vm->GetJSThread() != nullptr && vm->IsInitialized()) {
