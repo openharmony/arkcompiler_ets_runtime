@@ -798,6 +798,11 @@ public:
         return doCGSSA;
     }
 
+    static bool DoCGRegCoalecse()
+    {
+        return doCGRegCoalesce;
+    }
+
     static void DisableIPARA()
     {
         doIPARA = false;
@@ -1035,36 +1040,6 @@ public:
     static bool DoPreLSRAOpt()
     {
         return doPreLSRAOpt;
-    }
-
-    static void EnableLocalRefSpill()
-    {
-        doLocalRefSpill = true;
-    }
-
-    static void DisableLocalRefSpill()
-    {
-        doLocalRefSpill = false;
-    }
-
-    static bool DoLocalRefSpill()
-    {
-        return doLocalRefSpill;
-    }
-
-    static void EnableCalleeToSpill()
-    {
-        doCalleeToSpill = true;
-    }
-
-    static void DisableCalleeToSpill()
-    {
-        doCalleeToSpill = false;
-    }
-
-    static bool DoCalleeToSpill()
-    {
-        return doCalleeToSpill;
     }
 
     static void EnablePrePeephole()
@@ -1637,6 +1612,7 @@ private:
     static bool cgBigEndian;
     static bool doEBO;
     static bool doCGSSA;
+    static bool doCGRegCoalesce;
     static bool doIPARA;
     static bool doCFGO;
     static bool doICO;
@@ -1699,8 +1675,6 @@ private:
     static uint8 fastAllocMode;
     static bool fastAlloc;
     static bool doPreLSRAOpt;
-    static bool doLocalRefSpill;
-    static bool doCalleeToSpill;
     static bool replaceASM;
     static bool generalRegOnly;
     static std::string literalProfile;

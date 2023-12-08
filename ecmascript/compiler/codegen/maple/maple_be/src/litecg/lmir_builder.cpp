@@ -32,7 +32,10 @@ Module *CreateModuleWithName(const std::string &name)
 
 void ReleaseModule(Module *module)
 {
-    delete module;
+    if (module != nullptr) {
+        delete module;
+        module = nullptr;
+    }
     // clean current globals
     GlobalTables::Reset();
 }

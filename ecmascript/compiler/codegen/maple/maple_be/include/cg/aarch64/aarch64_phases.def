@@ -28,7 +28,7 @@
    ADDTARGETPHASE("cgdeadcodeelimination", CGOptions::DoCGSSA());
    ADDTARGETPHASE("cgsplitcriticaledge", CGOptions::DoCGSSA());
    ADDTARGETPHASE("cgphielimination", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgregcoalesce", CGOptions::DoCGSSA());
+   ADDTARGETPHASE("cgregcoalesce", CGOptions::DoCGSSA() || CGOptions::DoCGRegCoalecse());
  }
  /* Normal OPT PHASES */
  ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
@@ -61,7 +61,7 @@
  ADDTARGETPHASE("cfgo", GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
  ADDTARGETPHASE("peephole0", CGOptions::DoPeephole())
  ADDTARGETPHASE("postebo", CGOptions::DoEBO());
- ADDTARGETPHASE("postcfgo", CGOptions::DoCFGO());
+ ADDTARGETPHASE("postcfgo", false);
  ADDTARGETPHASE("cgpostpeephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());

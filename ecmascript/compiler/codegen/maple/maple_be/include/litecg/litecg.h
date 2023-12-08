@@ -65,6 +65,7 @@ public:
                                          maplebe::MemoryManagerSavePC2CallSiteInfoCallback pc2CallSiteInfoSaver);
 
     void DumpIRToFile(const std::string &fileName);
+    void DumpCGIR();
     void DoCG();
 
 private:

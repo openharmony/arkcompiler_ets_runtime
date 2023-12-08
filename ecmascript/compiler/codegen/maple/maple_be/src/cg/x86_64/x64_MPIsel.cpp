@@ -1276,10 +1276,12 @@ Operand *X64MPIsel::SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType 
         SelectCopy(resOpnd, ((opcode == OP_div) ? raxOpnd : rdxOpnd), primType);
         return &resOpnd;
     } else if (IsPrimitiveFloat(primType)) {
-        X64MOP_t divMOp = x64::MOP_divsd_r;
-        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(divMOp, opnd1, opnd0);
+        uint32 bitSize = GetPrimTypeBitSize(primType);
+        auto &resOpnd = cgFunc->GetOpndBuilder()->CreateVReg(bitSize, cgFunc->GetRegTyFromPrimTy(primType));
+        SelectCopy(resOpnd, opnd0, primType);
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_divsd_r, opnd1, resOpnd);
         cgFunc->GetCurBB()->AppendInsn(insn);
-        return &opnd0;
+        return &resOpnd;
     } else {
         CHECK_FATAL(false, "NIY");
     }
@@ -1293,9 +1295,12 @@ Operand *X64MPIsel::SelectLnot(const UnaryNode &node, Operand &opnd0, const Base
         resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
         RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
         ImmOperand &immOpnd = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(dtype), 0);
-        //op_eq
-        SelectCmp(regOpnd0, immOpnd, dtype);
-        SelectCmpResult(*resOpnd, OP_eq, dtype, dtype);
+        if (IsPrimitiveFloat(dtype)) {
+            SelectCmpFloatEq(*resOpnd, regOpnd0, immOpnd, dtype, dtype);
+        } else {
+            SelectCmp(regOpnd0, immOpnd, dtype);
+            SelectCmpResult(*resOpnd, OP_eq, dtype, dtype);
+        }
     } else {
         /* vector operand */
         CHECK_FATAL(false, "NIY");
@@ -1311,6 +1316,8 @@ Operand *X64MPIsel::SelectLnot(const UnaryNode &node, Operand &opnd0, const Base
  *
  * To distinguish between less than(only check whether CF = 1 or not) and unorderd(CF=1),
  * So ** lt/le in float is replaced by judging gt/ge and swaping operands **
+ *
+ * float eq using cmpeqsd, same with llvm
  */
 Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
@@ -1323,10 +1330,17 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
         resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
         auto nodeOp = node.GetOpCode();
         Opcode parentOp = parent.GetOpCode();
-        bool isSwap = (IsPrimitiveFloat(primOpndType) && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) &&
-            (parentOp != OP_brfalse));
+        bool isFloat = IsPrimitiveFloat(primOpndType);
+        bool isJump = (parentOp == OP_brfalse || parentOp == OP_brtrue || parentOp == OP_select);
+        // float eq
+        if (isFloat && (nodeOp == maple::OP_eq) && (!isJump)) {
+            SelectCmpFloatEq(*resOpnd, regOpnd0, regOpnd1, dtype, primOpndType);
+            return resOpnd;
+        }
+
+        bool isSwap = (isFloat && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) && (parentOp != OP_brfalse));
         SelectCmp(regOpnd0, regOpnd1, primOpndType, isSwap);
-        if (parentOp == OP_brfalse || parentOp == OP_brtrue || parentOp == OP_select) {
+        if (isJump) {
             return resOpnd;
         }
         SelectCmpResult(*resOpnd, nodeOp, dtype, primOpndType);
@@ -1355,6 +1369,29 @@ void X64MPIsel::SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, boo
         cmpInsn.AddOpndChain(opnd1).AddOpndChain(opnd0);
     }
     cgFunc->GetCurBB()->AppendInsn(cmpInsn);
+}
+
+void X64MPIsel::SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType,
+                                 PrimType primOpndType)
+{
+    /* float eq using cmpeqsd is same with llvm */
+    x64::X64MOP_t eqMOp = x64::MOP_cmpeqsd_r_r;
+    Insn &setInsn = cgFunc->GetInsnBuilder()->BuildInsn(eqMOp, X64CG::kMd[eqMOp]);
+
+    auto &regOpnd1 = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primOpndType),
+        cgFunc->GetRegTyFromPrimTy(primOpndType));
+    SelectCopy(regOpnd1, opnd1, primOpndType);
+    /* CMPEQSD xmm1, xmm2  =>  CMPSD xmm1, xmm2, 0 */
+    setInsn.AddOpndChain(opnd0).AddOpndChain(regOpnd1);
+    cgFunc->GetCurBB()->AppendInsn(setInsn);
+
+    /* set result -> u64/u32 */
+    auto tmpResType = (primOpndType == maple::PTY_f64) ? PTY_u64 :PTY_u32;
+    RegOperand &tmpResOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(tmpResType),
+        cgFunc->GetRegTyFromPrimTy(tmpResType));
+    SelectRetypeFloat(tmpResOpnd, regOpnd1, tmpResType, primOpndType);
+    /* cvt u64/u32 -> primType */
+    SelectIntCvt(resOpnd, tmpResOpnd, primResType, tmpResType);
 }
 
 void X64MPIsel::SelectCmpResult(RegOperand &resOpnd, Opcode opCode, PrimType primType, PrimType primOpndType)

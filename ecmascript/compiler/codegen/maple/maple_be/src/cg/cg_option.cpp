@@ -70,6 +70,7 @@ bool CGOptions::useBarriersForVolatile = true;
 bool CGOptions::exclusiveEH = false;
 bool CGOptions::doEBO = false;
 bool CGOptions::doCGSSA = false;
+bool CGOptions::doCGRegCoalesce = false;
 bool CGOptions::doIPARA = true;
 bool CGOptions::doCFGO = false;
 bool CGOptions::doICO = false;
@@ -109,8 +110,6 @@ bool CGOptions::doPreSchedule = false;
 bool CGOptions::emitBlockMarker = true;
 bool CGOptions::inRange = false;
 bool CGOptions::doPreLSRAOpt = false;
-bool CGOptions::doLocalRefSpill = false;
-bool CGOptions::doCalleeToSpill = false;
 bool CGOptions::doRegSavesOpt = false;
 bool CGOptions::useSsaPreSave = false;
 bool CGOptions::useSsuPreRestore = false;
@@ -422,16 +421,12 @@ bool CGOptions::SolveOptions(bool isDebug)
         opts::cg::globalopt ? EnableGlobalOpt() : DisableGlobalOpt();
     }
 
+    if (opts::cg::hotcoldsplit.IsEnabledByUser()) {
+        opts::cg::hotcoldsplit ? EnableHotColdSplit() : DisableHotColdSplit();
+    }
+
     if (opts::cg::prelsra.IsEnabledByUser()) {
         opts::cg::prelsra ? EnablePreLSRAOpt() : DisablePreLSRAOpt();
-    }
-
-    if (opts::cg::lsraLvarspill.IsEnabledByUser()) {
-        opts::cg::lsraLvarspill ? EnableLocalRefSpill() : DisableLocalRefSpill();
-    }
-
-    if (opts::cg::lsraOptcallee.IsEnabledByUser()) {
-        opts::cg::lsraOptcallee ? EnableCalleeToSpill() : DisableCalleeToSpill();
     }
 
     if (opts::cg::prepeep.IsEnabledByUser()) {
@@ -472,383 +467,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::nativeopt.IsEnabledByUser()) {
         // Disabling Looks strage: should be checked by author of the code
-        DisableNativeOpt();
-    }
-
-    if (opts::cg::dupBb.IsEnabledByUser()) {
-        opts::cg::dupBb ? DisableNoDupBB() : EnableNoDupBB();
-    }
-
-    if (opts::cg::calleeCfi.IsEnabledByUser()) {
-        opts::cg::calleeCfi ? DisableNoCalleeCFI() : EnableNoCalleeCFI();
-    }
-
-    if (opts::cg::proepilogue.IsEnabledByUser()) {
-        opts::cg::proepilogue ? SetOption(CGOptions::kProEpilogueOpt) : ClearOption(CGOptions::kProEpilogueOpt);
-    }
-
-    if (opts::cg::tailcall.IsEnabledByUser()) {
-        opts::cg::tailcall ? SetOption(CGOptions::kTailCallOpt) : ClearOption(CGOptions::kTailCallOpt);
-    }
-
-    if (opts::cg::calleeregsPlacement.IsEnabledByUser()) {
-        opts::cg::calleeregsPlacement ? EnableRegSavesOpt() : DisableRegSavesOpt();
-    }
-
-    if (opts::cg::ssapreSave.IsEnabledByUser()) {
-        opts::cg::ssapreSave ? EnableSsaPreSave() : DisableSsaPreSave();
-    }
-
-    if (opts::cg::ssupreRestore.IsEnabledByUser()) {
-        opts::cg::ssupreRestore ? EnableSsuPreRestore() : DisableSsuPreRestore();
-    }
-
-    if (opts::cg::lsraBb.IsEnabledByUser()) {
-        SetLSRABBOptSize(opts::cg::lsraBb);
-    }
-
-    if (opts::cg::lsraInsn.IsEnabledByUser()) {
-        SetLSRAInsnOptSize(opts::cg::lsraInsn);
-    }
-
-    if (opts::cg::lsraOverlap.IsEnabledByUser()) {
-        SetOverlapNum(opts::cg::lsraOverlap);
-    }
-
-    if (opts::cg::remat.IsEnabledByUser()) {
-        SetRematLevel(opts::cg::remat);
-    }
-
-    if (opts::cg::dumpPhases.IsEnabledByUser()) {
-        SplitPhases(opts::cg::dumpPhases, GetDumpPhases());
-    }
-
-    if (opts::cg::target.IsEnabledByUser()) {
-        SetTargetMachine(opts::cg::target);
-    }
-
-    if (opts::cg::skipPhases.IsEnabledByUser()) {
-        SplitPhases(opts::cg::skipPhases, GetSkipPhases());
-    }
-
-    if (opts::cg::skipFrom.IsEnabledByUser()) {
-        SetSkipFrom(opts::cg::skipFrom);
-    }
-
-    if (opts::cg::skipAfter.IsEnabledByUser()) {
-        SetSkipAfter(opts::cg::skipAfter);
-    }
-
-    if (opts::cg::debugSchedule.IsEnabledByUser()) {
-        opts::cg::debugSchedule ? EnableDebugSched() : DisableDebugSched();
-    }
-
-    if (opts::cg::bruteforceSchedule.IsEnabledByUser()) {
-        opts::cg::bruteforceSchedule ? EnableDruteForceSched() : DisableDruteForceSched();
-    }
-
-    if (opts::cg::simulateSchedule.IsEnabledByUser()) {
-        opts::cg::simulateSchedule ? EnableSimulateSched() : DisableSimulateSched();
-    }
-
-    if (opts::cg::quiet.IsEnabledByUser()) {
-        SetQuiet(true);
-    }
-
-    if (opts::verbose.IsEnabledByUser()) {
-        SetQuiet(false);
-    }
-
-    if (opts::cg::pie.IsEnabledByUser()) {
-        opts::cg::pie ? SetOption(CGOptions::kGenPie) : ClearOption(CGOptions::kGenPie);
-    }
-
-    if (opts::cg::fpic.IsEnabledByUser()) {
-        if (opts::cg::fpic) {
-            EnablePIC();
-            SetOption(CGOptions::kGenPic);
-        } else {
-            DisablePIC();
-            ClearOption(CGOptions::kGenPic);
-        }
-    }
-
-    if (opts::cg::verboseAsm.IsEnabledByUser()) {
-        opts::cg::verboseAsm ? SetOption(CGOptions::kVerboseAsm) : ClearOption(CGOptions::kVerboseAsm);
-    }
-
-    if (opts::cg::verboseCg.IsEnabledByUser()) {
-        opts::cg::verboseCg ? SetOption(CGOptions::kVerboseCG) : ClearOption(CGOptions::kVerboseCG);
-    }
-
-    if (opts::cg::maplelinker.IsEnabledByUser()) {
-        opts::cg::maplelinker ? EnableMapleLinker() : DisableMapleLinker();
-    }
-
-    if (opts::cg::fastAlloc.IsEnabledByUser()) {
-        EnableFastAlloc();
-        SetFastAllocMode(opts::cg::fastAlloc);
-    }
-
-    if (opts::cg::useBarriersForVolatile.IsEnabledByUser()) {
-        opts::cg::useBarriersForVolatile ? EnableBarriersForVolatile() : DisableBarriersForVolatile();
-    }
-
-    if (opts::cg::spillRange.IsEnabledByUser()) {
-        SetRange(opts::cg::spillRange, "--pill-range", GetSpillRanges());
-    }
-
-    if (opts::cg::range.IsEnabledByUser()) {
-        SetRange(opts::cg::range, "--range", GetRange());
-    }
-
-    if (opts::cg::timePhases.IsEnabledByUser()) {
-        opts::cg::timePhases ? EnableTimePhases() : DisableTimePhases();
-    }
-
-    if (opts::cg::dumpFunc.IsEnabledByUser()) {
-        SetDumpFunc(opts::cg::dumpFunc);
-    }
-
-    if (opts::cg::duplicateAsmList.IsEnabledByUser()) {
-        SetDuplicateAsmFile(opts::cg::duplicateAsmList);
-    }
-
-    if (opts::cg::duplicateAsmList2.IsEnabledByUser()) {
-        SetFastFuncsAsmFile(opts::cg::duplicateAsmList2);
-    }
-
-    if (opts::cg::insertCall.IsEnabledByUser()) {
-        SetOption(kGenInsertCall);
-        SetInstrumentationFunction(opts::cg::insertCall);
-        SetInsertCall(true);
-    }
-
-    if (opts::cg::stackProtectorStrong.IsEnabledByUser()) {
-        SetOption(kUseStackProtectorStrong);
-    }
-
-    if (opts::cg::stackProtectorAll.IsEnabledByUser()) {
-        SetOption(kUseStackProtectorAll);
-    }
-
-    if (opts::cg::debug.IsEnabledByUser()) {
-        SetOption(kDebugFriendly);
-        SetOption(kWithLoc);
-        ClearOption(kSuppressFileInfo);
-    }
-
-    if (opts::cg::gdwarf.IsEnabledByUser()) {
-        SetOption(kDebugFriendly);
-        SetOption(kWithLoc);
-        SetOption(kWithDwarf);
-        SetParserOption(kWithDbgInfo);
-        ClearOption(kSuppressFileInfo);
-    }
-
-    if (opts::cg::gsrc.IsEnabledByUser()) {
-        SetOption(kDebugFriendly);
-        SetOption(kWithLoc);
-        SetOption(kWithSrc);
-        ClearOption(kWithMpl);
-    }
-
-    if (opts::cg::gmixedsrc.IsEnabledByUser()) {
-        SetOption(kDebugFriendly);
-        SetOption(kWithLoc);
-        SetOption(kWithSrc);
-        SetOption(kWithMpl);
-    }
-
-    if (opts::cg::gmixedasm.IsEnabledByUser()) {
-        SetOption(kDebugFriendly);
-        SetOption(kWithLoc);
-        SetOption(kWithSrc);
-        SetOption(kWithMpl);
-        SetOption(kWithAsm);
-    }
-
-    if (opts::cg::profile.IsEnabledByUser()) {
-        SetOption(kWithProfileCode);
-        SetParserOption(kWithProfileInfo);
-    }
-
-    if (opts::cg::withRaLinearScan.IsEnabledByUser()) {
-        SetOption(kDoLinearScanRegAlloc);
-        ClearOption(kDoColorRegAlloc);
-    }
-
-    if (opts::cg::withRaGraphColor.IsEnabledByUser()) {
-        SetOption(kDoColorRegAlloc);
-        ClearOption(kDoLinearScanRegAlloc);
-    }
-
-    if (opts::cg::printFunc.IsEnabledByUser()) {
-        opts::cg::printFunc ? EnablePrintFunction() : DisablePrintFunction();
-    }
-
-    if (opts::cg::addDebugTrace.IsEnabledByUser()) {
-        SetOption(kAddDebugTrace);
-    }
-
-    if (opts::cg::addFuncProfile.IsEnabledByUser()) {
-        SetOption(kAddFuncProfile);
-    }
-
-    if (opts::cg::suppressFileinfo.IsEnabledByUser()) {
-        SetOption(kSuppressFileInfo);
-    }
-
-    if (opts::cg::patchLongBranch.IsEnabledByUser()) {
-        SetOption(kPatchLongBranch);
-    }
-
-    if (opts::cg::constFold.IsEnabledByUser()) {
-        opts::cg::constFold ? SetOption(kConstFold) : ClearOption(kConstFold);
-    }
-
-    if (opts::cg::dumpCfg.IsEnabledByUser()) {
-        SetOption(kDumpCFG);
-    }
-
-    if (opts::cg::classListFile.IsEnabledByUser()) {
-        SetClassListFile(opts::cg::classListFile);
-    }
-
-    if (opts::cg::genCMacroDef.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kCMacroDef, opts::cg::genCMacroDef);
-    }
-
-    if (opts::cg::genGctibFile.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kGctib, opts::cg::genGctibFile);
-    }
-
-    if (opts::cg::yieldpoint.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kGenYieldPoint, opts::cg::yieldpoint);
-    }
-
-    if (opts::cg::localRc.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kGenLocalRc, opts::cg::localRc);
-    }
-
-    if (opts::cg::ehExclusiveList.IsEnabledByUser()) {
-        SetEHExclusiveFile(opts::cg::ehExclusiveList);
-        EnableExclusiveEH();
-        ParseExclusiveFunc(opts::cg::ehExclusiveList);
-    }
-
-    if (opts::cg::cyclePatternList.IsEnabledByUser()) {
-        SetCyclePatternFile(opts::cg::cyclePatternList);
-        EnableEmitCyclePattern();
-        ParseCyclePattern(opts::cg::cyclePatternList);
-    }
-
-    if (opts::cg::cg.IsEnabledByUser()) {
-        SetRunCGFlag(opts::cg::cg);
-        opts::cg::cg ? SetOption(CGOptions::kDoCg) : ClearOption(CGOptions::kDoCg);
-    }
-
-    if (opts::cg::objmap.IsEnabledByUser()) {
-        SetGenerateObjectMap(opts::cg::objmap);
-    }
-
-    if (opts::cg::replaceAsm.IsEnabledByUser()) {
-        opts::cg::replaceAsm ? EnableReplaceASM() : DisableReplaceASM();
-    }
-
-    if (opts::cg::generalRegOnly.IsEnabledByUser()) {
-        opts::cg::generalRegOnly ? EnableGeneralRegOnly() : DisableGeneralRegOnly();
-    }
-
-    if (opts::cg::lazyBinding.IsEnabledByUser()) {
-        opts::cg::lazyBinding ? EnableLazyBinding() : DisableLazyBinding();
-    }
-
-    if (opts::cg::hotFix.IsEnabledByUser()) {
-        opts::cg::hotFix ? EnableHotFix() : DisableHotFix();
-    }
-
-    if (opts::cg::soeCheck.IsEnabledByUser()) {
-        SetOption(CGOptions::kSoeCheckInsert);
-    }
-
-    if (opts::cg::checkArraystore.IsEnabledByUser()) {
-        opts::cg::checkArraystore ? EnableCheckArrayStore() : DisableCheckArrayStore();
-    }
-
-    if (opts::cg::ebo.IsEnabledByUser()) {
-        opts::cg::ebo ? EnableEBO() : DisableEBO();
-    }
-
-    if (opts::cg::cfgo.IsEnabledByUser()) {
-        opts::cg::cfgo ? EnableCFGO() : DisableCFGO();
-    }
-
-    if (opts::cg::ico.IsEnabledByUser()) {
-        opts::cg::ico ? EnableICO() : DisableICO();
-    }
-
-    if (opts::cg::storeloadopt.IsEnabledByUser()) {
-        opts::cg::storeloadopt ? EnableStoreLoadOpt() : DisableStoreLoadOpt();
-    }
-
-    if (opts::cg::globalopt.IsEnabledByUser()) {
-        opts::cg::globalopt ? EnableGlobalOpt() : DisableGlobalOpt();
-    }
-
-    if (opts::cg::hotcoldsplit.IsEnabledByUser()) {
-        opts::cg::hotcoldsplit ? EnableHotColdSplit() : DisableHotColdSplit();
-    }
-
-    if (opts::cg::prelsra.IsEnabledByUser()) {
-        opts::cg::prelsra ? EnablePreLSRAOpt() : DisablePreLSRAOpt();
-    }
-
-    if (opts::cg::lsraLvarspill.IsEnabledByUser()) {
-        opts::cg::lsraLvarspill ? EnableLocalRefSpill() : DisableLocalRefSpill();
-    }
-
-    if (opts::cg::lsraOptcallee.IsEnabledByUser()) {
-        opts::cg::lsraOptcallee ? EnableCalleeToSpill() : DisableCalleeToSpill();
-    }
-
-    if (opts::cg::prepeep.IsEnabledByUser()) {
-        opts::cg::prepeep ? EnablePrePeephole() : DisablePrePeephole();
-    }
-
-    if (opts::cg::peep.IsEnabledByUser()) {
-        opts::cg::peep ? EnablePeephole() : DisablePeephole();
-    }
-
-    if (opts::cg::retMerge.IsEnabledByUser()) {
-        opts::cg::retMerge ? EnableRetMerge() : DisableRetMerge();
-    }
-
-    if (opts::cg::preschedule.IsEnabledByUser()) {
-        opts::cg::preschedule ? EnablePreSchedule() : DisablePreSchedule();
-    }
-
-    if (opts::cg::schedule.IsEnabledByUser()) {
-        opts::cg::schedule ? EnableSchedule() : DisableSchedule();
-    }
-
-    if (opts::cg::vregRename.IsEnabledByUser()) {
-        opts::cg::vregRename ? EnableVregRename() : DisableVregRename();
-    }
-
-    if (opts::cg::fullcolor.IsEnabledByUser()) {
-        opts::cg::fullcolor ? EnableMultiPassColorRA() : DisableMultiPassColorRA();
-    }
-
-    if (opts::cg::writefieldopt.IsEnabledByUser()) {
-        opts::cg::writefieldopt ? EnableWriteRefFieldOpt() : DisableWriteRefFieldOpt();
-    }
-
-    if (opts::cg::dumpOlog.IsEnabledByUser()) {
-        opts::cg::dumpOlog ? EnableDumpOptimizeCommonLog() : DisableDumpOptimizeCommonLog();
-    }
-
-    if (opts::cg::nativeopt.IsEnabledByUser()) {
         DisableNativeOpt();
     }
 
@@ -1084,8 +702,6 @@ void CGOptions::EnableO0()
     doStoreLoadOpt = false;
     doGlobalOpt = false;
     doPreLSRAOpt = false;
-    doLocalRefSpill = false;
-    doCalleeToSpill = false;
     doPreSchedule = false;
     doSchedule = false;
     doRegSavesOpt = false;
@@ -1112,7 +728,6 @@ void CGOptions::EnableO1()
 {
     optimizeLevel = kLevel1;
     doPreLSRAOpt = true;
-    doCalleeToSpill = true;
     SetOption(kConstFold);
     SetOption(kProEpilogueOpt);
     SetOption(kTailCallOpt);
@@ -1140,15 +755,11 @@ void CGOptions::EnableO2()
     ClearOption(kUseStackProtectorAll);
 #if TARGARM32
     doPreLSRAOpt = false;
-    doLocalRefSpill = false;
-    doCalleeToSpill = false;
     doWriteRefFieldOpt = false;
     ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
 #else
     doPreLSRAOpt = true;
-    doLocalRefSpill = true;
-    doCalleeToSpill = true;
     doRegSavesOpt = false;
     useSsaPreSave = false;
     useSsuPreRestore = true;
@@ -1163,6 +774,7 @@ void CGOptions::EnableLiteCG()
     optimizeLevel = kLevelLiteCG;
     doEBO = false;
     doCGSSA = false;
+    doCGRegCoalesce = false;
     doCFGO = true;
     doICO = false;
     doPrePeephole = false;
@@ -1170,8 +782,6 @@ void CGOptions::EnableLiteCG()
     doStoreLoadOpt = false;
     doGlobalOpt = false;
     doPreLSRAOpt = false;
-    doLocalRefSpill = false;
-    doCalleeToSpill = false;
     doPreSchedule = false;
     doSchedule = false;
     doRegSavesOpt = false;

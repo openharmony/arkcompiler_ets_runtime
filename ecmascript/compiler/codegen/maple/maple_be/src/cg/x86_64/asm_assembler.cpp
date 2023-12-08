@@ -1933,6 +1933,13 @@ void AsmAssembler::Ucomiss(Reg srcReg, Reg destReg)
     Emit("\n");
 }
 
+void AsmAssembler::Cmpeqsd(Reg srcReg, Reg destReg)
+{
+    Emit("\tcmpeqsd\t");
+    EmitRegReg(srcReg, destReg);
+    Emit("\n");
+}
+
 /* float sqrt*/
 void AsmAssembler::Sqrtss_r(Reg srcReg, Reg destReg)
 {

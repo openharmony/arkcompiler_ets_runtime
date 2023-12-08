@@ -255,7 +255,7 @@ void X64ReachingDefinition::AddRetPseudoInsns()
 /* reg killed killed by call insn */
 bool X64ReachingDefinition::IsRegKilledByCallInsn(const Insn &insn, regno_t regNO) const
 {
-    return x64::IsCallerSaveReg((X64reg)regNO);
+    return !x64::IsCalleeSavedReg(static_cast<X64reg>(regNO));
 }
 
 bool X64ReachingDefinition::IsDiv(const Insn &insn) const

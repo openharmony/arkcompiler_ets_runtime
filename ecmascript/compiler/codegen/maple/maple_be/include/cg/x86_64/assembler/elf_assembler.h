@@ -31,7 +31,10 @@ class ElfAssembler : public Assembler {
 public:
     ElfAssembler(const std::string &outputFileName) : Assembler()
     {
-        outStream.open(outputFileName, std::ios::trunc | std::ios::binary);
+        const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
+        if (emitMemoryManager.codeSpace == nullptr) {
+            outStream.open(outputFileName, std::ios::trunc | std::ios::binary);
+        }
     }
 
     ~ElfAssembler() = default;
@@ -346,6 +349,8 @@ public:
     /* unordered compare */
     void Ucomisd(Reg srcReg, Reg destReg) override;
     void Ucomiss(Reg srcReg, Reg destReg) override;
+    void Cmpsd(Reg srcReg, Reg destReg, uint8 imm);
+    void Cmpeqsd(Reg srcReg, Reg destReg) override;
     /* float sqrt*/
     void Sqrtss_r(Reg srcReg, Reg destReg) override;
     void Sqrtsd_r(Reg srcReg, Reg destReg) override;

@@ -1959,10 +1959,6 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         default:
             break;
     }
-    /* skip if it is not a read barrier call. */
-    if (GetReadBarrierName(insn) != "") {
-        manager->NormalPatternOpt<InlineReadBarriersPattern>(!cgFunc->IsAfterRegAlloc());
-    }
 }
 /* ======== CGPeepPattern End ======== */
 
@@ -3852,8 +3848,12 @@ void MoveCmpOpt::Run(BB &bb, Insn &insn)
         (nextInsn->GetMachineOpcode() != MOP_wcmprr && nextInsn->GetMachineOpcode() != MOP_xcmprr)) {
         return;
     }
+    RegOperand &cmpSecondOpnd = static_cast<RegOperand &>(nextInsn->GetOperand(kInsnSecondOpnd));
     RegOperand &cmpThirdOpnd = static_cast<RegOperand &>(nextInsn->GetOperand(kInsnThirdOpnd));
     RegOperand &movFirstOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    if (cmpSecondOpnd.GetRegisterNumber() == cmpThirdOpnd.GetRegisterNumber()) {
+        return;
+    }
     if (cmpThirdOpnd.GetRegisterNumber() != movFirstOpnd.GetRegisterNumber()) {
         return;
     }
