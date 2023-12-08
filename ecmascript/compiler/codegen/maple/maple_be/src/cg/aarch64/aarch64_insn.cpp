@@ -427,6 +427,9 @@ void A64OpndDumpVisitor::Visit(RegOperand *v)
     uint32 vb = v->GetValidBitsNum();
     LogInfo::MapleLogger() << (v->IsVirtualRegister() ? "vreg:" : " reg:") << prims[regType] << reg << " "
                            << classes[regType];
+    if (v->GetBaseRefOpnd()) {
+        LogInfo::MapleLogger() << " base ref:R" << v->GetBaseRefOpnd()->GetRegisterNumber() << " ";
+    }
     if (v->GetValidBitsNum() != v->GetSize()) {
         LogInfo::MapleLogger() << " Vb: [" << vb << "]";
     }

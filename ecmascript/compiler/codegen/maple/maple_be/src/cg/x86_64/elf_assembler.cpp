@@ -133,7 +133,7 @@ void ElfAssembler::EmitFunctionHeader(int64 symIdx, SymbolAttr funcAttr, const s
     const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemoryManager.funcAddressSaver != nullptr) {
         const std::string &funcName = GetNameFromSymMap(symIdx);
-        emitMemoryManager.funcAddressSaver(emitMemoryManager.codeSpace, funcName, static_cast<uint32>(codeBuff.size()));
+        emitMemoryManager.funcAddressSaver(emitMemoryManager.codeSpace, funcName, static_cast<uint32>(lastModulePC + codeBuff.size()));
     }
     UpdateLabel(symIdx, LabelType::kFunc, static_cast<uint32>(codeBuff.size()));
 }
@@ -946,6 +946,15 @@ void ElfAssembler::WriteElfFile()
 
     LayoutSections();
 
+    const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
+    if (emitMemoryManager.codeSpace != nullptr) {
+        DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
+        uint8 *memSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
+            textSection->GetSectionSize(), textSection->GetAlign(), textSection->GetName());
+        memcpy_s(memSpace, textSection->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
+        return;
+    }
+
     /* write header */
     Emit(&header, sizeof(header));
 
@@ -956,12 +965,6 @@ void ElfAssembler::WriteElfFile()
         }
         SetFileOffset(section->GetOffset());
         section->WriteSection(outStream);
-        if (section == textSection) {
-            const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
-            uint8 *memSpace = emitMemoryManager.allocateDataSection(
-                emitMemoryManager.codeSpace, section->GetSectionSize(), section->GetAlign(), section->GetName());
-            memcpy_s(memSpace, section->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
-        }
     }
 
     /* write section table */
@@ -2272,6 +2275,16 @@ void ElfAssembler::Ucomiss(Reg srcReg, Reg destReg)
 {
     Encodeb(0x100);
     OpRR(destReg, srcReg, 0x0F, 0x2E);
+}
+
+void ElfAssembler::Cmpsd(Reg srcReg, Reg destReg, uint8 imm) {
+  Encodeb(0xF2);
+  OpRR(destReg, srcReg, 0x0F, 0xC2);
+  Encodeb(imm);
+}
+
+void ElfAssembler::Cmpeqsd(Reg srcReg, Reg destReg) {
+  Cmpsd(srcReg, destReg, 0);
 }
 
 /* float sqrt*/

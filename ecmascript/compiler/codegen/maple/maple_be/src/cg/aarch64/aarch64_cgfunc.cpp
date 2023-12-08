@@ -775,10 +775,12 @@ void AArch64CGFunc::SelectCopy(Operand &dest, PrimType dtype, Operand &src, Prim
                 GetCurBB()->AppendInsn(vInsn);
                 break;
             }
-            RegOperand &desReg = static_cast<RegOperand &>(dest);
-            RegOperand &srcReg = static_cast<RegOperand &>(src);
-            if (desReg.GetRegisterNumber() == srcReg.GetRegisterNumber()) {
-                break;
+            if (dest.IsRegister()) {
+                RegOperand &desReg = static_cast<RegOperand &>(dest);
+                RegOperand &srcReg = static_cast<RegOperand &>(src);
+                if (desReg.GetRegisterNumber() == srcReg.GetRegisterNumber()) {
+                    break;
+                }
             }
             SelectCopyRegOpnd(dest, dtype, opnd0Type, dsize, src, stype);
             break;
@@ -6491,23 +6493,18 @@ void AArch64CGFunc::ReplaceOpndInInsn(RegOperand &regDest, RegOperand &regSrc, I
             std::list<RegOperand *> tempRegStore;
             auto &opndList = static_cast<ListOperand &>(opnd).GetOperands();
             bool needReplace = false;
-            for (auto it = opndList.begin(), end = opndList.end(); it != end; ++it) {
+            for (auto it = opndList.cbegin(), end = opndList.cend(); it != end; ++it) {
                 auto *regOpnd = *it;
                 if (regOpnd->GetRegisterNumber() == destNO) {
                     needReplace = true;
-                    if (regDest.GetSize() != regSrc.GetSize()) {
-                        regDest.SetRegisterNumber(regSrc.GetRegisterNumber());
-                        tempRegStore.push_back(&regDest);
-                    } else {
-                        tempRegStore.push_back(&regSrc);
-                    }
+                    tempRegStore.push_back(&regSrc);
                 } else {
                     tempRegStore.push_back(regOpnd);
                 }
             }
             if (needReplace) {
                 opndList.clear();
-                for (auto newOpnd : tempRegStore) {
+                for (auto &newOpnd : std::as_const(tempRegStore)) {
                     static_cast<ListOperand &>(opnd).PushOpnd(*newOpnd);
                 }
             }
@@ -6519,32 +6516,40 @@ void AArch64CGFunc::ReplaceOpndInInsn(RegOperand &regDest, RegOperand &regSrc, I
             if ((baseRegOpnd != nullptr && baseRegOpnd->GetRegisterNumber() == destNO) ||
                 (indexRegOpnd != nullptr && indexRegOpnd->GetRegisterNumber() == destNO)) {
                 if (baseRegOpnd != nullptr && baseRegOpnd->GetRegisterNumber() == destNO) {
-                    if (regDest.GetSize() != regSrc.GetSize()) {
-                        regDest.SetRegisterNumber(regSrc.GetRegisterNumber());
-                        newMem->SetBaseRegister(regDest);
-                    } else {
-                        newMem->SetBaseRegister(regSrc);
-                    }
+                    newMem->SetBaseRegister(regSrc);
                 }
                 if (indexRegOpnd != nullptr && indexRegOpnd->GetRegisterNumber() == destNO) {
-                    if (regDest.GetSize() != regSrc.GetSize()) {
-                        regDest.SetRegisterNumber(regSrc.GetRegisterNumber());
-                        newMem->SetIndexRegister(regDest);
-                    } else {
-                        newMem->SetIndexRegister(regSrc);
-                    }
+                    auto *newRegSrc = static_cast<RegOperand*>(regSrc.Clone(*GetMemoryPool()));
+                    newRegSrc->SetSize(indexRegOpnd->GetSize()); // retain the original size
+                    newMem->SetIndexRegister(*newRegSrc);
                 }
-                insn.SetMemOpnd(&GetOrCreateMemOpnd(*newMem));
+                insn.SetMemOpnd(newMem);
             }
         } else if (opnd.IsRegister()) {
             auto &regOpnd = static_cast<RegOperand &>(opnd);
             if (regOpnd.GetRegisterNumber() == destNO) {
                 DEBUG_ASSERT(regOpnd.GetRegisterNumber() != kRFLAG, "both condi and reg");
-                if (regDest.GetSize() != regSrc.GetSize()) {
-                    regOpnd.SetRegisterNumber(regSrc.GetRegisterNumber());
-                } else {
-                    insn.SetOperand(static_cast<uint32>(i), regSrc);
+                if (regOpnd.GetBaseRefOpnd() != nullptr) {
+                    regSrc.SetBaseRefOpnd(*regOpnd.GetBaseRefOpnd());
+                    ReplaceRegReference(regOpnd.GetRegisterNumber(), regSrc.GetRegisterNumber());
                 }
+                insn.SetOperand(static_cast<uint32>(i), regSrc);
+            }
+            if (regOpnd.GetBaseRefOpnd() != nullptr && regOpnd.GetBaseRefOpnd()->GetRegisterNumber() == destNO) {
+                regOpnd.SetBaseRefOpnd(regSrc);
+                ReplaceRegReference(regOpnd.GetBaseRefOpnd()->GetRegisterNumber(), regSrc.GetRegisterNumber());
+            }
+        }
+    }
+    if (insn.GetStackMap() != nullptr) {
+        for (auto [deoptVreg, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
+            if (!opnd->IsRegister()) {
+                continue;
+            }
+            auto &regOpnd = static_cast<RegOperand&>(*opnd);
+            if (regOpnd.GetRegisterNumber() == destNO) {
+                insn.GetStackMap()->GetDeoptInfo().ReplaceDeoptBundleInfo(deoptVreg, regSrc);
+                ReplaceRegReference(regOpnd.GetRegisterNumber(), regSrc.GetRegisterNumber());
             }
         }
     }
@@ -9426,6 +9431,7 @@ LabelOperand &AArch64CGFunc::GetOrCreateLabelOperand(BB &bb)
     if (labelIdx == MIRLabelTable::GetDummyLabel()) {
         labelIdx = CreateLabel();
         bb.AddLabel(labelIdx);
+        SetLab2BBMap(labelIdx, bb);
     }
     return GetOrCreateLabelOperand(labelIdx);
 }
@@ -10164,10 +10170,8 @@ MemOperand *AArch64CGFunc::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpn
         CHECK_FATAL(false, "index out of range in AArch64CGFunc::AdjustMemOperandIfOffsetOutOfRange");
     }
     uint32 dataSize = GetOrCreateVirtualRegisterOperand(vrNum).GetSize();
-    if (IsImmediateOffsetOutOfRange(*memOpnd, dataSize)) {
-        if (CheckIfSplitOffsetWithAdd(*memOpnd, dataSize)) {
-            isOutOfRange = true;
-        }
+    if (IsImmediateOffsetOutOfRange(*memOpnd, dataSize) && CheckIfSplitOffsetWithAdd(*memOpnd, dataSize)) {
+        isOutOfRange = true;
         memOpnd = &SplitOffsetWithAddInstruction(*memOpnd, dataSize, regNum, isDest, &insn);
     } else {
         isOutOfRange = false;

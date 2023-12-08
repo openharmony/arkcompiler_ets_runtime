@@ -114,6 +114,10 @@ void AArch64LiveIntervalAnalysis::ComputeLiveIntervalsForEachDefOperand(Insn &in
             continue;
         }
         SetupLiveIntervalByOp(opnd, insn, true);
+        auto *drivedRef = static_cast<RegOperand&>(opnd).GetBaseRefOpnd();
+        if (drivedRef != nullptr) {
+            SetupLiveIntervalByOp(*drivedRef, insn, false);
+        }
     }
 }
 
@@ -152,8 +156,18 @@ void AArch64LiveIntervalAnalysis::ComputeLiveIntervalsForEachUseOperand(Insn &in
             for (auto opIt : phiOpnd.GetOperands()) {
                 SetupLiveIntervalByOp(*opIt.second, insn, false);
             }
-        } else {
+        } else if (opnd.IsRegister()) {
             SetupLiveIntervalByOp(opnd, insn, false);
+            auto *drivedRef = static_cast<RegOperand&>(opnd).GetBaseRefOpnd();
+            if (drivedRef != nullptr) {
+                SetupLiveIntervalByOp(*drivedRef, insn, false);
+            }
+        }
+    }
+
+    if (insn.GetStackMap() != nullptr) {
+        for (auto [_, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
+            SetupLiveIntervalByOp(*opnd, insn, false);
         }
     }
 }
@@ -311,13 +325,6 @@ void AArch64LiveIntervalAnalysis::CoalesceRegPair(RegOperand &regDest, RegOperan
         return;
     }
     LiveInterval *lrSrc = GetLiveInterval(regSrc.GetRegisterNumber());
-    /* replace dest with src */
-    if (regDest.GetSize() != regSrc.GetSize()) {
-        CHECK_FATAL(cgFunc->IsExtendReg(regDest.GetRegisterNumber()) || cgFunc->IsExtendReg(regSrc.GetRegisterNumber()),
-                    "expect equal size in reg coalesce");
-        cgFunc->InsertExtendSet(regSrc.GetRegisterNumber());
-    }
-
     regno_t destNO = regDest.GetRegisterNumber();
     /* replace all refPoints */
     for (auto insn : lrDest->GetDefPoint()) {
@@ -432,8 +439,8 @@ void AArch64LiveIntervalAnalysis::CoalesceRegisters()
         CollectMoveForEachBB(*bb, movInsns);
     }
 
-    /* handle phi move first. */
-    CoalesceMoves(movInsns, true);
+    bool coalescePhiOnly = (CGOptions::GetInstance().GetOptimizeLevel() != CGOptions::kLevelLiteCG);
+    CoalesceMoves(movInsns, coalescePhiOnly);
 
     /* clean up dead mov */
     a64CGFunc->CleanupDeadMov(REGCOAL_DUMP);

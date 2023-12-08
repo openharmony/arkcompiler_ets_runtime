@@ -213,7 +213,6 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         calleeSaveRegisters.emplace_back(info);
     });
     // 2.After all functions compiled, the module sections would be fixed
-    uintptr_t textAddr = GetTextAddr();
     uint32_t textSize = GetTextSize();
     uint32_t rodataSizeBeforeText = 0;
     uint32_t rodataSizeAfterText = 0;
@@ -238,7 +237,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         if (i < funcCount - 1) {
             funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
         } else {
-            funcSize = textAddr + textSize - funcEntry;
+            funcSize = textSize - funcEntry;
         }
         auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
         bool isMainFunc = found != std::string::npos;
@@ -494,8 +493,12 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
+    if (vm_->IsEnableJit()) {
+        lastModulePC = 0;
+    }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
         LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
+        lastModulePC = AlignUp(lastModulePC, AOTFileInfo::PAGE_ALIGN);
         lmirModule->GetModule()->SetLastModulePC(lastModulePC);
     }
 #endif

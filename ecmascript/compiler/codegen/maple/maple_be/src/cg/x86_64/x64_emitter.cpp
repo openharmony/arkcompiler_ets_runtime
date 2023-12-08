@@ -150,7 +150,9 @@ Reg X64Emitter::TransferReg(Operand *opnd) const
             FATAL(kLncFatal, "unkown reg size");
             break;
     }
+    CHECK_FATAL(v->GetRegisterNumber() < kRegArray[regType].size(), "NIY, reg out of range");
     Reg reg = kRegArray[regType][v->GetRegisterNumber()];
+    CHECK_FATAL(reg != Reg::ERR, "error reg");
     return reg;
 }
 
@@ -1498,6 +1500,9 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
         /* unordered compare */
         case x64::MOP_ucomisd_r_r:
             assmbler.Ucomisd(TransferReg(opnd0), TransferReg(opnd1));
+            break;
+        case x64::MOP_cmpeqsd_r_r:
+            assmbler.Cmpeqsd(TransferReg(opnd0), TransferReg(opnd1));
             break;
         case x64::MOP_sqrts_r_r:
             assmbler.Sqrtss_r(TransferReg(opnd0), TransferReg(opnd1));

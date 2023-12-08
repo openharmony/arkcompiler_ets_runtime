@@ -37,7 +37,6 @@ constexpr X64reg kFloatReturnRegs[kNumFloatReturnRegs] = { V0, V1 };
  */
 bool IsAvailableReg(X64reg reg);
 bool IsCalleeSavedReg(X64reg reg);
-bool IsCallerSaveReg(X64reg reg);
 bool IsParamReg(X64reg reg);
 bool IsSpillReg(X64reg reg);
 bool IsExtraSpillReg(X64reg reg);

@@ -78,9 +78,13 @@ void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint64_t> callSi
     state.SavePC2CallSiteInfo(pc, callSiteInfo);
 }
 
-void LiteCGAssembler::Run([[maybe_unused]] const CompilerLog &log, [[maybe_unused]] bool fastCompileMode)
+void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastCompileMode)
 {
     maple::litecg::LiteCG liteCG(*lmirModule.GetModule());
+    if (log.OutputLLIR()) {
+        std::string irFileName = lmirModule.GetModule()->GetFileName() + ".mpl";
+        liteCG.DumpIRToFile(irFileName);
+    }
     liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, AllocateCodeSection, SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta,
                                         SaveFunc2CalleeOffsetInfo, SavePC2DeoptInfo, SavePC2CallSiteInfo);
     liteCG.DoCG();

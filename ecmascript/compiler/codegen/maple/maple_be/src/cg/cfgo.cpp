@@ -198,6 +198,7 @@ bool ChainingPattern::ClearCurBBAndResetTargetBB(BB &curBB, BB &sucBB)
     if (newTarget->GetLabIdx() == MIRLabelTable::GetDummyLabel()) {
         tgtLabIdx = cgFunc->CreateLabel();
         newTarget->AddLabel(tgtLabIdx);
+        cgFunc->SetLab2BBMap(tgtLabIdx, *newTarget);
     }
     LabelOperand &brTarget = cgFunc->GetOrCreateLabelOperand(tgtLabIdx);
     brInsn->SetOperand(0, brTarget);
@@ -608,6 +609,7 @@ bool FlipBRPattern::Optimize(BB &curBB)
                 if (ftBB->GetLabIdx() == MIRLabelTable::GetDummyLabel()) {
                     tgtLabIdx = cgFunc->CreateLabel();
                     ftBB->AddLabel(tgtLabIdx);
+                    cgFunc->SetLab2BBMap(tgtLabIdx, *ftBB);
                 }
                 LabelOperand &brTarget = cgFunc->GetOrCreateLabelOperand(tgtLabIdx);
                 curBBBranchInsn->SetOperand(targetIdx, brTarget);

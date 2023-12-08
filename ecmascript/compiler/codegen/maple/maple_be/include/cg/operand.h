@@ -480,6 +480,10 @@ public:
         return baseRefOpnd;
     }
 
+    RegOperand *GetBaseRefOpnd() {
+        return baseRefOpnd;
+    }
+
     bool operator==(const RegOperand &o) const;
 
     bool operator<(const RegOperand &o) const;

@@ -77,7 +77,7 @@ static inline bool IsGPRegister(X64reg r)
 
 static inline bool IsFPSIMDRegister(X64reg r)
 {
-    return V0 <= r && r <= V23;
+    return V0 <= r && r <= V15;
 }
 
 static inline bool IsFPRegister(X64reg r)
@@ -87,7 +87,7 @@ static inline bool IsFPRegister(X64reg r)
 
 static inline bool IsSIMDRegister(X64reg r)
 {
-    return V8 <= r && r <= V23;
+    return V8 <= r && r <= V15;
 }
 
 static inline bool IsPhysicalRegister(regno_t r)

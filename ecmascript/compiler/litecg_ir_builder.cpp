@@ -181,7 +181,7 @@ void LiteCGIRBuilder::Build()
 {
     BuildInstID2BBIDMap();
     AddFunc();
-    std::cout << "============== building litecg ir=======" << std::endl;
+    LOG_COMPILER(INFO) << "============== building litecg ir=======" << std::endl;
 
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef> &bb = scheduledGates_->at(bbIdx);
@@ -194,23 +194,32 @@ void LiteCGIRBuilder::Build()
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                std::cout << "========can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
+                LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
             }
         }
     }
 
+    std::map<int, std::vector<std::pair<PregIdx, PregIdx>>> bbID2phiAssign;
     for (auto &pair : bbID2unmergedPhis_) {
         for (auto &desc : pair.second) {
             Expr value = GetExprFromGate(desc.operand);
-            Stmt &phiAssign = lmirBuilder_->Regassign(value, desc.phi);
-            lmirBuilder_->AppendStmtBeforeBranch(GetOrCreateBB(desc.predBBId), phiAssign);
+            PregIdx tmpPhiPregIdx = lmirBuilder_->CreatePreg(value.GetType());
+            Stmt &tmpPhiAssign = lmirBuilder_->Regassign(value, tmpPhiPregIdx);
+            lmirBuilder_->AppendStmtBeforeBranch(GetOrCreateBB(desc.predBBId), tmpPhiAssign);
+            bbID2phiAssign[desc.predBBId].emplace_back(std::make_pair(tmpPhiPregIdx, desc.phi));
+        }
+    }
+
+    for(auto &pair: bbID2phiAssign) {
+        for(auto &expr: pair.second) {
+            auto &stmt =  lmirBuilder_->Regassign(lmirBuilder_->Regread(expr.first), expr.second);
+            lmirBuilder_->AppendStmtBeforeBranch(GetOrCreateBB(pair.first), stmt);
         }
     }
     bbID2unmergedPhis_.clear();
+    bbID2phiAssign.clear();
 
     lmirBuilder_->AppendBB(lmirBuilder_->GetLastPosBB());
-
-    lmirBuilder_->DumpIRToFile("fini.mpl");
 }
 
 void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
@@ -1427,6 +1436,9 @@ void LiteCGIRBuilder::VisitChangeUInt32ToDouble(GateRef gate, GateRef e1)
 {
     Expr e1Value = GetExprFromGate(e1);
     auto e1Type = ConvertLiteCGTypeFromGate(e1);
+    if (e1Type == lmirBuilder_->i32Type) {
+        e1Value = lmirBuilder_->Cvt(e1Type, lmirBuilder_->u32Type, e1Value);
+    }
     Expr result = lmirBuilder_->Cvt(e1Type, ConvertLiteCGTypeFromGate(gate), e1Value);
     SaveGate2Expr(gate, result);
 }
@@ -1846,14 +1858,8 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
                 OPTIONAL_LOG_COMPILER(ERROR) << "VisitPhi failed BasicBlock nullptr";
                 return;
             }
-            if (!lmirBuilder_->IsEmptyBB(*preBB)) {
-                Expr value = GetExprFromGate(phiIns[i]);
-                Stmt &phiAssign = lmirBuilder_->Regassign(value, phiPregIdx);
-                lmirBuilder_->AppendStmtBeforeBranch(*preBB, phiAssign);
-            } else {
-                PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
-                AddPhiDesc(curBBId, desc);
-            }
+            PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
+            AddPhiDesc(curBBId, desc);
         } else {
             PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
             AddPhiDesc(curBBId, desc);
