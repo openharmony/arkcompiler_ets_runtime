@@ -212,7 +212,7 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
 
 #define CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm)                                \
     do {                                                                              \
-        if (vm->GetJSThread()->HasPendingException()) {                               \
+        if (vm->GetAndFastCheckJSThread()->HasPendingException()) {                   \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
             LOG_ECMA(ERROR) << panda::ecmascript::previewerTag <<                     \
