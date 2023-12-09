@@ -622,6 +622,16 @@ inline bool JSTaggedValue::IsJSPromiseExecutorFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSPromiseExecutorFunction();
 }
 
+inline bool JSTaggedValue::IsJSAsyncModuleFulfilledFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncModuleFulfilledFunction();
+}
+
+inline bool JSTaggedValue::IsJSAsyncModuleRejectedFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncModuleRejectedFunction();
+}
+
 inline bool JSTaggedValue::IsJSAsyncFromSyncIterUnwarpFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncFromSyncIterUnwarpFunction();

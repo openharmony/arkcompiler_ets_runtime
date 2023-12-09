@@ -81,6 +81,8 @@ struct Reference;
         JS_PROXY_REVOC_FUNCTION,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_MODULE_FULFILLED_FUNCTION, /* ////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_MODULE_REJECTED_FUNCTION, /* /////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, /* ///////////////////////////////////////-PADDING */ \
@@ -755,6 +757,16 @@ public:
     inline bool IsJSPromiseExecutorFunction() const
     {
         return GetObjectType() == JSType::JS_PROMISE_EXECUTOR_FUNCTION;
+    }
+
+    inline bool IsJSAsyncModuleFulfilledFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION;
+    }
+
+    inline bool IsJSAsyncModuleRejectedFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION;
     }
 
     inline bool IsJSAsyncFromSyncIterUnwarpFunction() const

@@ -87,7 +87,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::Execute(thread, pf.get(), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
     pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
@@ -123,7 +122,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteFromFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
     pfManager->RemoveJSPandaFileVm(instance, pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
@@ -161,7 +159,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromBuffer(
         thread, (void *)data, sizeof(data), JSPandaFile::ENTRY_MAIN_FUNCTION, CString(fileName));
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
     pfManager->RemoveJSPandaFileVm(instance, pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);

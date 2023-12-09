@@ -48,6 +48,9 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
     ModuleDataExtractor::ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord);
 
+    bool hasTLA = jsPandaFile->GetHasTopLevelAwait(descriptor);
+    moduleRecord->SetHasTLA(hasTLA);
+
     JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
     moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
 

@@ -394,6 +394,10 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseReactionsFunction");
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             return GetString("PromiseExecutorFunction");
+        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
+            return GetString("AsyncModuleFulfilledFunction");
+        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
+            return GetString("AsyncModuleRejectedFunction");
         case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
             return GetString("AsyncFromSyncIterUnwarpFunction");
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:

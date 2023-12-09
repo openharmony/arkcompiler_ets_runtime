@@ -298,11 +298,13 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
-            EcmaInterpreter::Execute(info);
+            result = EcmaInterpreter::Execute(info);
         }
     }
     if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (!jsPandaFile->IsModule(recordInfo)) {
+            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        }
     }
 
     return result;

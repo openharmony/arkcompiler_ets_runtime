@@ -1294,6 +1294,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
             break;
+        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
+            JSAsyncModuleFulfilledFunction::Cast(*obj)->SetModule(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
+            JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
+            JSAsyncModuleRejectedFunction::Cast(*obj)->SetModule(thread_, JSTaggedValue::Undefined());
+            break;
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject(thread_,
@@ -2982,6 +2990,36 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     return executorFunction;
 }
 
+JSHandle<JSAsyncModuleFulfilledFunction> ObjectFactory::CreateJSAsyncModuleFulfilledFunction()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncModuleFulfilledFunctionClass());
+    JSHandle<JSAsyncModuleFulfilledFunction> fulfilledFunction =
+        JSHandle<JSAsyncModuleFulfilledFunction>::Cast(NewJSObject(hclass));
+    fulfilledFunction->SetModule(thread_, JSTaggedValue::Undefined());
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(fulfilledFunction);
+    JSFunction::InitializeJSFunction(thread_, function);
+    fulfilledFunction->SetMethod(
+        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_FULFILLED_FUNCTION));
+    JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::ONE));
+    return fulfilledFunction;
+}
+
+JSHandle<JSAsyncModuleRejectedFunction> ObjectFactory::CreateJSAsyncModuleRejectedFunction()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncModuleRejectedFunctionClass());
+    JSHandle<JSAsyncModuleRejectedFunction> rejectedFunction =
+        JSHandle<JSAsyncModuleRejectedFunction>::Cast(NewJSObject(hclass));
+    rejectedFunction->SetModule(thread_, JSTaggedValue::Undefined());
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(rejectedFunction);
+    JSFunction::InitializeJSFunction(thread_, function);
+    rejectedFunction->SetMethod(
+        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_REJECTED_FUNCTION));
+    JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::ONE));
+    return rejectedFunction;
+}
+
 JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResolveElementFunction()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -4066,6 +4104,12 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIndirectExportEntries(thread_, undefinedValue);
     obj->SetStarExportEntries(thread_, undefinedValue);
     obj->SetNameDictionary(thread_, undefinedValue);
+    obj->SetCycleRoot(thread_, undefinedValue);
+    obj->SetTopLevelCapability(thread_, undefinedValue);
+    obj->SetAsyncParentModules(thread_, undefinedValue);
+    obj->SetHasTLA(false);
+    obj->SetAsyncEvaluatingOrdinal(SourceTextModule::NOT_ASYNC_EVALUATED);
+    obj->SetPendingAsyncDependencies(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSIndex(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSAncestorIndex(SourceTextModule::UNDEFINED_INDEX);
     obj->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
