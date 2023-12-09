@@ -2625,6 +2625,11 @@ void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
     const_cast<EcmaVM*>(vm)->SetProfilerState(value);
 }
 
+void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
+{
+    vm->SetSourceMapCallback(callback);
+}
+
 void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
 {
     vm->SetSourceMapTranslateCallback(callback);
