@@ -14,7 +14,6 @@
  */
 
 #include "exceptionevalerror_fuzzer.h"
-
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
@@ -25,17 +24,17 @@ namespace OHOS {
 void ExceptionEvalErrorFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        Exception::EvalError(vm_,StringRef::NewFromUtf8(vm_,"test aggregate error"));
-        JSNApi::DestroyJSVM(vm_);
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
+    }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "test aggregate error"));
+    JSNApi::DestroyJSVM(vm_);
 }
 }
 

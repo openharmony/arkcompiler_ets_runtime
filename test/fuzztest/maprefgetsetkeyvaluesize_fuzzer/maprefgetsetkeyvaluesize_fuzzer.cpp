@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "maprefgetsetkeyvaluesize_fuzzer.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/js_weak_container.h"
@@ -21,34 +20,36 @@
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ecma_vm.h"
+#include "maprefgetsetkeyvaluesize_fuzzer.h"
+
 
 using namespace panda;
 using namespace panda::ecmascript;
 #define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
-    void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        Local<MapRef> object = MapRef::New(vm_);
-        Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-        Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-        object->Set(vm_, key, value);
-        object->GetSize();
-        object->GetTotalElements();
-        object->Get(vm_,key);
-        object->GetKey(vm_,0);
-        object->GetValue(vm_,0);
-        JSNApi::DestroyJSVM(vm_);
+void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
     }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Set(vm_, key, value);
+    object->GetSize();
+    object->GetTotalElements();
+    object->Get(vm_, key);
+    object->GetKey(vm_, 0);
+    object->GetValue(vm_, 0);
+    JSNApi::DestroyJSVM(vm_);
+}
 }
 
 // Fuzzer entry point.

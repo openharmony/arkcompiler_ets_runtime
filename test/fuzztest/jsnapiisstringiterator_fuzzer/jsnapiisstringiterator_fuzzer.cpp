@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "jsnapiisstringiterator_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "jsnapiisstringiterator_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -44,6 +44,6 @@ void JSNApiIsStringIterator_FuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiIsStringIterator_FuzzTest(data,size);
+    OHOS::JSNApiIsStringIterator_FuzzTest(data, size);
     return 0;
 }

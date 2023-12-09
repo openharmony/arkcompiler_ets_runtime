@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "jsnapiisconstructor_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsnapiisconstructor_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -44,6 +44,6 @@ void JSNApiIsConstructorFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiIsConstructorFuzzTest(data,size);
+    OHOS::JSNApiIsConstructorFuzzTest(data, size);
     return 0;
 }

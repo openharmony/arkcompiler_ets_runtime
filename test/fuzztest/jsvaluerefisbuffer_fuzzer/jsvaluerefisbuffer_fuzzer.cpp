@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefisbuffer_fuzzer.h"
-
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsvaluerefisbuffer_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -28,7 +27,7 @@ void JSValueRefIsBufferFuzzerTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int32_t input=0;
+    int32_t input = 0;
     const int32_t MaxMenory = 1024;
     if (input > MaxMenory) {
         input = MaxMenory;

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefisarraybuffer_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsvaluerefisarraybuffer_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;

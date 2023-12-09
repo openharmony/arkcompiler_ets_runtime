@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "jsnapiisarrayiterator_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "jsnapiisarrayiterator_fuzzer.h"
 using namespace panda;
 using namespace panda::ecmascript;
 #define MAXBYTELEN sizeof(int32_t)
@@ -26,7 +26,7 @@ void JSNApiIsArrayIterator_FuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-     [[maybe_unused]] auto date1 = data;
+    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }
@@ -44,6 +44,6 @@ void JSNApiIsArrayIterator_FuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiIsArrayIterator_FuzzTest(data,size);
+    OHOS::JSNApiIsArrayIterator_FuzzTest(data, size);
     return 0;
 }

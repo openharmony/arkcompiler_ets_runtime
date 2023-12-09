@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "jsnapiisfalse_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsnapiisfalse_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -27,7 +27,7 @@ void JSNApiIsFalseFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-     [[maybe_unused]] auto date1 = data;
+    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }

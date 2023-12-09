@@ -14,7 +14,6 @@
  */
 
 #include "booleanrefvalue_fuzzer.h"
-
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
@@ -55,6 +54,6 @@ void BooleanRefValueFuzzerTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::BooleanRefValueFuzzerTest(data,size);
+    OHOS::BooleanRefValueFuzzerTest(data, size);
     return 0;
 }

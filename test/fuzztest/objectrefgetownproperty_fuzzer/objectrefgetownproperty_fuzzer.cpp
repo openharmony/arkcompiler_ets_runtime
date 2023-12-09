@@ -13,34 +13,35 @@
  * limitations under the License.
  */
 
-#include "objectrefgetownproperty_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "objectrefgetownproperty_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 #define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
-    void JSNApiGetOwnPropertyFuzzTest(const uint8_t *data, size_t size){
-        RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        Local<ObjectRef> object = ObjectRef::New(vm_);
-        Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-        Local<JSValueRef> value = ObjectRef::New(vm_);
-        PropertyAttribute attribute(value, true, true, true);
-        object->GetOwnProperty(vm_, key, attribute);
-        JSNApi::DestroyJSVM(vm_);
+void JSNApiGetOwnPropertyFuzzTest(const uint8_t *data, size_t size)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
     }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+    object->GetOwnProperty(vm_, key, attribute);
+    JSNApi::DestroyJSVM(vm_);
+}
 }
 
 // Fuzzer entry point.

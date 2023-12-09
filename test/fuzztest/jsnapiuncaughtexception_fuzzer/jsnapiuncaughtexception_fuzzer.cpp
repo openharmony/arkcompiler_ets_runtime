@@ -22,23 +22,24 @@ using namespace panda;
 using namespace panda::ecmascript;
 #define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
-    void JSNApiUncaughtExceptionFuzzTest(const uint8_t *data, size_t size){
-        RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
-        Local<JSValueRef> error = Exception::Error(vm_, message);
-        JSNApi::ThrowException(vm_, error);
-        JSNApi::GetUncaughtException(vm_);
-        JSNApi::DestroyJSVM(vm_);
+void JSNApiUncaughtExceptionFuzzTest(const uint8_t *data, size_t size)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
     }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::Error(vm_, message);
+    JSNApi::ThrowException(vm_, error);
+    JSNApi::GetUncaughtException(vm_);
+    JSNApi::DestroyJSVM(vm_);
+}
 }
 
 // Fuzzer entry point.

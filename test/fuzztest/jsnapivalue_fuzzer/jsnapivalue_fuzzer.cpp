@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include "jsnapivalue_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "jsnapivalue_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -26,20 +26,20 @@ namespace OHOS {
 void JSNApiValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        void *vps = static_cast<void*>(new std::string("test"));
-        void *vps1 = static_cast<void*>(new std::string("test"));
-        Local<NativePointerRef> res_vps =  NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
-        res_vps->Value();
-        JSNApi::DestroyJSVM(vm_);
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
+    }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    void *vps = static_cast<void *>(new std::string("test"));
+    void *vps1 = static_cast<void *>(new std::string("test"));
+    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
+    res_vps->Value();
+    JSNApi::DestroyJSVM(vm_);
 }
 }
 

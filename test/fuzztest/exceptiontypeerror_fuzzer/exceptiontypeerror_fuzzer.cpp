@@ -14,7 +14,6 @@
  */
 
 #include "exceptiontypeerror_fuzzer.h"
-
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
@@ -25,21 +24,21 @@ namespace OHOS {
 void ExceptionTypeErrorFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-        JSThread *thread_ = nullptr;
-        thread_ = vm_->GetJSThread();
-        [[maybe_unused]] auto date1 = data;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
-        Local<JSValueRef> error = Exception::TypeError(vm_, message);
-        JSNApi::ThrowException(vm_, error);
-        JSNApi::DestroyJSVM(vm_);
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    JSThread *thread_ = nullptr;
+    thread_ = vm_->GetJSThread();
+    [[maybe_unused]] auto date1 = data;
+    if (size <= 0) {
+        return;
+    }
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
+    }
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<JSValueRef> error = Exception::TypeError(vm_, message);
+    JSNApi::ThrowException(vm_, error);
+    JSNApi::DestroyJSVM(vm_);
 }
 }
 
@@ -47,6 +46,6 @@ void ExceptionTypeErrorFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::ExceptionTypeErrorFuzzTest(data,size);
+    OHOS::ExceptionTypeErrorFuzzTest(data, size);
     return 0;
 }

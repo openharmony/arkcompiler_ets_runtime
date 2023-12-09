@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefIsjsprimitivesymbol_fuzzer.h"
-
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
@@ -25,6 +23,8 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/ecma_vm.h"
+#include "jsvaluerefIsjsprimitivesymbol_fuzzer.h"
+
 using namespace panda;
 using namespace panda::ecmascript;
 

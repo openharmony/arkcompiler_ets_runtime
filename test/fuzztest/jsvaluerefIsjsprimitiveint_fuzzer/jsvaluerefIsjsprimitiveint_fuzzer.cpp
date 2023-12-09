@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefIsjsprimitiveint_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -21,6 +20,7 @@
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "jsvaluerefIsjsprimitiveint_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
