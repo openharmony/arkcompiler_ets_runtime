@@ -274,6 +274,5 @@ group("fuzztest") {
     "uint32arrayrefnew_fuzzer:fuzztest",
     "uint8arrayrefnew_fuzzer:fuzztest",
     "uint8clampedarrayrefnew_fuzzer:fuzztest",
-    
   ]
 }
