@@ -1,0 +1,48 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+##################################hydra-fuzz###################################
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+import("//build/config/features.gni")
+import("//build/ohos.gni")
+
+##################################fuzztest#####################################
+ohos_fuzztest("JSValueRefIsPlainArrayFuzzTest") {
+  module_out_path = ets_runtime_output_path
+
+  fuzz_config_file = "$js_root/test/fuzztest/jsvaluerefisplainarray_fuzzer"
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
+  sources = [ "jsvaluerefisplainarray_fuzzer.cpp" ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "$js_root:libark_jsruntime_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  deps += [ "$ark_root/libpandafile:libarkfile_static" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = []
+  deps += [ ":JSValueRefIsPlainArrayFuzzTest" ]
+}

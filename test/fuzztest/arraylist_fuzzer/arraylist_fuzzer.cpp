@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 
 
 using namespace panda;
@@ -878,6 +879,20 @@ namespace OHOS {
         ContainersArrayList::TrimToCurrentLength(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
+
+    void JSValueRefInstanceOfValueFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+    {
+        RuntimeOption option;
+        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
+        Local<ObjectRef> origin = ObjectRef::New(vm);
+        JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+        JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
+        JSHandle<JSTaggedValue> arryListTag = JSHandle<JSTaggedValue>::Cast(constructor);
+        Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(arryListTag);
+        (void)origin->InstanceOf(vm, value);
+        JSNApi::DestroyJSVM(vm);
+    }
 }
 
 // Fuzzer entry point.
@@ -906,5 +921,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     OHOS::ArrayListSortFuzzTest(data, size);
     OHOS::ArrayListSubArrayListFuzzTest(data, size);
     OHOS::ArrayListTrimToCurrentLengthFuzzTest(data, size);
+    OHOS::JSValueRefInstanceOfValueFuzzTest(data, size);
     return 0;
 }
