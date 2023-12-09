@@ -54,7 +54,7 @@ public:
 
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
-    JSHandle<SourceTextModule> HostGetImportedModule(void *src);
+    JSTaggedValue HostGetImportedModule(void *src);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
 
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
