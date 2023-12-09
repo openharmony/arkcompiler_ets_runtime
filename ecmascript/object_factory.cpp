@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_function_kind.h"
 #include "ecmascript/object_factory-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -1667,6 +1668,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, Me
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
     method->SetModule(thread_, JSTaggedValue::Undefined());
+    method->SetMachineCode(thread_, JSTaggedValue::Undefined());
     return method;
 }
 
@@ -2793,7 +2795,10 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
-
+    if (vm_->IsEnableJit()) {
+        uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
+        array->SetJitHotnessThreshold(threshold);
+    }
     return array;
 }
 
@@ -3346,7 +3351,8 @@ uintptr_t ObjectFactory::NewSpaceBySnapshotAllocator(size_t size)
     return heap_->AllocateSnapshotSpace(size);
 }
 
-JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length, const uint8_t *data)
+JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
+    const MachineCodeDesc *desc, JSHandle<Method> &method)
 {
     NewObjectHook();
     TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
@@ -3356,9 +3362,8 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length, const u
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    code->SetInstructionSizeInBytes(static_cast<uint32_t>(length));
-    if (data != nullptr) {
-        code->SetData(data, length);
+    if (desc != nullptr) {
+        code->SetData(desc, method, length);
     }
     JSHandle<MachineCode> codeObj(thread_, code);
     return codeObj;

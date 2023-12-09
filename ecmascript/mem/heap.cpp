@@ -101,6 +101,7 @@ void Heap::Initialize()
     oldSpace_->Initialize();
 
     hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    hugeMachineCodeSpace_ = new HugeMachineCodeSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
@@ -180,6 +181,11 @@ void Heap::Destroy()
         hugeObjectSpace_->Destroy();
         delete hugeObjectSpace_;
         hugeObjectSpace_ = nullptr;
+    }
+    if (hugeMachineCodeSpace_ != nullptr) {
+        hugeMachineCodeSpace_->Destroy();
+        delete hugeMachineCodeSpace_;
+        hugeMachineCodeSpace_ = nullptr;
     }
     if (readOnlySpace_ != nullptr && mode_ != HeapMode::SHARE) {
         readOnlySpace_->ClearReadOnly();
@@ -291,6 +297,7 @@ void Heap::ResumeForAppSpawn()
     nonMovableSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
+    hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
 void Heap::CompactHeapBeforeFork()
@@ -591,6 +598,10 @@ size_t Heap::VerifyHeapObjects() const
     }
     {
         VerifyObjectVisitor verifier(this, &failCount);
+        hugeMachineCodeSpace_->IterateOverObjects(verifier);
+    }
+    {
+        VerifyObjectVisitor verifier(this, &failCount);
         machineCodeSpace_->IterateOverObjects(verifier);
     }
     {
@@ -721,6 +732,7 @@ void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
     nonMovableSpace_->AddAllocationInspector(inspector);
     machineCodeSpace_->AddAllocationInspector(inspector);
     hugeObjectSpace_->AddAllocationInspector(inspector);
+    hugeMachineCodeSpace_->AddAllocationInspector(inspector);
 }
 
 void Heap::ClearAllocationInspectorFromAllSpaces()
@@ -730,6 +742,7 @@ void Heap::ClearAllocationInspectorFromAllSpaces()
     nonMovableSpace_->ClearAllocationInspector();
     machineCodeSpace_->ClearAllocationInspector();
     hugeObjectSpace_->ClearAllocationInspector();
+    hugeMachineCodeSpace_->ClearAllocationInspector();
 }
 
 void Heap::ClearKeptObjects() const
@@ -741,7 +754,8 @@ void Heap::RecomputeLimits()
 {
     double gcSpeed = memController_->CalculateMarkCompactSpeedPerMS();
     double mutatorSpeed = memController_->GetCurrentOldSpaceAllocationThroughputPerMS();
-    size_t oldSpaceSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+    size_t oldSpaceSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
+        hugeMachineCodeSpace_->GetHeapObjectSize();
     size_t newSpaceCapacity = activeSemiSpace_->GetInitialCapacity();
 
     double growingFactor = memController_->CalculateGrowingFactor(gcSpeed, mutatorSpeed);
@@ -911,7 +925,8 @@ void Heap::TryTriggerIncrementalMarking()
         return;
     }
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
-    size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+    size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
+        hugeMachineCodeSpace_->GetHeapObjectSize();
     double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
     double oldSpaceIncrementalMarkSpeed = incrementalMarker_->GetAverageIncrementalMarkingSpeed();
     double oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
@@ -960,7 +975,8 @@ void Heap::TryTriggerConcurrentMarking()
            oldSpaceAllocToLimitDuration = 0;
     double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
     double oldSpaceConcurrentMarkSpeed = memController_->GetFullSpaceConcurrentMarkSpeedPerMS();
-    size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+    size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
+        hugeMachineCodeSpace_->GetHeapObjectSize();
     size_t globalHeapObjectSize = GetHeapObjectSize();
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
@@ -1052,6 +1068,7 @@ void Heap::PrepareRecordRegionsForReclaim()
     nonMovableSpace_->SetRecordRegion();
     hugeObjectSpace_->SetRecordRegion();
     machineCodeSpace_->SetRecordRegion();
+    hugeMachineCodeSpace_->SetRecordRegion();
 }
 
 void Heap::TriggerConcurrentMarking()
@@ -1487,4 +1504,37 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     partialGC_->workManager_ = workManager;
 }
 
+std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCallSiteInfo(uintptr_t retAddr) const
+{
+    MachineCodeSpace *machineCodeSpace = GetMachineCodeSpace();
+    MachineCode *code = nullptr;
+    // 1. find return
+    // 2. gc
+    machineCodeSpace->IterateOverObjects([&code, &retAddr](TaggedObject *obj) {
+        if (code != nullptr || !JSTaggedValue(obj).IsMachineCodeObject()) {
+            return;
+        }
+        if (MachineCode::Cast(obj)->IsInText(retAddr)) {
+            code = MachineCode::Cast(obj);
+            return;
+        }
+    });
+    if (code == nullptr) {
+        HugeMachineCodeSpace *hugeMachineCodeSpace = GetHugeMachineCodeSpace();
+        hugeMachineCodeSpace->IterateOverObjects([&code, &retAddr](TaggedObject *obj) {
+            if (code != nullptr || !JSTaggedValue(obj).IsMachineCodeObject()) {
+                return;
+            }
+            if (MachineCode::Cast(obj)->IsInText(retAddr)) {
+                code = MachineCode::Cast(obj);
+                return;
+            }
+        });
+    }
+
+    if (code == nullptr) {
+        return {};
+    }
+    return code->CalCallSiteInfo(retAddr);
+};
 }  // namespace panda::ecmascript

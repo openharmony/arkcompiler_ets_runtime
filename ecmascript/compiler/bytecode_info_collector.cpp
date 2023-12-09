@@ -44,6 +44,20 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
     ProcessEnvs();
 }
 
+BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, JSHandle<JSFunction> &jsFunction,
+                                             PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo)
+    : vm_(vm),
+      jsPandaFile_(jsPandaFile),
+      bytecodeInfo_(1),
+      pfDecoder_(pfDecoder),
+      snapshotCPData_(vm, jsPandaFile),
+      enableCollectLiteralInfo_(enableCollectLiteralInfo)
+{
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
+    ProcessMethod(jsFunction);
+    ProcessEnvs();
+}
+
 BytecodeInfoCollector::~BytecodeInfoCollector()
 {
     if (envManager_ != nullptr) {
@@ -148,6 +162,58 @@ void BytecodeInfoCollector::ProcessClasses()
                        << jsPandaFile_->GetJSPandaFileDesc()
                        << " is: "
                        << methodIdx;
+}
+
+void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
+{
+    (void)jsFunction;
+    auto &recordNames = bytecodeInfo_.GetRecordNames();
+    auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
+
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
+    panda_file::File::EntityId methodIdx = method->GetMethodId();
+    panda_file::MethodDataAccessor mda(*pf, methodIdx);
+    panda_file::File::EntityId classIdx = panda_file::MethodDataAccessor::GetClassId(*pf, methodIdx);
+    panda_file::ClassDataAccessor cda(*pf, classIdx);
+    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+    const CString recordName = JSPandaFile::ParseEntryPoint(desc);
+    recordNames.emplace_back(recordName);
+    auto methodId = mda.GetMethodId();
+    CollectFunctionTypeId(methodId);
+
+    // Generate all constpool
+    [[maybe_unused]] JSTaggedValue constpool =
+        vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, methodId);
+    ASSERT(!constpool.IsHole());
+
+    auto methodOffset = methodId.GetOffset();
+    CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
+    if (JSPandaFile::IsEntryOrPatch(name)) {
+    }
+
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    ASSERT(jsPandaFile_->IsNewVersion());
+
+    auto codeId = mda.GetCodeId();
+    ASSERT(codeId.has_value());
+    panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
+    uint32_t codeSize = codeDataAccessor.GetCodeSize();
+    const uint8_t *insns = codeDataAccessor.GetInstructions();
+
+    std::map<uint32_t, std::pair<size_t, uint32_t>> processedMethod;
+    std::vector<panda_file::File::EntityId> classConstructIndexes;
+    std::vector<std::string> classNameVec;
+
+    CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec,
+        recordName, methodOffset, classConstructIndexes);
+    processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
+    // collect className and literal offset for type infer
+    if (EnableCollectLiteralInfo()) {
+        CollectClassLiteralInfo(methodLiteral, classNameVec);
+    }
+
+    SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
 }
 
 void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,

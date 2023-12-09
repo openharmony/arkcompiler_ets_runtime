@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
-
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
 class AOTFileGenerator;
@@ -74,6 +74,32 @@ public:
         for (auto &newMethod : fullResolvedMethodSet) {
             bytecodeInfo_.EraseSkippedMethod(newMethod.GetOffset());
         }
+    }
+
+    template <class Callback>
+    void CompileMethod(JSHandle<JSFunction> &jsFunction, const Callback &cb)
+    {
+        for (auto mi : bytecodeInfo_.GetMethodList()) {
+            bytecodeInfo_.AddSkippedMethod(mi.first);
+        }
+        const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
+        Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+        MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
+
+        auto &methodList = bytecodeInfo_.GetMethodList();
+        const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
+        auto &methodInfo = methodList.at(methodLiteral->GetMethodId().GetOffset());
+
+        auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
+        auto methodOffset = methodLiteral->GetMethodId().GetOffset();
+        bytecodeInfo_.EraseSkippedMethod(methodOffset);
+
+        Module *module = GetModule();
+        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, methodOffset,
+            methodPcInfo, methodInfo, module);
+        IncCompiledMethod();
+        CompileModuleThenDestroyIfNeeded();
     }
 
     template <class Callback>

@@ -285,10 +285,18 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     return object;
 }
 
+TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size)
+{
+    auto *object = reinterpret_cast<TaggedObject *>(hugeMachineCodeSpace_->Allocate(size, thread_));
+    return object;
+}
+
 TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
+    auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
+        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
+        reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);

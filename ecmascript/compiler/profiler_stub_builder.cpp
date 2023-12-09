@@ -55,6 +55,9 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
         case OperationType::ITERATOR_FUNC_KIND:
             ProfileGetIterator(glue, pc, func, values[0], profileTypeInfo, format);
             break;
+        case OperationType::TRY_JIT:
+            TryJitCompile(glue, func, profileTypeInfo);
+            break;
         default:
             break;
     }
@@ -789,5 +792,39 @@ void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTyp
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
     GateRef newCount = Int32(ProfileTypeInfo::PRE_DUMP_PEROID_INDEX);
     Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
+}
+
+void ProfilerStubBuilder::TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+
+    GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef hotnessThresholdOffset = PtrAdd(bitFieldOffset, IntPtr(sizeof(uint32_t)));
+    GateRef hotnessCntOffset = PtrAdd(hotnessThresholdOffset, IntPtr(sizeof(uint16_t)));
+    GateRef hotnessThreshold = Load(VariableType::INT16(), profileTypeInfo, hotnessThresholdOffset);
+    GateRef hotnessCnt = Load(VariableType::INT16(), profileTypeInfo, hotnessCntOffset);
+    Label equalThreshold(env);
+    Label notEqualThreshold(env);
+    Label incCnt(env);
+    Branch(Int32Equal(ZExtInt16ToInt32(hotnessCnt), ZExtInt16ToInt32(hotnessThreshold)),
+        &equalThreshold, &notEqualThreshold);
+    Bind(&equalThreshold);
+    {
+        CallRuntime(glue, RTSTUB_ID(JitCompile), { func });
+        Jump(&incCnt);
+    }
+    Bind(&notEqualThreshold);
+    Branch(Int32LessThan(ZExtInt16ToInt32(hotnessCnt), ZExtInt16ToInt32(hotnessThreshold)), &incCnt, &exit);
+    Bind(&incCnt);
+    {
+        GateRef newCnt = Int16Add(hotnessCnt, Int16(1));
+        Store(VariableType::INT16(), glue, profileTypeInfo, hotnessCntOffset, newCnt);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
 }
 } // namespace panda::ecmascript::kungfu

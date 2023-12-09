@@ -56,6 +56,8 @@ public:
 
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
+    void TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
+
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
     static constexpr size_t MIN_PROFILE_CALL_INTERVAL = 5;

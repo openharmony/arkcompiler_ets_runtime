@@ -38,6 +38,7 @@ enum MemSpaceType {
     LOCAL_SPACE,
     READ_ONLY_SPACE,
     APPSPAWN_SPACE,
+    HUGE_MACHINE_CODE_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
@@ -66,6 +67,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "read only space";
         case APPSPAWN_SPACE:
             return "appspawn space";
+        case HUGE_MACHINE_CODE_SPACE:
+            return "huge machine code space";
         default:
             return "unknown space";
     }
@@ -233,6 +236,8 @@ class HugeObjectSpace : public Space {
 public:
     HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
+    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+                    size_t maximumCapacity, MemSpaceType spaceType);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
@@ -250,5 +255,13 @@ private:
     EcmaList<Region> hugeNeedFreeList_ {};
     Heap* heap_;
 };
+
+class HugeMachineCodeSpace : public HugeObjectSpace {
+public:
+    HugeMachineCodeSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+                    size_t maximumCapacity);
+    void Sweep();
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SPACE_H

@@ -128,6 +128,7 @@ libark_jsoptimizer_sources = [
   "interpreter_stub.cpp",
   "ir_builder.cpp",
   "ir_module.cpp",
+  "jit_compiler.cpp",
   "later_elimination.cpp",
   "lcr_circuit_builder.cpp",
   "lcr_gate_meta_data.cpp",
@@ -301,12 +302,11 @@ ohos_source_set("libark_jsoptimizer_set") {
   } else {
     sources += [ "$js_root/ecmascript/platform/unix/code_sign.cpp" ]
   }
-
   public_configs = [
     ":include_llvm",
-    ":libark_jsoptimizer_set_config",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
+    ":libark_jsoptimizer_set_config",
   ]
 
   external_deps = []
@@ -350,14 +350,13 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     "codegen/maple/litecg_codegen.cpp",
     "litecg_ir_builder.cpp",
   ]
-
   public_configs = [
-    ":enable_maple_config",
     ":include_llvm",
     ":include_maple",
-    ":libark_jsoptimizer_set_config",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
+    ":libark_jsoptimizer_set_config",
+    ":enable_maple_config",
   ]
 
   external_deps = []
@@ -409,15 +408,17 @@ ohos_source_set("libark_mock_stub_set") {
 ohos_shared_library("libark_jsoptimizer") {
   stack_protector_ret = false
   deps = [
-    ":libark_jsoptimizer_set",
+    ":libark_jsoptimizer_set_with_maple",
+    "$ark_third_party_root/bounds_checking_function:libsec_shared",
     "$js_root:libark_jsruntime",
+    "${MAPLEALL_ROOT}/maple_be:libcg",
   ]
 
   if (run_with_asan) {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  install_enable = false
+  install_enable = true
 
   if (!is_mingw && !is_mac) {
     output_extension = "so"
@@ -476,7 +477,6 @@ ohos_executable("ark_stub_compiler") {
 
 ohos_executable("ark_aot_compiler") {
   sources = [ "aot_compiler.cpp" ]
-
   configs = [
     ":include_llvm",
     ":include_maple",

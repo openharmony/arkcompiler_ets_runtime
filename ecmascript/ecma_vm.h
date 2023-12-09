@@ -86,6 +86,7 @@ class ConstantPool;
 class FunctionCallTimer;
 class EcmaStringTable;
 class JSObjectResizingStrategy;
+class Jit;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
@@ -529,6 +530,20 @@ public:
         return strategy_;
     }
 
+    Jit *GetJit()
+    {
+        return jit_;
+    }
+
+    bool IsEnableJit() const
+    {
+        return isEnableJit_;
+    }
+
+    void SetEnableJit(bool state)
+    {
+        isEnableJit_ = state;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -629,6 +644,8 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
+    Jit *jit_;
+    bool isEnableJit_;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -89,7 +89,7 @@ std::string ICKindToString(ICKind kind);
  *      |            .....               |
  *      +--------------------------------+----
  *      |    low 32bits(PeriodCount)     |
- *      |    hight 32bits(Reserved)      |
+ *      |    hight 32bits(jit hotness)   |
  *      +--------------------------------+
  */
 class ProfileTypeInfo : public TaggedArray {
@@ -141,7 +141,27 @@ public:
         return GetPeroidIndex() == PRE_DUMP_PEROID_INDEX;
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetLength());
+    uint16_t GetJitHotnessThreshold() const
+    {
+        return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessThresholdBitfieldOffset());
+    }
+
+    void SetJitHotnessThreshold(uint16_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetJitHotnessThresholdBitfieldOffset(), count);
+    }
+
+    uint16_t GetJitHotnessCnt() const
+    {
+        return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
+    }
+
+    void SetJitHotnessCnt(uint16_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetJitHotnessCntBitfieldOffset(), count);
+    }
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetCacheLength());
 
     DECL_DUMP()
 
@@ -159,6 +179,17 @@ private:
     inline size_t GetBitfieldOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - BIT_FIELD_INDEX);
+    }
+
+    // jit hotness(16bits) + count(16bits)
+    inline size_t GetJitHotnessThresholdBitfieldOffset() const
+    {
+        return GetBitfieldOffset() + sizeof(uint32_t);
+    }
+
+    inline size_t GetJitHotnessCntBitfieldOffset() const
+    {
+        return GetJitHotnessThresholdBitfieldOffset() + sizeof(uint16_t);
     }
 };
 

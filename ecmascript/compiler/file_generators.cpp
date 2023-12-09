@@ -216,7 +216,6 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         calleeSaveRegisters.emplace_back(info);
     });
     // 2.After all functions compiled, the module sections would be fixed
-    uintptr_t textAddr = GetTextAddr();
     uint32_t textSize = GetTextSize();
     uint32_t rodataSizeBeforeText = 0;
     uint32_t rodataSizeAfterText = 0;
@@ -241,7 +240,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
         if (i < funcCount - 1) {
             funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
         } else {
-            funcSize = textAddr + textSize - funcEntry;
+            funcSize = textSize - funcEntry;
         }
         auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
         bool isMainFunc = found != std::string::npos;
@@ -500,6 +499,9 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
+    if (vm_->IsEnableJit()) {
+        lastModulePC = 0;
+    }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
         LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
         lmirModule->GetModule()->SetLastModulePC(lastModulePC);
@@ -583,6 +585,51 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
     }
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
+}
+
+void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
+{
+    ASSERT(machineCodeDesc != nullptr);
+    if (aotInfo_.GetTotalCodeSize() == 0) {
+        LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
+        return;
+    }
+    GenerateMergedStackmapSection();
+
+    // get func entry Map
+    aotInfo_.GenerateMethodToEntryIndexMap();
+
+    uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(aotInfo_.GetStubs().data());
+    ASSERT(aotInfo_.GetStubs().size() <= 2); // jsfunc + __llvm_deoptimize, 2 : size
+    uint32_t funcEntrySize = sizeof(AOTFileInfo::FuncEntryDes) * aotInfo_.GetStubs().size();
+
+    ASSERT(aotInfo_.GetModuleSectionDes().size() == 1);
+    auto &moduleSectionDes = aotInfo_.GetModuleSectionDes()[0];
+    // get code data
+    uint64_t textAddr = moduleSectionDes.GetSecAddr(ElfSecName::TEXT);
+    size_t textSize = moduleSectionDes.GetSecSize(ElfSecName::TEXT);
+
+    uint64_t rodataAddrBeforeText = 0;
+    uint32_t rodataSizeBeforeText = 0;
+    uint64_t rodataAddrAfterText = 0;
+    uint32_t rodataSizeAfterText = 0;
+    std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+        moduleSectionDes.GetMergedRODataAddrAndSize(textAddr);
+
+    machineCodeDesc->rodataAddrBeforeText = rodataAddrBeforeText;
+    machineCodeDesc->rodataSizeBeforeText = rodataSizeBeforeText;
+    machineCodeDesc->rodataAddrAfterText = rodataAddrAfterText;
+    machineCodeDesc->rodataSizeAfterText = rodataSizeAfterText;
+
+    uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
+    size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();
+
+    machineCodeDesc->codeAddr = textAddr;
+    machineCodeDesc->codeSize = textSize;
+    machineCodeDesc->funcEntryDesAddr = funcEntryAddr;
+    machineCodeDesc->funcEntryDesSize = funcEntrySize;
+    machineCodeDesc->stackMapAddr = stackMapPtr;
+    machineCodeDesc->stackMapSize = stackMapSize;
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

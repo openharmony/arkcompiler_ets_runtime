@@ -34,6 +34,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/jit/jit.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -169,6 +170,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
+    SetEnableJit(options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
 void EcmaVM::InitializePGOProfiler()
@@ -233,6 +235,9 @@ bool EcmaVM::Initialize()
     singleCharTable_ = SingleCharTable::CreateSingleCharTable(thread_);
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
+
+    jit_ = new Jit(this);
+    jit_->Initialize();
     initialized_ = true;
     return true;
 }
@@ -277,6 +282,11 @@ EcmaVM::~EcmaVM()
         if (jsPandaFile != nullptr) {
             jsPandaFile->DeleteParsedConstpoolVM(this);
         }
+    }
+
+    if (jit_ != nullptr) {
+        delete jit_;
+        jit_ = nullptr;
     }
 
     if (gcStats_ != nullptr) {

@@ -97,23 +97,23 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--icu-data-path:                      Path to generated icu data file. Default: 'default'\n"
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
-    "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
+    "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma','interpreter',\n"
+    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-debug:                          Enable debug or above logs for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all'].\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-error:                          Enable error log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-fatal:                          Enable fatal log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-info:                           Enable info log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'builtins', \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'jit', 'builtins', \n"
     "                                      'all']. Default: 'all'\n"
     "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
     "--compiler-module-methods:            The number of max compiled methods in a module. Default: '100'\n"
@@ -157,7 +157,11 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-native-inline:      Enable inline native function: Default: 'false'\n"
     "--compiler-enable-lowering-builtin:   Enable lowering global object: Default: 'false'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
-    "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n\n";
+    "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
+    "--enable-jit:                         Enable jit: Default: 'false'\n"
+    "--jit-hotness-threshold:              Set hotness threshold for jit. Default: '2'\n"
+    "--force-jit-compile-main:             Enable jit compile main function: Default: 'false'\n"
+    "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -256,6 +260,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
+        {"enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
+        {"jit-hotness-threshold", required_argument, nullptr, OPTION_JIT_HOTNESS_THRESHOLD},
+        {"force-jit-compile-main", required_argument, nullptr, OPTION_FORCE_JIT_COMPILE_MAIN},
+        {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -870,6 +878,40 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerEnableLiteCG(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJIT(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_JIT_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("jit-hotness-threshold", &argUint32);
+                if (ret) {
+                    uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
+                        std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
+                    SetJitHotnessThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_FORCE_JIT_COMPILE_MAIN:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetForceJitCompileMain(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_JIT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceJIT(argBool);
                 } else {
                     return false;
                 }

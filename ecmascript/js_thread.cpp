@@ -495,6 +495,27 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
+void JSThread::SwitchJitProfileStubsIfNeeded()
+{
+    bool isSwitch = false;
+    bool isEnableJit = vm_->IsEnableJit();
+    if (isEnableJit) {
+        if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+            SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
+            isSwitch = true;
+        }
+    }
+    if (isSwitch) {
+        Address curAddress;
+#define SWITCH_PGO_STUB_ENTRY(fromName, toName, ...)                                                        \
+        curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
+        ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
+#undef SWITCH_PGO_STUB_ENTRY
+    }
+}
+
 void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
@@ -514,6 +535,11 @@ bool JSThread::CheckSafepoint()
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
+
+    if (HasInstallMachineCode()) {
+        vm_->GetJit()->InstallTasks();
+    }
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (needProfiling_.load() && !isProfiling_) {
         DFXJSNApi::StartCpuProfilerForFile(vm_, profileName_, CpuProfiler::INTERVAL_OF_INNER_START);

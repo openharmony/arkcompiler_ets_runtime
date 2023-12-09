@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/ecma_vm.h"
@@ -138,10 +139,22 @@ public:
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
         : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {};
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {
+                enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
+            };
+
+    PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
+        CompilerLog *log, AotMethodLogList *logList,
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
+        : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+          logList_(logList), maxAotMethodSize_(1), maxMethodsInModule_(1),
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {
+                enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
+            };
     ~PassManager() = default;
 
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
+    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen);
 
 private:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
@@ -156,6 +169,7 @@ private:
     size_t maxMethodsInModule_ {0};
     PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
+    bool enableJITLog_ {false};
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H
