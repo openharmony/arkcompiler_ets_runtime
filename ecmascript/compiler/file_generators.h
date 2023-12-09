@@ -212,21 +212,19 @@ public:
     void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
 
 private:
+    // collect aot component info
+    void CollectCodeInfo(Module *module, uint32_t moduleIdx);
+
+    uint64_t RollbackTextSize(Module *module);
+
     AnFileInfo aotInfo_;
     CGStackMapInfo *stackMapInfo_ = nullptr;
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
-    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
     EcmaVM* vm_;
     CompilationConfig cfg_;
     std::string curCompileFileName_;
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
-
-    // collect aot component info
-    void CollectCodeInfo(Module *module, uint32_t moduleIdx);
-
-    uint64_t RollbackTextSize(Module *module);
 };
 
 enum class StubFileKind {

@@ -78,7 +78,6 @@ private:
 
     RWLock lock_ {};
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_ {};
-    std::unordered_map<std::string, uint32_t> jitFileNameToIndexMap_ {};
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
 
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};

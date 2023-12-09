@@ -644,8 +644,8 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
-    Jit *jit_;
-    bool isEnableJit_;
+    Jit *jit_ {nullptr};
+    bool isEnableJit_ {false};
 };
 }  // namespace ecmascript
 }  // namespace panda

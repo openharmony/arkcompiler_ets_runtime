@@ -261,9 +261,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {"enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
-        {"jit-hotness-threshold", required_argument, nullptr, OPTION_JIT_HOTNESS_THRESHOLD},
-        {"force-jit-compile-main", required_argument, nullptr, OPTION_FORCE_JIT_COMPILE_MAIN},
-        {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
+        {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
+        {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
+        {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -890,8 +890,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_JIT_HOTNESS_THRESHOLD:
-                ret = ParseUint32Param("jit-hotness-threshold", &argUint32);
+            case OPTION_COMPILER_JIT_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("compiler-jit-hotness-threshold", &argUint32);
                 if (ret) {
                     uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
                         std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
@@ -900,7 +900,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_FORCE_JIT_COMPILE_MAIN:
+            case OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetForceJitCompileMain(argBool);

@@ -104,8 +104,14 @@ JitCompiler *JitCompiler::Create(EcmaVM *vm, JitTask *jitTask)
 
 JitCompiler::~JitCompiler()
 {
-    delete passManager_;
-    delete aotFileGenerator_;
+    if (passManager_ != nullptr) {
+        delete passManager_;
+        passManager_ = nullptr;
+    }
+    if (aotFileGenerator_ != nullptr) {
+        delete aotFileGenerator_;
+        aotFileGenerator_ = nullptr;
+    }
 }
 
 bool JitCompiler::Compile()

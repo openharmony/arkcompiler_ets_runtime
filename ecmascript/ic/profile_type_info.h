@@ -102,6 +102,8 @@ public:
     static constexpr size_t INITIAL_PEROID_INDEX = 0;
     static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
     static constexpr size_t DUMP_PEROID_INDEX = 2;
+    static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 32; // 32 : 32 bit offset from bitfield
+    static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 16; // 16 : 16 bit offset from jit hotness threshold
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -184,12 +186,12 @@ private:
     // jit hotness(16bits) + count(16bits)
     inline size_t GetJitHotnessThresholdBitfieldOffset() const
     {
-        return GetBitfieldOffset() + sizeof(uint32_t);
+        return GetBitfieldOffset() + JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
     }
 
     inline size_t GetJitHotnessCntBitfieldOffset() const
     {
-        return GetJitHotnessThresholdBitfieldOffset() + sizeof(uint16_t);
+        return GetJitHotnessThresholdBitfieldOffset() + JIT_CNT_OFFSET_FROM_THRESHOLD;
     }
 };
 

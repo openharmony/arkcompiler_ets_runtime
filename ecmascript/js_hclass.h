@@ -349,8 +349,6 @@ public:
     using IsTSBit = IsNativeBindingObjectBit::NextFlag;                                           // 24
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
-    using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                             // 31
-    using CanFastCallBit = IsOptimizedBit::NextFlag;                                              // 32
     using BitFieldLastBit = IsJSFunctionBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 

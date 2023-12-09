@@ -802,8 +802,10 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, GateRef func, GateRef prof
     Label exit(env);
 
     GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
-    GateRef hotnessThresholdOffset = PtrAdd(bitFieldOffset, IntPtr(sizeof(uint32_t)));
-    GateRef hotnessCntOffset = PtrAdd(hotnessThresholdOffset, IntPtr(sizeof(uint16_t)));
+    GateRef hotnessThresholdOffset = PtrAdd(bitFieldOffset,
+        IntPtr(ProfileTypeInfo::JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD));
+    GateRef hotnessCntOffset = PtrAdd(hotnessThresholdOffset,
+        IntPtr(ProfileTypeInfo::JIT_CNT_OFFSET_FROM_THRESHOLD));
     GateRef hotnessThreshold = Load(VariableType::INT16(), profileTypeInfo, hotnessThresholdOffset);
     GateRef hotnessCnt = Load(VariableType::INT16(), profileTypeInfo, hotnessCntOffset);
     Label equalThreshold(env);

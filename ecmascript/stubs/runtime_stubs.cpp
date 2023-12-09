@@ -564,8 +564,6 @@ void RuntimeStubs::DumpToStreamWithHint(std::ostream &out, std::string_view hint
 
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
-    std::cout << "ff:" << fmtMessageId << std::endl;
-    return;
     std::string format = MessageString::GetMessageString(fmtMessageId);
     va_list args;
     va_start(args, fmtMessageId);
@@ -1257,7 +1255,6 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {

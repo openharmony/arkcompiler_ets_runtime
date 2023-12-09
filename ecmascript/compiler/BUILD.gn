@@ -418,7 +418,7 @@ ohos_shared_library("libark_jsoptimizer") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  install_enable = true
+  install_enable = false
 
   if (!is_mingw && !is_mac) {
     output_extension = "so"

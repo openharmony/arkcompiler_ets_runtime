@@ -236,8 +236,10 @@ bool EcmaVM::Initialize()
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
 
-    jit_ = new Jit(this);
-    jit_->Initialize();
+    if (IsEnableJit()) {
+        jit_ = new Jit(this);
+        jit_->Initialize();
+    }
     initialized_ = true;
     return true;
 }
@@ -284,9 +286,11 @@ EcmaVM::~EcmaVM()
         }
     }
 
-    if (jit_ != nullptr) {
-        delete jit_;
-        jit_ = nullptr;
+    if (IsEnableJit()) {
+        if (jit_ != nullptr) {
+            delete jit_;
+            jit_ = nullptr;
+        }
     }
 
     if (gcStats_ != nullptr) {

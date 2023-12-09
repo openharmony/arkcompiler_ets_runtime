@@ -91,8 +91,11 @@ void Jit::DeleteJitCompile(void *compiler)
     deleteJitCompile_(compiler);
 }
 
-void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode [[maybe_unused]])
+void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode)
 {
+    if (!vm->IsEnableJit()) {
+        return;
+    }
     auto jit = vm->GetJit();
     if (!jit->IsInitialized()) {
         return;

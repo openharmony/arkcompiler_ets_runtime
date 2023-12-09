@@ -499,7 +499,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
     static uint32_t lastModulePC = 0;
-    if (vm_->IsEnableJit()) {
+    if (useLiteCG_ && vm_->IsEnableJit()) {
         lastModulePC = 0;
     }
     if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
