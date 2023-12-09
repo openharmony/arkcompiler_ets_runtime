@@ -422,6 +422,8 @@ public:
         return moduleName_;
     }
 
+    CString GetCurrentModuleName();
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
