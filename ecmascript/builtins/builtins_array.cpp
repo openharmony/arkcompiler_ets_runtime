@@ -2709,6 +2709,10 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> unscopableList = factory->CreateNullJSObject();
 
     JSHandle<JSTaggedValue> trueVal(thread, JSTaggedValue::True());
+
+    JSHandle<JSTaggedValue> atKey((factory->NewFromASCII("at")));
+    JSObject::CreateDataProperty(thread, unscopableList, atKey, trueVal);
+
     JSHandle<JSTaggedValue> copyWithKey = globalConst->GetHandledCopyWithinString();
     JSObject::CreateDataProperty(thread, unscopableList, copyWithKey, trueVal);
 
@@ -2724,6 +2728,12 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> findIndexKey = globalConst->GetHandledFindIndexString();
     JSObject::CreateDataProperty(thread, unscopableList, findIndexKey, trueVal);
 
+    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCII("findLast")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastKey, trueVal);
+
+    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCII("findLastIndex")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastIndexKey, trueVal);
+
     JSHandle<JSTaggedValue> flatKey = globalConst->GetHandledFlatString();
     JSObject::CreateDataProperty(thread, unscopableList, flatKey, trueVal);
 
@@ -2738,7 +2748,15 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> valuesKey = globalConst->GetHandledValuesString();
     JSObject::CreateDataProperty(thread, unscopableList, valuesKey, trueVal);
-
+    
+    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCII("toReversed")));
+    JSObject::CreateDataProperty(thread, unscopableList, toReversedKey, trueVal);
+    
+    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCII("toSorted")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSortedKey, trueVal);
+    
+    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
     return unscopableList.GetTaggedValue();
 }
 
