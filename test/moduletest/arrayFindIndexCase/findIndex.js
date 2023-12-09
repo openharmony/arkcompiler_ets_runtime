@@ -47,3 +47,11 @@ function isPrime(element) {
 }
 print([4, 6, 8, 9, 12].findIndex(isPrime));
 print([4, 6, 7, 9, 12].findIndex(isPrime));
+
+const words = ["spray", "limit", "limits"];
+const deleteWords = words.findIndex((word, index, arr) => {
+  arr.length=2
+  return word == "limits"
+});
+print(deleteWords);
+print(words.length);
