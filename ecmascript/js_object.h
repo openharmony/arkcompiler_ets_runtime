@@ -328,11 +328,15 @@ private:
     PropertyMetaData metaData_ {0U};
 };
 
+
+// HashField possible layout:
+// [ hashValue ] | [ nativePointer ] | [extraInfo] | [ sObjOwner&extRef, hashValue, extraInfo, nativePointer, ... ]
+// nativePointer number depends on the extraLength of taggedArray
 class ECMAObject : public TaggedObject {
 public:
-    static constexpr int HASH_INDEX = 0;
     // the high 32nd bit indicates whether a shared object is frozen, 0 means not frozen, 1 means frozen
-    static constexpr int EXTREF_AND_OWNER_INDEX = 1;
+    static constexpr int EXTREF_AND_OWNER_INDEX = 0;
+    static constexpr int HASH_INDEX = 1;
     static constexpr int FUNCTION_EXTRA_INDEX = 2;
     static constexpr int RESOLVED_MAX_SIZE = 3;
 

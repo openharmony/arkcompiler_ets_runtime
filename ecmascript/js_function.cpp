@@ -858,20 +858,22 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
 
         uint32_t nativeFieldCount = array->GetExtraLength();
         if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
-            array->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+            array->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
         } else {
             JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(nativeFieldCount + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(nativeFieldCount);
             for (uint32_t i = 0; i < nativeFieldCount; i++) {
                 newArray->Set(thread, i, array->Get(i));
             }
-            newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
-            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+            newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(0));
+            newArray->Set(thread, HASH_INDEX, array->Get(HASH_INDEX));
+            newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         }
     } else {
         JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(0);
+        newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(0));
         newArray->Set(thread, HASH_INDEX, value);
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());

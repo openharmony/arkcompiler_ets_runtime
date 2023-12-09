@@ -2596,11 +2596,12 @@ void ECMAObject::SetHash(int32_t hash)
         // Hash position reserve in advance.
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
-            array->Set(thread, array->GetExtraLength() + HASH_INDEX, JSTaggedValue(hash));
+            array->Set(thread, HASH_INDEX, JSTaggedValue(hash));
         } else if (value.IsNativePointer()) { // FunctionExtraInfo
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(0);
+            newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(0));
             newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
             newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
@@ -2620,7 +2621,7 @@ int32_t ECMAObject::GetHash() const
     if (value.IsHeapObject()) {
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
-            return array->Get(array->GetExtraLength() + HASH_INDEX).GetInt();
+            return array->Get(HASH_INDEX).GetInt();
         } else {
             // Default is 0
             return 0;
@@ -2647,7 +2648,7 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
         JSThread *thread = this->GetJSThread();
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
-            JSHandle<JSNativePointer> pointer(thread, array->Get(index));
+            JSHandle<JSNativePointer> pointer(thread, array->Get(RESOLVED_MAX_SIZE + index));
             return pointer->GetExternalPointer();
         }
     }
@@ -2664,15 +2665,16 @@ void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
-            JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
+            JSHandle<JSTaggedValue> current =
+                JSHandle<JSTaggedValue>(thread, array->Get(thread, RESOLVED_MAX_SIZE + index));
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
-                array->Set(thread, index, JSTaggedValue::Hole());
+                array->Set(thread, RESOLVED_MAX_SIZE + index, JSTaggedValue::Hole());
             } else {
                 JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
                     nativePointer, callBack, data, false, nativeBindingsize);
-                array->Set(thread, index, pointer.GetTaggedValue());
+                array->Set(thread, RESOLVED_MAX_SIZE + index, pointer.GetTaggedValue());
             }
         }
     }
@@ -2690,9 +2692,8 @@ void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm)
         nativePointer = hashField;
     } else if (hashField.IsTaggedArray()) {
         TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-        uint32_t nativeFieldCount = array->GetExtraLength();
         uint32_t threadID = thread->GetThreadId();
-        array->Set(thread, nativeFieldCount + EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0x0ULL | threadID)));
+        array->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0x0ULL | threadID)));
         return;
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -2711,24 +2712,24 @@ void ECMAObject::SetOwnerThreadID(JSThread* thread, uint32_t threadID)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
-        return;
+        InitializeExtRefAndOwner(thread->GetEcmaVM());
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint32_t nativeFieldCount = array->GetExtraLength();
-    uint64_t extRefAndOwnerField = array->Get(nativeFieldCount + EXTREF_AND_OWNER_INDEX).GetRawData();
+    uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
     extRefAndOwnerField = (extRefAndOwnerField & 0xFFFFFFFF00000000ULL) | threadID;
-    array->Set(thread, nativeFieldCount + EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
+    array->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
 }
 
 bool ECMAObject::IsOwned(uint32_t threadID)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
         return false;
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint32_t nativeFieldCount = array->GetExtraLength();
-    uint64_t extRefAndOwnerField = array->Get(nativeFieldCount + EXTREF_AND_OWNER_INDEX).GetRawData();
+    uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
     return (extRefAndOwnerField & OWNER_ID_MASK) == (uint64_t)threadID;
 }
 
@@ -2736,24 +2737,26 @@ void ECMAObject::FreezeObj(JSThread* thread)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
         return;
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint32_t nativeFieldCount = array->GetExtraLength();
-    uint64_t extRefAndOwnerField = array->Get(nativeFieldCount + EXTREF_AND_OWNER_INDEX).GetRawData();
+    uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
     extRefAndOwnerField = extRefAndOwnerField | (0x1ULL << 32);
-    array->Set(thread, nativeFieldCount + EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
+    array->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
 }
 
 bool ECMAObject::IsFrozen()
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
         return false;
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint32_t nativeFieldCount = array->GetExtraLength();
-    uint64_t extRefAndOwnerField = array->Get(nativeFieldCount + EXTREF_AND_OWNER_INDEX).GetRawData();
+    uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
     return (extRefAndOwnerField & (0x1ULL << 32)) == 0x0ULL;
 }
 
@@ -2786,25 +2789,27 @@ void ECMAObject::SetNativePointerFieldCount(int32_t count)
                 JSHandle<TaggedArray> newArray =
                     thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
                 newArray->SetExtraLength(count);
-                newArray->Set(thread, count + HASH_INDEX, array->Get(HASH_INDEX));
-                newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
+                newArray->Set(thread, EXTREF_AND_OWNER_INDEX, array->Get(EXTREF_AND_OWNER_INDEX));
+                newArray->Set(thread, HASH_INDEX, array->Get(HASH_INDEX));
+                newArray->Set(thread, FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
                 Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
             }
         } else if (value->IsJSNativePointer()) {
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(count);
-            newArray->Set(thread, count + HASH_INDEX, JSTaggedValue(0));
-            newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
+            newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(0));
+            newArray->Set(thread, HASH_INDEX, JSTaggedValue(0));
+            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
-        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
+        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(count);
-        newArray->Set(thread, count + HASH_INDEX, value);
+        newArray->Set(thread, HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }
