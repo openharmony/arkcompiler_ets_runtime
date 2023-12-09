@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefIsdataview_fuzzer.h"
+#include "jsvaluerefisdataview_fuzzer.h"
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
