@@ -42,6 +42,17 @@ struct NativeBindingInfo {
     NativeBindingInfo(AttachFunc af, void *bufferPointer, void *hint, void *attachData, ObjectSlot slot, bool root)
         : af_(af), bufferPointer_(bufferPointer), hint_(hint), attachData_(attachData), slot_(slot), root_(root) {}
 };
+
+struct JSErrorInfo {
+    uint8_t errorType_ {0};
+    JSTaggedValue errorMsg_;
+    ObjectSlot slot_;
+    bool root_ {false};
+
+    JSErrorInfo(uint8_t errorType, JSTaggedValue errorMsg, ObjectSlot slot, bool root)
+        : errorType_(errorType), errorMsg_(errorMsg), slot_(slot), root_(root) {}
+};
+
 class BaseDeserializer {
 public:
     explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr)
@@ -63,15 +74,16 @@ private:
     uintptr_t DeserializeTaggedObject(SerializedObjectSpace space);
     void DeserializeConstPool(NewConstPoolInfo *info);
     void DeserializeNativeBindingObject(NativeBindingInfo *info);
+    void DeserializeJSError(JSErrorInfo *info);
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
-    void DeserializeObjectField(ObjectSlot start, ObjectSlot end);
-    size_t ReadSingleEncodeData(uint8_t encodeFlag, ObjectSlot slot, bool isRoot = false);
+    void DeserializeObjectField(uintptr_t start, uintptr_t end);
+    size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr, bool isRoot = false);
     void HandleNewObjectEncodeFlag(SerializedObjectSpace space, ObjectSlot slot, bool isRoot);
     void HandleMethodEncodeFlag();
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
-    void ResetArrayBufferNativePointer(uintptr_t objAddr, void *bufferPointer);
+    void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
     void ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *constpool);
 
     void AllocateToDifferentSpaces();
@@ -79,7 +91,7 @@ private:
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
-    void UpdateIfExistOldToNew(uintptr_t addr, ObjectSlot slot);
+    void UpdateBarrier(uintptr_t addr, ObjectSlot slot);
 
     bool GetAndResetWeak()
     {
@@ -92,11 +104,29 @@ private:
 
     bool GetAndResetTransferBuffer()
     {
+        bool isTransferArrayBuffer = isTransferArrayBuffer_;
         if (isTransferArrayBuffer_) {
             isTransferArrayBuffer_ = false;
-            return true;
         }
-        return false;
+        return isTransferArrayBuffer;
+    }
+
+    bool GetAndResetNeedNewConstPool()
+    {
+        bool needNewConstPool = needNewConstPool_;
+        if (needNewConstPool_) {
+            needNewConstPool_ = false;
+        }
+        return needNewConstPool;
+    }
+
+    bool GetAndResetIsErrorMsg()
+    {
+        bool isErrorMsg = isErrorMsg_;
+        if (isErrorMsg_) {
+            isErrorMsg_ = false;
+        }
+        return isErrorMsg;
     }
 
     void *GetAndResetBufferPointer()
@@ -125,7 +155,6 @@ private:
     }
 
 private:
-    static constexpr size_t SINGLE_FILED_LENGTH = 1;
     JSThread *thread_;
     Heap *heap_;
     std::unique_ptr<SerializeData> data_;
@@ -141,11 +170,14 @@ private:
     size_t regionRemainSizeIndex_ {0};
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
+    bool isErrorMsg_ {false};
     void *bufferPointer_ {nullptr};
     ConstantPool *constpool_ {nullptr};
     bool needNewConstPool_ {false};
     CVector<NewConstPoolInfo *> newConstPoolInfos_;
     CVector<NativeBindingInfo *> nativeBindingInfos_;
+    CVector<JSErrorInfo *> jsErrorInfos_;
+    CVector<JSFunction *> concurrentFunctions_;
 };
 }
 

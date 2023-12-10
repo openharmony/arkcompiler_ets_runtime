@@ -143,6 +143,98 @@ public:
         Destroy();
     }
 
+    void JSPlainObjectTest3(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        JSHandle<JSObject> retObj = JSHandle<JSObject>::Cast(objValue);
+        EXPECT_FALSE(retObj.IsEmpty());
+        EXPECT_TRUE(retObj->GetClass()->IsDictionaryMode());
+
+        JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, retObj);
+        uint32_t length = array->GetLength();
+        EXPECT_EQ(length, 1030U);
+        for (uint32_t i = 0; i < length; i++) {
+            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> value =
+                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
+            EXPECT_TRUE(value->IsInt());
+        }
+
+        Destroy();
+    }
+
+    void JSPlainObjectTest4(SerializeData* data)
+    {
+        Init();
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("str1"));
+
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        JSHandle<JSObject> retObj = JSHandle<JSObject>::Cast(objValue);
+        EXPECT_FALSE(retObj.IsEmpty());
+
+        JSHandle<JSTaggedValue> value =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
+        EXPECT_TRUE(value->IsTaggedArray());
+        TaggedArray *array = reinterpret_cast<TaggedArray *>(value->GetTaggedObject());
+        size_t length = array->GetLength();
+        EXPECT_EQ(length, 102400U); // 102400: array length
+        for (uint32_t i = 0; i < length; i++) {
+            EXPECT_TRUE(array->Get(i).IsHole());
+        }
+
+        Destroy();
+    }
+
+    void JSErrorTest1(SerializeData* data)
+    {
+        Init();
+
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(objValue.IsEmpty());
+        EXPECT_TRUE(objValue->IsJSError());
+
+        Destroy();
+    }
+
+    void JSErrorTest2(SerializeData* data)
+    {
+        Init();
+
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        JSHandle<JSObject> retObj = JSHandle<JSObject>::Cast(objValue);
+        EXPECT_FALSE(retObj.IsEmpty());
+
+        JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, retObj);
+        uint32_t length = array->GetLength();
+        EXPECT_EQ(length, 2U);
+        for (uint32_t i = 0; i < length; i++) {
+            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> value =
+                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
+            EXPECT_TRUE(value->IsJSError());
+        }
+
+        Destroy();
+    }
+
     void BigIntTest(SerializeData* data)
     {
         Init();
@@ -421,6 +513,8 @@ public:
         Init();
         JSHandle<EcmaString> pattern = thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2");
         JSHandle<EcmaString> flags = thread->GetEcmaVM()->GetFactory()->NewFromASCII("i");
+        char buffer[] = "1234567";  // use char buffer to simulate byteCodeBuffer
+        uint32_t bufferSize = 7;
 
         BaseDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
@@ -428,12 +522,22 @@ public:
         EXPECT_TRUE(res->IsJSRegExp()) << "[NotJSRegexp] Deserialize JSRegExp fail";
         JSHandle<JSRegExp> resJSRegexp(res);
 
+        uint32_t resBufferSize = resJSRegexp->GetLength();
+        EXPECT_TRUE(resBufferSize == bufferSize) << "Not Same Length";
         JSHandle<JSTaggedValue> originalSource(thread, resJSRegexp->GetOriginalSource());
         EXPECT_TRUE(originalSource->IsString());
         JSHandle<JSTaggedValue> originalFlags(thread, resJSRegexp->GetOriginalFlags());
         EXPECT_TRUE(originalFlags->IsString());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalSource), *pattern));
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalFlags), *flags));
+        JSHandle<JSTaggedValue> resBufferData(thread, resJSRegexp->GetByteCodeBuffer());
+        JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
+        void *resBuffer = resNp->GetExternalPointer();
+        ASSERT_NE(resBuffer, nullptr);
+
+        for (uint32_t i = 0; i < resBufferSize; i++) {
+            EXPECT_TRUE(static_cast<char *>(resBuffer)[i] == buffer[i]) << "Not Same ByteCode";
+        }
 
         Destroy();
     }
@@ -709,7 +813,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
         }
         key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2),
-                                  JSHandle<JSTaggedValue>(obj1));
+                              JSHandle<JSTaggedValue>(obj1));
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
@@ -719,6 +823,93 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest2, jsDeserializerTest, data.release());
     t1.join();
     delete serializer;
+};
+
+// test dictionary mode
+HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject3)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> key1(factory->NewFromASCII("str1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("str2"));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
+    for (int i = 0; i < 1030; i++) {
+        key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), value1);
+    }
+
+    EXPECT_TRUE(obj->GetClass()->IsDictionaryMode());
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSPlainObjectTest3, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+// test huge object serialize
+HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject4)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> key1(factory->NewFromASCII("str1"));
+    // new huge tagged array
+    JSHandle<TaggedArray> taggedArray =
+        factory->NewTaggedArray(1024 * 100, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1),
+                          JSHandle<JSTaggedValue>(taggedArray));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSPlainObjectTest4, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSError1)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+    JSHandle<JSTaggedValue> errorTag =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, errorTag, errorTag);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSErrorTest1, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
+{
+#ifdef NDEBUG
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+    JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+    JSHandle<JSTaggedValue> errorTag =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
+
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1), errorTag);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), errorTag);
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSErrorTest2, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+#endif
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
@@ -938,7 +1129,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSRegExp)
         JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
     JSHandle<EcmaString> pattern = thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2");
     JSHandle<EcmaString> flags = thread->GetEcmaVM()->GetFactory()->NewFromASCII("i");
-
+    char buffer[] = "1234567";  // use char to simulate bytecode
+    uint32_t bufferSize = 7;
+    factory->NewJSRegExpByteCodeData(jsRegexp, static_cast<void *>(buffer), bufferSize);
     jsRegexp->SetOriginalSource(thread, JSHandle<JSTaggedValue>(pattern));
     jsRegexp->SetOriginalFlags(thread, JSHandle<JSTaggedValue>(flags));
 

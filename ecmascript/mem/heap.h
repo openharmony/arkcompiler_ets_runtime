@@ -236,6 +236,16 @@ public:
         LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 
+    void SetOnSerializeEvent(bool isSerialize)
+    {
+        onSerializeEvent_ = isSerialize;
+    }
+
+    bool GetOnSerializeEvent() const
+    {
+        return onSerializeEvent_;
+    }
+
     /*
      * For object allocations.
      */
@@ -746,6 +756,7 @@ private:
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
     std::atomic_bool onHighSensitiveEvent_ {false};
     bool onStartupEvent_ {false};
+    bool onSerializeEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};

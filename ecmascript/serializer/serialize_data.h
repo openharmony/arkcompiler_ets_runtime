@@ -29,16 +29,18 @@ enum class EncodeFlag : uint8_t {
     // 0x03: huge space
     NEW_OBJECT = 0x00,
     REFERENCE = 0x04,
-    WEAK = 0x05,
-    PRIMITIVE = 0x06,
-    MULTI_RAW_DATA = 0x07,
-    ROOT_OBJECT = 0x08,
-    OBJECT_PROTO = 0X09,
-    ARRAY_BUFFER = 0x0a,
-    TRANSFER_ARRAY_BUFFER = 0X0b,
-    METHOD = 0x0c,
-    NATIVE_BINDING_OBJECT = 0x0d,
-    LAST = 0x0e
+    WEAK,
+    PRIMITIVE,
+    MULTI_RAW_DATA,
+    ROOT_OBJECT,
+    OBJECT_PROTO,
+    ARRAY_BUFFER,
+    TRANSFER_ARRAY_BUFFER,
+    METHOD,
+    NATIVE_BINDING_OBJECT,
+    JS_ERROR,
+    JS_REG_EXP,
+    LAST
 };
 
 enum class SerializedObjectSpace : uint8_t {
