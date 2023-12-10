@@ -2343,6 +2343,18 @@ void Builtins::InitializeForPromiseFuncClass(const JSHandle<GlobalEnv> &env)
     promiseExecutorFuncClass->SetExtensible(true);
     env->SetPromiseExecutorFunctionClass(thread_, promiseExecutorFuncClass);
 
+    JSHandle<JSHClass> asyncModuleFulfilledFuncClass = factory_->NewEcmaHClass(
+        JSAsyncModuleFulfilledFunction::SIZE, JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION, env->GetFunctionPrototype());
+    asyncModuleFulfilledFuncClass->SetCallable(true);
+    asyncModuleFulfilledFuncClass->SetExtensible(true);
+    env->SetAsyncModuleFulfilledFunctionClass(thread_, asyncModuleFulfilledFuncClass);
+
+    JSHandle<JSHClass> asyncModuleRejectedFuncClass = factory_->NewEcmaHClass(
+        JSAsyncModuleRejectedFunction::SIZE, JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION, env->GetFunctionPrototype());
+    asyncModuleRejectedFuncClass->SetCallable(true);
+    asyncModuleRejectedFuncClass->SetExtensible(true);
+    env->SetAsyncModuleRejectedFunctionClass(thread_, asyncModuleRejectedFuncClass);
+
     JSHandle<JSHClass> promiseAllResolveElementFunctionClass =
         factory_->NewEcmaHClass(JSPromiseAllResolveElementFunction::SIZE,
                                   JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION, env->GetFunctionPrototype());

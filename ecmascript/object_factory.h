@@ -71,6 +71,8 @@ class JSDataView;
 class JSPromise;
 class JSPromiseReactionsFunction;
 class JSPromiseExecutorFunction;
+class JSAsyncModuleFulfilledFunction;
+class JSAsyncModuleRejectedFunction;
 class JSPromiseAllResolveElementFunction;
 class JSAsyncGeneratorResNextRetProRstFtn;
 class JSPromiseAnyRejectElementFunction;
@@ -421,6 +423,10 @@ public:
     JSHandle<JSPromiseReactionsFunction> CreateJSPromiseReactionsFunction(MethodIndex idx);
 
     JSHandle<JSPromiseExecutorFunction> CreateJSPromiseExecutorFunction();
+
+    JSHandle<JSAsyncModuleFulfilledFunction> CreateJSAsyncModuleFulfilledFunction();
+
+    JSHandle<JSAsyncModuleRejectedFunction> CreateJSAsyncModuleRejectedFunction();
 
     JSHandle<JSPromiseAllResolveElementFunction> NewJSPromiseAllResolveElementFunction();
 

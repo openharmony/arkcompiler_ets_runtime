@@ -76,6 +76,7 @@ template<typename T>
 class JSHandle;
 class JSArrayBuffer;
 class JSFunction;
+class SourceTextModule;
 class Program;
 class TSManager;
 class AOTFileManager;

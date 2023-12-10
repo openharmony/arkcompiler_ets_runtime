@@ -289,6 +289,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseReactionsFunction";
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             return "PromiseExecutorFunction";
+        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
+            return "AsyncModuleFulfilledFunction";
+        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
+            return "AsyncModuleRejectedFunction";
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             return "PromiseAllResolveElementFunction";
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
@@ -821,6 +825,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
+            JSAsyncModuleFulfilledFunction::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
+            JSAsyncModuleRejectedFunction::Cast(obj)->Dump(os);
             break;
         case JSType::ASYNC_GENERATOR_REQUEST:
             AsyncGeneratorRequest::Cast(obj)->Dump(os);
@@ -2715,6 +2725,20 @@ void JSPromiseExecutorFunction::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSAsyncModuleFulfilledFunction::Dump(std::ostream &os) const
+{
+    os << " - module: ";
+    GetModule().Dump(os);
+    JSObject::Dump(os);
+}
+
+void JSAsyncModuleRejectedFunction::Dump(std::ostream &os) const
+{
+    os << " - module: ";
+    GetModule().Dump(os);
+    JSObject::Dump(os);
+}
+
 void JSPromiseAllResolveElementFunction::Dump(std::ostream &os) const
 {
     os << " - index: ";
@@ -3556,6 +3580,24 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - NameDictionary: ";
     GetNameDictionary().Dump(os);
     os << "\n";
+    os << " - CycleRoot: ";
+    GetCycleRoot().Dump(os);
+    os << "\n";
+    os << " - TopLevelCapability: ";
+    GetTopLevelCapability().Dump(os);
+    os << "\n";
+    os << " - AsyncParentModules: ";
+    GetAsyncParentModules().Dump(os);
+    os << "\n";
+    os << " - HasTLA: ";
+    os << GetHasTLA();
+    os << "\n";
+    os << " - AsyncEvaluatingOrdinal: ";
+    os << GetAsyncEvaluatingOrdinal();
+    os << "\n";
+    os << " - PendingAsyncDependencies: ";
+    os << GetPendingAsyncDependencies();
+    os << "\n";
 }
 
 void ImportEntry::Dump(std::ostream &os) const
@@ -3925,6 +3967,12 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSPromiseExecutorFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
+            JSAsyncModuleFulfilledFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
+            JSAsyncModuleRejectedFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::ASYNC_GENERATOR_REQUEST:
             AsyncGeneratorRequest::Cast(obj)->DumpForSnapshot(vec);
@@ -5081,6 +5129,18 @@ void JSPromiseExecutorFunction::DumpForSnapshot(std::vector<Reference> &vec) con
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSAsyncModuleFulfilledFunction::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("module"), GetModule());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSAsyncModuleRejectedFunction::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("module"), GetModule());
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSPromiseAllResolveElementFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("index"), GetIndex());
@@ -5501,6 +5561,12 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("DFSIndex"), JSTaggedValue(GetDFSIndex()));
     vec.emplace_back(CString("DFSAncestorIndex"), JSTaggedValue(GetDFSAncestorIndex()));
     vec.emplace_back(CString("NameDictionary"), GetNameDictionary());
+    vec.emplace_back(CString("CycleRoot"), GetCycleRoot());
+    vec.emplace_back(CString("TopLevelCapability"), GetTopLevelCapability());
+    vec.emplace_back(CString("AsyncParentModules"), GetAsyncParentModules());
+    vec.emplace_back(CString("HasTLA"), JSTaggedValue(GetHasTLA()));
+    vec.emplace_back(CString("AsyncEvaluatingOrdinal"), JSTaggedValue(GetAsyncEvaluatingOrdinal()));
+    vec.emplace_back(CString("PendingAsyncDependencies"), JSTaggedValue(GetPendingAsyncDependencies()));
 }
 
 void ImportEntry::DumpForSnapshot(std::vector<Reference> &vec) const

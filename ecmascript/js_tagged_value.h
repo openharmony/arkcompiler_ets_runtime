@@ -544,6 +544,8 @@ public:
     bool IsProgram() const;
     bool IsJSPromiseReactionFunction() const;
     bool IsJSPromiseExecutorFunction() const;
+    bool IsJSAsyncModuleFulfilledFunction() const;
+    bool IsJSAsyncModuleRejectedFunction() const;
     bool IsJSAsyncFromSyncIterUnwarpFunction() const;
     bool IsJSPromiseAllResolveElementFunction() const;
     bool IsJSAsyncGeneratorResNextRetProRstFtn() const;
