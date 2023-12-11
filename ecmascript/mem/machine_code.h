@@ -129,7 +129,7 @@ public:
         return GetPayLoadSizeInBytes();
     }
 
-    bool IsInText(uintptr_t pc);
+    bool IsInText(const uintptr_t pc) const;
     uintptr_t GetFuncEntryDes() const;
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;

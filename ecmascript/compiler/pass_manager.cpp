@@ -21,14 +21,8 @@
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/mark_word.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
-#include "jsnapi.h"
-#include <cstdint>
-#include <cstdio>
-#include <iostream>
-#include <string>
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;

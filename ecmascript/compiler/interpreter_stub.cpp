@@ -2470,8 +2470,9 @@ DECLARE_ASM_HANDLER(HandleReturn)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(BoolAnd(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback),
-            ProfilerStubBuilder(env).IsTriedJitCompile(*varProfileTypeInfo, callback)), &tryContinue, &updateHotness);
+        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
+        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
+        Branch(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2540,8 +2541,9 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(BoolAnd(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback),
-            ProfilerStubBuilder(env).IsTriedJitCompile(*varProfileTypeInfo, callback)), &tryContinue, &updateHotness);
+        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
+        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
+        Branch(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {

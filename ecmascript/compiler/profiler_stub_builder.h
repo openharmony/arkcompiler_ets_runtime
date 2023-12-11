@@ -57,8 +57,8 @@ public:
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
     void TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
-    GateRef IsTriedJitCompile(GateRef profileTypeInfo, ProfileOperation callback);
-    GateRef IsTriedJitCompile(GateRef profileTypeInfo);
+    GateRef IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback);
+    GateRef IsHotForJitCompiling(GateRef profileTypeInfo);
 
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
@@ -78,6 +78,10 @@ private:
     GateRef TaggedToTrackType(GateRef value);
     GateRef GetIterationFunctionId(GateRef glue, GateRef iterator);
     GateRef TryGetBuiltinFunctionId(GateRef target);
+    GateRef GetJitHotnessCnt(GateRef profileTypeInfo);
+    GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
+    GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

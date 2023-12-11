@@ -259,7 +259,7 @@ private:
 class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
     HugeMachineCodeSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
-                    size_t maximumCapacity);
+                         size_t maximumCapacity);
 };
 
 }  // namespace panda::ecmascript

@@ -104,7 +104,7 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
 }
 
-bool MachineCode::IsInText(uintptr_t pc)
+bool MachineCode::IsInText(const uintptr_t pc) const
 {
     uintptr_t textStart = GetText();
     uintptr_t textEnd = textStart + GetTextSize();
