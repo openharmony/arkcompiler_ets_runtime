@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#ifndef MAPITERATORREFGET_FUZZER_H   
+#ifndef MAPITERATORREFGET_FUZZER_H
 #define MAPITERATORREFGET_FUZZER_H
 
 #define FUZZ_PROJECT_NAME "mapiteratorefget_fuzzer"

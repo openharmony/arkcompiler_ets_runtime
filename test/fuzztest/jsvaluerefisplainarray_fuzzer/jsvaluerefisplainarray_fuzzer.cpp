@@ -135,8 +135,9 @@ void JSValueRefIsPlainArrayFuzzTest([[maybe_unused]] const uint8_t *data, [[mayb
     JSHandle<JSTaggedValue> constructor(thread, result);
     JSHandle<JSAPIPlainArray> plainArray(
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8));
-    JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(8));
+    constexpr int nodeNumbers = 8;
+    JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(nodeNumbers));
+    JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(nodeNumbers));
     plainArray->SetKeys(thread, keyArray);
     plainArray->SetValues(thread, valueArray);
     JSHandle<JSTaggedValue> plainarraytag = JSHandle<JSTaggedValue>::Cast(plainArray);

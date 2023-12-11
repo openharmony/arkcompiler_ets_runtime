@@ -21,15 +21,16 @@ import("//build/ohos.gni")
 ohos_fuzztest("JSValueRefInt32ValueFuzzTest") {
   module_out_path = ets_runtime_output_path
 
+  fuzz_js_root = "//arkcompiler/ets_runtime"
   fuzz_config_file =
-      "//arkcompiler/ets_runtime/test/fuzztest/jsvaluerefint32value_fuzzer"
+      "$fuzz_js_root/test/fuzztest/jsvaluerefint32value_fuzzer"
 
   sources = [ "jsvaluerefint32value_fuzzer.cpp" ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "$fuzz_js_root:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
+    "$fuzz_js_root:libark_jsruntime",
     sdk_libc_secshared_dep,
   ]
 

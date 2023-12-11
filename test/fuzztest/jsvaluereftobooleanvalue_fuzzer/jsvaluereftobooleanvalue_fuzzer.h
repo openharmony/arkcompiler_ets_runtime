@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef JSVALUEREFToBooleanVALUEFUZZTCT_FUZZER_H
-#define JSVALUEREFToBooleanVALUEFUZZTCT_FUZZER_H
+#ifndef JSVALUEREFTOBOOLEANVALUEFUZZTCT_FUZZER_H
+#define JSVALUEREFTOBOOLEANVALUEFUZZTCT_FUZZER_H
 
 #define FUZZ_PROJECT_NAME "jsvaluereftobooleanvalue_fuzzer"
 

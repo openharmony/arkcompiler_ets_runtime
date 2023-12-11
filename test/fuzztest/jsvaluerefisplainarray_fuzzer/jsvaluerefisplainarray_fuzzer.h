@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef JSVALUEREFISPlAINARRAY_FUZZER_H
-#define JSVALUEREFISPlAINARRAY_FUZZER_H
+#ifndef JSVALUEREFISPLAINARRAY_FUZZER_H
+#define JSVALUEREFISPLAINARRAY_FUZZER_H
 
 #define FUZZ_PROJECT_NAME "jsvaluerefisplainarray_fuzzer"
 
