@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "exceptiontypeerror_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "exceptiontypeerror_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;

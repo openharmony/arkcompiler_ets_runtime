@@ -29,13 +29,15 @@ void JSValueRefIsArrayBufferFuzzerTest(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     [[maybe_unused]] auto date1 = data;
+    int32_t lengths = 13;
     if (size <= 0) {
         return;
     }
     if (size > MAXBYTELEN) {
         size = MAXBYTELEN;
     }
-    Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, 13);
+
+    Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, lengths);
     arrayBufferRef->IsArrayBuffer();
     JSNApi::DestroyJSVM(vm);
 }

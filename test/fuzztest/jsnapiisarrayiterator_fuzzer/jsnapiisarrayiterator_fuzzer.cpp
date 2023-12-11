@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapiisarrayiterator_fuzzer.h"
+
 using namespace panda;
 using namespace panda::ecmascript;
 #define MAXBYTELEN sizeof(int32_t)
