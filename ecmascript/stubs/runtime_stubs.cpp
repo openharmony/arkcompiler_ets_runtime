@@ -3172,6 +3172,17 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(HasProperty)
+{
+    RUNTIME_STUBS_HEADER(HasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue indexValue = GetArg(argv, argc, 1);  // 1: means the first parameter
+    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
+    bool res = JSTaggedValue::HasProperty(thread, obj, index);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

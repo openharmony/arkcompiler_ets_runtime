@@ -50,3 +50,11 @@ num11[0].push(4);
 
 print(numbers2);
 
+var target = {0:"a",1:"b",[Symbol.isConcatSpreadable]:"truish"};
+var obj=new Proxy(target,{
+    get(a,p){
+        print(p.toString());
+        return a[p];
+    }
+})
+[].concat(obj);
