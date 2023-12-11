@@ -640,6 +640,24 @@ private:
         Heap *heap_;
     };
 
+    class RecursionScope {
+    public:
+        explicit RecursionScope(Heap* heap) : heap_(heap)
+        {
+            if (heap_->recursionDepth_++ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Constructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+        ~RecursionScope()
+        {
+            if (--heap_->recursionDepth_ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Destructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+    private:
+        Heap* heap_ {nullptr};
+    };
+
     EcmaVM *ecmaVm_ {nullptr};
     JSThread *thread_ {nullptr};
 
@@ -762,6 +780,8 @@ private:
     float idlePredictDuration_ {0.0f};
     size_t heapAliveSizeAfterGC_ {0};
     double idleTaskFinishTime_ {0.0};
+    int32_t recursionDepth_ {0};
+
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
 #endif

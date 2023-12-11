@@ -350,135 +350,138 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
-    if (thread_->IsCrossThreadExecutionEnable()) {
-        return;
-    }
+    {
+        RecursionScope recurScope(this);
+        if (thread_->IsCrossThreadExecutionEnable()) {
+            return;
+        }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    [[maybe_unused]] GcStateScope scope(thread_);
+        [[maybe_unused]] GcStateScope scope(thread_);
 #endif
-    CHECK_NO_GC
+        CHECK_NO_GC
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
-    LOG_ECMA(DEBUG) << "Enable heap verify";
-    isVerifying_ = true;
-    // pre gc heap verify
-    sweeper_->EnsureAllTaskFinished();
-    auto failCount = Verification(this).VerifyAll();
-    if (failCount > 0) {
-        LOG_GC(FATAL) << "Before gc heap corrupted and " << failCount << " corruptions";
-    }
-    isVerifying_ = false;
+        LOG_ECMA(DEBUG) << "Enable heap verify";
+        isVerifying_ = true;
+        // pre gc heap verify
+        sweeper_->EnsureAllTaskFinished();
+        auto failCount = Verification(this).VerifyAll();
+        if (failCount > 0) {
+            LOG_GC(FATAL) << "Before gc heap corrupted and " << failCount << " corruptions";
+        }
+        isVerifying_ = false;
 #endif
 
 #if ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC
-    gcType = TriggerGCType::FULL_GC;
-#endif
-    if (fullGCRequested_ && thread_->IsReadyToMark() && gcType != TriggerGCType::FULL_GC) {
         gcType = TriggerGCType::FULL_GC;
-    }
-    if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
-        gcType = TriggerGCType::OLD_GC;
-    }
-    oldGCRequested_ = false;
-    oldSpace_->AdjustOvershootSize();
-
-    size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
-    memController_->StartCalculationBeforeGC();
-    StatisticHeapObject(gcType);
-    if (!GetJSThread()->IsReadyToMark() && markType_ == MarkType::MARK_FULL) {
-        ecmaVm_->GetEcmaGCStats()->SetGCReason(reason);
-    } else {
-        ecmaVm_->GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
-    }
-    gcType_ = gcType;
-    GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
-    switch (gcType) {
-        case TriggerGCType::YOUNG_GC:
-            // Use partial GC for young generation.
-            if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
-                SetMarkType(MarkType::MARK_YOUNG);
-            }
-            if (markType_ == MarkType::MARK_FULL) {
-                // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
-                gcType_ = TriggerGCType::OLD_GC;
-            }
-            partialGC_->RunPhases();
-            break;
-        case TriggerGCType::OLD_GC: {
-            bool fullConcurrentMarkRequested = false;
-            // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
-            if (concurrentMarker_->IsEnabled() && (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
-                reason == GCReason::ALLOCATION_LIMIT) {
-                fullConcurrentMarkRequested = true;
-            }
-            if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
-                // Wait for existing concurrent marking tasks to be finished (if any),
-                // and reset concurrent marker's status for full mark.
-                bool concurrentMark = CheckOngoingConcurrentMarking();
-                if (concurrentMark) {
-                    concurrentMarker_->Reset();
-                }
-            }
-            SetMarkType(MarkType::MARK_FULL);
-            if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
-                LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
-                TriggerConcurrentMarking();
-                oldGCRequested_ = true;
-                return;
-            }
-            partialGC_->RunPhases();
-            CheckNonMovableSpaceOOM();
-            break;
+#endif
+        if (fullGCRequested_ && thread_->IsReadyToMark() && gcType != TriggerGCType::FULL_GC) {
+            gcType = TriggerGCType::FULL_GC;
         }
-        case TriggerGCType::FULL_GC:
-            fullGC_->SetForAppSpawn(false);
-            fullGC_->RunPhases();
-            if (fullGCRequested_) {
-                fullGCRequested_ = false;
+        if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
+            gcType = TriggerGCType::OLD_GC;
+        }
+        oldGCRequested_ = false;
+        oldSpace_->AdjustOvershootSize();
+
+        size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
+        memController_->StartCalculationBeforeGC();
+        StatisticHeapObject(gcType);
+        if (!GetJSThread()->IsReadyToMark() && markType_ == MarkType::MARK_FULL) {
+            ecmaVm_->GetEcmaGCStats()->SetGCReason(reason);
+        } else {
+            ecmaVm_->GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
+        }
+        gcType_ = gcType;
+        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
+        switch (gcType) {
+            case TriggerGCType::YOUNG_GC:
+                // Use partial GC for young generation.
+                if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
+                    SetMarkType(MarkType::MARK_YOUNG);
+                }
+                if (markType_ == MarkType::MARK_FULL) {
+                    // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
+                    gcType_ = TriggerGCType::OLD_GC;
+                }
+                partialGC_->RunPhases();
+                break;
+            case TriggerGCType::OLD_GC: {
+                bool fullConcurrentMarkRequested = false;
+                // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
+                if (concurrentMarker_->IsEnabled() && (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
+                    reason == GCReason::ALLOCATION_LIMIT) {
+                    fullConcurrentMarkRequested = true;
+                }
+                if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
+                    // Wait for existing concurrent marking tasks to be finished (if any),
+                    // and reset concurrent marker's status for full mark.
+                    bool concurrentMark = CheckOngoingConcurrentMarking();
+                    if (concurrentMark) {
+                        concurrentMarker_->Reset();
+                    }
+                }
+                SetMarkType(MarkType::MARK_FULL);
+                if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
+                    LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
+                    oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+                    TriggerConcurrentMarking();
+                    oldGCRequested_ = true;
+                    return;
+                }
+                partialGC_->RunPhases();
+                CheckNonMovableSpaceOOM();
+                break;
             }
-            break;
-        case TriggerGCType::APPSPAWN_FULL_GC:
-            fullGC_->SetForAppSpawn(true);
-            fullGC_->RunPhasesForAppSpawn();
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
-    }
-    GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResume();
+            case TriggerGCType::FULL_GC:
+                fullGC_->SetForAppSpawn(false);
+                fullGC_->RunPhases();
+                if (fullGCRequested_) {
+                    fullGCRequested_ = false;
+                }
+                break;
+            case TriggerGCType::APPSPAWN_FULL_GC:
+                fullGC_->SetForAppSpawn(true);
+                fullGC_->RunPhasesForAppSpawn();
+                break;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+                break;
+        }
+        GetEcmaVM()->GetPGOProfiler()->WaitPGODumpResume();
 
-    // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
-    if (shouldThrowOOMError_) {
-        sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM(false);
-        ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
-        oldSpace_->ResetMergeSize();
-        shouldThrowOOMError_ = false;
-    }
+        // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
+        if (shouldThrowOOMError_) {
+            sweeper_->EnsureAllTaskFinished();
+            DumpHeapSnapshotBeforeOOM(false);
+            ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
+            oldSpace_->ResetMergeSize();
+            shouldThrowOOMError_ = false;
+        }
 
-    ClearIdleTask();
-    // Adjust the old space capacity and global limit for the first partial GC with full mark.
-    // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
-    AdjustBySurvivalRate(originalNewSpaceSize);
-    memController_->StopCalculationAfterGC(gcType);
-    if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
-        // Only when the gc type is not semiGC and after the old space sweeping has been finished,
-        // the limits of old space and global space can be recomputed.
-        RecomputeLimits();
-        OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsFullMark()
-                                     << " global object size " << GetHeapObjectSize()
-                                     << " global committed size " << GetCommittedSize()
-                                     << " global limit " << globalSpaceAllocLimit_;
-        markType_ = MarkType::MARK_YOUNG;
+        ClearIdleTask();
+        // Adjust the old space capacity and global limit for the first partial GC with full mark.
+        // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
+        AdjustBySurvivalRate(originalNewSpaceSize);
+        memController_->StopCalculationAfterGC(gcType);
+        if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
+            // Only when the gc type is not semiGC and after the old space sweeping has been finished,
+            // the limits of old space and global space can be recomputed.
+            RecomputeLimits();
+            OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsFullMark()
+                                        << " global object size " << GetHeapObjectSize()
+                                        << " global committed size " << GetCommittedSize()
+                                        << " global limit " << globalSpaceAllocLimit_;
+            markType_ = MarkType::MARK_YOUNG;
+        }
+        if (concurrentMarker_->IsRequestDisabled()) {
+            concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+        }
+        // GC log
+        ecmaVm_->GetEcmaGCStats()->RecordStatisticAfterGC();
+        ecmaVm_->GetEcmaGCStats()->PrintGCStatistic();
     }
-    if (concurrentMarker_->IsRequestDisabled()) {
-        concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
-    }
-    // GC log
-    ecmaVm_->GetEcmaGCStats()->RecordStatisticAfterGC();
-    ecmaVm_->GetEcmaGCStats()->PrintGCStatistic();
     // weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     InvokeWeakNodeNativeFinalizeCallback();
