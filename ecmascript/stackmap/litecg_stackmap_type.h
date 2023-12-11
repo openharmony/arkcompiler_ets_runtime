@@ -24,7 +24,7 @@
 namespace panda::ecmascript::kungfu {
 class LiteCGStackMapType {
 public:
-    using Pc2CallSiteInfo = std::map<uint64_t, std::vector<uint64_t>>;
+    using Pc2CallSiteInfo = std::unordered_map<uint64_t, std::vector<uint64_t>>;
     using Pc2Deopt = std::map<uint64_t, std::vector<uint64_t>>;
 };
 
