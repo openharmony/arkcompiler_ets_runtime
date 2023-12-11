@@ -13,30 +13,22 @@
  * limitations under the License.
  */
 
-let arr = [1, 2, 3, 4, 5, 6, 7, 8];
-arr.splice(0, 1, 9)
-print(arr)
-arr.splice(10, 1)
-print(arr)
-arr = [1, 2, 3, 4, 5, 6, 7, 8];
-arr.splice(8, 0, 1, 1)
-print(arr)
-arr.splice(0, 8, 1, 1)
-print(arr)
-arr = [1, 2, 3, 4, 5, 6, 7, 8];
-arr.splice(1, 8)
-print(arr)
-arr = new Array(100)
-arr.splice(0, 20)
-print(arr.length)
-
-var array=new Array(10);
-var spliced = array.splice(1,1);
-for(let i=0;i<array.length;++i){
-    print(i in array)
-}
-var array1=new Array(10);
-var spliced1 = array1.splice(1,1,"a","b");
-for(let i=0;i<array1.length;++i){
-    print(i in array1)
-}
+/*
+ * @tc.name:typedarrayat
+ * @tc.desc:test TypedArray.at
+ * @tc.type: FUNC
+ * @tc.require: issueI7F8N1
+ */
+[
+Int8Array
+].forEach((ctr)=>{
+    let arr=new ctr();
+    arr[0]=1;
+    arr[1]=2;
+    arr[2]=3;
+    try {
+        arr.sort(null);
+    } catch (error) {
+        print(ctr.name,error.name)   ;
+    }
+})

@@ -156,7 +156,6 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
             if ((idx + actualDeleteCount) < srcElementsHandle->GetLength()) {
                 element = srcElementsHandle->Get(idx + actualDeleteCount);
             }
-            element = element.IsHole() ? JSTaggedValue::Undefined() : element;
             if ((idx + insertCount) < srcElementsHandle->GetLength()) {
                 srcElementsHandle->Set(thread, idx + insertCount, element);
             }
@@ -174,7 +173,6 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
     } else {
         for (uint32_t idx = len - actualDeleteCount; idx > start; idx--) {
             auto element = srcElementsHandle->Get(idx + actualDeleteCount - 1);
-            element = element.IsHole() ? JSTaggedValue::Undefined() : element;
             srcElementsHandle->Set(thread, idx + insertCount - 1, element);
         }
     }

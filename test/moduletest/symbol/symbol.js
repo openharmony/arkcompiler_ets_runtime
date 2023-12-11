@@ -32,3 +32,4 @@ try {
 } catch (e) {
     print("test Symbol.prototype.valueOf successful !!!");
 }
+print(JSON.stringify(Array.prototype[Symbol.unscopables]));

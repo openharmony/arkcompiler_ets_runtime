@@ -11,29 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-9,2,3,4,5,6,7,8
-9,2,3,4,5,6,7,8
-1,2,3,4,5,6,7,8,1,1
-1,1,1,1
-1
-80
-false
-false
-false
-false
-false
-false
-false
-false
-false
-false
-true
-true
-false
-false
-false
-false
-false
-false
-false
-false
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_moduletest_action("typedarraysort") {
+  deps = []
+}

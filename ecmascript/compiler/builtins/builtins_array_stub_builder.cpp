@@ -1668,23 +1668,12 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     Bind(&next);
                     ele = Hole();
                     Label getSrcEle(env);
-                    Label checkVal(env);
                     Label setEle(env);
-                    Branch(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &checkVal);
+                    Branch(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &setEle);
                     Bind(&getSrcEle);
                     {
                         ele = GetValueFromTaggedArray(*srcElements, Int32Add(*i, *actualDeleteCount));
-                        Jump(&checkVal);
-                    }
-                    Bind(&checkVal);
-                    {
-                        Label isHole(env);
-                        Branch(TaggedIsHole(*ele), &isHole, &setEle);
-                        Bind(&isHole);
-                        {
-                            ele = Undefined();
-                            Jump(&setEle);
-                        }
+                        Jump(&setEle);
                     }
                     Bind(&setEle);
                     {
