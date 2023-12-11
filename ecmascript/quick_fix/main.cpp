@@ -115,9 +115,9 @@ int Main(const int argc, const char **argv)
 
         arg_list_t entryList = base::StringHelper::SplitString(entry, ":");
         uint32_t size = entryList.size();
-        uint32_t entryNum = 2; // 2: two entries, excluding coldpatch testcases.
-        if (size < entryNum) { // 2: two entries
-            std::cout << "Must include 2 entries at least and with ':' to spilt" << std::endl;
+        uint32_t entryNum = 1; // 1: one entry, excluding coldpatch testcases.
+        if (size < entryNum) { // 1: one entry
+            std::cout << "Must include 1 entry at least" << std::endl;
             JSNApi::DestroyJSVM(vm);
             return -1;
         }

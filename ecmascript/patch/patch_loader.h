@@ -25,6 +25,7 @@
 namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using JSRecordInfo = JSPandaFile::JSRecordInfo;
+class ConstantPool;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};
@@ -97,6 +98,8 @@ private:
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
+    static Method *GetPatchMethod(JSThread *thread,
+        const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H
