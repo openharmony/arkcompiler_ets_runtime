@@ -39,3 +39,16 @@ const reversed = numbers1.reverse();
 // numbers1 和 reversed 的顺序都是颠倒的 [5, 1, 4, 2, 3]
 reversed[0] = 5;
 print(numbers1[0]); // 5
+
+var array2 = new Uint8Array([1, 2, 3, 4]);
+Object.defineProperty(array2, "length", { value: 2 });
+Array.prototype.reverse.call(array2);
+print(array2)
+try {
+    var array3 = new Uint8Array([1, 2, 3, 4]);
+    Object.defineProperty(array3, "length", { value: 5 });
+    Array.prototype.reverse.call(array3);
+    print(array3)
+} catch (error) {
+    print(error.name)
+}

@@ -989,7 +989,58 @@ JSTaggedValue BuiltinsTypedArray::Reverse(EcmaRuntimeCallInfo *argv)
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-    return BuiltinsArray::Reverse(argv);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 3. Let len be O.[[ArrayLength]]
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisHandle)->GetArrayLength();
+
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 5. Let middle be floor(len/2).
+    int64_t middle = std::floor(len / 2);
+
+    // 6. Let lower be 0.
+    int64_t lower = 0;
+
+    // 7. Repeat, while lower ≠ middle,
+    //     a. Let upper be len - lower - 1.
+    //     b. Let upperP be ! ToString(𝔽(upper)).
+    //     c. Let lowerP be ! ToString(𝔽(lower)).
+    //     d. Let lowerValue be ! Get(O, lowerP).
+    //     e. Let upperValue be ! Get(O, upperP).
+    //     f. Perform ! Set(O, lowerP, upperValue, true).
+    //     g. Perform ! Set(O, upperP, lowerValue, true).
+    //     h. Set lower to lower + 1.
+    JSMutableHandle<JSTaggedValue> lowerP(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> upperP(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
+    while (lower != middle) {
+        int64_t upper = len - lower - 1;
+        lowerP.Update(JSTaggedValue(lower));
+        upperP.Update(JSTaggedValue(upper));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        lowerValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, lowerP);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        upperValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, upperP);
+        JSArray::FastSetPropertyByValue(thread, thisObjVal, lowerP, upperValueHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSArray::FastSetPropertyByValue(thread, thisObjVal, upperP, lowerValueHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        lower++;
+    }
+
+    // 8. Return O .
+    return thisObjHandle.GetTaggedValue();
 }
 
 // 22.2.3.22 %TypedArray%.prototype.set ( overloaded [ , offset ])
