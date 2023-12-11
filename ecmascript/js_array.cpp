@@ -116,7 +116,8 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     if (isArray) {
         // Let C be Get(originalArray, "constructor").
         auto *hclass = originalArray->GetJSHClass();
-        if (hclass->IsJSArray() && !hclass->HasConstructor()) {
+        JSTaggedValue proto = hclass->GetPrototype();
+        if (hclass->IsJSArray() && !hclass->HasConstructor() && proto.IsJSArray()) {
             return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
         }
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
