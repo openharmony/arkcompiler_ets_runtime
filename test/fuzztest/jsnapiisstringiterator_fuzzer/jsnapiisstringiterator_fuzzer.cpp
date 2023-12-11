@@ -15,7 +15,6 @@
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "jsnapiisstringiterator_fuzzer.h"
 
 using namespace panda;

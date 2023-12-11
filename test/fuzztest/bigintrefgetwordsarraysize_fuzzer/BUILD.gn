@@ -22,14 +22,14 @@ ohos_fuzztest("BigIntRefGetWordsArraySize_FuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file =
-      "//arkcompiler/ets_runtime/test/fuzztest/bigintrefgetwordsarraysize_fuzzer"
+      "$js_root/test/fuzztest/bigintrefgetwordsarraysize_fuzzer"
 
   sources = [ "bigintrefgetwordsarraysize_fuzzer.cpp" ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "$js_root:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
+    "$js_root:libark_jsruntime",
     sdk_libc_secshared_dep,
   ]
 

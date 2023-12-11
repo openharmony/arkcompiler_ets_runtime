@@ -22,17 +22,17 @@ ohos_fuzztest("SymbolNewFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file =
-      "//arkcompiler/ets_runtime/test/fuzztest/symbolnew_fuzzer"
+      "$js_root/test/fuzztest/symbolnew_fuzzer"
 
   resource_config_file =
-      "//arkcompiler/ets_runtime/test/resource/js_runtime/ohos_test.xml"
+      "$js_root/test/resource/js_runtime/ohos_test.xml"
 
   sources = [ "symbolnew_fuzzer.cpp" ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "$js_root:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
+    "$js_root:libark_jsruntime",
     sdk_libc_secshared_dep,
   ]
 

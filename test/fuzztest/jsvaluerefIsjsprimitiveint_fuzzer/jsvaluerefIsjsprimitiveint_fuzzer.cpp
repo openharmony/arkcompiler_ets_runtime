@@ -15,11 +15,10 @@
 
 
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/napi/jsnapi_helper.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "jsvaluerefIsjsprimitiveint_fuzzer.h"
 
 using namespace panda;

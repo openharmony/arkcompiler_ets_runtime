@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-#include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/napi/jsnapi_helper.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/ecma_vm.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "maprefgetsetkeyvaluesize_fuzzer.h"
 
 

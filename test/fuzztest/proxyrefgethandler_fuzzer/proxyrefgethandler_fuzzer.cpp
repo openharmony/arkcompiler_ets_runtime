@@ -22,7 +22,6 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/napi/jsnapi_helper.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 #include "proxyrefgethandler_fuzzer.h"
