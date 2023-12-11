@@ -161,9 +161,9 @@ void Tracing::TraceEventRecordCpuProfiler(struct ProfileInfo* profileInfo, int &
     }
 
     std::copy(profileInfo->samples.begin() + samplePos, profileInfo->samples.end(),
-                std::back_inserter(args.samples));
+        std::back_inserter(args.samples));
     std::copy(profileInfo->timeDeltas.begin() + samplePos, profileInfo->timeDeltas.end(),
-                std::back_inserter(args.timeDeltas));
+        std::back_inserter(args.timeDeltas));
     samplePos = profileInfo->samples.size();
 
     event.SetCpuProfileArgs(args);
@@ -174,7 +174,7 @@ void Tracing::TraceEventRecordCpuProfiler(struct ProfileInfo* profileInfo, int &
 
 void Tracing::TraceEventUpdateCpuProfiler(struct ProfileInfo *profileInfo)
 {
-    for (auto & event : *traceEventsCpuProfiler_) {
+    for (auto &event : *traceEventsCpuProfiler_) {
         if (!event.cpuProfileArgs_.has_value()) {
             traceEvents_->emplace_back(event);
             continue;
