@@ -21,11 +21,9 @@ import("//build/ohos.gni")
 ohos_fuzztest("JSValueRefIsDataViewFuzzerTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file =
-      "$js_root/test/fuzztest/jsvaluerefisdataview_fuzzer"
+  fuzz_config_file = "$js_root/test/fuzztest/jsvaluerefisdataview_fuzzer"
 
-  resource_config_file =
-      "$js_root/test/resource/js_runtime/ohos_test.xml"
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
 
   sources = [ "jsvaluerefisdataview_fuzzer.cpp" ]
 

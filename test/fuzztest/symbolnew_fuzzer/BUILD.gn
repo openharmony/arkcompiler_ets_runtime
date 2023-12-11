@@ -21,11 +21,9 @@ import("//build/ohos.gni")
 ohos_fuzztest("SymbolNewFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file =
-      "$js_root/test/fuzztest/symbolnew_fuzzer"
+  fuzz_config_file = "$js_root/test/fuzztest/symbolnew_fuzzer"
 
-  resource_config_file =
-      "$js_root/test/resource/js_runtime/ohos_test.xml"
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
 
   sources = [ "symbolnew_fuzzer.cpp" ]
 
