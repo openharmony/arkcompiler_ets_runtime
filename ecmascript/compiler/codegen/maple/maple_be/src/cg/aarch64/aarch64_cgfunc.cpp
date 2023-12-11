@@ -3372,7 +3372,7 @@ RegOperand *AArch64CGFunc::LmbcStructReturnLoad(int32 offset)
 
 Operand *AArch64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff)
 {
-    int32 offset = ireadoff.GetOffset();
+    uint32 offset = ireadoff.GetOffset();
     PrimType primType = ireadoff.GetPrimType();
     uint32 bytelen = GetPrimTypeSize(primType);
     uint32 bitlen = bytelen * kBitsPerByte;

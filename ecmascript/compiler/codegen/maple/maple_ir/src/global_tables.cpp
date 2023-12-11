@@ -121,7 +121,7 @@ void TypeTable::CreateMirTypeNodeAt(MIRType &pType, TyIdx tyIdxUsed, MIRModule *
     }
 
     GStrIdx stridx = pType.GetNameStrIdx();
-    if (stridx != 0) {
+    if (stridx != 0u) {
         module->GetTypeNameTab()->SetGStrIdxToTyIdx(stridx, tyIdxUsed);
         module->PushbackTypeDefOrder(stridx);
         if (isObject) {

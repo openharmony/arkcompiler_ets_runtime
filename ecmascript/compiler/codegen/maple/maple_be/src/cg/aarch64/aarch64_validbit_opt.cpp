@@ -112,6 +112,7 @@ void AArch64ValidBitOpt::SetValidBits(Insn &insn)
                                ? srcOpnd.GetSize()
                                : (srcOpnd.GetValidBitsNum() + shiftBits);
             dstOpnd.SetValidBitsNum(newVB);
+            break;
         }
         case MOP_xuxtb32:
         case MOP_xuxth32: {
@@ -356,6 +357,7 @@ void ExtValidBitPattern::Run(BB &bb, Insn &insn)
                 prevs.emplace_back(&insn);
                 DumpAfterPattern(prevs, &insn, &newInsn);
             }
+            break;
         }
         default:
             return;

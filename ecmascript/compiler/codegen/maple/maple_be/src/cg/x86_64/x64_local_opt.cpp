@@ -82,7 +82,7 @@ bool CopyRegProp::propagateOperand(Insn &insn, RegOperand &oldOpnd, RegOperand &
     if (insn.GetMachineOpcode() == MOP_pseudo_ret_int) {
         return false;
     }
-    for (int i = 0; i < opndNum; i++) {
+    for (uint32 i = 0; i < opndNum; i++) {
         Operand &opnd = insn.GetOperand(i);
         if (opnd.IsList()) {
             /* list operands are used by call,

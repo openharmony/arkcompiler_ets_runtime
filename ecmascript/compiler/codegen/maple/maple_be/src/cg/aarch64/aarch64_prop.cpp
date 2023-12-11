@@ -488,7 +488,7 @@ bool A64ConstProp::BitInsertReplace(DUInsnInfo &useDUInfo, const ImmOperand &con
             /*  bit number of the lsb of the destination bitfield */
             auto lsb = static_cast<uint64>(lsbOpnd.GetValue());
             val = val & ((1U << width) - 1U);
-            if (__builtin_popcountl(val) == width) {
+            if (static_cast<uint64>(__builtin_popcountl(val)) == width) {
                 val = val << lsb;
                 MOperator newMop = GetRegImmMOP(curMop, false);
                 Operand &newOpnd = cgFunc->CreateImmOperand(PTY_i64, static_cast<int64>(val));
@@ -1483,6 +1483,7 @@ bool ExtendMovPattern::CheckSrcReg(regno_t srcRegNo, uint32 validNum)
                 if ((bitNum >> validNum) != 0) {
                     return false;
                 }
+                break;
             }
             case MOP_wandrri12: {
                 /* check defSrcReg */
@@ -2154,7 +2155,7 @@ bool A64PregCopyPattern::CheckPhiCaseCondition(Insn &curInsn, Insn &defInsn)
                     return false;
                 }
                 differOrigNO = differVersion1->GetOriginalRegNO();
-            } else if (!opnd1.Equals(opnd2) && idx != differIdx) {
+            } else if (!opnd1.Equals(opnd2) && idx != static_cast<uint32>(differIdx)) {
                 return false;
             }
         }

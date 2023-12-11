@@ -328,7 +328,7 @@ void X64MPIsel::SelectIntAggCopyReturn(MemOperand &symbolMem, uint64 aggSize)
     RegOperand *baseOpnd = symbolMem.GetBaseRegister();
     int32 stOffset = symbolMem.GetOffsetOperand()->GetValue();
     bool isCopyOneReg = (aggSize <= k8ByteSize);
-    int32 extraSize = (aggSize % k8ByteSize) * kBitsPerByte;
+    uint32 extraSize = (aggSize % k8ByteSize) * kBitsPerByte;
     if (extraSize == 0) {
         extraSize = k64BitSize;
     } else if (extraSize <= k8BitSize) {
@@ -368,7 +368,7 @@ void X64MPIsel::SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize)
     RegOperand *baseLhs = lhs.GetBaseRegister();
     RegOperand *baseRhs = rhs.GetBaseRegister();
     if (copySize < 40U) {
-        for (int32 i = 0; i < copyTimes; ++i) {
+        for (uint32 i = 0; i < copyTimes; ++i) {
             /* prepare dest addr */
             MemOperand &memOpndLhs = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
             memOpndLhs.SetBaseRegister(*baseLhs);
@@ -559,7 +559,7 @@ void X64MPIsel::SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd, Operand &
         RegOperand *result[kFourRegister] = {nullptr}; /* up to 2 int or 4 fp */
         uint32 numRegs = (symbolInfo.size <= k8ByteSize) ? kOneRegister : kTwoRegister;
         PrimType retPrimType = (symbolInfo.size <= k4ByteSize) ? PTY_u32 : PTY_u64;
-        for (int i = 0; i < numRegs; i++) {
+        for (uint32 i = 0; i < numRegs; i++) {
             MemOperand &rhsMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(GetPrimTypeBitSize(retPrimType));
             rhsMemOpnd.SetBaseRegister(*baseSrc);
             ImmOperand &newStOfstSrc = static_cast<ImmOperand &>(*stOfstSrc->Clone(*cgFunc->GetMemoryPool()));
