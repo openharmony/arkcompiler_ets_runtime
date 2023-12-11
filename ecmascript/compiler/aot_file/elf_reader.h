@@ -41,10 +41,18 @@ public:
         llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
     void SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
         llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
+    void SeparateStrtabSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
+        llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
+    void SeparateSymtabSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
+        llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
     void SeparateTextSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
         const uint64_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
     void SeparateArkStackMapSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
         const uint64_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
+    void SeparateStrtabSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
+        const uintptr_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
+    void SeparateSymtabSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
+        const uintptr_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
 
 private:
     static uint32_t GetModuleNum(size_t moduleInfoSize)
