@@ -14,7 +14,6 @@
  */
 
 #include "bigintrefnew_fuzzer.h"
-
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"

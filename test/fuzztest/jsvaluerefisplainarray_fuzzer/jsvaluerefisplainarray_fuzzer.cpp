@@ -14,7 +14,6 @@
  */
 
 #include "jsvaluerefisplainarray_fuzzer.h"
-
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string-inl.h"
