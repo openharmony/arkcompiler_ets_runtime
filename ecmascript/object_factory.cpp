@@ -983,8 +983,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            uint32_t threadID = thread_->GetThreadId();
-            obj->SetOwnerThreadID(thread_, threadID);
+            obj->InitializeExtRefAndOwner(vm_);
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1484,8 +1483,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv
     JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
     JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
-    uint32_t threadID = thread_->GetThreadId();
-    sfunc->SetOwnerThreadID(thread_, threadID);
+    sfunc->InitializeExtRefAndOwner(vm_);
     return sfunc;
 }
 

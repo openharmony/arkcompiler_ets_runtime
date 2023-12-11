@@ -272,7 +272,7 @@ void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
     env->SetSharedFunctionPrototype(thread_, sfuncPrototype);
 
     JSHandle<JSHClass> sharedConstructorClass =
-        factory_->NewEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, env->GetSharedFunctionPrototype());
+        factory_->NewEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, sfuncPrototype);
     sharedConstructorClass->SetConstructor(true);
 
     env->SetSharedConstructorClass(thread_, sharedConstructorClass);

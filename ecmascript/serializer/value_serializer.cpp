@@ -168,7 +168,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_SHARED_OBJECT: {
             ECMAObject * ecmaObj = reinterpret_cast<ECMAObject *>(object);
-            ecmaObj->SetOwnerThreadID(thread_, 0);
+            ecmaObj->SetOwnership(thread_, 0);
             break;
         }
         default:

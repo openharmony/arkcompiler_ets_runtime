@@ -217,7 +217,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
             ECMAObject *sObj = reinterpret_cast<ECMAObject *>(object);
-            sObj->SetOwnerThreadID(thread_, thread_->GetThreadId());
+            sObj->SetOwnership(thread_, thread_->GetThreadId());
             break;
         }
         default:

@@ -364,7 +364,8 @@ public:
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
     void InitializeExtRefAndOwner(EcmaVM *vm);
-    void SetOwnerThreadID(JSThread* thread, uint32_t threadID);
+    // Call this method only in serialization
+    void SetOwnership(JSThread* thread, uint32_t threadID);
     bool IsOwned(uint32_t threadID);
     void FreezeObj(JSThread* thread);
     bool IsFrozen();

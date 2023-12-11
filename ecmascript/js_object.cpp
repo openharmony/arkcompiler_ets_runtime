@@ -2708,7 +2708,7 @@ void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm)
     Barriers::SetObject<true>(vm->GetJSThread(), this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
 }
 
-void ECMAObject::SetOwnerThreadID(JSThread* thread, uint32_t threadID)
+void ECMAObject::SetOwnership(JSThread* thread, uint32_t threadID)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
