@@ -29,7 +29,7 @@ ohos_fuzztest("MapRefGetSetKeyvalueSize_FuzzerTest") {
 
   sources = [ "maprefgetsetkeyvaluesize_fuzzer.cpp" ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "$js_root:ecma_test_config" ]
 
   deps = [
     "$js_root:libark_jsruntime",
