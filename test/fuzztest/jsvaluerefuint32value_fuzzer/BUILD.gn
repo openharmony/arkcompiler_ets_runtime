@@ -3,7 +3,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,8 +22,7 @@ ohos_fuzztest("JSValueRefUint32ValueFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/jsvaluerefuint32value_fuzzer"
-   resource_config_file =
-      "$js_root/test/resource/js_runtime/ohos_test.xml"
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
   sources = [ "jsvaluerefuint32value_fuzzer.cpp" ]
 
   configs = [ "$js_root:ecma_test_config" ]

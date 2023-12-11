@@ -22,8 +22,7 @@ ohos_fuzztest("JSValueRefIsHashMapFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/jsvaluerefishashmap_fuzzer"
-   resource_config_file =
-      "$js_root/test/resource/js_runtime/ohos_test.xml"
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
   sources = [ "jsvaluerefishashmap_fuzzer.cpp" ]
 
   configs = [ "$js_root:ecma_test_config" ]
