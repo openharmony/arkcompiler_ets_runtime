@@ -276,6 +276,7 @@ void Heap::Resume(TriggerGCType gcType)
     activeSemiSpace_->SetWaterLine();
     PrepareRecordRegionsForReclaim();
     hugeObjectSpace_->ReclaimHugeRegion();
+    hugeMachineCodeSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(
@@ -289,6 +290,7 @@ void Heap::ResumeForAppSpawn()
 {
     sweeper_->WaitAllTaskFinished();
     hugeObjectSpace_->ReclaimHugeRegion();
+    hugeMachineCodeSpace_->ReclaimHugeRegion();
     inactiveSemiSpace_->ReclaimRegions();
     oldSpace_->Reset();
     auto cb = [] (Region *region) {

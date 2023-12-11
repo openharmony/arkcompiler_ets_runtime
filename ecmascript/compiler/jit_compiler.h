@@ -89,7 +89,7 @@ private:
     AotMethodLogList logList_;
     PGOProfilerDecoder profilerDecoder_;
     PassOptions passOptions_;
-    PassManager *passManager_;
+    JitPassManager *passManager_;
     AOTFileGenerator *aotFileGenerator_;
 };
 }  // namespace panda::ecmascript::kungfu

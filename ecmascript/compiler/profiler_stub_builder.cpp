@@ -794,6 +794,40 @@ void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTyp
     Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
 }
 
+GateRef ProfilerStubBuilder::IsTriedJitCompile(GateRef profileTypeInfo, ProfileOperation callback)
+{
+    if (callback.IsJitEmpty()) {
+        return Boolean(true);
+    }
+    return IsTriedJitCompile(profileTypeInfo);
+}
+
+GateRef ProfilerStubBuilder::IsTriedJitCompile(GateRef profileTypeInfo)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef hotnessThresholdOffset = PtrAdd(bitFieldOffset,
+        IntPtr(ProfileTypeInfo::JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD));
+    GateRef hotnessCntOffset = PtrAdd(hotnessThresholdOffset,
+        IntPtr(ProfileTypeInfo::JIT_CNT_OFFSET_FROM_THRESHOLD));
+    GateRef hotnessThreshold = Load(VariableType::INT16(), profileTypeInfo, hotnessThresholdOffset);
+    GateRef hotnessCnt = Load(VariableType::INT16(), profileTypeInfo, hotnessCntOffset);
+    Label greaterThreshold(env);
+    Branch(Int32GreaterThan(ZExtInt16ToInt32(hotnessCnt), ZExtInt16ToInt32(hotnessThreshold)),
+        &greaterThreshold, &exit);
+    Bind(&greaterThreshold);
+    result = True();
+    Jump(&exit);
+    Bind(&exit);
+    GateRef ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void ProfilerStubBuilder::TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo)
 {
     auto env = GetEnvironment();

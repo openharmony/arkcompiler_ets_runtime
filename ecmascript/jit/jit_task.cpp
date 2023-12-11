@@ -44,8 +44,7 @@ void JitTask::InstallCode()
     if (!IsCompileSuccess()) {
         return;
     }
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    JSHandle<Method> methodHandle(vm_->GetJSThread(), method);
+    JSHandle<Method> methodHandle(vm_->GetJSThread(), Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
 
     size_t funcEntryDesSizeAlign = AlignUp(codeDesc_.funcEntryDesSize, MachineCode::DATA_ALIGN);
 
@@ -60,18 +59,13 @@ void JitTask::InstallCode()
 
     JSHandle<MachineCode> machineCodeObj = vm_->GetFactory()->NewMachineCodeObject(size, &codeDesc_, methodHandle);
     // oom?
-    method = methodHandle.GetObject<Method>();
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
-    method->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-    method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-
-    JSHandle<JSHClass> oldHClass(vm_->GetJSThread(), jsFunction_->GetClass());
+    methodHandle->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+    methodHandle->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     methodHandle->SetMachineCode(vm_->GetJSThread(), machineCodeObj);
 
-    CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-    CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName()) + ", at:" + fileDesc;
-    LOG_JIT(DEBUG) <<"install machine code:" << methodName;
+    LOG_JIT(DEBUG) <<"Install machine code:" << GetMethodInfo();
 }
 
 void JitTask::PersistentHandle()
@@ -97,10 +91,21 @@ JitTask::~JitTask()
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    CString info = jitTask_->GetMethodInfo() + ", in task pool, id:" + ToCString(threadIndex) + ", time:";
+    Jit::Scope scope(info);
+
     jitTask_->Finalize();
 
     // info main thread compile complete
     jitTask_->RequestInstallCode();
+
+    // as now litecg has global value, so only compile one task at a time
+    jitTask_->GetJit()->RemoveAsyncCompileTask(jitTask_);
+    JitTask *jitTask = jitTask_->GetJit()->GetAsyncCompileTask();
+    if (jitTask != nullptr) {
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<JitTask::AsyncTask>(jitTask, jitTask->GetVM()->GetJSThread()->GetThreadId()));
+    }
     return true;
 }
 }  // namespace panda::ecmascript

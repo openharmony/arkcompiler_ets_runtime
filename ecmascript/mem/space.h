@@ -260,7 +260,6 @@ class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
     HugeMachineCodeSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
-    void Sweep();
 };
 
 }  // namespace panda::ecmascript

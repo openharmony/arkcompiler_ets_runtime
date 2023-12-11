@@ -77,14 +77,14 @@ void JitCompiler::Init()
             .EnableInlineNative(jitOptions_.isEnableNativeInline_)
             .EnableLoweringBuiltin(jitOptions_.isEnableLoweringBuiltin_)
             .Build();
-    passManager_ = new PassManager(vm_,
-                                   jitOptions_.triple_,
-                                   jitOptions_.optLevel_,
-                                   jitOptions_.relocMode_,
-                                   &log_,
-                                   &logList_,
-                                   profilerDecoder_,
-                                   &passOptions_);
+    passManager_ = new JitPassManager(vm_,
+                                      jitOptions_.triple_,
+                                      jitOptions_.optLevel_,
+                                      jitOptions_.relocMode_,
+                                      &log_,
+                                      &logList_,
+                                      profilerDecoder_,
+                                      &passOptions_);
     aotFileGenerator_ = new AOTFileGenerator(&log_, &logList_, vm_, jitOptions_.triple_,
         vm_->GetJSOptions().IsCompilerEnableLiteCG());
 }
@@ -121,6 +121,8 @@ bool JitCompiler::Compile()
 
 bool JitCompiler::Finalize(JitTask *jitTask)
 {
+    aotFileGenerator_->JitCreateLitecgModule();
+    passManager_->RunCg();
     aotFileGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     return true;
 }

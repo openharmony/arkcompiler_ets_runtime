@@ -97,8 +97,6 @@ HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heap
 {
 }
 
-void HugeMachineCodeSpace::Sweep() {} // todo: GC
-
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
 {
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.

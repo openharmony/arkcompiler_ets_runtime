@@ -31,7 +31,7 @@ namespace panda::ecmascript::kungfu {
 class Bytecodes;
 class LexEnvManager;
 class CompilationConfig;
-
+class PassData;
 class PassContext {
 public:
     PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, IRModule *aotModule,
@@ -143,20 +143,10 @@ public:
                 enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
             };
 
-    PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
-        CompilerLog *log, AotMethodLogList *logList,
-        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
-          logList_(logList), maxAotMethodSize_(1), maxMethodsInModule_(1),
-          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {
-                enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
-            };
-    ~PassManager() = default;
-
+    virtual ~PassManager() = default;
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
-    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen);
 
-private:
+protected:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
 
     EcmaVM *vm_ {nullptr};
@@ -170,6 +160,28 @@ private:
     PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
     bool enableJITLog_ {false};
+};
+
+class JitPassManager : public PassManager {
+public:
+    JitPassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
+        CompilerLog *log, AotMethodLogList *logList,
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
+        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions) { };
+
+    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen);
+    bool RunCg();
+    virtual ~JitPassManager();
+
+private:
+    BytecodeInfoCollector *collector_ {nullptr};
+    LOptions *lOptions_ {nullptr};
+    JitCompilationDriver *cmpDriver_ {nullptr};
+
+    PassContext *ctx_ {nullptr};
+    Circuit *circuit_ {nullptr};
+    BytecodeCircuitBuilder *builder_ {nullptr};
+    PassData *data_ {nullptr};
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

@@ -50,6 +50,11 @@ public:
     bool IsCompiling(JSHandle<JSFunction> &jsFunction);
     void AddCompilingTask(JitTask *jitTask);
     void RemoveCompilingTask(JitTask *jitTask);
+
+    JitTask *GetAsyncCompileTask();
+    void AddAsyncCompileTask(JitTask *jitTask);
+    void RemoveAsyncCompileTask(JitTask *jitTask);
+
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
 
@@ -73,7 +78,9 @@ private:
 
     std::deque<JitTask*> compilingJitTasks_;
     std::deque<JitTask*> installJitTasks_;
+    static std::deque<JitTask*> asyncCompileJitTasks_;
     Mutex installJitTasksDequeMtx_;
+    static Mutex asyncCompileJitTasksMtx_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H

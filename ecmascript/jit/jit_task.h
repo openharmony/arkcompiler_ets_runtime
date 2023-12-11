@@ -69,6 +69,26 @@ public:
         state_ = CompileState::FAIL;
     }
 
+    Jit *GetJit()
+    {
+        return jit_;
+    }
+
+    EcmaVM *GetVM()
+    {
+        return vm_;
+    }
+
+    CString GetMethodInfo() const
+    {
+        return methodInfo_;
+    }
+
+    void SetMethodInfo(CString methodInfo)
+    {
+        methodInfo_ = methodInfo;
+    }
+
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(JitTask *jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -92,6 +112,7 @@ private:
     void *compiler_;
     MachineCodeDesc codeDesc_;
     CompileState state_;
+    CString methodInfo_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_TASK_H

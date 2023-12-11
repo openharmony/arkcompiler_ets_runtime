@@ -32,46 +32,46 @@
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
-bool PassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen)
+bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
     const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
 
-    BytecodeInfoCollector collector(vm_, const_cast<JSPandaFile*>(jsPandaFile), jsFunction, profilerDecoder_,
-                                    passOptions_->EnableCollectLiteralInfo());
+    collector_ = new BytecodeInfoCollector(vm_, const_cast<JSPandaFile*>(jsPandaFile),
+        jsFunction, profilerDecoder_, passOptions_->EnableCollectLiteralInfo());
     std::string fileName = jsPandaFile->GetFileName();
     if (!IsReleasedPandaFile(jsPandaFile)) {
         LOG_COMPILER(ERROR) << "The input panda file [" << fileName << "] is debuggable version.";
     }
 
     gen.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
-    LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
-    CompilationDriver cmpDriver(profilerDecoder_,
-                                &collector,
-                                vm_->GetJSOptions().GetCompilerSelectMethods(),
-                                vm_->GetJSOptions().GetCompilerSkipMethods(),
-                                &gen,
-                                fileName,
-                                triple_,
-                                &lOptions,
-                                log_,
-                                log_->OutputASM(),
-                                maxMethodsInModule_);
-    cmpDriver.CompileMethod(jsFunction,
-                            [this, &fileName, &collector](const CString recordName,
-                                                const std::string &methodName,
-                                                MethodLiteral *methodLiteral,
-                                                uint32_t methodOffset,
-                                                const MethodPcInfo &methodPCInfo,
-                                                MethodInfo &methodInfo,
-                                                Module *m) {
+    lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    cmpDriver_ = new JitCompilationDriver(profilerDecoder_,
+                                          collector_,
+                                          vm_->GetJSOptions().GetCompilerSelectMethods(),
+                                          vm_->GetJSOptions().GetCompilerSkipMethods(),
+                                          &gen,
+                                          fileName,
+                                          triple_,
+                                          lOptions_,
+                                          log_,
+                                          log_->OutputASM(),
+                                          maxMethodsInModule_);
+    cmpDriver_->CompileMethod(jsFunction, [this, &fileName] (const CString recordName,
+                                                             const std::string &methodName,
+                                                             MethodLiteral *methodLiteral,
+                                                             uint32_t methodOffset,
+                                                             const MethodPcInfo &methodPCInfo,
+                                                             MethodInfo &methodInfo,
+                                                             Module *m) {
         if (vm_->GetJSOptions().GetTraceJIT()) {
-            std::cout << "JIT Compile Method Start: " << methodName << ", " << methodOffset << "\n";
+            LOG_COMPILER(INFO) << "JIT Compile Method Start: " << methodName << ", " << methodOffset << "\n";
         }
-        PassContext ctx(triple_, log_, &collector, m->GetModule(), &profilerDecoder_);
-        auto jsPandaFile = ctx.GetJSPandaFile();
-        auto cmpCfg = ctx.GetCompilerConfig();
-        auto tsManager = ctx.GetTSManager();
+        ctx_ = new PassContext(triple_, log_, collector_, m->GetModule(), &profilerDecoder_);
+
+        auto jsPandaFile = ctx_->GetJSPandaFile();
+        auto cmpCfg = ctx_->GetCompilerConfig();
+        auto tsManager = ctx_->GetTSManager();
         auto module = m->GetModule();
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
@@ -88,36 +88,35 @@ bool PassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &ge
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
 
-        Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
-                        fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
-
+        circuit_ = new Circuit(vm_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
+            fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
-        BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
-                                       ctx.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
-                                       passOptions_->EnableOptTrackField());
+        builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo, tsManager,
+            circuit_, ctx_->GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
+            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
+            passOptions_->EnableOptTrackField());
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
-            builder.BytecodeToCircuit();
+            builder_->BytecodeToCircuit();
         }
 
-        PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
-        PassRunner<PassData> pipeline(&data);
-        if (data.GetMethodLiteral()->HasDebuggerStmt()) {
-            data.AbortCompilation();
+        data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, hasTypes, recordName,
+            methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
+        PassRunner<PassData> pipeline(data_);
+        if (data_->GetMethodLiteral()->HasDebuggerStmt()) {
+            data_->AbortCompilation();
             return;
         }
         pipeline.RunPass<RunFlowCyclesVerifierPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
-        if (builder.EnableLoopOptimization()) {
+        if (builder_->EnableLoopOptimization()) {
             pipeline.RunPass<LoopOptimizationPass>();
             pipeline.RunPass<RedundantPhiEliminationPass>();
         }
         pipeline.RunPass<TypeInferPass>();
-        if (data.IsTypeAbort()) {
-            data.AbortCompilation();
+        if (data_->IsTypeAbort()) {
+            data_->AbortCompilation();
             return;
         }
         pipeline.RunPass<PGOTypeInferPass>();
@@ -128,8 +127,8 @@ bool PassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &ge
         pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
-        if (data.IsTypeAbort()) {
-            data.AbortCompilation();
+        if (data_->IsTypeAbort()) {
+            data_->AbortCompilation();
             return;
         }
         pipeline.RunPass<EarlyEliminationPass>();
@@ -151,9 +150,47 @@ bool PassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &ge
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<GraphLinearizerPass>();
-        pipeline.RunPass<CGIRGenPass>();
     });
     return true;
+}
+
+bool JitPassManager::RunCg()
+{
+    PassRunner<PassData> pipeline(data_);
+    pipeline.RunPass<CGIRGenPass>();
+    return cmpDriver_->RunCg();
+}
+
+JitPassManager::~JitPassManager()
+{
+    if (collector_ != nullptr) {
+        delete collector_;
+        collector_ = nullptr;
+    }
+    if (lOptions_ != nullptr) {
+        delete lOptions_;
+        lOptions_ = nullptr;
+    }
+    if (cmpDriver_ != nullptr) {
+        delete cmpDriver_;
+        cmpDriver_ = nullptr;
+    }
+    if (ctx_ != nullptr) {
+        delete ctx_;
+        ctx_ = nullptr;
+    }
+    if (circuit_ != nullptr) {
+        delete circuit_;
+        circuit_ = nullptr;
+    }
+    if (builder_ != nullptr) {
+        delete builder_;
+        builder_ = nullptr;
+    }
+    if (data_ != nullptr) {
+        delete data_;
+        data_ = nullptr;
+    }
 }
 
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)

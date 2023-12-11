@@ -166,7 +166,6 @@ void BytecodeInfoCollector::ProcessClasses()
 
 void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
 {
-    (void)jsFunction;
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
 
@@ -214,6 +213,14 @@ void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
     }
 
     SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
+    // class Construct need to use new target, can not fastcall
+    if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+        methodLiteral->SetIsFastCall(false);
+        bytecodeInfo_.ModifyMethodOffsetToCanFastCall(methodIdx.GetOffset(), false);
+    }
+    // Collect import(infer-needed) and export relationship among all records.
+    CollectRecordReferenceREL();
+    RearrangeInnerMethods();
 }
 
 void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,

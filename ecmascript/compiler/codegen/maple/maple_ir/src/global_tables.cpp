@@ -565,7 +565,7 @@ void GSymbolTable::Dump(bool isLocal, int32 indent) const
     }
 }
 
-thread_local GlobalTables GlobalTables::globalTables;
+GlobalTables GlobalTables::globalTables;
 GlobalTables &GlobalTables::GetGlobalTables()
 {
     return globalTables;

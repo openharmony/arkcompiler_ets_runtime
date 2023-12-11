@@ -19,6 +19,8 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
+std::deque<JitTask*> Jit::asyncCompileJitTasks_;
+Mutex Jit::asyncCompileJitTasksMtx_;
 void Jit::Initialize()
 {
     if (!vm_->IsEnableJit()) {
@@ -130,6 +132,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         ASSERT(jit->deleteJitCompile_ != nullptr);
 
         JitTask *jitTask = new JitTask(vm, jit, jsFunction);
+        jitTask->SetMethodInfo(methodName);
         jit->AddCompilingTask(jitTask);
 
         void *compiler = jit->createJitCompiler_(vm, jitTask);
@@ -145,8 +148,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
             // free
             delete jitTask;
         } else {
-            Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<JitTask::AsyncTask>(jitTask, vm->GetJSThread()->GetThreadId()));
+            jit->AddAsyncCompileTask(jitTask);
         }
     }
 }
@@ -161,6 +163,35 @@ void Jit::RemoveCompilingTask(JitTask *jitTask)
     auto findIt = std::find(compilingJitTasks_.begin(), compilingJitTasks_.end(), jitTask);
     ASSERT(findIt != compilingJitTasks_.end());
     compilingJitTasks_.erase(findIt);
+}
+
+JitTask *Jit::GetAsyncCompileTask()
+{
+    LockHolder holder(asyncCompileJitTasksMtx_);
+    if (asyncCompileJitTasks_.empty()) {
+        return nullptr;
+    } else {
+        auto jitTask = asyncCompileJitTasks_.front();
+        return jitTask;
+    }
+}
+
+void Jit::AddAsyncCompileTask(JitTask *jitTask)
+{
+    LockHolder holder(asyncCompileJitTasksMtx_);
+    if (asyncCompileJitTasks_.empty()) {
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<JitTask::AsyncTask>(jitTask, vm_->GetJSThread()->GetThreadId()));
+    }
+    asyncCompileJitTasks_.push_back(jitTask);
+}
+
+void Jit::RemoveAsyncCompileTask([[maybe_unused]] JitTask *jitTask)
+{
+    LockHolder holder(asyncCompileJitTasksMtx_);
+    ASSERT(!asyncCompileJitTasks_.empty());
+    ASSERT(asyncCompileJitTasks_.front() == jitTask);
+    asyncCompileJitTasks_.pop_front();
 }
 
 void Jit::RequestInstallCode(JitTask *jitTask)

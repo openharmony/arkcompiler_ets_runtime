@@ -54,6 +54,11 @@ public:
         return callback_ == nullptr;
     }
 
+    inline bool IsJitEmpty() const
+    {
+        return jitCallback_ == nullptr;
+    }
+
     inline void ProfileCall(GateRef func) const
     {
         if (callback_) {

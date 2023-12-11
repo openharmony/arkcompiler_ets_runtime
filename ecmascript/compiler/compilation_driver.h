@@ -37,7 +37,7 @@ public:
                       CompilerLog *log,
                       bool outputAsm,
                       size_t maxMethodsInModule);
-    ~CompilationDriver();
+    virtual ~CompilationDriver();
 
     NO_COPY_SEMANTIC(CompilationDriver);
     NO_MOVE_SEMANTIC(CompilationDriver);
@@ -74,32 +74,6 @@ public:
         for (auto &newMethod : fullResolvedMethodSet) {
             bytecodeInfo_.EraseSkippedMethod(newMethod.GetOffset());
         }
-    }
-
-    template <class Callback>
-    void CompileMethod(JSHandle<JSFunction> &jsFunction, const Callback &cb)
-    {
-        for (auto mi : bytecodeInfo_.GetMethodList()) {
-            bytecodeInfo_.AddSkippedMethod(mi.first);
-        }
-        const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
-        Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-        MethodLiteral *methodLiteral = method->GetMethodLiteral();
-        const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
-
-        auto &methodList = bytecodeInfo_.GetMethodList();
-        const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-        auto &methodInfo = methodList.at(methodLiteral->GetMethodId().GetOffset());
-
-        auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-        auto methodOffset = methodLiteral->GetMethodId().GetOffset();
-        bytecodeInfo_.EraseSkippedMethod(methodOffset);
-
-        Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, methodOffset,
-            methodPcInfo, methodInfo, module);
-        IncCompiledMethod();
-        CompileModuleThenDestroyIfNeeded();
     }
 
     template <class Callback>
@@ -179,7 +153,7 @@ public:
         panda_file::File::EntityId resolvedMethodId(resolvedMethod);
         UpdateCompileQueue(recordName, resolvedMethodId);
     }
-private:
+protected:
     // add maxMethodsInModule_ functions in a module and when a module is
     // full(maxMethodsInModule_ functions have been put into) or the module is the last module,
     // compile it and the destroy it.
@@ -391,6 +365,51 @@ private:
     CompilerLog *log_ {nullptr};
     bool outputAsm_ {false};
     size_t maxMethodsInModule_ {0};
+};
+
+class JitCompilationDriver : public CompilationDriver {
+public:
+    JitCompilationDriver(PGOProfilerDecoder &profilerDecoder,
+                         BytecodeInfoCollector* collector,
+                         const std::string &compilemMethodsOption,
+                         const std::string &compileSkipMethodsOption,
+                         AOTFileGenerator *fileGenerator,
+                         const std::string &fileName,
+                         const std::string &triple,
+                         LOptions *lOptions,
+                         CompilerLog *log,
+                         bool outputAsm,
+                         size_t maxMethodsInModule) : CompilationDriver(profilerDecoder, collector,
+                                                                        compilemMethodsOption, compileSkipMethodsOption,
+                                                                        fileGenerator, fileName, triple, lOptions, log,
+                                                                        outputAsm, maxMethodsInModule) { };
+    ~JitCompilationDriver() = default;
+    bool RunCg();
+    Module *GetModule();
+
+    template <class Callback>
+    void CompileMethod(JSHandle<JSFunction> &jsFunction, const Callback &cb)
+    {
+        for (auto mi : bytecodeInfo_.GetMethodList()) {
+            bytecodeInfo_.AddSkippedMethod(mi.first);
+        }
+        const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
+        Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+        MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
+
+        auto &methodList = bytecodeInfo_.GetMethodList();
+        const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
+        auto &methodInfo = methodList.at(methodLiteral->GetMethodId().GetOffset());
+
+        auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
+        auto methodOffset = methodLiteral->GetMethodId().GetOffset();
+        bytecodeInfo_.EraseSkippedMethod(methodOffset);
+
+        Module *module = GetModule();
+        cb(bytecodeInfo_.GetRecordName(0), methodName, methodLiteral, methodOffset,
+            methodPcInfo, methodInfo, module);
+    }
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H

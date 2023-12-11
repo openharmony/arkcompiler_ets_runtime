@@ -432,11 +432,11 @@ uint32_t AOTFileGenerator::GetModuleVecSize() const
 }
 
 Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple,
-                                    [[maybe_unused]] LOptions option, bool logDebug)
+                                    [[maybe_unused]] LOptions option, bool logDebug, [[maybe_unused]] bool isJit)
 {
 #ifdef COMPILE_MAPLE
     if (useLiteCG_) {
-        LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+        LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
         LiteCGAssembler* ass = new LiteCGAssembler(*irModule);
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
@@ -630,6 +630,17 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc)
     machineCodeDesc->funcEntryDesSize = funcEntrySize;
     machineCodeDesc->stackMapAddr = stackMapPtr;
     machineCodeDesc->stackMapSize = stackMapSize;
+}
+
+void AOTFileGenerator::JitCreateLitecgModule()
+{
+#ifdef COMPILE_MAPLE
+    Module *latestModule = GetLatestModule();
+    if (latestModule->GetModule()->GetModuleKind() != MODULE_LLVM) {
+        LMIRModule *lmirModule = static_cast<LMIRModule*>(latestModule->GetModule());
+        lmirModule->JitCreateLitecgModule();
+    }
+#endif
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

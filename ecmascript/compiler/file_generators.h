@@ -187,7 +187,8 @@ public:
 
     uint32_t GetModuleVecSize() const;
 
-    Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug);
+    Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug,
+        bool isJit = false);
 
     void CompileLatestModuleThenDestroy();
 
@@ -210,6 +211,7 @@ public:
     }
 
     void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
+    void JitCreateLitecgModule();
 
 private:
     // collect aot component info
