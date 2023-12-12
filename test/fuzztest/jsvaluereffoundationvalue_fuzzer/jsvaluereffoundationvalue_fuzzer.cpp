@@ -31,7 +31,8 @@ void JSValueRefIsNumberValueFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -65,7 +66,8 @@ void JSValueRefIsStringValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
@@ -78,8 +80,9 @@ void JSValueRefWithinInt32ValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int number = 456;
-    if (size <= 0) {
+    int number = 0;
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -105,7 +108,8 @@ void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     Deleter deleter = nullptr;
@@ -121,7 +125,8 @@ void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int number = 123;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -156,7 +161,8 @@ void JSValueRefIsDateValueFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -198,7 +204,8 @@ void JSValueRefIsErrorValueFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -230,7 +237,8 @@ void JSValueRefToStringValueFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {

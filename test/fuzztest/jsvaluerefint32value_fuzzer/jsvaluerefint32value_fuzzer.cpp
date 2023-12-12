@@ -30,7 +30,8 @@ void JSValueRefInt32ValueFuzzTest(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int inputNum = 0;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {

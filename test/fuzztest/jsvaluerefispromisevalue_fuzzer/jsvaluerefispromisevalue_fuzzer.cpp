@@ -33,7 +33,8 @@ void JSValueRefIsPromiseValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
+        std::cout << "illegal input!";
         return;
     }
     Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm);
