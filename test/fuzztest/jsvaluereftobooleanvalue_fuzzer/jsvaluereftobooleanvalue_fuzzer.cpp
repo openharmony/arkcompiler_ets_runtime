@@ -31,10 +31,7 @@ void JSValueRefToBooleanValueFuzzTest(const uint8_t *data, size_t size)
         std::cout << "illegal input!";
         return;
     }
-    bool inputBool = true;
-    if (size == 0 || data == nullptr) {
-        inputBool = false;
-    }
+    bool inputBool = size % 2 ? true : false; // 2:Cannot divide by 2 as true, otherwise it is false
     Local<BooleanRef> resBool = BooleanRef::New(vm, inputBool);
     resBool->ToBoolean(vm);
     JSNApi::DestroyJSVM(vm);
