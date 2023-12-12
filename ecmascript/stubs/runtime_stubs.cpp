@@ -652,42 +652,27 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
     return JSProxy::GetPrototype(thread, proxy).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CallJSDeleteProxyPrototype)
+DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
 {
-    RUNTIME_STUBS_HEADER(CallJSDeleteProxyPrototype);
-    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSProxy::DeleteProperty(thread, proxy, value);
-    if (!result) {
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
-        thread->SetException(error.GetTaggedValue());
-        return JSTaggedValue::Exception().GetRawData();
+    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);
+    uint32_t index = 0;
+    if (value.IsString()) {
+        auto string = reinterpret_cast<EcmaString *>(value.GetTaggedObject());
+        if (EcmaStringAccessor(string).ToElementIndex(&index)) {
+            value = JSTaggedValue(index);
+        } else if (!EcmaStringAccessor(string).IsInternString()) {
+            JSTaggedValue key(RuntimeTryGetInternString(argGlue, string));
+            if (key.IsHole()) {
+                return JSTaggedValue::True().GetRawData();
+            } else {
+                value = key;
+            }
+        }
     }
-    return JSTaggedValue::True().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(CallModuleNamespaceDeletePrototype)
-{
-    RUNTIME_STUBS_HEADER(CallModuleNamespaceDeletePrototype);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = ModuleNamespace::DeleteProperty(thread, obj, value);
-    if (!result) {
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
-        thread->SetException(error.GetTaggedValue());
-        return JSTaggedValue::Exception().GetRawData();
-    }
-    return JSTaggedValue::True().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
-{
-    RUNTIME_STUBS_HEADER(CallTypedArrayDeletePrototype);
-    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSTypedArray::DeleteProperty(thread, tagged, value);
+    auto result = JSObject::DeleteProperty(thread, tagged, JSHandle<JSTaggedValue>(thread, value));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
@@ -700,9 +685,10 @@ DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
 DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
 {
     RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
-    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSObject::DeleteProperty(thread, tagged, value);
+    auto result = JSTaggedValue::DeleteProperty(thread, tagged, value);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
