@@ -195,7 +195,8 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
     CompilationOptions cOptions(vm_, runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
-    ASSERT_FALSE(preProcessor.HandleTargetCompilerMode(cOptions));
+    // Input format is correct, but there is no available ap file for pgoDir, return success.
+    ASSERT_TRUE(preProcessor.HandleTargetCompilerMode(cOptions));
 
     ASSERT_TRUE(cOptions.profilerIn_.empty());
     unlink(runtimeAp.c_str());
