@@ -6210,30 +6210,34 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    DEFVARIABLE(key, VariableType::JS_ANY(), value);
     Label toObject(env);
-    Label isException(env);
     Label isNotExceptiont(env);
     Label objectIsEcmaObject(env);
     Label objectIsHeapObject(env);
     GateRef object = ToObject(glue, obj);
-    Branch(HasPendingException(glue), &isException, &isNotExceptiont);
+    Branch(TaggedIsException(object), &exit, &isNotExceptiont);
     Bind(&isNotExceptiont);
-    Branch(TaggedIsHeapObject(object), &objectIsHeapObject, &isException);
-    Bind(&objectIsHeapObject);
-    Branch(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &isException);
-    Bind(&objectIsEcmaObject);
     {
-        GateRef keyValue = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
-        result = DeleteProperty(glue, obj, keyValue);
-        Jump(&exit);
-    }
-    Bind(&isException);
-    {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotValidObject));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        result = Exception();
-        Jump(&exit);
+        Label deleteProper(env);
+        Label notStringOrSymbol(env);
+        Label notPrimitive(env);
+        Branch(TaggedIsStringOrSymbol(value), &deleteProper, &notStringOrSymbol);
+        Bind(&notStringOrSymbol);
+        {
+            Branch(TaggedIsNumber(value), &deleteProper, &notPrimitive);
+            Bind(&notPrimitive);
+            {
+                key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
+                Branch(TaggedIsException(*key), &exit, &deleteProper);
+            }
+        }
+        Bind(&deleteProper);
+        {
+            result = DeleteProperty(glue, object, *key);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -6248,48 +6252,20 @@ GateRef StubBuilder::DeleteProperty(GateRef glue, GateRef obj, GateRef value)
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label exit(env);
-    Label objectIsJsProxy(env);
-    Label objectIsNotJsProxy(env);
-    Label objectIsModuleNamespace(env);
-    Label objectIsNotModuleNamespace(env);
-    Label objectIsTypedArray(env);
-    Label objectIsNotTypedArray(env);
-    Label objectIsSpecialContainer(env);
-    Label objectIsNotSpecialContainer(env);
-    Branch(IsJsProxy(obj), &objectIsJsProxy, &objectIsNotJsProxy);
-    Bind(&objectIsJsProxy);
+    Label notRegularJSObject(env);
+    Label regularJSObjDeletePrototype(env);
+    Branch(TaggedIsRegularObject(obj), &regularJSObjDeletePrototype, &notRegularJSObject);
+    Bind(&regularJSObjDeletePrototype);
     {
-        result = CallRuntime(glue, RTSTUB_ID(CallJSDeleteProxyPrototype), { obj, value});
+        result = CallRuntime(glue, RTSTUB_ID(RegularJSObjDeletePrototype), { obj, value});
         Jump(&exit);
     }
-    Bind(&objectIsNotJsProxy);
-    Branch(IsModuleNamespace(obj), &objectIsModuleNamespace, &objectIsNotModuleNamespace);
-    Bind(&objectIsModuleNamespace);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(CallModuleNamespaceDeletePrototype), { obj, value});
-        Jump(&exit);
-    }
-    Bind(&objectIsNotModuleNamespace);
-    Branch(IsTypedArray(obj), &objectIsTypedArray, &objectIsNotTypedArray);
-    Bind(&objectIsTypedArray);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(CallTypedArrayDeletePrototype), { obj, value});
-        Jump(&exit);
-    }
-    Bind(&objectIsNotTypedArray);
-    Branch(ObjIsSpecialContainer(obj), &objectIsSpecialContainer, &objectIsNotSpecialContainer);
-    Bind(&objectIsSpecialContainer);
-    {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertContainerObject));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&objectIsNotSpecialContainer);
+    Bind(&notRegularJSObject);
     {
         result = CallRuntime(glue, RTSTUB_ID(CallJSObjDeletePrototype), { obj, value});
         Jump(&exit);
     }
+    
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
