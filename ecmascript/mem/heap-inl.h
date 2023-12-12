@@ -50,6 +50,7 @@ void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
+    hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -68,6 +69,7 @@ void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
+    hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -78,6 +80,7 @@ void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
     nonMovableSpace_->EnumerateRegionsWithRecord(cb);
     hugeObjectSpace_->EnumerateRegionsWithRecord(cb);
     machineCodeSpace_->EnumerateRegionsWithRecord(cb);
+    hugeMachineCodeSpace_->EnumerateRegionsWithRecord(cb);
 }
 
 template<class Callback>
@@ -94,6 +97,7 @@ void Heap::EnumerateNonMovableRegions(const Callback &cb) const
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
+    hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -107,6 +111,7 @@ void Heap::EnumerateRegions(const Callback &cb) const
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
+    hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -117,6 +122,7 @@ void Heap::IterateOverObjects(const Callback &cb) const
     appSpawnSpace_->IterateOverMarkedObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
+    hugeMachineCodeSpace_->IterateOverObjects(cb);
 }
 
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
@@ -285,10 +291,18 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     return object;
 }
 
+TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size)
+{
+    auto *object = reinterpret_cast<TaggedObject *>(hugeMachineCodeSpace_->Allocate(size, thread_));
+    return object;
+}
+
 TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
+    auto object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
+        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
+        reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
@@ -377,6 +391,7 @@ size_t Heap::GetCommittedSize() const
                     hugeObjectSpace_->GetCommittedSize() +
                     nonMovableSpace_->GetCommittedSize() +
                     machineCodeSpace_->GetCommittedSize() +
+                    hugeMachineCodeSpace_->GetCommittedSize() +
                     snapshotSpace_->GetCommittedSize();
     return result;
 }
@@ -388,6 +403,7 @@ size_t Heap::GetHeapObjectSize() const
                     hugeObjectSpace_->GetHeapObjectSize() +
                     nonMovableSpace_->GetHeapObjectSize() +
                     machineCodeSpace_->GetCommittedSize() +
+                    hugeMachineCodeSpace_->GetCommittedSize() +
                     snapshotSpace_->GetHeapObjectSize();
     return result;
 }

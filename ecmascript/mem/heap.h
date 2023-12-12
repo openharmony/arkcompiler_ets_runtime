@@ -123,6 +123,11 @@ public:
         return machineCodeSpace_;
     }
 
+    HugeMachineCodeSpace *GetHugeMachineCodeSpace() const
+    {
+        return hugeMachineCodeSpace_;
+    }
+
     SnapshotSpace *GetSnapshotSpace() const
     {
         return snapshotSpace_;
@@ -270,6 +275,7 @@ public:
     inline TaggedObject *AllocateHugeObject(size_t size);
     // Machine code
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -579,6 +585,8 @@ public:
     }
 
     void CheckNonMovableSpaceOOM();
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -680,6 +688,7 @@ private:
     // Spaces used for special kinds of objects.
     NonMovableSpace *nonMovableSpace_ {nullptr};
     MachineCodeSpace *machineCodeSpace_ {nullptr};
+    HugeMachineCodeSpace *hugeMachineCodeSpace_ {nullptr};
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
 

@@ -656,6 +656,10 @@ class BytecodeInfoCollector {
 public:
     BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
                           size_t maxAotMethodSize, bool enableCollectLiteralInfo);
+
+    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, JSHandle<JSFunction> &jsFunction,
+                          PGOProfilerDecoder &pfDecoder, bool enableCollectLiteralInfo);
+
     ~BytecodeInfoCollector();
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
@@ -745,6 +749,7 @@ private:
 
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
+    void ProcessMethod(JSHandle<JSFunction> &jsFunction);
     void RearrangeInnerMethods();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
         MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,

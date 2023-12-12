@@ -47,6 +47,7 @@ enum Component {
     ECMASCRIPT = 1ULL << 4ULL,
     BUILTINS = 1ULL << 5ULL,
     TRACE = 1ULL << 6ULL,
+    JIT = 1UL << 7ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -93,6 +94,8 @@ public:
                 return "[builtins] ";
             case Component::TRACE:
                 return "[trace] ";
+            case Component::JIT:
+                return "[jit] ";
             case Component::ALL:
                 return "[default] ";
             default:

@@ -28,6 +28,7 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "builtins_typedarray.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
@@ -400,7 +401,16 @@ JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter OptimizeFunctionOnNextCall()";
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction);
+
     return JSTaggedValue::Undefined();
 }
 

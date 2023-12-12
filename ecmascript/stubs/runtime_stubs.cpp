@@ -1296,6 +1296,14 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     return profileTypeInfo.GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JitCompile)
+{
+    RUNTIME_STUBS_HEADER(JitCompile);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, JitCompileMode::ASYNC);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CheckSafePoint)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

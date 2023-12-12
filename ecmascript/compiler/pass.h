@@ -586,7 +586,7 @@ public:
         }
         TimeScope timescope("EarlyEliminationPass", data->GetMethodName(),
                             data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk);
@@ -624,7 +624,7 @@ public:
         }
         TimeScope timescope("LaterEliminationPass", data->GetMethodName(),
                             data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         LaterElimination laterElimination(data->GetCircuit(), &visitor, &chunk);
@@ -741,7 +741,7 @@ public:
     {
         auto module = data->GetAotModule();
         TimeScope timescope("CGIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         PassOptions *passOptions = data->GetPassOptions();
         bool enableOptInlining = passOptions->EnableOptInlining() && passOptions->EnableTypeLowering();
         CreateCodeGen(module, enableLog);
@@ -760,7 +760,7 @@ public:
     {
         TimeScope timescope("AsyncFunctionLoweringPass", data->GetMethodName(),
                             data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         AsyncFunctionLowering lowering(data->GetBuilder(), data->GetCircuit(), data->GetCompilerConfig(),
                                        enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {

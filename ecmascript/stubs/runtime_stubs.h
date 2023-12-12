@@ -235,6 +235,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CheckSafePoint)                     \
     V(PGODump)                            \
     V(PGOPreDump)                         \
+    V(JitCompile)                         \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \

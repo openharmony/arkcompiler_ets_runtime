@@ -111,8 +111,7 @@ JSTaggedValue FrameIterator::GetFunction() const
 
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    auto loader = const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->GetAOTFileManager();
-    return loader->CalCallSiteInfo(retAddr);
+    return const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
 }
 
 template <GCVisitedFlag GCVisit>
