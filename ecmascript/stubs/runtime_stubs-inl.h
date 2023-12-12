@@ -938,10 +938,12 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     // ctor -> hclass -> EnableProtoChangeMarker
     auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
-    JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
-    // prototype -> hclass -> EnableProtoChangeMarker
-    JSHClass::EnableProtoChangeMarker(thread,
+    if (constructor->GetClass()->IsTS()) {
+        JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
+        // prototype -> hclass -> EnableProtoChangeMarker
+        JSHClass::EnableProtoChangeMarker(thread,
         JSHandle<JSHClass>(thread, constructor->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+    }
 
     // by enableing the ProtoChangeMarker, the IHC generated in the Aot stage
     // is registered into the listener of its prototype. In this way, it is ensured
@@ -955,7 +957,9 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         }
     } else {
         JSHandle<JSObject> protoHandle(thread, protoOrHClass);
-        JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
+        if (protoHandle->GetJSHClass()->IsTS()) {
+            JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
+        }
     }
 
     return JSTaggedValue::Undefined();
