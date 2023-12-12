@@ -32,7 +32,7 @@ class EcmaVM;
 class FullGC;
 class HeapRegionAllocator;
 class HeapTracker;
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if !WIN_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 class HeapProfiler;
 #endif

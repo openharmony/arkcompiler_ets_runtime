@@ -68,7 +68,11 @@ void CpuProfiler::StartCpuProfilerForInfo()
         isProfiling_ = false;
         return;
     }
+#ifdef PANDA_TARGET_MACOS
+    tid_ = static_cast<pthread_t>(pthread_self());
+#else
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+#endif
     {
         LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
@@ -130,7 +134,11 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         isProfiling_ = false;
         return;
     }
+#ifdef PANDA_TARGET_MACOS
+    tid_ = static_cast<pthread_t>(pthread_self());
+#else
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+#endif
     {
         LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
@@ -240,6 +248,7 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
     struct CurrentProcessInfo currentProcessInfo = {0};
     GetCurrentProcessInfo(currentProcessInfo);
     std::string data = "";
+#ifndef PANDA_TARGET_MACOS
     data = "[{\"args\":{\"data\":{\"frames\":[{\"processId\":" + std::to_string(currentProcessInfo.pid) + "}]"
             + ",\"persistentIds\":true}},\"cat\":\"disabled-by-default-devtools.timeline\","
             + "\"name\":\"TracingStartedInBrowser\",\"ph\":\"I\",\"pid\":"
@@ -254,6 +263,25 @@ void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
             + std::to_string(currentProcessInfo.tid) + ",\"ts\":"
             + std::to_string(ts) + ",\"tts\":" + std::to_string(currentProcessInfo.tts)
             + "},\n";
+#else
+    int sp = static_cast<int>(getpid());
+    auto st = reinterpret_cast<uint64_t>(pthread_self());
+    data = "[{\"args\":{\"data\":{\"frames\":[{\"processId\":" + std::to_string(sp) + "}]"
+            + ",\"persistentIds\":true}},\"cat\":\"disabled-by-default-devtools.timeline\","
+            + "\"name\":\"TracingStartedInBrowser\",\"ph\":\"I\",\"pid\":"
+            + std::to_string(sp) + ",\"s\":\"t\",\"tid\":"
+            + std::to_string(st) + ",\"ts\":"
+            + std::to_string(ts) + ",\"tts\":178460227},\n";
+    ts = SamplingProcessor::GetMicrosecondsTimeStamp();
+    data += "{\"args\":{\"data\":{\"startTime\":" + std::to_string(nowTimeStamp) + "}},"
+            + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
+            + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
+            + std::to_string(sp) + ",\"tid\":"
+            + std::to_string(st) + ",\"ts\":"
+            + std::to_string(ts) + ",\"tts\":" + std::to_string(currentProcessInfo.tts)
+            + "},\n";
+#endif
+
     generator_->SetStartsampleData(data);
 }
 
@@ -261,7 +289,11 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
 {
     currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     currentProcessInfo.pid = getpid();
+#ifdef PANDA_TARGET_MACOS
+    if (pthread_self()) {
+#else
     if (syscall(SYS_gettid) == -1) {
+#endif
         LOG_FULL(FATAL) << "syscall failed";
         UNREACHABLE();
     }
@@ -388,7 +420,11 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     JSThread *thread = nullptr;
     {
         LockHolder lock(synchronizationMutex_);
+    #ifdef PANDA_TARGET_MACOS
+        pthread_t tid = static_cast<pthread_t>(pthread_self());
+    #else
         pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
+    #endif
         const EcmaVM *vm = profilerMap_[tid];
         if (vm == nullptr) {
             LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
@@ -428,10 +464,10 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
         [[maybe_unused]] void *fp = nullptr;
         [[maybe_unused]] void *sp = nullptr;
-#if defined(PANDA_TARGET_AMD64)
+#if !defined(PANDA_TARGET_MACOS) && defined(PANDA_TARGET_AMD64)
         fp = reinterpret_cast<void*>(mcontext.gregs[REG_RBP]);
         sp = reinterpret_cast<void*>(mcontext.gregs[REG_RSP]);
-#elif defined(PANDA_TARGET_ARM64)
+#elif !defined(PANDA_TARGET_MACOS) && defined(PANDA_TARGET_ARM64)
         fp = reinterpret_cast<void*>(mcontext.regs[29]); // FP is an alias for x29.
         sp = reinterpret_cast<void*>(mcontext.sp);
 #else
@@ -504,9 +540,9 @@ uint64_t CpuProfiler::GetPcFromContext(void *context)
     [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
     [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
     uint64_t pc = 0;
-#if defined(PANDA_TARGET_AMD64)
+#if !defined(PANDA_TARGET_MACOS) && defined(PANDA_TARGET_AMD64)
     pc = static_cast<uint64_t>(mcontext.gregs[REG_RIP]);
-#elif defined(PANDA_TARGET_ARM64)
+#elif !defined(PANDA_TARGET_MACOS) && defined(PANDA_TARGET_ARM64)
     pc = static_cast<uint64_t>(mcontext.pc);
 #else
     LOG_FULL(FATAL) << "AsmInterpreter does not currently support other platforms, please run on x64 and arm64";

@@ -1648,7 +1648,7 @@ template("host_quickfix_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    quickfix_options = " --merge-abc true "
+    quickfix_options = " --merge-abc true  --asm-interpreter=false"
 
     args = [
       "--script-file",

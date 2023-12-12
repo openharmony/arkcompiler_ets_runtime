@@ -98,4 +98,11 @@ group("host_unittest") {
     ":HeapSamplingTestAction",
     ":HeapTrackerTestAction",
   ]
+  if (is_mac) {
+    deps -= [
+      ":HProfTestAction",
+      ":HeapSamplingTestAction",
+      ":HeapTrackerTestAction",
+    ]
+  }
 }

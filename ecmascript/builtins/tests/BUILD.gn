@@ -145,4 +145,11 @@ group("host_unittest") {
     ":BuiltinsInternational_002_TestAction",
     ":BuiltinsNaturalTestAction",
   ]
+  if (is_mac) {
+    deps -= [
+      ":BuiltinsInternational_001_TestAction",
+      ":BuiltinsInternational_002_TestAction",
+      ":BuiltinsNaturalTestAction",
+    ]
+  }
 }

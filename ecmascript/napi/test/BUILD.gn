@@ -98,7 +98,21 @@ group("unittest") {
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":JsnapiTestAction" ]
+  deps = [
+    ":Jsnapi_001_TestAction",
+    ":Jsnapi_002_TestAction",
+    ":Jsnapi_003_TestAction",
+    ":Jsnapi_004_TestAction",
+  ]
+
+  if (is_mac) {
+    deps -= [
+      ":Jsnapi_001_TestAction",
+      ":Jsnapi_002_TestAction",
+      ":Jsnapi_003_TestAction",
+      ":Jsnapi_004_TestAction",
+    ]
+  }
 }
 
 group("workload_test") {

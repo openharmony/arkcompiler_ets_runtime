@@ -50,4 +50,7 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [ ":OhosTestAction" ]
+  if (is_mac) {
+    deps -= [ ":OhosTestAction" ]
+  }
 }

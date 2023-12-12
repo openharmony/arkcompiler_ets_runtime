@@ -62,5 +62,17 @@ group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":ContainersTestAction" ]
+  deps = [
+    ":Containers_001_TestAction",
+    ":Containers_002_TestAction",
+    ":Containers_003_TestAction",
+  ]
+
+  if (is_mac) {
+    deps -= [
+      ":Containers_001_TestAction",
+      ":Containers_002_TestAction",
+      ":Containers_003_TestAction",
+    ]
+  }
 }

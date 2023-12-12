@@ -229,4 +229,12 @@ group("host_unittest") {
     ":EcmaVm_002_TestAction",
     ":EcmaVm_003_TestAction",
   ]
+
+  if (is_mac) {
+    deps -= [
+      ":EcmaVm_001_TestAction",
+      ":EcmaVm_002_TestAction",
+      ":EcmaVm_003_TestAction",
+    ]
+  }
 }

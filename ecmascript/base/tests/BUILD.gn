@@ -65,5 +65,16 @@ group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":BaseTestAction" ]
+  deps = [
+    ":Base_001_TestAction",
+    ":Base_002_TestAction",
+    ":Base_003_TestAction",
+  ]
+  if (is_mac) {
+    deps -= [
+      ":Base_001_TestAction",
+      ":Base_002_TestAction",
+      ":Base_003_TestAction",
+    ]
+  }
 }

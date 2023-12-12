@@ -52,4 +52,8 @@ group("host_unittest") {
 
   # deps file
   deps = [ ":RequireTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":RequireTestAction" ]
+  }
 }
