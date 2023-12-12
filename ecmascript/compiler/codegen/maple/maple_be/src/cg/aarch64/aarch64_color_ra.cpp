@@ -5085,7 +5085,7 @@ bool GraphColorRegAllocator::AllocateRegisters()
     a64CGFunc->NoteFPLRAddedToCalleeSavedList();
 
 #if DEBUG
-    int32 cnt = 0;
+    uint32 cnt = 0;
     FOR_ALL_BB(bb, cgFunc) {
         FOR_BB_INSNS(insn, bb) {
             ++cnt;

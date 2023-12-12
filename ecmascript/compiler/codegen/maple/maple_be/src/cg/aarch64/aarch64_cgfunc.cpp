@@ -498,7 +498,8 @@ std::string AArch64CGFunc::GenerateMemOpndVerbose(const Operand &src) const
         } else {
             key = "global: ";
         }
-        return key.append(symSecond->GetName());
+        key += symSecond->GetName();
+        return key;
     }
     return "";
 }
@@ -3098,7 +3099,7 @@ void AArch64CGFunc::SelectAddrof(Operand &result, StImmOperand &stImm, FieldID f
             /* Add a comment */
             Insn *insn = GetCurBB()->GetLastInsn();
             std::string comm = "local/formal var: ";
-            comm.append(symbol->GetName());
+            comm += symbol->GetName();
             insn->SetComment(comm);
         }
     } else if (symbol->IsThreadLocal()) {
@@ -3372,7 +3373,7 @@ RegOperand *AArch64CGFunc::LmbcStructReturnLoad(int32 offset)
 
 Operand *AArch64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff)
 {
-    int32 offset = ireadoff.GetOffset();
+    uint32 offset = ireadoff.GetOffset();
     PrimType primType = ireadoff.GetPrimType();
     uint32 bytelen = GetPrimTypeSize(primType);
     uint32 bitlen = bytelen * kBitsPerByte;
@@ -3590,7 +3591,8 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *
     std::string lblStr(".LB_");
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
     std::string funcName = funcSt->GetName();
-    lblStr.append(funcName).append(std::to_string(labelIdx));
+    lblStr += funcName;
+    lblStr += std::to_string(labelIdx);
     st->SetNameStrIdx(lblStr);
     st->SetStorageClass(kScPstatic);
     st->SetSKind(kStConst);
@@ -3668,13 +3670,13 @@ Operand *SelectStrLiteral(T &c, AArch64CGFunc &cgFunc)
 {
     std::string labelStr;
     if (c.GetKind() == kConstStrConst) {
-        labelStr.append(".LUstr_");
+        labelStr += ".LUstr_";
     } else if (c.GetKind() == kConstStr16Const) {
-        labelStr.append(".LUstr16_");
+        labelStr += ".LUstr16_";
     } else {
         CHECK_FATAL(false, "Unsupported literal type");
     }
-    labelStr.append(std::to_string(c.GetValue()));
+    labelStr += std::to_string(c.GetValue());
 
     MIRSymbol *labelSym =
         GlobalTables::GetGsymTable().GetSymbolFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(labelStr));
@@ -6252,7 +6254,8 @@ void AArch64CGFunc::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOp
     std::string lblStr(".LB_");
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(GetFunction().GetStIdx().Idx());
     uint32 labelIdxTmp = GetLabelIdx();
-    lblStr.append(funcSt->GetName()).append(std::to_string(labelIdxTmp++));
+    lblStr += funcSt->GetName();
+    lblStr += std::to_string(labelIdxTmp++);
     SetLabelIdx(labelIdxTmp);
     lblSt->SetNameStrIdx(lblStr);
     AddEmitSt(GetCurBB()->GetId(), *lblSt);
@@ -8671,7 +8674,7 @@ Operand *AArch64CGFunc::SelectClearStackCallParam(const AddrofNode &expr, int64 
         /* Add a comment */
         Insn *insn = GetCurBB()->GetLastInsn();
         std::string comm = "local/formal var: ";
-        comm.append(symbol->GetName());
+        comm += symbol->GetName();
         insn->SetComment(comm);
     }
     return &result;
@@ -9058,35 +9061,9 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
         }
         LmbcSelectParmList(srcOpnds, largeStructRet);
     }
-    bool callNative = false;
-    if ((fsym->GetName() == "MCC_CallFastNative") || (fsym->GetName() == "MCC_CallFastNativeExt") ||
-        (fsym->GetName() == "MCC_CallSlowNative0") || (fsym->GetName() == "MCC_CallSlowNative1") ||
-        (fsym->GetName() == "MCC_CallSlowNative2") || (fsym->GetName() == "MCC_CallSlowNative3") ||
-        (fsym->GetName() == "MCC_CallSlowNative4") || (fsym->GetName() == "MCC_CallSlowNative5") ||
-        (fsym->GetName() == "MCC_CallSlowNative6") || (fsym->GetName() == "MCC_CallSlowNative7") ||
-        (fsym->GetName() == "MCC_CallSlowNative8") || (fsym->GetName() == "MCC_CallSlowNativeExt")) {
-        callNative = true;
-    }
 
-    std::vector<int64> stackPosition;
-    if ((fsym->GetName() == "MCC_DecRefResetPair") || (fsym->GetName() == "MCC_ClearLocalStackRef")) {
-        SelectClearStackCallParmList(callNode, *srcOpnds, stackPosition);
-    } else {
-        SelectParmListWrapper(callNode, *srcOpnds, callNative);
-    }
-    if (callNative) {
-        GetCurBB()->AppendInsn(CreateCommentInsn("call native func"));
+    SelectParmListWrapper(callNode, *srcOpnds, false);
 
-        BaseNode *funcArgExpr = callNode.Opnd(0);
-        PrimType ptype = funcArgExpr->GetPrimType();
-        Operand *funcOpnd = HandleExpr(callNode, *funcArgExpr);
-        RegOperand &livein =
-            GetOrCreatePhysicalRegisterOperand(R9, GetPointerSize() * kBitsPerByte, GetRegTyFromPrimTy(PTY_a64));
-        SelectCopy(livein, ptype, *funcOpnd, ptype);
-
-        RegOperand &extraOpnd = GetOrCreatePhysicalRegisterOperand(R9, GetPointerSize() * kBitsPerByte, kRegTyInt);
-        srcOpnds->PushOpnd(extraOpnd);
-    }
     const std::string &funcName = fsym->GetName();
     if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2 &&
         funcName == "Ljava_2Flang_2FString_3B_7CindexOf_7C_28Ljava_2Flang_2FString_3B_29I") {
@@ -9095,6 +9072,7 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
         IntrinsifyStringIndexOf(*srcOpnds, *st);
         return;
     }
+
     Insn &callInsn = AppendCall(*fsym, *srcOpnds);
     GetCurBB()->SetHasCall();
     if (retType != nullptr) {
@@ -9129,19 +9107,6 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
             GetCurBB()->SetUnreachable(true);
         }
         return;
-    }
-    if ((fsym->GetName() == "MCC_ThrowException") || (fsym->GetName() == "MCC_RethrowException") ||
-        (fsym->GetName() == "MCC_ThrowArithmeticException") ||
-        (fsym->GetName() == "MCC_ThrowArrayIndexOutOfBoundsException") ||
-        (fsym->GetName() == "MCC_ThrowNullPointerException") ||
-        (fsym->GetName() == "MCC_ThrowStringIndexOutOfBoundsException") || (fsym->GetName() == "abort") ||
-        (fsym->GetName() == "exit") || (fsym->GetName() == "MCC_Array_Boundary_Check")) {
-        callInsn.SetIsThrow(true);
-        GetCurBB()->SetKind(BB::kBBThrow);
-    } else if ((fsym->GetName() == "MCC_DecRefResetPair") || (fsym->GetName() == "MCC_ClearLocalStackRef")) {
-        for (size_t i = 0; i < stackPosition.size(); ++i) {
-            callInsn.SetClearStackOffset(i, stackPosition[i]);
-        }
     }
 }
 

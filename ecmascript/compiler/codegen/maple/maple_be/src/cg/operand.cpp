@@ -56,8 +56,8 @@ bool BetterUseMOVZ(uint64 val)
      */
 #if DEBUG
     constexpr uint32 kN16ChunksCheck = 2;
-    DEBUG_ASSERT(n16zerosChunks <= kN16ChunksCheck, "n16zerosChunks ERR");
-    DEBUG_ASSERT(n16onesChunks <= kN16ChunksCheck, "n16onesChunks ERR");
+    DEBUG_ASSERT(static_cast<uint32>(n16zerosChunks) <= kN16ChunksCheck, "n16zerosChunks ERR");
+    DEBUG_ASSERT(static_cast<uint32>(n16onesChunks) <= kN16ChunksCheck, "n16onesChunks ERR");
 #endif
     return (n16zerosChunks >= n16onesChunks);
 }

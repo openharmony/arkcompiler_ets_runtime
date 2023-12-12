@@ -80,7 +80,7 @@ struct CodeInfo {
 
     const std::map<uint64_t, std::vector<uint64_t>> &GetPC2DeoptInfo() const;
 
-    const std::map<uint64_t, std::vector<uint64_t>> &GetPC2CallsiteInfo() const;
+    const std::unordered_map<uint64_t, std::vector<uint64_t>> &GetPC2CallsiteInfo() const;
 
     void Reset();
 
@@ -106,7 +106,7 @@ private:
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
     std::map<std::string, FuncInfo> func2FuncInfo;
     std::map<uint64_t, std::vector<uint64_t>> pc2DeoptInfo;
-    std::map<uint64_t, std::vector<uint64_t>> pc2CallsiteInfo;
+    std::unordered_map<uint64_t, std::vector<uint64_t>> pc2CallsiteInfo;
     bool alreadyPageAlign_ {false};
 };
 

@@ -37,6 +37,8 @@ public:
         DEBUG_ASSERT(IsPrimitiveInteger(type), "Type must be integral");
     }
 
+    IntVal(const IntVal &val) : IntVal(val.value, val.width, val.sign) {}
+
     IntVal(const IntVal &val, PrimType type) : IntVal(val.value, type) {}
 
     IntVal(const IntVal &val, uint8 bitWidth, bool isSigned) : IntVal(val.value, bitWidth, isSigned) {}

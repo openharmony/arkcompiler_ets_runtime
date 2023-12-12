@@ -104,7 +104,7 @@ public:
     GStrIdx GetOrCreateStringIndex(GStrIdx strIdx, const std::string &str) const
     {
         std::string firstString(GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx));
-        firstString.append(str);
+        firstString += str;
         return GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(firstString);
     }
 

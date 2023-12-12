@@ -685,12 +685,12 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
 void LSRALinearScanRegAllocator::LiveInterval::AddRange(uint32 from, uint32 to)
 {
     if (ranges.empty()) {
-        ranges.emplace_back(LinearRange(from, to));
+        ranges.emplace_back(from, to);
         return;
     }
     /* create a new range */
     if (from > ranges.back().GetEnd()) {
-        (void)ranges.insert(ranges.end(), LinearRange(from, to));
+        ranges.emplace_back(from, to);
         return;
     }
     DEBUG_ASSERT(to >= ranges.back().GetStart(), "No possible on forward traverse.");
@@ -1013,12 +1013,12 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
                  */
                 RegOperand *retReg = nullptr;
                 if (insn->GetRetType() == Insn::kRegInt) {
-                    for (int i = 0; i < regInfo->GetIntRetRegsNum(); i++) {
+                    for (uint32 i = 0; i < regInfo->GetIntRetRegsNum(); i++) {
                         retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetIntRetReg(i), k64BitSize, kRegTyInt);
                         RecordPhysRegs(*retReg, insnNum, true);
                     }
                 } else {
-                    for (int i = 0; i < regInfo->GetFpRetRegsNum(); i++) {
+                    for (uint32 i = 0; i < regInfo->GetFpRetRegsNum(); i++) {
                         retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetFpRetReg(i), k64BitSize, kRegTyFloat);
                         RecordPhysRegs(*retReg, insnNum, true);
                     }
@@ -1640,12 +1640,14 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         memOpnd = GetSpillMem(regNO, true, insn, static_cast<regno_t>(intSpillRegSet[spillIdx + 1] + firstIntReg),
                               isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
-        std::string comment = " SPILL vreg:" + std::to_string(regNO);
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
-            comment += " end";
         }
-        stInsn->SetComment(comment);
+        if (CGOptions::kVerboseCG) {
+            std::string comment = " SPILL vreg:" + std::to_string(regNO);
+            stInsn->SetComment(comment);
+        }
+
         if (isOutOfRange && nextInsn != nullptr) {
             insn.GetBB()->InsertInsnBefore(*nextInsn, *stInsn);
         } else if (isOutOfRange && nextInsn == nullptr) {
@@ -1664,12 +1666,13 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         memOpnd = GetSpillMem(regNO, false, insn, static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg),
                               isOutOfRange, regSize);
         Insn *ldInsn = regInfo->BuildLdrInsn(regSize, spType, *phyOpnd, *memOpnd);
-        std::string comment = " RELOAD vreg" + std::to_string(regNO);
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
-            comment += " end";
         }
-        ldInsn->SetComment(comment);
+        if (CGOptions::kVerboseCG) {
+            std::string comment = " RELOAD vreg" + std::to_string(regNO);
+            ldInsn->SetComment(comment);
+        }
         insn.GetBB()->InsertInsnBefore(insn, *ldInsn);
     }
 }
