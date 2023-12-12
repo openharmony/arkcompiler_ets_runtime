@@ -49,7 +49,7 @@ public:
 
     bool IsRelaSection(ElfSecName sec) const
     {
-        return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
+        return sec == ElfSecName::RELATEXT;
     }
 
     void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const;

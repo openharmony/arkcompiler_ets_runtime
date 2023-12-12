@@ -97,7 +97,11 @@ bool AnFileDataManager::UnsafeLoadFromStub()
     // note: This method is not thread-safe
     // need to ensure that the instance of AnFileDataManager has been locked before use
     loadedStub_ = std::make_shared<StubFileInfo>(StubFileInfo());
+#if defined(PANDA_TARGET_OHOS)
+    return loadedStub_->MmapLoad();
+#else
     return loadedStub_->Load();
+#endif
 }
 
 void AnFileDataManager::Dump() const
