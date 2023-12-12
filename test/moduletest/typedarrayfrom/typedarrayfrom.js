@@ -14,21 +14,17 @@
  */
 
 /*
- * @tc.name:typedarraysort
- * @tc.desc:test TypedArray.sort
+ * @tc.name:typedarrayfrom
+ * @tc.desc:test TypedArray.from
  * @tc.type: FUNC
- * @tc.issue: I8NI6U
  */
-[
-Int8Array
-].forEach((ctr)=>{
-    let arr=new ctr();
-    arr[0]=1;
-    arr[1]=2;
-    arr[2]=3;
-    try {
-        arr.sort(null);
-    } catch (error) {
-        print(ctr.name,error.name)   ;
-    }
-})
+
+var arr=new Int8Array();
+let it = arr[Symbol.iterator]();
+let original_next=it.next;
+it.__proto__["next"]=function (){
+    print("get value");
+    return {value:undefined,done:true};
+}
+var fromArr=Int8Array.from(arr);
+print(fromArr.length)

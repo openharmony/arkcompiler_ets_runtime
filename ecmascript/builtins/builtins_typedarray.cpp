@@ -189,11 +189,23 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
     bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
+    bool isNativeFunc = true;
+    if (source->IsTypedArray() && !typedArrIter->IsUndefined()) {
+        JSHandle<JSTaggedValue> typedArrIterator = JSIterator::GetIterator(thread, source, typedArrIter);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> nextKey(thread->GlobalConstants()->GetHandledNextString());
+        JSHandle<JSTaggedValue> typedArrIterNext(JSObject::GetMethod(thread, typedArrIterator, nextKey));
+        if (typedArrIterNext->IsJSFunction()) {
+            JSTaggedValue method = JSHandle<JSFunction>::Cast(typedArrIterNext)->GetMethod();
+            Method *target = Method::Cast(method.GetTaggedObject());
+            isNativeFunc = target->IsNativeWithCallField();
+        }
+    }
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
     //   b. Let len be the number of elements in values.
     //   c. Let targetObj be ? TypedArrayCreate(C, « len »).
-    if (!usingIterator->IsUndefined() && !(isArrIter || isTypedArrIter)) {
+    if (!usingIterator->IsUndefined() && !(isArrIter || (isTypedArrIter && isNativeFunc))) {
         CVector<JSHandle<JSTaggedValue>> vec;
         JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, source, usingIterator);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
