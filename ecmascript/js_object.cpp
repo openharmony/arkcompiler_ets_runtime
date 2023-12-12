@@ -2704,7 +2704,7 @@ void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm)
     newArray->Set(thread, HASH_INDEX, hashValue);
     newArray->Set(thread, FUNCTION_EXTRA_INDEX, nativePointer);
     uint32_t threadID = vm->GetJSThread()->GetThreadId();
-    newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0x0ULL | threadID)));
+    newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0x8000'0000'0000'0000ULL | threadID)));
     Barriers::SetObject<true>(vm->GetJSThread(), this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
 }
 
