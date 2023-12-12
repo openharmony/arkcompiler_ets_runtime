@@ -23,8 +23,10 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
+
 using namespace panda;
 using namespace panda::ecmascript;
+
 #define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
 void BooleanRefValueFuzzerTest(const uint8_t *data, size_t size)
