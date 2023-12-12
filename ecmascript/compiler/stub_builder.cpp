@@ -3735,6 +3735,11 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     Bind(&notWritable);
                     {
                         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {receiver});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {*holder});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {key});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(entry)});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(Int32(111111))});
                         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                         result = Exception();
                         Jump(&exit);
@@ -3831,6 +3836,11 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     Bind(&notWritable1);
                     {
                         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {receiver});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {*holder});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {key});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(entry1)});
+                        CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(Int32(222222))});
                         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                         result = Exception();
                         Jump(&exit);

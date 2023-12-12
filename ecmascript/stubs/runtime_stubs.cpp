@@ -14,6 +14,7 @@
  */
 
 #include <cmath>
+#include <sstream>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -519,7 +520,10 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
-    DumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
+    std::ostringstream oss;
+    auto value = JSTaggedValue(rawValue);
+    value.Dump(oss);
+    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss.str();
 }
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
