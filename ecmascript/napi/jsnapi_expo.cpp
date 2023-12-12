@@ -1521,8 +1521,9 @@ bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePoint
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
+    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), object, keyValue, valueValue);
     object->GetTaggedObject()->GetClass()->SetIsNativeBindingObject(true);
-    return JSTaggedValue::SetProperty(vm->GetJSThread(), object, keyValue, valueValue);
+    return result;
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
