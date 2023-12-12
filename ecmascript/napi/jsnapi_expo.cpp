@@ -471,13 +471,13 @@ bool JSValueRef::IsConstructor()
 bool JSValueRef::IsFunction()
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
-    return value.IsHeapObject() && value.IsCallable();
+    return value.IsCallable();
 }
 
 bool JSValueRef::IsJSFunction()
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
-    return value.IsHeapObject() && value.IsJSFunction();
+    return value.IsJSFunction();
 }
 
 bool JSValueRef::IsProxy()
@@ -2113,37 +2113,44 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
-Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
+JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     JSValueRef *const argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    EscapeLocalScope scope(vm);
+    CHECK_HAS_PENDING_EXCEPTION(vm, *JSValueRef::Undefined(vm));
+    JSTaggedValue result;
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
     JSThread *thread = vm->GetJSThread();
-    if (!IsFunction()) {
-        return JSValueRef::Undefined(vm);
+    ASSERT(IsFunction()); // IsFunction check has been done in napi.
+    {
+        LocalScope scope(vm);
+        ecmascript::tooling::JsDebuggerManager *dm = vm->GetJsDebuggerManager();
+        if (dm->IsDebugApp()) {
+            dm->ClearSingleStepper();
+        }
+        JSTaggedValue func = *reinterpret_cast<JSTaggedValue *>(this);
+        JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+        JSTaggedValue thisValue = undefined;
+        if (thisObj != nullptr) {
+            thisValue = *reinterpret_cast<JSTaggedValue *>(thisObj);
+        }
+        EcmaRuntimeCallInfo *info =
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisValue, undefined, length);
+        RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
+        for (int32_t i = 0; i < length; i++) {
+            JSTaggedValue arg =
+                argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
+            info->SetCallArg(i, arg);
+        }
+        result = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
+        vm->GetHeap()->ClearKeptObjects();
+        if (dm->IsMixedDebugEnabled()) {
+            dm->NotifyReturnNative();
+        }
     }
-    vm->GetJsDebuggerManager()->ClearSingleStepper();
-    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(func, ERROR);
-    JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisValue, undefined, length);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    for (int32_t i = 0; i < length; i++) {
-        JSTaggedValue arg =
-            argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
-        info->SetCallArg(i, arg);
-    }
-    JSTaggedValue result = JSFunction::Call(info);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
-
-    vm->GetHeap()->ClearKeptObjects();
-    vm->GetJsDebuggerManager()->NotifyReturnNative();
-    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
+    return reinterpret_cast<JSValueRef *>(resultValue.GetAddress());
 }
 
 Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
