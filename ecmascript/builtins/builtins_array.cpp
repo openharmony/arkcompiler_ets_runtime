@@ -1253,6 +1253,9 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    if (len > UINT32_MAX) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
+    }
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
 
@@ -1266,6 +1269,15 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+    uint32_t allocateLength = 0;
+    uint32_t sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
+
+    if (len > 0) {
+        allocateLength = sepLength * (len - 1) + len;
+    }
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
     // 7. ReturnIfAbrupt(sep).
     RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
     std::u16string sepStr = EcmaStringAccessor(sepStringHandle).ToU16String();
