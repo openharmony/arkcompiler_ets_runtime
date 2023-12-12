@@ -1837,7 +1837,17 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t len = 0;
+    if (thisHandle->IsJSArray()) {
+        len = JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    } else {
+        JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+        JSHandle<JSTaggedValue> lenResult = JSTaggedValue::GetProperty(thread, thisHandle, lengthKey).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        JSTaggedNumber lenNumber = JSTaggedValue::ToLength(thread, lenResult);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        len = lenNumber.GetNumber();
+    }
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -1891,13 +1901,13 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
         int64_t upper = len - lower - 1;
         lowerP.Update(JSTaggedValue(lower));
         upperP.Update(JSTaggedValue(upper));
-        bool lowerExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
+        bool lowerExists = (JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (lowerExists) {
             lowerValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, lowerP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        bool upperExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
+        bool upperExists = (JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (upperExists) {
             upperValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, upperP);
