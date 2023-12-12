@@ -363,7 +363,11 @@ public:
         const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
-    void InitializeExtRefAndOwner(EcmaVM *vm);
+    /*
+     * Caution! This function may trigger GC therefore you should not call this function during
+     * obj initialization. If necessary, call it at last when all other accessor have been initialized.
+     */
+    static void InitializeExtRefAndOwner(EcmaVM *vm, const JSHandle<JSObject> &obj);
     // Call this method only in serialization
     void SetOwnership(JSThread* thread, uint32_t threadID);
     bool IsOwned(uint32_t threadID);

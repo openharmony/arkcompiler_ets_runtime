@@ -2680,9 +2680,9 @@ void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
     }
 }
 
-void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm)
+void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm, const JSHandle<JSObject> &obj)
 {
-    JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
+    JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(*obj, HASH_OFFSET);
     JSTaggedValue hashValue = JSTaggedValue(0);
     JSTaggedValue nativePointer = JSTaggedValue::Undefined();
     JSThread* thread = vm->GetJSThread();
@@ -2704,15 +2704,16 @@ void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm)
     newArray->Set(thread, HASH_INDEX, hashValue);
     newArray->Set(thread, FUNCTION_EXTRA_INDEX, nativePointer);
     uint32_t threadID = vm->GetJSThread()->GetThreadId();
-    newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0x8000'0000'0000'0000ULL | threadID)));
-    Barriers::SetObject<true>(vm->GetJSThread(), this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+    newArray->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue((uint64_t)(0xFFFF'0000'0000'0000ULL | threadID)));
+    Barriers::SetObject<true>(vm->GetJSThread(), *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
 }
 
 void ECMAObject::SetOwnership(JSThread* thread, uint32_t threadID)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (!hashField.IsTaggedArray()) {
-        InitializeExtRefAndOwner(thread->GetEcmaVM());
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
     uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();

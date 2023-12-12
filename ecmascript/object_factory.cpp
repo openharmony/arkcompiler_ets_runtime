@@ -983,7 +983,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            obj->InitializeExtRefAndOwner(vm_);
+            ECMAObject::InitializeExtRefAndOwner(vm_, obj);
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1483,7 +1483,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv
     JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
     JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
-    sfunc->InitializeExtRefAndOwner(vm_);
+    JSHandle<JSObject> sfuncObj = JSHandle<JSObject>::Cast(sfunc);
+    ECMAObject::InitializeExtRefAndOwner(vm_, sfuncObj);
     return sfunc;
 }
 
