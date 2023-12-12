@@ -36,6 +36,7 @@
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
+#include <sstream>
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -218,8 +219,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << entry;
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c1", JSTaggedValue::Exception());
                 }
                 if (hclass->IsTS()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
@@ -254,8 +265,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << entry;
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c2", JSTaggedValue::Exception());
                 }
                 if (UNLIKELY(holder != receiver)) {
                     break;
