@@ -122,7 +122,7 @@ class OptionInterface {
 public:
     virtual ~OptionInterface() = default;
 
-    virtual RetCode Parse(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg) = 0;
+    virtual RetCode Parse(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg) = 0;
     virtual void Clear() = 0;
     virtual std::vector<std::string> GetRawValues() = 0;
     virtual OptionWrp GetCommonValue() const = 0;
@@ -232,7 +232,7 @@ public:
         return GetValue();
     }
 
-    RetCode Parse(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg) override
+    RetCode Parse(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg) override
     {
         RetCode err = RetCode::noError;
         auto &key = args[argsIndex];
@@ -311,9 +311,9 @@ public:
     }
 
 protected:
-    RetCode ParseDigit(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg);
-    RetCode ParseString(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg);
-    RetCode ParseBool(ssize_t &argsIndex, const std::deque<std::string_view> &args);
+    RetCode ParseDigit(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg);
+    RetCode ParseString(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg);
+    RetCode ParseBool(size_t &argsIndex, const std::deque<std::string_view> &args);
 
     void FillVal(const T &val, std::vector<std::string> &vals)
     {

@@ -542,13 +542,13 @@ public:
 
     uint64 GetBBConflictElem(int32 index) const
     {
-        DEBUG_ASSERT(index < regBuckets, "out of bbConflict");
+        DEBUG_ASSERT(static_cast<uint32>(index) < regBuckets, "out of bbConflict");
         return bbConflict[index];
     }
 
     void SetBBConflictElem(int32 index, uint64 elem)
     {
-        DEBUG_ASSERT(index < regBuckets, "out of bbConflict");
+        DEBUG_ASSERT(static_cast<uint32>(index) < regBuckets, "out of bbConflict");
         bbConflict[index] = elem;
     }
 

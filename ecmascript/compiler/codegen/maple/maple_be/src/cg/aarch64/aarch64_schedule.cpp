@@ -501,7 +501,7 @@ void AArch64Schedule::CountUnitKind(const DepNode &depNode, uint32 array[], cons
     uint32 unitKind = depNode.GetUnitKind();
     int32 index = static_cast<int32>(__builtin_ffs(unitKind));
     while (index) {
-        DEBUG_ASSERT(index < kUnitKindLast, "CG internal error. index error.");
+        DEBUG_ASSERT(static_cast<uint32>(index) < kUnitKindLast, "CG internal error. index error.");
         ++array[index];
         unitKind &= ~(1u << (index - 1u));
         index = __builtin_ffs(unitKind);

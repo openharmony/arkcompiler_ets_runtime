@@ -829,7 +829,9 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     if (thisLen == 0) {
         return thisHandle.GetTaggedValue();
     }
-
+    if (static_cast<uint32_t>(count) >= UINT32_MAX / thisLen) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
     bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
     EcmaString *result = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), thisLen * count, isUtf8);
     for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {

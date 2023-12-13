@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/layout_info.h"
+#include "ecmascript/layout_info-inl.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tests/test_helper.h"
 

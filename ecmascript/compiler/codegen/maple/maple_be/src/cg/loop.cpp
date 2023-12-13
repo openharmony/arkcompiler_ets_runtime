@@ -558,7 +558,7 @@ void LoopFinder::DetectInnerLoop()
             for (LoopHierarchy *loopHierarchy2 = loopHierarchy1->GetNext(); loopHierarchy2 != nullptr;
                  loopHierarchy2 = loopHierarchy2->GetNext()) {
                 if (loopHierarchy1->GetHeader() != loopHierarchy2->GetHeader()) {
-                    auto loopHierarchy2Members = loopHierarchy2->GetLoopMembers();
+                    auto &loopHierarchy2Members = loopHierarchy2->GetLoopMembers();
                     if (find(loopHierarchy2Members.begin(), loopHierarchy2Members.end(), loopHierarchy1->GetHeader()) !=
                         loopHierarchy2Members.end()) {
                         bool allin = true;

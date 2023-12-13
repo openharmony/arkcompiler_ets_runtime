@@ -27,6 +27,8 @@
 #endif
 
 namespace maplebe {
+#define RA_DUMP (CG_DEBUG_FUNC(f))
+
 void CgRegAlloc::GetAnalysisDependence(AnalysisDep &aDep) const
 {
     if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevelLiteCG ||
@@ -85,6 +87,7 @@ bool CgRegAlloc::PhaseRun(maplebe::CGFunc &f)
         }
         /* do register allocation */
         CHECK_FATAL(regAllocator != nullptr, "regAllocator is null in CgDoRegAlloc::Run");
+        regAllocator->SetNeedDump(RA_DUMP);
         f.SetIsAfterRegAlloc();
         success = regAllocator->AllocateRegisters();
         if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0) {

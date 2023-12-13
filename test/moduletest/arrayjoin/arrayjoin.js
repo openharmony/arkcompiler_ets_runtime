@@ -61,3 +61,18 @@ var arr7 = [
     }
 ];
 print(arr7.toLocaleString());
+
+var aa = this;
+var bb = {};
+aa.length = 4294967296; // 2 ^ 32 (max array length + 1)
+try {
+    Array.prototype.join.call(aa,bb)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+try {
+    Object.getOwnPropertyDescriptors(Array(1e9).join('c'))
+} catch (e) {
+    print(e instanceof RangeError);
+}

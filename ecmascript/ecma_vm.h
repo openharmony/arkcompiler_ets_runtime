@@ -76,6 +76,7 @@ template<typename T>
 class JSHandle;
 class JSArrayBuffer;
 class JSFunction;
+class SourceTextModule;
 class Program;
 class TSManager;
 class AOTFileManager;
@@ -86,14 +87,17 @@ class ConstantPool;
 class FunctionCallTimer;
 class EcmaStringTable;
 class JSObjectResizingStrategy;
+class Jit;
 
 using NativePtrGetter = void* (*)(void* info);
+using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 using DeviceDisconnectCallback = std::function<bool()>;
+using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
@@ -272,6 +276,16 @@ public:
         return nativePtrGetter_;
     }
 
+    void SetSourceMapCallback(SourceMapCallback cb)
+    {
+        sourceMapCallback_ = cb;
+    }
+
+    SourceMapCallback GetSourceMapCallback() const
+    {
+        return sourceMapCallback_;
+    }
+
     void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
     {
         sourceMapTranslateCallback_ = cb;
@@ -421,6 +435,8 @@ public:
         return moduleName_;
     }
 
+    CString GetCurrentModuleName();
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -464,6 +480,20 @@ public:
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
     void HandleUncaughtException(JSTaggedValue exception);
+    void RegisterUncatchableErrorHandler(const UncatchableErrorHandler &uncatchableErrorHandler)
+    {
+        uncatchableErrorHandler_ = uncatchableErrorHandler;
+    }
+
+    // handle uncatchable errors, such as oom
+    void HandleUncatchableError()
+    {
+        if (uncatchableErrorHandler_ != nullptr) {
+            panda::TryCatch trycatch(this);
+            uncatchableErrorHandler_(trycatch);
+        }
+    }
+
     void DumpCallTimeInfo();
 
     FunctionCallTimer *GetCallTimer() const
@@ -514,6 +544,20 @@ public:
         return strategy_;
     }
 
+    Jit *GetJit()
+    {
+        return jit_;
+    }
+
+    bool IsEnableJit() const
+    {
+        return isEnableJit_;
+    }
+
+    void SetEnableJit(bool state)
+    {
+        isEnableJit_ = state;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -563,6 +607,7 @@ private:
     CMap<CString, CString> mockModuleList_;
 
     NativePtrGetter nativePtrGetter_ {nullptr};
+    SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     void *loop_ {nullptr};
 
@@ -603,6 +648,8 @@ private:
 
     DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
 
+    UncatchableErrorHandler uncatchableErrorHandler_ {nullptr};
+
     friend class Snapshot;
     friend class SnapshotProcessor;
     friend class ObjectFactory;
@@ -612,6 +659,8 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
+    Jit *jit_ {nullptr};
+    bool isEnableJit_ {false};
 };
 }  // namespace ecmascript
 }  // namespace panda

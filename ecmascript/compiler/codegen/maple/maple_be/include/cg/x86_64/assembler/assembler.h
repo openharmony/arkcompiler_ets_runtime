@@ -369,6 +369,7 @@ public:
     /* unordered compare */
     virtual void Ucomisd(Reg srcReg, Reg destReg) = 0;
     virtual void Ucomiss(Reg srcReg, Reg destReg) = 0;
+    virtual void Cmpeqsd(Reg srcReg, Reg destReg) = 0;
     /* float sqrt*/
     virtual void Sqrtss_r(Reg srcReg, Reg destReg) = 0;
     virtual void Sqrtsd_r(Reg srcReg, Reg destReg) = 0;

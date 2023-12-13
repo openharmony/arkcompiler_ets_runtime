@@ -123,6 +123,11 @@ public:
         return machineCodeSpace_;
     }
 
+    HugeMachineCodeSpace *GetHugeMachineCodeSpace() const
+    {
+        return hugeMachineCodeSpace_;
+    }
+
     SnapshotSpace *GetSnapshotSpace() const
     {
         return snapshotSpace_;
@@ -236,6 +241,16 @@ public:
         LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 
+    void SetOnSerializeEvent(bool isSerialize)
+    {
+        onSerializeEvent_ = isSerialize;
+    }
+
+    bool GetOnSerializeEvent() const
+    {
+        return onSerializeEvent_;
+    }
+
     /*
      * For object allocations.
      */
@@ -260,6 +275,7 @@ public:
     inline TaggedObject *AllocateHugeObject(size_t size);
     // Machine code
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -569,6 +585,8 @@ public:
     }
 
     void CheckNonMovableSpaceOOM();
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -630,6 +648,24 @@ private:
         Heap *heap_;
     };
 
+    class RecursionScope {
+    public:
+        explicit RecursionScope(Heap* heap) : heap_(heap)
+        {
+            if (heap_->recursionDepth_++ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Constructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+        ~RecursionScope()
+        {
+            if (--heap_->recursionDepth_ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Destructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+    private:
+        Heap* heap_ {nullptr};
+    };
+
     EcmaVM *ecmaVm_ {nullptr};
     JSThread *thread_ {nullptr};
 
@@ -652,6 +688,7 @@ private:
     // Spaces used for special kinds of objects.
     NonMovableSpace *nonMovableSpace_ {nullptr};
     MachineCodeSpace *machineCodeSpace_ {nullptr};
+    HugeMachineCodeSpace *hugeMachineCodeSpace_ {nullptr};
     HugeObjectSpace *hugeObjectSpace_ {nullptr};
     SnapshotSpace *snapshotSpace_ {nullptr};
 
@@ -746,11 +783,14 @@ private:
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
     std::atomic_bool onHighSensitiveEvent_ {false};
     bool onStartupEvent_ {false};
+    bool onSerializeEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};
     size_t heapAliveSizeAfterGC_ {0};
     double idleTaskFinishTime_ {0.0};
+    int32_t recursionDepth_ {0};
+
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
 #endif

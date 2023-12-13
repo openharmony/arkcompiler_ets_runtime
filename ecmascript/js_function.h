@@ -321,6 +321,30 @@ public:
     DECL_DUMP()
 };
 
+class JSAsyncModuleFulfilledFunction : public JSFunction {
+public:
+    CAST_CHECK(JSAsyncModuleFulfilledFunction, IsJSAsyncModuleFulfilledFunction);
+
+    static constexpr size_t MODULE_OFFSET = JSFunction::SIZE;
+    ACCESSORS(Module, MODULE_OFFSET, SIZE);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, MODULE_OFFSET, SIZE)
+
+    DECL_DUMP()
+};
+
+class JSAsyncModuleRejectedFunction : public JSFunction {
+public:
+    CAST_CHECK(JSAsyncModuleRejectedFunction, IsJSAsyncModuleRejectedFunction);
+
+    static constexpr size_t MODULE_OFFSET = JSFunction::SIZE;
+    ACCESSORS(Module, MODULE_OFFSET, SIZE);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, MODULE_OFFSET, SIZE)
+
+    DECL_DUMP()
+};
+
 class JSPromiseAllResolveElementFunction : public JSFunction {
 public:
     CAST_CHECK(JSPromiseAllResolveElementFunction, IsJSPromiseAllResolveElementFunction);

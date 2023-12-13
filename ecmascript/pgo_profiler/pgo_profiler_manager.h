@@ -23,6 +23,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
+#include "os/mutex.h"
 
 namespace panda::ecmascript::pgo {
 class PGOProfilerManager {
@@ -65,16 +66,25 @@ public:
 
     void SetRequestAotCallback(const RequestAotCallback &cb)
     {
+        os::memory::LockHolder lock(mutex_);
+        if (requestAotCallback_ != nullptr) {
+            return;
+        }
         requestAotCallback_ = cb;
     }
 
-    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
+    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode)
     {
-        if (requestAotCallback_ == nullptr) {
-            LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
-            return false;
+        RequestAotCallback cb;
+        {
+            os::memory::LockHolder lock(mutex_);
+            if (requestAotCallback_ == nullptr) {
+                LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
+                return false;
+            }
+            cb = requestAotCallback_;
         }
-        return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
+        return (cb(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
     }
 
     void Destroy()

@@ -34,6 +34,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/jit/jit.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -73,6 +74,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -169,6 +171,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
+    SetEnableJit(options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
 void EcmaVM::InitializePGOProfiler()
@@ -233,6 +236,11 @@ bool EcmaVM::Initialize()
     singleCharTable_ = SingleCharTable::CreateSingleCharTable(thread_);
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
+
+    if (IsEnableJit()) {
+        jit_ = new Jit(this);
+        jit_->Initialize();
+    }
     initialized_ = true;
     return true;
 }
@@ -276,6 +284,13 @@ EcmaVM::~EcmaVM()
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {
             jsPandaFile->DeleteParsedConstpoolVM(this);
+        }
+    }
+
+    if (IsEnableJit()) {
+        if (jit_ != nullptr) {
+            delete jit_;
+            jit_ = nullptr;
         }
     }
 
@@ -584,7 +599,9 @@ void *EcmaVM::InternalMethodTable[] = {
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
     reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
     reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc),
-    reinterpret_cast<void *>(JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction)
+    reinterpret_cast<void *>(JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction),
+    reinterpret_cast<void *>(SourceTextModule::AsyncModuleFulfilledFunc),
+    reinterpret_cast<void *>(SourceTextModule::AsyncModuleRejectedFunc)
 };
 
 void EcmaVM::GenerateInternalNativeMethods()
@@ -722,5 +739,18 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
             DFXJSNApi::ResumeVM(iter->second);
         }
     }
+}
+
+// This moduleName is a readOnly variable for napi, represent which abc is running in current vm.
+CString EcmaVM::GetCurrentModuleName()
+{
+    CString recordName = ConvertToString(EcmaInterpreter::GetCurrentEntryPoint(thread_));
+    LOG_FULL(INFO) << " Current recordName is " << recordName;
+    CString moduleName = ModulePathHelper::GetModuleName(recordName);
+    PathHelper::DeleteNamespace(moduleName);
+    if (moduleName.empty()) {
+        LOG_FULL(ERROR) << " GetCurrentModuleName Fail,  recordName is " << recordName;
+    }
+    return moduleName;
 }
 }  // namespace panda::ecmascript

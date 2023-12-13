@@ -578,7 +578,9 @@ uint32 AArch64ObjEmitter::GetCondBranchOpndValue(const Operand &opnd, ObjFuncEmi
 uint32 AArch64ObjEmitter::GetUnCondBranchOpndValue(const Operand &opnd, const std::vector<uint32> &label2Offset,
                                                    ObjFuncEmitInfo &objFuncEmitInfo) const
 {
-    uint32 defOffset = label2Offset[static_cast<const LabelOperand &>(opnd).GetLabelIndex()];
+    auto labelIndex = static_cast<const LabelOperand &>(opnd).GetLabelIndex();
+    CHECK_FATAL(labelIndex < label2Offset.size(), "labelIndex is out of range");
+    uint32 defOffset = label2Offset[labelIndex];
     if (defOffset != 0xFFFFFFFFULL) {
         uint32 useOffset = objFuncEmitInfo.GetTextDataSize();
         uint32 pcRelImm = (defOffset - useOffset) >> k2BitSize;
@@ -586,7 +588,6 @@ uint32 AArch64ObjEmitter::GetUnCondBranchOpndValue(const Operand &opnd, const st
     }
 
     FixupKind fixupKind = FixupKind(kAArch64UnCondBranchPCRelImm26);
-    uint32 labelIndex = static_cast<const LabelOperand &>(opnd).GetLabelIndex();
     LocalFixup *fixup = memPool->New<LocalFixup>(labelIndex, objFuncEmitInfo.GetTextDataSize(), fixupKind);
     objFuncEmitInfo.AppendLocalFixups(*fixup);
     return 0;

@@ -22,3 +22,13 @@
 const input = [1, [2], [[3]]];
 print(input.flat(undefined));
 
+{
+    class MyArray extends Array {
+        static get [Symbol.species]() {
+            return this;
+        }
+    }
+    const wannabe = new MyArray();
+    const flattened = wannabe.flat(Infinity);
+    print(flattened instanceof MyArray);
+}

@@ -163,6 +163,8 @@
     V(JSTaggedValue, AsyncAwaitStatusFunctionClass, ASYNC_AWAIT_STATUS_FUNCTION_CLASS)              \
     V(JSTaggedValue, PromiseReactionFunctionClass, PROMISE_REACTION_FUNCTION_CLASS)                 \
     V(JSTaggedValue, PromiseExecutorFunctionClass, PROMISE_EXECUTOR_FUNCTION_CLASS)                 \
+    V(JSTaggedValue, AsyncModuleFulfilledFunctionClass, ASYNC_MODULE_FULFILLED_FUNCTION_CLASS)      \
+    V(JSTaggedValue, AsyncModuleRejectedFunctionClass, ASYNC_MODULE_REJECTED_FUNCTION_CLASS)        \
     V(JSTaggedValue, GeneratorFunctionClass, GENERATOR_FUNCTION_CLASS)                              \
     V(JSTaggedValue, AsyncGeneratorFunctionClass, ASYNC_GENERATOR_FUNCTION_CLASS)                   \
     V(JSTaggedValue, PromiseAllResolveElementFunctionClass, PROMISE_ALL_RESOLVE_ELEMENT_FUNC_CLASS) \

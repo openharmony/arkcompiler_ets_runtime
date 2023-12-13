@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/ecma_string-inl.h"
 
 namespace panda::ecmascript::kungfu {
 class TSHCROptPass : public PassVisitor {

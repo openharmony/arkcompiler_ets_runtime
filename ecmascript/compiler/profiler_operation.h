@@ -32,7 +32,8 @@ enum class OperationType : uint8_t {
     FALSE_BRANCH,
     TRY_DUMP,
     TRY_PREDUMP,
-    ITERATOR_FUNC_KIND
+    ITERATOR_FUNC_KIND,
+    TRY_JIT
 };
 
 using SlotIDFormat = BytecodeInstruction::Format;
@@ -44,12 +45,18 @@ using SlotIDFormat = BytecodeInstruction::Format;
 using Callback = std::function<void(const std::initializer_list<GateRef> &, OperationType)>;
 class ProfileOperation {
 public:
-    ProfileOperation() : callback_(nullptr) {}
-    explicit ProfileOperation(Callback callback) : callback_(callback) {}
+    ProfileOperation() : callback_(nullptr), jitCallback_(nullptr) {}
+    explicit ProfileOperation(Callback callback, Callback jitCallback) : callback_(callback),
+        jitCallback_(jitCallback) {}
 
     inline bool IsEmpty() const
     {
         return callback_ == nullptr;
+    }
+
+    inline bool IsJitEmpty() const
+    {
+        return jitCallback_ == nullptr;
     }
 
     inline void ProfileCall(GateRef func) const
@@ -103,6 +110,13 @@ public:
         }
     }
 
+    inline void TryJitCompile() const
+    {
+        if (jitCallback_) {
+            jitCallback_({ }, OperationType::TRY_JIT);
+        }
+    }
+
     inline void TryPreDump() const
     {
         if (callback_) {
@@ -126,6 +140,7 @@ public:
 
 private:
     Callback callback_;
+    Callback jitCallback_;
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_OPERATION_H

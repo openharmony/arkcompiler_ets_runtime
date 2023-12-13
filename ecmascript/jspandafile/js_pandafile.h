@@ -19,6 +19,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file-inl.h"
@@ -36,6 +37,7 @@ public:
         int jsonStringId {-1};
         CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
+        bool hasTopLevelAwait {false};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
@@ -64,12 +66,14 @@ public:
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
+    static constexpr char HASTLA_CLASS[] = "L_HasTopLevelAwait;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
+    static constexpr char HAS_TOP_LEVEL_AWAIT[] = "hasTopLevelAwait";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
@@ -200,6 +204,18 @@ public:
         return -1;
     }
 
+    int GetHasTopLevelAwait(const CString &recordName = ENTRY_FUNCTION_NAME) const
+    {
+        if (IsBundlePack()) {
+            return jsRecordInfo_.begin()->second.hasTopLevelAwait;
+        }
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return info->second.hasTopLevelAwait;
+        }
+        return false;
+    }
+
     Span<const uint32_t> GetClasses() const
     {
         return pf_->GetClasses();
@@ -283,7 +299,7 @@ public:
 
     bool IsLoadedAOT() const
     {
-        return (anFileInfoIndex_ != INVALID_INDEX);
+        return (GetAOTFileInfoIndex() != INVALID_INDEX);
     }
 
     uint32_t GetFileUniqId() const
@@ -343,6 +359,11 @@ public:
 
     void SetAOTFileInfoIndex(uint32_t index)
     {
+        if (IsLoadedAOT()) {
+            LOG_ECMA(ERROR) << "Set Aot file info index failed. desc: " << GetJSPandaFileDesc()
+                            << ", anFileIndex: " << anFileInfoIndex_ << "  vs " << index;
+            return;
+        }
         anFileInfoIndex_ = index;
     }
 

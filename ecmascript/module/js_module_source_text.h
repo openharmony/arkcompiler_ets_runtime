@@ -23,7 +23,14 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
+enum class ModuleStatus : uint8_t {
+    UNINSTANTIATED = 0x01,
+    INSTANTIATING,
+    INSTANTIATED,
+    EVALUATING,
+    EVALUATING_ASYNC,
+    EVALUATED
+};
 
 enum class ModuleTypes : uint8_t {
     ECMA_MODULE = 0x01,
@@ -45,9 +52,21 @@ enum class LoadingTypes : uint8_t {
 class SourceTextModule final : public ModuleRecord {
 public:
     static constexpr int UNDEFINED_INDEX = -1;
+    static constexpr int MODULE_ERROR = 1;
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
     static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
     static constexpr uint8_t DEREGISTER_MODULE_TAG = 1;
+    static constexpr uint32_t FIRST_ASYNC_EVALUATING_ORDINAL = 2;
+    static constexpr uint32_t NOT_ASYNC_EVALUATED = 0;
+    static constexpr uint32_t ASYNC_EVALUATE_DID_FINISH = 1;
+    struct AsyncEvaluatingOrdinalCompare {
+        bool operator()(const JSHandle<SourceTextModule> &lhs, const JSHandle<SourceTextModule> &rhs) const
+        {
+            return lhs->GetAsyncEvaluatingOrdinal() < rhs->GetAsyncEvaluatingOrdinal();
+        }
+    };
+    using AsyncParentCompletionSet =
+      CSet<JSHandle<SourceTextModule>, AsyncEvaluatingOrdinalCompare>;
 
     CAST_CHECK(SourceTextModule, IsSourceTextModule);
 
@@ -85,9 +104,28 @@ public:
         size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
-    static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+    static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                 const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+ 
+    // 16.2.1.5.3.2 ExecuteAsyncModule ( module )
+    static void ExecuteAsyncModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                   const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
 
+    // 16.2.1.5.3.3 GatherAvailableAncestors ( module, execList )
+    static void GatherAvailableAncestors(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                         AsyncParentCompletionSet &execList);
+
+    // 16.2.1.5.3.4 AsyncModuleExecutionFulfilled ( module )
+    static void AsyncModuleExecutionFulfilled(JSThread *thread, const JSHandle<SourceTextModule> &module);
+
+    // 16.2.1.5.3.5 AsyncModuleExecutionRejected ( module, error )
+    static void AsyncModuleExecutionRejected(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                             JSTaggedValue error);
+
+    static JSTaggedValue AsyncModuleFulfilledFunc(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue AsyncModuleRejectedFunc(EcmaRuntimeCallInfo *argv);
+    static void AddAsyncParentModule(JSThread *thread, JSHandle<SourceTextModule> &module,
+                                     JSHandle<SourceTextModule> &parent);
     // 15.2.1.18 Runtime Semantics: GetModuleNamespace ( module )
     static JSHandle<JSTaggedValue> GetModuleNamespace(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
@@ -124,10 +162,15 @@ public:
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(IndirectExportEntries, INDIRECT_EXPORT_ENTTRIES_OFFSET, START_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(StarExportEntries, START_EXPORT_ENTTRIES_OFFSET, NAME_DICTIONARY_OFFSET);
-    ACCESSORS(NameDictionary, NAME_DICTIONARY_OFFSET, EVALUATION_ERROR_OFFSET);
+    ACCESSORS(NameDictionary, NAME_DICTIONARY_OFFSET, CYCLE_ROOT_OFFSET);
+    ACCESSORS(CycleRoot, CYCLE_ROOT_OFFSET, TOP_LEVEL_CAPABILITY_OFFSET);
+    ACCESSORS(TopLevelCapability, TOP_LEVEL_CAPABILITY_OFFSET, ASYNC_PARENT_MODULES_OFFSET);
+    ACCESSORS(AsyncParentModules, ASYNC_PARENT_MODULES_OFFSET, EVALUATION_ERROR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(EvaluationError, int32_t, EVALUATION_ERROR_OFFSET, DFS_ANCESTOR_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSAncestorIndex, int32_t, DFS_ANCESTOR_INDEX_OFFSET, DFS_INDEX_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, ASYNC_EVALUATION_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(AsyncEvaluatingOrdinal, uint32_t, ASYNC_EVALUATION_OFFSET, PENDING_DEPENDENCIES_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(PendingAsyncDependencies, int32_t, PENDING_DEPENDENCIES_OFFSET, BIT_FIELD_OFFSET);
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
 
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -136,21 +179,23 @@ public:
     static constexpr size_t STATUS_BITS = 3;
     static constexpr size_t MODULE_TYPE_BITS = 4;
     static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
+    static constexpr size_t HASTLA_BITS = 1;
     static constexpr size_t LOADING_TYPE_BITS = 3;
     static constexpr uint16_t REGISTER_COUNTS = 16;
 
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)
     NEXT_BIT_FIELD(BitField, IsNewBcVersion, bool, IS_NEW_BC_VERSION_BITS, Types)
-    NEXT_BIT_FIELD(BitField, LoadingTypes, LoadingTypes, LOADING_TYPE_BITS, IsNewBcVersion)
+    NEXT_BIT_FIELD(BitField, HasTLA, bool, HASTLA_BITS, IsNewBcVersion)
+    NEXT_BIT_FIELD(BitField, LoadingTypes, LoadingTypes, LOADING_TYPE_BITS, HasTLA)
     NEXT_BIT_FIELD(BitField, RegisterCounts, uint16_t, REGISTER_COUNTS, LoadingTypes)
 
     DECL_DUMP()
     DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)
 
     // 15.2.1.16.5 Evaluate()
-    static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                        const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+    static JSTaggedValue Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                         const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.16.4 Instantiate()
     static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
@@ -186,8 +231,7 @@ public:
     static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                      const JSHandle<Method> &method);
     static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                CVector<JSHandle<SourceTextModule>> &stack, int index,
-                                const JSHandle<Method> &method);
+                                int index, const JSHandle<Method> &method);
 
 private:
     static void SetExportName(JSThread *thread,
@@ -228,6 +272,12 @@ private:
                                                              int &index, bool excuteFromJob);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
+    static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
+                                     JSHandle<PromiseCapability> &capability,
+                                     const CVector<JSHandle<SourceTextModule>> &stack, int result);
+    static void HandleConcurrentEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
+                                     const CVector<JSHandle<SourceTextModule>> &stack, int result);
+    bool IsAsyncEvaluating();
 };
 
 class ResolvedBinding final : public Record {

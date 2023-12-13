@@ -442,6 +442,15 @@ public:
         return referenceVirtualRegs;
     }
 
+    void ReplaceRegReference(regno_t oldReg, regno_t newReg)
+    {
+        auto iter = referenceVirtualRegs.find(oldReg);
+        if (iter != referenceVirtualRegs.end()) {
+            referenceVirtualRegs.erase(iter);
+            referenceVirtualRegs.insert(newReg);
+        }
+    }
+
     void AddReferenceStackSlot(int64 offset)
     {
         referenceStackSlots.insert(offset);

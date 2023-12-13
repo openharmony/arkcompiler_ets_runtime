@@ -37,7 +37,7 @@ public:
                                                              const CString &entry, const void *buffer, size_t size);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool excuteFromJob = false);
-    static void LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile);
+    static void BindPandaFilesForAot(EcmaVM *vm, JSPandaFile *jsPandaFile);
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,

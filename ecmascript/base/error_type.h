@@ -24,10 +24,10 @@ enum class ErrorType : uint8_t {
     EVAL_ERROR,
     RANGE_ERROR,
     REFERENCE_ERROR,
-    SYNTAX_ERROR,
     TYPE_ERROR,
-    URI_ERROR,
     AGGREGATE_ERROR,
+    URI_ERROR,
+    SYNTAX_ERROR,
     OOM_ERROR,
     TERMINATION_ERROR,
 };

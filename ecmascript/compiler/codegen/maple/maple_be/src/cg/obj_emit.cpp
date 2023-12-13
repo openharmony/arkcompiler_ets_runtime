@@ -45,7 +45,7 @@ void ObjEmitter::EmitFuncBinaryCode(ObjFuncEmitInfo &objFuncEmitInfo)
 
     /* local float variable */
     for (const auto &mpPair : cgFunc.GetLabelAndValueMap()) {
-        CHECK_FATAL(mpPair.first <= label2Offset.size(), "label2Offset");
+        CHECK_FATAL(mpPair.first < label2Offset.size(), "label2Offset");
         label2Offset[mpPair.first] = objFuncEmitInfo.GetTextDataSize();
         objFuncEmitInfo.AppendTextData(&(mpPair.second), k8ByteSize);
     }
@@ -59,7 +59,7 @@ void ObjEmitter::EmitInstructions(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<
     CGFunc &cgFunc = objFuncEmitInfo.GetCGFunc();
     FOR_ALL_BB(bb, &cgFunc) {
         if (bb->GetLabIdx() != 0) {
-            CHECK_FATAL(bb->GetLabIdx() <= label2Offset.size(), "label2Offset");
+            CHECK_FATAL(bb->GetLabIdx() < label2Offset.size(), "label2Offset");
             label2Offset[bb->GetLabIdx()] = objFuncEmitInfo.GetTextDataSize();
             objFuncEmitInfo.AppendLabel2Order(bb->GetLabIdx());
         }
@@ -114,16 +114,10 @@ void ObjEmitter::WriteObjFile()
 {
     const auto &emitMemorymanager = CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemorymanager.codeSpace != nullptr) {
-        for (auto *section : sections) {
-            if (section->GetType() == SHT_NOBITS) {
-                continue;
-            }
-            if (section == textSection) {
-                uint8 *memSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-                    textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
-                memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), section->GetDataSize());
-            }
-        }
+        DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
+        uint8 *memSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
+            textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
+        memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), textSection->GetDataSize());
         return;
     }
     /* write header */

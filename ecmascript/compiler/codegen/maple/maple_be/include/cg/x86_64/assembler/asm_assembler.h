@@ -348,6 +348,7 @@ public:
     /* unordered compare */
     void Ucomisd(Reg srcReg, Reg destReg) override;
     void Ucomiss(Reg srcReg, Reg destReg) override;
+    void Cmpeqsd(Reg srcReg, Reg destReg) override;
     /* float sqrt*/
     void Sqrtss_r(Reg srcReg, Reg destReg) override;
     void Sqrtsd_r(Reg srcReg, Reg destReg) override;

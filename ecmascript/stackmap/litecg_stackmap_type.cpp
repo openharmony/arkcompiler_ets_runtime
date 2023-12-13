@@ -37,15 +37,6 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
                     LOG_ECMA(FATAL) << "only stack and reigster is supported currently";
                     UNREACHABLE();
                 }
-
-                if (kind == 2) { // kind is 2 means register
-                    llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
-                } else if (kind == 1) { // stack
-                    llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));
-                } else {
-                    LOG_ECMA(FATAL) << "only stack and reigster is supported currently";
-                    UNREACHABLE();
-                }
             }
             uintptr_t pc = static_cast<uintptr_t>(elem.first);
             pc2CallSiteInfo[pc] = llvmCallSiteInfo;

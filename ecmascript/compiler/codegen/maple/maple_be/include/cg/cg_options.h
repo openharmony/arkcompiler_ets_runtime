@@ -42,8 +42,6 @@ extern maplecl::Option<bool> storeloadopt;
 extern maplecl::Option<bool> globalopt;
 extern maplecl::Option<bool> hotcoldsplit;
 extern maplecl::Option<bool> prelsra;
-extern maplecl::Option<bool> lsraLvarspill;
-extern maplecl::Option<bool> lsraOptcallee;
 extern maplecl::Option<bool> calleeregsPlacement;
 extern maplecl::Option<bool> ssapreSave;
 extern maplecl::Option<bool> ssupreRestore;

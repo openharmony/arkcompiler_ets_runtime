@@ -15,9 +15,13 @@
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot.h"
 
+#include "ecmascript/common.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 
 namespace panda::ecmascript::kungfu {
 void AOTSnapshot::InitSnapshot(uint32_t compileFilesCount)
@@ -39,11 +43,11 @@ JSHandle<ConstantPool> AOTSnapshot::NewSnapshotConstantPool(uint32_t cacheSize)
 }
 
 void AOTSnapshot::GenerateSnapshotConstantPools(const CMap<int32_t, JSTaggedValue> &allConstantPools,
-                                                const CString &fileName)
+                                                const CString &fileName, uint32_t fileIndex)
 {
     JSHandle<TaggedArray> snapshotCpArr = factory_->NewTaggedArray(allConstantPools.size() *
                                                                    AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE);
-    snapshotData_.AddSnapshotCpArrayToData(thread_, fileName, snapshotCpArr);
+    snapshotData_.AddSnapshotCpArrayToData(thread_, fileName, fileIndex, snapshotCpArr);
 
     JSMutableHandle<ConstantPool> cp(thread_, thread_->GlobalConstants()->GetUndefined());
     uint32_t pos = 0;
@@ -68,7 +72,13 @@ void AOTSnapshot::StoreConstantPoolInfo(BytecodeInfoCollector *bcInfoCollector)
     const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
     const CMap<int32_t, JSTaggedValue> &allConstantPools = vm_->GetJSThread()->
         GetCurrentEcmaContext()->FindConstpools(jsPandaFile).value();
-    GenerateSnapshotConstantPools(allConstantPools, jsPandaFile->GetNormalizedFileDesc());
+    pgo::ApEntityId fileId = INVALID_INDEX;
+    if (!pgo::PGOProfilerManager::GetInstance()->GetPandaFileId(jsPandaFile->GetJSPandaFileDesc(), fileId)) {
+        LOG_COMPILER(ERROR) << "StoreConstantPoolInfo failed. no file id found for "
+                            << jsPandaFile->GetJSPandaFileDesc();
+        return;
+    }
+    GenerateSnapshotConstantPools(allConstantPools, jsPandaFile->GetNormalizedFileDesc(), fileId);
     bcInfoCollector->StoreDataToGlobalData(snapshotData_);
 }
 }  // namespace panda::ecmascript

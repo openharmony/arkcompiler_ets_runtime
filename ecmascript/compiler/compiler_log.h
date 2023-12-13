@@ -38,6 +38,7 @@ class MethodLogList;
 class CompilerLog {
 public:
     explicit CompilerLog(const std::string &logOpt);
+    CompilerLog() = default;
     ~CompilerLog() = default;
 
     bool AllMethod() const
@@ -98,6 +99,11 @@ public:
     bool EnableMethodCIRLog() const
     {
         return GetEnableMethodLog() && OutputCIR();
+    }
+
+    bool EnableMethodASMLog() const
+    {
+        return GetEnableMethodLog() && OutputASM();
     }
 
     void SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList);

@@ -147,9 +147,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
-    V(CallJSDeleteProxyPrototype)         \
-    V(CallModuleNamespaceDeletePrototype) \
-    V(CallTypedArrayDeletePrototype)      \
+    V(RegularJSObjDeletePrototype)        \
     V(CallJSObjDeletePrototype)           \
     V(ToPropertyKey)                      \
     V(NewJSPrimitiveRef)                  \
@@ -235,6 +233,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CheckSafePoint)                     \
     V(PGODump)                            \
     V(PGOPreDump)                         \
+    V(JitCompile)                         \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
@@ -369,7 +368,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ThrowRangeError)                    \
     V(InitializeGeneratorFunction)        \
     V(FunctionDefineOwnProperty)          \
-    V(AOTEnableProtoChangeMarker)
+    V(AOTEnableProtoChangeMarker)         \
+    V(HasProperty)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

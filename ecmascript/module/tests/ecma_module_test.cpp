@@ -279,10 +279,10 @@ HWTEST_F_L0(EcmaModuleTest, Instantiate_Evaluate_GetNamespace_SetNamespace)
     JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
     module->SetStatus(ModuleStatus::UNINSTANTIATED);
     ModuleRecord::Instantiate(thread, JSHandle<JSTaggedValue>(module));
-    int res = ModuleRecord::Evaluate(thread, JSHandle<JSTaggedValue>(module));
+    JSTaggedValue res = ModuleRecord::Evaluate(thread, JSHandle<JSTaggedValue>(module));
     ModuleRecord::GetNamespace(module.GetTaggedValue());
     ModuleRecord::SetNamespace(thread, module.GetTaggedValue(), JSTaggedValue::Undefined());
-    EXPECT_TRUE(res == SourceTextModule::UNDEFINED_INDEX);
+    EXPECT_TRUE(res.IsJSPromise());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)

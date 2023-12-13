@@ -37,9 +37,9 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
     }
 
-    std::pair<uint64_t, bool> GetMainFuncEntry(uint32_t methodId) const
+    std::pair<uint64_t, bool> GetMainFuncEntry(uint32_t fileIndex, uint32_t methodId) const
     {
-        auto it = mainEntryMap_.find(methodId);
+        auto it = mainEntryMap_.find(std::make_pair(fileIndex, methodId));
         if (it == mainEntryMap_.end()) {
             return std::make_pair(0, false);
         }
@@ -63,7 +63,7 @@ public:
         return curTextSecOffset_;
     }
 
-    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+    bool IsLoadMain(uint32_t fileIndex, const JSPandaFile *jsPandaFile, const CString &entry) const;
 
     bool IsLoad() const
     {
@@ -91,12 +91,14 @@ public:
 
 private:
     static const std::vector<ElfSecName> &GetDumpSectionNames();
+    using EntryKey = std::pair<uint32_t, uint32_t>;
     bool Load(const std::string &filename);
     void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
     void UpdateFuncEntries();
     void AddFuncEntrySec();
     uint64_t curTextSecOffset_ {0};
-    std::unordered_map<uint32_t, std::pair<uint64_t, bool>> mainEntryMap_ {};
+    // Future work: add main entry mapping to ai file
+    std::map<EntryKey, std::pair<uint64_t, bool>> mainEntryMap_ {};
     bool isLoad_ {false};
     CUnorderedMap<uint32_t, std::string> entryIdxToFileNameMap_ {};
     CMap<FuncEntryIndexKey, uint32_t> methodToEntryIndexMap_ {};

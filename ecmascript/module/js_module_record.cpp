@@ -27,7 +27,7 @@ int32_t ModuleRecord::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     UNREACHABLE();
 }
 
-int32_t ModuleRecord::Evaluate(JSThread *thread, const JSHandle<JSTaggedValue> &module)
+JSTaggedValue ModuleRecord::Evaluate(JSThread *thread, const JSHandle<JSTaggedValue> &module)
 {
     if (module->IsSourceTextModule()) {
         JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);

@@ -110,17 +110,6 @@ maplecl::Option<bool> prelsra({"--prelsra"},
                               "  --no-prelsra\n",
                               {cgCategory}, maplecl::DisableWith("--no-prelsra"));
 
-maplecl::Option<bool> lsraLvarspill({"--lsra-lvarspill"},
-                                    "  --lsra-lvarspill"
-                                    "            \tPerform LSRA spill using local ref var stack locations\n"
-                                    "  --no-lsra-lvarspill\n",
-                                    {cgCategory}, maplecl::DisableWith("--no-lsra-lvarspill"));
-
-maplecl::Option<bool> lsraOptcallee({"--lsra-optcallee"},
-                                    "  --lsra-optcallee            \tSpill callee if only one def to use\n"
-                                    "  --no-lsra-optcallee\n",
-                                    {cgCategory}, maplecl::DisableWith("--no-lsra-optcallee"));
-
 maplecl::Option<bool> calleeregsPlacement(
     {"--calleeregs-placement"},
     "  --calleeregs-placement      \tOptimize placement of callee-save registers\n"

@@ -853,7 +853,7 @@ bool MIRParser::ParseStructType(TyIdx &styIdx, const GStrIdx &strIdx)
         }
     } else {
         TyIdx prevTypeIdx = mod.GetTypeNameTab()->GetTyIdxFromGStrIdx(strIdx);
-        if (prevTypeIdx != 0) {
+        if (prevTypeIdx != 0u) {
             // if the MIRStructType has been created by name or incompletely, refresh the prev created type
             MIRType *prevType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(prevTypeIdx);
             if (prevType->GetKind() == kTypeByName ||
@@ -1795,7 +1795,7 @@ bool MIRParser::ParseDeclareReg(MIRSymbol &symbol, const MIRFunction &func)
         Error("ParseDeclarePreg failed while parsing the type");
         return false;
     }
-    DEBUG_ASSERT(tyIdx > 0, "parse declare preg failed");
+    DEBUG_ASSERT(tyIdx > 0u, "parse declare preg failed");
     if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetKind() == kTypeByName) {
         Error("type in var declaration cannot be forward-referenced at ");
         return false;
@@ -1874,7 +1874,7 @@ bool MIRParser::ParseDeclareVar(MIRSymbol &symbol)
         Error("ParseDeclareVar failed when parsing the type");
         return false;
     }
-    DEBUG_ASSERT(tyIdx > 0, "parse declare var failed ");
+    DEBUG_ASSERT(tyIdx > 0u, "parse declare var failed ");
     if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetKind() == kTypeByName) {
         Error("type in var declaration cannot be forward-referenced at ");
         return false;
