@@ -439,27 +439,9 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
     JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
 
-    auto factory = thread->GetEcmaVM()->GetFactory();
     PropertyAttributes attrValue(attr.GetInt());
-    uint32_t offset = attrValue.GetOffset();
-    newHClassHandle->IncNumberOfProps();
 
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newHClassHandle->GetLayout());
-
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-            newHClassHandle->SetLayout(thread, layoutInfoHandle);
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-            newHClassHandle->SetLayout(thread, layoutInfoHandle);
-        }
-        layoutInfoHandle->AddKey(thread, offset, keyHandle.GetTaggedValue(), attrValue);
-    }
-
-    // 5. Add newClass to old hclass's transitions.
-    JSHClass::AddTransitions(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
+    JSHClass::AddPropertyToNewHClass(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
 
     if (oldHClassHandle->HasTSSubtyping()) {
         SubtypingOperator::TryMaintainTSSubtyping(thread, oldHClassHandle, newHClassHandle, keyHandle);

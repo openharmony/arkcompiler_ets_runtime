@@ -34,29 +34,6 @@ void LayoutInfo::Initialize(const JSThread *thread, int num)
     }
 }
 
-void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
-                        const PropertyAttributes &attr)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    int number = NumberOfElements();
-    ASSERT(attr.GetOffset() == static_cast<uint32_t>(number));
-    ASSERT(number + 1 <= GetPropertiesCapacity());
-    ASSERT(number == index);
-    SetNumberOfElements(thread, number + 1);
-    SetPropertyInit(thread, number, key, attr);
-
-    uint32_t keyHash = key.GetKeyHashCode();
-    int insertIndex = number;
-    for (; insertIndex > 0; --insertIndex) {
-        JSTaggedValue prevKey = GetSortedKey(insertIndex - 1);
-        if (prevKey.GetKeyHashCode() <= keyHash) {
-            break;
-        }
-        SetSortedIndex(thread, insertIndex, GetSortedIndex(insertIndex - 1));
-    }
-    SetSortedIndex(thread, insertIndex, number);
-}
-
 void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
                             const JSHandle<JSObject> object)
 {
