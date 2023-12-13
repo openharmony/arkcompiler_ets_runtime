@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
@@ -34,6 +35,7 @@ void BooleanRefValueFuzzerTest([[maybe_unused]] const uint8_t *data, size_t size
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     bool input = size % NODE_NUMBERS ? true : false;

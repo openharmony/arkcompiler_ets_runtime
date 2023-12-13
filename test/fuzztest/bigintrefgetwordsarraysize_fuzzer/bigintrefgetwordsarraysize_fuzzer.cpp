@@ -16,6 +16,7 @@
 #include "bigintrefgetwordsarraysize_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/log_wrapper.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -27,6 +28,7 @@ void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     if (size > MAXBYTELEN) {
@@ -35,8 +37,7 @@ void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
     bool sign = false;
     uint64_t words[1] = {0};
     if (memcpy_s(words, MAXBYTELEN, data, size) != 0) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, (uint32_t)size, words);
     Local<BigIntRef> bigWordsRef(bigWords);

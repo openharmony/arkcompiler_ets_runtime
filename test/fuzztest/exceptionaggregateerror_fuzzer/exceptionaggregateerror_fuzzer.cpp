@@ -15,6 +15,7 @@
 
 #include "exceptionaggregateerror_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
@@ -26,12 +27,12 @@ void ExceptionAggregateErrorFuzzTest(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     char *value = new char[size]();
     if (memcpy_s(value, size, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Exception::AggregateError(vm_, StringRef::NewFromUtf8(vm_, value, (int)size));
     JSNApi::DestroyJSVM(vm_);

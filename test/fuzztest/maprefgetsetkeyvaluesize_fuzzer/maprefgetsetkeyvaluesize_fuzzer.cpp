@@ -17,6 +17,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "maprefgetsetkeyvaluesize_fuzzer.h"
@@ -30,12 +31,12 @@ void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     char *value = new char[size]();
     if (memcpy_s(value, size, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Local<MapRef> object = MapRef::New(vm_);
     Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int32_t)size);

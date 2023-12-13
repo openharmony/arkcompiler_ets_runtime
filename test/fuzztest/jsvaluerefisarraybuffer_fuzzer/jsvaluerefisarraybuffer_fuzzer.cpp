@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsvaluerefisarraybuffer_fuzzer.h"
 
@@ -27,6 +28,7 @@ void JSValueRefIsArrayBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, (int32_t)size);

@@ -21,8 +21,9 @@
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_weak_container.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "jsvaluerefissharedarraybuffer_fuzzer.h"
@@ -37,6 +38,7 @@ void JSValueRefIsWeakMapFuzzerTest([[maybe_unused]]const uint8_t *data, size_t s
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, (int32_t)size);

@@ -16,6 +16,7 @@
 #include "jsvaluerefisarrayvalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
@@ -29,7 +30,7 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     uint32_t length = 3;
     if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     size_t maxByteLen = 4;
@@ -37,8 +38,7 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
         size = maxByteLen;
     }
     if (memcpy_s(&length, maxByteLen, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Local<ArrayRef> arrayObject = ArrayRef::New(vm, length);
     arrayObject->IsArray(vm);

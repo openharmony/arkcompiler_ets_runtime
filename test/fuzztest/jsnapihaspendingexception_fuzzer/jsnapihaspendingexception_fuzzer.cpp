@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapihaspendingexception_fuzzer.h"
 
@@ -29,12 +30,12 @@ void JSNApiUncaughtClearExceptionFuzzTest([[maybe_unused]]const uint8_t *data, s
     JSThread *thread_ = nullptr;
     thread_ = vm_->GetJSThread();
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     char *value = new char[size]();
     if (memcpy_s(value, size, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, value, (int)size);
     Local<JSValueRef> error = Exception::Error(vm_, message);

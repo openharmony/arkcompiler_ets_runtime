@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapiisconstructor_fuzzer.h"
 
@@ -27,6 +28,7 @@ void JSNApiIsConstructorFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     Local<IntegerRef> intValue = IntegerRef::New(vm_, (int)size);

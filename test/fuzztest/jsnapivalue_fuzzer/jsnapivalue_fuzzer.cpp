@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapivalue_fuzzer.h"
 
@@ -27,6 +28,7 @@ void JSNApiValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
     void *vps = static_cast<void *>(new std::string("test"));
