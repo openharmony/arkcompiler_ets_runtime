@@ -81,6 +81,8 @@ struct Reference;
         JS_PROXY_REVOC_FUNCTION,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_MODULE_FULFILLED_FUNCTION, /* ////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_MODULE_REJECTED_FUNCTION, /* /////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, /* ///////////////////////////////////////-PADDING */ \
@@ -383,6 +385,7 @@ public:
     static void OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, const JSHandle<JSObject> &obj,
                                          const std::vector<int> &indexArray = {}, bool isDictionary = false);
+    template<bool checkDuplicateKeys = false>
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr);
@@ -755,6 +758,16 @@ public:
     inline bool IsJSPromiseExecutorFunction() const
     {
         return GetObjectType() == JSType::JS_PROMISE_EXECUTOR_FUNCTION;
+    }
+
+    inline bool IsJSAsyncModuleFulfilledFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION;
+    }
+
+    inline bool IsJSAsyncModuleRejectedFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION;
     }
 
     inline bool IsJSAsyncFromSyncIterUnwarpFunction() const
@@ -1760,6 +1773,10 @@ private:
     static inline void AddProtoTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                            const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                            const JSHandle<JSTaggedValue> &proto);
+    template<bool checkDuplicateKeys = false>
+    static inline void AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
+                                              JSHandle<JSHClass> &newJsHClass, const JSHandle<JSTaggedValue> &key,
+                                              const PropertyAttributes &attr);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

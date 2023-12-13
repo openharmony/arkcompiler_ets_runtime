@@ -183,6 +183,16 @@ public:
                 jsPromiseExecutorFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
+            case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION: {
+                auto jsAsyncModuleFulfilledFunction = JSAsyncModuleFulfilledFunction::Cast(object);
+                jsAsyncModuleFulfilledFunction->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
+            case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION: {
+                auto jsAsyncModuleRejectedFunction = JSAsyncModuleRejectedFunction::Cast(object);
+                jsAsyncModuleRejectedFunction->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
             case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION: {
                 auto jsAsyncFromSyncIterUnwarpFunction = JSAsyncFromSyncIterUnwarpFunction::Cast(object);
                 jsAsyncFromSyncIterUnwarpFunction->VisitRangeSlot<visitType>(visitor);

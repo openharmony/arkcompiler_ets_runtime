@@ -44,9 +44,8 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // store base constpool in global object for avoid gc.
-    uint32_t num = baseFile->GetConstpoolNum();
     GlobalHandleCollection gloalHandleCollection(thread);
-    for (uint32_t idx = 0; idx < num; idx++) {
+    for (uint32_t idx = 0; idx < baseFile->GetConstpoolNum(); idx++) {
         JSTaggedValue constpool = thread->GetCurrentEcmaContext()->FindConstpool(baseFile, idx);
         if (!constpool.IsHole()) {
             JSHandle<JSTaggedValue> constpoolHandle =
@@ -88,7 +87,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
     }
 
     for (const auto &recordName : replacedRecordNames) {
-        LOG_ECMA(DEBUG) << "patch main record name " << recordName;
+        LOG_ECMA(DEBUG) << "func main record name " << recordName;
         JSHandle<Program> program =
             JSPandaFileManager::GetInstance()->GenerateProgram(thread->GetEcmaVM(), jsPandaFile, recordName);
         if (program.IsEmpty()) {
@@ -97,7 +96,6 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         }
 
         JSHandle<JSTaggedValue> moduleRecord = moduleRecords[recordName];
-
         SourceTextModule::Instantiate(thread, moduleRecord, false);
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         SourceTextModule::Evaluate(thread, module);
@@ -116,6 +114,7 @@ void PatchLoader::ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *bas
     EcmaContext *context = thread->GetCurrentEcmaContext();
     auto baseConstpoolValues = context->FindConstpools(baseFile);
     if (!baseConstpoolValues.has_value()) {
+        LOG_ECMA(ERROR) << "replace module :base constpool is empty";
         return;
     }
 
@@ -125,25 +124,11 @@ void PatchLoader::ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *bas
         ConstantPool *baseConstpool = ConstantPool::Cast(
             (baseConstpoolValues.value().get()[methodIndex.constpoolNum]).GetTaggedObject());
 
-        uint32_t constpoolIndex = methodIndex.constpoolIndex;
-        uint32_t literalIndex = methodIndex.literalIndex;
-        Method *patchMethod = nullptr;
-        if (literalIndex == UINT32_MAX) {
-            JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
-            ASSERT(value.IsMethod());
-            patchMethod = Method::Cast(value.GetTaggedObject());
-        } else {
-            ClassLiteral *classLiteral = ClassLiteral::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
-            TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
-            JSTaggedValue value = literalArray->Get(thread, literalIndex);
-            ASSERT(value.IsJSFunctionBase());
-            JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
-            patchMethod = Method::Cast(func->GetMethod().GetTaggedObject());
-        }
+        Method *patchMethod = GetPatchMethod(thread, methodIndex, baseConstpool);
 
         JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(patchMethod->GetRecordNameStr());
         patchMethod->SetModule(thread, moduleRecord.GetTaggedValue());
-        LOG_ECMA(INFO) << "Replace base method module: "
+        LOG_ECMA(DEBUG) << "Replace base method module: "
                        << patchMethod->GetRecordNameStr()
                        << ":" << patchMethod->GetMethodName();
     }
@@ -171,7 +156,8 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    auto baseConstpoolValues = thread->GetCurrentEcmaContext()->FindConstpools(baseFile.get());
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    auto baseConstpoolValues = context->FindConstpools(baseFile.get());
     if (!baseConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "base constpool is empty";
         return PatchErrorCode::INTERNAL_ERROR;
@@ -182,32 +168,18 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         ConstantPool *baseConstpool = ConstantPool::Cast(
             (baseConstpoolValues.value().get()[methodIndex.constpoolNum]).GetTaggedObject());
 
-        uint32_t constpoolIndex = methodIndex.constpoolIndex;
-        uint32_t literalIndex = methodIndex.literalIndex;
-        Method *patchMethod = nullptr;
-        if (literalIndex == UINT32_MAX) {
-            JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
-            ASSERT(value.IsMethod());
-            patchMethod = Method::Cast(value.GetTaggedObject());
-        } else {
-            ClassLiteral *classLiteral = ClassLiteral::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
-            TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
-            JSTaggedValue value = literalArray->Get(thread, literalIndex);
-            ASSERT(value.IsJSFunctionBase());
-            JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
-            patchMethod = Method::Cast(func->GetMethod().GetTaggedObject());
-        }
+        Method *patchMethod = GetPatchMethod(thread, methodIndex, baseConstpool);
 
         MethodLiteral *baseMethodLiteral = item.second;
-        JSTaggedValue baseConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(
+        JSTaggedValue baseConstpoolValue = context->FindConstpool(
             baseFile.get(), baseMethodLiteral->GetMethodId());
         ReplaceMethod(thread, patchMethod, baseMethodLiteral, baseConstpoolValue);
-        LOG_ECMA(INFO) << "Replace base method: "
+        LOG_ECMA(DEBUG) << "Replace base method: "
                        << patchMethod->GetRecordNameStr()
                        << ":" << patchMethod->GetMethodName();
     }
 
-    thread->GetCurrentEcmaContext()->ClearPatchModules();
+    context->ClearPatchModules();
     // execute base func_main_0 for recover global object.
     ExecuteFuncOrPatchMain(thread, baseFile.get(), patchInfo, false);
     ReplaceModuleOfMethod(thread, baseFile.get(), patchInfo);
@@ -223,6 +195,27 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
 
     ClearPatchInfo(thread, patchFileName);
     return PatchErrorCode::SUCCESS;
+}
+
+Method *PatchLoader::GetPatchMethod(JSThread *thread,
+    const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool)
+{
+    uint32_t constpoolIndex = methodIndex.constpoolIndex;
+    uint32_t literalIndex = methodIndex.literalIndex;
+    Method *patchMethod = nullptr;
+    if (literalIndex == UINT32_MAX) {
+        JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
+        ASSERT(value.IsMethod());
+        patchMethod = Method::Cast(value.GetTaggedObject());
+    } else {
+        ClassLiteral *classLiteral = ClassLiteral::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
+        TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
+        JSTaggedValue value = literalArray->Get(thread, literalIndex);
+        ASSERT(value.IsJSFunctionBase());
+        JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
+        patchMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+    }
+    return patchMethod;
 }
 
 void PatchLoader::ClearPatchInfo(JSThread *thread, const CString &patchFileName)

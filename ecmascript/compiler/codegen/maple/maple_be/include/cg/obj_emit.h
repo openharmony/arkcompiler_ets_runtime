@@ -359,7 +359,10 @@ public:
     ObjEmitter(CG &cg, const std::string &objFileName)
         : Emitter(cg, objFileName), alloc(memPool), sections(alloc.Adapter()), contents(alloc.Adapter())
     {
-        fileStream.open(objFileName, std::ios::trunc | std::ios::binary);
+        const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
+        if (emitMemoryManager.codeSpace == nullptr) {
+            fileStream.open(objFileName, std::ios::trunc | std::ios::binary);
+        }
 
         uint32 funcNum = 0;
         for (auto func : cg.GetMIRModule()->GetFunctionList()) {

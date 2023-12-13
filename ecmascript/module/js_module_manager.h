@@ -54,7 +54,7 @@ public:
 
     JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
-    JSHandle<SourceTextModule> HostGetImportedModule(void *src);
+    JSTaggedValue HostGetImportedModule(void *src);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
 
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
@@ -90,6 +90,12 @@ public:
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 
+    uint32_t NextModuleAsyncEvaluatingOrdinal()
+    {
+        uint32_t ordinal = nextModuleAsyncEvaluatingOrdinal_++;
+        return ordinal;
+    }
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -119,6 +125,8 @@ private:
         const CString &recordName, bool excuteFromJob = false);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
+
+    uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};

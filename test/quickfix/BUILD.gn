@@ -39,6 +39,7 @@ if (!is_debug) {
     "cold_classmemfunc",
     "cold_closure",
     "cold_printstring",
+    "cold_classmemvar",
   ]
 
   hot_reload_test_list += [
@@ -61,25 +62,25 @@ host_quickfix_test_action("multi_patch") {
     "patch1",
     "patch2",
   ]
-  entry_point = "--entry-point=base:module"
+  entry_point = "--entry-point=base"
 }
 
 foreach(testcase, hot_reload_test_list) {
   host_quickfix_test_action("${testcase}") {
-    entry_point = "--entry-point=base:module"
+    entry_point = "--entry-point=base"
   }
 }
 
 foreach(testcase, hot_patch_test_list) {
   host_quickfix_test_action("${testcase}") {
-    entry_point = "--entry-point=base:module"
+    entry_point = "--entry-point=base"
     is_hotpatch = true
   }
 }
 
 foreach(testcase, hot_reload_cold_patch_test_list) {
   host_quickfix_test_action("${testcase}") {
-    entry_point = "--entry-point=base:module:coldpatch"
+    entry_point = "--entry-point=base:coldpatch"
   }
 }
 

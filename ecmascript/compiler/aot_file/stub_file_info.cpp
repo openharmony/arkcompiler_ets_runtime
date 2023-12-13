@@ -129,7 +129,7 @@ bool StubFileInfo::Load()
     ElfReader reader(stubsMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
     reader.ParseELFSections(binBufparser, des_, secs);
-    
+
     ModuleSectionDes &des = des_[0];
     uint64_t funcEntryAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
     uint32_t funcEntrySize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
@@ -159,6 +159,8 @@ const std::vector<ElfSecName> &StubFileInfo::GetDumpSectionNames()
 {
     static const std::vector<ElfSecName> secNames = {
         ElfSecName::TEXT,
+        ElfSecName::STRTAB,
+        ElfSecName::SYMTAB,
         ElfSecName::SHSTRTAB,
         ElfSecName::ARK_STACKMAP,
         ElfSecName::ARK_FUNCENTRY,

@@ -1147,6 +1147,7 @@ HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
 #endif
     unlink("ark-profiler20/truck.ap");
     unlink("ark-profiler20/call_test.ap");
+    unlink("ark-profiler20/merged.ap");
     rmdir("ark-profiler20/");
 }
 

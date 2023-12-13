@@ -1042,7 +1042,7 @@ private:
         u16StringTable.Init();
     }
     virtual ~GlobalTables() = default;
-    thread_local static GlobalTables globalTables;
+    static GlobalTables globalTables;
 
     TypeTable typeTable;
     STypeNameTable typeNameTable;

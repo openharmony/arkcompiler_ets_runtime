@@ -88,6 +88,12 @@ void LiteCG::DumpIRToFile(const std::string &fileName)
     module.DumpToFile(fileName);
 }
 
+void LiteCG::DumpCGIR()
+{
+    cgOptions->GetDumpPhases().insert("*");
+    cgOptions->FuncFilter("*");
+}
+
 LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
     void *codeSpace, MemoryManagerAllocateDataSectionCallback dataSectionAllocator,
     MemoryManagerSaveFunc2AddressInfoCallback funcAddressSaver,
@@ -104,6 +110,11 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
 void LiteCG::DoCG()
 {
     bool timePhases = false;
+    MPLTimer timer;
+    if (timePhases) {
+        timer.Start();
+    }
+
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
     // not sure how to do this.
@@ -122,6 +133,8 @@ void LiteCG::DoCG()
 
     if (timePhases) {
         cgfuncPhaseManager->DumpPhaseTime();
+        timer.Stop();
+        LogInfo::MapleLogger() << "Mplcg consumed " << timer.ElapsedMilliseconds() << "ms" << '\n';
     }
 }
 

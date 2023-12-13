@@ -401,6 +401,8 @@ public:
         SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
     }
 
+    void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
+
     static constexpr size_t Size()
     {
         return sizeof(Method);
@@ -446,7 +448,8 @@ public:
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)
-    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
+    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, MACHINECODE_OFFSET)
+    ACCESSORS(MachineCode, MACHINECODE_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, CALL_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.

@@ -62,8 +62,6 @@ constexpr uint32 kPriorityUseThreashold = 5;
 constexpr uint32 kPriorityBBThreashold = 1000;
 constexpr float kPriorityRatioThreashold = 0.9;
 
-#define GCRA_DUMP CG_DEBUG_FUNC(*cgFunc)
-
 void LiveUnit::PrintLiveUnit() const
 {
     LogInfo::MapleLogger() << "[" << begin << "," << end << "]"
@@ -1338,7 +1336,7 @@ void GraphColorRegAllocator::ComputeLiveRanges()
         --currPoint;
     }
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "After ComputeLiveRanges\n";
         PrintLiveRanges();
 #ifdef USE_LRA
@@ -1532,7 +1530,7 @@ void GraphColorRegAllocator::BuildInterferenceGraph()
         }
     }
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "After BuildInterferenceGraph\n";
         PrintLiveRanges();
     }
@@ -1603,7 +1601,7 @@ void GraphColorRegAllocator::Separate()
             }
         }
     }
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "Unconstrained : ";
         for (auto lr : unconstrainedPref) {
             LogInfo::MapleLogger() << lr->GetRegNO() << " ";
@@ -1802,7 +1800,7 @@ bool GraphColorRegAllocator::AssignColorToLr(LiveRange &lr, bool isDelayed)
         return true;
     }
     if (!HaveAvailableColor(lr, lr.GetForbiddenSize() + lr.GetPregvetoSize())) {
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "assigned fail to R" << lr.GetRegNO() << "\n";
         }
         return false;
@@ -1820,7 +1818,7 @@ bool GraphColorRegAllocator::AssignColorToLr(LiveRange &lr, bool isDelayed)
         }
     }
     lr.SetAssignedRegNO(reg);
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "assigned " << lr.GetAssignedRegNO() << " to R" << lr.GetRegNO() << "\n";
     }
     if (lr.GetAssignedRegNO() == 0) {
@@ -2272,7 +2270,7 @@ bool GraphColorRegAllocator::SplitLrShouldSplit(LiveRange &lr)
 bool GraphColorRegAllocator::SplitLrFindCandidateLr(LiveRange &lr, LiveRange &newLr,
                                                     std::unordered_set<regno_t> &conflictRegs)
 {
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "start split lr for vreg " << lr.GetRegNO() << "\n";
     }
     std::set<BB *, SortedBBCmpFunc> smember;
@@ -2549,24 +2547,24 @@ void GraphColorRegAllocator::SplitAndColorForEachLr(MapleVector<LiveRange *> &ta
 void GraphColorRegAllocator::SplitAndColor()
 {
     /* handle mustAssigned */
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << " starting mustAssigned : \n";
     }
     SplitAndColorForEachLr(mustAssigned);
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << " starting unconstrainedPref : \n";
     }
     /* assign color for unconstained */
     SplitAndColorForEachLr(unconstrainedPref);
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << " starting constrained : \n";
     }
     /* handle constrained */
     SplitAndColorForEachLr(constrained);
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << " starting unconstrained : \n";
     }
     /* assign color for unconstained */
@@ -2627,7 +2625,7 @@ void GraphColorRegAllocator::UpdateLocalRegDefUseCount(regno_t regNO, LocalRegAl
         if (!AArch64isa::IsPhysicalRegister(static_cast<AArch64reg>(regNO)) && localRa.IsInRegAssigned(regNO, isInt)) {
             localRa.IncUseInfoElem(localRa.GetRegAssignmentItem(isInt, regNO));
         }
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "\t\treg " << regNO << " update #use to " << localRa.GetUseInfoElem(regNO)
                                    << "\n";
         }
@@ -2641,7 +2639,7 @@ void GraphColorRegAllocator::UpdateLocalRegDefUseCount(regno_t regNO, LocalRegAl
         if (!AArch64isa::IsPhysicalRegister(static_cast<AArch64reg>(regNO)) && localRa.IsInRegAssigned(regNO, isInt)) {
             localRa.IncDefInfoElem(localRa.GetRegAssignmentItem(isInt, regNO));
         }
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "\t\treg " << regNO << " update #def to " << localRa.GetDefInfoElem(regNO)
                                    << "\n";
         }
@@ -2703,7 +2701,7 @@ void GraphColorRegAllocator::HandleLocalReg(Operand &op, LocalRegAllocator &loca
         return;
     }
 
-    if (GCRA_DUMP) {
+    if (needDump) {
         HandleLocalRaDebug(regNO, localRa, isInt);
     }
 
@@ -2715,7 +2713,7 @@ void GraphColorRegAllocator::HandleLocalReg(Operand &op, LocalRegAllocator &loca
             if (bbInfo && !bbInfo->GetGlobalsAssigned(regNO)) {
                 /* This phys reg is now available for assignment for a vreg */
                 localRa.SetPregs(regNO, isInt);
-                if (GCRA_DUMP) {
+                if (needDump) {
                     LogInfo::MapleLogger() << "\t\tlast ref, phys-reg " << regNO << " now available\n";
                 }
             }
@@ -2728,7 +2726,7 @@ void GraphColorRegAllocator::HandleLocalReg(Operand &op, LocalRegAllocator &loca
             localRa.IsInRegAssigned(regNO, isInt)) {
             /* last ref of vreg, release assignment */
             localRa.SetPregs(localRa.GetRegAssignmentItem(isInt, regNO), isInt);
-            if (GCRA_DUMP) {
+            if (needDump) {
                 LogInfo::MapleLogger() << "\t\tlast ref, release reg " << localRa.GetRegAssignmentItem(isInt, regNO)
                                        << " for " << regNO << "\n";
             }
@@ -2852,7 +2850,7 @@ void GraphColorRegAllocator::LocalRaFinalAssignment(const LocalRegAllocator &loc
 {
     for (const auto &intRegAssignmentMapPair : localRa.GetIntRegAssignmentMap()) {
         regno_t regNO = intRegAssignmentMapPair.second;
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "[" << intRegAssignmentMapPair.first << "," << regNO << "],";
         }
         /* Might need to get rid of this copy. */
@@ -2861,7 +2859,7 @@ void GraphColorRegAllocator::LocalRaFinalAssignment(const LocalRegAllocator &loc
     }
     for (const auto &fpRegAssignmentMapPair : localRa.GetFpRegAssignmentMap()) {
         regno_t regNO = fpRegAssignmentMapPair.second;
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "[" << fpRegAssignmentMapPair.first << "," << regNO << "],";
         }
         /* Might need to get rid of this copy. */
@@ -2895,7 +2893,7 @@ void GraphColorRegAllocator::LocalRaDebug(const BB &bb, const LocalRegAllocator 
  */
 void GraphColorRegAllocator::LocalRegisterAllocator(bool doAllocate)
 {
-    if (GCRA_DUMP) {
+    if (needDump) {
         if (doAllocate) {
             LogInfo::MapleLogger() << "LRA allocation start\n";
             PrintBBAssignInfo();
@@ -2936,14 +2934,14 @@ void GraphColorRegAllocator::LocalRegisterAllocator(bool doAllocate)
         bbInfo->SetFpLocalRegsNeeded(localRa->GetNumFpPregUsed());
 
         if (doAllocate) {
-            if (GCRA_DUMP) {
+            if (needDump) {
                 LogInfo::MapleLogger() << "\tbb(" << bb->GetId() << ")final local ra assignments:";
             }
             LocalRaFinalAssignment(*localRa, *bbInfo);
-            if (GCRA_DUMP) {
+            if (needDump) {
                 LogInfo::MapleLogger() << "\n";
             }
-        } else if (GCRA_DUMP) {
+        } else if (needDump) {
             LocalRaDebug(*bb, *localRa);
         }
     }
@@ -3242,7 +3240,7 @@ Insn *GraphColorRegAllocator::SpillOperand(Insn &insn, const Operand &opnd, bool
     uint32 regNO = regOpnd.GetRegisterNumber();
     uint32 pregNO = phyOpnd.GetRegisterNumber();
     bool isCalleeReg = AArch64Abi::IsCalleeSavedReg(static_cast<AArch64reg>(pregNO));
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "SpillOperand " << regNO << "\n";
     }
     LiveRange *lr = lrMap[regNO];
@@ -3496,7 +3494,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpndForLRA(Insn &insn, const Opera
             static_cast<AArch64reg>(regIt->second), regOpnd.GetSize(), regType);
         return &phyOpnd;
     }
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "spill vreg " << vregNO << "\n";
     }
     regno_t spillReg;
@@ -3515,7 +3513,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpndForLRA(Insn &insn, const Opera
             CHECK_FATAL(false, "register IP1(R17) may be changed when lazy_ldr");
         }
         AddCalleeUsed(spillReg, regType);
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "\tassigning lra spill reg " << spillReg << "\n";
         }
     }
@@ -3541,7 +3539,7 @@ bool GraphColorRegAllocator::GetSpillReg(Insn &insn, LiveRange &lr, const uint32
      * with all locals which the spill might not be interfering.
      * For now, every instance of the spill requires a brand new reg assignment.
      */
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "LR-regNO " << lr.GetRegNO() << " spilled, finding a spill reg\n";
     }
     if (insn.IsBranch() || insn.IsCall() || (insn.GetMachineOpcode() == MOP_clinit_tail) ||
@@ -3774,7 +3772,7 @@ RegOperand *GraphColorRegAllocator::GetReplaceOpnd(Insn &insn, const Operand &op
     bool isCalleeReg = AArch64Abi::IsCalleeSavedReg(static_cast<AArch64reg>(regNO));
     RegOperand &phyOpnd = static_cast<AArch64CGFunc *>(cgFunc)->GetOrCreatePhysicalRegisterOperand(
         static_cast<AArch64reg>(regNO), opnd.GetSize(), regType);
-    if (GCRA_DUMP) {
+    if (needDump) {
         LogInfo::MapleLogger() << "replace R" << vregNO << " with R" << (regNO - R0) << "\n";
     }
 
@@ -4680,7 +4678,7 @@ void CallerSavePre::ApplySSAPRE()
 void GraphColorRegAllocator::OptCallerSave()
 {
     CallerSavePre callerSavePre(this, *cgFunc, domInfo, *memPool, *memPool, kLoadPre, UINT32_MAX);
-    callerSavePre.SetDump(GCRA_DUMP);
+    callerSavePre.SetDump(needDump);
     callerSavePre.ApplySSAPRE();
 }
 
@@ -4916,7 +4914,7 @@ void GraphColorRegAllocator::AnalysisLoopPressureAndSplit(const CGFuncLoops &loo
 void GraphColorRegAllocator::FinalizeRegisters()
 {
     if (doMultiPass && hasSpill) {
-        if (GCRA_DUMP) {
+        if (needDump) {
             LogInfo::MapleLogger() << "In this round, spill vregs : \n";
             for (auto it : lrMap) {
                 LiveRange *lr = it.second;
@@ -5074,7 +5072,7 @@ bool GraphColorRegAllocator::AllocateRegisters()
 #endif /* RANDOM_PRIORITY */
     auto *a64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
 
-    if (GCRA_DUMP && doMultiPass) {
+    if (needDump && doMultiPass) {
         LogInfo::MapleLogger() << "\n round start: \n";
         cgFunc->DumpCGIR();
     }
@@ -5087,7 +5085,7 @@ bool GraphColorRegAllocator::AllocateRegisters()
     a64CGFunc->NoteFPLRAddedToCalleeSavedList();
 
 #if DEBUG
-    int32 cnt = 0;
+    uint32 cnt = 0;
     FOR_ALL_BB(bb, cgFunc) {
         FOR_BB_INSNS(insn, bb) {
             ++cnt;
@@ -5126,7 +5124,7 @@ bool GraphColorRegAllocator::AllocateRegisters()
     if (!seenFP) {
         cgFunc->UnsetSeenFP();
     }
-    if (GCRA_DUMP) {
+    if (needDump) {
         cgFunc->DumpCGIR();
     }
 

@@ -412,8 +412,7 @@ private:
         // reset profilerIn from pgo dir
         pkgArgs->GetPgoPaths(cOptions.profilerIn_, cOptions.needMerge_);
         if (cOptions.profilerIn_.empty()) {
-            LOG_COMPILER(ERROR) << "No available ap files found in " << pkgArgs->GetPgoDir();
-            return false;
+            LOG_COMPILER(WARN) << "No available ap files found in " << pkgArgs->GetPgoDir();
         }
         return true;
     }

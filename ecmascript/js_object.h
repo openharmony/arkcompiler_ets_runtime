@@ -642,6 +642,7 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
     DECL_DUMP()
+    static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj);
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 

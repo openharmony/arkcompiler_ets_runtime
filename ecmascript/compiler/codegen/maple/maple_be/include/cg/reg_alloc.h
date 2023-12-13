@@ -63,15 +63,15 @@ public:
     bool IsYieldPointReg(regno_t regNO) const;
     bool IsUntouchableReg(regno_t regNO) const;
 
-    virtual std::string PhaseName() const
+    void SetNeedDump(bool dump)
     {
-        return "regalloc";
+        needDump = dump;
     }
-
 protected:
     CGFunc *cgFunc;
     MemPool *memPool;
     MapleAllocator alloc;
+    bool needDump = false;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgRegAlloc, CGFunc)

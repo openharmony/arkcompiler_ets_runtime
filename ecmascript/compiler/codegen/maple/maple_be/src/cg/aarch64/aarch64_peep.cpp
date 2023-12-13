@@ -1959,10 +1959,6 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         default:
             break;
     }
-    /* skip if it is not a read barrier call. */
-    if (GetReadBarrierName(insn) != "") {
-        manager->NormalPatternOpt<InlineReadBarriersPattern>(!cgFunc->IsAfterRegAlloc());
-    }
 }
 /* ======== CGPeepPattern End ======== */
 
@@ -3852,8 +3848,12 @@ void MoveCmpOpt::Run(BB &bb, Insn &insn)
         (nextInsn->GetMachineOpcode() != MOP_wcmprr && nextInsn->GetMachineOpcode() != MOP_xcmprr)) {
         return;
     }
+    RegOperand &cmpSecondOpnd = static_cast<RegOperand &>(nextInsn->GetOperand(kInsnSecondOpnd));
     RegOperand &cmpThirdOpnd = static_cast<RegOperand &>(nextInsn->GetOperand(kInsnThirdOpnd));
     RegOperand &movFirstOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    if (cmpSecondOpnd.GetRegisterNumber() == cmpThirdOpnd.GetRegisterNumber()) {
+        return;
+    }
     if (cmpThirdOpnd.GetRegisterNumber() != movFirstOpnd.GetRegisterNumber()) {
         return;
     }
@@ -5053,7 +5053,7 @@ void ReplaceCmpToCmnAArch64::Run(BB &bb, Insn &insn)
     if (opnd2OfMov->IsIntImmediate()) {
         ImmOperand *immOpnd = static_cast<ImmOperand *>(opnd2OfMov);
         int64 iVal = immOpnd->GetValue();
-        if ((kNegativeImmLowerLimit <= iVal && iVal < 0) || iVal == negOne) {
+        if ((kNegativeImmLowerLimit <= iVal && iVal < 0) || static_cast<uint64>(iVal) == negOne) {
             Insn *nextInsn = insn.GetNextMachineInsn(); /* get the next insn to judge if it is a cmp instruction. */
             if (nextInsn != nullptr) {
                 if (nextInsn->GetMachineOpcode() == nextMop) {
@@ -5061,7 +5061,7 @@ void ReplaceCmpToCmnAArch64::Run(BB &bb, Insn &insn)
                     Operand *opndCmp3 = &(nextInsn->GetOperand(kInsnThirdOpnd)); /* get the third operand of cmp */
                     /* if the first operand of mov equals the third operand of cmp, match the pattern. */
                     if (opnd1OfMov == opndCmp3) {
-                        if (iVal == negOne) {
+                        if (static_cast<uint64>(iVal) == negOne) {
                             iVal = -1;
                         }
                         ImmOperand &newOpnd = aarch64CGFunc->CreateImmOperand(iVal * (-1), immOpnd->GetSize(), false);

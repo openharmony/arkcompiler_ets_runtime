@@ -52,7 +52,7 @@ OptionInterface *CommandLine::CheckJoinedOption(KeyArg &keyArg, OptionCategory &
     return nullptr;
 }
 
-RetCode CommandLine::ParseJoinedOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+RetCode CommandLine::ParseJoinedOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                                        OptionCategory &optCategory)
 {
     OptionInterface *option = CheckJoinedOption(keyArg, optCategory);
@@ -73,7 +73,7 @@ RetCode CommandLine::ParseJoinedOption(ssize_t &argsIndex, const std::deque<std:
     return RetCode::noError;
 }
 
-RetCode CommandLine::ParseOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+RetCode CommandLine::ParseOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                                  OptionCategory &optCategory, OptionInterface *opt)
 {
     RetCode err = opt->Parse(argsIndex, args, keyArg);
@@ -89,8 +89,8 @@ RetCode CommandLine::ParseOption(ssize_t &argsIndex, const std::deque<std::strin
     return RetCode::noError;
 }
 
-RetCode CommandLine::ParseEqualOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
-                                      OptionCategory &optCategory, const OptionsMapType &optMap, ssize_t pos)
+RetCode CommandLine::ParseEqualOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+                                      OptionCategory &optCategory, const OptionsMapType &optMap, size_t pos)
 {
     keyArg.isEqualOpt = true;
     auto &arg = args[argsIndex];
@@ -112,7 +112,7 @@ RetCode CommandLine::ParseEqualOption(ssize_t &argsIndex, const std::deque<std::
     }
 }
 
-RetCode CommandLine::ParseSimpleOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+RetCode CommandLine::ParseSimpleOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                                        OptionCategory &optCategory, const OptionsMapType &optMap)
 {
     keyArg.isEqualOpt = false;
@@ -137,7 +137,7 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
     badCLArgs.clear();
 
     bool wasError = false;
-    for (ssize_t argsIndex = 0; argsIndex < args.size();) {
+    for (size_t argsIndex = 0; argsIndex < args.size();) {
         auto &arg = args[argsIndex];
         if (arg == "") {
             ++argsIndex;
@@ -208,7 +208,7 @@ RetCode CommandLine::Parse(std::vector<std::string> argvs, OptionCategory &optCa
         return RetCode::noError;
     }
     std::deque<std::string_view> args;
-    for (int i = 0; i < argvs.size(); i++) {
+    for (size_t i = 0; i < argvs.size(); i++) {
         args.emplace_back(argvs[i]);
     }
     return HandleInputArgs(args, optCategory);

@@ -43,12 +43,6 @@ bool IsAvailableReg(X64reg reg)
     }
 }
 
-bool IsCallerSaveReg(X64reg regNO)
-{
-    return (regNO == R0) || (regNO == R1) || (R2 <= regNO && regNO <= R3) || (R6 <= regNO && regNO <= R7) ||
-           (R8 <= regNO && regNO <= R11) || (V2 <= regNO && regNO <= V7) || (V16 <= regNO && regNO <= V23);
-}
-
 bool IsCalleeSavedReg(X64reg reg)
 {
     switch (reg) {

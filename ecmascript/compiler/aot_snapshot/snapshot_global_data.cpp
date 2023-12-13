@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -25,7 +26,8 @@ JSHandle<ConstantPool> ReviseData::GetConstantPoolFromSnapshotData(JSThread *thr
                                                                    uint32_t dataIdx, uint32_t cpArrayIdx)
 {
     JSHandle<TaggedArray> data(thread, globalData->GetData());
-    JSHandle<TaggedArray> cpArr(thread, data->Get(dataIdx + SnapshotGlobalData::CP_ARRAY_OFFSET));
+    auto cpArrayOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID);
+    JSHandle<TaggedArray> cpArr(thread, data->Get(dataIdx + cpArrayOffset));
     return JSHandle<ConstantPool>(thread, cpArr->Get(cpArrayIdx));
 }
 
@@ -57,7 +59,7 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
     }
 }
 
-void SnapshotGlobalData::AddSnapshotCpArrayToData(JSThread *thread, CString fileName,
+void SnapshotGlobalData::AddSnapshotCpArrayToData(JSThread *thread, CString fileName, uint32_t fileIndex,
                                                   JSHandle<TaggedArray> snapshotCpArray)
 {
     if (isFirstData_) {
@@ -65,11 +67,18 @@ void SnapshotGlobalData::AddSnapshotCpArrayToData(JSThread *thread, CString file
     } else {
         curDataIdx_ += AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE;
     }
+    // handle file info
     JSHandle<EcmaString> nameStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString(fileName.c_str());
+    auto fileInfo = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(Cast(CP_PANDA_INFO_ITEM::COUNT));
+    fileInfo->Set(thread, Cast(CP_PANDA_INFO_ITEM::NAME_ID), nameStr);
+    fileInfo->Set(thread, Cast(CP_PANDA_INFO_ITEM::INDEX_ID), JSTaggedValue(fileIndex));
+
     JSHandle<TaggedArray> dataHandle(thread, data_);
-    dataHandle->Set(thread, curDataIdx_, nameStr);
+    dataHandle->Set(thread, curDataIdx_ + Cast(CP_TOP_ITEM::PANDA_INFO_ID), fileInfo);
+
+    // handle constant pool
     curSnapshotCpArray_ = snapshotCpArray.GetTaggedValue();
-    dataHandle->Set(thread, curDataIdx_ + CP_ARRAY_OFFSET, curSnapshotCpArray_);
+    dataHandle->Set(thread, curDataIdx_ + Cast(CP_TOP_ITEM::CP_ARRAY_ID), curSnapshotCpArray_);
     dataIdxToFileNameMap_[curDataIdx_] = fileName;
 }
 

@@ -156,6 +156,9 @@ void JSPandaFile::InitializeUnMergedPF()
             info.classId = index;
             info.isCjs = true;
         }
+        if (!info.hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
+            info.hasTopLevelAwait = true;
+        }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ =
@@ -190,6 +193,8 @@ void JSPandaFile::InitializeMergedPF()
                 info.jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
                 info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+            } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
+                info.hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
                 info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
             } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {

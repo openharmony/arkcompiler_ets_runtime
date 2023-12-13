@@ -88,6 +88,7 @@ using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
+using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
@@ -619,11 +620,17 @@ public:
 
 class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
+    static constexpr int MAX_PROPERTIES_ON_STACK = 32;
     static inline ObjectRef *Cast(JSValueRef *value)
     {
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
+                                              const PropertyAttribute *attributes);
+    static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
+                                                   const Local<JSValueRef> *values);
+    static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
@@ -671,11 +678,12 @@ public:
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-    Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, JSValueRef *const argv[],
+    JSValueRef* CallForNapi(const EcmaVM *vm, JSValueRef *thisObj, JSValueRef *const argv[],
         int32_t length);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
+    Local<JSValueRef> ConstructorOptimize(const EcmaVM *vm, JSValueRef* argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);
@@ -1112,6 +1120,8 @@ public:
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
+    using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+
     struct NativeBindingInfo {
         static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
         void *env = nullptr;
@@ -1140,6 +1150,7 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
+    static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
@@ -1227,6 +1238,7 @@ public:
         std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
+    static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
@@ -1269,6 +1281,7 @@ public:
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
+    static std::string GetCurrentModuleName(EcmaVM *vm);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
@@ -1280,13 +1293,9 @@ public:
 private:
     static int vmCount_;
     static bool initialize_;
-    static std::shared_mutex mutex_;
-    static std::unordered_map<uint32_t, EcmaVM *> vmMap_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
 
-    static EcmaVM *GetEcmaVM(uint32_t tid);
-    static void AddEcmaVM(uint32_t tid, EcmaVM *vm);
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);

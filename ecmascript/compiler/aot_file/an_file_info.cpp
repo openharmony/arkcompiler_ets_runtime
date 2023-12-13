@@ -23,6 +23,7 @@
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/log.h"
 #include "ecmascript/platform/file.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 void AnFileInfo::Save(const std::string &filename, Triple triple)
@@ -120,7 +121,8 @@ void AnFileInfo::UpdateFuncEntries()
         FuncEntryDes &funcDes = entries_[i];
         funcDes.codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
         if (funcDes.isMainFunc_) {
-            mainEntryMap_[funcDes.indexInKindOrMethodId_] = std::make_pair(funcDes.codeAddr_, funcDes.isFastCall_);
+            EntryKey key = std::make_pair(funcDes.abcIndexInAi_, funcDes.indexInKindOrMethodId_);
+            mainEntryMap_[key] = std::make_pair(funcDes.codeAddr_, funcDes.isFastCall_);
 #ifndef NDEBUG
             LOG_COMPILER(INFO) << "AnFileInfo Load main method id: " << funcDes.indexInKindOrMethodId_
                                << " code addr: " << reinterpret_cast<void *>(funcDes.codeAddr_);
@@ -166,13 +168,13 @@ void AnFileInfo::Dump() const
     }
 }
 
-bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
+bool AnFileInfo::IsLoadMain(uint32_t fileIndex, const JSPandaFile *jsPandaFile, const CString &entry) const
 {
     auto methodId = jsPandaFile->GetMainMethodIndex(entry);
 #ifndef NDEBUG
     LOG_COMPILER(INFO) << "AnFileInfo IsLoadMain method id: " << methodId << " entry: " << entry;
 #endif
-    auto it = mainEntryMap_.find(methodId);
+    auto it = mainEntryMap_.find(std::make_pair(fileIndex, methodId));
     return it != mainEntryMap_.end();
 }
 

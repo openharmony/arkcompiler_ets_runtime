@@ -50,9 +50,13 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
         LOG_ECMA(ERROR) << "The serialization data is incomplete";
         return JSHandle<JSTaggedValue>();
     }
+
+    // stop gc during deserialize
+    heap_->SetOnSerializeEvent(true);
+
     uint8_t encodeFlag = data_->ReadUint8();
-    uintptr_t result = 0U;
-    while (ReadSingleEncodeData(encodeFlag, ObjectSlot(ToUintPtr(&result)), true) == 0) {
+    JSTaggedType result = 0U;
+    while (ReadSingleEncodeData(encodeFlag, ToUintPtr(&result), true) == 0) {
         encodeFlag = data_->ReadUint8();
     }
     // now new constpool here if newConstPoolInfos_ is not empty
@@ -62,6 +66,12 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     }
     newConstPoolInfos_.clear();
 
+    // initialize concurrent func here after constpool is set
+    for (auto func : concurrentFunctions_) {
+        func->InitializeForConcurrentFunction(thread_);
+    }
+    concurrentFunctions_.clear();
+
     // new native binding object here
     for (auto nativeBindingInfo : nativeBindingInfos_) {
         DeserializeNativeBindingObject(nativeBindingInfo);
@@ -69,7 +79,17 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     }
     nativeBindingInfos_.clear();
 
-    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(static_cast<JSTaggedType>(result)));
+    // new js error here
+    for (auto jsErrorInfo : jsErrorInfos_) {
+        DeserializeJSError(jsErrorInfo);
+        delete jsErrorInfo;
+    }
+    jsErrorInfos_.clear();
+
+    // recovery gc after serialize
+    heap_->SetOnSerializeEvent(false);
+
+    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
 }
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
@@ -78,7 +98,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     uintptr_t res = RelocateObjectAddr(space, objSize);
     objectVector_.push_back(res);
     size_t resIndex = objectVector_.size() - 1;
-    DeserializeObjectField(ObjectSlot(res), ObjectSlot(res + objSize));
+    DeserializeObjectField(res, res + objSize);
     JSType type = reinterpret_cast<TaggedObject *>(res)->GetClass()->GetObjectType();
     // String need remove duplicates if string table can find
     if (type == JSType::LINE_STRING || type == JSType::CONSTANT_STRING) {
@@ -95,7 +115,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     return res;
 }
 
-void BaseDeserializer::DeserializeObjectField(ObjectSlot start, ObjectSlot end)
+void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
 {
     while (start < end) {
         uint8_t encodeFlag = data_->ReadUint8();
@@ -114,7 +134,7 @@ void BaseDeserializer::DeserializeConstPool(NewConstPoolInfo *info)
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     thread_->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index);
     slot.Update(constpool.GetTaggedType());
-    UpdateIfExistOldToNew(constpool.GetTaggedType(), slot);
+    UpdateBarrier(constpool.GetTaggedType(), slot);
 }
 
 void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
@@ -134,7 +154,23 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
     JSTaggedType res = JSNApiHelper::ToJSHandle(attachVal).GetTaggedType();
     slot.Update(res);
     if (!root) {
-        UpdateIfExistOldToNew(res, slot);
+        UpdateBarrier(res, slot);
+    }
+}
+
+void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    uint8_t type = info->errorType_;
+    base::ErrorType errorType = base::ErrorType(type - static_cast<uint8_t>(JSType::JS_ERROR_FIRST));
+    JSTaggedValue errorMsg = info->errorMsg_;
+    ObjectSlot slot = info->slot_;
+    bool root = info->root_;
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg));
+    slot.Update(errorTag.GetTaggedType());
+    if (!root) {
+        UpdateBarrier(errorTag.GetTaggedType(), slot);
     }
 }
 
@@ -145,21 +181,28 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
     bool isTransferBuffer = GetAndResetTransferBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
     ConstantPool *constpool = GetAndResetConstantPool();
-    if (needNewConstPool_) {
-        needNewConstPool_ = false;
-        newConstPoolInfos_.back()->slotAddr_ = slot.SlotAddress();
-    }
+    bool needNewConstPool = GetAndResetNeedNewConstPool();
+    bool isErrorMsg = GetAndResetIsErrorMsg();
 
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
 
     // deserialize object epilogue
+    if (isErrorMsg) {
+        // defer new js error
+        jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(static_cast<JSTaggedType>(addr));
+        return;
+    }
+
     if (isTransferBuffer) {
         TransferArrayBufferAttach(addr);
     } else if (bufferPointer != nullptr) {
-        ResetArrayBufferNativePointer(addr, bufferPointer);
+        ResetNativePointerBuffer(addr, bufferPointer);
     } else if (constpool != nullptr) {
         ResetMethodConstantPool(addr, constpool);
+    } else if (needNewConstPool) {
+        // defer new constpool
+        newConstPoolInfos_.back()->slotAddr_ = addr + Method::CONSTANT_POOL_OFFSET;
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -167,10 +210,13 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
         if (nativePointer->GetDeleter() != nullptr) {
             thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
         }
+    } else if (object->GetClass()->IsJSFunction()) {
+        // defer initialize concurrent function until constpool is set
+        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
     }
     UpdateMaybeWeak(slot, addr, isWeak);
     if (!isRoot) {
-        UpdateIfExistOldToNew(addr, slot);
+        UpdateBarrier(addr, slot);
     }
 }
 
@@ -202,14 +248,25 @@ void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
     arrayBuffer->Attach(thread_, arrayLength, JSTaggedValue(np), withNativeAreaAllocator);
 }
 
-void BaseDeserializer::ResetArrayBufferNativePointer(uintptr_t objAddr, void *bufferPointer)
+void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer)
 {
-    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsArrayBuffer());
-    JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
-    arrayBuffer->SetWithNativeAreaAllocator(true);
-    JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+    JSTaggedValue obj = JSTaggedValue(static_cast<JSTaggedType>(objAddr));
+    ASSERT(obj.IsArrayBuffer() || obj.IsJSRegExp());
+    auto nativeAreaAllocator = thread_->GetEcmaVM()->GetNativeAreaAllocator();
+    JSNativePointer *np = nullptr;
+    if (obj.IsArrayBuffer()) {
+        JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
+        arrayBuffer->SetWithNativeAreaAllocator(true);
+        np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+        nativeAreaAllocator->IncreaseNativeSizeStats(arrayBuffer->GetArrayBufferByteLength(), NativeFlag::ARRAY_BUFFER);
+    } else {
+        JSRegExp *jsRegExp = reinterpret_cast<JSRegExp *>(objAddr);
+        np = reinterpret_cast<JSNativePointer *>(jsRegExp->GetByteCodeBuffer().GetTaggedObject());
+        nativeAreaAllocator->IncreaseNativeSizeStats(jsRegExp->GetLength(), NativeFlag::REGEXP_BTYECODE);
+    }
+
     np->SetExternalPointer(bufferPointer);
-    np->SetDeleter(&NativeAreaAllocator::FreeBufferFunc);
+    np->SetDeleter(NativeAreaAllocator::FreeBufferFunc);
     np->SetData(thread_->GetEcmaVM()->GetNativeAreaAllocator());
 }
 
@@ -220,9 +277,10 @@ void BaseDeserializer::ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *
     method->SetConstantPool(thread_, JSTaggedValue(constpool), BarrierMode::SKIP_BARRIER);
 }
 
-size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, ObjectSlot slot, bool isRoot)
+size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr, bool isRoot)
 {
-    size_t handledFieldLength = SINGLE_FILED_LENGTH;
+    size_t handledFieldSize = sizeof(JSTaggedType);
+    ObjectSlot slot(addr);
     switch (encodeFlag) {
         case NEW_OBJECT_ALL_SPACES(): {
             SerializedObjectSpace space = SerializeData::DecodeSpace(encodeFlag);
@@ -231,15 +289,15 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, ObjectSlot slo
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t objIndex = data_->ReadUint32();
-            uintptr_t addr = objectVector_[objIndex];
-            UpdateMaybeWeak(slot, addr, GetAndResetWeak());
-            UpdateIfExistOldToNew(addr, slot);
+            uintptr_t objAddr = objectVector_[objIndex];
+            UpdateMaybeWeak(slot, objAddr, GetAndResetWeak());
+            UpdateBarrier(objAddr, slot);
             break;
         }
         case (uint8_t)EncodeFlag::WEAK: {
             ASSERT(!isWeak_);
             isWeak_ = true;
-            handledFieldLength = 0;
+            handledFieldSize = 0;
             break;
         }
         case (uint8_t)EncodeFlag::PRIMITIVE: {
@@ -248,47 +306,47 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, ObjectSlot slo
             break;
         }
         case (uint8_t)EncodeFlag::MULTI_RAW_DATA: {
-            uint32_t length = data_->ReadUint32();
-            data_->ReadRawData(slot.SlotAddress(), sizeof(JSTaggedType) * length);
-            handledFieldLength = length;
+            uint32_t size = data_->ReadUint32();
+            data_->ReadRawData(addr, size);
+            handledFieldSize = size;
             break;
         }
         case (uint8_t)EncodeFlag::ROOT_OBJECT: {
             uint32_t index = data_->ReadUint32();
-            uintptr_t addr = thread_->GetEcmaVM()->GetSnapshotEnv()->RelocateRootObjectAddr(index);
+            uintptr_t objAddr = thread_->GetEcmaVM()->GetSnapshotEnv()->RelocateRootObjectAddr(index);
             if (!isRoot) {
-                UpdateIfExistOldToNew(addr, slot);
+                UpdateBarrier(objAddr, slot);
             }
-            UpdateMaybeWeak(slot, addr, GetAndResetWeak());
+            UpdateMaybeWeak(slot, objAddr, GetAndResetWeak());
             break;
         }
         case (uint8_t)EncodeFlag::OBJECT_PROTO: {
             uint8_t type = data_->ReadUint8();
-            uintptr_t addr = RelocateObjectProtoAddr(type);
+            uintptr_t protoAddr = RelocateObjectProtoAddr(type);
             if (!isRoot) {
-                UpdateIfExistOldToNew(addr, slot);
+                UpdateBarrier(protoAddr, slot);
             }
-            UpdateMaybeWeak(slot, addr, GetAndResetWeak());
+            UpdateMaybeWeak(slot, protoAddr, GetAndResetWeak());
             break;
         }
         case (uint8_t)EncodeFlag::TRANSFER_ARRAY_BUFFER: {
             isTransferArrayBuffer_ = true;
-            handledFieldLength = 0;
+            handledFieldSize = 0;
             break;
         }
-        case (uint8_t)EncodeFlag::ARRAY_BUFFER: {
+        case (uint8_t)EncodeFlag::ARRAY_BUFFER:
+        case (uint8_t)EncodeFlag::JS_REG_EXP: {
             size_t bufferLength = data_->ReadUint32();
             auto nativeAreaAllocator = thread_->GetEcmaVM()->GetNativeAreaAllocator();
             bufferPointer_ = nativeAreaAllocator->AllocateBuffer(bufferLength);
             data_->ReadRawData(ToUintPtr(bufferPointer_), bufferLength);
-            nativeAreaAllocator->IncreaseNativeSizeStats(bufferLength, NativeFlag::ARRAY_BUFFER);
             heap_->IncreaseNativeBindingSize(bufferLength);
-            handledFieldLength = 0;
+            handledFieldSize = 0;
             break;
         }
         case (uint8_t)EncodeFlag::METHOD: {
             HandleMethodEncodeFlag();
-            handledFieldLength = 0;
+            handledFieldSize = 0;
             break;
         }
         case (uint8_t)EncodeFlag::NATIVE_BINDING_OBJECT: {
@@ -301,23 +359,42 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, ObjectSlot slo
             nativeBindingInfos_.push_back(new NativeBindingInfo(af, bufferPointer, hint, attachData, slot, isRoot));
             break;
         }
+        case (uint8_t)EncodeFlag::JS_ERROR: {
+            uint8_t type = data_->ReadUint8();
+            ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
+                && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
+            jsErrorInfos_.push_back(new JSErrorInfo(type, JSTaggedValue::Undefined(), slot, isRoot));
+            uint8_t flag = data_->ReadUint8();
+            if (flag == 1) { // error msg is string
+                isErrorMsg_ = true;
+                handledFieldSize = 0;
+            }
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
-    return handledFieldLength;
+    return handledFieldSize;
 }
 
-void BaseDeserializer::UpdateIfExistOldToNew(uintptr_t addr, ObjectSlot slot)
+void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
 {
     Region *valueRegion = Region::ObjectAddressToRange(addr);
+    if (valueRegion == nullptr) {
+        return;
+    }
+    Region *rootRegion = Region::ObjectAddressToRange(slot.SlotAddress());
     // root region is impossible in young space when deserialize
-    if (valueRegion != nullptr && valueRegion->InYoungSpace()) {
+    if (valueRegion->InYoungSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT(slot.SlotAddress() % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
-        Region *rootRegion = Region::ObjectAddressToRange(slot.SlotAddress());
         rootRegion->InsertOldToNewRSet(slot.SlotAddress());
+    }
+
+    if (valueRegion->IsMarking()) {
+        Barriers::Update(slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion);
     }
 }
 

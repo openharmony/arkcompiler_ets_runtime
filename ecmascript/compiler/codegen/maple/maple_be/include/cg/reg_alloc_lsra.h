@@ -78,7 +78,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         {
             ehStart = position;
         }
-
     private:
         uint32 start = 0;
         uint32 end = 0;
@@ -88,9 +87,11 @@ class LSRALinearScanRegAllocator : public RegAllocator {
     class LiveInterval {
     public:
         explicit LiveInterval(MemPool &memPool)
-            : memPool(&memPool), alloc(&memPool), ranges(alloc.Adapter()), usePositions(alloc.Adapter())
-        {
-        }
+            : memPool(&memPool),
+              alloc(&memPool),
+              ranges(alloc.Adapter()),
+              usePositions(alloc.Adapter()),
+              noReloadPos(alloc.Adapter()) {}
 
         virtual ~LiveInterval() = default;
 
@@ -100,8 +101,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         LiveInterval *SplitAt(uint32 pos);
 
         LiveInterval *SplitBetween(const BB &startBB, const BB &endBB);
-
-        uint32 GetUsePosAfter(uint32 pos) const;
 
         void InitRangeFinder()
         {
@@ -198,18 +197,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         void SetRegType(RegType newRegType)
         {
             regType = newRegType;
-        }
-
-        uint32 GetRegSize() const
-        {
-            return regSize;
-        }
-
-        void SetRegSize(uint32 size)
-        {
-            if (size > regSize) {
-                regSize = size;
-            }
         }
 
         uint32 GetFirstAcrossedCall() const
@@ -327,6 +314,11 @@ class LSRALinearScanRegAllocator : public RegAllocator {
             (void)usePositions.push_back(insertId);
         }
 
+        const MapleVector<uint32> &GetUsePositions() const
+        {
+            return usePositions;
+        }
+
         LiveInterval *GetSplitNext()
         {
             return splitNext;
@@ -349,16 +341,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         float GetPriority() const
         {
             return priority;
-        }
-
-        void SetOverlapPhyRegSet(regno_t regNo)
-        {
-            overlapPhyRegSet.insert(regNo);
-        }
-
-        bool IsOverlapPhyReg(regno_t regNo)
-        {
-            return overlapPhyRegSet.find(regNo) != overlapPhyRegSet.end();
         }
 
         void SetPriority(float newPriority)
@@ -513,6 +495,45 @@ class LSRALinearScanRegAllocator : public RegAllocator {
             return (inCleanUpState == kRegAllInFirstbb) || (inCleanUpState == kRegAllOutCleanup);
         }
 
+        uint32 GetSpillSize() const
+        {
+            return spillSize;
+        }
+
+        void SetSpillSize(uint32 size)
+        {
+            spillSize = size;
+        }
+
+        uint32 GetMaxDefSize() const
+        {
+            return maxDefSize;
+        }
+
+        void SetMaxDefSize(uint32 size)
+        {
+            maxDefSize = size;
+        }
+
+        uint32 GetMaxUseSize() const
+        {
+            return maxUseSize;
+        }
+
+        void SetMaxUseSize(uint32 size)
+        {
+            maxUseSize = size;
+        }
+
+        bool IsNoNeedReloadPosition(uint32 insnId) const
+        {
+            return (noReloadPos.find(insnId) != noReloadPos.end());
+        }
+
+        void AddNoNeedReloadPosition(uint32 insnId)
+        {
+            noReloadPos.insert(insnId);
+        }
     private:
         MemPool *memPool;
         MapleAllocator alloc;
@@ -526,7 +547,9 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         uint32 assignedReg = 0;
         uint32 stackSlot = -1;
         RegType regType = kRegTyUndef;
-        uint32 regSize = 0;
+        uint32 spillSize = 0;               /* use min(maxDefSize, maxUseSize) */
+        uint32 maxDefSize = 0;
+        uint32 maxUseSize = 0;
         uint32 firstAcrossedCall = 0;
         bool endByCall = false;
         bool endByMov = false; /* do move coalesce */
@@ -542,7 +565,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         float priority = 0.0;
         MapleVector<LinearRange> ranges;
         MapleVector<LinearRange>::iterator rangeFinder;
-        std::unordered_set<regno_t> overlapPhyRegSet;
         MapleVector<uint32> usePositions;
         LiveInterval *splitNext = nullptr;         /* next split part */
         LiveInterval *splitParent = nullptr;       /* parent split part */
@@ -551,6 +573,7 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         uint32 resultCount = 0;                    /* number of times this vreg has been written */
         uint8 inCatchState = kRegCatchNotInit;     /* part or all of live interval is outside of catch blocks */
         uint8 inCleanUpState = kRegCleanupNotInit; /* part or all of live interval is outside of cleanup blocks */
+        MapleUnorderedSet<uint32> noReloadPos;       /* Should save reg need reload at this positions */
     };
 
     /* used to resolve Phi and Split */
@@ -642,6 +665,32 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         }
     };
 
+    class CallerSaveOpt {
+    public:
+        CallerSaveOpt(const MapleVector<LiveInterval*> &liveIntervalsArray, Bfs *bbSort) : bfs(bbSort)
+        {
+            for (auto *li : liveIntervalsArray) {
+                if (li != nullptr && li->IsShouldSave()) {
+                    callerSaves.emplace_back(li);
+                }
+            }
+            localDefLiveIn.resize(callerSaves.size());
+            localDefLiveOut.resize(callerSaves.size());
+        }
+
+        void Run();
+    private:
+        using LocalDefBBSet = std::unordered_set<uint32>;
+
+        bool firstTime = true;
+        Bfs *bfs = nullptr;
+        std::vector<LiveInterval*> callerSaves;
+        std::vector<LocalDefBBSet> localDefLiveIn;
+        std::vector<LocalDefBBSet> localDefLiveOut;
+
+        bool UpdateLocalDefWithBBLiveIn(const BB &bb);
+        void CollectCallerNoNeedReloadByInsn(const Insn &insn);
+    };
 public:
     LSRALinearScanRegAllocator(CGFunc &cgFunc, MemPool &memPool, Bfs *bbSort)
         : RegAllocator(cgFunc, memPool),
@@ -660,7 +709,6 @@ public:
           fpCalleeRegSet(alloc.Adapter()),
           fpParamRegSet(alloc.Adapter()),
           fpSpillRegSet(alloc.Adapter()),
-          calleeUseCnt(alloc.Adapter()),
           bfs(bbSort),
           liQue(alloc.Adapter()),
           splitPosMap(alloc.Adapter()),
@@ -670,10 +718,10 @@ public:
     {
         regInfo = cgFunc.GetTargetRegInfo();
         regInfo->Init();
-        for (int32 i = 0; i < regInfo->GetIntRegs().size(); ++i) {
+        for (uint32 i = 0; i < regInfo->GetIntRegs().size(); ++i) {
             intParamQueue.push_back(initialQue);
         }
-        for (int32 i = 0; i < regInfo->GetFpRegs().size(); ++i) {
+        for (uint32 i = 0; i < regInfo->GetFpRegs().size(); ++i) {
             fpParamQueue.push_back(initialQue);
         }
         firstIntReg = *regInfo->GetIntRegs().begin();
@@ -701,7 +749,7 @@ public:
     void RecordPhysRegs(const RegOperand &regOpnd, uint32 insnNum, bool isDef);
     void UpdateLiveIntervalState(const BB &bb, LiveInterval &li) const;
     void UpdateRegUsedInfo(LiveInterval &li, regno_t regNO);
-    void SetupLiveInterval(Operand &opnd, Insn &insn, bool isDef, uint32 &nUses);
+    void SetupLiveInterval(Operand &opnd, Insn &insn, bool isDef, uint32 &nUses, uint32 regSize);
     void UpdateLiveIntervalByLiveIn(const BB &bb, uint32 insnNum);
     void UpdateParamLiveIntervalByLiveIn(const BB &bb, uint32 insnNum);
     void ComputeLiveIn(BB &bb, uint32 insnNum);
@@ -727,7 +775,6 @@ public:
     RegOperand *GetReplaceUdOpnd(Insn &insn, Operand &opnd, uint32 &spillIdx);
     void ResolveSplitBBEdge(BB &bb);
     void SetAllocMode();
-    void CheckSpillCallee();
     void LinearScanRegAllocator();
     void FinalizeRegisters();
     void ResolveMoveVec();
@@ -753,7 +800,6 @@ public:
     void LiveIntervalQueueInsert(LiveInterval &li);
     void ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop);
     void ComputeLoopLiveIntervalPriorityInInsn(const Insn &insn);
-    uint32 FillInHole(const LiveInterval &li);
     void SetLiSpill(LiveInterval &li);
 
 private:
@@ -792,14 +838,11 @@ private:
     MapleSet<uint32> fpCalleeRegSet;   /*       callee       */
     MapleSet<uint32> fpParamRegSet;    /*       parameter    */
     MapleVector<uint32> fpSpillRegSet; /* float regs put aside for spills */
-    MapleVector<uint32> calleeUseCnt;  /* Number of time callee reg is seen */
     std::unordered_set<uint32> loopBBRegSet;
     Bfs *bfs = nullptr;
     uint32 fpCallerMask = 0;       /* bit mask for all possible caller fp */
     uint32 fpCalleeMask = 0;       /*                           callee    */
     uint32 fpParamMask = 0;        /*      (physical-register)  parameter */
-    uint32 intBBDefMask = 0;       /* locally which int physical reg is defined */
-    uint32 fpBBDefMask = 0;        /* locally which float physical reg is defined */
     uint64 blockForbiddenMask = 0; /* bit mask for forbidden physical reg */
     uint32 debugSpillCnt = 0;
     std::vector<uint64> regUsedInBB;
@@ -810,8 +853,6 @@ private:
     bool spillAll = false;
     bool needExtraSpillReg = false;
     bool isSpillZero = false;
-    bool shouldOptIntCallee = false;
-    bool shouldOptFpCallee = false;
     uint64 spillCount = 0;
     uint64 reloadCount = 0;
     uint64 callerSaveSpillCount = 0;

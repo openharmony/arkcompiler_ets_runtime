@@ -17,7 +17,6 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 
 namespace panda::ecmascript::kungfu {
 class SnapshotGlobalData;
@@ -72,7 +71,29 @@ private:
 
 class SnapshotGlobalData {
 public:
-    static constexpr uint32_t CP_ARRAY_OFFSET = 1;
+    // top level specified field
+    enum class CP_TOP_ITEM : int8_t {
+        PANDA_INFO_ID = 0,
+        CP_ARRAY_ID,
+        COUNT
+    };
+
+    // file specified field
+    enum class CP_PANDA_INFO_ITEM : int8_t {
+        NAME_ID = 0,
+        INDEX_ID,
+        COUNT
+    };
+
+    static int8_t Cast(CP_TOP_ITEM value)
+    {
+        return static_cast<int8_t>(value);
+    }
+
+    static int8_t Cast(CP_PANDA_INFO_ITEM value)
+    {
+        return static_cast<int8_t>(value);
+    }
 
     SnapshotGlobalData() = default;
     ~SnapshotGlobalData() = default;
@@ -106,7 +127,8 @@ public:
         return curSnapshotCpArray_;
     }
 
-    void AddSnapshotCpArrayToData(JSThread *thread, CString fileName, JSHandle<TaggedArray> snapshotCpArray);
+    void AddSnapshotCpArrayToData(JSThread *thread, CString fileName, uint32_t fileIndex,
+                                  JSHandle<TaggedArray> snapshotCpArray);
 
     CString GetFileNameByDataIdx(uint32_t dataIdx) const;
 

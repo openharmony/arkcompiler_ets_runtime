@@ -71,6 +71,8 @@ class JSDataView;
 class JSPromise;
 class JSPromiseReactionsFunction;
 class JSPromiseExecutorFunction;
+class JSAsyncModuleFulfilledFunction;
+class JSAsyncModuleRejectedFunction;
 class JSPromiseAllResolveElementFunction;
 class JSAsyncGeneratorResNextRetProRstFtn;
 class JSPromiseAnyRejectElementFunction;
@@ -422,6 +424,10 @@ public:
 
     JSHandle<JSPromiseExecutorFunction> CreateJSPromiseExecutorFunction();
 
+    JSHandle<JSAsyncModuleFulfilledFunction> CreateJSAsyncModuleFulfilledFunction();
+
+    JSHandle<JSAsyncModuleRejectedFunction> CreateJSAsyncModuleRejectedFunction();
+
     JSHandle<JSPromiseAllResolveElementFunction> NewJSPromiseAllResolveElementFunction();
 
     JSHandle<JSPromiseAnyRejectElementFunction> NewJSPromiseAnyRejectElementFunction();
@@ -484,6 +490,8 @@ public:
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
                                             const JSHandle<JSHClass> &objClass);
+    JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);
+    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t length);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
@@ -504,7 +512,7 @@ public:
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc *desc, JSHandle<Method> &method);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
@@ -646,6 +654,12 @@ public:
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
+    // napi interface to create object with initial inline properties
+    JSHandle<JSTaggedValue> CreateJSObjectWithProperties(size_t propertyCount, const Local<JSValueRef> *keys,
+                                                         const PropertyDescriptor *attributes);
+    JSHandle<JSTaggedValue> CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
+                                                              const Local<JSValueRef> *values);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -663,6 +677,7 @@ private:
     Heap *heap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
+    static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);
@@ -718,6 +733,19 @@ private:
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
     JSHandle<TaggedArray> NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
+
+    // For object with many properties, directly create new HClass instead of searching on transitions
+    JSHandle<JSTaggedValue> CreateLargeJSObjectWithProperties(size_t propertyCount,
+                                                              const Local<JSValueRef> *keys,
+                                                              const PropertyDescriptor *descs);
+    JSHandle<JSTaggedValue> CreateLargeJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
+                                                                   const Local<JSValueRef> *values);
+    // For object with numerous properties, directly create it in dictionary mode
+    JSHandle<JSTaggedValue> CreateDictionaryJSObjectWithProperties(size_t propertyCount,
+                                                                   const Local<JSValueRef> *keys,
+                                                                   const PropertyDescriptor *descs);
+    JSHandle<JSTaggedValue> CreateDictionaryJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
+                                                                        const Local<JSValueRef> *values);
 
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass

@@ -336,16 +336,19 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue re
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), result);
 }
 
-JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(void *src)
+JSTaggedValue ModuleManager::HostGetImportedModule(void *src)
 {
     const char *str = reinterpret_cast<char *>(src);
     const uint8_t *strData = reinterpret_cast<uint8_t *>(src);
     LOG_FULL(INFO) << "current str during module deregister process : " << str;
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(strData, strlen(str));
-    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get deregister module: " << str;
+    if (entry == -1) {
+        LOG_FULL(INFO) << "The module has been unloaded, " << str;
+        return JSTaggedValue::Undefined();
+    }
     JSTaggedValue result = dict->GetValue(entry);
-    return JSHandle<SourceTextModule>(vm_->GetJSThread(), result);
+    return result;
 }
 
 bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
@@ -417,7 +420,6 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
     }
-
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread,
         jsPandaFile.get(), recordName, excuteFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);

@@ -77,6 +77,14 @@ bool EcmaContext::Destroy(EcmaContext *context)
     return false;
 }
 
+void EcmaContext::SetTSManager(TSManager *set)
+{
+    if (tsManager_ != nullptr) {
+        delete tsManager_;
+    }
+    tsManager_ = set;
+}
+
 bool EcmaContext::Initialize()
 {
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
@@ -294,15 +302,21 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
+        } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
+            Jit::Compile(vm_, func);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
+            result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
-            EcmaInterpreter::Execute(info);
+            result = EcmaInterpreter::Execute(info);
         }
     }
     if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (!jsPandaFile->IsModule(recordInfo)) {
+            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        }
     }
 
     return result;
@@ -945,5 +959,18 @@ void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
             }
         }
     }
+}
+
+std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext::CalCallSiteInfo(
+    uintptr_t retAddr) const
+{
+    auto loader = GetAOTFileManager();
+    auto callSiteInfo = loader->CalCallSiteInfo(retAddr);
+    if (std::get<1>(callSiteInfo) != nullptr) {
+        return callSiteInfo;
+    }
+    // try get jit code
+    callSiteInfo = thread_->GetEcmaVM()->GetHeap()->CalCallSiteInfo(retAddr);
+    return callSiteInfo;
 }
 }  // namespace panda::ecmascript

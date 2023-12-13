@@ -435,18 +435,6 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-    // Fast path
-    int64_t arrLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
-    if (arrLen == 0 && argc == 1) {
-        JSHandle<JSTaggedValue> argHandle = GetCallArg(argv, 0);
-        int64_t argLen = ArrayHelper::GetArrayLength(thread, argHandle);
-        if (argLen == 0 && argHandle->IsJSArray()) {
-            JSHandle<JSTaggedValue> lenHandle(thread, JSTaggedValue(arrLen));
-            JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle),
-                                       lengthKey, lenHandle, true);
-            return newArrayHandle.GetTaggedValue();
-        }
-    }
 
     // 3. Let n be 0.
     int64_t n = 0;
@@ -1265,6 +1253,9 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    if (len > UINT32_MAX) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
+    }
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
 
@@ -1278,6 +1269,15 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+    uint32_t allocateLength = 0;
+    uint32_t sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
+
+    if (len > 0) {
+        allocateLength = sepLength * (len - 1) + len;
+    }
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
     // 7. ReturnIfAbrupt(sep).
     RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
     std::u16string sepStr = EcmaStringAccessor(sepStringHandle).ToU16String();
@@ -1849,7 +1849,17 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t len = 0;
+    if (thisHandle->IsJSArray()) {
+        len = JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    } else {
+        JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+        JSHandle<JSTaggedValue> lenResult = JSTaggedValue::GetProperty(thread, thisHandle, lengthKey).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        JSTaggedNumber lenNumber = JSTaggedValue::ToLength(thread, lenResult);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        len = lenNumber.GetNumber();
+    }
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -1903,13 +1913,13 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
         int64_t upper = len - lower - 1;
         lowerP.Update(JSTaggedValue(lower));
         upperP.Update(JSTaggedValue(upper));
-        bool lowerExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
+        bool lowerExists = (JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (lowerExists) {
             lowerValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, lowerP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        bool upperExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
+        bool upperExists = (JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (upperExists) {
             upperValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, upperP);
@@ -2709,6 +2719,10 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> unscopableList = factory->CreateNullJSObject();
 
     JSHandle<JSTaggedValue> trueVal(thread, JSTaggedValue::True());
+
+    JSHandle<JSTaggedValue> atKey((factory->NewFromASCII("at")));
+    JSObject::CreateDataProperty(thread, unscopableList, atKey, trueVal);
+
     JSHandle<JSTaggedValue> copyWithKey = globalConst->GetHandledCopyWithinString();
     JSObject::CreateDataProperty(thread, unscopableList, copyWithKey, trueVal);
 
@@ -2724,6 +2738,12 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> findIndexKey = globalConst->GetHandledFindIndexString();
     JSObject::CreateDataProperty(thread, unscopableList, findIndexKey, trueVal);
 
+    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCII("findLast")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastKey, trueVal);
+
+    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCII("findLastIndex")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastIndexKey, trueVal);
+
     JSHandle<JSTaggedValue> flatKey = globalConst->GetHandledFlatString();
     JSObject::CreateDataProperty(thread, unscopableList, flatKey, trueVal);
 
@@ -2738,7 +2758,15 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> valuesKey = globalConst->GetHandledValuesString();
     JSObject::CreateDataProperty(thread, unscopableList, valuesKey, trueVal);
-
+    
+    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCII("toReversed")));
+    JSObject::CreateDataProperty(thread, unscopableList, toReversedKey, trueVal);
+    
+    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCII("toSorted")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSortedKey, trueVal);
+    
+    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
     return unscopableList.GetTaggedValue();
 }
 

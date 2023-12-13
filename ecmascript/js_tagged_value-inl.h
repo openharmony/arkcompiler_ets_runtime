@@ -622,6 +622,16 @@ inline bool JSTaggedValue::IsJSPromiseExecutorFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSPromiseExecutorFunction();
 }
 
+inline bool JSTaggedValue::IsJSAsyncModuleFulfilledFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncModuleFulfilledFunction();
+}
+
+inline bool JSTaggedValue::IsJSAsyncModuleRejectedFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncModuleRejectedFunction();
+}
+
 inline bool JSTaggedValue::IsJSAsyncFromSyncIterUnwarpFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncFromSyncIterUnwarpFunction();
@@ -1544,6 +1554,15 @@ inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
         return JSTaggedValue(d);
     }
     return JSTaggedValue(static_cast<int32_t>(d));
+}
+
+inline bool JSTaggedValue::IsPureString(JSTaggedValue key)
+{
+    if (!key.IsString()) {
+        return false;
+    }
+    uint32_t idx;
+    return !StringToElementIndex(key, &idx);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

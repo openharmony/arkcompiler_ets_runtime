@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -251,6 +252,23 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileUnlocked(const C
         return nullptr;
     }
     return iter->second.first;
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileByNormalizedName(const CString &normalizedName)
+{
+    if (normalizedName.empty()) {
+        return nullptr;
+    }
+    std::shared_ptr<JSPandaFile> result;
+    EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
+        // normalize path inside and outside sandbox
+        if (file->GetNormalizedFileDesc() == normalizedName) {
+            result = file;
+            return false;
+        }
+        return true;
+    });
+    return result;
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFile(const CString &filename)

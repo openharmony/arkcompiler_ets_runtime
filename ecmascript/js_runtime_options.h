@@ -153,6 +153,10 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_NATIVE_INLINE,
     OPTION_COMPILER_ENABLE_LOWERING_BUILTIN,
     OPTION_COMPILER_ENABLE_LITECG,
+    OPTION_COMPILER_ENABLE_JIT,
+    OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
+    OPTION_COMPILER_TRACE_JIT,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1011,6 +1015,37 @@ public:
         return enableValueNumbering_;
     }
 
+    
+    void SetEnableJIT(bool value)
+    {
+        enableJIT_ = value;
+    }
+
+    bool IsEnableJIT() const
+    {
+        return enableJIT_;
+    }
+
+    void SetJitHotnessThreshold(uint16_t value)
+    {
+        jitHotnessThreshold_ = value;
+    }
+
+    uint16_t GetJitHotnessThreshold() const
+    {
+        return jitHotnessThreshold_;
+    }
+
+    void SetForceJitCompileMain(bool value)
+    {
+        forceJitCompileMain_ = value;
+    }
+
+    bool IsEnableForceJitCompileMain()
+    {
+        return forceJitCompileMain_;
+    }
+
     void SetEnableNewValueNumbering(bool value)
     {
         enableNewValueNumbering_ = value;
@@ -1164,6 +1199,16 @@ public:
     bool GetTraceValueNumbering() const
     {
         return traceValueNumbering_;
+    }
+    
+    void SetTraceJIT(bool value)
+    {
+        traceJIT_ = value;
+    }
+
+    bool GetTraceJIT() const
+    {
+        return traceJIT_;
     }
 
     void SetTraceInstructionCombine(bool value)
@@ -1367,7 +1412,7 @@ private:
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
-    bool compilerEnableExternalPkg_ {false};
+    bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();
@@ -1419,6 +1464,9 @@ private:
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
+    bool enableJIT_{false};
+    uint16_t jitHotnessThreshold_ {2};
+    bool forceJitCompileMain_{false};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
@@ -1438,6 +1486,7 @@ private:
     std::string compilerSelectMethods_ {""};
     std::string compilerSkipMethods_ {""};
     bool traceInline_ {false};
+    bool traceJIT_{false};
     bool traceValueNumbering_{false};
     bool traceInstructionCombine_{false};
     size_t maxInlineBytecodes_ {45};

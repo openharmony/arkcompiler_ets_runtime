@@ -4283,7 +4283,7 @@ public:
 
     void Append(const std::string &str)
     {
-        comment.append(str);
+        comment += str;
     }
 
 private:

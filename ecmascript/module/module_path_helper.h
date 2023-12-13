@@ -169,6 +169,23 @@ public:
         }
         return false;
     }
+
+    /*
+     * Before: bundleName/moduleName/ets/xxx/xxx
+     * After:  moduleName
+     */
+    inline static CString GetModuleName(const CString recordName)
+    {
+        size_t pos1 = recordName.find(PathHelper::SLASH_TAG);
+        if (pos1 != CString::npos) {
+            pos1++;
+            size_t pos2 = recordName.find(PathHelper::SLASH_TAG, pos1);
+            if (pos2 != CString::npos) {
+                return recordName.substr(pos1, pos2 - pos1);
+            }
+        }
+        return CString();
+    }
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_PATH_HELPER_H

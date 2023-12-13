@@ -36,6 +36,7 @@
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
+#include <sstream>
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -218,8 +219,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << entry;
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c1", JSTaggedValue::Exception());
                 }
                 if (hclass->IsTS()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
@@ -254,8 +265,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(ERROR) << "dump log for read-only crash " << entry;
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c2", JSTaggedValue::Exception());
                 }
                 if (UNLIKELY(holder != receiver)) {
                     break;
@@ -613,10 +634,8 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetIsInlinedProps(false);
         uint32_t nonInlinedProps = static_cast<uint32_t>(objHandle->GetJSHClass()->GetNextNonInlinedPropsIndex());
         ASSERT(length >= nonInlinedProps);
-        // if array is full, grow array or change to dictionary mode
-        if (length == nonInlinedProps) {
-            uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
-            if (UNLIKELY(length >= maxNonInlinedFastPropsCapacity)) {
+        uint32_t numberOfProps = objHandle->GetJSHClass()->NumberOfProps();
+        if (UNLIKELY(numberOfProps >= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
                 // change to dictionary and add one.
                 JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread, objHandle));
                 JSHandle<NameDictionary> newDict =
@@ -624,7 +643,10 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
                 objHandle->SetProperties(thread, newDict);
                 // index is not essential when fastMode is false;
                 return attr;
-            }
+        }
+        // if array is full, grow array or change to dictionary mode
+        if (length == nonInlinedProps) {
+            uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
             // Grow properties array size
             uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(thread, length,
                                                                              maxNonInlinedFastPropsCapacity);

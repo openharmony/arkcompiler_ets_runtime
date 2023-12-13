@@ -39,9 +39,12 @@ void ModuleDeregister::FreeModuleRecord(void *pointer, void *hint)
     auto thread = reinterpret_cast<JSThread* >(hint);
 
     // pointer is module's name, which will be deregistered.
-    JSHandle<SourceTextModule> module =
+    JSTaggedValue moduleVal =
         thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(pointer);
-
+    if (moduleVal.IsUndefined()) {
+        return;
+    }
+    JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(moduleVal.GetTaggedObject()));
     LoadingTypes type = module->GetLoadingTypes();
     JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     CString recordNameStr = ConvertToString(moduleRecordName);

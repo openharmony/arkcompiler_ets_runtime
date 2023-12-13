@@ -65,6 +65,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         default:
             break;
     }
+    LOG_ECMA(ERROR) << "Unsupport serialize object type: " << JSHClass::DumpJSType(type);
     return false;
 }
 
@@ -99,6 +100,7 @@ bool ValueSerializer::WriteValue(JSThread *thread, const JSHandle<JSTaggedValue>
         vm_->GetSnapshotEnv()->ClearEnvMap();
     }
     if (notSupport_) {
+        LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);
         return false;
     }
@@ -124,8 +126,14 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         SerializeNativeBindingObject(object);
         return;
     }
-    JSType type = object->GetClass()->GetObjectType();
+    if (object->GetClass()->IsJSError()) {
+        SerializeJSError(object);
+        return;
+    }
     bool arrayBufferDeferDetach = false;
+    JSTaggedValue trackInfo;
+    JSType type = object->GetClass()->GetObjectType();
+    // serialize prologue
     switch (type) {
         case JSType::JS_ARRAY_BUFFER:
             arrayBufferDeferDetach = SerializeJSArrayBufferPrologue(object);
@@ -136,14 +144,55 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::METHOD:
             SerializeMethodPrologue(reinterpret_cast<Method *>(object));
             break;
+        case JSType::JS_ARRAY: {
+            JSArray *array = reinterpret_cast<JSArray *>(object);
+            trackInfo = array->GetTrackInfo();
+            array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
+            break;
+        }
+        case JSType::TREE_STRING:
+        case JSType::SLICED_STRING:
+            object = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(object));
+            break;
+        case JSType::JS_REG_EXP:
+            SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
+            break;
         default:
             break;
     }
+
+    // serialize object here
     SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(object);
+
+    // serialize epilogue
+    if (type == JSType::JS_ARRAY) {
+        JSArray *array = reinterpret_cast<JSArray *>(object);
+        array->SetTrackInfo(thread_, trackInfo);
+    }
     if (arrayBufferDeferDetach) {
         ASSERT(object->GetClass()->IsArrayBuffer());
         JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
         arrayBuffer->Detach(thread_, arrayBuffer->GetWithNativeAreaAllocator());
+    }
+}
+
+void ValueSerializer::SerializeJSError(TaggedObject *object)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    data_->WriteEncodeFlag(EncodeFlag::JS_ERROR);
+    JSType type = object->GetClass()->GetObjectType();
+    ASSERT(type >= JSType::JS_ERROR_FIRST && type <= JSType::JS_ERROR_LAST);
+    data_->WriteUint8(static_cast<uint8_t>(type));
+    auto globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> handleMsg = globalConst->GetHandledMessageString();
+    JSHandle<JSTaggedValue> msg =
+        JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(thread_, object), handleMsg).GetValue();
+    if (msg->IsString()) {
+        EcmaString *str = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(msg->GetTaggedObject()));
+        data_->WriteUint8(1); // 1: msg is string
+        SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(str);
+    } else {
+        data_->WriteUint8(0); // 0: msg is undefined
     }
 }
 
@@ -245,6 +294,22 @@ void ValueSerializer::SerializeMethodPrologue(Method *method)
     data_->WriteEncodeFlag(EncodeFlag::METHOD);
     data_->WriteJSTaggedType(method->GetLiteralInfo());
     data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(jsPandaFile));
+}
+
+void ValueSerializer::SerializeJSRegExpPrologue(JSRegExp *jsRegExp)
+{
+    uint32_t bufferSize = jsRegExp->GetLength();
+    if (bufferSize == 0) {
+        LOG_ECMA(ERROR) << "ValueSerialize: JSRegExp buffer size is 0";
+        notSupport_ = true;
+        return;
+    }
+
+    data_->WriteEncodeFlag(EncodeFlag::JS_REG_EXP);
+    data_->WriteUint32(bufferSize);
+    JSNativePointer *np =
+        reinterpret_cast<JSNativePointer *>(jsRegExp->GetByteCodeBuffer().GetTaggedObject());
+    data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), bufferSize);
 }
 
 bool ValueSerializer::PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer)

@@ -20,10 +20,12 @@
 #include "ecmascript/compiler/aot_file/module_section_des.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
+#include "ecmascript/compiler/aot_file/func_entry_des.h"
 
 namespace panda::ecmascript {
 class PUBLIC_API AOTFileInfo {
 public:
+    using FuncEntryDes = ecmascript::FuncEntryDes;
     using CallSignature = kungfu::CallSignature;
     using CalleeRegAndOffsetVec = kungfu::CalleeRegAndOffsetVec;
     using DwarfRegType = kungfu::LLVMStackMapType::DwarfRegType;
@@ -35,50 +37,6 @@ public:
     static constexpr uint32_t TEXT_SEC_ALIGN = 16;
     static constexpr uint32_t DATA_SEC_ALIGN = 8;
     static constexpr uint32_t PAGE_ALIGN = 4096;
-
-    struct FuncEntryDes {
-        uint64_t codeAddr_ {};
-        CallSignature::TargetKind kind_;
-        bool isMainFunc_ {};
-        bool isFastCall_ {};
-        uint32_t indexInKindOrMethodId_ {};
-        uint32_t moduleIndex_ {};
-        int fpDeltaPrevFrameSp_ {};
-        uint32_t funcSize_ {};
-        uint32_t calleeRegisterNum_ {};
-        int32_t CalleeReg2Offset_[2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM];
-        bool IsStub() const
-        {
-            return CallSignature::TargetKind::STUB_BEGIN <= kind_ && kind_ < CallSignature::TargetKind::STUB_END;
-        }
-
-        bool IsBCStub() const
-        {
-            return CallSignature::TargetKind::BCHANDLER_BEGIN <= kind_ &&
-                   kind_ < CallSignature::TargetKind::BCHANDLER_END;
-        }
-
-        bool IsBCHandlerStub() const
-        {
-            return (kind_ == CallSignature::TargetKind::BYTECODE_HANDLER);
-        }
-
-        bool IsBuiltinsStub() const
-        {
-            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB ||
-                    kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
-        }
-
-        bool IsCommonStub() const
-        {
-            return (kind_ == CallSignature::TargetKind::COMMON_STUB);
-        }
-
-        bool IsGeneralRTStub() const
-        {
-            return (kind_ >= CallSignature::TargetKind::RUNTIME_STUB && kind_ <= CallSignature::TargetKind::DEOPT_STUB);
-        }
-    };
 
     const FuncEntryDes &GetStubDes(int index) const
     {
@@ -111,7 +69,7 @@ public:
     }
 
     void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, bool isFastCall, int indexInKind, uint64_t offset,
-                  uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
+                  uint32_t fileIndex, uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
         if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
@@ -122,6 +80,7 @@ public:
         des.isMainFunc_ = isMainFunc;
         des.isFastCall_ = isFastCall;
         des.indexInKindOrMethodId_ = static_cast<uint32_t>(indexInKind);
+        des.abcIndexInAi_ = fileIndex;
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;
         des.fpDeltaPrevFrameSp_ = delta;

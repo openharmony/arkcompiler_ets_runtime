@@ -527,6 +527,7 @@ DEFINE_MOP(MOP_cvtss2sd_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"
 DEFINE_MOP(MOP_cvtsd2ss_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"cvtsd2ss","0,1",1)
 
 DEFINE_MOP(MOP_ucomisd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FS},0,kLtAlu,"ucomisd","0,1",1)
+DEFINE_MOP(MOP_cmpeqsd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},0,kLtAlu,"cmpeqsd","0,1",1)
 
 /* floating point sqrt */
 DEFINE_MOP(MOP_sqrts_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"sqrtss","0,1",1)

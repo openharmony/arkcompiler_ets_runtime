@@ -447,9 +447,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::METHOD: {
 #ifdef PANDA_TARGET_64
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 9U);
 #else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 7U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
 #endif
                 break;
             }
@@ -485,6 +485,22 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                     JSHandle<JSHClass>::Cast(globalEnv->GetPromiseExecutorFunctionClass());
                 JSHandle<JSObject> promiseExeFunc = factory->NewJSObjectWithInit(promiseExeClass);
                 DUMP_FOR_HANDLE(promiseExeFunc);
+                break;
+            }
+            case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION: {
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleFulfilledFunction::SIZE, 1U);
+                JSHandle<JSHClass> moduleFulfilledClass =
+                    JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleFulfilledFunctionClass());
+                JSHandle<JSObject> moduleFulfilledFunc = factory->NewJSObjectWithInit(moduleFulfilledClass);
+                DUMP_FOR_HANDLE(moduleFulfilledFunc);
+                break;
+            }
+            case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION: {
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleRejectedFunction::SIZE, 1U);
+                JSHandle<JSHClass> moduleRejectedClass =
+                    JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleRejectedFunctionClass());
+                JSHandle<JSObject> moduleRejectedFunc = factory->NewJSObjectWithInit(moduleRejectedClass);
+                DUMP_FOR_HANDLE(moduleRejectedFunc);
                 break;
             }
             case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION: {
@@ -1008,7 +1024,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::MACHINE_CODE_OBJECT: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::DATA_OFFSET, 1U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::SIZE, 4U);
                 GTEST_LOG_(INFO) << "MACHINE_CODE_OBJECT not support new in MachineCodeSpace";
                 break;
             }
@@ -1289,7 +1305,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 12U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 16U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;

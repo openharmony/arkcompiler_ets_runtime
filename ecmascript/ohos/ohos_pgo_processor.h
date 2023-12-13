@@ -30,8 +30,8 @@ public:
             return true;
         }
         if (cOptions.profilerIn_.empty()) {
-            LOG_COMPILER(ERROR) << "No valid ap files found in : " << mainPkgArgs->GetPgoDir();
-            return false;
+            LOG_COMPILER(WARN) << "No valid ap files found in : " << mainPkgArgs->GetPgoDir();
+            return true;
         }
         std::string mergedAp(mainPkgArgs->GetMergedApPathWithoutCheck());
         bool isSingleAp = cOptions.profilerIn_.find(GetFileDelimiter()) == std::string::npos;

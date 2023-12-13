@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -24,7 +25,7 @@
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/stackmap/cg_stackmap.h"
-
+#include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript::kungfu {
 class Module {
@@ -38,17 +39,17 @@ public:
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
                               uint32_t moduleIndex, const CompilerLog &log);
 
-    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
+    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo, uint32_t fileIndex,
                               uint32_t moduleIndex, const CompilerLog &log);
 
 #ifdef COMPILE_MAPLE
     void CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
-                                      uint32_t moduleIndex);
+                                      uint32_t fileIndex, uint32_t moduleIndex);
 #endif
 
     bool IsRelaSection(ElfSecName sec) const
     {
-        return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
+        return sec == ElfSecName::RELATEXT;
     }
 
     void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const;
@@ -186,7 +187,8 @@ public:
 
     uint32_t GetModuleVecSize() const;
 
-    Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug);
+    Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug,
+        bool isJit = false);
 
     void CompileLatestModuleThenDestroy();
 
@@ -208,6 +210,9 @@ public:
         curCompileFileName_ = fileName.c_str();
     }
 
+    void GetMemoryCodeInfos(MachineCodeDesc *machineCodeDesc);
+    void JitCreateLitecgModule();
+
 private:
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);
@@ -219,6 +224,8 @@ private:
     EcmaVM* vm_;
     CompilationConfig cfg_;
     std::string curCompileFileName_;
+    // MethodID->EntryIndex
+    std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
 };
 

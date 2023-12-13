@@ -1849,6 +1849,7 @@ bool ExtenToMovPattern::CheckSrcReg(Insn &insn, regno_t srcRegNo, uint32 validNu
                 if ((bitNum >> validNum) != 0) {
                     return false;
                 }
+                break;
             }
             case MOP_wandrri12: {
                 /* check defSrcReg */

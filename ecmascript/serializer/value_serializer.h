@@ -31,10 +31,12 @@ public:
 
 private:
     void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
+    void SerializeJSError(TaggedObject *object);
     void SerializeNativeBindingObject(TaggedObject *object);
     bool SerializeJSArrayBufferPrologue(TaggedObject *object);
     void SerializeJSSharedArrayBufferPrologue(TaggedObject *object);
     void SerializeMethodPrologue(Method *method);
+    void SerializeJSRegExpPrologue(JSRegExp *jsRegExp);
     void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
     void ClearTransferSet();
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
@@ -42,7 +44,10 @@ private:
 
     bool IsInternalJSType(JSType type)
     {
-        return type >= JSType::HCLASS && type <= JSType::TYPE_LAST;
+        if (type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) {
+            return false;
+        }
+        return type >= JSType::HCLASS && type <= JSType::TYPE_LAST && type != JSType::SYMBOL;
     }
 
 private:

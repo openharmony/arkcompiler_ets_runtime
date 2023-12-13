@@ -142,6 +142,8 @@ public:
         return ptManager_;
     }
 
+    void SetTSManager(TSManager *set);
+
     ARK_INLINE JSThread *GetJSThread() const
     {
         return thread_;
@@ -493,6 +495,7 @@ public:
         return isAotEntry_;
     }
 
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
