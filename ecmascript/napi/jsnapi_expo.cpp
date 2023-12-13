@@ -226,24 +226,26 @@ static Mutex *mutex = new panda::Mutex();
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
 {
-    JSThread *thread = vm->GetJSThread();
-    const GlobalEnvConstants *constants = thread->GlobalConstants();
-    return JSNApiHelper::ToLocal<PrimitiveRef>(constants->GetHandledUndefined());
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledUndefined());
 }
 
 Local<PrimitiveRef> JSValueRef::Null(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::Null()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledNull());
 }
 
 Local<PrimitiveRef> JSValueRef::True(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::True()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledTrue());
 }
 
 Local<PrimitiveRef> JSValueRef::False(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::False()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledFalse());
 }
 
 Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
