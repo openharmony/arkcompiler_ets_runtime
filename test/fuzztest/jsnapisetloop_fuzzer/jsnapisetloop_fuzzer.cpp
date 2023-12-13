@@ -26,7 +26,8 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
+        if (data == nullptr || size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
         void *ptr = reinterpret_cast<void*>(const_cast<uint8_t*>(data));
@@ -39,7 +40,8 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
+        if (data == nullptr || size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
         uint8_t *ptr = nullptr;

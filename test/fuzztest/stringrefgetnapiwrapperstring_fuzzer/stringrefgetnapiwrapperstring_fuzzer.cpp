@@ -28,7 +28,8 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
+        if (data == nullptr || size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
         size_t temp = 0;
