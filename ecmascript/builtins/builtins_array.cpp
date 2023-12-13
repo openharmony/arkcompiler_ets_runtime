@@ -2315,7 +2315,7 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount,
-            actualDeleteCount, newArray);
+            actualDeleteCount, newArray, len);
     }
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 14. Let k be 0.
