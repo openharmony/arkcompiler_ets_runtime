@@ -124,7 +124,7 @@ public:
         return SIZE + this->GetPayLoadSizeInBytes();
     }
 
-    size_t GetInstructionSizeInBytes() const
+    uint32_t GetInstructionSizeInBytes() const
     {
         return GetPayLoadSizeInBytes();
     }
