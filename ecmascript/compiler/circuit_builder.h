@@ -159,9 +159,14 @@ public:
         return triple_ == Triple::TRIPLE_AMD64;
     }
 
+    inline bool IsRV64() const
+    {
+        return triple_ == Triple::TRIPLE_RV64;
+    }
+
     inline bool Is64Bit() const
     {
-        return IsAArch64() || IsAmd64();
+        return IsAArch64() || IsAmd64() || IsRV64();
     }
 
     Triple GetTriple() const
@@ -198,6 +203,11 @@ private:
         if (triple.compare("arm-unknown-linux-gnu") == 0) {
             return Triple::TRIPLE_ARM32;
         }
+
+	if (triple.compare("riscv64-unknown-linux-gnu") == 0) {
+            return Triple::TRIPLE_RV64;
+        }
+
         UNREACHABLE();
     }
     Triple triple_;

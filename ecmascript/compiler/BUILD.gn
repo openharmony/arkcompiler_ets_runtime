@@ -207,6 +207,13 @@ source_set("libark_jsoptimizer_set") {
     "LLVMAArch64AsmParser",
     "LLVMFrontendOpenMP",
     "LLVMBitWriter",
+    "LLVMRISCVAsmParser",
+    "LLVMRISCVCodeGen",
+    "LLVMRISCVDesc",
+    "LLVMRISCVDisassembler",
+    "LLVMRISCVInfo",
+    "LLVMFrontendOpenMP",
+    "LLVMBitWriter",
   ]
 
   # Only support compiling aarch64 target at device-side(arm64 platform).
@@ -273,9 +280,7 @@ source_set("ark_aot_compiler_set") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$js_root:libark_jsruntime_set",
-  ]
+  deps = [ "$js_root:libark_jsruntime_set" ]
 }
 
 source_set("libark_stub_set") {
@@ -415,9 +420,8 @@ ohos_executable("ark_aot_compiler") {
   }
 
   if (is_mac && !ark_standalone_build) {
-    deps += [
-      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac",
-    ]
+    deps +=
+        [ "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac" ]
   }
 
   if (target_os == "ios") {

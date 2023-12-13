@@ -49,6 +49,7 @@ enum class Triple {
     TRIPLE_AMD64,
     TRIPLE_AARCH64,
     TRIPLE_ARM32,
+    TRIPLE_RV64,
 };
 }  // namespace panda::ecmascript::kungfu
 

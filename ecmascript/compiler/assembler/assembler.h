@@ -29,6 +29,9 @@ public:
 #elif defined(PANDA_TARGET_ARM32)
     static constexpr int SP = 13;
     static constexpr int FP = 11;
+#elif defined(PANDA_TARGET_RV64)
+    static constexpr int SP = 2;
+    static constexpr int FP = 8;
 #else
     static constexpr int SP = -1;
     static constexpr int FP = -1;
