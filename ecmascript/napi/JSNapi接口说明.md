@@ -76,7 +76,7 @@ uint8_t *getBuffer = reinterpret_cast<uint8_t *>(arrayBuffer->GetBuffer());
 
 ### ByteLength
 
-int32_t  ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)；
+int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)；
 
 此函数返回此ArrayBufferRef缓冲区的长度（以字节为单位）。
 
@@ -148,6 +148,8 @@ void ArrayBufferRef::Detach(const EcmaVM *vm)；
 Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, 10);
 arrayBuffer->Detach(vm);
 ```
+
+
 
 ## BooleanRef
 
@@ -782,6 +784,396 @@ Local<JSValueRef> error = Exception::Error(vm, StringRef::NewFromUtf8(vm, "Error
 JSNApi::ThrowException(vm, error);
 ```
 
+### NotifyNativeCalling
+
+static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
+
+void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)；
+
+在特定条件下通知原生调用事件。
+
+**参数：**
+
+| 参数名        | 类型                            | 必填 | 说明                |
+| ------------- | ------------------------------- | ---- | ------------------- |
+| vm            | [[maybe_unused]] const EcmaVM * | 是   | 虚拟机对象。        |
+| nativeAddress | [[maybe_unused]] const void *   | 是   | C++原生对象的地址。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+void *par = new int(0);
+JSNApi::NotifyNativeCalling(vm_, par);
+```
+
+### function
+
+std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
+
+一个函数对象，可以用于存储、传递和调用一个可调用对象（如函数、lambda表达式或函数对象），以便在需要时执行相应的操作。
+
+**参数：**
+
+| 参数名   | 类型        | 必填 | 说明                                            |
+| -------- | ----------- | ---- | ----------------------------------------------- |
+| dirPath  | std::string | 是   | 字符串类型的参数，表示目录路径。                |
+| buff     | uint8_t **  | 是   | 指向uint8_t类型指针的指针，用于存储缓冲区数据。 |
+| buffSize | size_t *    | 是   | 指向size_t类型的指针，用于存储缓冲区大小。      |
+
+**返回值：**
+
+| 类型 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| bool | 布尔值：true 或 false。表示该函数执行的操作是否成功。 |
+
+**示例：**
+
+```c++
+static *void *SetHostResolveBufferTracker(EcmaVM **vm*, std::function<*bool*(std::string dirPath, *uint8_t* **buff, *size_t* *buffSize)> *cb*);
+```
+
+### SetProfilerState
+
+static void JSNApi::SetProfilerState(const EcmaVM *vm, bool value);
+
+用于设置虚拟机（EcmaVM）的CPUProfiler采样状态。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                    |
+| ------ | -------------- | ---- | ----------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。            |
+| value  | bool           | 是   | 布尔值：true 或 false。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+bool ret = true;
+JSNApi::SetProfilerState(vm_, ret);
+```
+
+### IsProfiling
+
+static bool JSNApi::IsProfiling(EcmaVM *vm);
+
+用于检查虚拟机（EcmaVM）是否处于CPUProfiling采样状态。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明         |
+| ------ | -------- | ---- | ------------ |
+| vm     | EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果虚拟机（EcmaVM）处于CPUProfiling采样状态，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+bool b = JSNApi::IsProfiling(vm_);
+```
+
+### SynchronizVMInfo
+
+static void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
+
+将一个EcmaVM对象的信息复制到另一个EcmaVM对象中，使它们具有相同的信息和属性。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明                       |
+| ------ | -------- | ---- | -------------------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象（复制源）。     |
+| hostVM | EcmaVM * | 是   | 虚拟机对象（复制目的地）。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SynchronizVMInfo(vm_, hostVM_);
+```
+
+### SetLoop
+
+static void JSNApi::SetLoop(EcmaVM *vm, void *loop);
+
+将loop指针传递给EcmaVM对象vm的SetLoop方法。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明           |
+| ------ | -------- | ---- | -------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象。   |
+| loop   | void *   | 是   | 循环回调函数。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SetLoop(vm_, loop);
+```
+
+### SetAssetPath
+
+static void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+
+将assetPath字符串转换为C风格的字符串，并将其传递给EcmaVM对象vm的SetAssetPath方法。
+
+**参数：**
+
+| 参数名    | 类型                | 必填 | 说明             |
+| --------- | ------------------- | ---- | ---------------- |
+| vm        | EcmaVM *            | 是   | 虚拟机对象。     |
+| assetPath | const std::string & | 是   | 要设置的资源路径 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SetAssetPath(vm_, assetPath);
+```
+
+### SetBundle
+
+static void JSNApi::SetBundle(EcmaVM *vm, bool value);
+
+将value传递给EcmaVM对象vm的SetIsBundlePack方法。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明                    |
+| ------ | -------- | ---- | ----------------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象。            |
+| value  | bool     | 是   | 布尔值：true 或 false。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SetBundle(vm_, value);
+```
+
+### SwitchCurrentContext
+
+static void JSNApi::SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
+
+将当前上下文切换到指定的context。
+
+**参数：**
+
+| 参数名  | 类型          | 必填 | 说明               |
+| ------- | ------------- | ---- | ------------------ |
+| vm      | EcmaVM *      | 是   | 虚拟机对象。       |
+| context | EcmaContext * | 是   | 要切换到的上下文。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SwitchCurrentContext(vm_, context);
+```
+
+### LoadAotFile
+
+static void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName);
+
+加载一个Ahead-of-Time（AOT）文件。
+
+**参数：**
+
+| 参数名     | 类型                | 必填 | 说明                      |
+| ---------- | ------------------- | ---- | ------------------------- |
+| vm         | EcmaVM *            | 是   | 虚拟机对象。              |
+| moduleName | const std::string & | 是   | 要加载的 AOT 文件的名称。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::LoadAotFile(vm_, moduleName);
+```
+
+### DestroyJSVM
+
+static void JSNApi::DestroyJSVM(EcmaVM *ecmaVm);
+
+销毁一个指定的ECMA虚拟机（EcmaVM）。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明                 |
+| ------ | -------- | ---- | -------------------- |
+| ecmaVm | EcmaVM * | 是   | 要销毁的虚拟机对象。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+ JSNApi::DestroyJSVM(ecmaVm);
+```
+
+### DeleteSerializationData
+
+void JSNApi::DeleteSerializationData(void *data);
+
+删除一个序列化数据对象。
+
+**参数：**
+
+| 参数名 | 类型   | 必填 | 说明                 |
+| ------ | ------ | ---- | -------------------- |
+| data   | void * | 是   | 要删除的序列化数据。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::DeleteSerializationData(data);
+```
+
+### DeserializeValue
+
+Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
+
+将序列化数据反序列化为JavaScript值。
+
+**参数：**
+
+| 参数名  | 类型           | 必填 | 说明                     |
+| ------- | -------------- | ---- | ------------------------ |
+| vm      | const EcmaVM * | 是   | 虚拟机对象。             |
+| recoder | void *         | 是   | 用于反序列化的编解码器。 |
+| hint    | void *         | 是   | 可选的提示对象。         |
+
+**返回值;**
+
+| 类型              | 说明                                       |
+| ----------------- | ------------------------------------------ |
+| Local<JSValueRef> | 返回转换成 JSValueRef 类型的反序列化数据。 |
+
+**示例：**
+
+```c++
+ Local<JSValueRef> value = JSNApi::DeserializeValue(vm_, recoder, hint);
+```
+
+### Execute
+
+bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,const std::string &filename, bool needUpdate);
+
+执行一个Ark缓冲区文件。
+
+**参数：**
+
+| 参数名     | 类型                | 必填 | 说明                                                        |
+| ---------- | ------------------- | ---- | ----------------------------------------------------------- |
+| vm         | EcmaVM *            | 是   | 虚拟机对象。                                                |
+| data       | const uint8_t *     | 是   | JavaScript代码的字节数组。                                  |
+| size       | int32_t             | 是   | JavaScript代码的大小（以字节为单位）。                      |
+| entry      | const std::string & | 是   | JavaScript代码入口点的名称。                                |
+| filename   | const std::string & | 是   | JavaScript代码文件名。                                      |
+| needUpdate | bool                | 是   | 布尔值：true 或 false。（表示是否需要更新虚拟机对象的状态） |
+
+**返回值：**
+
+| 类型 | 说明                                               |
+| ---- | -------------------------------------------------- |
+| bool | 执行Ark缓冲区文件成功，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+bool b = JSNApi::Execute(vm_, data, size, entry,filename, needUpdate);
+```
+
+### Execute
+
+bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate);
+
+执行一个Ark文件。
+
+**参数：**
+
+| 参数名     | 类型                | 必填 | 说明                                                        |
+| ---------- | ------------------- | ---- | ----------------------------------------------------------- |
+| vm         | EcmaVM *            | 是   | 虚拟机对象。                                                |
+| fileName   | const std::string & | 是   | JavaScript代码文件名。                                      |
+| entry      | const std::string & | 是   | JavaScript代码入口点的名称。                                |
+| needUpdate | bool                | 是   | 布尔值：true 或 false。（表示是否需要更新虚拟机对象的状态） |
+
+**返回值：**
+
+| 类型 | 说明                                         |
+| ---- | -------------------------------------------- |
+| bool | 执行Ark文件成功，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+bool b = JSNApi::Execute(vm_, fileName, entry, needUpdate);
+```
+
+### SetHostPromiseRejectionTracker
+
+void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
+
+用于设置与JavaScript虚拟机（EcmaVM）相关联的宿主Promise拒绝跟踪器（Host Promise Rejection Tracker）。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明                                          |
+| ------ | -------- | ---- | --------------------------------------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象。                                  |
+| cb     | void     | 是   | 要设置为当前ECMA上下文的Promise拒绝回调函数。 |
+| data   | void     | 是   | 要设置为当前ECMA上下文的数据。                |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::SetHostPromiseRejectionTracker(vm_, cb, data);
+```
+
+
+
 ## JSValueRef
 
 JSValueRef是一个用于表示JS值的类。它提供了一些方式来操作和访问JS中的各种数据类型，如字符串、数字、布尔值、对象、数组等。通过使用JSValueRef，您可以获取和设置JS值的属性和方法，执行函数调用，转换数据类型等。
@@ -870,6 +1262,603 @@ JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genOb
 Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
 bool b = genObjectRef->IsGeneratorObject();
 ```
+
+### IsUint8Array
+
+bool JSValueRef::IsUint8Array();
+
+判断一个JSValueRef对象是否为Uint8Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果JSValueRef对象为Uint8Array类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 5);
+Local<Uint8ArrayRef> object = Uint8ArrayRef::New(vm_, buffer, 4, 5);
+bool b = object->IsUint8Array();
+```
+
+### IsInt8Array
+
+bool JSValueRef::IsInt8Array();
+
+判断一个JSValueRef对象是否为Int8Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果JSValueRef对象为Int8Array类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm_, 5);
+Local<ObjectRef> object = Int8ArrayRef::New(vm_, buffer, 4, 5);
+bool b = object->IsInt8Array();
+```
+
+### IsError
+
+bool JSValueRef::IsError();
+
+判断一个JSValueRef对象是否为错误类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                      |
+| ---- | --------------------------------------------------------- |
+| bool | 如果JSValueRef对象为错误类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+bool b = message->IsError();
+```
+
+### InstanceOf
+
+bool JSValueRef::InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
+
+检查一个特定的JSValueRef是否属于一个特定的EcmaVM对象。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明          |
+| ------ | ----------------- | ---- | ------------- |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象。  |
+| value  | Local<JSValueRef> | 是   | 指定的value。 |
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果特定的JSValueRef属于特定的EcmaVM对象，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<ObjectRef> origin = ObjectRef::New(vm_);
+Local<JSValueRef> ConstructObjectJSValueRef(const EcmaVM *vm){
+    // 构造一个JSValueRef类型的对象value
+    // ...
+    return value; // 返回参数value
+}
+bool b = origin->InstanceOf(vm_, ConstructObjectJSValueRef(vm_));
+```
+
+### IsPromise
+
+bool JSValueRef::IsPromise();
+
+判断一个JSValueRef对象是否为Promise类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果JSValueRef对象为PromiseRef类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = PromiseCapabilityRef::New(vm_)->GetPromise(vm_);
+bool b = tag->IsPromise();
+```
+
+### IsDate
+
+bool JSValueRef::IsDate();
+
+判断一个JSValueRef对象是否为日期类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                      |
+| ---- | --------------------------------------------------------- |
+| bool | 如果JSValueRef对象为日期类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+double timeRef = 1.1;
+Local<DateRef> dateRef = DateRef::New(vm_, timeRef);
+bool b = dateRef->IsDate();
+```
+
+### IsTypedArray
+
+bool JSValueRef::IsTypedArray();
+
+检查一个JSValueRef对象是否为类型化数组（TypedArray）。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象为类型化数组，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+int input = 123;
+Local<JSValueRef> res = IntegerRef::New(vm_, input);
+bool b = res->IsTypedArray();
+```
+
+### IsDataView
+
+bool JSValueRef::IsDataView();
+
+判断一个JSValueRef对象是否为DataView类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果JSValueRef对象为DataViewRef类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = DataViewRef::New(vm_,ArrayBufferRef::New(vm_,0),0,0);
+bool b = tag->IsDataView();
+```
+
+### IsBuffer
+
+bool JSValueRef::IsBuffer();
+
+判断一个JSValueRef对象是否为Buffer类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象为Buffer类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+int32_t length = 15;
+Local<BufferRef> bufferRef = BufferRef::New(vm_, length);
+bool b = bufferRef->IsBuffer();
+```
+
+### IsArrayBuffer
+
+bool JSValueRef::IsArrayBuffer();
+
+判断一个JSValueRef对象是否为ArrayBuffer类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果JSValueRef对象为ArrayBuffer类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> ConstructObjectArrBufRef(const EcmaVM *vm, const int32_t length_){
+    // 构造一个ArrayBufferRef类型的对象arrayBuffer
+    // ...
+    return arrayBuffer; // 返回arrayBuffer
+}
+Local<ArrayBufferRef> arrayBuf = ConstructObjectArrBufRef(vm_, 15);
+bool b = arrayBuf->IsArrayBuffer();
+```
+
+### IsArray
+
+bool JSValueRef::IsArray(const EcmaVM *vm);
+
+判断一个JSValueRef对象是否为数组类型。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型 | 说明                                                      |
+| ---- | --------------------------------------------------------- |
+| bool | 如果JSValueRef对象是数组类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+uint32_t length = 3;
+Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+bool b = arrayObject->IsArray(vm_);
+```
+
+### ToObject
+
+Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm);
+
+将一个JSValueRef对象转换为ObjectRef对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型             | 说明                                |
+| ---------------- | ----------------------------------- |
+| Local<ObjectRef> | 返回转换后的 ObjectRef 类型的对象。 |
+
+**示例：**
+
+```c++
+int input = 0;
+Local<IntegerRef> intValue = IntegerRef::New(vm_, input);
+Local<ObjectRef> object = intValue->ToObject(vm_);
+```
+
+### ToNumber
+
+Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm);
+
+将一个JSValueRef对象转换为NumberRef对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型             | 说明                                |
+| ---------------- | ----------------------------------- |
+| Local<NumberRef> | 返回转换后的 NumberRef 类型的对象。 |
+
+**示例：**
+
+```c++
+Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+Local<JSValueRef> toValue(toString);
+Local<NumberRef> number = toString->ToNumber(vm_);
+```
+
+### ToBoolean
+
+Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm);
+
+将一个JSValueRef对象转换为布尔值（BooleanRef）。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型              | 说明                                 |
+| ----------------- | ------------------------------------ |
+| Local<BooleanRef> | 返回转换后的 BooleanRef 类型的对象。 |
+
+**示例：**
+
+```c++
+Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+Local<BooleanRef> boo = intValue->ToBoolean(vm_);
+```
+
+### IsObject
+
+bool JSValueRef::IsObject();
+
+判断一个JSValueRef对象是否为Object类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象是Object类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> res = ObjectRef::New(vm_);
+bool b = res->IsObject();
+```
+
+### IsBigInt
+
+bool JSValueRef::IsBigInt();
+
+判断一个JSValueRef对象是否为BigInt类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象为BigInt类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+int input = 2147483646;
+Local<IntegerRef> intValue = IntegerRef::New(vm_, input);
+bool b = intValue->IsBigInt();
+```
+
+### IsSymbol
+
+bool JSValueRef::IsSymbol();
+
+判断一个JSValueRef对象是否为Symbol类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象是Symbol类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+int input = 123;
+Local<JSValueRef> res = IntegerRef::New(vm_,input);
+bool b = res->IsSymbol();
+```
+
+### IsUndefined
+
+bool JSValueRef::IsUndefined();
+
+判断一个JSValueRef对象是否为未定义类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果JSValueRef对象为未定义类型，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = JSValueRef::Undefined(vm_);
+bool b = tag->IsUndefined();
+```
+
+
+
+### IsBoolean
+
+bool JSValueRef::IsBoolean();
+
+判断一个JSValueRef对象是否为布尔值。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                    |
+| ---- | ------------------------------------------------------- |
+| bool | 如果JSValueRef对象为布尔值，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = BooleanRef::New(vm_,false);
+bool b = tag->IsBoolean();
+```
+
+### IsNull
+
+bool JSValueRef::IsNull();
+
+判断一个JSValueRef对象是否为空。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                |
+| ---- | --------------------------------------------------- |
+| bool | 如果JSValueRef对象为空，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = JSValueRef::Null(vm_);
+bool b = tag->IsNull();
+```
+
+
+
+### IsNativePointer
+
+bool JSValueRef::IsNativePointer();
+
+判断一个JSValueRef对象是否为本地指针。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                      |
+| ---- | --------------------------------------------------------- |
+| bool | 如果JSValueRef对象为本地指针，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+void *vps = static_cast<void *>(new std::string("test"));
+void *vps1 = static_cast<void *>(new std::string("test"));
+Local<NativePointerRef> res_vps = 
+    NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
+bool b = res_vps->IsNativePointer();
+```
+
+### IsFunction
+
+bool JSValueRef::IsFunction();
+
+判断一个JSValueRef对象是否为函数。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| bool | 如果JSValueRef对象为函数，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<FunctionRef> ConstructObjectFunctionRef(EcmaVM *vm, size_t nativeBindingsize){
+    // 构造一个FunctionRef类型对象obj
+    // ...
+    return obj; // 返回obj
+}
+Local<FunctionRef> object = ConstructObjectFunctionRef(vm_, 15);
+bool b = object->IsFunction();
+```
+
+### IsString
+
+bool JSValueRef::IsString();
+
+判断一个JSValueRef对象是否为字符串。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                    |
+| ---- | ------------------------------------------------------- |
+| bool | 如果JSValueRef对象为字符串，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = StringRef::NewFromUtf8(vm_,"abc");
+bool b = tag->IsString();
+```
+
+### IsNumber
+
+bool JSValueRef::IsNumber();
+
+判断一个JSValueRef对象是否为数字。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| bool | 如果JSValueRef对象为数字，返回true。否则，返回false。 |
+
+**示例：**
+
+```c++
+Local<NumberRef> resUnit32 = NumberRef::New(vm_, inputUnit32);
+bool b = resUnit32->IsNumber();
+```
+
+
 
 ## FunctionRef
 
