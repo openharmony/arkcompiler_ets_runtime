@@ -2699,6 +2699,7 @@ void ECMAObject::InitializeExtRefAndOwner(EcmaVM *vm, const JSHandle<JSObject> &
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    // Use sharedTaggedArray instead of taggedArray when shared-heap is implemented
     JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
     newArray->SetExtraLength(0);
     newArray->Set(thread, HASH_INDEX, hashValue);
@@ -2717,7 +2718,7 @@ void ECMAObject::SetOwnership(JSThread* thread, uint32_t threadID)
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
     uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
-    extRefAndOwnerField = (extRefAndOwnerField & 0xFFFFFFFF00000000ULL) | threadID;
+    extRefAndOwnerField = (extRefAndOwnerField & OWNER_FIELD_NOT_THREADID_MASK) | threadID;
     array->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
 }
 
@@ -2731,7 +2732,7 @@ bool ECMAObject::IsOwned(uint32_t threadID)
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
     uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
-    return (extRefAndOwnerField & OWNER_ID_MASK) == (uint64_t)threadID;
+    return (extRefAndOwnerField & 0xFFFF'FFFFULL) == (uint64_t)threadID;
 }
 
 void ECMAObject::FreezeObj(JSThread* thread)
@@ -2744,7 +2745,7 @@ void ECMAObject::FreezeObj(JSThread* thread)
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
     uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
-    extRefAndOwnerField = extRefAndOwnerField | (0x1ULL << 32);
+    extRefAndOwnerField = extRefAndOwnerField | (0x1ULL << FROZEN_SHIFT_BITS);
     array->Set(thread, EXTREF_AND_OWNER_INDEX, JSTaggedValue(extRefAndOwnerField));
 }
 
@@ -2758,7 +2759,7 @@ bool ECMAObject::IsFrozen()
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
     uint64_t extRefAndOwnerField = array->Get(EXTREF_AND_OWNER_INDEX).GetRawData();
-    return (extRefAndOwnerField & (0x1ULL << 32)) == 0x0ULL;
+    return (extRefAndOwnerField & (0x1ULL << FROZEN_SHIFT_BITS)) == 0x0ULL;
 }
 
 int32_t ECMAObject::GetNativePointerFieldCount() const

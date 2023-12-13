@@ -225,16 +225,7 @@ void BaseSerializer::SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto)
         data_->WriteJSTaggedValue(proto);
     } else if (!SerializeReference(proto.GetTaggedObject()) && !SerializeRootObject(proto.GetTaggedObject())) {
         data_->WriteEncodeFlag(EncodeFlag::OBJECT_PROTO);
-        JSType type = kclass->GetObjectType();
-        data_->WriteUint8(static_cast<uint8_t>(type));
-        switch (type) {
-            case JSType::JS_SHARED_OBJECT:
-            case JSType::JS_SHARED_FUNCTION:
-                SerializeJSTaggedValue(proto);
-                break;
-            default:
-                break;
-        }
+        data_->WriteUint8(static_cast<uint8_t>(kclass->GetObjectType()));
     }
 }
 
