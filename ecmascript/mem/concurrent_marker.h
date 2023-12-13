@@ -136,6 +136,24 @@ private:
         Heap *heap_ {nullptr};
     };
 
+    class RecursionScope {
+    public:
+        explicit RecursionScope(ConcurrentMarker* marker) : marker_(marker)
+        {
+            if (marker_->recursionDepth_++ != 0) {
+                LOG_GC(FATAL) << "Recursion in ConcurrentMarker Constructor, depth: " << marker_->recursionDepth_;
+            }
+        }
+        ~RecursionScope()
+        {
+            if (--marker_->recursionDepth_ != 0) {
+                LOG_GC(FATAL) << "Recursion in ConcurrentMarker Destructor, depth: " << marker_->recursionDepth_;
+            }
+        }
+    private:
+        ConcurrentMarker* marker_ {nullptr};
+    };
+
     void SetDuration(double duration)
     {
         duration_ = duration;
@@ -162,6 +180,7 @@ private:
     bool isConcurrentMarking_ {false};
     Mutex waitMarkingFinishedMutex_;
     ConditionVariable waitMarkingFinishedCV_;
+    int32_t recursionDepth_ {0};
 
     friend class Heap;
 };

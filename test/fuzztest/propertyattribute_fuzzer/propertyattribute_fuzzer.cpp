@@ -48,8 +48,8 @@ void PropertyAttributeSetIsFuzzTest(const uint8_t *data, size_t size)
     uint8_t *ptr = nullptr;
     ptr = const_cast<uint8_t *>(data);
     bool w = false, e = true, c = true;
-    constexpr int Num = 2; //判断奇偶性
-    if (size % Num == 1) { 
+    constexpr int num = 2; //判断奇偶性
+    if (size % num == 1) {
         w = true;
         e = false;
         c = false;

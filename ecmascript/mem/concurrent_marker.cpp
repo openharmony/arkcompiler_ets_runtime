@@ -57,6 +57,7 @@ void ConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType type)
 
 void ConcurrentMarker::Mark()
 {
+    RecursionScope recurScope(this);
     TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, heap_->GetEcmaVM()->GetEcmaGCStats());
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark");

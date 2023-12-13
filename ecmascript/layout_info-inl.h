@@ -113,7 +113,9 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     int index = cache->Get(cls, key);
     if (index == PropertiesCache::NOT_FOUND) {
         index = BinarySearch(key, propertiesNumber);
-        cache->Set(cls, key, index);
+        if (index != -1) {
+            cache->Set(cls, key, index);
+        }
     }
     return index;
 }
@@ -178,6 +180,42 @@ inline void LayoutInfo::SetIsNotHole(const JSThread *thread, int index)
     PropertyAttributes attr(TaggedArray::Get(fixedIdx));
     attr.SetIsNotHole(true);
     TaggedArray::Set(thread, fixedIdx, attr.GetTaggedValue());
+}
+
+
+template<bool checkDuplicateKeys /* = false*/>
+void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
+                        const PropertyAttributes &attr)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int number = NumberOfElements();
+    ASSERT(attr.GetOffset() == static_cast<uint32_t>(number));
+    ASSERT(number + 1 <= GetPropertiesCapacity());
+    ASSERT(number == index);
+    SetNumberOfElements(thread, number + 1);
+    SetPropertyInit(thread, number, key, attr);
+
+    uint32_t keyHash = key.GetKeyHashCode();
+    int insertIndex = number;
+    for (; insertIndex > 0; --insertIndex) {
+        JSTaggedValue prevKey = GetSortedKey(insertIndex - 1);
+        if (prevKey.GetKeyHashCode() <= keyHash) {
+            break;
+        }
+        SetSortedIndex(thread, insertIndex, GetSortedIndex(insertIndex - 1));
+    }
+    SetSortedIndex(thread, insertIndex, number);
+    if (checkDuplicateKeys) {
+        while (insertIndex > 0) {
+            JSTaggedValue prevKey = GetSortedKey(--insertIndex);
+            if (prevKey.GetKeyHashCode() < keyHash) {
+                return;
+            }
+            if (prevKey == key) {
+                THROW_TYPE_ERROR(const_cast<JSThread *>(thread), "property keys can not duplicate");
+            }
+        }
+    }
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LAYOUT_INFO_INL_H

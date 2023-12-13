@@ -443,6 +443,20 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         dstArray->SetElements(thread, dstElements);
         dstArray->SetArrayLength(thread, length);
         TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        for (uint32_t i = 0; i < length; i++) { 
+            JSTaggedValue reg = srcElements->Get(thread, i);
+            if (reg.IsHole()) {
+                JSTaggedValue reg2 = JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue();
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (reg2.IsHole()) {
+                    dstElements->Set(thread, i, JSTaggedValue::Undefined());
+                } else {
+                    dstElements->Set(thread, i, reg2);
+                }
+            } else {
+                dstElements->Set(thread, i, reg);
+            }
+        }
         return JSTaggedValue(length);
     }
 
@@ -924,10 +938,12 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     // ctor -> hclass -> EnableProtoChangeMarker
     auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
-    JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
-    // prototype -> hclass -> EnableProtoChangeMarker
-    JSHClass::EnableProtoChangeMarker(thread,
+    if (constructor->GetClass()->IsTS()) {
+        JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
+        // prototype -> hclass -> EnableProtoChangeMarker
+        JSHClass::EnableProtoChangeMarker(thread,
         JSHandle<JSHClass>(thread, constructor->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+    }
 
     // by enableing the ProtoChangeMarker, the IHC generated in the Aot stage
     // is registered into the listener of its prototype. In this way, it is ensured
@@ -941,7 +957,9 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         }
     } else {
         JSHandle<JSObject> protoHandle(thread, protoOrHClass);
-        JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
+        if (protoHandle->GetJSHClass()->IsTS()) {
+            JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
+        }
     }
 
     return JSTaggedValue::Undefined();

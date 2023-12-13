@@ -29,3 +29,14 @@ print(arr)
 arr = new Array(100)
 arr.splice(0, 20)
 print(arr.length)
+
+var array=new Array(10);
+var spliced = array.splice(1,1);
+for(let i=0;i<array.length;++i){
+    print(i in array)
+}
+var array1=new Array(10);
+var spliced1 = array1.splice(1,1,"a","b");
+for(let i=0;i<array1.length;++i){
+    print(i in array1)
+}

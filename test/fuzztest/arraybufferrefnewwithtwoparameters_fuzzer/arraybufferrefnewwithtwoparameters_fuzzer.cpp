@@ -64,7 +64,7 @@ void ArrayBufferRef_New_IsDetach_Detach_ByteLength_GetBuffer_FuzzTest(const uint
     arrayBuffer->IsDetach();
     arrayBuffer->Detach(vm);
     arrayBuffer->ByteLength(vm);
-	JSNApi::DestroyJSVM(vm);
+    JSNApi::DestroyJSVM(vm);
 }
 }
 

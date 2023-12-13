@@ -21,7 +21,8 @@ import("//build/ohos.gni")
 ohos_fuzztest("ArrayBufferRefNewWithTwoParametersFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file = "$js_root/test/fuzztest/arraybufferrefnewwithtwoparameters_fuzzer"
+  fuzz_config_file =
+      "$js_root/test/fuzztest/arraybufferrefnewwithtwoparameters_fuzzer"
 
   sources = [ "arraybufferrefnewwithtwoparameters_fuzzer.cpp" ]
 

@@ -21,7 +21,8 @@ import("//build/ohos.gni")
 ohos_fuzztest("JSNApiSetHostPromiseRejectionTrackerFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file = "$js_root/test/fuzztest/jsnapisethostpromiserejectiontracker_fuzzer"
+  fuzz_config_file =
+      "$js_root/test/fuzztest/jsnapisethostpromiserejectiontracker_fuzzer"
 
   sources = [ "jsnapisethostpromiserejectiontracker_fuzzer.cpp" ]
 

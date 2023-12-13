@@ -156,7 +156,6 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
             if ((idx + actualDeleteCount) < srcElementsHandle->GetLength()) {
                 element = srcElementsHandle->Get(idx + actualDeleteCount);
             }
-            element = element.IsHole() ? JSTaggedValue::Undefined() : element;
             if ((idx + insertCount) < srcElementsHandle->GetLength()) {
                 srcElementsHandle->Set(thread, idx + insertCount, element);
             }
@@ -174,7 +173,6 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
     } else {
         for (uint32_t idx = len - actualDeleteCount; idx > start; idx--) {
             auto element = srcElementsHandle->Get(idx + actualDeleteCount - 1);
-            element = element.IsHole() ? JSTaggedValue::Undefined() : element;
             srcElementsHandle->Set(thread, idx + insertCount - 1, element);
         }
     }
@@ -716,7 +714,12 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
     while (k < len) {
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());
-        kValue.Update(array->Get(k));
+        JSTaggedValue value = array->Get(k);
+        if (value.IsHole() && JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
+            value = JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        kValue.Update(value);
         if (!kValue.GetTaggedValue().IsHole()) {
             key.Update(JSTaggedValue(k));
             EcmaRuntimeCallInfo *info =

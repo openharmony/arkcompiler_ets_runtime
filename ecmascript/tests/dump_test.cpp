@@ -447,9 +447,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::METHOD: {
 #ifdef PANDA_TARGET_64
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 9U);
 #else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 7U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
 #endif
                 break;
             }
@@ -1024,7 +1024,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::MACHINE_CODE_OBJECT: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::DATA_OFFSET, 1U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::SIZE, 4U);
                 GTEST_LOG_(INFO) << "MACHINE_CODE_OBJECT not support new in MachineCodeSpace";
                 break;
             }

@@ -74,7 +74,7 @@ void *SamplingProcessor::Run(void *arg)
     }
     generator->SetThreadStopTime();
     generator->AddTraceEvent(true);
-    pthread_setname_np(tid, "OS_GC_WorkerThread");
+    pthread_setname_np(tid, "OS_GC_Thread");
     if (generator->SemPost(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] post failed";
         return nullptr;

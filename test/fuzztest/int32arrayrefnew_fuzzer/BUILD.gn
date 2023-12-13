@@ -21,8 +21,7 @@ import("//build/ohos.gni")
 ohos_fuzztest("Int32ArrayRefNewFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file =
-      "$js_root/test/fuzztest/int32arrayrefnew_fuzzer"
+  fuzz_config_file = "$js_root/test/fuzztest/int32arrayrefnew_fuzzer"
 
   sources = [ "int32arrayrefnew_fuzzer.cpp" ]
 

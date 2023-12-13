@@ -215,7 +215,7 @@ BaseNode *CGLowerer::SplitBinaryNodeOpnd1(BinaryNode &bNode, BlockNode &blkNode)
     MIRBuilder *mirbuilder = mirModule.GetMIRBuilder();
     static uint32 val = 0;
     std::string name("bnaryTmp");
-    name.append(std::to_string(val++));
+    name += std::to_string(val++);
 
     BaseNode *opnd1 = bNode.Opnd(1);
     MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(opnd1->GetPrimType()));
@@ -237,7 +237,7 @@ BaseNode *CGLowerer::SplitTernaryNodeResult(TernaryNode &tNode, BaseNode &parent
     MIRBuilder *mirbuilder = mirModule.GetMIRBuilder();
     static uint32 val = 0;
     std::string name("tnaryTmp");
-    name.append(std::to_string(val++));
+    name += std::to_string(val++);
 
     MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(tNode.GetPrimType()));
     MIRSymbol *dassignNodeSym = mirbuilder->GetOrCreateLocalDecl(const_cast<const std::string &>(name), *ty);
@@ -346,7 +346,7 @@ BaseNode *CGLowerer::LowerComplexSelect(const TernaryNode &tNode, BaseNode &pare
     if (tNode.GetPrimType() == PTY_agg) {
         static uint32 val = 0;
         std::string name("ComplexSelectTmp");
-        name.append(std::to_string(val++));
+        name += std::to_string(val++);
         cplxSelRes.resSym = mirbuilder->GetOrCreateLocalDecl(const_cast<std::string &>(name), *resultTy);
         DassignNode *dassignTrue = mirbuilder->CreateStmtDassign(*cplxSelRes.resSym, 0, tNode.Opnd(1));
         // Fallthru: update the frequence 1
@@ -1015,7 +1015,7 @@ static GStrIdx NewAsmTempStrIdx()
 {
     static uint32 strIdxCount = 0;  // to create unique temporary symbol names
     std::string asmTempStr("asm_tempvar");
-    (void)asmTempStr.append(std::to_string(++strIdxCount));
+    asmTempStr += std::to_string(++strIdxCount);
     return GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(asmTempStr);
 }
 
@@ -2253,7 +2253,7 @@ void CGLowerer::LowerEntry(MIRFunction &func)
         retSt->SetSKind(kStVar);
         std::string retName(".return.");
         MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
-        retName.append(funcSt->GetName());
+        retName += funcSt->GetName();
         retSt->SetNameStrIdx(retName);
         MIRType *pointType = beCommon.BeGetOrCreatePointerType(*func.GetReturnType());
 
@@ -3033,7 +3033,7 @@ BaseNode *CGLowerer::LowerJavascriptIntrinsicop(IntrinsicopNode &intrinNode, con
         /* create a local symbol and dread it; */
         std::string tmpstr("__ret_struct_tmp_st");
         static uint32 tmpIdx = 0;
-        tmpstr.append(std::to_string(tmpIdx++));
+        tmpstr += std::to_string(tmpIdx++);
         MIRSymbol *tmpSt = mirBuilder->GetOrCreateDeclInFunc(tmpstr, *retType, *mirModule.CurFunction());
         MIRType *fnType = beCommon.BeGetOrCreateFunctionType(retType->GetTypeIndex(), fnTyVec, fnTaVec);
         st->SetTyIdx(fnType->GetTypeIndex());

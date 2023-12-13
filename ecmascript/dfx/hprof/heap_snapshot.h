@@ -501,11 +501,13 @@ private:
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
     std::string ParseFunctionName(TaggedObject *obj);
+    const CString ParseObjectName(TaggedObject *obj);
 
     Node *InsertNodeUnique(Node *node);
     void EraseNodeUnique(Node *node);

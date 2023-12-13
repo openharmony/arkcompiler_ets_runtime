@@ -1994,7 +1994,7 @@ LabelIdx CGFunc::CreateLabel()
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "Get func failed at CGFunc::CreateLabel");
     std::string funcName = funcSt->GetName();
-    std::string labelStr = funcName.append(std::to_string(labelIdx++));
+    std::string labelStr = funcName += std::to_string(labelIdx++);
     return func.GetOrCreateLableIdxFromName(labelStr);
 }
 

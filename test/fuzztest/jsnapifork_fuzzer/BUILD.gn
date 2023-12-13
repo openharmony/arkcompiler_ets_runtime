@@ -21,8 +21,7 @@ import("//build/ohos.gni")
 ohos_fuzztest("JSNApiForkFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file =
-      "$js_root/test/fuzztest/jsnapifork_fuzzer"
+  fuzz_config_file = "$js_root/test/fuzztest/jsnapifork_fuzzer"
 
   sources = [ "jsnapifork_fuzzer.cpp" ]
 

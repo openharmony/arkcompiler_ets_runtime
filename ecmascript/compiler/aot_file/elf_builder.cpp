@@ -344,6 +344,7 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
             curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
             file.seekp(curSecOffset);
         }
+        stubTextOffset_.emplace_back(curSecOffset);
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         curInfo.textSize = curSecSize;
         curSecOffset += curSecSize;
@@ -354,6 +355,36 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
             curInfo.rodataSizeAfterText = rodataSizeAfterText;
             curSecOffset += rodataSizeAfterText;
         }
+    }
+}
+
+void ElfBuilder::MergeStrtabSections(std::ofstream &file,
+                                     std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+                                     llvm::ELF::Elf64_Off &curSecOffset)
+{
+    for (size_t i = 0; i < des_.size(); ++i) {
+        ModuleSectionDes &des = des_[i];
+        ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
+        uint32_t curSecSize = des.GetSecSize(ElfSecName::STRTAB);
+        uint64_t curSecAddr = des.GetSecAddr(ElfSecName::STRTAB);
+        curInfo.strtabSize = curSecSize;
+        file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
+        curSecOffset += curSecSize;
+    }
+}
+
+void ElfBuilder::MergeSymtabSections(std::ofstream &file,
+                                     std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+                                     llvm::ELF::Elf64_Off &curSecOffset)
+{
+    for (size_t i = 0; i < des_.size(); ++i) {
+        ModuleSectionDes &des = des_[i];
+        ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
+        uint32_t curSecSize = des.GetSecSize(ElfSecName::SYMTAB);
+        uint64_t curSecAddr = des.GetSecAddr(ElfSecName::SYMTAB);
+        curInfo.symtabSize = curSecSize;
+        file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
+        curSecOffset += curSecSize;
     }
 }
 
@@ -379,33 +410,43 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
 void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
 {
     using Elf64_Sym = llvm::ELF::Elf64_Sym;
+    ASSERT(stubTextOffset_.size() == des_.size());
 
-    uint32_t secSize = des_[FullSecIndex].GetSecSize(ElfSecName::SYMTAB);
-    uint64_t secAddr = des_[FullSecIndex].GetSecAddr(ElfSecName::SYMTAB);
     uint32_t secNum = static_cast<uint32_t>(GetSecNum());
-    uint64_t textSecOffset = sectionToShdr_[ElfSecName::TEXT].sh_offset;
     uint32_t shStrTabIndex = GetShIndex(ElfSecName::SHSTRTAB);
+    uint32_t strTabIndex = GetShIndex(ElfSecName::STRTAB);
     uint32_t textSecIndex = GetShIndex(ElfSecName::TEXT);
 
-    Elf64_Sym *syms = reinterpret_cast<Elf64_Sym*>(secAddr);
-    size_t n = secSize / sizeof(Elf64_Sym);
-    int localCount = -1;
-    for (size_t i = 0; i < n; ++i) {
-        Elf64_Sym* sy = &syms[i];
-        if (sy->getBinding() != llvm::ELF::STB_LOCAL && localCount == -1) {
-            localCount = static_cast<int>(i);
+    uint32_t strTabSize = 0;
+    int firstGlobal = -1;
+    uint32_t count = 0;
+
+    for (size_t idx = 0; idx < des_.size(); ++idx) {
+        uint32_t secSize = des_[idx].GetSecSize(ElfSecName::SYMTAB);
+        uint64_t secAddr = des_[idx].GetSecAddr(ElfSecName::SYMTAB);
+        Elf64_Sym *syms = reinterpret_cast<Elf64_Sym*>(secAddr);
+        size_t n = secSize / sizeof(Elf64_Sym);
+        for (size_t i = 0; i < n; ++i) {
+            Elf64_Sym* sy = &syms[i];
+            if (sy->getBinding() == llvm::ELF::STB_GLOBAL && firstGlobal == -1) {
+                firstGlobal = static_cast<int>(count);
+            }
+            if (sy->getType() == llvm::ELF::STT_SECTION) {
+                sy->st_shndx = static_cast<uint16_t>(shStrTabIndex);
+            } else if (sy->getType() == llvm::ELF::STT_FUNC) {
+                sy->st_shndx = static_cast<uint16_t>(textSecIndex);
+                sy->st_value += stubTextOffset_[idx];
+            }
+            if (sy->st_shndx > secNum) {
+                sy->st_shndx = 0;
+            }
+            sy->st_name += strTabSize;
+            count++;
         }
-        if (sy->getType() == llvm::ELF::STT_SECTION) {
-            sy->st_shndx = static_cast<uint16_t>(shStrTabIndex);
-        } else if (sy->getType() == llvm::ELF::STT_FUNC) {
-            sy->st_shndx = static_cast<uint16_t>(textSecIndex);
-            sy->st_value += textSecOffset;
-        }
-        if (sy->st_shndx > secNum) {
-            sy->st_shndx = 0;
-        }
+        strTabSize += des_[idx].GetSecSize(ElfSecName::STRTAB);
     }
-    shdr->sh_info = static_cast<uint32_t>(localCount);
+    shdr->sh_info = static_cast<uint32_t>(firstGlobal);
+    shdr->sh_link = strTabIndex;
 }
 
 /*
@@ -480,6 +521,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         curShdr.sh_addr = curSecOffset;
         curShdr.sh_offset = static_cast<uint64_t>(curSecOffset);
         curShdr.sh_info = 0;
+        curShdr.sh_link = static_cast<uint32_t>(section.Link());
         sectionToFileOffset_[secName] = static_cast<uintptr_t>(file.tellp());
         switch (secName) {
             case ElfSecName::ARK_MODULEINFO: {
@@ -501,14 +543,22 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
                 curShdr.sh_size = curSecOffset - curSize;
                 break;
             }
-            case ElfSecName::STRTAB:
-            case ElfSecName::SYMTAB:
+            case ElfSecName::STRTAB: {
+                uint32_t curSize = curSecOffset;
+                MergeStrtabSections(file, moduleInfo, curSecOffset);
+                curShdr.sh_size = curSecOffset - curSize;
+                break;
+            }
+            case ElfSecName::SYMTAB: {
+                FixSymtab(&curShdr);
+                uint32_t curSize = curSecOffset;
+                MergeSymtabSections(file, moduleInfo, curSecOffset);
+                curShdr.sh_size = curSecOffset - curSize;
+                break;
+            }
             case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB: {
-                if (secName == ElfSecName::SYMTAB) {
-                    FixSymtab(&curShdr);
-                }
                 uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
                 uint64_t curSecAddr = des_[FullSecIndex].GetSecAddr(secName);
                 file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
@@ -525,7 +575,6 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             curSecOffset = AlignUp(curSecOffset, PageSize());
             file.seekp(curSecOffset);
         }
-        curShdr.sh_link = static_cast<uint32_t>(section.Link());
         curShdr.sh_entsize = static_cast<uint64_t>(section.Entsize());
         sectionToShdr_[secName] = curShdr;
         LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << curShdr.sh_entsize << std::endl;

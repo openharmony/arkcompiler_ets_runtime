@@ -56,7 +56,7 @@ namespace OHOS {
         }
         uint8_t* ptr = nullptr;
         ptr = const_cast<uint8_t*>(data);
-        int num = static_cast<int>(size); 
+        int num = static_cast<int>(size);
         Local<JSValueRef> object = IntegerRef::New(vm, num);
         object->IsAsyncGeneratorFunction();
         JSNApi::DestroyJSVM(vm);
@@ -94,7 +94,7 @@ namespace OHOS {
         }
         uint8_t* ptr = nullptr;
         ptr = const_cast<uint8_t*>(data);
-        int num = static_cast<int>(size); 
+        int num = static_cast<int>(size);
         Local<JSValueRef> object = IntegerRef::New(vm, num);
         object->IsAsyncGeneratorObject();
         JSNApi::DestroyJSVM(vm);

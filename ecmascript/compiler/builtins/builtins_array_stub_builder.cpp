@@ -178,6 +178,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Bind(&stableJSArray);
     {
         DEFVARIABLE(thisArrLenVar, VariableType::INT64(), len);
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
         Label loopHead(env);
         Label loopEnd(env);
         Label next(env);
@@ -188,21 +189,35 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
             Branch(Int64LessThan(*i, *thisArrLenVar), &next, &loopExit);
             Bind(&next);
             thisEles = GetElementsArray(thisValue);
-            GateRef kValue = GetValueFromTaggedArray(*thisEles, *i);
+            kValue = GetValueFromTaggedArray(*thisEles, *i);
             Label kValueIsHole(env);
             Label kValueNotHole(env);
-            Branch(TaggedIsHole(kValue), &kValueIsHole, &kValueNotHole);
+            Label arrayValueIsHole(env);
+            Label arrayValueNotHole(env);
+            Label hasProperty(env);
+            Branch(TaggedIsHole(*kValue), &arrayValueIsHole, &arrayValueNotHole);
+            Bind(&arrayValueIsHole);
+            {
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                Branch(TaggedIsTrue(hasProp), &hasProperty, &arrayValueNotHole);
+                Bind(&hasProperty);
+                kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                Jump(&arrayValueNotHole);
+            }
+            Bind(&arrayValueNotHole);
+            Branch(TaggedIsHole(*kValue), &kValueIsHole, &kValueNotHole);
             Bind(&kValueNotHole);
             {
                 GateRef key = Int64ToTaggedInt(*i);
                 Label checkArray(env);
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, kValue, key, thisValue });
+                                                  Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                                                  { argHandle, *kValue, key, thisValue });
                 Label find(env);
                 Branch(TaggedIsTrue(FastToBoolean(retValue)), &find, &checkArray);
                 Bind(&find);
                 {
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *toIndex, kValue);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayEles, *toIndex, *kValue);
                     toIndex = Int64Add(*toIndex, Int64(1));
                     Jump(&checkArray);
                 }
@@ -1668,23 +1683,12 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     Bind(&next);
                     ele = Hole();
                     Label getSrcEle(env);
-                    Label checkVal(env);
                     Label setEle(env);
-                    Branch(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &checkVal);
+                    Branch(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &setEle);
                     Bind(&getSrcEle);
                     {
                         ele = GetValueFromTaggedArray(*srcElements, Int32Add(*i, *actualDeleteCount));
-                        Jump(&checkVal);
-                    }
-                    Bind(&checkVal);
-                    {
-                        Label isHole(env);
-                        Branch(TaggedIsHole(*ele), &isHole, &setEle);
-                        Bind(&isHole);
-                        {
-                            ele = Undefined();
-                            Jump(&setEle);
-                        }
+                        Jump(&setEle);
                     }
                     Bind(&setEle);
                     {

@@ -38,7 +38,7 @@ public:
 
     void SetBit(int64 bitNO)
     {
-        DEBUG_ASSERT(bitNO < info.size() * kWordSize, "Out of Range");
+        DEBUG_ASSERT(static_cast<size_t>(bitNO) < info.size() * kWordSize, "Out of Range");
         info[static_cast<size_t>(bitNO / kWordSize)] |= (1ULL << static_cast<uint64>((bitNO % kWordSize)));
     }
 
