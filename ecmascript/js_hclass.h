@@ -385,6 +385,7 @@ public:
     static void OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, const JSHandle<JSObject> &obj,
                                          const std::vector<int> &indexArray = {}, bool isDictionary = false);
+    template<bool checkDuplicateKeys = false>
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr);
@@ -1772,6 +1773,10 @@ private:
     static inline void AddProtoTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                            const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                            const JSHandle<JSTaggedValue> &proto);
+    template<bool checkDuplicateKeys = false>
+    static inline void AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
+                                              JSHandle<JSHClass> &newJsHClass, const JSHandle<JSTaggedValue> &key,
+                                              const PropertyAttributes &attr);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

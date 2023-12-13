@@ -3330,35 +3330,51 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
     return newObjHclass;
 }
 
-JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length)
+JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
+    // At least 4 inlined slot
+    int inlineProps = std::max(static_cast<int>(length), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, inlineProps);
+    hclass->SetPrototype(thread_, proto.GetTaggedValue());
+    {
+        hclass->SetNumberOfProps(0);
+        hclass->SetExtensible(true);
+    }
+    return hclass;
+}
 
+JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t length)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
+    if (UNLIKELY(maybeCache->IsHole())) {
+        JSHandle<TaggedArray> cacheArr = NewTaggedArray(MAX_LITERAL_HCLASS_CACHE_SIZE + 1);
+        env->SetObjectLiteralHClassCache(thread_, cacheArr.GetTaggedValue());
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
+        cacheArr->Set(thread_, length, objHClass);
+        return objHClass;
+    }
+    JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
+    JSTaggedValue maybeHClass = hclassCacheArr->Get(length);
+    if (UNLIKELY(maybeHClass.IsHole())) {
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
+        hclassCacheArr->Set(thread_, length, objHClass);
+        return objHClass;
+    }
+    return JSHandle<JSHClass>(thread_, maybeHClass);
+}
+
+JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length)
+{
+    ASSERT(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     // 64 : If object literal gets too many properties, create hclass directly.
-    const int HCLASS_CACHE_SIZE = 64;
-    if (length >= HCLASS_CACHE_SIZE) {
+    if (length > MAX_LITERAL_HCLASS_CACHE_SIZE) {
         return CreateObjectClass(properties, length);
     }
-    JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
-    if (maybeCache->IsHole()) {
-        JSHandle<TaggedArray> cacheArr = NewTaggedArray(HCLASS_CACHE_SIZE);
-        env->SetObjectLiteralHClassCache(thread_, cacheArr.GetTaggedValue());
-    }
-    JSHandle<JSTaggedValue> hclassCache = env->GetObjectLiteralHClassCache();
-    JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(hclassCache);
-    JSTaggedValue maybeHClass = hclassCacheArr->Get(length);
-    if (maybeHClass.IsHole()) {
-        JSHandle<JSHClass> objHClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, length);
-        objHClass->SetPrototype(thread_, proto.GetTaggedValue());
-        {
-            objHClass->SetNumberOfProps(0);
-            objHClass->SetExtensible(true);
-        }
-        hclassCacheArr->Set(thread_, length, objHClass);
-        return SetLayoutInObjHClass(properties, length, objHClass);
-    }
-    return SetLayoutInObjHClass(properties, length, JSHandle<JSHClass>(thread_, maybeHClass));
+    JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length);
+    return SetLayoutInObjHClass(properties, length, rootHClass);
 }
 
 JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length)
@@ -4371,5 +4387,195 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     jsFunc->SetHomeObject(thread_, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread_);
     return jsFunc;
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t propertyCount,
+                                                                    const Local<JSValueRef> *keys,
+                                                                    const PropertyDescriptor *descs)
+{
+    if (propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE) {
+        return CreateLargeJSObjectWithProperties(propertyCount, keys, descs);
+    }
+
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(propertyCount));
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(descs[i]);
+        attr.SetIsInlinedProps(true);
+        attr.SetOffset(i);
+        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
+    }
+    JSHandle<JSObject> object = NewJSObject(hclassHandle);
+
+    for (size_t i = 0; i < propertyCount; ++i) {
+        object->SetPropertyInlinedProps<true>(thread_, i, descs[i].GetValue().GetTaggedValue());
+    }
+    return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithProperties(size_t propertyCount,
+                                                                         const Local<JSValueRef> *keys,
+                                                                         const PropertyDescriptor *descs)
+{
+    ASSERT(propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE);
+    if (UNLIKELY(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
+        return CreateDictionaryJSObjectWithProperties(propertyCount, keys, descs);
+    }
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetObjectFunctionPrototype();
+
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClass(JSObject::SIZE, propertyCount, JSType::JS_OBJECT, objFuncProto);
+    JSHandle<LayoutInfo> layoutHandle = CreateLayoutInfo(propertyCount);
+    JSHandle<JSObject> object = NewJSObject(hClassHandle);
+
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(descs[i]);
+        attr.SetIsInlinedProps(true);
+        attr.SetOffset(i);
+        LayoutInfo *layout = LayoutInfo::Cast(layoutHandle.GetTaggedValue().GetTaggedObject());
+        layout->AddKey<true>(thread_, i, key.GetTaggedValue(), attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
+        object->SetPropertyInlinedProps<true>(thread_, i, descs[i].GetValue().GetTaggedValue());
+    }
+    hClassHandle->SetNumberOfProps(propertyCount);
+    hClassHandle->SetLayout(thread_, layoutHandle);
+    return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithProperties(size_t propertyCount,
+                                                                              const Local<JSValueRef> *keys,
+                                                                              const PropertyDescriptor *descs)
+{
+    ASSERT(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClass(JSObject::SIZE, 0, JSType::JS_OBJECT, objFuncProto);
+    hClassHandle->SetNumberOfProps(0);
+    hClassHandle->SetIsDictionaryMode(true);
+    JSHandle<JSObject> object = NewJSObject(hClassHandle);
+
+    JSMutableHandle<NameDictionary> dict(
+        thread_, NameDictionary::Create(thread_, NameDictionary::ComputeHashTableSize(propertyCount)));
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(descs[i]);
+        dict.Update(NameDictionary::PutIfAbsent(thread_, dict, key, descs[i].GetValue(), attr));
+    }
+    if (UNLIKELY(dict->EntriesCount() != static_cast<int>(propertyCount))) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "property keys can not duplicate", JSHandle<JSTaggedValue>());
+    }
+    object->SetProperties(thread_, dict);
+    return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
+                                                                         const Local<JSValueRef> *values)
+{
+    if (propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE) {
+        return CreateLargeJSObjectWithNamedProperties(propertyCount, keys, values);
+    }
+
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(propertyCount));
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(PropertyAttributes::GetDefaultAttributes());
+        attr.SetIsInlinedProps(true);
+        attr.SetOffset(i);
+        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
+    }
+    JSHandle<JSObject> object = NewJSObject(hclassHandle);
+
+    for (size_t i = 0; i < propertyCount; ++i) {
+        object->SetPropertyInlinedProps<true>(thread_, i, JSNApiHelper::ToJSHandle(values[i]).GetTaggedValue());
+    }
+    return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
+                                                                              const Local<JSValueRef> *values)
+{
+    ASSERT(propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE);
+    if (UNLIKELY(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
+        return CreateDictionaryJSObjectWithNamedProperties(propertyCount, keys, values);
+    }
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetObjectFunctionPrototype();
+
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClass(JSObject::SIZE, propertyCount, JSType::JS_OBJECT, objFuncProto);
+    JSHandle<LayoutInfo> layoutHandle = CreateLayoutInfo(propertyCount);
+    JSHandle<JSObject> object = NewJSObject(hClassHandle);
+
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(PropertyAttributes::GetDefaultAttributes());
+        attr.SetIsInlinedProps(true);
+        attr.SetOffset(i);
+        LayoutInfo *layout = LayoutInfo::Cast(layoutHandle.GetTaggedValue().GetTaggedObject());
+        layout->AddKey<true>(thread_, i, key.GetTaggedValue(), attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
+        object->SetPropertyInlinedProps<true>(thread_, i, JSNApiHelper::ToJSHandle(values[i]).GetTaggedValue());
+    }
+    hClassHandle->SetNumberOfProps(propertyCount);
+    hClassHandle->SetLayout(thread_, layoutHandle);
+    return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperties(size_t propertyCount,
+                                                                                   const char **keys,
+                                                                                   const Local<JSValueRef> *values)
+{
+    ASSERT(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> hClassHandle = NewEcmaHClass(JSObject::SIZE, 0, JSType::JS_OBJECT, objFuncProto);
+    hClassHandle->SetNumberOfProps(0);
+    hClassHandle->SetIsDictionaryMode(true);
+    JSHandle<JSObject> object = NewJSObject(hClassHandle);
+
+    JSMutableHandle<NameDictionary> dict(
+        thread_, NameDictionary::Create(thread_, NameDictionary::ComputeHashTableSize(propertyCount)));
+    for (size_t i = 0; i < propertyCount; ++i) {
+        JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
+        ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
+        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
+                                        JSHandle<JSTaggedValue>());
+        }
+        PropertyAttributes attr(PropertyAttributes::GetDefaultAttributes());
+        dict.Update(NameDictionary::PutIfAbsent(thread_, dict, key, JSNApiHelper::ToJSHandle(values[i]), attr));
+    }
+    if (UNLIKELY(dict->EntriesCount() != static_cast<int>(propertyCount))) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "property keys can not duplicate", JSHandle<JSTaggedValue>());
+    }
+    object->SetProperties(thread_, dict);
+    return JSHandle<JSTaggedValue>(object);
 }
 }  // namespace panda::ecmascript

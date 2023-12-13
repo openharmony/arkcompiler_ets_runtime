@@ -3872,4 +3872,161 @@ HWTEST_F_L0(JSNApiTests, TryCatch)
     tryCatch.Rethrow();
     EXPECT_EQ(tryCatch.getrethrow_(), true);
 }
-} // namespace panda::test
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[1100];
+    Local<JSValueRef> values[1100];
+    PropertyAttribute attributes[1100];
+    for (int i = 0; i < 1100; i += (i < 80 ? (i < 10 ? 1 : 80) : 1000)) {
+        for (int j = 0; j <= i; ++j) {
+            std::string strKey("TestKey" + std::to_string(i) + "_" + std::to_string(j));
+            std::string strVal("TestValue" + std::to_string(i) + "_" + std::to_string(j));
+            keys[j] = StringRef::NewFromUtf8(vm_, strKey.c_str());
+            values[j] = StringRef::NewFromUtf8(vm_, strVal.c_str());
+            attributes[j] = PropertyAttribute(values[j], true, true, true);
+        }
+        Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, i + 1, keys, attributes);
+        for (int j = 0; j <= i; ++j) {
+            Local<JSValueRef> value1 = object->Get(vm_, keys[j]);
+            EXPECT_TRUE(values[j]->IsStrictEquals(vm_, value1));
+        }
+        JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(object));
+        uint32_t propCount = obj->GetJSHClass()->NumberOfProps();
+        if (i + 1 > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+            EXPECT_TRUE(propCount == 0);
+            EXPECT_TRUE(obj->GetJSHClass()->IsDictionaryMode());
+            JSHandle<NameDictionary> dict(thread_, obj->GetProperties());
+            EXPECT_TRUE(dict->EntriesCount() == i + 1);
+        } else {
+            EXPECT_TRUE(propCount == i + 1);
+            int32_t in_idx = obj->GetJSHClass()->GetNextInlinedPropsIndex();
+            int32_t nonin_idx = obj->GetJSHClass()->GetNextNonInlinedPropsIndex();
+            if (i + 1 < JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+                EXPECT_TRUE(in_idx == i + 1);
+                EXPECT_TRUE(nonin_idx == -1);
+            } else {
+                EXPECT_TRUE(in_idx == -1);
+                EXPECT_TRUE(nonin_idx == 0);
+            }
+        }
+    }
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithPropertieNonPureStringKey)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[] = {
+        StringRef::NewFromUtf8(vm_, "1"),
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8(vm_, "value1"),
+    };
+    PropertyAttribute attributes[] = {
+        PropertyAttribute(values[0], true, true, true),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, 1, keys, attributes);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicate)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[] = {
+        StringRef::NewFromUtf8(vm_, "duplicateKey"),
+        StringRef::NewFromUtf8(vm_, "simpleKey"),
+        StringRef::NewFromUtf8(vm_, "duplicateKey"),
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8(vm_, "value1"),
+        StringRef::NewFromUtf8(vm_, "value2"),
+        StringRef::NewFromUtf8(vm_, "value3"),
+    };
+    PropertyAttribute attributes[] = {
+        PropertyAttribute(values[0], true, true, true),
+        PropertyAttribute(values[1], true, true, true),
+        PropertyAttribute(values[2], true, true, true),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, 3, keys, attributes);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithNamedProperties)
+{
+    LocalScope scope(vm_);
+    const char *keys[1100];
+    std::string strKeys[1100];
+    Local<JSValueRef> values[1100];
+    for (int i = 0; i < 1100; i += (i < 80 ? (i < 10 ? 1 : 80) : 1000)) {
+        for (int j = 0; j <= i; ++j) {
+            strKeys[j] = "TestKey" + std::to_string(i) + "_" + std::to_string(j);
+            std::string strVal("TestValue" + std::to_string(i) + "_" + std::to_string(j));
+            keys[j] = const_cast<char *>(strKeys[j].c_str());
+            values[j] = StringRef::NewFromUtf8(vm_, strVal.c_str());
+        }
+        Local<ObjectRef> object = ObjectRef::NewWithNamedProperties(vm_, i + 1, keys, values);
+        for (int j = 0; j <= i; ++j) {
+            Local<JSValueRef> value1 = object->Get(vm_, StringRef::NewFromUtf8(vm_, keys[j]));
+            EXPECT_TRUE(values[j]->IsStrictEquals(vm_, value1));
+        }
+        JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(object));
+        uint32_t propCount = obj->GetJSHClass()->NumberOfProps();
+        if (i + 1 > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+            EXPECT_TRUE(propCount == 0);
+            EXPECT_TRUE(obj->GetJSHClass()->IsDictionaryMode());
+            JSHandle<NameDictionary> dict(thread_, obj->GetProperties());
+            EXPECT_TRUE(dict->EntriesCount() == i + 1);
+        } else {
+            EXPECT_TRUE(propCount == i + 1);
+            int32_t in_idx = obj->GetJSHClass()->GetNextInlinedPropsIndex();
+            int32_t nonin_idx = obj->GetJSHClass()->GetNextNonInlinedPropsIndex();
+            if (i + 1 < JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+                EXPECT_TRUE(in_idx == i + 1);
+                EXPECT_TRUE(nonin_idx == -1);
+            } else {
+                EXPECT_TRUE(in_idx == -1);
+                EXPECT_TRUE(nonin_idx == 0);
+            }
+        }
+    }
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithNamedPropertieNonPureStringKey)
+{
+    LocalScope scope(vm_);
+    const char *keys[] = {
+        "1",
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8(vm_, "value1"),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithNamedProperties(vm_, 2, keys, values);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithNamedPropertiesDuplicate)
+{
+    LocalScope scope(vm_);
+    const char *keys[] = {
+        "duplicateKey",
+        "simpleKey",
+        "duplicateKey",
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf8(vm_, "value1"),
+        StringRef::NewFromUtf8(vm_, "value2"),
+        StringRef::NewFromUtf8(vm_, "value3"),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithNamedProperties(vm_, 3, keys, values);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+}  // namespace panda::test

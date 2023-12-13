@@ -35,6 +35,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
@@ -100,6 +101,7 @@
 #include "ecmascript/platform/log.h"
 
 namespace panda {
+using ecmascript::AccessorData;
 using ecmascript::BigInt;
 using ecmascript::ByteArray;
 using ecmascript::ECMAObject;
@@ -1512,6 +1514,63 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyCount,
+                                              const Local<JSValueRef> *keys,
+                                              const PropertyAttribute *attributes)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSHandle<JSTaggedValue> obj;
+    auto CreateObjImpl = [vm, propertyCount, keys, attributes] (uintptr_t head) -> JSHandle<JSTaggedValue> {
+        JSThread *thread = vm->GetJSThread();
+        const PropertyDescriptor *desc = reinterpret_cast<const PropertyDescriptor *>(head);
+        for (size_t i = 0; i < propertyCount; ++i) {
+            const PropertyAttribute &attr = attributes[i];
+            new (reinterpret_cast<void *>(head)) PropertyDescriptor(thread,
+                                                                    JSNApiHelper::ToJSHandle(attr.GetValue(vm)),
+                                                                    attr.IsWritable(), attr.IsEnumerable(),
+                                                                    attr.IsConfigurable());
+            head += sizeof(PropertyDescriptor);
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        return factory->CreateJSObjectWithProperties(propertyCount, keys, desc);
+    };
+    if (propertyCount <= MAX_PROPERTIES_ON_STACK) {
+        char desc[sizeof(PropertyDescriptor) * MAX_PROPERTIES_ON_STACK];
+        obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
+    } else {
+        void *desc = malloc(sizeof(PropertyDescriptor) * propertyCount);
+        obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
+        free(desc);
+    }
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount,
+                                                   const char **keys, const Local<JSValueRef> *values)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> obj = factory->CreateJSObjectWithNamedProperties(propertyCount, keys, values);
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
+                                               Local<FunctionRef> getter, Local<FunctionRef> setter)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> getterValue = JSNApiHelper::ToJSHandle(getter);
+    JSHandle<JSTaggedValue> setterValue = JSNApiHelper::ToJSHandle(setter);
+    JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+    accessor->SetGetter(thread, getterValue);
+    accessor->SetSetter(thread, setterValue);
+    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(accessor));
+}
+
 bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
@@ -1721,7 +1780,7 @@ bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     PropertyDescriptor desc(thread, attribute.IsWritable(), attribute.IsEnumerable(), attribute.IsConfigurable());
     desc.SetValue(JSNApiHelper::ToJSHandle(attribute.GetValue(vm)));
-    bool result = object->DefinePropertyOrThrow(thread, object, keyValue, desc);
+    bool result = JSTaggedValue::DefinePropertyOrThrow(thread, object, keyValue, desc);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1733,7 +1792,7 @@ bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = object->HasProperty(thread, object, keyValue);
+    bool result = JSTaggedValue::HasProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1744,7 +1803,7 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
-    bool result = object->HasProperty(thread, object, key);
+    bool result = JSTaggedValue::HasProperty(thread, object, key);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1756,7 +1815,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = object->DeleteProperty(thread, object, keyValue);
+    bool result = JSTaggedValue::DeleteProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1768,7 +1827,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
-    bool result = object->DeleteProperty(thread, object, keyHandle);
+    bool result = JSTaggedValue::DeleteProperty(thread, object, keyHandle);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
