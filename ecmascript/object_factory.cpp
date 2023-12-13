@@ -1744,11 +1744,6 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     return jsfunc;
 }
 
-// JSHandle<JSSharedObject> ObjectFactory::NewJSSharedObject()
-// {
-//     JSHandle<JSHClass> hclass = NewEcmaHClass(JS::SIZE, JSType::JS_BOUND_FUNCTION, proto);
-// }
-
 JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFunctionBase> &target,
                                                             const JSHandle<JSTaggedValue> &boundThis,
                                                             const JSHandle<TaggedArray> &args)

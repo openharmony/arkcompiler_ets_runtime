@@ -368,7 +368,9 @@ public:
      * obj initialization. If necessary, call it at last when all other accessor have been initialized.
      */
     static void InitializeExtRefAndOwner(EcmaVM *vm, const JSHandle<JSObject> &obj);
-    // Call this method only in serialization
+    /*
+     * Call this method only in serialization
+     */
     void SetOwnership(JSThread* thread, uint32_t threadID);
     bool IsOwned(uint32_t threadID);
     void FreezeObj(JSThread* thread);

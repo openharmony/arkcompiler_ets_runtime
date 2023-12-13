@@ -259,7 +259,7 @@ public:
         Destroy();
     }
 
-    void NativeBindingObjectTest1([[maybe_unused]]SerializeData* data)
+    void NativeBindingObjectTest1(SerializeData* data)
     {
         Init();
         BaseDeserializer deserializer(thread, data);
@@ -624,7 +624,6 @@ public:
     void SharedObjectTest1(SerializeData *data)
     {
         Init();
-        JSHandle<JSTaggedValue> originTypedArrayName(thread, thread->GlobalConstants()->GetInt8ArrayString());
         BaseDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedObject fail";
@@ -647,6 +646,106 @@ public:
         JSHandle<EcmaString> str3 = JSHandle<EcmaString>(val3);
         JSHandle<EcmaString> strTest3 = factory->NewFromStdString("hello world!");
         EXPECT_TRUE(JSTaggedValue::StringCompare(*str3, *strTest3));
+        Destroy();
+    }
+
+    void SharedObjectTest2(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedObject fail";
+        EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
+        JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
+        EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
+
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSHandle<JSTaggedValue> key1(factory->NewFromASCII("funcA"));
+        JSHandle<JSTaggedValue> key2(factory->NewFromASCII("funcB"));
+        JSHandle<JSTaggedValue> val1 = JSObject::GetProperty(thread, sObj, key1).GetRawValue();
+        JSHandle<JSTaggedValue> val2 = JSObject::GetProperty(thread, sObj, key2).GetRawValue();
+        EXPECT_TRUE(val1->IsJSSharedFunction());
+        EXPECT_TRUE(val2->IsJSSharedFunction());
+        EXPECT_TRUE(val1->IsCallable());
+        JSHandle<JSFunction> func1(val1);
+        EXPECT_FALSE(func1->GetProtoOrHClass().IsHole());
+        EXPECT_TRUE(func1->GetLexicalEnv().IsTaggedArray());
+        EXPECT_TRUE(func1->GetHomeObject().IsJSSharedObject());
+        Destroy();
+    }
+
+    void SharedObjectTest3(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
+        
+        JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
+        JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, sObj);
+        uint32_t length = array->GetLength();
+        EXPECT_EQ(length, 10U);
+        for (uint32_t i = 0; i < length; i++) {
+            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> value =
+                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(sObj), key).GetValue();
+            EXPECT_TRUE(value->GetTaggedObject()->GetClass()->IsJSObject());
+        }
+
+        Destroy();
+    }
+
+    void SharedObjectTest4(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
+        
+        JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
+        JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, sObj);
+        uint32_t length = array->GetLength();
+        EXPECT_EQ(length, 512U);
+        for (uint32_t i = 0; i < length; i++) {
+            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> value =
+                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(sObj), key).GetValue();
+            EXPECT_TRUE(value->IsInt());
+        }
+
+        Destroy();
+    }
+
+    void SerializeSharedFunctionTest(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
+        EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
+        JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
+        // EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
+
+        EXPECT_TRUE(sFunc->IsCallable());
+        EXPECT_FALSE(sFunc->GetProtoOrHClass().IsHole());
+        EXPECT_TRUE(sFunc->GetLexicalEnv().IsTaggedArray());
+        EXPECT_TRUE(sFunc->GetHomeObject().IsJSSharedObject());
+        JSHandle<JSSharedObject> sObj(thread, sFunc->GetHomeObject());
+        EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
+        Destroy();
+    }
+
+    void SerializeSharedFunctionTest1(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
+        EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
+        // JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
+        // EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
         Destroy();
     }
 
@@ -1011,7 +1110,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
     obj1->GetClass()->SetIsNativeBindingObject(true);
 
-    [[maybe_unused]]ValueSerializer *serializer = new ValueSerializer(thread);
+    ValueSerializer *serializer = new ValueSerializer(thread);
     serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj1), JSHandle<JSTaggedValue>(obj1));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1544,8 +1643,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
 HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    [[maybe_unused]]JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    [[maybe_unused]]JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
     JSHandle<JSSharedObject> sObj =
         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
     EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
@@ -1553,13 +1652,16 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("boolean2"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("string3"));
     JSHandle<JSTaggedValue> key4(factory->NewFromASCII("funcA"));
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("funcB"));
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1024));
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue::True());
     JSHandle<JSTaggedValue> value3(factory->NewFromStdString("hello world!"));
-    JSHandle<JSFunction> funHandle = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env);
-    EXPECT_TRUE(*funHandle != nullptr);
-    EXPECT_EQ(funHandle->GetProtoOrHClass(), JSTaggedValue::Hole());
-    JSHandle<JSTaggedValue> value4(thread, funHandle.GetTaggedValue());
+    
+    // test func
+    JSHandle<JSFunction> func1 = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
+        FunctionKind::NORMAL_FUNCTION);
+    EXPECT_TRUE(*func1 != nullptr);
+    JSHandle<JSTaggedValue> value4(thread, func1.GetTaggedValue());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key3, value3);
@@ -1572,6 +1674,163 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SharedObjectTest1, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+    JSHandle<JSSharedObject> sObj =
+        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("funcA"));
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("funcB"));
+    
+    // test func
+    JSHandle<JSFunction> func1 = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
+        FunctionKind::CLASS_CONSTRUCTOR);
+    EXPECT_TRUE(*func1 != nullptr);
+    JSHClass *hclass = JSFunction::GetOrCreateInitialJSHClass(thread, func1);
+    EXPECT_TRUE(hclass != nullptr);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(2); // 2: slots num
+    lexicalEnv->SetProperties(thread, 0, JSTaggedValue::True());
+    lexicalEnv->SetProperties(thread, 1, JSTaggedValue::Undefined());
+    func1->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
+    JSHandle<JSTaggedValue> value1(thread, func1.GetTaggedValue());
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1);
+    JSHandle<JSFunction> func2 = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
+        FunctionKind::DERIVED_CONSTRUCTOR);
+    EXPECT_TRUE(*func2 != nullptr);
+    hclass = JSFunction::GetOrCreateInitialJSHClass(thread, func2);
+    EXPECT_TRUE(hclass != nullptr);
+    JSHandle<JSSharedObject> sObj1 =
+        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    func1->SetHomeObject(thread, sObj1.GetTaggedValue());
+    JSHandle<JSTaggedValue> value2(thread, func2.GetTaggedValue());
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2);
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize sObj fail";
+    EXPECT_FALSE(sObj->IsOwned(thread->GetThreadId()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SharedObjectTest2, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+    JSHandle<JSSharedObject> sObj =
+        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<EcmaString> key1(factory->NewFromASCII("str1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("str2"));
+    for (int i = 0; i < 10; i++) {
+        JSHandle<JSSharedObject> sObj1 =
+            JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+        JSHandle<EcmaString> key3(factory->NewFromASCII("str3"));
+        for (int j = 0; j < 10; j++) {
+            key3 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key3, key1));
+            JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj1), JSHandle<JSTaggedValue>(key3),
+                                  JSHandle<JSTaggedValue>(factory->NewEmptyJSObject()));
+        }
+        key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2),
+                              JSHandle<JSTaggedValue>(sObj1));
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SharedObjectTest3, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSharedObject4)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+    JSHandle<JSSharedObject> sObj =
+        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<EcmaString> key1(factory->NewFromASCII("str1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("str2"));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
+    for (int i = 0; i < 512; i++) {
+        key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2), value1);
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SharedObjectTest4, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
+        FunctionKind::NORMAL_FUNCTION);
+    EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
+    JSHandle<JSTaggedValue> sFuncVal(sFunc);
+    EXPECT_TRUE(sFuncVal->IsJSSharedFunction());
+    EXPECT_TRUE(*sFunc != nullptr);
+    JSHClass *hclass = JSFunction::GetOrCreateInitialJSHClass(thread, sFunc);
+    EXPECT_TRUE(hclass != nullptr);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(2); // 2: slots num
+    lexicalEnv->SetProperties(thread, 0, JSTaggedValue::True());
+    lexicalEnv->SetProperties(thread, 1, JSTaggedValue::Undefined());
+    sFunc->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
+    hclass = JSFunction::GetOrCreateInitialJSHClass(thread, sFunc);
+    EXPECT_TRUE(hclass != nullptr);
+    JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+    JSHandle<JSSharedObject> sObj =
+        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    sFunc->SetHomeObject(thread, sObj.GetTaggedValue());
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize sFunc fail";
+    EXPECT_FALSE(sFunc->IsOwned(thread->GetThreadId()));
+    EXPECT_FALSE(sObj->IsOwned(thread->GetThreadId()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+// test owner
+HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction1)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
+        FunctionKind::NORMAL_FUNCTION);
+    EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize sFunc fail";
+    EXPECT_FALSE(sFunc->IsOwned(thread->GetThreadId()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest1, jsDeserializerTest, data.release());
     t1.join();
     delete serializer;
 };
