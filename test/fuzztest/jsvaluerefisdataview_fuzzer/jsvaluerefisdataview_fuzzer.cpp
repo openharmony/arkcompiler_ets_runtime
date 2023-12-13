@@ -19,26 +19,17 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(uint32_t)
-
 namespace OHOS {
-void JSValueRefIsDataViewFuzzerTest(const uint8_t *data, size_t size)
+void JSValueRefIsDataViewFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    const int32_t length = 15;
-    uint32_t byteOffset = 5;
-    uint32_t byteLength = 7;
-    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, length);
-    Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, byteOffset, byteLength);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (int32_t)size);
+    Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 0, (int32_t)size - 1);
     dataView->IsDataView();
     JSNApi::DestroyJSVM(vm);
 }

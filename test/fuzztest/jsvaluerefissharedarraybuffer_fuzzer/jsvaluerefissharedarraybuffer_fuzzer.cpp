@@ -30,23 +30,16 @@
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
-#define MAXBYTELEN sizeof(uint32_t)
-
 namespace OHOS {
-void JSValueRefIsWeakMapFuzzerTest(const uint8_t *data, size_t size)
+void JSValueRefIsWeakMapFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    const int32_t length = 15;
-    Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, length);
+    Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, (int32_t)size);
     sharedArrayBuffer->IsSharedArrayBuffer();
     JSNApi::DestroyJSVM(vm_);
 }

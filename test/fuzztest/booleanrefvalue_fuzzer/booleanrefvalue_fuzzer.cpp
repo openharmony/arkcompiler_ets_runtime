@@ -26,23 +26,18 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-
-#define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
-void BooleanRefValueFuzzerTest(const uint8_t *data, size_t size)
+constexpr size_t NODE_NUMBERS = 2;
+void BooleanRefValueFuzzerTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    int num = -10000;
-    Local<BooleanRef> obj = BooleanRef::New(vm, num);
+    bool input = size % NODE_NUMBERS ? true : false;
+    Local<BooleanRef> obj = BooleanRef::New(vm, input);
     obj->Value();
     JSNApi::DestroyJSVM(vm);
 }

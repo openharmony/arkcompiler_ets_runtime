@@ -20,21 +20,21 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
 void JSNApiUncaughtClearExceptionFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
+    char *value = new char[size]();
+    if (memcpy_s(value, size, data, size) != EOK) {
+        std::cout << "memcpy_s failed!";
+        UNREACHABLE();
     }
-    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, value, (int)size);
     Local<JSValueRef> error = Exception::Error(vm_, message);
     JSNApi::ThrowException(vm_, error);
     JSNApi::GetAndClearUncaughtException(vm_);

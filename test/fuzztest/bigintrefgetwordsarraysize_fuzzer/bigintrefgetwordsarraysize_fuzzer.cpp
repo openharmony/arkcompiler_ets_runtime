@@ -19,28 +19,26 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(int32_t)
+#define MAXBYTELEN sizeof(uint64_t)
 namespace OHOS {
 void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
     if (size > MAXBYTELEN) {
         size = MAXBYTELEN;
     }
     bool sign = false;
-    uint32_t size1 = 3;
-    const uint64_t words[3] = {
-        std::numeric_limits<uint64_t>::min() - 1,
-        std::numeric_limits<uint64_t>::min(),
-        std::numeric_limits<uint64_t>::max(),
-    };
-    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, size1, words);
+    uint64_t words[1] = {0};
+    if (memcpy_s(words, MAXBYTELEN, data, size) != 0) {
+        std::cout << "memcpy_s failed!";
+        UNREACHABLE();
+    }
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, (uint32_t)size, words);
     Local<BigIntRef> bigWordsRef(bigWords);
     bigWordsRef->GetWordsArraySize();
     JSNApi::DestroyJSVM(vm);

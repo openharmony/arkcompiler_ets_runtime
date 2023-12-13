@@ -19,7 +19,6 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
 void ExceptionTypeErrorFuzzTest(const uint8_t *data, size_t size)
 {
@@ -28,14 +27,15 @@ void ExceptionTypeErrorFuzzTest(const uint8_t *data, size_t size)
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     JSThread *thread_ = nullptr;
     thread_ = vm_->GetJSThread();
-    [[maybe_unused]] auto date1 = data;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
+    char *value = new char[size]();
+    if (memcpy_s(value, size, data, size) != EOK) {
+        std::cout << "memcpy_s failed!";
+        UNREACHABLE();
     }
-    Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, value, (int)size);
     Local<JSValueRef> error = Exception::TypeError(vm_, message);
     JSNApi::ThrowException(vm_, error);
     JSNApi::DestroyJSVM(vm_);

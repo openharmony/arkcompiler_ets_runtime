@@ -21,27 +21,26 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "maprefgetsetkeyvaluesize_fuzzer.h"
 
-
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
 void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
+    char *value = new char[size]();
+    if (memcpy_s(value, size, data, size) != EOK) {
+        std::cout << "memcpy_s failed!";
+        UNREACHABLE();
     }
     Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
-    object->Set(vm_, key, value);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
+    Local<JSValueRef> objectvalue = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
+    object->Set(vm_, key, objectvalue);
     object->GetSize();
     object->GetTotalElements();
     object->Get(vm_, key);

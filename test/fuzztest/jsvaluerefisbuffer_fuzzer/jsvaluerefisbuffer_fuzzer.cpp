@@ -19,27 +19,16 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(uint32_t)
-
 namespace OHOS {
-void JSValueRefIsBufferFuzzerTest(const uint8_t *data, size_t size)
+void JSValueRefIsBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int32_t input = 0;
-    const int32_t MaxMenory = 1024;
-    if (input > MaxMenory) {
-        input = MaxMenory;
-    }
-    [[maybe_unused]] auto date1 = data;
     if (size <= 0) {
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    Local<BufferRef> bufferRef = BufferRef::New(vm, input);
+    Local<BufferRef> bufferRef = BufferRef::New(vm, (int32_t)size);
     bufferRef->IsBuffer();
     JSNApi::DestroyJSVM(vm);
 }

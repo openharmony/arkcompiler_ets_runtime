@@ -19,20 +19,12 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-#define MAXBYTELEN sizeof(int32_t)
 namespace OHOS {
-void ObjectRefSetPrototypeFuzzTest(const uint8_t *data, size_t size)
+void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_unused]]size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-    [[maybe_unused]] auto date1 = data;
-    if (size <= 0) {
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
     Local<ObjectRef> object = ObjectRef::New(vm_);
     Local<ObjectRef> prototype = object->GetPrototype(vm_);
     object->SetPrototype(vm_, prototype);
