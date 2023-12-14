@@ -407,7 +407,7 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter PrepareFunctionForOptimization()";
+    LOG_ECMA(DEBUG) << "Enter PrepareFunctionForOptimization()";
     return JSTaggedValue::Undefined();
 }
 
@@ -430,85 +430,85 @@ JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] Ecma
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeMaglevOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter OptimizeMaglevOnNextCall()";
+    LOG_ECMA(DEBUG) << "Enter OptimizeMaglevOnNextCall()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::DeoptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter DeoptimizeFunction()";
+    LOG_ECMA(DEBUG) << "Enter DeoptimizeFunction()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeOsr([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter OptimizeOsr()";
+    LOG_ECMA(DEBUG) << "Enter OptimizeOsr()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::NeverOptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter NeverOptimizeFunction()";
+    LOG_ECMA(DEBUG) << "Enter NeverOptimizeFunction()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::HeapObjectVerify([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HeapObjectVerify()";
+    LOG_ECMA(DEBUG) << "Enter HeapObjectVerify()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::DisableOptimizationFinalization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter DisableOptimizationFinalization()";
+    LOG_ECMA(DEBUG) << "Enter DisableOptimizationFinalization()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::DeoptimizeNow([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter DeoptimizeNow()";
+    LOG_ECMA(DEBUG) << "Enter DeoptimizeNow()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::WaitForBackgroundOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter WaitForBackgroundOptimization()";
+    LOG_ECMA(DEBUG) << "Enter WaitForBackgroundOptimization()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter Gc()";
+    LOG_ECMA(DEBUG) << "Enter Gc()";
     return JSTaggedValue::Undefined();
 }
 
 // empty function for pgoAssertType
 JSTaggedValue BuiltinsArkTools::PGOAssertType([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter PGOAssertType";
+    LOG_ECMA(DEBUG) << "Enter PGOAssertType";
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsArkTools::ToLength([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter ToLength()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
     return JSTaggedValue::ToLength(thread, key);
 }
 
 JSTaggedValue BuiltinsArkTools::HasHoleyElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HasHoleyElements()";
+    LOG_ECMA(DEBUG) << "Enter HasHoleyElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -528,7 +528,7 @@ JSTaggedValue BuiltinsArkTools::HasHoleyElements([[maybe_unused]] EcmaRuntimeCal
 
 JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HasDictionaryElements()";
+    LOG_ECMA(DEBUG) << "Enter HasDictionaryElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -539,7 +539,7 @@ JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRunti
 
 JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HasSmiElements()";
+    LOG_ECMA(DEBUG) << "Enter HasSmiElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -559,7 +559,7 @@ JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallI
 
 JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HasDoubleElements()";
+    LOG_ECMA(DEBUG) << "Enter HasDoubleElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -579,7 +579,7 @@ JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCa
 
 JSTaggedValue BuiltinsArkTools::HasObjectElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HasObjectElements()";
+    LOG_ECMA(DEBUG) << "Enter HasObjectElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -599,7 +599,6 @@ JSTaggedValue BuiltinsArkTools::HasObjectElements([[maybe_unused]] EcmaRuntimeCa
 
 JSTaggedValue BuiltinsArkTools::ArrayBufferDetach([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter ArrayBufferDetach()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -611,7 +610,6 @@ JSTaggedValue BuiltinsArkTools::ArrayBufferDetach([[maybe_unused]] EcmaRuntimeCa
 
 JSTaggedValue BuiltinsArkTools::HaveSameMap([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(INFO) << "Enter HaveSameMap()";
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
@@ -648,4 +646,385 @@ JSTaggedValue BuiltinsArkTools::HaveSameMap([[maybe_unused]] EcmaRuntimeCallInfo
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::CreatePrivateSymbol([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> symbolName = GetCallArg(info, 0);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSSymbol> privateNameSymbol = factory->NewPrivateNameSymbol(symbolName);
+    JSHandle<JSTaggedValue> symbolValue = JSHandle<JSTaggedValue>::Cast(privateNameSymbol);
+    return symbolValue.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsArkTools::IsArray([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
+    return JSTaggedValue(array->IsJSArray());
+}
+
+JSTaggedValue BuiltinsArkTools::CreateDataProperty([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    uint32_t secondArg = 2;
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> key = GetCallArg(info, 1);
+    JSHandle<JSTaggedValue> value = GetCallArg(info, secondArg);
+    JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(GetCallArg(info, 0));
+    JSObject::CreateDataPropertyOrThrow(thread, obj, key, value);
+    return value.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsArkTools::FunctionGetInferredName([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    if (obj->IsJSFunction()) {
+        JSHandle<JSFunction> funcObj = JSHandle<JSFunction>::Cast(obj);
+        JSHandle<JSTaggedValue> funcName = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(funcObj));
+        return funcName.GetTaggedValue();
+    }
+    return thread->GlobalConstants()->GetHandledEmptyString().GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsArkTools::StringLessThan([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> x = GetCallArg(info, 0);
+    JSHandle<JSTaggedValue> y = GetCallArg(info, 1);
+    ComparisonResult result = JSTaggedValue::Compare(thread, x, y);
+    return JSTaggedValue(ComparisonResult::LESS == result);
+}
+
+JSTaggedValue BuiltinsArkTools::StringMaxLength([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter StringMaxLength()";
+    ASSERT(info);
+    return JSTaggedValue(static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) - 1);
+}
+
+JSTaggedValue BuiltinsArkTools::ArrayBufferMaxByteLength([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter ArrayBufferMaxByteLength()";
+    ASSERT(info);
+    return JSTaggedValue(INT_MAX);
+}
+
+JSTaggedValue BuiltinsArkTools::TypedArrayMaxLength([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter TypedArrayMaxLength()";
+    ASSERT(info);
+    return JSTaggedValue(BuiltinsTypedArray::MAX_ARRAY_INDEX);
+}
+
+JSTaggedValue BuiltinsArkTools::MaxSmi([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter MaxSmi()";
+    return JSTaggedValue(INT_MAX);
+}
+
+JSTaggedValue BuiltinsArkTools::Is64Bit([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter Is64Bit()";
+    bool is64Bit = sizeof(void*) == 8;
+    return JSTaggedValue(is64Bit);
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::FinalizeOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter FinalizeOptimization()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::EnsureFeedbackVectorForFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter EnsureFeedbackVectorForFunction()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::CompileBaseline([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter CompileBaseline()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DebugGetLoadedScriptIds([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter DebugGetLoadedScriptIds()";
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::ToFastProperties([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter ToFastProperties()";
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::AbortJS([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(FATAL) << "AbortJS()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::InternalizeString([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter InternalizeString()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::HandleDebuggerStatement([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter HandleDebuggerStatement()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::SetAllocationTimeout([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter SetAllocationTimeout()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::HasFastProperties([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter HasFastProperties()";
+    ASSERT(info);
+    return JSTaggedValue::True();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::HasOwnConstDataProperty([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter HasOwnConstDataProperty()";
+    ASSERT(info);
+    return JSTaggedValue::True();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::GetHoleNaNUpper([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter GetHoleNaNUpper()";
+    ASSERT(info);
+    return JSTaggedValue::Null();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::GetHoleNaNLower([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter GetHoleNaNLower()";
+    ASSERT(info);
+    return JSTaggedValue::Null();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::SystemBreak([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter SystemBreak()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::ScheduleBreak([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter ScheduleBreak()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::EnqueueMicrotask([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter EnqueueMicrotask()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DebugPrint([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter DebugPrint()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::GetOptimizationStatus([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter GetOptimizationStatus()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::GetUndetectable([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter GetUndetectable()";
+    ASSERT(info);
+    return JSTaggedValue::False();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::SetKeyedProperty([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter SetKeyedProperty()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DisassembleFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter DisassembleFunction()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::TryMigrateInstance([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter TryMigrateInstance()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::InLargeObjectSpace([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter InLargeObjectSpace()";
+    ASSERT(info);
+    return JSTaggedValue::True();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::PerformMicrotaskCheckpoint([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter PerformMicrotaskCheckpoint()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::IsJSReceiver([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter IsJSReceiver()";
+    ASSERT(info);
+    return JSTaggedValue::False();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::IsDictPropertyConstTrackingEnabled([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter IsDictPropertyConstTrackingEnabled()";
+    ASSERT(info);
+    return JSTaggedValue::False();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::AllocateHeapNumber([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter AllocateHeapNumber()";
+    ASSERT(info);
+    return JSTaggedValue(0);
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::ConstructConsString([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter ConstructConsString()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::CompleteInobjectSlackTracking([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter CompleteInobjectSlackTracking()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::NormalizeElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter NormalizeElements()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::Call([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter Call()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::DebugPushPromise([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter DebugPushPromise()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::SetForceSlowPath([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter SetForceSlowPath()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::NotifyContextDisposed([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter NotifyContextDisposed()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::OptimizeObjectForAddingMultipleProperties([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter OptimizeObjectForAddingMultipleProperties()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::IsBeingInterpreted([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter OptimizeObjectForAddingMultipleProperties()";
+    ASSERT(info);
+    return JSTaggedValue::Undefined();
+}
+
+// empty function for regress-xxx test cases
+JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    LOG_ECMA(DEBUG) << "Enter ClearFunctionFeedback()";
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript::builtins
