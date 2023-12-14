@@ -13,37 +13,35 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefisarrayvalue_fuzzer.h"
-#include "ecmascript/base/string_helper.h"
+#include "bigintrefgetwordsarraysize_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/log_wrapper.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-
+#define MAXBYTELEN sizeof(uint64_t)
 namespace OHOS {
-void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
+void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    uint32_t length = 3;
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
+    if (size > MAXBYTELEN) {
+        size = MAXBYTELEN;
     }
-    if (memcpy_s(&length, maxByteLen, data, size) != EOK) {
+    bool sign = false;
+    uint64_t words[1] = {0};
+    if (memcpy_s(words, MAXBYTELEN, data, size) != 0) {
         LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
-    Local<ArrayRef> arrayObject = ArrayRef::New(vm, length);
-    arrayObject->IsArray(vm);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    stringUtf8->IsArray(vm);
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, (uint32_t)size, words);
+    Local<BigIntRef> bigWordsRef(bigWords);
+    bigWordsRef->GetWordsArraySize();
     JSNApi::DestroyJSVM(vm);
 }
 }
@@ -52,6 +50,6 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSValueRefIsArrayValueFuzzTest(data, size);
+    OHOS::BigIntRefGetWordsArraySize(data, size);
     return 0;
 }

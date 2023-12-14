@@ -13,38 +13,41 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefisarrayvalue_fuzzer.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_weak_container.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "maprefgetsetkeyvaluesize_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-
 namespace OHOS {
-void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
+void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    uint32_t length = 3;
+    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&length, maxByteLen, data, size) != EOK) {
+    char *value = new char[size]();
+    if (memcpy_s(value, size, data, size) != EOK) {
         LOG_ECMA(ERROR) << "memcpy_s failed!";
     }
-    Local<ArrayRef> arrayObject = ArrayRef::New(vm, length);
-    arrayObject->IsArray(vm);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    stringUtf8->IsArray(vm);
-    JSNApi::DestroyJSVM(vm);
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
+    Local<JSValueRef> objectvalue = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
+    object->Set(vm_, key, objectvalue);
+    object->GetSize();
+    object->GetTotalElements();
+    object->Get(vm_, key);
+    object->GetKey(vm_, 0);
+    object->GetValue(vm_, 0);
+    JSNApi::DestroyJSVM(vm_);
 }
 }
 
@@ -52,6 +55,6 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSValueRefIsArrayValueFuzzTest(data, size);
+    OHOS::Int32GetSizeFuzzerTest(data, size);
     return 0;
 }

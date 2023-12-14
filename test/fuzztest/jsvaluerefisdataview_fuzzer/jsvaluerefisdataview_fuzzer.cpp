@@ -13,37 +13,26 @@
  * limitations under the License.
  */
 
-#include "jsvaluerefisarrayvalue_fuzzer.h"
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsvaluerefisdataview_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-
 namespace OHOS {
-void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
+void JSValueRefIsDataViewFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    uint32_t length = 3;
-    if (data == nullptr || size <= 0) {
+    if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&length, maxByteLen, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-    }
-    Local<ArrayRef> arrayObject = ArrayRef::New(vm, length);
-    arrayObject->IsArray(vm);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    stringUtf8->IsArray(vm);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (int32_t)size);
+    Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 0, (int32_t)size - 1);
+    dataView->IsDataView();
     JSNApi::DestroyJSVM(vm);
 }
 }
@@ -52,6 +41,6 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSValueRefIsArrayValueFuzzTest(data, size);
+    OHOS::JSValueRefIsDataViewFuzzerTest(data, size);
     return 0;
 }
