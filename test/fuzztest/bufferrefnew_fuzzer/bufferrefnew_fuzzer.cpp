@@ -36,7 +36,7 @@ void BufferRefNewFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 
 void BufferRefMultiParamNewFuzzTest(const uint8_t *data, size_t size)
 {
-    if (data == nullptr || size  <= 0) {
+    if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
