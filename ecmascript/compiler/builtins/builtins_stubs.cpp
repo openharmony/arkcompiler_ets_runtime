@@ -724,6 +724,8 @@ DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Create, VariableType::JS_ANY(), Und
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Assign, VariableType::JS_ANY(), Undefined());
 // Object.protetype.HasOwnProperty
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, HasOwnProperty, VariableType::JS_ANY(), TaggedFalse());
+// Object.protetype.Keys
+DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Keys, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
 #define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \

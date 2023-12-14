@@ -772,6 +772,8 @@ public:
     inline GateRef GetKeyIndex(GateRef index);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
     GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
+    GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
+    GateRef IntToEcmaString(GateRef glue, GateRef number);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

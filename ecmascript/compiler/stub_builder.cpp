@@ -8016,4 +8016,107 @@ GateRef StubBuilder::CalArrayRelativePos(GateRef index, GateRef arrayLen)
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+
+    GateRef firstLength = GetLengthOfTaggedArray(first);
+    GateRef secondLength = GetLengthOfTaggedArray(second);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef array = newBuilder.NewTaggedArray(glue, copyLength);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Label notHole(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*index, firstLength), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            GateRef value = GetValueFromTaggedArray(first, *index);
+            Branch(TaggedIsHole(value), &afterLoop, &notHole);
+            Bind(&notHole);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
+            index = Int32Add(*index, Int32(1));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Label loopHead1(env);
+        Label loopEnd1(env);
+        Label storeValue1(env);
+        Label notHole1(env);
+        Jump(&loopHead1);
+        LoopBegin(&loopHead1);
+        {
+            Branch(Int32UnsignedLessThan(*i, secondLength), &storeValue1, &exit);
+            Bind(&storeValue1);
+            {
+                GateRef value1 = GetValueFromTaggedArray(second, *i);
+                Branch(TaggedIsHole(value1), &exit, &notHole1);
+                Bind(&notHole1);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value1);
+                i = Int32Add(*i, Int32(1));
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd1);
+            }
+        }
+        Bind(&loopEnd1);
+        LoopEnd(&loopHead1);
+    }
+    Bind(&exit);
+    res = array;
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IntToEcmaString(GateRef glue, GateRef number)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(n, VariableType::INT32(), number);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Hole());
+
+    GateRef isPositive = Int32GreaterThanOrEqual(number, Int32(0));
+    GateRef isSingle = Int32LessThan(number, Int32(10));
+    Label process(env);
+    Label callRuntime(env);
+    Label afterNew(env);
+    Branch(BoolAnd(isPositive, isSingle), &process, &callRuntime);
+    Bind(&process);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
+        Bind(&afterNew);
+        n = Int32Add(Int32('0'), *n);
+        GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
+        Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt32ToInt8(*n));
+        Jump(&exit);
+    }
+    Bind(&callRuntime);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(IntToString), { IntToTaggedInt(*n) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

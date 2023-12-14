@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/js_arguments.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -141,6 +142,27 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
     GateRef ret = *res;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef len = GetLengthOfTaggedArray(elements);
+    result = newBuilder.NewJSObject(glue, intialHClass);
+    SetPropertyInlinedProps(glue, *result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetArrayLength(glue, *result, len);
+    SetExtensibleToBitfield(glue, *result, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue_, *result, elements);
+    auto res = *result;
+    return res;
 }
 
 void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *slowPath)
@@ -790,4 +812,470 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
         }
     }
 }
+
+GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, GateRef end, GateRef layoutInfo)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label iLessEnd(env);
+    Label isString(env);
+    Label initializedProp(env);
+    Label isEnumerable(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*i, end), &iLessEnd, &exit);
+        Bind(&iLessEnd);
+        {
+            GateRef key = GetKey(layoutInfo, *i);
+            Branch(TaggedIsString(key), &isString, &loopEnd);
+            Bind(&isString);
+            Branch(IsUninitializedProperty(object, *i, layoutInfo), &loopEnd, &initializedProp);
+            Bind(&initializedProp);
+            Branch(IsEnumerable(GetAttr(layoutInfo, *i)), &isEnumerable, &loopEnd);
+            Bind(&isEnumerable);
+            result = Int32Add(*result, Int32(1));
+            Jump(&loopEnd);
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::IsUninitializedProperty(GateRef object, GateRef index, GateRef layoutInfo)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+
+    Label inlinedProp(env);
+    GateRef attr = GetAttr(layoutInfo, index);
+    GateRef rep = GetRepInPropAttr(attr);
+    GateRef hclass = LoadHClass(object);
+    Branch(IsInlinedProperty(attr), &inlinedProp, &exit);
+    Bind(&inlinedProp);
+    {
+        value = GetPropertyInlinedProps(object, hclass, index);
+        result = TaggedIsHole(*value);
+        Label nonDoubleToTagged(env);
+        Label doubleToTagged(env);
+        Branch(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
+        Bind(&doubleToTagged);
+        {
+            value = TaggedPtrToTaggedDoublePtr(*value);
+            result = TaggedIsHole(*value);
+            Jump(&exit);
+        }
+        Bind(&nonDoubleToTagged);
+        {
+            Label intToTagged(env);
+            Branch(IsIntRepInPropAttr(rep), &intToTagged, &exit);
+            Bind(&intToTagged);
+            {
+                value = TaggedPtrToTaggedIntPtr(*value);
+                result = TaggedIsHole(*value);
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    GateRef sizeIndex = Int32(TaggedHashTable<NameDictionary>::SIZE_INDEX);
+    GateRef size = GetInt32OfTInt(GetValueFromTaggedArray(array, sizeIndex));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label iLessSize(env);
+    Label isString(env);
+    Label initializedProp(env);
+    Label isEnumerable(env);
+
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*i, size), &iLessSize, &afterLoop);
+        Bind(&iLessSize);
+        {
+            GateRef key = GetKeyFromDictionary<NameDictionary>(array, *i);
+            Branch(TaggedIsString(key), &isString, &loopEnd);
+            Bind(&isString);
+            GateRef attr = GetAttributesFromDictionary<NameDictionary>(array, *i);
+            Branch(IsEnumerable(attr), &isEnumerable, &loopEnd);
+            Bind(&isEnumerable);
+            result = Int32Add(*result, Int32(1));
+            Jump(&loopEnd);
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    Jump(&exit);
+    
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset,
+                                                         GateRef array, GateRef object, GateRef layoutInfo)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(enumKeys, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label iLessEnd(env);
+    Label isEnumerable(env);
+    Label initializedProp(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*i, end), &iLessEnd, &afterLoop);
+        Bind(&iLessEnd);
+        {
+            GateRef key = GetKey(layoutInfo, *i);
+            Branch(BoolAnd(TaggedIsString(key), IsEnumerable(GetAttr(layoutInfo, *i))), &isEnumerable, &loopEnd);
+            Bind(&isEnumerable);
+            Branch(IsUninitializedProperty(object, *i, layoutInfo), &loopEnd, &initializedProp);
+            Bind(&initializedProp);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue_, array, Int32Add(*enumKeys, offset), key);
+            enumKeys = Int32Add(*enumKeys, Int32(1));
+            Jump(&loopEnd);
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef elements)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    NewObjectStubBuilder newBuilder(this);
+
+    GateRef oldLen = GetLengthOfTaggedArray(elements);
+    GateRef newLen = Int32Sub(oldLen, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
+    GateRef array = newBuilder.NewTaggedArray(glue, newLen);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            GateRef value = GetValueFromTaggedArray(elements, Int32Add(*index,
+                Int32(EnumCache::ENUM_CACHE_HEADER_SIZE)));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
+            index = Int32Add(*index, Int32(1));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        result = array;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    Label isDictionary(env);
+    Label notDictionary(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef array = GetPropertiesArray(obj);
+    Branch(IsDictionaryMode(array), &isDictionary, &notDictionary);
+    Bind(&isDictionary);
+    {
+        Label propsNotZero(env);
+        Label propsIsZero(env);
+        GateRef numOfKeys = GetNumKeysFromDictionary(array);
+        Branch(Int32GreaterThan(numOfKeys, Int32(0)), &propsNotZero, &propsIsZero);
+        Bind(&propsNotZero);
+        result = CallRuntime(glue, RTSTUB_ID(NameDictionaryGetAllEnumKeys), { obj, IntToTaggedInt(numOfKeys) });
+        Jump(&exit);
+        Bind(&propsIsZero);
+        GateRef emptyArray = GetEmptyArray(glue);
+        result = emptyArray;
+        Jump(&exit);
+    }
+    Bind(&notDictionary);
+    {
+        Label hasProps(env);
+        Label notHasProps(env);
+        GateRef hclass = LoadHClass(obj);
+        // JSObject::GetNumberOfEnumKeys()
+        GateRef num = GetNumberOfPropsFromHClass(hclass);
+        Branch(Int32GreaterThan(num, Int32(0)), &hasProps, &notHasProps);
+        Bind(&hasProps);
+        {
+            Label isOnlyOwnKeys(env);
+            Label notOnlyOwnKeys(env);
+            GateRef layout = GetLayoutFromHClass(hclass);
+            GateRef numOfKeys = GetNumKeysFromLayoutInfo(obj, num, layout);
+            // JSObject::GetAllEnumKeys
+            GateRef enumCache = GetEnumCacheFromHClass(hclass);
+            GateRef kind = GetEnumCacheKind(glue, enumCache);
+            Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))),
+                &isOnlyOwnKeys, &notOnlyOwnKeys);
+            Bind(&isOnlyOwnKeys);
+            {
+                result = CopyFromEnumCache(glue, enumCache);
+                Jump(&exit);
+            }
+            Bind(&notOnlyOwnKeys);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                GateRef keyArray = newBuilder.NewTaggedArray(glue,
+                    Int32Add(numOfKeys, Int32(static_cast<int32_t>(EnumCache::ENUM_CACHE_HEADER_SIZE))));
+                LayoutInfoGetAllEnumKeys(num, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE), keyArray, obj, layout);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, keyArray,
+                    Int32(EnumCache::ENUM_CACHE_KIND_OFFSET),
+                    Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS)));
+                SetEnumCacheToHClass(VariableType::JS_ANY(), glue, hclass, keyArray);
+                result = CopyFromEnumCache(glue, keyArray);
+                Jump(&exit);
+            }
+        }
+        Bind(&notHasProps);
+        {
+            GateRef emptyArray = GetEmptyArray(glue);
+            result = emptyArray;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(j, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(elementIndex, VariableType::INT32(), Int32(0));
+
+    Label propsNotZero(env);
+    Label propsIsZero(env);
+    GateRef numOfElements = GetNumberOfElements(obj);
+    Branch(Int32GreaterThan(numOfElements, Int32(0)), &propsNotZero, &propsIsZero);
+    Bind(&propsNotZero);
+    {
+        Label isJSPrimitiveRef(env);
+        Label isPrimitiveString(env);
+        Label notPrimitiveString(env);
+        Label isDictMode(env);
+        Label notDictMode(env);
+
+        NewObjectStubBuilder newBuilder(this);
+        GateRef elementArray = newBuilder.NewTaggedArray(glue, numOfElements);
+        Branch(IsJSPrimitiveRef(obj), &isJSPrimitiveRef, &notPrimitiveString);
+        Bind(&isJSPrimitiveRef);
+        GateRef value = Load(VariableType::JS_ANY(), obj, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
+        Branch(TaggedIsString(value), &isPrimitiveString, &notPrimitiveString);
+        Bind(&isPrimitiveString);
+        {
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label iLessLength(env);
+            GateRef strLen = GetLengthFromString(value);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                Branch(Int32UnsignedLessThan(*i, strLen), &iLessLength, &notPrimitiveString);
+                Bind(&iLessLength);
+                {
+                    GateRef str = IntToEcmaString(glue, *i);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elementArray,
+                                          *elementIndex, str);
+                    elementIndex = Int32Add(*elementIndex, Int32(1));
+                    Jump(&loopEnd);
+                }
+                Bind(&loopEnd);
+                i = Int32Add(*i, Int32(1));
+                LoopEnd(&loopHead);
+            }
+        }
+        Bind(&notPrimitiveString);
+        GateRef elements = GetElementsArray(obj);
+        Branch(IsDictionaryMode(elements), &isDictMode, &notDictMode);
+        Bind(&notDictMode);
+        {
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label iLessLength(env);
+            Label notHole(env);
+            Label afterLoop(env);
+            GateRef elementsLen = GetLengthOfTaggedArray(elements);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                Branch(Int32UnsignedLessThan(*j, elementsLen), &iLessLength, &afterLoop);
+                Bind(&iLessLength);
+                {
+                    GateRef element = GetValueFromTaggedArray(elements, *j);
+                    Branch(TaggedIsHole(element), &loopEnd, &notHole);
+                    Bind(&notHole);
+                    GateRef str = IntToEcmaString(glue, *j);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elementArray,
+                                          *elementIndex, str);
+                    elementIndex = Int32Add(*elementIndex, Int32(1));
+                    Jump(&loopEnd);
+                }
+                Bind(&loopEnd);
+                j = Int32Add(*j, Int32(1));
+                LoopEnd(&loopHead);
+                Bind(&afterLoop);
+                {
+                    Store(VariableType::INT32(), glue_,
+                        elementArray, IntPtr(TaggedArray::LENGTH_OFFSET), *elementIndex);
+                    result = elementArray;
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&isDictMode);
+        {
+            CallRuntime(glue, RTSTUB_ID(NumberDictionaryGetAllEnumKeys),
+                { elements, elementArray, IntToTaggedInt(*elementIndex) });
+            result = elementArray;
+            Jump(&exit);
+        }
+    }
+    Bind(&propsIsZero);
+    {
+        GateRef emptyArray = GetEmptyArray(glue);
+        result = emptyArray;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef msg = GetCallArg0(numArgs_);
+    // 1. Let obj be ToObject(O).
+    GateRef obj = ToObject(glue_, msg);
+    Label isFast(env);
+    // EnumerableOwnNames(obj)
+    GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
+    GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
+    Branch(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+    Bind(&isFast);
+    {
+        Label hasKeyAndEle(env);
+        Label nonKeyAndEle(env);
+        GateRef elementArray = GetEnumElementKeys(glue_, obj);
+        GateRef keyArray = GetAllEnumKeys(glue_, obj);
+        GateRef lengthOfKeys = GetLengthOfTaggedArray(keyArray);
+        GateRef lengthOfElements = GetLengthOfTaggedArray(elementArray);
+        GateRef KeyAndEle = BoolAnd(Int32NotEqual(lengthOfElements, Int32(0)), Int32NotEqual(lengthOfKeys, Int32(0)));
+        Branch(KeyAndEle, &hasKeyAndEle, &nonKeyAndEle);
+        Bind(&hasKeyAndEle);
+        {
+            GateRef allKeys = AppendSkipHole(glue_, elementArray, keyArray, Int32Add(lengthOfKeys, lengthOfElements));
+            *result = CreateArrayFromList(glue_, allKeys);
+            Jump(exit);
+        }
+        Bind(&nonKeyAndEle);
+        {
+            Label hasKey(env);
+            Label nonKey(env);
+            Branch(Int32NotEqual(lengthOfKeys, Int32(0)), &hasKey, &nonKey);
+            Bind(&hasKey);
+            {
+                *result = CreateArrayFromList(glue_, keyArray);
+                Jump(exit);
+            }
+            Bind(&nonKey);
+            {
+                Label hasEle(env);
+                Label nonEle(env);
+                Branch(Int32NotEqual(lengthOfElements, Int32(0)), &hasEle, &nonEle);
+                Bind(&hasEle);
+                {
+                    *result = CreateArrayFromList(glue_, elementArray);
+                    Jump(exit);
+                }
+                Bind(&nonEle);
+                {
+                    GateRef emptyArray = GetEmptyArray(glue_);
+                    *result = CreateArrayFromList(glue_, emptyArray);
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
 }  // namespace panda::ecmascript::kungfu
