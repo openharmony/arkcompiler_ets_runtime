@@ -2092,7 +2092,8 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
     // 11. Let count be max(final – k, 0).
     int64_t count = final > k ? (final - k) : 0;
 
-    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()
+        && JSObject::GetPrototype(thisObjHandle).IsJSArray()) {
         return JSStableArray::Slice(thread, thisObjHandle, k, count);
     }
 

@@ -154,8 +154,9 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Bind(&isHeapObject);
     Label isExtensible(env);
     GateRef  hasConstructor = HasConstructor(thisValue);
-    GateRef jsJSArray = IsJsArray(thisValue);
-    Branch(BoolAnd(jsJSArray, BoolNot(hasConstructor)), &isExtensible, slowPath);
+    GateRef isJSArray = IsJsArray(thisValue);
+    GateRef protoIsJsArray = IsJsArray(StubBuilder::GetPrototype(glue, thisValue));
+    Branch(BoolAnd(BoolAnd(isJSArray, BoolNot(hasConstructor)), protoIsJsArray), &isExtensible, slowPath);
     Bind(&isExtensible);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     Label argOHeapObject(env);
