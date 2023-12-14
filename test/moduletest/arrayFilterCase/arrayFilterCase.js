@@ -44,8 +44,8 @@ print(deleteWords);
 const arrayLike = {
 	  length: 3,
 	    0: "a",
-	      1: "b",
-	        2: "c",
+	    1: "b",
+	    2: "c",
 };
 print(Array.prototype.filter.call(arrayLike, (x) => x <= "b"));
 
@@ -77,3 +77,21 @@ function filter(){
 array1.__proto__.push(6);
 var narr = filter();
 print(JSON.stringify(Object.getOwnPropertyDescriptor(narr,0)));
+
+var bPar = true;
+var bCalled = false;
+
+function callbackfn(val, idx, obj)
+{
+  bCalled = true;
+  if (obj[idx] !== val)
+    bPar = false;
+}
+
+var srcArr = [0, 1, true, null, new Object(), "five"];
+srcArr[9999999] = -6.6;
+var resArr = srcArr.filter(callbackfn);
+
+
+print(bCalled);
+print(bPar);

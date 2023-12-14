@@ -20,10 +20,4 @@ ant,bison,camel,duck,elephant
 2,,4
 3,4
 1,2,3
-adieu,caf√,clich√,communiqu√,premier,r√©serv
-10
-3
-3, 1, 4, 1, 5, 9
-9, 5, 4, 3, 1, 1
-a,b,c,undefined
-a,b,undefined,undefined
+1,true

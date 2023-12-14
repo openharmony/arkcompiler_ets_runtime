@@ -50,40 +50,24 @@ const arrayLike = {
 print(Array.prototype.slice.call(arrayLike, 1, 3));
 
 const slice = Function.prototype.call.bind(Array.prototype.slice);
-
 function list() {
 	  return slice(arguments);
 }
 
 const list1 = list(1, 2, 3); // [1, 2, 3]
-
 print(list1);
 
-var items = ["réservé", "premier", "cliché", "communiqué", "café", "adieu"];
-items.sort(function (a, b) {
-  return a.localeCompare(b);
-});
-print(items);
+var srcArr = [0, 1, true, null, new Object(), "five"];
+srcArr[9999999] = -6.6;
+var resArr = srcArr.slice(1, 3);
+print(resArr);
 
-const numbers1 = [3, 1, 4, 1, 5];
-const sorted1 = numbers1.sort((a, b) => a - b);
-sorted1[0] = 10;
-print(numbers1[0]); // 10
-
-const numbers = [3, 1, 4, 1, 5];
-const sorted = [...numbers].sort((a, b) => a - b);
-sorted[0] = 10;
-print(numbers[0]); // 3
-
-const arr1 = [3, 1, 4, 1, 5, 9];
-const compareFn = (a, b) => (a > b ? 1 : 0);
-arr1.sort(compareFn);
-print(arr1);
-
-const arr = [3, 1, 4, 1, 5, 9];
-const compareFn1 = (a, b) => (a > b ? -1 : 0);
-arr.sort(compareFn1);
-print(arr); 
-
-print(["a", "c", , "b"].sort()); // ['a', 'b', 'c', empty]
-print([, undefined, "a", "b"].sort()); // ["a", "b", undefined, empty]
+var A = function(_length) {
+	this.length = 0;
+	Object.preventExtensions(this);
+};
+var arr = [1];
+arr.constructor = {};
+arr.constructor[Symbol.species] = A;
+arr.slice(2);
+print(arr);

@@ -30,20 +30,18 @@ const arrayLike = {
 	  1: 7.3,
 	  2: 4,
 };
-print(
-	  Array.prototype.findIndex.call(arrayLike, (x) => !Number.isInteger(x)),
-);
+print(Array.prototype.findIndex.call(arrayLike, (x) => !Number.isInteger(x)));
 print([1, , 3].findIndex((x) => x === undefined));
 function isPrime(element) {
-	  if (element % 2 === 0 || element < 2) {
-		      return false;
-		    }
-	  for (let factor = 3; factor <= Math.sqrt(element); factor += 2) {
-		      if (element % factor === 0) {
-			            return false;
-			          }
-		    }
-	  return true;
+	if (element % 2 === 0 || element < 2) {
+		return false;
+	}
+	for (let factor = 3; factor <= Math.sqrt(element); factor += 2) {
+	    if (element % factor === 0) {
+			return false;
+		}
+	}
+	return true;
 }
 print([4, 6, 8, 9, 12].findIndex(isPrime));
 print([4, 6, 7, 9, 12].findIndex(isPrime));
@@ -55,3 +53,13 @@ const deleteWords = words.findIndex((word, index, arr) => {
 });
 print(deleteWords);
 print(words.length);
+
+var array = ["first", "second"];
+Object.defineProperty(array, 0, {
+  get: function() {
+    array.length = 0;
+    return "first";
+  }
+});
+const hasFirst = (element) => element == "first";
+print(array.findIndex(hasFirst));
