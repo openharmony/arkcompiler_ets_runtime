@@ -790,8 +790,8 @@ public:
     static Local<BigIntRef> New(const EcmaVM *vm, uint64_t input);
     static Local<BigIntRef> New(const EcmaVM *vm, int64_t input);
     static Local<JSValueRef> CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words);
-    void BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless);
-    void BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossless);
+    void BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless);
+    void BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless);
     void GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words);
     uint32_t GetWordsArraySize();
 };
