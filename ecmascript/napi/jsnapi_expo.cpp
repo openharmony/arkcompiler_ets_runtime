@@ -3200,7 +3200,6 @@ bool JSNApi::StopDebugger(uint32_t tid)
 
     reinterpret_cast<StopOldDebug>(sym.Value())(tid, "PandaDebugger");
 
-    jsDebuggerManager->SetDebugMode(false);
     return true;
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
