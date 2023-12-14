@@ -3291,6 +3291,84 @@ static Local<JSValueRef> TypeError(const EcmaVM *vm, Local<StringRef> message);
 Local<JSValueRef> value = Exception::TypeError(vm_, message);
 ```
 
+### Error
+
+static Local<JSValueRef> Error(const EcmaVM *vm, Local<StringRef> message);
+
+用于检测error并创建一个新的错误对象。
+
+**参数：**
+
+| 参数名  | 类型             | 必填 | 说明           |
+| ------- | ---------------- | ---- | -------------- |
+| vm      | const EcmaVM *   | 是   | 虚拟机对象     |
+| message | Local<StringRef> | 是   | 传入的错误消息 |
+
+**返回值：**
+
+| 类型              | 说明                 |
+| :---------------- | :------------------- |
+| Local<JSValueRef> | 返回创建的错误对象。 |
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm_, "test error");
+Local<JSValueRef> result = Exception::Error(vm_, message);
+```
+
+### RangeError
+
+static Local<JSValueRef> RangeError(const EcmaVM *vm, Local<StringRef> message);
+
+用于检测范围错误并创建一个新的错误对象。
+
+**参数：**
+
+| 参数名  | 类型             | 必填 | 说明           |
+| ------- | ---------------- | ---- | -------------- |
+| vm      | const EcmaVM *   | 是   | 虚拟机对象     |
+| message | Local<StringRef> | 是   | 传入的错误消息 |
+
+**返回值：**
+
+| 类型              | 说明                 |
+| :---------------- | :------------------- |
+| Local<JSValueRef> | 返回创建的错误对象。 |
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm_, "test error");
+Local<JSValueRef> result = Exception::RangeError(vm_, message);
+```
+
+### ReferenceError
+
+static Local<JSValueRef> ReferenceError(const EcmaVM *vm, Local<StringRef> message);
+
+用于检测引用错误并创建一个新的错误对象。
+
+**参数：**
+
+| 参数名  | 类型             | 必填 | 说明           |
+| ------- | ---------------- | ---- | -------------- |
+| vm      | const EcmaVM *   | 是   | 虚拟机对象     |
+| message | Local<StringRef> | 是   | 传入的错误消息 |
+
+**返回值：**
+
+| 类型              | 说明                 |
+| :---------------- | :------------------- |
+| Local<JSValueRef> | 返回创建的错误对象。 |
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm_, "test error");
+Local<JSValueRef> result = Exception::ReferenceError(vm_, message);
+```
+
 
 
 ## MapIteratorRef
@@ -3332,6 +3410,40 @@ mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
 Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
 Local<JSValueRef> type = object->GetKind(vm);
 ```
+
+### GetIndex
+
+int32_t GetIndex();
+
+用于获取Map迭代器的索引值，并使用断言验证结果是否为0，即初始索引值。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                          |
+| :------ | :---------------------------- |
+| int32_t | 返回获取的Map迭代器的索引值。 |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm_->GetFactory();
+JSHandle<JSTaggedValue> builtinsMapFunc = vm_->GetGlobalEnv()->GetBuiltinsMapFunction();
+JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
+JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
+jsMap->SetLinkedMap(thread_, linkedHashMap);
+JSHandle<JSTaggedValue> mapValue(jsMap);
+JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread_, mapValue, IterationKind::KEY);
+JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+mapIterator->SetNextIndex(index);
+Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+int32_t result = object->GetIndex();
+```
+
+
 
 ## PrimitiveRef
 
@@ -3582,6 +3694,472 @@ JSNApi::ThrowException(vm, Exception::Error(vm, message););
 TryCatch tryCatch(vm);
 Local<ObjectRef> error = tryCatch.GetAndClearException();
 ```
+
+### TryCatch
+
+explicit TryCatch(const EcmaVM *ecmaVm) : ecmaVm_(ecmaVm) {};
+
+用于构造TryCatch类的对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明       |
+| ------ | -------------- | ---- | ---------- |
+| ecmaVm | const EcmaVM * | 是   | 虚拟机对象 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+TryCatch(vm_);
+```
+
+### HasCaught
+
+bool HasCaught() const;
+
+用于检查是否有异常对象被捕获。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                                              |
+| :------ | :------------------------------------------------ |
+| boolean | 如果有异常对象被捕获，则返回true，否则返回false。 |
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
+Local<JSValueRef> error = Exception::Error(vm_, message);
+JSNApi::ThrowException(vm_, error);
+TryCatch tryCatch(vm_);
+bool result = tryCatch.HasCaught();
+```
+
+### Rethrow
+
+void Rethrow();
+
+如果有异常被捕获并处理，通过检查rethrow_的值来确定是否需要重新抛出异常。
+
+**参数：**
+
+无
+
+**返回值：**
+
+无。
+
+**示例：**
+
+```c++
+TryCatch tryCatch(vm_);
+tryCatch.Rethrow();
+```
+
+
+
+## Uint32ArrayRef
+
+用于表示一个无符号32位整数数组的引用，继承自TypedArrayRef，并提供了创建一个新的Uint32Array对象的方法。
+
+### New
+
+static Local<Uint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
+
+用于构造一个使用ArrayBuffer对象指定偏移量和长度转换的Uint32Array对象。
+
+**参数：**
+
+| 参数名     | 类型                  | 必填 | 说明                                 |
+| ---------- | --------------------- | ---- | ------------------------------------ |
+| vm         | const EcmaVM *        | 是   | 虚拟机对象                           |
+| buffer     | Local<ArrayBufferRef> | 是   | 要转换为Uint32Array的ArrayBuffer对象 |
+| byteOffset | int32_t               | 是   | ArrayBuffer对象的指定位置偏移量      |
+| length     | int32_t               | 是   | ArrayBuffer对象的指定长度            |
+
+**返回值：**
+
+| 类型                  | 说明                        |
+| :-------------------- | :-------------------------- |
+| Local<Uint32ArrayRef> | 返回构造的Uint32Array对象。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, bufferLength);
+Local<Uint32ArrayRef> result = Uint32ArrayRef::New(vm_,arrayBuffer,bufferOffset,offsetLength);
+```
+
+
+
+## Uint8ArrayRef
+
+用于表示一个无符号8位整数数组的引用，继承自TypedArrayRef，并提供了创建一个新的Uint8Array对象的方法。
+
+### New
+
+static Local<Uint8ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length);
+
+用于构造一个使用ArrayBuffer对象指定偏移量和长度转换的Uint8Array对象。
+
+**参数：**
+
+| 参数名     | 类型                  | 必填 | 说明                                |
+| ---------- | --------------------- | ---- | ----------------------------------- |
+| vm         | const EcmaVM *        | 是   | 虚拟机对象                          |
+| buffer     | Local<ArrayBufferRef> | 是   | 要转换为Uint8Array的ArrayBuffer对象 |
+| byteOffset | int32_t               | 是   | ArrayBuffer对象的指定位置偏移量     |
+| length     | int32_t               | 是   | ArrayBuffer对象的指定长度           |
+
+**返回值：**
+
+| 类型                  | 说明                        |
+| :-------------------- | :-------------------------- |
+| Local<Uint32ArrayRef> | 返回构造的Uint32Array对象。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, 30);
+Local<Uint8ArrayRef> result = Uint8ArrayRef::New(vm_,arrayBuffer,10,10);
+```
+
+
+
+## MapRef
+
+用于表示和操作JS Map对象的引用，它继承自ObjectRef类，并提供了一些操作JSMap对象的方法。
+
+### New
+
+static Local<MapRef> New(const EcmaVM *vm);
+
+用于创建一个Map对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明       |
+| ------ | -------------- | ---- | ---------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象 |
+
+**返回值：**
+
+| 类型          | 说明                |
+| :------------ | :------------------ |
+| Local<MapRef> | 返回创建的Map对象。 |
+
+**示例：**
+
+```c++
+Local<MapRef> result = MapRef::New(vm_);
+```
+
+
+
+## WeakMapRef
+
+用于表示和操作JS WeakMap对象的类，它继承自ObjectRef类，并提供了一些操作JS WeakMap对象的方法。
+
+### GetSize
+
+int32_t GetSize();
+
+用于获取WeakMap的大小。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                        |
+| :------ | :-------------------------- |
+| int32_t | 返回获取到的WeakMap的大小。 |
+
+**示例：**
+
+```c++
+Local<WeakMapRef> object = WeakMapRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+int32_t result = object->GetSize();
+```
+
+### GetTotalElements
+
+int32_t GetTotalElements();
+
+用于获取WeakMap的元素个数。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                            |
+| :------ | :------------------------------ |
+| int32_t | 返回获取到的WeakMap的元素个数。 |
+
+**示例：**
+
+```c++
+Local<WeakMapRef> object = WeakMapRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+int32_t result = object->GetTotalElements();
+```
+
+### GetKey
+
+Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
+
+通过指定的入口位置获取WeakMap中指定的键。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                 |
+| ------ | -------------- | ---- | -------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象           |
+| entry  | int            | 是   | 要获取的键的入口位置 |
+
+**返回值：**
+
+| 类型              | 说明                   |
+| :---------------- | :--------------------- |
+| Local<JSValueRef> | 返回获取到的指定的键。 |
+
+**示例：**
+
+```c++
+Local<WeakMapRef> object = WeakMapRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+Local<JSValueRef> result = object->GetKey(vm_, entry);
+```
+
+### GetValue
+
+Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+
+通过指定的入口位置获取WeakMap中指定的Value值。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                      |
+| ------ | -------------- | ---- | ------------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象                |
+| entry  | int            | 是   | 要获取的Value值的入口位置 |
+
+**返回值：**
+
+| 类型              | 说明                        |
+| :---------------- | :-------------------------- |
+| Local<JSValueRef> | 返回获取到的指定的Value值。 |
+
+**示例：**
+
+```c++
+Local<WeakMapRef> object = WeakMapRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+Local<JSValueRef> result = object->GetValue(vm_, entry);
+```
+
+
+
+## WeakSetRef
+
+用于表示和操作JS WeakSet对象的类，它继承自ObjectRef类，并提供了一些操作JS WeakSet对象的方法。
+
+### GetSize
+
+int32_t GetSize();
+
+用于获取WeakSet的大小。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                        |
+| :------ | :-------------------------- |
+| int32_t | 返回获取到的WeakSet的大小。 |
+
+**示例：**
+
+```c++
+Local<WeakSetRef> object = WeakSetRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+int32_t result = object->GetSize();
+```
+
+### GetTotalElements
+
+int32_t GetTotalElements();
+
+用于获取WeakSet的元素个数。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                            |
+| :------ | :------------------------------ |
+| int32_t | 返回获取到的WeakSet的元素个数。 |
+
+**示例：**
+
+```c++
+Local<WeakSetRef> object = WeakSetRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+int32_t result = object->GetTotalElements();
+```
+
+### GetValue
+
+Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+
+通过指定的入口位置获取WeakSet中指定的Value值。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                      |
+| ------ | -------------- | ---- | ------------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象                |
+| entry  | int            | 是   | 要获取的Value值的入口位置 |
+
+**返回值：**
+
+| 类型              | 说明                        |
+| :---------------- | :-------------------------- |
+| Local<JSValueRef> | 返回获取到的指定的Value值。 |
+
+**示例：**
+
+```c++
+Local<WeakSetRef> object = WeakSetRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+object->Set(vm_, key, value);
+Local<JSValueRef> result = object->GetValue(vm_, 0);
+```
+
+
+
+## JSExecutionScope
+
+用于表示JS执行作用域的类，管理JS代码在特定执行环境中的上下文。
+
+### JSExecutionScope
+
+explicit JSExecutionScope(const EcmaVM *vm);
+
+用于构造一个 JSExecutionScope类型的对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明       |
+| ------ | -------------- | ---- | ---------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSExecutionScope(vm_);
+```
+
+
+
+## NativePointerRef
+
+继承于JSValueRef，提供了构造原生指针的方法。
+
+### New
+
+static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
+
+static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize = 0);
+
+用于构造一个原生指针类型的对象。
+
+**参数：**
+
+| 参数名            | 类型                  | 必填 | 说明                             |
+| ----------------- | --------------------- | ---- | -------------------------------- |
+| vm                | const EcmaVM *        | 是   | 虚拟机对象                       |
+| nativePointer     | void *                | 是   | 原生指针                         |
+| nativeBindingsize | size_t                | 否   | 原生绑定的大小                   |
+| callBack          | NativePointerCallback | 是   | 原生指针的回调函数               |
+| data              | void *                | 是   | 任意数据指针，作为回调函数的参数 |
+
+**返回值：**
+
+| 类型                    | 说明                                       |
+| :---------------------- | :----------------------------------------- |
+| Local<NativePointerRef> | 返回构造成功的NativePointerRef类型的对象。 |
+
+**示例：**
+
+```c++
+void  *vps = static_cast<void *>(new std::string("test"));
+Local<NativePointerRef> result = NativePointerRef::New(vm_, vps, 0);
+NativePointerCallback callBack = nullptr;
+void *vps = static_cast<void *>(new std::string("test"));
+void *vpsdata = static_cast<void *>(new std::string("test"));
+Local<NativePointerRef> result =  NativePointerRef::New(vm_, vps, callBack, vpsdata, 0);
+```
+
+### Value
+
+void *Value();
+
+获取一个外部指针，并将它指向一个本地指针并返回。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型   | 说明                         |
+| :----- | :--------------------------- |
+| void * | 返回值为获取原生对象的指针。 |
+
+**示例：**
+
+```c++
+void *vps = static_cast<void *>(new std::string("test"));
+void *vps1 = static_cast<void *>(new std::string("test"));
+Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
+void *result = res_vps->Value();
+```
+
+
 
 ## BigInt64ArrayRef
 
@@ -4020,6 +4598,198 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm);
 
 ```c++
 Local<StringRef> local = StringRef::GetNapiWrapperString(vm_);
+```
+
+### WriteLatin1
+
+int WriteLatin1(char *buffer, int length);
+
+将字符串写入到指定的缓冲区中。
+
+**参数：**
+
+| 参数名 | 类型   | 必填 | 说明             |
+| ------ | ------ | ---- | ---------------- |
+| buffer | char * | 是   | 指定的缓冲区     |
+| length | int    | 是   | 要写入的数据长度 |
+
+**返回值：**
+
+| 类型 | 说明                   |
+| :--- | :--------------------- |
+| int  | 返回值为写入的字节数。 |
+
+**示例：**
+
+```c++
+Local<StringRef> object = StringRef::NewFromUtf8(vm_, "abcdefbb");
+char cs[16] = {0};
+int result = object->WriteLatin1(cs, length);
+```
+
+
+
+## NumberRef
+
+继承于PrimitiveRef，用于表示Number类型数据的引用，并提供了构造NumberRef对象的方法，以及对Number类型数据的一些操作。
+
+### New
+
+static Local<NumberRef> New(const EcmaVM *vm, double input);
+
+static Local<NumberRef> New(const EcmaVM *vm, int32_t input);
+
+static Local<NumberRef> New(const EcmaVM *vm, uint32_t input);
+
+static Local<NumberRef> New(const EcmaVM *vm, int64_t input);
+
+该接口为重载函数，用于构造不同数据类型的NumberRef对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明             |
+| ------ | -------------- | ---- | ---------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象       |
+| input  | double         | 是   | double类型数据   |
+| input  | int32_t        | 是   | int32_t类型数据  |
+| input  | uint32_t       | 是   | uint32_t类型数据 |
+| input  | int64_t        | 是   | int64_t类型数据  |
+
+**返回值：**
+
+| 类型             | 说明                                      |
+| :--------------- | :---------------------------------------- |
+| Local<NumberRef> | 返回构造成功的不同数据类型的NumberRef对象 |
+
+**示例：**
+
+```c++
+double doubleValue = 3.14;
+Local<NumberRef> result = NumberRef::New(vm_, doubleValue);
+int32_t int32Value = 10;
+Local<NumberRef> result = NumberRef::New(vm_, int32Value);
+uint32_t uint32Value = 10;
+Local<NumberRef> result = NumberRef::New(vm_, uint32Value);
+int64_t int64Value = 10;
+Local<NumberRef> result = NumberRef::New(vm_, int64Value);
+```
+
+
+
+## ArrayRef
+
+继承于ObjectRef，用于构造一个数组对象，并提供了一些操作数组的方法。
+
+### Length
+
+uint32_t Length(const EcmaVM *vm);
+
+获取数组对象的长度。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明       |
+| ------ | -------------- | ---- | ---------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象 |
+
+**返回值：**
+
+| 类型     | 说明                   |
+| :------- | :--------------------- |
+| uint32_t | 返回获取到的数组长度。 |
+
+**示例：**
+
+```c++
+Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 3);
+uint32_t result = arrayObj->Length(vm_);
+```
+
+### SetValueAt
+
+static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
+
+用于在给定的数组对象中设置指定索引位置的值。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明                 |
+| ------ | ----------------- | ---- | -------------------- |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象           |
+| obj    | Local<JSValueRef> | 是   | 指定的数组对象       |
+| index  | uint32_t          | 是   | 要设置的指定索引位置 |
+| value  | Local<JSValueRef> | 是   | 要设置的值           |
+
+**返回值：**
+
+| 类型    | 说明                                                  |
+| :------ | :---------------------------------------------------- |
+| boolean | 指定索引位置的值设置成功，则返回true，否则返回false。 |
+
+**示例：**
+
+```c++
+Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 1);
+Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+bool result = ArrayRef::SetValueAt(vm_, arrayObj, index, intValue);
+```
+
+### GetValueAt
+
+static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
+
+用于在给定的数组对象中获取指定索引位置的值。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明                 |
+| ------ | ----------------- | ---- | -------------------- |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象           |
+| obj    | Local<JSValueRef> | 是   | 指定的数组对象       |
+| index  | uint32_t          | 是   | 要获取的指定索引位置 |
+
+**返回值：**
+
+| 类型              | 说明                           |
+| :---------------- | :----------------------------- |
+| Local<JSValueRef> | 返回获取到的指定索引位置的值。 |
+
+**示例：**
+
+```c++
+Local<ArrayRef> arrayObj = ArrayRef::New(vm_, 1);
+Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+ArrayRef::SetValueAt(vm_, arrayObj, index, intValue);
+Local<JSValueRef> result = ArrayRef::GetValueAt(vm_, arrayObj, 0);
+```
+
+
+
+## JsiRuntimeCallInfo
+
+主要用于处理JS运行时调用的信息，并提供了一些方法。
+
+### GetData
+
+void* GetData();
+
+获取JsiRuntimeCallInfo的数据。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型   | 说明                                         |
+| :----- | :------------------------------------------- |
+| void * | 返回值为从JsiRuntimeCallInfo中获取到的数据。 |
+
+**示例：**
+
+```c++
+JsiRuntimeCallInfo object;
+void *result = object.GetData();
 ```
 
 
@@ -4663,5 +5433,33 @@ JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, hand
 JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
 Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue);
 bool b = object->IsRevoked();
+```
+
+### GetHandler
+
+Local<JSValueRef> GetHandler(const EcmaVM *vm);
+
+获取对象的处理程序。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明       |
+| ------ | -------------- | ---- | ---------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象 |
+
+**返回值：**
+
+| 类型              | 说明                 |
+| :---------------- | :------------------- |
+| Local<JSValueRef> | 返回对象的处理程序。 |
+
+**示例：**
+
+```c++
+JSHandle<JSTaggedValue> targetHandle;
+JSHandle<JSTaggedValue> handlerHandle;
+JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
+JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
+Local<JSValueRef> result = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue)->GetHandler(vm_);
 ```
 
