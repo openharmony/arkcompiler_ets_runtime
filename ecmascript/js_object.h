@@ -480,13 +480,13 @@ public:
 
     // [[DefineOwnProperty]]
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, bool ignoreShared = false);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                   const PropertyDescriptor &desc);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc);
+                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, bool ignoreShared = false);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const PropertyDescriptor &desc);
@@ -495,7 +495,7 @@ public:
                                                const PropertyDescriptor &current);
 
     static bool ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                   const PropertyDescriptor &current);
+                                                   const PropertyDescriptor &current, bool ignoreShared = false);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key);

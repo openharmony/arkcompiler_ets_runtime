@@ -191,6 +191,16 @@ DEF_RUNTIME_STUBS(GetHash32)
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(IsOwned)
+{
+    JSTaggedValue holder = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    ASSERT(holder.IsJSSharedFamily());
+    auto isOwned =
+        CHECK_SHARED_OWNERSHIP(holder.GetTaggedObject(), thread) ? JSTaggedValue::True() : JSTaggedValue::False();
+    return isOwned.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ComputeHashcode)
 {
     JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter

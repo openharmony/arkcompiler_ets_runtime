@@ -3657,7 +3657,7 @@ void Builtins::SetSharedFunctionName(const JSHandle<JSFunction> &ctor, const JSH
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread_, name, false, false, false);
-    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), nameKey, nameDesc);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), nameKey, nameDesc, true);
 }
 
 void Builtins::SetSharedFunctionLength(const JSHandle<JSFunction> &ctor, int length) const
@@ -3666,7 +3666,7 @@ void Builtins::SetSharedFunctionLength(const JSHandle<JSFunction> &ctor, int len
     JSHandle<JSTaggedValue> lengthKeyHandle = globalConst->GetHandledLengthString();
     JSTaggedValue taggedLength(length);
     PropertyDescriptor lengthDesc(thread_, JSHandle<JSTaggedValue>(thread_, taggedLength), false, false, false);
-    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), lengthKeyHandle, lengthDesc);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), lengthKeyHandle, lengthDesc, true);
 }
 
 void Builtins::InitializeSharedCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &protoHClass,
@@ -3679,14 +3679,14 @@ void Builtins::InitializeSharedCtor(const JSHandle<GlobalEnv> &env, const JSHand
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(ctor), false, false, false);
     JSHandle<JSObject> prototype(thread_, protoHClass->GetProto());
-    JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor);
+    JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor, true);
 
     ctor->SetFunctionPrototype(thread_, protoHClass.GetTaggedValue());
 
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor globalDesc(thread_, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
-    JSObject::DefineOwnProperty(thread_, globalObject, nameString, globalDesc);
+    JSObject::DefineOwnProperty(thread_, globalObject, nameString, globalDesc, true);
 }
 
 JSHandle<JSFunction> Builtins::NewSharedFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
@@ -3713,7 +3713,7 @@ void Builtins::SetSharedFunction(const JSHandle<GlobalEnv> &env, const JSHandle<
 {
     JSHandle<JSFunction> function(NewSharedFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), false, false, false);
-    JSObject::DefineOwnProperty(thread_, obj, key, descriptor);
+    JSObject::DefineOwnProperty(thread_, obj, key, descriptor, true);
 }
 
 void Builtins::SetSharedAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,

@@ -39,6 +39,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
@@ -784,6 +785,11 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
 bool JSTaggedValue::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                    const JSHandle<JSTaggedValue> &key)
 {
+    if (obj->IsJSSharedFamily()) {
+        THROW_TYPE_ERROR_AND_RETURN(
+            thread, MessageString::GetMessageString(GET_MESSAGE_STRING_ID(DeleteSharedProperty)).c_str(), false);
+    }
+
     if (obj->IsJSProxy()) {
         return JSProxy::DeleteProperty(thread, JSHandle<JSProxy>(obj), key);
     }

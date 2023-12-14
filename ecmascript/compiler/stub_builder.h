@@ -224,6 +224,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef TaggedIsSharedFamily(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
@@ -325,6 +326,7 @@ public:
     GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
+    GateRef IsJSSharedFamily(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
@@ -461,6 +463,7 @@ public:
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
+    GateRef IsJSSharedType(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
@@ -474,6 +477,7 @@ public:
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
+    GateRef IsOwned(GateRef glue, GateRef holder);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);

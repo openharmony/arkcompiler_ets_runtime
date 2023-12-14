@@ -1456,6 +1456,11 @@ inline bool JSTaggedValue::IsJSSharedFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFunction();
 }
 
+inline bool JSTaggedValue::IsJSSharedFamily() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFamily();
+}
+
 inline double JSTaggedValue::ExtractNumber() const
 {
     ASSERT(IsNumber());

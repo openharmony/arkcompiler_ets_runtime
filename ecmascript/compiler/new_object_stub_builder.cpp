@@ -562,6 +562,8 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(object, VariableType::JS_ANY(), Undefined());
 
+    Label isSharedObj(env);
+    Label notSharedObj(env);
     Label isString(env);
     Label isNotString(env);
     Label afterObjectTransform(env);
@@ -569,7 +571,21 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Label empty(env);
     Label tryGetEnumCache(env);
     Label cacheHit(env);
-
+    // shared object family's iterator check.
+    Branch(TaggedIsSharedFamily(obj), &isSharedObj, &notSharedObj);
+    Bind(&isSharedObj);
+    {
+        Label notOwned(env);
+        Branch(TaggedIsTrue(IsOwned(glue, obj)), &notSharedObj, &notOwned);
+        Bind(&notOwned);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(GetNotOwnedSharedProperty));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            result = Exception();
+            Jump(&exit);
+        }
+    }
+    Bind(&notSharedObj);
     Branch(TaggedIsString(obj), &isString, &isNotString);
     Bind(&isString);
     {

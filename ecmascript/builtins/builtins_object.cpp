@@ -524,6 +524,9 @@ JSTaggedValue BuiltinsObject::IsFrozen(EcmaRuntimeCallInfo *argv)
     }
 
     JSThread *thread = argv->GetThread();
+    if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(obj, thread)) {
+        return GetTaggedBoolean(true);
+    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 2.Return TestIntegrityLevel(O, "frozen").

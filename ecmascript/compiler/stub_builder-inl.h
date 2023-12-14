@@ -593,6 +593,11 @@ inline GateRef StubBuilder::TaggedIsString(GateRef obj)
     return env_->GetBuilder()->TaggedIsString(obj);
 }
 
+inline GateRef StubBuilder::TaggedIsSharedFamily(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsSharedFamily(obj);
+}
+
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
 {
     return env_->GetBuilder()->TaggedIsStringOrSymbol(obj);
@@ -1209,6 +1214,12 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
+inline GateRef StubBuilder::IsJSSharedFamily(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return IsJSSharedType(objectType);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -2014,6 +2025,12 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 {
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+}
+
+inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
+{
+    return BoolOr(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
+                  Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_FUNCTION))));
 }
 
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)

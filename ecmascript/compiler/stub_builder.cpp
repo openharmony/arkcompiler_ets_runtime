@@ -111,6 +111,17 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
+GateRef StubBuilder::IsOwned(GateRef glue, GateRef holder)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    GateRef isOwned = CallRuntime(glue, RTSTUB_ID(IsOwned), {holder});
+    auto ret = isOwned;
+    env->SubCfgExit();
+    return ret;
+}
+
 // FindElementWithCache in ecmascript/layout_info-inl.h
 GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hclass,
     GateRef key, GateRef propsNum)
@@ -2644,6 +2655,22 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 Jump(&exit);
             }
             Bind(&notSpecialContainer);
+            Label isSharedObj(env);
+            Label notSharedObj(env);
+            Branch(IsJSSharedType(jsType), &isSharedObj, &notSharedObj);
+            Bind(&isSharedObj);
+            {
+                Label throwAccessSharedObj(env);
+                Branch(TaggedIsTrue(IsOwned(glue, *holder)), &notSpecialIndexed, &throwAccessSharedObj);
+                Bind(&throwAccessSharedObj);
+                {
+                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(GetNotOwnedSharedProperty));
+                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                    result = Exception();
+                    Jump(&exit);
+                }
+            }
+            Bind(&notSharedObj);
             {
                 result = Hole();
                 Jump(&exit);
@@ -2870,6 +2897,22 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 Branch(TaggedIsHole(*result), &notSIndexObj, &exit);
             }
             Bind(&notFastTypeArray);
+            Label isSharedObj(env);
+            Label notSharedObj(env);
+            Branch(IsJSSharedType(jsType), &isSharedObj, &notSharedObj);
+            Bind(&isSharedObj);
+            {
+                Label throwAccessSharedObj(env);
+                Branch(TaggedIsTrue(IsOwned(glue, *holder)), &notSIndexObj, &throwAccessSharedObj);
+                Bind(&throwAccessSharedObj);
+                {
+                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(GetNotOwnedSharedProperty));
+                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                    result = Exception();
+                    Jump(&exit);
+                }
+            }
+            Bind(&notSharedObj);
             {
                 result = Hole();
                 Jump(&exit);
@@ -3445,6 +3488,22 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             }
         }
         Bind(&notFastTypeArray);
+        Label isSharedObj(env);
+        Label notSharedObj(env);
+        Branch(IsJSSharedType(jsType), &isSharedObj, &notSharedObj);
+        Bind(&isSharedObj);
+        {
+            Label throwAccessSharedObj(env);
+            Branch(TaggedIsTrue(IsOwned(glue, *holder)), &notSpecialIndex, &throwAccessSharedObj);
+            Bind(&throwAccessSharedObj);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetNotOwnedSharedProperty));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                returnValue = Exception();
+                Jump(&exit);
+            }
+        }
+        Bind(&notSharedObj);
         returnValue = Hole();
         Jump(&exit);
     }
@@ -3670,6 +3729,22 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Jump(&exit);
         }
         Bind(&notSpecialContainer);
+        Label isSharedObj(env);
+        Label notSharedObj(env);
+        Branch(IsJSSharedType(jsType), &isSharedObj, &notSharedObj);
+        Bind(&isSharedObj);
+        {
+            Label throwAccessSharedObj(env);
+            Branch(TaggedIsTrue(IsOwned(glue, *holder)), &notSIndexObj, &throwAccessSharedObj);
+            Bind(&throwAccessSharedObj);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetNotOwnedSharedProperty));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                result = Exception();
+                Jump(&exit);
+            }
+        }
+        Bind(&notSharedObj);
         {
             result = Hole();
             Jump(&exit);
@@ -6262,8 +6337,19 @@ GateRef StubBuilder::DeleteProperty(GateRef glue, GateRef obj, GateRef value)
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label exit(env);
+    Label isSharedObj(env);
+    Label notSharedObj(env);
     Label notRegularJSObject(env);
     Label regularJSObjDeletePrototype(env);
+    Branch(TaggedIsSharedFamily(obj), &isSharedObj, &notSharedObj);
+    Bind(&isSharedObj);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(DeleteSharedProperty));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&notSharedObj);
     Branch(TaggedIsRegularObject(obj), &regularJSObjDeletePrototype, &notRegularJSObject);
     Bind(&regularJSObjDeletePrototype);
     {

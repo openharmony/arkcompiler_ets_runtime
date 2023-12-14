@@ -599,6 +599,14 @@
         ASSERT((vm)->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId()); \
     }
 
+#define CHECK_SHARED_OWNERSHIP(sharedObject, thread)  ECMAObject::Cast(sharedObject)->IsOwned((thread)->GetThreadId())
+
+#define CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(sharedHandle, thread) \
+    (sharedHandle)->IsJSSharedFamily() && !CHECK_SHARED_OWNERSHIP((sharedHandle)->GetTaggedObject(), (thread))
+
+#define CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(sharedObject, thread) \
+    (sharedObject)->GetClass()->IsJSSharedFamily() && !CHECK_SHARED_OWNERSHIP((sharedObject), (thread))
+
 #if !defined(NDEBUG)
 #define STACK_ASSERT_SCOPE(thread) [[maybe_unused]] StackAssertScope stackAssertScope = StackAssertScope(thread)
 #else

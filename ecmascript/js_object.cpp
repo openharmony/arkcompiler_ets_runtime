@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -864,6 +865,12 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             }
             return false;
         }
+        if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), thread)) {
+            if (mayThrow) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
+            }
+            return false;
+        }
 
         if (receiver->IsJSProxy()) {
             JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -908,6 +915,12 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             if (!op->IsWritable()) {
                 if (mayThrow) {
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+                }
+                return false;
+            }
+            if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), thread)) {
+                if (mayThrow) {
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
                 }
                 return false;
             }
@@ -1157,9 +1170,9 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                 const PropertyDescriptor &desc)
+                                 const PropertyDescriptor &desc, bool ignoreShared)
 {
-    return OrdinaryDefineOwnProperty(thread, obj, key, desc);
+    return OrdinaryDefineOwnProperty(thread, obj, key, desc, ignoreShared);
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1170,7 +1183,7 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc)
+                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, bool ignoreShared)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 1. Let current be O.[[GetOwnProperty]](P).
@@ -1181,7 +1194,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
     // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
+    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, ignoreShared);
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1198,7 +1211,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
 
 // 9.1.6.3 ValidateAndApplyPropertyDescriptor (O, P, extensible, Desc, current)
 bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                  const PropertyDescriptor &current)
+                                                  const PropertyDescriptor &current, bool ignoreShared)
 {
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
@@ -1208,6 +1221,13 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         }
         if (!op->HasHolder()) {
             return true;
+        }
+
+        // TODO(hzzhouzebin) open disallow extensible later
+        if (!ignoreShared && op->GetReceiver()->IsJSSharedFamily()) {
+            THROW_TYPE_ERROR_AND_RETURN(
+                op->GetThread(), MessageString::GetMessageString(GET_MESSAGE_STRING_ID(ExtendSharedProperty)).c_str(),
+                false);
         }
 
         // 2c. If IsGenericDescriptor(Desc) or IsDataDescriptor(Desc) is true, then
@@ -1232,6 +1252,11 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         }
 
         return success;
+    }
+
+    // update to un-owned's property are not supported
+    if (!ignoreShared && CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), op->GetThread())) {
+        THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(GetNotOwnedSharedProperty), false);
     }
 
     // 3. Return true, if every field in Desc is absent
@@ -2392,6 +2417,10 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
 JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     JSHandle<JSTaggedValue> object;
+    if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(obj, thread)) {
+        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
+                                    JSHandle<JSForInIterator>(thread, JSTaggedValue::Exception()));
+    }
     if (obj->IsString()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         object = JSHandle<JSTaggedValue>::Cast(JSPrimitiveRef::StringCreate(thread, obj, undefined));

@@ -862,6 +862,16 @@ public:
         return GetObjectType() == JSType::JS_SHARED_FUNCTION;
     }
 
+    bool IsJSSharedFamily() const
+    {
+        return IsJSSharedType(GetObjectType());
+    }
+
+    static inline bool IsJSSharedType(JSType jsType)
+    {
+        return (jsType == JSType::JS_SHARED_OBJECT || jsType == JSType::JS_SHARED_FUNCTION);
+    }
+
     inline bool IsJSError() const
     {
         JSType jsType = GetObjectType();
