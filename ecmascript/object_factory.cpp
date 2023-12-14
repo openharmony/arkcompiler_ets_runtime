@@ -1597,7 +1597,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hc
     return defaultHclass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *hclass)
+JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *hclass, bool sendableClass)
 {
     uint32_t size = ClassInfoExtractor::STATIC_RESERVED_LENGTH;
     JSHandle<LayoutInfo> layout = CreateLayoutInfo(size, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
@@ -1611,7 +1611,8 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
         if (index == ClassInfoExtractor::PROTOTYPE_INDEX) {
             attributes = PropertyAttributes::DefaultAccessor(false, false, false);
         } else {
-            attributes = PropertyAttributes::Default(false, false, true);
+            attributes = sendableClass ? PropertyAttributes::Default(false, false, false) :
+                PropertyAttributes::Default(false, false, true);
         }
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
@@ -1619,7 +1620,12 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
         layout->AddKey(thread_, index, array->Get(index), attributes);
     }
 
-    JSHandle<JSHClass> defaultHclass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
+    JSHandle<JSHClass> defaultHclass;
+    if (sendableClass) {
+        defaultHclass = NewEcmaHClass(hclass, JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, size);
+    } else {
+        defaultHclass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
+    }
     defaultHclass->SetLayout(thread_, layout);
     defaultHclass->SetNumberOfProps(size);
     defaultHclass->SetClassConstructor(true);

@@ -6048,6 +6048,53 @@ void InterpreterAssembly::HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8
     DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
 }
 
+void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t methodId = READ_INST_16_1();
+    uint16_t literaId = READ_INST_16_3();
+    uint16_t length = READ_INST_16_5();
+    uint16_t v0 = READ_INST_8_7();
+    LOG_INST() << "intrinsics::definesendableclass"
+                << " method id:" << methodId << " base: v" << v0;
+
+    JSTaggedValue base = GET_VREG_VALUE(v0);
+
+    SAVE_PC();
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue res =
+        SlowRuntimeStub::CreateSendableClass(thread, base, state->env, GetConstantPool(sp), methodId, literaId,
+                                             length, GetModule(sp));
+
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    ASSERT(res.IsClassConstructor());
+    ASSERT(res.IsJSSharedFunction());
+    SET_ACC(res);
+    DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeNewSendableLexenvImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+   uint16_t numVars = READ_INST_16_1();
+    LOG_INST() << "intrinsics::newsendablelexenv"
+               << " imm " << numVars;
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSTaggedValue res = FastRuntimeStub::NewLexicalEnv(thread, factory, numVars);
+    if (res.IsHole()) {
+        SAVE_PC();
+        res = SlowRuntimeStub::NewLexicalEnv(thread, numVars);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+    }
+    SET_ACC(res);
+    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = res;
+    DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
+}
+
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

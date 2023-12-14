@@ -35,7 +35,10 @@ enum class TrackType : uint8_t {
     INT = 0x1ULL,
     DOUBLE = 0x1ULL << 1,
     NUMBER = INT | DOUBLE,
-    TAGGED = 0x1ULL << 2
+    TAGGED = 0x1ULL << 2,
+    BOOLEAN = 5,
+    STRING = 6,
+    SENDABLE = 7
 };
 
 enum class PropertyBoxType {

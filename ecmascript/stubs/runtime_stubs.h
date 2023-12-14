@@ -229,6 +229,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
     V(CreateClassWithBuffer)              \
+    V(CreateSendableClass)                \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -555,9 +556,16 @@ private:
                                                              const JSHandle<JSTaggedValue> &constpool,
                                                              uint16_t methodId, uint16_t literalId,
                                                              const JSHandle<JSTaggedValue> &module);
+    static inline JSTaggedValue RuntimeCreateSendableClass(JSThread *thread,
+                                                           const JSHandle<JSTaggedValue> &base,
+                                                           const JSHandle<JSTaggedValue> &lexenv,
+                                                           const JSHandle<JSTaggedValue> &constpool,
+                                                           uint16_t methodId, uint16_t literalId, uint16_t length,
+                                                           const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
-                                                                       const JSHandle<JSTaggedValue> &base);
+                                                                       const JSHandle<JSTaggedValue> &base,
+                                                                       bool sendable = false);
     static inline JSTaggedValue RuntimeSetClassConstructorLength(JSThread *thread, JSTaggedValue ctor,
                                                                  JSTaggedValue length);
     static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,

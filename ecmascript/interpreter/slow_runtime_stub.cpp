@@ -1112,6 +1112,19 @@ JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedV
                                                       constpoolHandle, methodId, literalId, moduleHandle);
 }
 
+JSTaggedValue SlowRuntimeStub::CreateSendableClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,
+                                                   JSTaggedValue constpool, uint16_t methodId, uint16_t literalId,
+                                                   uint16_t length, JSTaggedValue module)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> baseHandle(thread, base);
+    JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
+    JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    return RuntimeStubs::RuntimeCreateSendableClass(thread, baseHandle, lexenvHandle, constpoolHandle, methodId,
+                                                    literalId, length, moduleHandle);
+}
+
 JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

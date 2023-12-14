@@ -54,7 +54,8 @@ public:
     static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                       JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
-
+    static JSHandle<JSHClass> CreateSendableHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+                                                   JSHandle<TaggedArray> &properties, bool isProtoClass);
     static void CorrectConstructorHClass(JSThread *thread,
                                          JSHandle<TaggedArray> &properties,
                                          JSHClass *constructorHClass);
@@ -96,17 +97,28 @@ public:
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
+    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                                 JSHandle<ClassInfoExtractor> &extractor,
+                                                                 const JSHandle<JSTaggedValue> &lexenv);
+
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
+    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSFunction> &ctor, bool isbaseCase);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
                                                               const JSHandle<JSTaggedValue> &lexenv);
+
+    static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
+                                                                      JSHandle<TaggedArray> &keys,
+                                                                      JSHandle<TaggedArray> &properties,
+                                                                      ClassPropertyType type,
+                                                                      const JSHandle<JSTaggedValue> &lexenv);
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);

@@ -1214,6 +1214,22 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateSendableClass)
+{
+    RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
+    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
+    JSTaggedValue length = GetArg(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
+    return RuntimeCreateSendableClass(thread, base, lexenv, constpool,
+                                      static_cast<uint16_t>(methodId.GetInt()),
+                                      static_cast<uint16_t>(literalId.GetInt()),
+                                      static_cast<uint16_t>(length.GetInt()), module).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);

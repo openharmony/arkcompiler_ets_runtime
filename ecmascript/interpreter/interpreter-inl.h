@@ -1019,7 +1019,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 7;
+    constexpr size_t numCallRuntimeOps = 9;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -7424,6 +7424,43 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8) {
+        uint16_t methodId = READ_INST_16_1();
+        uint16_t literaId = READ_INST_16_3();
+        uint16_t length = READ_INST_16_5();
+        uint16_t v0 = READ_INST_8_7();
+        LOG_INST() << "intrinsics::definesendableclass"
+                   << " method id:" << methodId << " base: v" << v0;
+
+        JSTaggedValue base = GET_VREG_VALUE(v0);
+
+        SAVE_PC();
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res =
+            SlowRuntimeStub::CreateSendableClass(thread, base, state->env, GetConstantPool(sp), methodId,
+                                                 literaId, length, GetEcmaModule(sp));
+
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        ASSERT(res.IsClassConstructor());
+        ASSERT(res.IsJSSharedFunction());
+        SET_ACC(res);
+        DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16) {
+        uint16_t numVars = READ_INST_16_1();
+        LOG_INST() << "intrinsics::newsendablelexenv"
+                   << " imm " << numVars;
+
+        JSTaggedValue res = FastRuntimeStub::NewLexicalEnv(thread, factory, numVars);
+        if (res.IsHole()) {
+            SAVE_PC();
+            res = SlowRuntimeStub::NewLexicalEnv(thread, numVars);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+        }
+        SET_ACC(res);
+        GET_FRAME(sp)->env = res;
+        DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

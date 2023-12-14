@@ -733,6 +733,12 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
             LowerDefinePrivateProperty(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8:
+            LowerDefineSendableClass(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16:
+            LowerNewSendableLexenv(gate);
+            break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
             break;
@@ -3391,6 +3397,35 @@ void SlowPathLowering::LowerDefinePrivateProperty(GateRef gate)
     GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
         builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj, value});
     ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefineSendableClass(GateRef gate)
+{
+    // 5: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef proto = acc_.GetValueIn(gate, 3);
+    GateRef literalId = acc_.GetValueIn(gate, 1);
+    GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
+    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+
+    auto args = { proto, lexicalEnv, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
+                  builder_.ToTaggedInt(length), module };
+    GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(CreateSendableClass), args);
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerNewSendableLexenv(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef lexEnv = acc_.GetValueIn(gate, 1);
+    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::NewLexicalEnv,
+        { glue_, lexEnv, builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0)) });
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerLdStr(GateRef gate)

@@ -885,9 +885,57 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     return cls.GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
+                                                       const JSHandle<JSTaggedValue> &base,
+                                                       const JSHandle<JSTaggedValue> &lexenv,
+                                                       const JSHandle<JSTaggedValue> &constpool,
+                                                       uint16_t methodId, uint16_t literalId,
+                                                       uint16_t length, const JSHandle<JSTaggedValue> &module)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
+
+    auto methodObj = ConstantPool::GetMethodFromCache(
+        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
+    JSHandle<JSTaggedValue> method(thread, methodObj);
+    JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
+    // JSHandle<JSFunction> cls;
+    // JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
+    // JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
+
+    // JSTaggedValue val = constpoolHandle->GetObjectFromCache(literalId);
+    // if (val.IsAOTLiteralInfo()) {
+    //     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
+    //     ihc.Update(aotLiteralInfo->GetIhc());
+    //     chc.Update(aotLiteralInfo->GetChc());
+    // }
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
+    JSHandle<ClassLiteral> classLiteral(thread, literalObj);
+    JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
+    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
+    // if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
+    //     classLiteral->SetIsAOTUsed(true);
+    //     JSHandle<JSHClass> chclass(chc);
+    //     cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
+    //                                               lexenv, ihc, chclass);
+    // } else {
+    JSHandle<JSFunction> cls = ClassHelper::DefineSendableClassFromExtractor(thread, base, extractor, lexenv);
+    // }
+    RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    bool isbaseClass = base->IsHole(); // todo for test
+    ClassHelper::DefineSendableInstanceHClass(thread, cls, isbaseClass);  // todo need ihc information from abc
+    return cls.GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                    const JSHandle<JSTaggedValue> &ctor,
-                                                                   const JSHandle<JSTaggedValue> &base)
+                                                                   const JSHandle<JSTaggedValue> &base,
+                                                                   bool sendable)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -913,12 +961,12 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     Method *method = Method::Cast(JSHandle<JSFunction>::Cast(ctor)->GetMethod().GetTaggedObject());
     if (parent->IsHole()) {
         method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
-        parentPrototype = env->GetObjectFunctionPrototype();
-        parent = env->GetFunctionPrototype();
+        parentPrototype = sendable ? env->GetSharedObjectFunctionPrototype() : env->GetObjectFunctionPrototype();
+        parent = sendable ? env->GetSharedFunctionPrototype() : env->GetFunctionPrototype();
     } else if (parent->IsNull()) {
         method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
-        parent = env->GetFunctionPrototype();
+        parent = sendable ? env->GetSharedFunctionPrototype() : env->GetFunctionPrototype();
     } else if (!parent->IsConstructor()) {
         return RuntimeThrowTypeError(thread, "parent class is not constructor");
     } else {
