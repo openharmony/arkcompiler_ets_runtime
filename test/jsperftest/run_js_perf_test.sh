@@ -84,18 +84,11 @@ function download_js_test_files()
 main() 
 {
     para_num=$#
+    js_perf_test_archive_path=$1
+    OPENHARMONY_OUT_PATH=$2
     cur_path=$(dirname $(readlink -f "$0"))
     archive_folder_name="js_perf_test_archive"
     
-    if [ $para_num -eq 1 ];then
-        js_perf_test_archive_path=$1
-    elif [ $para_num -gt 1 ];then
-        echo "At most one parameterr, please check it\n"
-        return 1
-    else
-        js_perf_test_archive_path=$cur_path/$archive_folder_name
-    fi
-
     if [ ! -d "$js_perf_test_archive_path" ];then
         mkdir -p "js_perf_test_archive_path"
     fi
