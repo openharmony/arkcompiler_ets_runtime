@@ -294,7 +294,7 @@ bool DebuggerApi::GetSingleStepStatus(JSDebugger *debugger)
     return debugger->GetSingleStepStatus();
 }
 
-int32_t DebuggerApi::GetObjectHash(const JSHandle<JSTaggedValue> &tagged) 
+int32_t DebuggerApi::GetObjectHash(const JSHandle<JSTaggedValue> &tagged)
 {
     bool hasHash = ECMAObject::Cast(tagged->GetTaggedObject())->HasHash();
     return hasHash ? ECMAObject::Cast(tagged->GetTaggedObject())->GetHash() : 0;
