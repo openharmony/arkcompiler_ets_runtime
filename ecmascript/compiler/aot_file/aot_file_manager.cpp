@@ -368,7 +368,7 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            int start = GET_MESSAGE_STRING_ID(CharCodeAt);
+            int start = GET_MESSAGE_STRING_ID(StringCharCodeAt);
             std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
             LOG_ECMA(DEBUG) << "builtins index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
                             << " addr: 0x" << std::hex << des.codeAddr_;

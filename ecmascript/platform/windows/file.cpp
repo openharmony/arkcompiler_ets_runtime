@@ -185,4 +185,22 @@ bool TryToRemoveSO([[maybe_unused]] JSThread *thread, [[maybe_unused]] JSHandle<
 {
     return false;
 }
+
+void *LoadLib([[maybe_unused]] const std::string &liname)
+{
+    LOG_ECMA(INFO) << "Unsupport LoadLib";
+    return nullptr;
+}
+
+void *FindSymbol([[maybe_unused]] void *handle, [[maybe_unused]] const char *symbol)
+{
+    LOG_ECMA(INFO) << "Unsupport FindSymbol";
+    return nullptr;
+}
+
+int CloseLib([[maybe_unused]] void *handle)
+{
+    LOG_ECMA(INFO) << "Unsupport CloseLib";
+    return 0;
+}
 }  // namespace panda::ecmascript

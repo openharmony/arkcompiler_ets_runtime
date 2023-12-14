@@ -129,6 +129,18 @@ void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector
                 ASSERT(static_cast<uint32_t>(secOffset) == secSize);
                 break;
             }
+            case ElfSecName::STRTAB: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateStrtabSections(des, secAddr, secOffset, moduledr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::SYMTAB: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateSymtabSections(des, secAddr, secOffset, moduledr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
             case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB:
@@ -197,6 +209,18 @@ void ElfReader::ParseELFSections(BinaryBufferParser &parser,
             case ElfSecName::ARK_STACKMAP: {
                 llvm::ELF::Elf64_Off secOffset = 0;
                 SeparateArkStackMapSections(parser, des, secAddr, secOffset, secShdr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::STRTAB: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateStrtabSections(parser, des, secAddr, secOffset, secShdr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::SYMTAB: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateSymtabSections(parser, des, secAddr, secOffset, secShdr.sh_offset);
                 ASSERT(static_cast<uint32_t>(secOffset) == secSize);
                 break;
             }
@@ -291,6 +315,32 @@ void ElfReader::SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des,
     }
 }
 
+void ElfReader::SeparateStrtabSections(std::vector<ModuleSectionDes> &des,
+                                       const uintptr_t &secAddr,
+                                       llvm::ELF::Elf64_Off &secOffset,
+                                       const llvm::ELF::Elf64_Off &moduleInfoOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
+        uint32_t strtabSize = moduleInfo->strtabSize;
+        des[i].SetSecAddrAndSize(ElfSecName::STRTAB, secAddr + secOffset, strtabSize);
+        secOffset += strtabSize;
+    }
+}
+
+void ElfReader::SeparateSymtabSections(std::vector<ModuleSectionDes> &des,
+                                       const uintptr_t &secAddr,
+                                       llvm::ELF::Elf64_Off &secOffset,
+                                       const llvm::ELF::Elf64_Off &moduleInfoOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
+        uint32_t symtabSize = moduleInfo->symtabSize;
+        des[i].SetSecAddrAndSize(ElfSecName::SYMTAB, secAddr + secOffset, symtabSize);
+        secOffset += symtabSize;
+    }
+}
+
 void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
                                      std::vector<ModuleSectionDes> &des,
                                      const uint64_t &secAddr,
@@ -338,6 +388,36 @@ void ElfReader::SeparateArkStackMapSections(BinaryBufferParser &parser,
         des[i].SetStartIndex(index);
         des[i].SetFuncCount(cnt);
         secOffset += stackMapSize;
+    }
+}
+
+void ElfReader::SeparateStrtabSections(BinaryBufferParser &parser,
+                                       std::vector<ModuleSectionDes> &des,
+                                       const uintptr_t &secAddr,
+                                       llvm::ELF::Elf64_Off &secOffset,
+                                       const llvm::ELF::Elf64_Off &curShOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = moduleInfo_[i];
+        uint32_t strtabSize = moduleInfo.strtabSize;
+        parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), strtabSize, curShOffset + secOffset);
+        des[i].SetSecAddrAndSize(ElfSecName::STRTAB, secAddr + secOffset, strtabSize);
+        secOffset += strtabSize;
+    }
+}
+
+void ElfReader::SeparateSymtabSections(BinaryBufferParser &parser,
+                                       std::vector<ModuleSectionDes> &des,
+                                       const uintptr_t &secAddr,
+                                       llvm::ELF::Elf64_Off &secOffset,
+                                       const llvm::ELF::Elf64_Off &curShOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = moduleInfo_[i];
+        uint32_t symtabSize = moduleInfo.symtabSize;
+        parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), symtabSize, curShOffset + secOffset);
+        des[i].SetSecAddrAndSize(ElfSecName::SYMTAB, secAddr + secOffset, symtabSize);
+        secOffset += symtabSize;
     }
 }
 }  // namespace panda::ecmascript

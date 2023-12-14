@@ -47,6 +47,7 @@ enum RegionSpaceFlag {
     IN_MACHINE_CODE_SPACE = 0x0D,
     IN_READ_ONLY_SPACE = 0x0E,
     IN_APPSPAWN_SPACE = 0X0F,
+    IN_HUGE_MACHINE_CODE_SPACE = 0x10,
 
     VALID_SPACE_MASK = 0xFF,
 };
@@ -86,6 +87,8 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "read only space";
         case RegionSpaceFlag::IN_APPSPAWN_SPACE:
             return "appspawn space";
+        case RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE:
+            return "huge machine code space";
         default:
             return "invalid space";
     }
@@ -278,6 +281,11 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_MACHINE_CODE_SPACE;
     }
 
+    bool InHugeMachineCodeSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE;
+    }
+
     bool InNonMovableSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
@@ -305,6 +313,7 @@ public:
                 space == RegionSpaceFlag::IN_OLD_SPACE ||
                 space == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
                 space == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
+                space == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE ||
                 space == RegionSpaceFlag::IN_NON_MOVABLE_SPACE ||
                 space == RegionSpaceFlag::IN_SNAPSHOT_SPACE ||
                 space == RegionSpaceFlag::IN_READ_ONLY_SPACE ||
@@ -531,7 +540,8 @@ public:
         {
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
-            bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE) ?
+            bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
+                           spaceType == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE) ?
                 GCBitset::BYTE_PER_WORD : GCBitset::SizeOfGCBitset(end - begin);
             markGCBitset_ = new (ToVoidPtr(begin)) GCBitset();
             markGCBitset_->Clear(bitsetSize_);

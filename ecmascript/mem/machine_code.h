@@ -20,10 +20,48 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/method.h"
 
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
+struct MachineCodeDesc {
+    uintptr_t rodataAddrBeforeText {0};
+    size_t rodataSizeBeforeText {0};
+    uintptr_t rodataAddrAfterText {0};
+    size_t rodataSizeAfterText {0};
+
+    uintptr_t codeAddr {0};
+    size_t codeSize {0};
+    uintptr_t funcEntryDesAddr {0};
+    size_t funcEntryDesSize {0};
+    uintptr_t stackMapAddr {0};
+    size_t stackMapSize {0};
+};
+// JitCode object layout:
+//                      +-----------------------------------+
+//                      |              MarkWord             | 8 bytes
+//      INS_SIZE_OFFSET +-----------------------------------+
+//                      |          machine payload size     | 4 bytes
+//                      +-----------------------------------+
+//                      |          FuncEntryDesc size       | 4 bytes
+//                      +-----------------------------------+
+//                      |          instructions size        | 4 bytes
+//                      +-----------------------------------+
+//                      |           stack map size          | 4 bytes
+//                      +-----------------------------------+
+//                      |             func addr             | 8 bytes
+//       PAYLOAD_OFFSET +-----------------------------------+
+//       (8 byte align) |           FuncEntryDesc           |
+//                      |              ...                  |
+//       INSTR_OFFSET   +-----------------------------------+
+//       (16 byte align)|     machine instructions(text)    |
+//                      |              ...                  |
+//      STACKMAP_OFFSET +-----------------------------------+
+//                      |            ArkStackMap            |
+//                      |              ...                  |
+//                      +-----------------------------------+
 class MachineCode : public TaggedObject {
 public:
     NO_COPY_SEMANTIC(MachineCode);
@@ -35,29 +73,42 @@ public:
     }
 
     static constexpr size_t INS_SIZE_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(InstructionSizeInBytes, uint32_t, INS_SIZE_OFFSET, LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, INS_SIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAPSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(StackMapSize, uint32_t, STACKMAPSIZE_OFFSET, FUNCADDR_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, PADDING_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Padding, uint64_t, PADDING_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-    static constexpr size_t DATA_OFFSET = SIZE;
+    static constexpr size_t PAYLOAD_OFFSET = SIZE;
+    static constexpr uint32_t DATA_ALIGN = 8;
+    static constexpr uint32_t TEXT_ALIGN = 16;
 
     DECL_DUMP()
 
-    uintptr_t GetDataOffsetAddress()
+    uintptr_t GetFuncEntryDesAddress() const
     {
-        return reinterpret_cast<uintptr_t>(this) + DATA_OFFSET;
+        uintptr_t paddingAddr = reinterpret_cast<const uintptr_t>(this) + PADDING_OFFSET;
+        return IsAligned(paddingAddr, TEXT_ALIGN) ? paddingAddr : reinterpret_cast<const uintptr_t>(this) +
+            PAYLOAD_OFFSET;
     }
 
-    void SetData(const uint8_t *stackMapData, size_t codeLength)
+    uintptr_t GetText() const
     {
-        if (stackMapData == nullptr) {
-            LOG_ECMA_MEM(ERROR) << "data is null in creating new code object";
-            return;
-        }
-        if (memcpy_s(reinterpret_cast<void *>(this->GetDataOffsetAddress()),
-            this->GetInstructionSizeInBytes(), stackMapData, codeLength) != EOK) {
-            LOG_ECMA_MEM(ERROR) << "memcpy fail in creating new code object ";
-            return;
-        }
+        return GetFuncEntryDesAddress() + GetFuncEntryDesSize();
     }
+
+    uint8_t *GetStackMapAddress() const
+    {
+        return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
+    }
+
+    size_t GetTextSize() const
+    {
+        return GetInstructionsSize();
+    }
+
+    void SetData(const MachineCodeDesc *desc, JSHandle<Method> &method, size_t dataSize);
 
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
@@ -70,8 +121,18 @@ public:
 
     size_t GetMachineCodeObjectSize()
     {
-        return SIZE + this->GetInstructionSizeInBytes();
+        return SIZE + this->GetPayLoadSizeInBytes();
     }
+
+    uint32_t GetInstructionSizeInBytes() const
+    {
+        return GetPayLoadSizeInBytes();
+    }
+
+    bool IsInText(const uintptr_t pc) const;
+    uintptr_t GetFuncEntryDes() const;
+
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

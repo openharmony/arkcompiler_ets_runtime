@@ -42,10 +42,10 @@ bool IsPrefixDetected(std::string_view opt)
     return (opt[0] == '-');
 }
 
-/* NOTE: Returning ssize_t parameter is used to show how many command line arguments
+/* NOTE: Returning size_t parameter is used to show how many command line arguments
  * handled with this key. argsIndex must be incremented with this parameter outside of ExtractValue. */
-std::pair<RetCode, ssize_t> ExtractValue(ssize_t argsIndex, const std::deque<std::string_view> &args,
-                                         const OptionInterface &opt, KeyArg &keyArg)
+std::pair<RetCode, size_t> ExtractValue(size_t argsIndex, const std::deque<std::string_view> &args,
+                                        const OptionInterface &opt, KeyArg &keyArg)
 {
     /* The option like "--key= " does not contain a value after equal symbol */
     if (keyArg.isEqualOpt == true && keyArg.val.empty()) {
@@ -72,7 +72,7 @@ std::pair<RetCode, ssize_t> ExtractValue(ssize_t argsIndex, const std::deque<std
 
         /* localArgsIndex is used to be sure that nobody breaks the logic by
          * changing argsIndex to reference. original argsIndex must be not changed here. */
-        ssize_t localArgsIndex = argsIndex + 1;
+        size_t localArgsIndex = argsIndex + 1;
         /* Second command line argument does not exist */
         if (localArgsIndex >= args.size() || args[localArgsIndex].empty()) {
             RetCode ret =
@@ -92,7 +92,7 @@ std::pair<RetCode, ssize_t> ExtractValue(ssize_t argsIndex, const std::deque<std
  * ################################################################ */
 
 template <>
-RetCode Option<bool>::ParseBool(ssize_t &argsIndex, const std::deque<std::string_view> &args)
+RetCode Option<bool>::ParseBool(size_t &argsIndex, const std::deque<std::string_view> &args)
 {
     /* DisabledName should set it to false, like --fno-omit-framepointer vs --fomit-framepointer */
     auto disabledNames = GetDisabledName();
@@ -105,10 +105,10 @@ RetCode Option<bool>::ParseBool(ssize_t &argsIndex, const std::deque<std::string
 
 /* NOTE: argsIndex must be incremented only if option is handled successfully */
 template <>
-RetCode Option<std::string>::ParseString(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
+RetCode Option<std::string>::ParseString(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
 {
     RetCode err = RetCode::noError;
-    ssize_t indexIncCnt = 0;
+    size_t indexIncCnt = 0;
     std::tie(err, indexIncCnt) = ExtractValue(argsIndex, args, *this, keyArg);
     if (err != RetCode::noError) {
         return err;
@@ -150,12 +150,12 @@ RetCode Option<std::string>::ParseString(ssize_t &argsIndex, const std::deque<st
 
 /* NOTE: argsIndex must be incremented only if option is handled successfully */
 template <typename T>
-RetCode Option<T>::ParseDigit(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
+RetCode Option<T>::ParseDigit(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
 {
     static_assert(digitalCheck<T>, "Expected (u)intXX types");
 
     RetCode err = RetCode::noError;
-    ssize_t indexIncCnt = 0;
+    size_t indexIncCnt = 0;
     std::tie(err, indexIncCnt) = ExtractValue(argsIndex, args, *this, keyArg);
     if (err != RetCode::noError) {
         return err;

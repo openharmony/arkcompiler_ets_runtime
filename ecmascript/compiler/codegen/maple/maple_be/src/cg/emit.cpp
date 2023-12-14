@@ -2160,7 +2160,7 @@ void Emitter::EmitStringPointers()
         (void)Emit(asmInfo->GetSection()).Emit(".rodata").Emit("\n");
     }
     for (auto idx : localStrPtr) {
-        if (idx == 0) {
+        if (idx == 0u) {
             continue;
         }
         if (!CGOptions::OptimizeForSize()) {
@@ -2177,7 +2177,7 @@ void Emitter::EmitStringPointers()
         EmitStr(mplstr, false, true);
     }
     for (auto idx : stringPtr) {
-        if (idx == 0) {
+        if (idx == 0u) {
             continue;
         }
         if (!CGOptions::OptimizeForSize()) {
@@ -3221,7 +3221,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
             break;
         case DW_FORM_data1:
 #if DEBUG
-            if (attr->GetI() == kDbgDefaultVal) {
+            if (static_cast<uint32>(attr->GetI()) == kDbgDefaultVal) {
                 EmitHexUnsigned(attr->GetI());
             } else
 #endif
@@ -3229,7 +3229,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
             break;
         case DW_FORM_data2:
 #if DEBUG
-            if (attr->GetI() == kDbgDefaultVal) {
+            if (static_cast<uint32>(attr->GetI()) == kDbgDefaultVal) {
                 EmitHexUnsigned(attr->GetI());
             } else
 #endif
@@ -3237,7 +3237,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
             break;
         case DW_FORM_data4:
 #if DEBUG
-            if (attr->GetI() == kDbgDefaultVal) {
+            if (static_cast<uint32>(attr->GetI()) == kDbgDefaultVal) {
                 EmitHexUnsigned(attr->GetI());
             } else
 #endif

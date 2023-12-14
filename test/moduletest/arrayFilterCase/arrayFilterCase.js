@@ -69,3 +69,11 @@ function isPrime(num) {
 }
 
 print(array.filter(isPrime)); // [2, 3, 5, 7, 11, 13]
+
+var array1=[,]
+function filter(){
+    return array1.filter(v => v>0 );
+}
+array1.__proto__.push(6);
+var narr = filter();
+print(JSON.stringify(Object.getOwnPropertyDescriptor(narr,0)));

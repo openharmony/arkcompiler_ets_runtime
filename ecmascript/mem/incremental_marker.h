@@ -94,6 +94,24 @@ private:
         }
     }
 
+    class RecursionScope {
+    public:
+        explicit RecursionScope(IncrementalMarker* marker) : marker_(marker)
+        {
+            if (marker_->recursionDepth_++ != 0) {
+                LOG_GC(FATAL) << "Recursion in IncrementalMarker Constructor, depth:" << marker_->recursionDepth_;
+            }
+        }
+        ~RecursionScope()
+        {
+            if (--marker_->recursionDepth_ != 0) {
+                LOG_GC(FATAL) << "Recursion in IncrementalMarker Destructor, depth:" << marker_->recursionDepth_;
+            }
+        }
+    private:
+        IncrementalMarker* marker_ {nullptr};
+    };
+
     Heap *heap_ {nullptr};
     EcmaVM *vm_ {nullptr};
 
@@ -111,6 +129,7 @@ private:
     int64_t receiveIdleTime_ {0};
     double totalUsedIdleTime_ {0.0};
     double exceedIdleTime_ {0.0};
+    int32_t recursionDepth_ {0};
 
     friend class Heap;
 };

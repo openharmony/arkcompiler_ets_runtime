@@ -36,8 +36,8 @@ namespace panda::ecmascript {
 //   |----------------------|   |
 //   |          pc          |   v
 //   +--------------------------+
-EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
-    JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj, JSHandle<JSTaggedValue> newTarget,
+EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfoBase(
+    JSThread *thread, JSTaggedType func, JSTaggedType thisObj, JSTaggedType newTarget,
     uint32_t numArgs, bool needCheckStack)
 {
     JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
@@ -49,9 +49,9 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     for (uint32_t i = 0; i < numArgs; i++) {
         *(--newSp) = JSTaggedValue::VALUE_UNDEFINED;
     }
-    *(--newSp) = thisObj.GetTaggedType();
-    *(--newSp) = newTarget.GetTaggedType();
-    *(--newSp) = func.GetTaggedType();
+    *(--newSp) = thisObj;
+    *(--newSp) = newTarget;
+    *(--newSp) = func;
     *(--newSp) = numArgs + NUM_MANDATORY_JSFUNC_ARGS;
     *(--newSp) = ToUintPtr(thread);
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp);
@@ -64,6 +64,22 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
 
     thread->SetCurrentSPFrame(newSp);
     return ecmaRuntimeCallInfo;
+}
+
+EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
+    JSThread *thread, JSTaggedValue func, JSTaggedValue thisObj, JSTaggedValue newTarget,
+    uint32_t numArgs, bool needCheckStack)
+{
+    return NewRuntimeCallInfoBase(thread, func.GetRawData(), thisObj.GetRawData(), newTarget.GetRawData(),
+        numArgs, needCheckStack);
+}
+
+EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
+    JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
+    JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack)
+{
+    return NewRuntimeCallInfoBase(thread, func.GetTaggedType(), thisObj.GetTaggedType(), newTarget.GetTaggedType(),
+        numArgs, needCheckStack);
 }
 
 EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, EcmaRuntimeCallInfo* info,

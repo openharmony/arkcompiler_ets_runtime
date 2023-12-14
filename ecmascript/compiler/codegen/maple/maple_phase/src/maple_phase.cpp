@@ -53,7 +53,7 @@ MemPool *MaplePhase::ApplyTempMemPool()
 void MaplePhase::ClearTempMemPool()
 {
 #ifdef DEBUG
-    int maxMemPoolNum = 5;
+    uint32 maxMemPoolNum = 5;
     DEBUG_ASSERT(tempMemPools.size() <= maxMemPoolNum, " maple phase uses too many temp mempool");
 #endif
     if (!tempMemPools.empty()) {

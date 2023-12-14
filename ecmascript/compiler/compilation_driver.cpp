@@ -272,4 +272,17 @@ void CompilationDriver::StoreConstantPoolInfo() const
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     ptManager->GetAOTSnapshot().StoreConstantPoolInfo(collector_);
 }
+
+bool JitCompilationDriver::RunCg()
+{
+    IncCompiledMethod();
+    CompileModuleThenDestroyIfNeeded();
+    return true;
+}
+
+Module *JitCompilationDriver::GetModule()
+{
+    return IsCurModuleFull() ? fileGenerator_->AddModule(fileName_, triple_, *lOptions_, outputAsm_, true) :
+        fileGenerator_->GetLatestModule();
+}
 } // namespace panda::ecmascript::kungfu

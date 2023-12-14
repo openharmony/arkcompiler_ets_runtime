@@ -25,6 +25,10 @@
 namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using JSRecordInfo = JSPandaFile::JSRecordInfo;
+using LiteralDataAccessor = panda_file::LiteralDataAccessor;
+using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
+using LiteralTag = panda_file::LiteralTag;
+class ConstantPool;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};
@@ -45,11 +49,30 @@ struct BaseMethodIndex {
     }
 };
 
+struct PatchMethodIndex {
+    CString recordName;
+    CString className;
+    CString methodName;
+    bool operator < (const PatchMethodIndex &patchIndex) const
+    {
+        if (recordName < patchIndex.recordName) {
+            return true;
+        }
+        if (recordName == patchIndex.recordName && className < patchIndex.className) {
+            return true;
+        }
+        if (recordName == patchIndex.recordName && className == patchIndex.className) {
+            return methodName < patchIndex.methodName;
+        }
+        return false;
+    }
+};
+
 struct PatchInfo {
     // patch file name.
     CString patchFileName;
     // patch methodLiterals for load patch, <recordName, <methodName, MethodLiteral>>
-    CMap<CString, CMap<CString, MethodLiteral*>> patchMethodLiterals;
+    CMap<PatchMethodIndex, MethodLiteral*> patchMethodLiterals;
     // base method info for unload patch, <BaseMethodIndex, base MethodLiteral>
     CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
     // save base constpool in global for avoid gc.
@@ -73,20 +96,25 @@ public:
     NO_MOVE_SEMANTIC(PatchLoader);
 
     static PatchErrorCode LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
-                                            const JSPandaFile *patchFile, PatchInfo &patchInfo);
+                                            const JSPandaFile *patchFile, PatchInfo &patchInfo,
+                                            const CMap<uint32_t, CString> &baseClassInfo);
     static PatchErrorCode UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
                                               const CString &baseFileName, PatchInfo &patchInfo);
 
-    static MethodLiteral *FindSameMethod(PatchInfo &patchInfo, const JSPandaFile *baseFile, EntityId baseMethodId);
+    static MethodLiteral *FindSameMethod(PatchInfo &patchInfo, const JSPandaFile *baseFile,
+                                         EntityId baseMethodId, const CMap<uint32_t, CString> &baseClassInfo);
     static void ExecuteFuncOrPatchMain(
         JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch = true);
+    static CMap<uint32_t, CString> CollectClassInfo(const JSPandaFile *jsPandaFile);
 
 private:
     static PatchInfo GeneratePatchInfo(const JSPandaFile *patchFile);
+    static CString GetRealName(const JSPandaFile *jsPandaFile, EntityId entityId, CString &className);
     static void FindAndReplaceSameMethod(JSThread *thread,
                                          const JSPandaFile *baseFile,
                                          const JSPandaFile *patchFile,
-                                         PatchInfo &patchInfo);
+                                         PatchInfo &patchInfo,
+                                         const CMap<uint32_t, CString> &baseClassInfo);
     static void SaveBaseMethodInfo(PatchInfo &patchInfo, const JSPandaFile *baseFile,
                                    EntityId baseMethodId, const BaseMethodIndex &indexs);
     static void ReplaceMethod(JSThread *thread,
@@ -97,6 +125,8 @@ private:
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
+    static Method *GetPatchMethod(JSThread *thread,
+        const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

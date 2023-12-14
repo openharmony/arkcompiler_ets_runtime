@@ -101,6 +101,7 @@ void IncrementalMarker::Initialize()
 
 void IncrementalMarker::ProcessIncrementalMark(int64_t idleMicroSec)
 {
+    RecursionScope recurScope(this);
     if (idleMicroSec <= 0) {
         return;
     }

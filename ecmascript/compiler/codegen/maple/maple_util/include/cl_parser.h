@@ -148,13 +148,13 @@ private:
     CommandLine() = default;
 
     OptionInterface *CheckJoinedOption(KeyArg &keyArg, OptionCategory &optCategory);
-    RetCode ParseJoinedOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+    RetCode ParseJoinedOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                               OptionCategory &optCategory);
-    RetCode ParseOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+    RetCode ParseOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                         OptionCategory &optCategory, OptionInterface *opt);
-    RetCode ParseEqualOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
-                             OptionCategory &optCategory, const OptionsMapType &optMap, ssize_t pos);
-    RetCode ParseSimpleOption(ssize_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+    RetCode ParseEqualOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
+                             OptionCategory &optCategory, const OptionsMapType &optMap, size_t pos);
+    RetCode ParseSimpleOption(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg,
                               OptionCategory &optCategory, const OptionsMapType &optMap);
 };
 

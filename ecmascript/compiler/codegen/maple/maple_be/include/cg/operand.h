@@ -1219,13 +1219,13 @@ public:
     }
 
     /* Returns N where alignment == 2^N */
-    static int32 GetImmediateOffsetAlignment(uint32 dSize)
+    static uint32 GetImmediateOffsetAlignment(uint32 dSize)
     {
         DEBUG_ASSERT(dSize >= k8BitSize, "error val:dSize");
         DEBUG_ASSERT(dSize <= k128BitSize, "error val:dSize");
         DEBUG_ASSERT((dSize & (dSize - 1)) == 0, "error val:dSize");
         /* dSize==8: 0, dSize==16 : 1, dSize==32: 2, dSize==64: 3 */
-        return __builtin_ctz(dSize) - static_cast<int32>(kBaseOffsetAlignment);
+        return __builtin_ctz(dSize) - kBaseOffsetAlignment;
     }
 
     static int32 GetMaxPIMM(uint32 dSize)
@@ -1234,7 +1234,7 @@ public:
         DEBUG_ASSERT(dSize >= k8BitSize, "error val:dSize");
         DEBUG_ASSERT(dSize <= k128BitSize, "error val:dSize");
         DEBUG_ASSERT((dSize & (dSize - 1)) == 0, "error val:dSize");
-        int32 alignment = GetImmediateOffsetAlignment(dSize);
+        uint32 alignment = GetImmediateOffsetAlignment(dSize);
         /* alignment is between kAlignmentOf8Bit and kAlignmentOf64Bit */
         DEBUG_ASSERT(alignment >= kOffsetAlignmentOf8Bit, "error val:alignment");
         DEBUG_ASSERT(alignment <= kOffsetAlignmentOf128Bit, "error val:alignment");
@@ -1246,11 +1246,11 @@ public:
         DEBUG_ASSERT(dSize >= k32BitSize, "error val:dSize");
         DEBUG_ASSERT(dSize <= k128BitSize, "error val:dSize");
         DEBUG_ASSERT((dSize & (dSize - 1)) == 0, "error val:dSize");
-        int32 alignment = GetImmediateOffsetAlignment(dSize);
+        uint32 alignment = GetImmediateOffsetAlignment(dSize);
         /* alignment is between kAlignmentOf8Bit and kAlignmentOf64Bit */
         DEBUG_ASSERT(alignment >= kOffsetAlignmentOf32Bit, "error val:alignment");
         DEBUG_ASSERT(alignment <= kOffsetAlignmentOf128Bit, "error val:alignment");
-        return (kMaxPairPimm[static_cast<uint32>(alignment) - k2BitSize]);
+        return (kMaxPairPimm[alignment - k2BitSize]);
     }
 
     bool IsOffsetMisaligned(uint32 dSize) const

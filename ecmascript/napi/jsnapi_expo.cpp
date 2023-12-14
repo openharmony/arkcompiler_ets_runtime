@@ -35,6 +35,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
@@ -100,6 +101,7 @@
 #include "ecmascript/platform/log.h"
 
 namespace panda {
+using ecmascript::AccessorData;
 using ecmascript::BigInt;
 using ecmascript::ByteArray;
 using ecmascript::ECMAObject;
@@ -226,24 +228,26 @@ static Mutex *mutex = new panda::Mutex();
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
 {
-    JSThread *thread = vm->GetJSThread();
-    const GlobalEnvConstants *constants = thread->GlobalConstants();
-    return JSNApiHelper::ToLocal<PrimitiveRef>(constants->GetHandledUndefined());
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledUndefined());
 }
 
 Local<PrimitiveRef> JSValueRef::Null(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::Null()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledNull());
 }
 
 Local<PrimitiveRef> JSValueRef::True(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::True()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledTrue());
 }
 
 Local<PrimitiveRef> JSValueRef::False(const EcmaVM *vm)
 {
-    return JSNApiHelper::ToLocal<PrimitiveRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::False()));
+    return JSNApiHelper::ToLocal<PrimitiveRef>(
+        vm->GetJSThread()->GlobalConstants()->GetHandledFalse());
 }
 
 Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
@@ -471,13 +475,13 @@ bool JSValueRef::IsConstructor()
 bool JSValueRef::IsFunction()
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
-    return value.IsHeapObject() && value.IsCallable();
+    return value.IsCallable();
 }
 
 bool JSValueRef::IsJSFunction()
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
-    return value.IsHeapObject() && value.IsJSFunction();
+    return value.IsJSFunction();
 }
 
 bool JSValueRef::IsProxy()
@@ -1510,6 +1514,63 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyCount,
+                                              const Local<JSValueRef> *keys,
+                                              const PropertyAttribute *attributes)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSHandle<JSTaggedValue> obj;
+    auto CreateObjImpl = [vm, propertyCount, keys, attributes] (uintptr_t head) -> JSHandle<JSTaggedValue> {
+        JSThread *thread = vm->GetJSThread();
+        const PropertyDescriptor *desc = reinterpret_cast<const PropertyDescriptor *>(head);
+        for (size_t i = 0; i < propertyCount; ++i) {
+            const PropertyAttribute &attr = attributes[i];
+            new (reinterpret_cast<void *>(head)) PropertyDescriptor(thread,
+                                                                    JSNApiHelper::ToJSHandle(attr.GetValue(vm)),
+                                                                    attr.IsWritable(), attr.IsEnumerable(),
+                                                                    attr.IsConfigurable());
+            head += sizeof(PropertyDescriptor);
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        return factory->CreateJSObjectWithProperties(propertyCount, keys, desc);
+    };
+    if (propertyCount <= MAX_PROPERTIES_ON_STACK) {
+        char desc[sizeof(PropertyDescriptor) * MAX_PROPERTIES_ON_STACK];
+        obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
+    } else {
+        void *desc = malloc(sizeof(PropertyDescriptor) * propertyCount);
+        obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
+        free(desc);
+    }
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount,
+                                                   const char **keys, const Local<JSValueRef> *values)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> obj = factory->CreateJSObjectWithNamedProperties(propertyCount, keys, values);
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
+}
+
+Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
+                                               Local<FunctionRef> getter, Local<FunctionRef> setter)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> getterValue = JSNApiHelper::ToJSHandle(getter);
+    JSHandle<JSTaggedValue> setterValue = JSNApiHelper::ToJSHandle(setter);
+    JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+    accessor->SetGetter(thread, getterValue);
+    accessor->SetSetter(thread, setterValue);
+    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(accessor));
+}
+
 bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
@@ -1719,7 +1780,7 @@ bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     PropertyDescriptor desc(thread, attribute.IsWritable(), attribute.IsEnumerable(), attribute.IsConfigurable());
     desc.SetValue(JSNApiHelper::ToJSHandle(attribute.GetValue(vm)));
-    bool result = object->DefinePropertyOrThrow(thread, object, keyValue, desc);
+    bool result = JSTaggedValue::DefinePropertyOrThrow(thread, object, keyValue, desc);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1731,7 +1792,7 @@ bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = object->HasProperty(thread, object, keyValue);
+    bool result = JSTaggedValue::HasProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1742,7 +1803,7 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
-    bool result = object->HasProperty(thread, object, key);
+    bool result = JSTaggedValue::HasProperty(thread, object, key);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1754,7 +1815,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = object->DeleteProperty(thread, object, keyValue);
+    bool result = JSTaggedValue::DeleteProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -1766,7 +1827,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
-    bool result = object->DeleteProperty(thread, object, keyHandle);
+    bool result = JSTaggedValue::DeleteProperty(thread, object, keyHandle);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
 }
@@ -2113,37 +2174,44 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
-Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
+JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     JSValueRef *const argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    EscapeLocalScope scope(vm);
+    CHECK_HAS_PENDING_EXCEPTION(vm, *JSValueRef::Undefined(vm));
+    JSTaggedValue result;
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
     JSThread *thread = vm->GetJSThread();
-    if (!IsFunction()) {
-        return JSValueRef::Undefined(vm);
+    ASSERT(IsFunction()); // IsFunction check has been done in napi.
+    {
+        LocalScope scope(vm);
+        ecmascript::tooling::JsDebuggerManager *dm = vm->GetJsDebuggerManager();
+        if (dm->IsDebugApp()) {
+            dm->ClearSingleStepper();
+        }
+        JSTaggedValue func = *reinterpret_cast<JSTaggedValue *>(this);
+        JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+        JSTaggedValue thisValue = undefined;
+        if (thisObj != nullptr) {
+            thisValue = *reinterpret_cast<JSTaggedValue *>(thisObj);
+        }
+        EcmaRuntimeCallInfo *info =
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisValue, undefined, length);
+        RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
+        for (int32_t i = 0; i < length; i++) {
+            JSTaggedValue arg =
+                argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
+            info->SetCallArg(i, arg);
+        }
+        result = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
+        vm->GetHeap()->ClearKeptObjects();
+        if (dm->IsMixedDebugEnabled()) {
+            dm->NotifyReturnNative();
+        }
     }
-    vm->GetJsDebuggerManager()->ClearSingleStepper();
-    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(func, ERROR);
-    JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisValue, undefined, length);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    for (int32_t i = 0; i < length; i++) {
-        JSTaggedValue arg =
-            argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
-        info->SetCallArg(i, arg);
-    }
-    JSTaggedValue result = JSFunction::Call(info);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
-
-    vm->GetHeap()->ClearKeptObjects();
-    vm->GetJsDebuggerManager()->NotifyReturnNative();
-    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
+    return reinterpret_cast<JSValueRef *>(resultValue.GetAddress());
 }
 
 Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,

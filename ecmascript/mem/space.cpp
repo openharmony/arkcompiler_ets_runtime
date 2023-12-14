@@ -83,6 +83,20 @@ HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllo
 {
 }
 
+HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                 size_t initialCapacity, size_t maximumCapacity, MemSpaceType spaceType)
+    : Space(heapRegionAllocator, spaceType, initialCapacity, maximumCapacity),
+      heap_(heap)
+{
+}
+
+HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                           size_t initialCapacity, size_t maximumCapacity)
+    : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity,
+        maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
+{
+}
+
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
 {
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.

@@ -42,6 +42,9 @@ public:
     static inline JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static inline JSTaggedValue ExecuteNative(EcmaRuntimeCallInfo *info);
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
+        JSThread *thread, JSTaggedValue func, JSTaggedValue thisObj, JSTaggedValue newTarget,
+        uint32_t numArgs, bool needCheckStack = true);
+    static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
         JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static EcmaRuntimeCallInfo* ReBuildRuntimeCallInfo(
@@ -75,6 +78,9 @@ public:
     static inline JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
 private:
     static inline void InitStackFrameForSP(JSTaggedType *prevSp);
+    static inline EcmaRuntimeCallInfo* NewRuntimeCallInfoBase(
+        JSThread *thread, JSTaggedType func, JSTaggedType thisObj, JSTaggedType newTarget,
+        uint32_t numArgs, bool needCheckStack = true);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_H

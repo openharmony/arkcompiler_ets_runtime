@@ -2053,7 +2053,7 @@ bool MIRParser::ParseStmtBlockForReg()
         Error("ParseDeclareVar failed when parsing the type");
         return false;
     }
-    DEBUG_ASSERT(tyidx > 0, "parse declare var failed ");
+    DEBUG_ASSERT(tyidx > 0u, "parse declare var failed ");
     MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx);
     preg->SetMIRType(mirType);
     if (lexer.GetTokenKind() == TK_intconst) {

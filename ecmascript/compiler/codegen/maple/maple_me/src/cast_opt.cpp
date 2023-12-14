@@ -72,7 +72,7 @@ BaseNode *MapleCastOpt::CreateMapleExprByCastKind(MIRBuilder &mirBuilder, CastKi
     } else if (castKind == CAST_retype && srcType == opnd->GetPrimType()) {
         // If srcType is different from opnd->primType, we should create cvt instead of retype.
         // Because CGFunc::SelectRetype always use opnd->primType as srcType.
-        CHECK_FATAL(dstTyIdx != 0, "must specify valid tyIdx for retype");
+        CHECK_FATAL(dstTyIdx != 0u, "must specify valid tyIdx for retype");
         MIRType *dstMIRType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(dstTyIdx);
         return mirBuilder.CreateExprRetype(*dstMIRType, srcType, opnd);
     } else {

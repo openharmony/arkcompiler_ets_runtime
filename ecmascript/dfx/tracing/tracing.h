@@ -108,7 +108,7 @@ public:
     void TraceEventUpdateCpuProfiler(struct ProfileInfo *profileInfo);
 
     void LoadModule(std::string_view name, std::string_view) override;
-    void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;   
+    void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
     bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset) override;
     void VmStart() override;
     void VmDeath() override;

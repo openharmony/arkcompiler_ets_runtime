@@ -2192,6 +2192,41 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
     // 23. Return desc.
 }
 
+const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj)
+{
+    CString result = "";
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
+    JSTaggedValue objConstructor = ObjectFastOperator::GetPropertyByName(thread, JSTaggedValue(obj),
+                                                                         contructorKey.GetTaggedValue());
+    if (!objConstructor.IsJSFunction()) {
+        return "JSObject";
+    }
+
+    JSFunctionBase *func = JSFunctionBase::Cast(objConstructor.GetTaggedObject());
+    Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    if (methodLiteral == nullptr) {
+        return "JSObject";
+    }
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+    const CString &moduleStr = method->GetRecordNameStr();
+
+    if (!moduleStr.empty()) {
+        result.append(moduleStr);
+    }
+    if (!nameStr.empty()) {
+        result.append(" ");
+        result.append(CString(nameStr));
+        result.append(" ");
+    }
+    result.append("JSObject");
+    return result;
+}
+
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
                                                      const JSHandle<JSTaggedValue> &defaultConstructort)
 {

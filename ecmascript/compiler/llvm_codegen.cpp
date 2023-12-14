@@ -243,7 +243,7 @@ const std::map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2DeoptInfo() con
     return pc2DeoptInfo;
 }
 
-const std::map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2CallsiteInfo() const
+const std::unordered_map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2CallsiteInfo() const
 {
     return pc2CallsiteInfo;
 }

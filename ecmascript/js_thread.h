@@ -58,6 +58,7 @@ enum class PGOProfilerStatus : uint8_t {
 enum class BCStubStatus: uint8_t {
     NORMAL_BC_STUB,
     PROFILE_BC_STUB,
+    JIT_PROFILE_BC_STUB,
 };
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
@@ -68,6 +69,7 @@ public:
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
+    static constexpr int BCSTUBSTATUS_BITFIELD_NUM = 2;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
@@ -75,8 +77,9 @@ public:
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
     using VMNeedTerminationBit = VMHasSuspendedBit::NextFlag;
     using VMHasTerminatedBit = VMNeedTerminationBit::NextFlag;
+    using InstallMachineCodeBit = VMHasTerminatedBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
-    using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BOOL_BITFIELD_NUM>;
+    using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BCSTUBSTATUS_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
     enum FrameDroppedState {
@@ -294,6 +297,7 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
+    void SwitchJitProfileStubsIfNeeded();
 
     ThreadId GetThreadId() const
     {
@@ -526,6 +530,18 @@ public:
     }
 
     void TerminateExecution();
+
+    void SetInstallMachineCode(bool flag)
+    {
+        LockHolder lock(interruptMutex_);
+        InstallMachineCodeBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    bool HasInstallMachineCode() const
+    {
+        LockHolder lock(interruptMutex_);
+        return InstallMachineCodeBit::Decode(glueData_.interruptVector_);
+    }
 
     static uintptr_t GetCurrentStackPosition()
     {

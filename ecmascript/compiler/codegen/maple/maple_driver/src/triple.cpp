@@ -75,7 +75,7 @@ void Triple::Init(const std::string &target)
 
     /* Try to check environment in option.
      * As example, it can be: aarch64-none-linux-gnu or aarch64-linux-gnu or aarch64-gnu, where gnu is environment */
-    for (int i = 1; i < components.size(); ++i) {
+    for (uint32_t i = 1; i < components.size(); ++i) {
         auto tmpEnvironment = ParseEnvironment(components[i]);
         if (tmpEnvironment != Triple::UnknownEnvironment) {
             environment = tmpEnvironment;

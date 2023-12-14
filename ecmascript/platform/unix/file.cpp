@@ -181,4 +181,20 @@ bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
     CString soName = base::PathHelper::GetStrippedModuleName(ConvertToString(module->GetEcmaModuleRecordName()));
     return unloadNativeModuleCallback(soName.c_str());
 }
+
+void *LoadLib(const std::string &libname)
+{
+    return dlopen(libname.c_str(), RTLD_NOW);
+}
+
+void *FindSymbol(void *handle, const char *symbol)
+{
+    return dlsym(handle, symbol);
+}
+
+int CloseLib(void *handle)
+{
+    return dlclose(handle);
+}
+
 }  // namespace panda::ecmascript

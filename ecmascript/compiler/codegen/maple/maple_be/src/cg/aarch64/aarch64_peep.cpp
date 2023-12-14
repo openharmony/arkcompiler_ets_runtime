@@ -5053,7 +5053,7 @@ void ReplaceCmpToCmnAArch64::Run(BB &bb, Insn &insn)
     if (opnd2OfMov->IsIntImmediate()) {
         ImmOperand *immOpnd = static_cast<ImmOperand *>(opnd2OfMov);
         int64 iVal = immOpnd->GetValue();
-        if ((kNegativeImmLowerLimit <= iVal && iVal < 0) || iVal == negOne) {
+        if ((kNegativeImmLowerLimit <= iVal && iVal < 0) || static_cast<uint64>(iVal) == negOne) {
             Insn *nextInsn = insn.GetNextMachineInsn(); /* get the next insn to judge if it is a cmp instruction. */
             if (nextInsn != nullptr) {
                 if (nextInsn->GetMachineOpcode() == nextMop) {
@@ -5061,7 +5061,7 @@ void ReplaceCmpToCmnAArch64::Run(BB &bb, Insn &insn)
                     Operand *opndCmp3 = &(nextInsn->GetOperand(kInsnThirdOpnd)); /* get the third operand of cmp */
                     /* if the first operand of mov equals the third operand of cmp, match the pattern. */
                     if (opnd1OfMov == opndCmp3) {
-                        if (iVal == negOne) {
+                        if (static_cast<uint64>(iVal) == negOne) {
                             iVal = -1;
                         }
                         ImmOperand &newOpnd = aarch64CGFunc->CreateImmOperand(iVal * (-1), immOpnd->GetSize(), false);
