@@ -21,6 +21,9 @@ declare_args() {
   enable_ark_intl = true
   run_regress_test = false
 
+  # If true, enable fuzz option. Default false.
+  enable_fuzz_option = false
+
   TARGET = "x86_64"
   HOST_ARCH = 64
 }
@@ -46,6 +49,9 @@ hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
 qos_root = "//foundation/resourceschedule/qos_manager"
 compile_llvm_online = false
 run_with_asan = false
+if (enable_fuzz_option) {
+  run_with_asan = true
+}
 enable_leak_check = false
 enable_cow_array = true
 enable_coverage = false
