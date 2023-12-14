@@ -19,5 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: issue#I7F9ZT
  */
-Object.seal(this);
+let obj = { a: '111', b: 42, c:'333', d:'hello there'};
+Object.seal(obj);
 print("test successful !!!");

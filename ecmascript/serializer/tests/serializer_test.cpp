@@ -726,7 +726,7 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
         EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
         JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
-        // EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
+        EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
 
         EXPECT_TRUE(sFunc->IsCallable());
         EXPECT_FALSE(sFunc->GetProtoOrHClass().IsHole());
@@ -744,8 +744,8 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
         EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
-        // JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
-        // EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
+        JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
+        EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
         Destroy();
     }
 
