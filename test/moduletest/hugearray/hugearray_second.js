@@ -19,5 +19,11 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var string = "hugearray test start"
-print(string)
+let v2 = new Array(2);
+let t = 0
+do {
+    try {
+        v2["lastIndexOf"](...16);
+    } catch (e) {}
+} while (t++ < 18000)
+print(t);

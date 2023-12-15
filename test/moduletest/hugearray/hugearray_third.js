@@ -19,5 +19,9 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var string = "hugearray test start"
-print(string)
+let bytes = new Uint8Array(new ArrayBuffer(43584));
+let arr2 = [].slice.call(bytes);
+while (arr2.length) {
+    arr2.pop();
+}
+print(arr2.length);

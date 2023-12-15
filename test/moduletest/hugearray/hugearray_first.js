@@ -19,5 +19,12 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var string = "hugearray test start"
-print(string)
+var arr = [];
+for (let i = 0; i < 100000; i++) {
+    if (i % 3 == 0) {
+        arr.shift();
+    } else {
+        arr.push({val : i});
+    }
+}
+print(arr.length);
