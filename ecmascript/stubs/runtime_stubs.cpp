@@ -505,7 +505,7 @@ void RuntimeStubs::Dump(JSTaggedType rawValue)
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
-    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss.str();
+    LOG_ECMA(INFO) << "dump log for read-only crash " << oss.str();
 }
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
