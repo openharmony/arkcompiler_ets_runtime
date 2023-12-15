@@ -3063,6 +3063,43 @@ DEF_RUNTIME_STUBS(ObjectSlowAssign)
     return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NameDictionaryGetAllEnumKeys)
+{
+    RUNTIME_STUBS_HEADER(NameDictionaryGetAllEnumKeys);
+    JSHandle<JSObject> object = GetHArg<JSObject>(argv, argc, 0);            // 0: means the zeroth parameter
+    JSTaggedValue argKeys = GetArg(argv, argc, 1);    // 1: means the first parameter
+    int numOfKeys = argKeys.GetInt();
+    uint32_t keys = 0;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
+    NameDictionary *dict = NameDictionary::Cast(object->GetProperties().GetTaggedObject());
+    dict->GetAllEnumKeys(thread, 0, keyArray, &keys);
+    keyArray->SetLength(keys);
+    return keyArray.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
+{
+    RUNTIME_STUBS_HEADER(NumberDictionaryGetAllEnumKeys);
+    JSHandle<TaggedArray> array = GetHArg<TaggedArray>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<TaggedArray> elementArray = GetHArg<TaggedArray>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue argKeys = GetArg(argv, argc, 2);  // 2: means the second parameter
+    int elementIndex = argKeys.GetInt();
+    uint32_t keys = elementIndex;
+    NumberDictionary::GetAllEnumKeys(
+        thread, JSHandle<NumberDictionary>(array), elementIndex, elementArray, &keys);
+    elementArray->SetLength(keys);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(IntToString)
+{
+    RUNTIME_STUBS_HEADER(IntToString);
+    JSTaggedValue argKeys = GetArg(argv, argc, 0);
+    return JSHandle<JSTaggedValue>::Cast(base::NumberHelper::IntToEcmaString(thread,
+        argKeys.GetInt())).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LocaleCompareWithGc)
 {
     RUNTIME_STUBS_HEADER(LocaleCompareWithGc);
