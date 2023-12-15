@@ -1354,7 +1354,431 @@ static bool HasPendingJob(const EcmaVM *vm);
 bool result = JSNApi::HasPendingJob(vm_);
 ```
 
+###  DestroyJSContext
 
+static void DestroyJSContext(EcmaVM *vm, EcmaContext *context);
+
+该函数的作用是销毁与给定虚拟机和上下文相关联的资源，通过 `EcmaContext::CheckAndDestroy` 方法实现检查和销毁过程。
+
+**参数：**
+
+| 参数名  | 类型          | 必填 | 说明                   |
+| ------- | ------------- | ---- | ---------------------- |
+| vm      | EcmaVM *      | 是   | 虚拟机对象。           |
+| context | EcmaContext * | 是   | 表示Ecma上下文的指针。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+EcmaContext *context1 = JSNApi::CreateJSContext(vm);
+JSNApi::DestroyJSContext(vm, context1);
+```
+
+###  SetMockModuleList
+
+static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+
+将给定的模拟模块列表设置到指定的Ecma虚拟机中。
+
+**参数：**
+
+| 参数名 | 类型                                       | 必填 | 说明                                                         |
+| ------ | ------------------------------------------ | ---- | ------------------------------------------------------------ |
+| vm     | EcmaVM *                                   | 是   | 虚拟机对象。                                                 |
+| list   | const std::map<std::string, std::string> & | 是   | 表示一个从字符串到字符串的映射，<br/>其中第一个字符串是模块的名称，第二个字符串是模块的内容。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+std::map<std::string, std::string> mockModuleList;
+mockModuleList["Module1"] = "Module1Context";
+mockModuleList["Module2"] = "Module2Context";
+JSNApi::SetMockModuleList(vm, mockModuleList);
+```
+
+###  SetHostPromiseRejectionTracker
+
+static *void* SetHostPromiseRejectionTracker(EcmaVM **vm*, *void* *cb, *void* *data);
+
+该函数用于设置 Ecma 上下文的主机 Promise 拒绝跟踪器，以及相关的回调函数和数据。
+
+`SetHostPromiseRejectionTracker` 方法设置主机 Promise 拒绝跟踪器的回调函数。
+
+`SetPromiseRejectCallback` 方法设置 Promise 拒绝的回调函数。
+
+`SetData` 方法设置特定的数据。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明                                    |
+| ------ | -------- | ---- | --------------------------------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象。                            |
+| *cb*   | Void *   | 是   | 表示主机 Promise 拒绝跟踪器的回调函数。 |
+| data   | Void *   | 是   | 表示将要设置的数据。                    |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+void *data = reinterpret_cast<void *>(builtins::BuiltinsFunction::FunctionPrototypeInvokeSelf);
+JSNApi::SetHostPromiseRejectionTracker(vm, data, data);
+```
+
+###  SetHostResolveBufferTracker
+
+static *void* SetHostResolveBufferTracker(EcmaVM *vm*,std::function<bool(std::string dirPath, uint8_t**buff, size_t *buffSize)> cb);
+
+该函数用于设置 Ecma 虚拟机的主机解析缓冲区跟踪器回调函数。
+
+回调函数通过 `std::function` 传递，接受目录路径（`dirPath`）和缓冲区指针（`uint8_t** buff`）及其大小指针（`size_t* buffSize`）作为参数，并返回一个布尔值，表示是否成功解析缓冲区。
+
+**参数：**
+
+| 参数名 | 类型                                                         | 必填 | 说明                                |
+| ------ | ------------------------------------------------------------ | ---- | ----------------------------------- |
+| vm     | EcmaVM *                                                     | 是   | 虚拟机对象。                        |
+| cb     | std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> | 是   | 主机解析缓冲区跟踪器<br/>的回调函数 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+std::function<bool(std::string dirPath, uint8_t * *buff, size_t * buffSize)> cb = [](const std::string &inputPath,
+    uint8_t **buff, size_t *buffSize) -> bool {
+    if (inputPath.empty() || buff == nullptr || buffSize == nullptr) {
+        return false;
+    }
+    return false;
+};
+JSNApi::SetHostResolveBufferTracker(vm, cb);
+```
+
+###  SetUnloadNativeModuleCallback
+
+static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
+
+自定义卸载本体模块时的行为。
+
+**参数：**
+
+| 参数名 | 类型                                              | 必填 | 说明                                                         |
+| ------ | ------------------------------------------------- | ---- | ------------------------------------------------------------ |
+| vm     | EcmaVM *                                          | 是   | 虚拟机对象。                                                 |
+| cb     | std::function<bool(const std::string &moduleKey)> | 是   | 回调函数接受一个 `moduleKey` 参数（字符串类型）<br/>并返回一个布尔值，表示是否成功卸载本地模块 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+bool UnloadNativeModuleCallback(const std::string &moduleKey) {
+    return true;
+}
+JSNApi::SetUnloadNativeModuleCallback(vm, UnloadNativeModuleCallback);
+```
+
+###  SetNativePtrGetter
+
+static *void* SetNativePtrGetter(EcmaVM **vm*, void *cb);
+
+该函数用于设置 Ecma 虚拟机的本机指针获取器的回调函数。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明           |
+| ------ | -------- | ---- | -------------- |
+| vm     | EcmaVM * | 是   | 虚拟机对象。   |
+| cb     | Void *   | 是   | 回调函数指针。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+void *cb = reinterpret_cast<void *>(NativePtrGetterCallback);
+JSNApi::SetNativePtrGetter(vm, cb);
+```
+
+###  SetSourceMapTranslateCallback
+
+static *void* SetSourceMapTranslateCallback(EcmaVM **vm*, SourceMapTranslateCallback *cb*);
+
+该函数用于设置 Ecma 虚拟机的源映射翻译回调函数。
+
+**参数：**
+
+| 参数名   | 类型                       | 必填 | 说明                               |
+| -------- | -------------------------- | ---- | ---------------------------------- |
+| vm       | EcmaVM *                   | 是   | 虚拟机对象。                       |
+| callback | SourceMapTranslateCallback | 是   | 回调函数用于设置源映射翻译的回调。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+bool SourceMapTranslateCallback(const std::string& sourceLocation, std::string& translatedLocation) {
+    return true; 
+}
+JSNApi::SetSourceMapTranslateCallback(vm, SourceMapTranslateCallback);
+```
+
+###  DestroyMemMapAllocator
+
+static *void* DestroyMemMapAllocator();
+
+该函数用于销毁内存映射分配器（MemMapAllocator）的实例。
+
+**参数：**
+
+无
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::DestroyMemMapAllocator();
+```
+
+###  DestroyPGOProfiler
+
+static *void* DestroyPGOProfiler();
+
+该函数用于销毁性能分析（PGO，Profile-Guided Optimization）的分析器管理器实例。
+
+通过调用 `ecmascript::pgo::PGOProfilerManager::GetInstance()`获取 PGOProfilerManager 的单例实例，并调用 `Destroy` 方法进行销毁。
+
+**参数：**
+
+无
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::DestroyPGOProfiler();
+```
+
+###  ExecutePendingJob
+
+static *void* ExecutePendingJob(const EcmaVM **vm*);
+
+该函数用于执行当前 Ecma 上下文中挂起的 Promise 任务。
+
+在执行前，通过 `CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN` 宏检查是否存在潜在的异常。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::ExecutePendingJob(vm);
+```
+
+###  PreFork
+
+static *void* PreFork(EcmaVM **vm*);
+
+函数用于在执行 fork 操作之前，执行与 Ecma 虚拟机相关的预处理步骤。
+
+**参数：**
+
+| 参数名 | 类型     | 必填 | 说明         |
+| ------ | -------- | ---- | ------------ |
+| vm     | EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSRuntimeOptions option;
+EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+JSNApi::PreFork(workerVm);
+```
+
+###  PostFork
+
+static *void* PostFork(EcmaVM **vm*, const RuntimeOption &*option*);
+
+该函数用于在执行 fork 操作之后，执行与 Ecma 虚拟机相关的后处理步骤。
+
+**参数：**
+
+| 参数名   | 类型                  | 必填 | 说明                 |
+| -------- | --------------------- | ---- | -------------------- |
+| vm       | EcmaVM *              | 是   | 虚拟机对象。         |
+| *option* | const RuntimeOption & | 是   | 运行时选项和配置的类 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+RuntimeOption option;
+JSNApi::PostFork(vm, option);
+```
+
+###  ExecuteModuleBuffer
+
+static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",bool needUpdate = false);
+
+该函数用于执行传入的模块数据。
+
+在执行前，函数会检查是否存在潜在的异常（`CHECK_HAS_PENDING_EXCEPTION` 宏）。
+
+如果模块执行失败，会输出错误日志并返回 `false`，否则返回 `true`。
+
+**参数：**
+
+| 参数名     | 类型               | 必填 | 说明                   |
+| ---------- | ------------------ | ---- | ---------------------- |
+| vm         | EcmaVM *           | 是   | 虚拟机对象。           |
+| data       | const uint8_t*     | 是   | 表示模块数据的指针。   |
+| size       | int32_t            | 是   | 表示模块数据的大小。   |
+| filename   | const std::string& | 否   | 表示模块的文件名。     |
+| needUpdate | bool               | 否   | 表示是否需要更新模块。 |
+
+**返回值：**
+
+| 类型 | 说明                   |
+| ---- | ---------------------- |
+| bool | 表示模块执行是否成功。 |
+
+**示例：**
+
+```c++
+const char *fileName = "__JSNApiTests_ExecuteModuleBuffer.abc";
+const char *data = R"(
+    .language ECMAScript
+    .function any func_main_0(any a0, any a1, any a2) {
+        ldai 1
+        return
+    }
+)";
+bool res =
+    JSNApi::ExecuteModuleBuffer(vm, reinterpret_cast<const uint8_t *>(data), sizeof(data), fileName);
+```
+
+###  TriggerGC
+
+static *void* TriggerGC(const EcmaVM **vm*, TRIGGER_GC_TYPE *gcType* = TRIGGER_GC_TYPE::SEMI_GC);
+
+该函数用于触发垃圾回收（GC）操作，可以选择不同的垃圾回收类型。
+
+通过调用虚拟机的 CollectGarbage 方法执行垃圾回收操作。
+
+在触发垃圾回收之前，通过 CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN 宏检查是否存在潜在的异常。
+
+**参数：**
+
+| 参数名   | 类型            | 必填 | 说明                                           |
+| -------- | --------------- | ---- | ---------------------------------------------- |
+| vm       | const EcmaVM *  | 是   | 虚拟机对象。                                   |
+| *gcType* | TRIGGER_GC_TYPE | 否   | 是一个枚举类型，表示触发GC（垃圾回收）的类型。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::TriggerGC(vm);
+```
+
+###  ThrowException
+
+static *void* ThrowException(const EcmaVM **vm*, Local<JSValueRef> *error*);
+
+该函数用于在 Ecma 虚拟机中抛出一个异常。
+
+在抛出之前，首先检查是否已经存在挂起的异常，如果存在则记录日志并返回，以保留先前的异常信息。
+
+通过 SetException 方法将传入的异常对象设置为当前线程的异常。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明         |
+| ------ | ----------------- | ---- | ------------ |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象。 |
+| error  | Local<JSValueRef> | 是   | 异常对象     |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+Local<StringRef> message = StringRef::NewFromUtf8(vm, "ErrorTest");
+Local<JSValueRef> error = Exception::Error(vm,message);
+JSNApi::ThrowException(vm, error);
+```
+
+###  PrintExceptionInfo
+
+static *void* PrintExceptionInfo(const EcmaVM **vm*);
+
+该函数用于打印当前潜在的异常信息，获取当前潜在的异常，如果不存在异常则直接返回。
+
+如果异常是 `JSError` 类型，会调用虚拟机的 `PrintJSErrorInfo` 方法打印详细错误信息。
+
+否则，将异常转化为字符串并输出到日志中。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+ JSNApi::PrintExceptionInfo(vm);
+```
 
 ## JSValueRef
 
@@ -2505,6 +2929,384 @@ bool IsSharedArrayBuffer();
 JSHandle<JSArrayBuffer> jsArrayBuffer = vm_->GetFactory()->NewJSSharedArrayBuffer(bufferLength);
 JSHandle<JSTaggedValue> jsTagValueBuffer = JSHandle<JSTaggedValue>::Cast(jsArrayBuffer);
 bool result = JSNApiHelper::ToLocal<ArrayRef>(jsTagValueBuffer)->IsSharedArrayBuffer();
+```
+
+### IsUint8ClampedArray
+
+bool JSValueRef::IsUint8ClampedArray();
+
+判断对象是否为Uint8ClampedArray类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                       |
+| ---- | ---------------------------------------------------------- |
+| bool | 如果调用对象的类型为Uint8ClampedArray返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, arrayLenth);
+Local<JSValueRef> val = Uint8ClampedArrayRef::New(vm, buffer, Offset, OffsetLenth);
+bool res = val->IsUint8ClampedArray();
+```
+
+### IsInt16Array
+
+bool JSValueRef::IsInt16Array();
+
+判断对象是否为Int16Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                |
+| ---- | --------------------------------------------------- |
+| bool | 如果调用对象的类型为Int16Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, arrayLenth);
+Local<JSValueRef> val = Int16ArrayRef::New(vm, buffer, Offset, OffsetLenth);
+bool res = val->IsInt16Array();
+```
+
+### IsUint16Array
+
+bool JSValueRef::IsUint16Array();
+
+判断对象是否为Uint16Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                 |
+| ---- | ---------------------------------------------------- |
+| bool | 如果调用对象的类型为Uint16Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, arrayLenth);
+Local<JSValueRef> val = Uint16ArrayRef::New(vm, buffer, Offset, OffsetLenth);
+bool res = val->IsUint16Array();
+```
+
+### IsInt32Array
+
+bool JSValueRef::IsInt32Array();
+
+判断对象是否为Int32Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                |
+| ---- | --------------------------------------------------- |
+| bool | 如果调用对象的类型为Int32Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, 30);
+Local<JSValueRef> val = Int32ArrayRef::New(vm, buffer, 4, 6);
+bool res = val->IsInt32Array();
+```
+
+### IsUint32Array
+
+bool JSValueRef::IsUint32Array();
+
+判断对象是否为Uint32Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                 |
+| ---- | ---------------------------------------------------- |
+| bool | 如果调用对象的类型为Uint32Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, 30);
+Local<JSValueRef> val = Uint32ArrayRef::New(vm, buffer, 4, 6);
+bool res = val->IsUint32Array();
+```
+
+### IsFloat32Array
+
+bool JSValueRef::IsFloat32Array();
+
+判断对象是否为Float32Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| bool | 如果调用对象的类型为Float32Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, 30);
+Local<JSValueRef> val = Float32ArrayRef::New(vm, buffer, 4, 6);
+bool res = val->IsFloat32Array();
+```
+
+### IsFloat64Array
+
+bool JSValueRef::IsFloat64Array();
+
+判断对象是否为Float64Array类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| bool | 如果调用对象的类型为Float64Array返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> buffer = ArrayBufferRef::New(vm, arrayLength);
+Local<JSValueRef> val = Float64ArrayRef::New(vm, buffer, eOffset, eOffsetLength);
+bool res = val->IsFloat64Array();
+```
+
+### IsJSPrimitiveBoolean
+
+bool JSValueRef::IsJSPrimitiveBoolean();
+
+判断对象是否为JSPrimitiveBoolean类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                        |
+| ---- | ----------------------------------------------------------- |
+| bool | 如果调用对象的类型为JSPrimitiveBoolean返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> jstagvalue;
+    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, jstagvalue);
+    JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
+    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
+bool res = object->IsJSPrimitiveBoolean();
+```
+
+### IsMapIterator
+
+bool JSValueRef::IsMapIterator();
+
+判断对象是否为MapIterator类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                 |
+| ---- | ---------------------------------------------------- |
+| bool | 如果调用对象的类型为MapIterator返回True否则返回False |
+
+**示例：**
+
+```c++
+JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
+JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
+JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread_));
+jsMap->SetLinkedMap(thread_, linkedHashMap);
+JSHandle<JSTaggedValue> mapIteratorVal =
+    JSMapIterator::CreateMapIterator(thread_, JSHandle<JSTaggedValue>::Cast(jsMap), IterationKind::KEY);
+Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+bool res = object->IsMapIterator();
+```
+
+### IsSetIterator
+
+bool JSValueRef::IsSetIterator();
+
+判断对象是否为SetIterator类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                 |
+| ---- | ---------------------------------------------------- |
+| bool | 如果调用对象的类型为SetIterator返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+JSHandle<JSTaggedValue> proto = thread_->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
+JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, proto);
+JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
+JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread_));
+jsSet->SetLinkedSet(thread_, linkedSet);
+JSHandle<JSSetIterator> jsSetIter = factory->NewJSSetIterator(jsSet, IterationKind::KEY);
+JSHandle<JSTaggedValue> setIter = JSHandle<JSTaggedValue>::Cast(jsSetIter);
+bool res = JSNApiHelper::ToLocal<JSValueRef>(setiter)->IsSetIterator();
+```
+
+### IsModuleNamespaceObject
+
+bool JSValueRef::IsModuleNamespaceObject();
+
+判断对象是否为ModuleNamespaceObject类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 如果调用对象的类型为ModuleNamespaceObject返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+JSHandle<ModuleNamespace> moduleNamespace = factory->NewModuleNamespace();
+JSHandle<JSTaggedValue> modname = JSHandle<JSTaggedValue>::Cast(moduleNamespace);
+JSNApiHelper::ToLocal<ObjectRef>(modname)->IsModuleNamespaceObject();
+bool res =object->IsModuleNamespaceObject()
+```
+
+### IsProxy
+
+bool JSValueRef::IsProxy();
+
+判断对象是否为Proxy类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                           |
+| ---- | ---------------------------------------------- |
+| bool | 如果调用对象的类型为Proxy返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<ProxyRef> tag = ProxyRef::New(vm);
+bool res = tag->IsProxy();
+```
+
+### IsRegExp
+
+bool JSValueRef::IsRegExp();
+
+判断对象是否为RegExp类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                            |
+| ---- | ----------------------------------------------- |
+| bool | 如果调用对象的类型为RegExp返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<RegExp> val = RegExp::New(vm);
+bool res = val->IsRegExp();
+```
+
+### IsJSPrimitiveNumber
+
+bool JSValueRef::IsJSPrimitiveNumber();
+
+判断对象是否为JSPrimitiveNumber类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                       |
+| ---- | ---------------------------------------------------------- |
+| bool | 如果调用对象的类型为JSPrimitiveNumber返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+JSHandle<JSTaggedValue> jstagvalue;
+JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
+JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
+Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
+bool res = object->IsJSPrimitiveNumber();
+```
+
+### IsMap
+
+bool JSValueRef::IsMap();
+
+判断对象是否为Map类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                         |
+| ---- | -------------------------------------------- |
+| bool | 如果调用对象的类型为Map返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm);
+bool res = mapRef->IsMap();
 ```
 
 ## ObjectRef
