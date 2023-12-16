@@ -40,6 +40,7 @@ class PropertiesCache;
 template<typename T>
 class EcmaGlobalStorage;
 class Node;
+class SingleCharTable;
 class DebugNode;
 class VmThreadControl;
 using WeakClearCallback = void (*)(void *);
@@ -726,7 +727,8 @@ public:
                                                  base::AlignedUint32,
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
-                                                 BuiltinEntries> {
+                                                 BuiltinEntries,
+                                                 JSTaggedValue> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -757,6 +759,7 @@ public:
             EntryFrameDroppedStateIndex,
             CurrentContextIndex,
             BuiltinEntriesIndex,
+            SingleCharTableIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -911,6 +914,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::BuiltinEntriesIndex)>(isArch32);
         }
 
+        static size_t GetSingleCharTableOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SingleCharTableIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -940,6 +948,7 @@ public:
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_;
+        alignas(EAS) JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -950,6 +959,18 @@ public:
     {
         return glueData_.currentContext_;
     }
+
+    JSTaggedValue GetSingleCharTable() const
+    {
+        ASSERT(glueData_.singleCharTable_ != JSTaggedValue::Hole());
+        return glueData_.singleCharTable_;
+    }
+
+    void SetSingleCharTable(JSTaggedValue singleCharTable)
+    {
+        glueData_.singleCharTable_ = singleCharTable;
+    }
+
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
 
     CVector<EcmaContext *> GetEcmaContexts()

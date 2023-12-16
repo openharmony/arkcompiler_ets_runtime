@@ -2693,6 +2693,12 @@ inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef gl
     return Load(type, gConstAddr, constantIndex);
 }
 
+inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
+{
+    return Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetSingleCharTableOffset(env_->Is32Bit())));
+}
+
 inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
 {
     auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);

@@ -640,7 +640,7 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 
 DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
 {
-    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    RUNTIME_STUBS_HEADER(RegularJSObjDeletePrototype);
     JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue value = GetArg(argv, argc, 1);
     uint32_t index = 0;
