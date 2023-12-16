@@ -37,3 +37,4 @@ false
 false
 false
 false
+array.length 0

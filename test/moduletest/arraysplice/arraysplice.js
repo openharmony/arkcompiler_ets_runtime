@@ -40,3 +40,12 @@ var spliced1 = array1.splice(1,1,"a","b");
 for(let i=0;i<array1.length;++i){
     print(i in array1)
 }
+
+array=[];
+spliced=undefined;
+for( var i=0;i<1;i++){
+    let bad_start = {valueOf:function(){array.push(2*i);return -1;}};
+    let bad_count = {valueOf:function(){array.push(2*i+1);return 1;}};
+    spliced=array.splice(bad_start,bad_count);
+    print("array.length",array.length);
+}

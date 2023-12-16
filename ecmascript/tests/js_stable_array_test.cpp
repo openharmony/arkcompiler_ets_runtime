@@ -167,9 +167,10 @@ HWTEST_F_L0(JSStableArrayTest, Splice)
     JSHandle<JSObject> thisObjHandle(handleArr);
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
                                                          JSTaggedNumber(static_cast<double>(actualDeleteCount)));
+    uint32_t len = JSHandle<JSArray>::Cast(thisObjHandle)->GetArrayLength();
     JSHandle<JSTaggedValue> handleTagValArrCombinedOfDeletedElements(thread,
         JSStableArray::Splice(JSHandle<JSArray>::Cast(thisObjHandle), ecmaRuntimeCallInfo, offsetStartInsert,
-            countInsert, actualDeleteCount, newArray));
+            countInsert, actualDeleteCount, newArray, len));
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSArray> handleArrCombinedOfDeletedElements(handleTagValArrCombinedOfDeletedElements);
     EXPECT_EQ(handleArrCombinedOfDeletedElements->GetArrayLength(), actualDeleteCount);
