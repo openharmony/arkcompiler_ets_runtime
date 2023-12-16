@@ -88,19 +88,18 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
                                     uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount,
-                                    JSTaggedValue newArray, uint32_t len)
+                                    JSHandle<JSObject> newArrayHandle, uint32_t len)
 {
     JSThread *thread = argv->GetThread();
     uint32_t argc = argv->GetArgsNumber();
 
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
-
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSArray::CheckAndCopyArray(thread, receiver);
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
     JSMutableHandle<TaggedArray> srcElementsHandle(thread, srcElements);
-    if (newArray.IsStableJSArray(thread)) {
+    if (newArrayHandle.GetTaggedValue().IsStableJSArray(thread)) {
         TaggedArray *destElements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
         if (actualDeleteCount > destElements->GetLength()) {
             destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, actualDeleteCount);

@@ -2326,11 +2326,11 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
                                                          JSTaggedNumber(static_cast<double>(actualDeleteCount)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
     if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount,
-            actualDeleteCount, newArray, len);
+            actualDeleteCount, newArrayHandle, len);
     }
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 14. Let k be 0.
     // 15. Repeat, while k < actualDeleteCount
     //   a. Let from be ToString(actualStart+k).

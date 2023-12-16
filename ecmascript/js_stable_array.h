@@ -28,7 +28,8 @@ public:
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
-                                uint32_t insertCount, uint32_t actualDeleteCount, JSTaggedValue newArray, uint32_t len);
+                                uint32_t insertCount, uint32_t actualDeleteCount,
+                                JSHandle<JSObject> newArrayHandle, uint32_t len);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
