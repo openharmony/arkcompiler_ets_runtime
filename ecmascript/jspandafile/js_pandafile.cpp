@@ -100,7 +100,7 @@ JSPandaFile::~JSPandaFile()
     constpoolMap_.clear();
     jsRecordInfo_.clear();
     methodLiteralMap_.clear();
-
+    ClearNameMap();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);
         methodLiterals_ = nullptr;
@@ -369,5 +369,43 @@ CString JSPandaFile::GetNormalizedFileDesc(const CString &desc)
 CString JSPandaFile::GetNormalizedFileDesc() const
 {
     return GetNormalizedFileDesc(desc_);
+}
+
+const char *JSPandaFile::GetMethodName(EntityId methodId)
+{
+    uint32_t id = methodId.GetOffset();
+    auto iter = methodNameMap_.find(id);
+    if (iter != methodNameMap_.end()) {
+        return iter->second;
+    }
+
+    panda_file::MethodDataAccessor mda(*pf_, methodId);
+    auto sd = GetStringData(mda.GetNameId());
+    auto name = utf::Mutf8AsCString(sd.data);
+    methodNameMap_.emplace(id, name);
+
+    return name;
+}
+
+CString JSPandaFile::GetRecordName(EntityId methodId)
+{
+    uint32_t id = methodId.GetOffset();
+    auto iter = recordNameMap_.find(id);
+    if (iter != recordNameMap_.end()) {
+        return iter->second;
+    }
+
+    panda_file::MethodDataAccessor mda(*pf_, methodId);
+    panda_file::ClassDataAccessor cda(*pf_, mda.GetClassId());
+    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+    auto name =  JSPandaFile::ParseEntryPoint(desc);
+    recordNameMap_.emplace(id, name);
+    return name;
+}
+
+void JSPandaFile::ClearNameMap()
+{
+    methodNameMap_.clear();
+    recordNameMap_.clear();
 }
 }  // namespace panda::ecmascript

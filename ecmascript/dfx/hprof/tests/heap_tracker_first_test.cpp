@@ -284,7 +284,8 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
+                              isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     EXPECT_TRUE(heapSnapshot.BuildUp());
 }
@@ -296,7 +297,8 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
+                              isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     size_t beginNode = heapSnapshot.GetNodeCount();
     heapSnapshot.UpdateNodes();

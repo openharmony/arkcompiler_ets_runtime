@@ -76,7 +76,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
 
 class Space {
 public:
-    Space(HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity, size_t maximumCapacity);
+    Space(Heap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
+          size_t maximumCapacity);
     virtual ~Space() = default;
     NO_COPY_SEMANTIC(Space);
     NO_MOVE_SEMANTIC(Space);
@@ -219,7 +220,8 @@ public:
 
 protected:
     void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
-
+    
+    Heap *heap_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};
     MemSpaceType spaceType_ {};
@@ -253,7 +255,6 @@ public:
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     EcmaList<Region> hugeNeedFreeList_ {};
-    Heap* heap_;
 };
 
 class HugeMachineCodeSpace : public HugeObjectSpace {
