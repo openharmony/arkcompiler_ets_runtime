@@ -504,6 +504,10 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     jt = accessor.GetTaggedValue();
                     break;
                 }
+                case LiteralTag::LITERALARRAY: {
+                    jt = JSTaggedValue(std::get<uint32_t>(value));
+                    break;
+                }
                 case LiteralTag::NULLVALUE: {
                     break;
                 }

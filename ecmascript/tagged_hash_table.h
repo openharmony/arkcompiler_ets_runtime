@@ -295,6 +295,33 @@ public:
         Set(thread, index, value);
     }
 
+    // Rehash element to new_table
+    void Rehash(const JSThread *thread, Derived *newTable)
+    {
+        if ((newTable == nullptr) || (newTable->Size() < EntriesCount())) {
+            return;
+        }
+        int currentSize = this->Size();
+        // Rehash elements to new table
+        for (int i = 0; i < currentSize; i++) {
+            int fromIndex = Derived::GetKeyIndex(i);
+            JSTaggedValue k = this->GetKey(i);
+            if (!IsKey(k)) {
+                continue;
+            }
+            int32_t hash = static_cast<int32_t>(Derived::Hash(k));
+            int insertionIndex = Derived::GetKeyIndex(newTable->FindInsertIndex(hash));
+            JSTaggedValue tv = Get(fromIndex);
+            newTable->Set(thread, insertionIndex, tv);
+            for (int j = 1; j < Derived::GetEntrySize(); j++) {
+                tv = Get(fromIndex + j);
+                newTable->Set(thread, insertionIndex + j, tv);
+            }
+        }
+        newTable->SetEntriesCount(thread, EntriesCount());
+        newTable->SetHoleEntriesCount(thread, 0);
+    }
+
     static constexpr int MIN_SHRINK_SIZE = 16;
     static constexpr int MIN_SIZE = 4;
     static constexpr int NUMBER_OF_ENTRIES_INDEX = 0;
@@ -353,33 +380,6 @@ protected:
         this->SetKey(thread, entry, defaultValue);
         this->SetValue(thread, entry, defaultValue);
         this->IncreaseHoleEntriesCount(thread);
-    }
-
-    // Rehash element to new_table
-    void Rehash(const JSThread *thread, Derived *newTable)
-    {
-        if ((newTable == nullptr) || (newTable->Size() < EntriesCount())) {
-            return;
-        }
-        int currentSize = this->Size();
-        // Rehash elements to new table
-        for (int i = 0; i < currentSize; i++) {
-            int fromIndex = Derived::GetKeyIndex(i);
-            JSTaggedValue k = this->GetKey(i);
-            if (!IsKey(k)) {
-                continue;
-            }
-            int32_t hash = static_cast<int32_t>(Derived::Hash(k));
-            int insertionIndex = Derived::GetKeyIndex(newTable->FindInsertIndex(hash));
-            JSTaggedValue tv = Get(fromIndex);
-            newTable->Set(thread, insertionIndex, tv);
-            for (int j = 1; j < Derived::GetEntrySize(); j++) {
-                tv = Get(fromIndex + j);
-                newTable->Set(thread, insertionIndex + j, tv);
-            }
-        }
-        newTable->SetEntriesCount(thread, EntriesCount());
-        newTable->SetHoleEntriesCount(thread, 0);
     }
 };
 
@@ -443,6 +443,7 @@ public:
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
         attr.SetRepresentation(Representation::TAGGED);
+        attr.SetDictTrackType(metaData.GetTrackType());
         int entry = table->FindEntry(key.GetTaggedValue());
         if (entry != -1) {
             table->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);

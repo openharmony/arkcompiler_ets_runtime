@@ -25,6 +25,14 @@ namespace panda::ecmascript {
 // Attention: keys accessor stores the property key and properties accessor stores the property value, but elements
 // accessor stores the key-value pair abuttally.
 using EntityId = panda_file::File::EntityId;
+enum class FieldType
+{
+    NONE = 0,
+    NUMBER = (1 << 0),
+    STRING = (1 << 1),
+    BOOLEAN = (1 << 2),
+    TS_TYPE_REF = (1 << 3),
+};
 class ClassInfoExtractor : public TaggedObject {
 public:
     static constexpr uint8_t NON_STATIC_RESERVED_LENGTH = 1;
@@ -106,7 +114,24 @@ public:
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
-    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSFunction> &ctor, bool isbaseCase);
+    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                             const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
+    static TrackType FromFieldType(FieldType type) {
+        switch (type) {
+            case FieldType::NONE:
+                return TrackType::NONE;
+            case FieldType::NUMBER:
+                return TrackType::NUMBER;
+            case FieldType::STRING:
+                return TrackType::STRING;
+            case FieldType::BOOLEAN:
+                return TrackType::BOOLEAN;
+            case FieldType::TS_TYPE_REF:
+                return TrackType::SENDABLE;
+            default:
+                UNREACHABLE();
+        }
+    }
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
@@ -122,6 +147,12 @@ private:
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);
+
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                     const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
+
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                     const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

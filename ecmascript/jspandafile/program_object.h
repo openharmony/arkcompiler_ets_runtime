@@ -287,6 +287,37 @@ public:
         return val;
     }
 
+    static JSHandle<TaggedArray> GetFieldLiteral(JSThread *thread, JSHandle<ConstantPool> constpool,
+                                                 uint32_t literal, CString entry)
+    {
+        // auto val = constpool->GetObjectFromCache(literal);
+        JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
+
+        // // For AOT
+        // bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+        JSHandle<AOTLiteralInfo> entryIndexes(thread, JSTaggedValue::Undefined());
+        // if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+        //     entryIndexes = JSHandle<AOTLiteralInfo>(thread, val);
+        //     val = JSTaggedValue::Hole();
+        // }
+
+        // if (val.IsHole()) {
+            // EcmaVM *vm = thread->GetEcmaVM();
+            // ObjectFactory *factory = vm->GetFactory();
+        ASSERT(jsPandaFile->IsNewVersion());
+        panda_file::File::EntityId literalId(literal);
+        // bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
+        JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
+            thread, jsPandaFile, literalId, constpool, entry, false, entryIndexes);
+            // JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
+            // classLiteral->SetArray(thread, literalArray);
+            // val = classLiteral.GetTaggedValue();
+            // constpool->SetObjectToCache(thread, literal, val);
+        // }
+
+        return literalArray;
+    }
+
     template <ConstPoolType type>
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
     {

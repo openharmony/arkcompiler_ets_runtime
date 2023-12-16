@@ -900,35 +900,26 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
         thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
-    // JSHandle<JSFunction> cls;
-    // JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
-    // JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
 
-    // JSTaggedValue val = constpoolHandle->GetObjectFromCache(literalId);
-    // if (val.IsAOTLiteralInfo()) {
-    //     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
-    //     ihc.Update(aotLiteralInfo->GetIhc());
-    //     chc.Update(aotLiteralInfo->GetChc());
-    // }
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
+    auto literalLength = arrayHandle->GetLength();
+    // fieldTypeId is the last element in literal buffer
+    auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
+    arrayHandle->Trim(thread, literalLength - 1);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
-    // if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
-    //     classLiteral->SetIsAOTUsed(true);
-    //     JSHandle<JSHClass> chclass(chc);
-    //     cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
-    //                                               lexenv, ihc, chclass);
-    // } else {
+
     JSHandle<JSFunction> cls = ClassHelper::DefineSendableClassFromExtractor(thread, base, extractor, lexenv);
-    // }
+
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool isbaseClass = base->IsHole(); // todo for test
-    ClassHelper::DefineSendableInstanceHClass(thread, cls, isbaseClass);  // todo need ihc information from abc
+
+    JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
+    ClassHelper::DefineSendableInstanceHClass(thread, fieldTypeArray, cls, base);
     return cls.GetTaggedValue();
 }
 

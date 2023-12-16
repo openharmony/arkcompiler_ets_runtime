@@ -70,6 +70,7 @@ enum class PropertyBoxType {
  *         -----------------------------
  *    Slow | PropertyBoxTypeField(bit 8...9)
  *         | DictionaryOrderField(bit 10...29)
+ *         | TrackTypeField(bit 30...32)
  */
 class PropertyAttributes {
 public:
@@ -128,7 +129,8 @@ public:
     static_assert(DictModeStartField::SIZE == CommonLastBitField::SIZE);
     using PropertyBoxTypeField = DictModeStartField::NextField<PropertyBoxType, 2>;               // 2: 2 bits, 8-9
     using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>; // 29
-    using DictModeLastField = DictionaryOrderField;
+    using DictTrackTypeField = DictionaryOrderField::NextField<TrackType, TRACK_TYPE_NUM>;
+    using DictModeLastField = DictTrackTypeField;
     static_assert(
         DictModeLastField::START_BIT + DictModeLastField::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
@@ -305,6 +307,16 @@ public:
     inline void SetTrackType(TrackType type)
     {
         TrackTypeField::Set(type, &value_);
+    }
+
+    inline void SetDictTrackType(TrackType type)
+    {
+        DictTrackTypeField::Set(type, &value_);
+    }
+
+    inline TrackType GetDictTrackType() const
+    {
+        return DictTrackTypeField::Get(value_);
     }
 
     inline void SetDictionaryOrder(uint32_t order)

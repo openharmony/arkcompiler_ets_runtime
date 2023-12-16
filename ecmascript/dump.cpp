@@ -551,6 +551,8 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
     if (attr.IsConfigurable()) {
         os << "C";
     }
+
+    os << (int)(attr.GetTrackType());
     os << ")";
 
     os << " InlinedProps: " << attr.IsInlinedProps();
@@ -720,6 +722,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::ACCESSOR_DATA:
             break;
+        case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_FUNCTION:
             needDumpHClass = true;
             JSFunction::Cast(obj)->Dump(os);

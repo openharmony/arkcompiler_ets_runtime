@@ -212,6 +212,7 @@ void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, cons
                 return;
             }
             if (prevKey == key) {
+                std::abort();
                 THROW_TYPE_ERROR(const_cast<JSThread *>(thread), "property keys can not duplicate");
             }
         }
