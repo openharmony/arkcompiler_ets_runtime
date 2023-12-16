@@ -1715,13 +1715,6 @@ inline GateRef StubBuilder::PropAttrGetOffset(GateRef attr)
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
 }
 
-inline GateRef StubBuilder::GetSortedIndex(GateRef attr)
-{
-    return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::SortedIndexField::START_BIT)),
-        Int32((1LLU << PropertyAttributes::SortedIndexField::SIZE) - 1));
-}
-
 // SetDictionaryOrder func in property_attribute.h
 inline GateRef StubBuilder::SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value)
 {
@@ -2941,24 +2934,6 @@ inline GateRef StubBuilder::RemoveTaggedWeakTag(GateRef weak)
     return Int64ToTaggedPtr(IntPtrAnd(ChangeTaggedPointerToInt64(weak), IntPtr(~JSTaggedValue::TAG_WEAK)));
 }
 
-inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
-{
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    return Load(VariableType::NATIVE_POINTER(), currentContext, IntPtr(0));
-}
-
-inline GateRef StubBuilder::GetSortedKey(GateRef layoutInfo, GateRef index)
-{
-    GateRef fixedIdx = GetSortedIndex(layoutInfo, index);
-    return GetKey(layoutInfo, fixedIdx);
-}
-
-inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
-{
-    return GetSortedIndex(GetAttr(layoutInfo, index));
-}
-
 inline GateRef StubBuilder::GetAttrIndex(GateRef index)
 {
     return Int32Add(Int32LSL(index, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)), Int32(LayoutInfo::ATTR_INDEX_OFFSET));
@@ -2979,28 +2954,6 @@ inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
 {
     GateRef fixedIdx = GetKeyIndex(index);
     return GetValueFromTaggedArray(layoutInfo, fixedIdx);
-}
-
-inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
-{
-    GateRef hash = HashFromHclassAndKey(glue, cls, key);
-    GateRef prop =
-        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
-    StoreWithNoBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
-    StoreWithNoBarrier(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()), key);
-    StoreWithNoBarrier(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()), result);
-}
-
-inline void StubBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
-{
-    env_->GetBuilder()->StoreWithNoBarrier(type, base, offset, value);
-}
-
-inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
-{
-    GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
-    GateRef keyHash = GetKeyHashCode(glue, key);
-    return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H
