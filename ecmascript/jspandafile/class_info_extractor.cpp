@@ -493,6 +493,8 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
     }
 
     ECMAObject::InitializeExtRefAndOwner(thread->GetEcmaVM(), JSHandle<JSObject>(constructor));
+    ECMAObject::InitializeExtRefAndOwner(thread->GetEcmaVM(), JSHandle<JSObject>(prototype));
+    JSObject::SetIntegrityLevel(thread, prototype, IntegrityLevel::FROZEN);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, lexenv);

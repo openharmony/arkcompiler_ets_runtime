@@ -221,11 +221,6 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
 
 JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
-    if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(receiver, thread_)) {
-        THROW_TYPE_ERROR_AND_RETURN((thread_), GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                    JSTaggedValue::Exception());
-    }
-
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) &&
          !receiver->IsString() && !receiver->IsNumber()) {
         icAccessor_.SetAsMega();

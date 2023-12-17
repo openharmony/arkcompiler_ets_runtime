@@ -1223,13 +1223,6 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
             return true;
         }
 
-        // TODO(hzzhouzebin) open disallow extensible later
-        if (!ignoreShared && op->GetReceiver()->IsJSSharedFamily()) {
-            THROW_TYPE_ERROR_AND_RETURN(
-                op->GetThread(), MessageString::GetMessageString(GET_MESSAGE_STRING_ID(ExtendSharedProperty)).c_str(),
-                false);
-        }
-
         // 2c. If IsGenericDescriptor(Desc) or IsDataDescriptor(Desc) is true, then
         PropertyAttributes attr(desc);
         bool success = false;
@@ -1256,7 +1249,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
 
     // update to un-owned's property are not supported
     if (!ignoreShared && CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), op->GetThread())) {
-        THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(GetNotOwnedSharedProperty), false);
+        THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
     }
 
     // 3. Return true, if every field in Desc is absent
@@ -2417,10 +2410,6 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
 JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     JSHandle<JSTaggedValue> object;
-    if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(obj, thread)) {
-        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                    JSHandle<JSForInIterator>(thread, JSTaggedValue::Exception()));
-    }
     if (obj->IsString()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         object = JSHandle<JSTaggedValue>::Cast(JSPrimitiveRef::StringCreate(thread, obj, undefined));

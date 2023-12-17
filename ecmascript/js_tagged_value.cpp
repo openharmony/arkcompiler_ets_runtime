@@ -785,11 +785,6 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
 bool JSTaggedValue::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                    const JSHandle<JSTaggedValue> &key)
 {
-    if (obj->IsJSSharedFamily()) {
-        THROW_TYPE_ERROR_AND_RETURN(
-            thread, MessageString::GetMessageString(GET_MESSAGE_STRING_ID(DeleteSharedProperty)).c_str(), false);
-    }
-
     if (obj->IsJSProxy()) {
         return JSProxy::DeleteProperty(thread, JSHandle<JSProxy>(obj), key);
     }

@@ -130,9 +130,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 } else if (UNLIKELY(!res.IsHole())) {
                     return res;
                 }
-            } else if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
             } else {
                 return JSTaggedValue::Hole();
             }
@@ -206,9 +203,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 }
             } else if (IsSpecialContainer(jsType)) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", JSTaggedValue::Exception());
-            } else if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
             } else {
                 return JSTaggedValue::Hole();
             }
@@ -241,10 +235,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c1", JSTaggedValue::Exception());
                 }
-                if (UNLIKELY(CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(receiver.GetTaggedObject(), thread))) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                                JSTaggedValue::Exception());
-                }
                 if (hclass->IsTS()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
                     if (attrVal.IsHole()) {
@@ -260,6 +250,10 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 }
                 if (UNLIKELY(holder != receiver)) {
                     break;
+                }
+                if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
+                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
+                                            JSTaggedValue::Exception());
                 }
                 JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value);
                 return JSTaggedValue::Undefined();
@@ -291,12 +285,12 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property c2", JSTaggedValue::Exception());
                 }
-                if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(receiver.GetTaggedObject(), thread)) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                                JSTaggedValue::Exception());
-                }
                 if (UNLIKELY(holder != receiver)) {
                     break;
+                }
+                if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
+                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
+                                            JSTaggedValue::Exception());
                 }
                 dict->UpdateValue(thread, entry, value);
                 return JSTaggedValue::Undefined();
@@ -347,12 +341,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
             if (IsSpecialContainer(jsType)) {
                 return GetContainerProperty(thread, holder, index, jsType);
             }
-            if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(GetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
-            } else {
-                return JSTaggedValue::Hole();
-            }
+            return JSTaggedValue::Hole();
         }
         JSHandle<JSObject> currentHolder(thread, holder);
         if (!hclass->IsDictionaryElement()) {
@@ -407,12 +396,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             if (IsSpecialContainer(jsType)) {
                 return SetContainerProperty(thread, holder, index, value, jsType);
             }
-            if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
-            } else {
-                return JSTaggedValue::Hole();
-            }
+            return JSTaggedValue::Hole();
         }
         TaggedArray *elements = TaggedArray::Cast(JSObject::Cast(holder)->GetElements().GetTaggedObject());
         if (!hclass->IsDictionaryElement()) {

@@ -26,10 +26,7 @@ namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define COMMON_MESSAGE_STRING_LIST(V)                                                        \
     V(SetReadOnlyProperty, "Cannot set readonly property asm")                               \
-    V(GetNotOwnedSharedProperty, "Cannot get shared property without ownership")             \
     V(SetNotOwnedSharedProperty, "Cannot set shared property without ownership")             \
-    V(DeleteSharedProperty, "Cannot delete shared object's property")                        \
-    V(ExtendSharedProperty, "Cannot extend shared object's property")                        \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ")            \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \

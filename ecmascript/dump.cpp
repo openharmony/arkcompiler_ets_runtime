@@ -1473,6 +1473,11 @@ void JSObject::Dump(std::ostream &os) const
     jshclass->GetPrototype().DumpTaggedValue(os);
     os << "\n";
 
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    os << " - hash: " << std::hex << hashField;
+    value.Dump(os);
+
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     os << " - elements: " << std::hex << elements;
     if (elements->GetLength() == 0) {

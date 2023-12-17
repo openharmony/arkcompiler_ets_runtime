@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -2715,6 +2717,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
+        if (resultValue.IsJSSharedFamily()) {
+            JSObject::SetIntegrityLevel(thread, JSHandle<JSObject>(thread, resultValue), IntegrityLevel::SEALED);
+        }
         return resultValue;
     }
 
