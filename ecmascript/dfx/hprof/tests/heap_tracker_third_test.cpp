@@ -190,7 +190,8 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
+                              isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
 
     StringHashMap stringHashMap(instance);

@@ -131,7 +131,6 @@ public:
 protected:
     FreeListAllocator *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
-    Heap *heap_ {nullptr};
 
 private:
     // For sweeping

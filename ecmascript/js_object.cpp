@@ -2212,16 +2212,14 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
-    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+    const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
     const CString &moduleStr = method->GetRecordNameStr();
 
     if (!moduleStr.empty()) {
         result.append(moduleStr);
     }
     if (!nameStr.empty()) {
-        result.append(" ");
-        result.append(CString(nameStr));
-        result.append(" ");
+        result.append(" ").append(nameStr).append(" ");
     }
     result.append("JSObject");
     return result;

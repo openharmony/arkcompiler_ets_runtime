@@ -111,6 +111,9 @@ public:
         return pf_->GetFilename();
     }
 
+    const char *GetMethodName(EntityId methodId);
+    CString GetRecordName(EntityId methodId);
+
     MethodLiteral* GetMethodLiterals() const
     {
         return methodLiterals_;
@@ -415,6 +418,7 @@ public:
         return static_cast<const void *>(pf_->GetBase());
     }
 
+    void ClearNameMap();
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -426,6 +430,9 @@ private:
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
+    CUnorderedMap<uint32_t, const char *> methodNameMap_;
+    CUnorderedMap<uint32_t, CString> recordNameMap_;
+
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
