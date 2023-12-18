@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "jsnapiexecute_fuzzer.h"
+#include "jsnapitriggergc_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
@@ -21,28 +21,27 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-constexpr size_t DIVISOR = 2;
+constexpr size_t DEFAULT_THREAD_COUNT = 3;
 
-void JSNApiExecuteFuzztest(const uint8_t *data, size_t size)
+void JSNApiTriggerGCFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
+    if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    memset_s(value, size, 0, size);
-    if (memcpy_s(value, size, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-        UNREACHABLE();
+    if (size % DEFAULT_THREAD_COUNT == 0) {
+        JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::FULL_GC;
+        JSNApi::TriggerGC(vm, gcType);
+    } else if (size % DEFAULT_THREAD_COUNT == 1) {
+        JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
+        JSNApi::TriggerGC(vm, gcType);
+    } else {
+        JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::SEMI_GC;
+        JSNApi::TriggerGC(vm, gcType);
     }
-    const std::string fileName = value;
-    bool needUpdate = size % DIVISOR ? true : false; // 2:Cannot divide by 2 as true, otherwise it is false
-    JSNApi::Execute(vm, fileName, fileName, needUpdate);
-    delete[] value;
-    value = nullptr;
     JSNApi::DestroyJSVM(vm);
 }
 }
@@ -51,6 +50,6 @@ void JSNApiExecuteFuzztest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiExecuteFuzztest(data, size);
+    OHOS::JSNApiTriggerGCFuzztest(data, size);
     return 0;
 }
