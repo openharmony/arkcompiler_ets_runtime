@@ -32,3 +32,25 @@ class B extends A{
 var obj = new B("AOT", 123);
 print(obj.name);
 print(obj.value);
+
+class Demo { 
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+    aboutToDo(){
+      this.x = 0;
+      this.y = 0;
+    }
+}
+    
+class Demo2 extends Demo{
+aboutToDo(){
+    super.aboutToDo();
+}
+}
+
+let d = new Demo2('hello', 'bye');
+print(d.x);
+d.aboutToDo();
+print(d.x);

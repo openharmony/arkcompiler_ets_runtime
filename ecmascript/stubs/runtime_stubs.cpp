@@ -892,6 +892,13 @@ DEF_RUNTIME_STUBS(OptSuperCallSpread)
     return RuntimeSuperCallSpread(thread, func, newTarget, array).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetCallSpreadArgs)
+{
+    RUNTIME_STUBS_HEADER(GetCallSpreadArgs);
+    JSHandle<JSTaggedValue> jsArray = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeGetCallSpreadArgs(thread, jsArray).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DelObjProp)
 {
     RUNTIME_STUBS_HEADER(DelObjProp);

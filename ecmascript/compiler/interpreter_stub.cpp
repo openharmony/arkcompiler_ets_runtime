@@ -1285,10 +1285,71 @@ DECLARE_ASM_HANDLER(HandleCloseiteratorImm16V8)
 
 DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
 {
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    auto env = GetEnvironment();
     GateRef v0 = ReadInst8_1(pc);
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), { acc, array });
-    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(SUPERCALLSPREAD_IMM8_V8));
+    GateRef thisFunc = acc;
+    GateRef newTarget = GetNewTarget(sp);
+    GateRef superCtor = GetPrototype(glue, thisFunc);
+
+    Label dispatch(env);
+    Label normalPath(env);
+    Label slowPath(env);
+    Label ctorIsJSFunction(env);
+    Label ctorIsBase(env);
+    Label ctorNotBase(env);
+    Label ctorIsHeapObject(env);
+    Label ctorIsConstructor(env);
+    Label threadCheck(env);
+    Label isException(env);
+
+    Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
+    Bind(&ctorIsHeapObject);
+    Branch(IsJSFunction(superCtor), &ctorIsJSFunction, &slowPath);
+    Bind(&ctorIsJSFunction);
+    Branch(IsConstructor(superCtor), &ctorIsConstructor, &slowPath);
+    Bind(&ctorIsConstructor);
+    Branch(TaggedIsUndefined(newTarget), &slowPath, &normalPath);
+    Bind(&normalPath);
+    {
+        Branch(IsBase(superCtor), &ctorIsBase, &ctorNotBase);
+        Bind(&ctorIsBase);
+        NewObjectStubBuilder objBuilder(this);
+        thisObj = objBuilder.FastSuperAllocateThis(glue, superCtor, newTarget);
+        Branch(HasPendingException(glue), &isException, &ctorNotBase);
+        Bind(&ctorNotBase);
+        GateRef argvLen = Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
+        GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
+        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
+        METHOD_ENTRY_ENV_DEFINED(superCtor);
+        GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));
+        res = JSCallDispatch(glue, superCtor, argvLen, jumpSize, hotnessCounter,
+                             JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV,
+                             { thisFunc, array, ZExtInt32ToPtr(argvLen), elementsPtr, *thisObj, newTarget }, callback);
+        Jump(&threadCheck);
+    }
+    Bind(&slowPath);
+    {
+        res = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), { thisFunc, array });
+        Jump(&threadCheck);
+    }
+    Bind(&threadCheck);
+    {
+        GateRef isError = BoolAnd(TaggedIsException(*res), HasPendingException(glue));
+        Branch(isError, &isException, &dispatch);
+    }
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&dispatch);
+    {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(SUPERCALLSPREAD_IMM8_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDelobjpropV8)

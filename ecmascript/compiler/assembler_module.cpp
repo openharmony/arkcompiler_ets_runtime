@@ -107,6 +107,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
@@ -150,6 +151,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             return true;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -181,6 +183,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_GETTER:
@@ -221,6 +224,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
             return true;
@@ -248,6 +252,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
         case JSCallMode::CALL_THIS_ARG0:
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:

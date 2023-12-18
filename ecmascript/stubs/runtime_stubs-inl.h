@@ -2112,7 +2112,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
     JSHandle<JSTaggedValue> finalVal = objVal;
     if (finalVal->CheckIsJSProxy()) {
         JSHandle<JSProxy> proxyVal(thread, finalVal.GetTaggedValue());
-
         finalVal = proxyVal->GetSourceTarget(thread);
     }
 
