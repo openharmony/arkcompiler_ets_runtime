@@ -82,7 +82,7 @@ public:
     {
         return reinterpret_cast<SingleCharTable*>(object);
     }
-    static JSTaggedValue CreateSingleCharTable(const JSThread *thread);
+    static void CreateSingleCharTable(JSThread *thread);
     JSTaggedValue GetStringFromSingleCharTable(int32_t ch)
     {
         return Get(ch);
