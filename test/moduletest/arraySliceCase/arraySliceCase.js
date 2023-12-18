@@ -50,11 +50,24 @@ const arrayLike = {
 print(Array.prototype.slice.call(arrayLike, 1, 3));
 
 const slice = Function.prototype.call.bind(Array.prototype.slice);
-
 function list() {
 	  return slice(arguments);
 }
 
 const list1 = list(1, 2, 3); // [1, 2, 3]
-
 print(list1);
+
+var srcArr = [0, 1, true, null, new Object(), "five"];
+srcArr[9999999] = -6.6;
+var resArr = srcArr.slice(1, 3);
+print(resArr);
+
+var A = function(_length) {
+	this.length = 0;
+	Object.preventExtensions(this);
+};
+var arr = [1];
+arr.constructor = {};
+arr.constructor[Symbol.species] = A;
+arr.slice(2);
+print(arr);

@@ -166,6 +166,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
     V(JSArrayReduceUnStable)              \
+    V(JSArrayFilterUnStable)              \
     V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
