@@ -35,6 +35,7 @@ enum class ElementsKind : uint8_t {
     HOLE_OBJECT = HOLE | OBJECT,
     HOLE_TAGGED = HOLE | TAGGED,
     GENERIC = HOLE_TAGGED,
+    DICTIONARY = HOLE_TAGGED,
 };
 
 class Elements {
@@ -62,9 +63,17 @@ public:
         return IsNumber(kind) || IsTagged(kind);
     }
 
+    static bool IsInNumbers(ElementsKind kind)
+    {
+        return (static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::HOLE) &&
+                static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::STRING));
+    }
+
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);
     static ElementsKind FixElementsKind(ElementsKind oldKind);
     static ElementsKind ToElementsKind(JSTaggedValue value, ElementsKind kind);
+    static void MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
+                                     const ElementsKind oldKind, const ElementsKind newKind);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_ELEMENTS_H

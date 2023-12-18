@@ -2103,14 +2103,14 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < totalElements) ?
         factory->ExtendArray(oldElements, totalElements) : oldElements;
     uint32_t index = 0;
+    newArrayHandle->SetElements(thread, elements);
     while (index < totalElements) {
         uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
         JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
-        elements->Set(thread, index, newStr);
+        ElementAccessor::Set(thread, newArrayHandle, index, newStr.GetTaggedValue(), true);
         index++;
     }
     JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, totalElements);
-    newArrayHandle->SetElements(thread, elements);
 
     StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
 

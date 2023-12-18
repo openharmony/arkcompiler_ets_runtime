@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_object.h"
 
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -49,9 +50,9 @@ inline void JSObject::FillElementsWithHoles(const JSThread *thread, uint32_t sta
         return;
     }
 
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    JSHandle<JSObject> thisObj(thread, this);
     for (uint32_t i = start; i < end; i++) {
-        elements->Set(thread, i, JSTaggedValue::Hole());
+        ElementAccessor::Set(thread, thisObj, i, JSTaggedValue::Hole(), false);
     }
 }
 

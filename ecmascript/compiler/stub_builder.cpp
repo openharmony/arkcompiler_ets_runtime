@@ -778,6 +778,8 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
         StoreHClass(glue, receiver, newJshclass);
+        // Because we currently only supports Fast ElementsKind
+        CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newJshclass });
         Jump(&exit);
     }
     Bind(&exit);
@@ -989,42 +991,53 @@ GateRef StubBuilder::TaggedToElementKind(GateRef value)
     Label exit(env);
 
     DEFVARIABLE(result, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
-    Label isInt(env);
-    Label isNotInt(env);
-    Branch(TaggedIsInt(value), &isInt, &isNotInt);
-    Bind(&isInt);
+    Label isHole(env);
+    Label isNotHole(env);
+    Branch(TaggedIsHole(value), &isHole, &isNotHole);
+    Bind(&isHole);
     {
-        result = Int32(static_cast<int32_t>(ElementsKind::INT));
+        result = Int32(static_cast<int32_t>(ElementsKind::HOLE));
         Jump(&exit);
     }
-    Bind(&isNotInt);
+    Bind(&isNotHole);
     {
-        Label isObject(env);
-        Label isDouble(env);
-        Branch(TaggedIsObject(value), &isObject, &isDouble);
-        Bind(&isDouble);
+        Label isInt(env);
+        Label isNotInt(env);
+        Branch(TaggedIsInt(value), &isInt, &isNotInt);
+        Bind(&isInt);
         {
-            result = Int32(static_cast<int32_t>(ElementsKind::NUMBER));
+            result = Int32(static_cast<int32_t>(ElementsKind::INT));
             Jump(&exit);
         }
-        Bind(&isObject);
+        Bind(&isNotInt);
         {
-            Label isHeapObject(env);
-            Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-            Bind(&isHeapObject);
+            Label isObject(env);
+            Label isDouble(env);
+            Branch(TaggedIsObject(value), &isObject, &isDouble);
+            Bind(&isDouble);
             {
-                Label isString(env);
-                Label isNonString(env);
-                Branch(TaggedIsString(value), &isString, &isNonString);
-                Bind(&isString);
+                result = Int32(static_cast<int32_t>(ElementsKind::NUMBER));
+                Jump(&exit);
+            }
+            Bind(&isObject);
+            {
+                Label isHeapObject(env);
+                Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
+                Bind(&isHeapObject);
                 {
-                    result = Int32(static_cast<int32_t>(ElementsKind::STRING));
-                    Jump(&exit);
-                }
-                Bind(&isNonString);
-                {
-                    result = Int32(static_cast<int32_t>(ElementsKind::OBJECT));
-                    Jump(&exit);
+                    Label isString(env);
+                    Label isNonString(env);
+                    Branch(TaggedIsString(value), &isString, &isNonString);
+                    Bind(&isString);
+                    {
+                        result = Int32(static_cast<int32_t>(ElementsKind::STRING));
+                        Jump(&exit);
+                    }
+                    Bind(&isNonString);
+                    {
+                        result = Int32(static_cast<int32_t>(ElementsKind::OBJECT));
+                        Jump(&exit);
+                    }
                 }
             }
         }
@@ -1784,7 +1797,7 @@ GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key)
         Bind(&lengthLessIndex);
         Jump(&exit);
         Bind(&lengthNotLessIndex);
-        result = GetValueFromTaggedArray(elements, index);
+        result = GetTaggedValueWithElementsKind(receiver, index);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1951,16 +1964,15 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                         }
                         Bind(&notHole);
                         {
-                            TransitToElementsKind(glue, receiver, value, *kind);
+                            SetValueWithElementsKind(glue, receiver, value, index, Boolean(true), *kind);
                             Jump(&exit);
                         }
                     }
                 }
                 Bind(&storeElement);
                 {
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
-                    TransitToElementsKind(
-                        glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
+                    SetValueWithElementsKind(glue, receiver, value, index, Boolean(true),
+                                             Int32(static_cast<int32_t>(ElementsKind::NONE)));
                     result = Undefined();
                     Jump(&exit);
                 }
@@ -2206,6 +2218,8 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     GateRef prototype = GetPrototypeFromHClass(oldHClass);
     StorePrototype(glue, newHClass, prototype);
     StoreHClass(glue, receiver, newHClass);
+    // Because we currently only supports Fast ElementsKind
+    CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newHClass });
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
     {
@@ -2437,13 +2451,14 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                        &lessThanLength, &notLessThanLength);
                 Bind(&lessThanLength);
                 {
+                    DEFVARIABLE(value, VariableType::JS_ANY(), Hole());
                     Label notHole(env);
                     Label isHole(env);
-                    GateRef value = GetValueFromTaggedArray(elements, index);
-                    Branch(TaggedIsNotHole(value), &notHole, &isHole);
+                    value = GetTaggedValueWithElementsKind(*holder, index);
+                    Branch(TaggedIsNotHole(*value), &notHole, &isHole);
                     Bind(&notHole);
                     {
-                        result = value;
+                        result = *value;
                         Jump(&exit);
                     }
                     Bind(&isHole);
@@ -2791,6 +2806,8 @@ void StubBuilder::TransitionForRepChange(GateRef glue, GateRef receiver, GateRef
     NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
     StoreHClass(glue, receiver, newJshclass);
+    // Because we currently only supports Fast ElementsKind
+    CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newJshclass });
     env->SubCfgExit();
 }
 
@@ -2816,6 +2833,8 @@ void StubBuilder::TransitToElementsKind(GateRef glue, GateRef receiver, GateRef 
         Bind(&change);
         {
             CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { receiver, newKind });
+            CallRuntime(glue, RTSTUB_ID(MigrateArrayWithKind),
+                        { receiver, IntToTaggedInt(elementsKind), IntToTaggedInt(newKind) });
             Jump(&exit);
         }
     }
@@ -2897,17 +2916,15 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&notTransToDict);
                 {
-                    GateRef newElements = GrowElementsCapacity(glue, receiver, Int32Add(index, Int32(1)));
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
-                    TransitToElementsKind(glue, receiver, value, *kind);
+                    GrowElementsCapacity(glue, receiver, Int32Add(index, Int32(1)));
+                    SetValueWithElementsKind(glue, receiver, value, index, Boolean(true), *kind);
                     result = True();
                     Jump(&exit);
                 }
             }
             Bind(&notGreaterLen);
             {
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
-                TransitToElementsKind(glue, receiver, value, *kind);
+                SetValueWithElementsKind(glue, receiver, value, index, Boolean(true), *kind);
                 result = True();
                 Jump(&exit);
             }
@@ -3121,6 +3138,8 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
                     NotifyHClassChanged(glue, hclass, transitionHClass);
 #endif
                     StoreHClass(glue, receiver, transitionHClass);
+                    // Because we currently only supports Fast ElementsKind
+                    CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, transitionHClass });
                     Jump(&exit);
                 }
             }
@@ -3154,6 +3173,8 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
                 NotifyHClassChanged(glue, hclass, newHClass);
 #endif
                 StoreHClass(glue, receiver, newHClass);
+                // Because we currently only supports Fast ElementsKind
+                CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newHClass });
                 Jump(&exit);
                 Bind(&notFound);
                 result = Undefined();
@@ -3247,7 +3268,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&inRange);
                 {
-                    GateRef value1 = GetValueFromTaggedArray(elements, index);
+                    GateRef value1 = GetTaggedValueWithElementsKind(*holder, index);
                     Label notHole(env);
                     if (useOwn) {
                         Branch(Int64NotEqual(value1, Hole()), &notHole, &ifEnd);
@@ -3259,10 +3280,9 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                         Branch(IsJsCOWArray(*holder), &isJsCOWArray, &isNotJsCOWArray);
                         Bind(&isJsCOWArray);
                         {
-                            GateRef newElements = CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {*holder});
-                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
-                            TransitToElementsKind(
-                                glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
+                            CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {*holder});
+                            SetValueWithElementsKind(glue, *holder, value, index, Boolean(true),
+                                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                             returnValue = Undefined();
                             Jump(&exit);
                         }
@@ -3272,9 +3292,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                         }
                         Bind(&setElementsArray);
                         {
-                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
-                            TransitToElementsKind(
-                                glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
+                            SetValueWithElementsKind(glue, *holder, value, index, Boolean(true),
+                                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                             returnValue = Undefined();
                             Jump(&exit);
                         }
@@ -7886,6 +7905,189 @@ GateRef StubBuilder::IntToEcmaString(GateRef glue, GateRef number)
     Bind(&callRuntime);
     {
         result = CallRuntime(glue, RTSTUB_ID(IntToString), { IntToTaggedInt(*n) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef receiver, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    GateRef hclass = LoadHClass(receiver);
+    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
+    Label isMutantTaggedArray(env);
+    Label isNotMutantTaggedArray(env);
+    GateRef elements = GetElementsArray(receiver);
+    Branch(IsMutantTaggedArray(elements), &isMutantTaggedArray, &isNotMutantTaggedArray);
+    Bind(&isNotMutantTaggedArray);
+    {
+        elementsKind = Int32(static_cast<int32_t>(ElementsKind::GENERIC));
+        Jump(&isMutantTaggedArray);
+    }
+    Bind(&isMutantTaggedArray);
+    GateRef rawValue = GetValueFromMutantTaggedArray(elements, index);
+    Label isSpecialHole(env);
+    Label isNotSpecialHole(env);
+    Branch(Int64Equal(rawValue, SpecialHole()), &isSpecialHole, &isNotSpecialHole);
+    Bind(&isSpecialHole);
+    {
+        Jump(&exit);
+    }
+    Bind(&isNotSpecialHole);
+    {
+        Label isInt(env);
+        Label isNotInt(env);
+        GateRef elementsKindIntLowerBound = Int32GreaterThanOrEqual(*elementsKind,
+                                                                    Int32(static_cast<int32_t>(ElementsKind::INT)));
+        GateRef elementsKindIntUpperBound = Int32LessThanOrEqual(*elementsKind,
+                                                                 Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
+        GateRef checkIntKind = BoolAnd(elementsKindIntLowerBound, elementsKindIntUpperBound);
+        Branch(checkIntKind, &isInt, &isNotInt);
+        Bind(&isInt);
+        {
+            result = Int64ToTaggedIntPtr(rawValue);
+            Jump(&exit);
+        }
+        Bind(&isNotInt);
+        {
+            Label isNumber(env);
+            Label isNotNumber(env);
+            GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(*elementsKind,
+                                                                   Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
+            GateRef elementsKindNumberUB = Int32LessThanOrEqual(*elementsKind,
+                                                                Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
+            GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
+            Branch(checkNumberKind, &isNumber, &isNotNumber);
+            Bind(&isNumber);
+            {
+                GateRef numberValue = CastInt64ToFloat64(rawValue);
+                result = DoubleToTaggedDoublePtr(numberValue);
+                Jump(&exit);
+            }
+            Bind(&isNotNumber);
+            {
+                result = Int64ToTaggedPtr(rawValue);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue,
+                                              GateRef index, GateRef needTransition, GateRef extraKind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::INT64(), SpecialHole());
+    Label exit(env);
+
+    Label transitElementsKind(env);
+    Label finishTransition(env);
+    Branch(needTransition, &transitElementsKind, &finishTransition);
+    Bind(&transitElementsKind);
+    {
+        TransitToElementsKind(glue, receiver, rawValue, extraKind);
+        Jump(&finishTransition);
+    }
+    Bind(&finishTransition);
+    GateRef hclass = LoadHClass(receiver);
+    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
+    Label setValue(env);
+    Label isMutantTaggedArray(env);
+    Label isNotMutantTaggedArray(env);
+    GateRef elements = GetElementsArray(receiver);
+    Branch(IsMutantTaggedArray(elements), &isMutantTaggedArray, &isNotMutantTaggedArray);
+    Bind(&isNotMutantTaggedArray);
+    {
+        elementsKind = Int32(static_cast<int32_t>(ElementsKind::GENERIC));
+        Jump(&isMutantTaggedArray);
+    }
+    Bind(&isMutantTaggedArray);
+    Label isHole(env);
+    Label isNotHole(env);
+    GateRef valueIsHole = TaggedIsHole(rawValue);
+    GateRef elementsKindInNumbersLB = Int32GreaterThanOrEqual(*elementsKind,
+                                                              Int32(static_cast<int32_t>(ElementsKind::HOLE)));
+    GateRef elementsKindInNumbersUB = Int32LessThan(*elementsKind, Int32(static_cast<int32_t>(ElementsKind::STRING)));
+    GateRef checkInNumersKind = BoolAnd(BoolAnd(valueIsHole, elementsKindInNumbersLB), elementsKindInNumbersUB);
+    Branch(checkInNumersKind, &isHole, &isNotHole);
+    Bind(&isHole);
+    {
+        Jump(&setValue);
+    }
+    Bind(&isNotHole);
+    {
+        Label isInt(env);
+        Label isNotInt(env);
+        GateRef elementsKindIntLB = Int32GreaterThanOrEqual(*elementsKind,
+                                                            Int32(static_cast<int32_t>(ElementsKind::INT)));
+        GateRef elementsKindIntUB = Int32LessThanOrEqual(*elementsKind,
+                                                         Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
+        GateRef checkIntKind = BoolAnd(elementsKindIntLB, elementsKindIntUB);
+        Branch(checkIntKind, &isInt, &isNotInt);
+        Bind(&isInt);
+        {
+            result = GetInt64OfTInt(rawValue);
+            Jump(&setValue);
+        }
+        Bind(&isNotInt);
+        {
+            Label isNumber(env);
+            Label isNotNumber(env);
+            GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(*elementsKind,
+                                                                   Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
+            GateRef elementsKindNumberUB = Int32LessThanOrEqual(*elementsKind,
+                                                                Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
+            GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
+            Branch(checkNumberKind, &isNumber, &isNotNumber);
+            Bind(&isNumber);
+            {
+                Label isNumberInt(env);
+                Label isNotNumberInt(env);
+                Branch(TaggedIsInt(rawValue), &isNumberInt, &isNotNumberInt);
+                Bind(&isNumberInt);
+                {
+                    result = CastDoubleToInt64(GetDoubleOfTInt(rawValue));
+                    Jump(&setValue);
+                }
+                Bind(&isNotNumberInt);
+                {
+                    result = CastDoubleToInt64(GetDoubleOfTDouble(rawValue));
+                    Jump(&setValue);
+                }
+            }
+            Bind(&isNotNumber);
+            {
+                result = ChangeTaggedPointerToInt64(rawValue);
+                Jump(&setValue);
+            }
+        }
+    }
+    Bind(&setValue);
+    Label storeToNormalArray(env);
+    Label storeToMutantArray(env);
+    Branch(TaggedIsHeapObject(rawValue), &storeToNormalArray, &storeToMutantArray);
+    Bind(&storeToNormalArray);
+    {
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, *result);
+        Jump(&exit);
+    }
+    Bind(&storeToMutantArray);
+    {
+        SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, *result);
         Jump(&exit);
     }
     Bind(&exit);

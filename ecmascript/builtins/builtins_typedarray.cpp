@@ -21,6 +21,7 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
@@ -1126,12 +1127,12 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     if (!argArray->IsTypedArray()) {
         if (argArray->IsStableJSArray(thread)) {
             uint32_t length = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
-            JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(argArray)->GetElements());
-            uint32_t elemLength = elements->GetLength();
+            JSHandle<JSObject> argObj(argArray);
+            uint32_t elemLength = ElementAccessor::GetElementsLength(argObj);
             // Load On Demand check
             if (elemLength >= length) {
                 return JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, targetType,
-                                                                    targetOffset, length, elements);
+                                                                    targetOffset, length, argObj);
             }
         }
         // 16. Let src be ToObject(array).

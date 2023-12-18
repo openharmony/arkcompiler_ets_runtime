@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -343,6 +344,18 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(method->IsAotWithCallField());
 }
 
+JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHandle<JSObject> receiver(thread, obj.GetTaggedValue());
+    ElementsKind kind = receiver->GetClass()->GetElementsKind();
+    return JSTaggedValue(static_cast<uint32_t>(kind));
+}
+
 JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -503,10 +516,10 @@ JSTaggedValue BuiltinsArkTools::HasHoleyElements([[maybe_unused]] EcmaRuntimeCal
     if (!array->IsJSArray()) {
         return JSTaggedValue::False();
     }
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    JSHandle<JSObject> obj(array);
     uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
     for (uint32_t i = 0; i < len; i++) {
-        if (elements->Get(i).IsHole()) {
+        if (ElementAccessor::Get(obj, i).IsHole()) {
             return JSTaggedValue::True();
         }
     }
@@ -534,10 +547,10 @@ JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallI
     if (!array->IsJSArray()) {
         return JSTaggedValue::False();
     }
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    JSHandle<JSObject> obj(array);
     uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
     for (uint32_t i = 0; i < len; i++) {
-        if (elements->Get(i).IsInt()) {
+        if (ElementAccessor::Get(obj, i).IsInt()) {
             return JSTaggedValue::True();
         }
     }
@@ -549,14 +562,15 @@ JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCa
     LOG_ECMA(INFO) << "Enter HasDoubleElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
         return JSTaggedValue::False();
     }
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    JSHandle<JSObject> obj(array);
     uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
     for (uint32_t i = 0; i < len; i++) {
-        if (elements->Get(i).IsDouble() && !elements->Get(i).IsZero()) {
+        if (ElementAccessor::Get(obj, i).IsDouble() && !ElementAccessor::Get(obj, i).IsZero()) {
             return JSTaggedValue::True();
         }
     }
@@ -568,14 +582,15 @@ JSTaggedValue BuiltinsArkTools::HasObjectElements([[maybe_unused]] EcmaRuntimeCa
     LOG_ECMA(INFO) << "Enter HasObjectElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
         return JSTaggedValue::False();
     }
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(array)->GetElements());
+    JSHandle<JSObject> obj(array);
     uint32_t len = JSHandle<JSArray>::Cast(array)->GetArrayLength();
     for (uint32_t i = 0; i < len; i++) {
-        if (elements->Get(i).IsObject()) {
+        if (ElementAccessor::Get(obj, i).IsObject()) {
             return JSTaggedValue::True();
         }
     }

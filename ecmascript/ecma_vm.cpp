@@ -201,6 +201,14 @@ bool EcmaVM::IsEnablePGOProfiler() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
 }
 
+bool EcmaVM::IsEnableElementsKind() const
+{
+    if (options_.IsWorker()) {
+        return false;
+    }
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
+}
+
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");

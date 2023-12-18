@@ -201,6 +201,7 @@ public:
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef objectType);
     GateRef IsTaggedArray(GateRef object);
+    GateRef IsMutantTaggedArray(GateRef objectType);
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef Int8(int8_t val);
     GateRef Int16(int16_t val);
@@ -213,6 +214,7 @@ public:
     GateRef Double(double value);
     GateRef UndefineConstant();
     GateRef HoleConstant();
+    GateRef SpecialHoleConstant();
     GateRef NullPtrConstant();
     GateRef NullConstant();
     GateRef ExceptionConstant();

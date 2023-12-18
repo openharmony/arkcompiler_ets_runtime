@@ -108,6 +108,7 @@ public:
     GateRef Double(double value);
     GateRef Undefined();
     GateRef Hole();
+    GateRef SpecialHole();
     GateRef Null();
     GateRef NullPtr();
     GateRef Exception();
@@ -243,6 +244,7 @@ public:
     GateRef IntToTaggedPtr(GateRef x);
     GateRef IntToTaggedInt(GateRef x);
     GateRef Int64ToTaggedInt(GateRef x);
+    GateRef Int64ToTaggedIntPtr(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedIntPtr(GateRef x);
@@ -334,6 +336,7 @@ public:
     GateRef IsJsArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
+    GateRef IsMutantTaggedArray(GateRef elements);
     GateRef IsJSObject(GateRef obj);
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
@@ -453,6 +456,10 @@ public:
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
+    GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
+    GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
+    GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
+                                     GateRef needTransition, GateRef extraKind);
     void SetValueToTaggedArrayWithAttr(
         GateRef glue, GateRef array, GateRef index, GateRef key, GateRef val, GateRef attr);
     void SetValueToTaggedArrayWithRep(

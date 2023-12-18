@@ -213,29 +213,66 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label newMutantArray(env);
+    Label newNormalArray(env);
+    Label afterNew(env);
     Label exit(env);
     NewObjectStubBuilder newBuilder(this);
+    SetGlue(glue);
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    GateRef array = newBuilder.NewTaggedArray(glue, newLen);
-    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    GateRef oldElementHC = LoadHClass(elements);
+    GateRef objectType = GetObjectType(oldElementHC);
+    Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+           &newMutantArray, &newNormalArray);
+    Bind(&newNormalArray);
+    {
+        array = newBuilder.NewTaggedArray(glue, newLen);
+        Jump(&afterNew);
+    }
+    Bind(&newMutantArray);
+    {
+        array = CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedInt(newLen) });
+        Jump(&afterNew);
+    }
+    Bind(&afterNew);
+    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
     GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
-    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
     GateRef oldL = GetLengthOfTaggedArray(elements);
     Label loopHead(env);
     Label loopEnd(env);
     Label afterLoop(env);
     Label storeValue(env);
+    Label storeToNormalArray(env);
+    Label storeToMutantArray(env);
+    Label finishStore(env);
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
         Branch(Int32UnsignedLessThan(*index, oldL), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
-            GateRef value = GetValueFromTaggedArray(elements, *index);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
-            index = Int32Add(*index, Int32(1));
-            Jump(&loopEnd);
+            Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+                   &storeToMutantArray, &storeToNormalArray);
+            Bind(&storeToNormalArray);
+            {
+                GateRef value = GetValueFromTaggedArray(elements, *index);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, value);
+                Jump(&finishStore);
+            }
+            Bind(&storeToMutantArray);
+            {
+                GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+                SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, value);
+                Jump(&finishStore);
+            }
+            Bind(&finishStore);
+            {
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
         }
     }
     Bind(&loopEnd);
@@ -247,21 +284,38 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
         Label afterLoop1(env);
         Label storeValue1(env);
         Jump(&loopHead1);
+        Label storeNormalHole(env);
+        Label storeMutantHole(env);
+        Label finishStoreHole(env);
         LoopBegin(&loopHead1);
         {
             Branch(Int32UnsignedLessThan(*index, newLen), &storeValue1, &afterLoop1);
             Bind(&storeValue1);
             {
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, Hole());
-                index = Int32Add(*index, Int32(1));
-                Jump(&loopEnd1);
+                Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+                       &storeMutantHole, &storeNormalHole);
+                Bind(&storeNormalHole);
+                {
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, Hole());
+                    Jump(&finishStoreHole);
+                }
+                Bind(&storeMutantHole);
+                {
+                    SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, SpecialHole());
+                    Jump(&finishStoreHole);
+                }
+                Bind(&finishStoreHole);
+                {
+                    index = Int32Add(*index, Int32(1));
+                    Jump(&loopEnd1);
+                }
             }
         }
         Bind(&loopEnd1);
         LoopEnd(&loopHead1);
         Bind(&afterLoop1);
         {
-            res = array;
+            res = *array;
             Jump(&exit);
         }
     }

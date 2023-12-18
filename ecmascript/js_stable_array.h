@@ -58,7 +58,7 @@ public:
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
                                                        DataViewType targetType, uint64_t targetOffset,
-                                                       uint32_t srcLength, JSHandle<TaggedArray> &elements);
+                                                       uint32_t srcLength, JSHandle<JSObject> &obj);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue With(JSThread *thread, JSHandle<JSArray> receiver,
                               int64_t insertCount, int64_t index, JSHandle<JSTaggedValue> value);

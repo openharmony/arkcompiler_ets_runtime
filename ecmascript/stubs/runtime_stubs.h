@@ -172,6 +172,11 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(UpdateLayOutAndAddTransition)       \
     V(CopyAndUpdateObjLayout)             \
     V(UpdateHClassForElementsKind)        \
+    V(SetValueWithElementsKind)           \
+    V(MigrateArrayWithKind)               \
+    V(GetTaggedValueWithElementsKind)     \
+    V(TryRestoreElementsKind)             \
+    V(NewMutantTaggedArray)               \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
     V(StGlobalRecord)                     \

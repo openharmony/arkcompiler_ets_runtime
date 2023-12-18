@@ -888,6 +888,11 @@ inline bool JSTaggedValue::IsCOWArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
 }
 
+inline bool JSTaggedValue::IsMutantTaggedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMutantTaggedArray();
+}
+
 inline bool JSTaggedValue::IsJSArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArray();

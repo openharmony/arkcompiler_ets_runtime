@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -406,18 +407,18 @@ void FastJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &p
 bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &obj, bool hasContent,
                                                     CVector<std::pair<CString, int>> &strCache)
 {
-    JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
-    if (!elementsArr->IsDictionaryMode()) {
-        uint32_t elementsLen = elementsArr->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elementsArr->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(elementsArr->Get(i));
+                handleValue_.Update(ElementAccessor::Get(obj, i));
                 hasContent = AppendJsonString(hasContent, strCache, i);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
     } else {
+        JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
         JSHandle<NumberDictionary> numberDic(elementsArr);
         CVector<JSHandle<JSTaggedValue>> sortArr;
         int size = numberDic->Size();
@@ -452,18 +453,18 @@ bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &ob
 bool FastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &obj, bool hasContent,
     CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex, uint32_t elementSize)
 {
-    JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
-    if (!elementsArr->IsDictionaryMode()) {
-        uint32_t elementsLen = elementsArr->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elementsArr->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 CString key = strCache[cacheIndex++].first;
-                handleValue_.Update(elementsArr->Get(i));
+                handleValue_.Update(ElementAccessor::Get(obj, i));
                 hasContent = FastAppendJsonString(hasContent, key);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
     } else {
+        JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
         JSHandle<NumberDictionary> numberDic(elementsArr);
         for (; cacheIndex < elementSize; cacheIndex++) {
             CString key = strCache[cacheIndex].first;
@@ -716,18 +717,18 @@ bool FastJsonStringifier::FastAppendJsonString(bool hasContent, CString &key)
 
 bool FastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj, bool hasContent)
 {
-    JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
-    if (!elementsArr->IsDictionaryMode()) {
-        uint32_t elementsLen = elementsArr->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elementsArr->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(elementsArr->Get(i));
+                handleValue_.Update(ElementAccessor::Get(obj, i));
                 hasContent = AppendJsonString(hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
     } else {
+        JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
         JSHandle<NumberDictionary> numberDic(elementsArr);
         CVector<JSHandle<JSTaggedValue>> sortArr;
         int size = numberDic->Size();

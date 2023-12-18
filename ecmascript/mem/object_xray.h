@@ -378,6 +378,11 @@ public:
             case JSType::COW_TAGGED_ARRAY:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::MUTANT_TAGGED_ARRAY:
+                if (visitType == VisitType::ALL_VISIT) {
+                    MutantTaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                break;
             case JSType::CONSTANT_POOL:
                 ConstantPool::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;

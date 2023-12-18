@@ -45,7 +45,8 @@ public:
                                                     JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
         JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
-        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
+        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>(),
+        ElementsKind *newKind = nullptr);
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                             size_t index, JSHandle<ConstantPool> constpool,
                                                             const CString &entryPoint = "");

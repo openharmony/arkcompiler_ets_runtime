@@ -428,8 +428,9 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                EntityId id, JSHandle<ConstantPool> constpool,
-                                                               const CString &entryPoint,
-                                                               bool isLoadedAOT, JSHandle<AOTLiteralInfo> entryIndexes)
+                                                               const CString &entryPoint, bool isLoadedAOT,
+                                                               JSHandle<AOTLiteralInfo> entryIndexes,
+                                                               ElementsKind *newKind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
@@ -441,7 +442,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     int index = 0;
     lda.EnumerateLiteralVals(
         id, [literals, &pos, factory, thread, jsPandaFile,
-             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT]
+             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT, newKind]
         (const LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -515,6 +516,9 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
             }
             if (tag != LiteralTag::METHOD && tag != LiteralTag::GETTER && tag != LiteralTag::SETTER &&
                 tag != LiteralTag::GENERATORMETHOD) {
+                if (newKind != nullptr) {
+                    *newKind = Elements::ToElementsKind(jt, *newKind);
+                }
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
