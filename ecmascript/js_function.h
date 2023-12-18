@@ -463,6 +463,8 @@ class JSSharedFunction : public JSFunction {
 public:
     CAST_CHECK(JSSharedFunction, IsJSSharedFunction);
     static constexpr size_t SIZE = JSFunction::SIZE;
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
 };
 

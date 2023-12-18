@@ -525,7 +525,13 @@ static void DumpPropertyKey(JSTaggedValue key, std::ostream &os)
         DumpStringClass(EcmaString::Cast(key.GetTaggedObject()), os);
     } else if (key.IsSymbol()) {
         JSSymbol *sym = JSSymbol::Cast(key.GetTaggedObject());
-        DumpStringClass(EcmaString::Cast(sym->GetDescription().GetTaggedObject()), os);
+        if (sym->GetDescription().IsString()) {
+            os << "Symbol(\"";
+            DumpStringClass(EcmaString::Cast(sym->GetDescription().GetTaggedObject()), os);
+            os << "\")";
+        } else {
+            os << "Symbol(" << sym << ")";
+        }
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -552,7 +558,6 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
         os << "C";
     }
 
-    os << (int)(attr.GetTrackType());
     os << ")";
 
     os << " InlinedProps: " << attr.IsInlinedProps();

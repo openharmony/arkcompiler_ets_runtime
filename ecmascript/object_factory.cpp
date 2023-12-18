@@ -928,7 +928,16 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
         JSHandle<JSHClass> jshclass(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
-        return NewJSObjectWithInit(jshclass);
+        JSHandle<JSObject> obj = NewJSObjectWithInit(jshclass);
+        if (jshclass->IsJSSharedObject() && jshclass->IsDictionaryMode()) {
+            auto maybeDict = jshclass->GetLayout();
+            if (maybeDict.IsDictionary()) {
+                auto dict = JSHandle<TaggedArray>(thread_, maybeDict);
+                auto properties = NewAndCopyNameDictionary(dict, dict->GetLength());
+                obj->SetProperties(thread_, properties);
+            }
+        }
+        return obj;
     }
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSObject> result =
@@ -952,7 +961,16 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     }
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
-    return NewJSObjectWithInit(jshclass);
+    JSHandle<JSObject> obj = NewJSObjectWithInit(jshclass);
+    if (jshclass->IsJSSharedObject() && jshclass->IsDictionaryMode()) {
+        auto maybeDict = jshclass->GetLayout();
+        if (maybeDict.IsDictionary()) {
+            auto dict = JSHandle<TaggedArray>(thread_, maybeDict);
+            auto properties = NewAndCopyNameDictionary(dict, dict->GetLength());
+            obj->SetProperties(thread_, properties);
+        }
+    }
+    return obj;
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass)
@@ -2355,6 +2373,26 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     return dstElements;
 }
 
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length)
+{
+    JSHandle<TaggedArray> dstElements = NewDictionaryArray(length);
+    if (length == 0) {
+        return dstElements;
+    }
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = length * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < length; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
+    }
+    return dstElements;
+}
 // private
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
 {

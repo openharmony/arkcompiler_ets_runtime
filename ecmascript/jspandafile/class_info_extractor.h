@@ -63,7 +63,8 @@ public:
                                                       JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
     static JSHandle<JSHClass> CreateSendableHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
-                                                   JSHandle<TaggedArray> &properties, bool isProtoClass);
+                                                   JSHandle<TaggedArray> &properties, bool isProtoClass,
+                                                   uint32_t extraLength = 0);
     static void CorrectConstructorHClass(JSThread *thread,
                                          JSHandle<TaggedArray> &properties,
                                          JSHClass *constructorHClass);
@@ -105,17 +106,22 @@ public:
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread,
                                                                  JSHandle<ClassInfoExtractor> &extractor,
-                                                                 const JSHandle<JSTaggedValue> &lexenv);
+                                                                 const JSHandle<JSTaggedValue> &lexenv,
+                                                                 const JSHandle<TaggedArray> &fieldTypeArray);
 
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
-    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+
+    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                             const JSHandle<TaggedArray> &fieldTypeArray,
                                              const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
+    static JSHandle<TaggedArray> ExtractStaticFieldTypeArray(JSThread *thread,
+                                                             const JSHandle<TaggedArray> &fieldTypeArray);
     static TrackType FromFieldType(FieldType type) {
         switch (type) {
             case FieldType::NONE:
@@ -139,7 +145,8 @@ private:
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
                                                               const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
+    static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread,
+                                                                      const JSHandle<JSObject> &object,
                                                                       JSHandle<TaggedArray> &keys,
                                                                       JSHandle<TaggedArray> &properties,
                                                                       ClassPropertyType type,
@@ -148,11 +155,16 @@ private:
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);
 
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                     const JSHandle<TaggedArray> &fieldTypeArray,
                                      const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
 
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                     const JSHandle<TaggedArray> &fieldTypeArray,
                                      const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
+
+    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                   const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

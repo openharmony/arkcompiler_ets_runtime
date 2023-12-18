@@ -2578,7 +2578,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         for (size_t i = 0; i < propsLen; i++) {
             auto value = properties->Get(i * 2 + 1);
             auto attr = layoutInfo->GetAttr(i);
-            if (attr.UpdateTrackType(value)) {
+            if (attr.UpdateTrackType(value) && !oldHC->IsJSSharedFamily()) {
                 layoutInfo->SetNormalAttr(thread, i, attr);
             }
             obj->SetPropertyInlinedProps(thread, i, value);

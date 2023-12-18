@@ -24,6 +24,8 @@ class JSSharedObject : public JSObject {
 public:
     CAST_CHECK(JSSharedObject, IsJSSharedObject);
     static constexpr size_t SIZE = JSObject::SIZE;
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
 };
 } // namespace panda::ecmascript

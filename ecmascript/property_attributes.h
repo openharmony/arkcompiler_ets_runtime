@@ -170,7 +170,7 @@ public:
     {
         return DefaultAttributesField::Mask();
     }
-
+    // JSSharedFamily should not update tracktype.
     bool UpdateTrackType(JSTaggedValue value)
     {
         TrackType oldType = GetTrackType();

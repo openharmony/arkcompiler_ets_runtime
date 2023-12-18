@@ -911,15 +911,19 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
 
-    JSHandle<JSFunction> cls = ClassHelper::DefineSendableClassFromExtractor(thread, base, extractor, lexenv);
-
+    JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
+    JSHandle<TaggedArray> staticFieldArray = ClassHelper::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
+    JSHandle<JSFunction> cls = ClassHelper::DefineSendableClassFromExtractor(thread, extractor, lexenv,
+                                                                             staticFieldArray);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
-    ClassHelper::DefineSendableInstanceHClass(thread, fieldTypeArray, cls, base);
+    uint32_t arrayLength = fieldTypeArray->GetLength();
+    auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
+    fieldTypeArray->Trim(thread, instanceFieldNums * 2); // 2: key-type
+    ClassHelper::DefineSendableInstanceHClass(thread, lexenv, fieldTypeArray, cls, base);
     return cls.GetTaggedValue();
 }
 
