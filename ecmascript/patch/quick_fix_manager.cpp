@@ -66,7 +66,10 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile.get(), patchInfo);
+    if (baseClassInfo_.empty()) {
+        baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile);
+    }
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile.get(), patchInfo, baseClassInfo_);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail of: " << baseFileName;
         return;
@@ -100,7 +103,10 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo);
+    if (baseClassInfo_.empty()) {
+        baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
+    }
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo, baseClassInfo_);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
         return ret;
@@ -136,7 +142,10 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo);
+    if (baseClassInfo_.empty()) {
+        baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
+    }
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo, baseClassInfo_);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
         return ret;
@@ -185,7 +194,7 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     }
 
     PatchInfo patchInfo = iter->second;
-    MethodLiteral *patchMethodLiteral = PatchLoader::FindSameMethod(patchInfo, baseFile, baseMethodId);
+    MethodLiteral *patchMethodLiteral = PatchLoader::FindSameMethod(patchInfo, baseFile, baseMethodId, baseClassInfo_);
     if (patchMethodLiteral == nullptr) {
         return JSTaggedValue::Hole();
     }

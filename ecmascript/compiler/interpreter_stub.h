@@ -202,6 +202,20 @@ public:
     };
     ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DECLARE_HANDLE_PROFILE_STUB_CLASS)
 #undef DECLARE_HANDLE_PROFILE_STUB_CLASS
+#define DECLARE_HANDLE_JIT_PROFILE_STUB_CLASS(name, base, ...)                     \
+    class name##StubBuilder : public base##StubBuilder {                           \
+    public:                                                                        \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env) \
+            : base##StubBuilder(callSignature, env)                                \
+        {                                                                          \
+        }                                                                          \
+        ~name##StubBuilder() = default;                                            \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                       \
+        void GenerateCircuit() override;                                           \
+    };
+    ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DECLARE_HANDLE_JIT_PROFILE_STUB_CLASS)
+#undef DECLARE_HANDLE_PROFILE_STUB_CLASS
 #undef DECLARE_HANDLE_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_INTERPRETER_STUB_H

@@ -230,40 +230,9 @@ void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject>
     obj->GetJSHClass()->SetElementsKind(ElementsKind::HOLE_TAGGED);
 }
 
-JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
-                                                    const JSHandle<JSTaggedValue> &key,
-                                                    const PropertyAttributes &attr)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
-    if (newClass != nullptr) {
-        newClass->SetPrototype(thread, jshclass->GetPrototype());
-        return JSHandle<JSHClass>(thread, newClass);
-    }
-
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->IncNumberOfProps();
-    uint32_t offset = attr.GetOffset();
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) { // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-        }
-        newJsHClass->SetLayout(thread, layoutInfoHandle);
-        layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);
-    }
-
-    AddTransitions(thread, jshclass, newJsHClass, key, attr);
-    return newJsHClass;
-}
-
 void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                            const PropertyAttributes &attr)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
@@ -274,31 +243,9 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #endif
         return;
     }
-
-    // 2. Create hclass
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-
-    // 3. Add Property and metaData
-    uint32_t offset = attr.GetOffset();
-    newJsHClass->IncNumberOfProps();
-
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
-
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-        }
-        newJsHClass->SetLayout(thread, layoutInfoHandle);
-        layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);
-    }
-
-    // 4. Add newClass to old hclass's transitions.
-    AddTransitions(thread, jshclass, newJsHClass, key, attr);
-
-    // 5. update hclass in object.
+    AddPropertyToNewHClass(thread, jshclass, newJsHClass, key, attr);
+    // update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif

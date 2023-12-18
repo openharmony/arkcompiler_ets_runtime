@@ -66,6 +66,14 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
             ProfilerStubBuilder profiler(this);                                                                        \
             profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, values, format, type); \
+        }, nullptr);
+
+#define REGISTER_JIT_PROFILE_CALL_BACK(format)                                                                         \
+    ProfileOperation callback(                                                                                         \
+        nullptr,                                                                                                       \
+        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
+            ProfilerStubBuilder profiler(this);                                                                        \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, values, format, type); \
         });
 
 #define REGISTER_NULL_CALL_BACK(format) ProfileOperation callback;
@@ -80,6 +88,9 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 #define DECLARE_ASM_HANDLER_PROFILE(name, base, format) \
     DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_CALL_BACK, format)
+
+#define DECLARE_ASM_HANDLER_JIT_PROFILE(name, base, format) \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_JIT_PROFILE_CALL_BACK, format)
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -149,6 +160,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         }                                                                                                      \
         Bind(&initialized);                                                                                    \
         (callback).TryDump();                                                                                  \
+        (callback).TryJitCompile();                                                                            \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);
@@ -2458,8 +2470,9 @@ DECLARE_ASM_HANDLER(HandleReturn)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
-            &updateHotness);
+        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
+        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
+        Branch(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2528,8 +2541,9 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        Branch(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback), &tryContinue,
-            &updateHotness);
+        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
+        GateRef isHotForJitCompiling = ProfilerStubBuilder(env).IsHotForJitCompiling(*varProfileTypeInfo, callback);
+        Branch(BoolAnd(isProfileDumped, isHotForJitCompiling), &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -5015,6 +5029,7 @@ ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
+ASM_INTERPRETER_BC_FUNC_HOT_JIT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_JIT_PROFILE)
 
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH

@@ -289,6 +289,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GetJSPandaFile(const panda_file
     return nullptr;
 }
 
+void JSPandaFileManager::ClearNameMap()
+{
+    LockHolder lock(jsPandaFileLock_);
+    for (const auto &iter : loadedJSPandaFiles_) {
+        iter.second.first->ClearNameMap();
+    }
+}
+
 void JSPandaFileManager::AddJSPandaFileVm(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile)
 {
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();

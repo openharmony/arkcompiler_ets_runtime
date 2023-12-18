@@ -24,7 +24,8 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
-MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode)
+MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment, bool regular,
+                                 bool isMachineCode)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
         LOG_GC(ERROR) << "memory map overflow";
@@ -40,10 +41,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
-            int prot = isMachineCode ? PAGE_PROT_EXEC_READ : PAGE_PROT_READWRITE;
+            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
             PageProtect(mem.GetMem(), mem.GetSize(), prot);
-            PageTag(mem.GetMem(), size, type);
+            PageTag(mem.GetMem(), size, type, threadId);
             return mem;
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
@@ -53,10 +54,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
-        int prot = isMachineCode ? PAGE_PROT_EXEC_READ : PAGE_PROT_READWRITE;
+        int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
         PageProtect(mem.GetMem(), mem.GetSize(), prot);
-        PageTag(mem.GetMem(), mem.GetSize(), type);
+        PageTag(mem.GetMem(), mem.GetSize(), type, threadId);
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
@@ -66,6 +67,9 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
 {
     if (isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
         // Cache regions to accelerate allocation.
+        // Clear ThreadId tag and tag the mem with ARKTS HEAP.
+        PageClearTag(mem, size);
+        PageTag(mem, size, PageTagType::HEAP, 0);
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }

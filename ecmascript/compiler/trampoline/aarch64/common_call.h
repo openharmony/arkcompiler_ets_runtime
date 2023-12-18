@@ -29,7 +29,7 @@ public:
     static constexpr int TRIPLE_SLOT_SIZE = 24;
     static constexpr int QUADRUPLE_SLOT_SIZE = 32;
     static constexpr int QUINTUPLE_SLOT_SIZE = 40;
-    static constexpr int DECUPLE_SLOT_SIZE = 80;
+    static constexpr int OCTUPLE_SLOT_SIZE = 64;
     static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)

@@ -367,7 +367,7 @@ public:
     }
     void SetSuccFreq(int idx, uint64 freq)
     {
-        DEBUG_ASSERT(idx >= 0 && idx <= succFreq.size(), "sanity check");
+        DEBUG_ASSERT(idx >= 0 && static_cast<size_t>(idx) <= succFreq.size(), "sanity check");
         succFreq[static_cast<size_t>(idx)] = freq;
     }
 

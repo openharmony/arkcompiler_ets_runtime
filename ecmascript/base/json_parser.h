@@ -218,7 +218,7 @@ protected:
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
                                                           JSTaggedValue::Exception());
                         }
-                        GetNextNonSpaceChar();
+                        Advance();
                         elementsList.resize(continuation.index_);
                         continuation = std::move(continuationList.back());
                         continuationList.pop_back();
@@ -248,7 +248,7 @@ protected:
 
                         parseValue = CreateJsonObject(continuation, propertyList);
                         if (*current_ == '}') {
-                            GetNextNonSpaceChar();
+                            Advance();
                         } else {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
                                                           JSTaggedValue::Exception());

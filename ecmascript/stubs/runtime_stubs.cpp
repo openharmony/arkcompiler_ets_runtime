@@ -14,6 +14,7 @@
  */
 
 #include <cmath>
+#include <sstream>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -22,6 +23,9 @@
 #include "ecmascript/base/fast_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/js_stable_array.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -431,6 +435,26 @@ DEF_RUNTIME_STUBS(NewEcmaHClass)
         size.GetInt(), JSType(type.GetInt()), inlinedProps.GetInt())).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSArrayFilterUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayFilterUnStable);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSTaggedType toIndexValue = GetTArg(argv, argc, 4);  // 4: means the three parameter
+    int32_t toIndex = JSTaggedNumber(JSTaggedValue(toIndexValue)).GetNumber();
+    JSHandle<JSObject> newArrayHandle = JSMutableHandle<JSObject>(thread,
+        GetHArg<JSObject>(argv, argc, 5));  // 5: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
+        toIndex, newArrayHandle, callbackFnHandle);
+    return ret.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 {
     RUNTIME_STUBS_HEADER(UpdateLayOutAndAddTransition);
@@ -439,27 +463,9 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
     JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
 
-    auto factory = thread->GetEcmaVM()->GetFactory();
     PropertyAttributes attrValue(attr.GetInt());
-    uint32_t offset = attrValue.GetOffset();
-    newHClassHandle->IncNumberOfProps();
 
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newHClassHandle->GetLayout());
-
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-            newHClassHandle->SetLayout(thread, layoutInfoHandle);
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-            newHClassHandle->SetLayout(thread, layoutInfoHandle);
-        }
-        layoutInfoHandle->AddKey(thread, offset, keyHandle.GetTaggedValue(), attrValue);
-    }
-
-    // 5. Add newClass to old hclass's transitions.
-    JSHClass::AddTransitions(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
+    JSHClass::AddPropertyToNewHClass(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
 
     if (oldHClassHandle->HasTSSubtyping()) {
         SubtypingOperator::TryMaintainTSSubtyping(thread, oldHClassHandle, newHClassHandle, keyHandle);
@@ -519,7 +525,10 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
-    DumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
+    std::ostringstream oss;
+    auto value = JSTaggedValue(rawValue);
+    value.Dump(oss);
+    LOG_ECMA(INFO) << "dump log for read-only crash " << oss.str();
 }
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
@@ -652,42 +661,27 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
     return JSProxy::GetPrototype(thread, proxy).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CallJSDeleteProxyPrototype)
+DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
 {
-    RUNTIME_STUBS_HEADER(CallJSDeleteProxyPrototype);
-    JSHandle<JSProxy> proxy = GetHArg<JSProxy>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSProxy::DeleteProperty(thread, proxy, value);
-    if (!result) {
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
-        thread->SetException(error.GetTaggedValue());
-        return JSTaggedValue::Exception().GetRawData();
+    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);
+    uint32_t index = 0;
+    if (value.IsString()) {
+        auto string = reinterpret_cast<EcmaString *>(value.GetTaggedObject());
+        if (EcmaStringAccessor(string).ToElementIndex(&index)) {
+            value = JSTaggedValue(index);
+        } else if (!EcmaStringAccessor(string).IsInternString()) {
+            JSTaggedValue key(RuntimeTryGetInternString(argGlue, string));
+            if (key.IsHole()) {
+                return JSTaggedValue::True().GetRawData();
+            } else {
+                value = key;
+            }
+        }
     }
-    return JSTaggedValue::True().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(CallModuleNamespaceDeletePrototype)
-{
-    RUNTIME_STUBS_HEADER(CallModuleNamespaceDeletePrototype);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = ModuleNamespace::DeleteProperty(thread, obj, value);
-    if (!result) {
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
-        thread->SetException(error.GetTaggedValue());
-        return JSTaggedValue::Exception().GetRawData();
-    }
-    return JSTaggedValue::True().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
-{
-    RUNTIME_STUBS_HEADER(CallTypedArrayDeletePrototype);
-    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSTypedArray::DeleteProperty(thread, tagged, value);
+    auto result = JSObject::DeleteProperty(thread, tagged, JSHandle<JSTaggedValue>(thread, value));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
@@ -700,9 +694,10 @@ DEF_RUNTIME_STUBS(CallTypedArrayDeletePrototype)
 DEF_RUNTIME_STUBS(CallJSObjDeletePrototype)
 {
     RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
-    JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> tagged = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    auto result = JSObject::DeleteProperty(thread, tagged, value);
+    auto result = JSTaggedValue::DeleteProperty(thread, tagged, value);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (!result) {
         auto factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, "Cannot delete property");
@@ -1294,6 +1289,14 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JitCompile)
+{
+    RUNTIME_STUBS_HEADER(JitCompile);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, JitCompileMode::ASYNC);
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CheckSafePoint)
@@ -3083,6 +3086,43 @@ DEF_RUNTIME_STUBS(ObjectSlowAssign)
     return builtins::BuiltinsObject::AssignTaggedValue(thread, source, toAssign).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NameDictionaryGetAllEnumKeys)
+{
+    RUNTIME_STUBS_HEADER(NameDictionaryGetAllEnumKeys);
+    JSHandle<JSObject> object = GetHArg<JSObject>(argv, argc, 0);            // 0: means the zeroth parameter
+    JSTaggedValue argKeys = GetArg(argv, argc, 1);    // 1: means the first parameter
+    int numOfKeys = argKeys.GetInt();
+    uint32_t keys = 0;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
+    NameDictionary *dict = NameDictionary::Cast(object->GetProperties().GetTaggedObject());
+    dict->GetAllEnumKeys(thread, 0, keyArray, &keys);
+    keyArray->SetLength(keys);
+    return keyArray.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
+{
+    RUNTIME_STUBS_HEADER(NumberDictionaryGetAllEnumKeys);
+    JSHandle<TaggedArray> array = GetHArg<TaggedArray>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<TaggedArray> elementArray = GetHArg<TaggedArray>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue argKeys = GetArg(argv, argc, 2);  // 2: means the second parameter
+    int elementIndex = argKeys.GetInt();
+    uint32_t keys = elementIndex;
+    NumberDictionary::GetAllEnumKeys(
+        thread, JSHandle<NumberDictionary>(array), elementIndex, elementArray, &keys);
+    elementArray->SetLength(keys);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(IntToString)
+{
+    RUNTIME_STUBS_HEADER(IntToString);
+    JSTaggedValue argKeys = GetArg(argv, argc, 0);
+    return JSHandle<JSTaggedValue>::Cast(base::NumberHelper::IntToEcmaString(thread,
+        argKeys.GetInt())).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LocaleCompareWithGc)
 {
     RUNTIME_STUBS_HEADER(LocaleCompareWithGc);
@@ -3170,6 +3210,17 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
         thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
     }
     return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(HasProperty)
+{
+    RUNTIME_STUBS_HEADER(HasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue indexValue = GetArg(argv, argc, 1);  // 1: means the first parameter
+    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
+    bool res = JSTaggedValue::HasProperty(thread, obj, index);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

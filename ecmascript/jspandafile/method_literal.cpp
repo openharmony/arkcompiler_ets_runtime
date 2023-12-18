@@ -96,16 +96,29 @@ std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, Ent
     return methodName.substr(index + 1);
 }
 
+// It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
+CString MethodLiteral::ParseFunctionNameToCString(const JSPandaFile *jsPandaFile, EntityId methodId)
+{
+    if (jsPandaFile == nullptr) {
+        return "";
+    }
+
+    CString methodName(GetMethodName(jsPandaFile, methodId));
+    if (LIKELY(methodName[0] != '#')) {
+        return methodName;
+    }
+
+    size_t index = methodName.find_last_of('#');
+    return methodName.substr(index + 1);
+}
+
 const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId)
 {
     if (jsPandaFile == nullptr) {
         return "";
     }
 
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pf, methodId);
-    auto sd = jsPandaFile->GetStringData(mda.GetNameId());
-    return utf::Mutf8AsCString(sd.data);
+    return const_cast<JSPandaFile *>(jsPandaFile)->GetMethodName(methodId);
 }
 
 CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId)
@@ -114,11 +127,7 @@ CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId me
         return "";
     }
 
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pf, methodId);
-    panda_file::ClassDataAccessor cda(*pf, mda.GetClassId());
-    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-    return JSPandaFile::ParseEntryPoint(desc);
+    return const_cast<JSPandaFile *>(jsPandaFile)->GetRecordName(methodId);;
 }
 
 const char *MethodLiteral::GetRecordNameWithSymbol(const JSPandaFile *jsPandaFile, EntityId methodId)

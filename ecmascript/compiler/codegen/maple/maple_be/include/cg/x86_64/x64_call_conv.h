@@ -230,9 +230,9 @@ private:
     BECommon &beCommon;
     CallConvKind convKind = kCCall;
     uint64 paramNum = 0;              /* number of all types of parameters processed so far */
-    int32 nextGeneralParmRegNO = 0;   /* number of integer parameters processed so far */
-    int32 nextGeneralReturnRegNO = 0; /* number of integer return processed so far */
-    int32 nextStackArgAdress = 0;
+    uint32 nextGeneralParmRegNO = 0;   /* number of integer parameters processed so far */
+    uint32 nextGeneralReturnRegNO = 0; /* number of integer return processed so far */
+    uint32 nextStackArgAdress = 0;
     uint32 nextFloatRegNO = 0;
     uint32 nextFloatRetRegNO = 0;
 };

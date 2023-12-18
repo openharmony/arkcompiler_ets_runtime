@@ -932,7 +932,7 @@ MIRType &BinaryMplImport::InsertInTypeTables(MIRType &type)
         resultTypePtr = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
         if (tyIdx + 1 == GlobalTables::GetTypeTable().GetTypeTable().size() && !resultTypePtr->IsNameIsLocal()) {
             GStrIdx stridx = resultTypePtr->GetNameStrIdx();
-            if (stridx != 0) {
+            if (stridx != 0u) {
                 mod.GetTypeNameTab()->SetGStrIdxToTyIdx(stridx, tyIdx);
                 mod.PushbackTypeDefOrder(stridx);
                 if (IsObject(*resultTypePtr)) {
@@ -989,10 +989,10 @@ MIRSymbol *BinaryMplImport::InSymbol(MIRFunction *func)
         auto sclass = static_cast<MIRStorageClass>(ReadNum());
         TyIdx tyTmp(0);
         MIRSymbol *sym = GetOrCreateSymbol(tyTmp, stridx, skind, sclass, func, scope);
-        if (secAttr != 0) {
+        if (secAttr != 0u) {
             sym->sectionAttr = secAttr;
         }
-        if (asmAttr != 0) {
+        if (asmAttr != 0u) {
             sym->SetAsmAttr(asmAttr);
         }
         symTab.push_back(sym);

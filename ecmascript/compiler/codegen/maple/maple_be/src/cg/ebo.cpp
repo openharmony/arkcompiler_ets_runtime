@@ -253,7 +253,7 @@ void Ebo::UpdateOpndInfo(const Operand &opnd, OpndInfo &opndInfo, OpndInfo *newI
         vRegInfo[reg.GetRegisterNumber()] = newInfo;
         return;
     }
-    DEBUG_ASSERT(hashVal < exprInfoTable.size(), "SetOpndInfo hashval outof range!");
+    DEBUG_ASSERT(static_cast<uint32>(hashVal) < exprInfoTable.size(), "SetOpndInfo hashval outof range!");
     OpndInfo *info = exprInfoTable.at(hashVal);
     if (newInfo != nullptr) {
         newInfo->hashNext = opndInfo.hashNext;
@@ -308,7 +308,7 @@ OpndInfo *Ebo::GetOpndInfo(const Operand &opnd, int32 hashVal) const
     if (opnd.IsMemoryAccessOperand()) {
         return nullptr;
     }
-    DEBUG_ASSERT(hashVal < exprInfoTable.size(), "SetOpndInfo hashval outof range!");
+    DEBUG_ASSERT(static_cast<uint32>(hashVal) < exprInfoTable.size(), "SetOpndInfo hashval outof range!");
     OpndInfo *info = exprInfoTable.at(hashVal);
     while (info != nullptr) {
         if (&opnd == info->opnd) {

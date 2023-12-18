@@ -37,6 +37,8 @@ struct LocationInfo {
 struct DeoptVregLocationInfo {
     int32 deoptVreg;
     LocationInfo locationInfo;
+
+    DeoptVregLocationInfo(int32 vreg, LocationInfo info) : deoptVreg(vreg), locationInfo(info) {}
 };
 
 class DeoptInfo {
@@ -61,7 +63,7 @@ public:
 
     void RecordDeoptVreg2LocationInfo(int32 deoptVregNO, LocationInfo locationInfo)
     {
-        deoptVreg2LocationInfo.push_back({deoptVregNO, locationInfo});
+        deoptVreg2LocationInfo.emplace_back(deoptVregNO, locationInfo);
     }
 
     const MapleVector<DeoptVregLocationInfo> &GetDeoptVreg2LocationInfo() const

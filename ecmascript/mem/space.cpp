@@ -22,10 +22,11 @@
 #include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
-Space::Space(HeapRegionAllocator *heapRegionAllocator,
+Space::Space(Heap* heap, HeapRegionAllocator *heapRegionAllocator,
              MemSpaceType spaceType, size_t initialCapacity,
              size_t maximumCapacity)
-    : heapRegionAllocator_(heapRegionAllocator),
+    : heap_(heap),
+      heapRegionAllocator_(heapRegionAllocator),
       spaceType_(spaceType),
       initialCapacity_(initialCapacity),
       maximumCapacity_(maximumCapacity),
@@ -78,8 +79,20 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 
 HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity)
-    : Space(heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity),
-      heap_(heap)
+    : Space(heap, heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
+{
+}
+
+HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                 size_t initialCapacity, size_t maximumCapacity, MemSpaceType spaceType)
+    : Space(heap, heapRegionAllocator, spaceType, initialCapacity, maximumCapacity)
+{
+}
+
+HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                           size_t initialCapacity, size_t maximumCapacity)
+    : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity,
+        maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
 {
 }
 

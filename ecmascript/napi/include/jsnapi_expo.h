@@ -620,11 +620,17 @@ public:
 
 class ECMA_PUBLIC_API ObjectRef : public JSValueRef {
 public:
+    static constexpr int MAX_PROPERTIES_ON_STACK = 32;
     static inline ObjectRef *Cast(JSValueRef *value)
     {
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
+                                              const PropertyAttribute *attributes);
+    static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
+                                                   const Local<JSValueRef> *values);
+    static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
@@ -672,7 +678,7 @@ public:
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
-    Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, JSValueRef *const argv[],
+    JSValueRef* CallForNapi(const EcmaVM *vm, JSValueRef *thisObj, JSValueRef *const argv[],
         int32_t length);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
@@ -784,8 +790,8 @@ public:
     static Local<BigIntRef> New(const EcmaVM *vm, uint64_t input);
     static Local<BigIntRef> New(const EcmaVM *vm, int64_t input);
     static Local<JSValueRef> CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words);
-    void BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless);
-    void BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossless);
+    void BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless);
+    void BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless);
     void GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words);
     uint32_t GetWordsArraySize();
 };

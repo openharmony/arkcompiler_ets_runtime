@@ -35,10 +35,12 @@ namespace panda::ecmascript::kungfu {
 class LMIRModule : public IRModule {
 public:
     static constexpr int kDeoptEntryOffset = 0;
-    LMIRModule(NativeAreaAllocator *allocator, const std::string &name, bool logDbg, const std::string &triple)
+    LMIRModule(NativeAreaAllocator *allocator, const std::string &name, bool logDbg, const std::string &triple,
+         bool isJit)
         : IRModule(allocator, logDbg, triple)
     {
-        module = maple::litecg::CreateModuleWithName(name);
+        moduleName = name;
+        module = isJit ? nullptr : maple::litecg::CreateModuleWithName(name);
     }
 
     ~LMIRModule()
@@ -48,8 +50,15 @@ public:
         }
     }
 
+    void JitCreateLitecgModule()
+    {
+        ASSERT(module == nullptr);
+        module = maple::litecg::CreateModuleWithName(moduleName);
+    }
+
     maple::litecg::Module *GetModule()
     {
+        ASSERT(module != nullptr);
         return module;
     }
 
@@ -73,6 +82,7 @@ public:
     }
 
 private:
+    std::string moduleName;
     maple::litecg::Module *module;
     std::vector<std::tuple<size_t, std::string, bool>> funcIndexMap_;
 };

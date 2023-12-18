@@ -211,7 +211,7 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
 {
     InitCCLocInfo(pLoc);
     std::vector<ArgumentClass> classes {}; /* Max of four Regs. */
-    int32 alignedTySize = GetCallConvInfo().Classification(beCommon, retType, classes);
+    uint32 alignedTySize = static_cast<uint32>(GetCallConvInfo().Classification(beCommon, retType, classes));
     if (alignedTySize == 0) {
         return 0; /* size 0 ret val */
     }

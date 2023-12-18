@@ -49,9 +49,9 @@
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
     V("filter",         Filter,           1, ArrayFilter)                   \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
-    V("find",           Find,             1, INVALID)                       \
+    V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
-    V("findIndex",      FindIndex,        1, INVALID)                       \
+    V("findIndex",      FindIndex,        1, ArrayFindIndex)                \
     /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
     V("findLast",       FindLast,         1, INVALID)                       \
     /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \
@@ -233,6 +233,10 @@ public:
     static JSTaggedValue ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
+
+    static JSTaggedValue FilterUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
+        JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
 
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \

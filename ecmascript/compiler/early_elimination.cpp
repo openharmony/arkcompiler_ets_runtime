@@ -376,6 +376,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             if (acc_.GetValueIn(lhs) != acc_.GetValueIn(rhs)) {
                 return false;
             }
+            break;
         }
         default:
             break;

@@ -67,6 +67,7 @@ void ConcurrentSweeper::Sweep(bool fullGC)
         heap_->GetMachineCodeSpace()->Sweep();
     }
     heap_->GetHugeObjectSpace()->Sweep();
+    heap_->GetHugeMachineCodeSpace()->Sweep();
 }
 
 void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)

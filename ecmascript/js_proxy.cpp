@@ -1063,6 +1063,17 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 
 bool JSProxy::IsArray(JSThread *thread) const
 {
+    // check stack overflow because infinite recursion may occur
+    if (thread->IsAsmInterpreter() && UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
+                        << " limit:" << thread->GetStackLimit();
+        if (LIKELY(!thread->HasPendingException())) {
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
+            thread->SetException(error.GetTaggedValue());
+        }
+        return false;
+    }
     if (GetHandler().IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
     }

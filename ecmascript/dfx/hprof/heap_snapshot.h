@@ -398,9 +398,9 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool captureNumericValue,
-                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
-        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate),
+    HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const bool isVmMode, const bool isPrivate,
+                 const bool captureNumericValue, const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+        : vm_(vm), stringTable_(stringTable), isVmMode_(isVmMode), isPrivate_(isPrivate),
           captureNumericValue_(captureNumericValue), trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(chunk) {}
     ~HeapSnapshot();
@@ -454,10 +454,6 @@ public:
     {
         return &edges_;
     }
-    const StringHashMap *GetEcmaStringTable() const
-    {
-        return &stringTable_;
-    }
 
     CString *GetString(const CString &as);
     CString *GetArrayString(TaggedArray *array, const CString &as);
@@ -494,6 +490,10 @@ public:
         GetString(info.functionName.c_str());
         traceInfoStack_.push_back(info);
     }
+    const StringHashMap *GetEcmaStringTable() const
+    {
+        return stringTable_;
+    }
 
 private:
     void FillNodes(bool isInFinish = false);
@@ -501,11 +501,13 @@ private:
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
-    std::string ParseFunctionName(TaggedObject *obj);
+    CString ParseFunctionName(TaggedObject *obj);
+    const CString ParseObjectName(TaggedObject *obj);
 
     Node *InsertNodeUnique(Node *node);
     void EraseNodeUnique(Node *node);
@@ -514,7 +516,6 @@ private:
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
-    StringHashMap stringTable_;
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
@@ -524,6 +525,7 @@ private:
     HeapEntryMap entryMap_;
     panda::ecmascript::HeapRootVisitor rootVisitor_;
     const EcmaVM *vm_;
+    StringHashMap *stringTable_ {nullptr};
     bool isVmMode_ {true};
     bool isPrivate_ {false};
     bool captureNumericValue_ {false};

@@ -39,7 +39,7 @@
 namespace panda::ecmascript {
 CString *HeapSnapshot::GetString(const CString &as)
 {
-    return stringTable_.GetString(as);
+    return stringTable_->GetString(as);
 }
 
 CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
@@ -98,6 +98,7 @@ HeapSnapshot::~HeapSnapshot()
     traceNodeIndex_.clear();
     entryIdMap_ = nullptr;
     chunk_ = nullptr;
+    stringTable_ = nullptr;
 }
 
 bool HeapSnapshot::BuildUp()
@@ -241,23 +242,23 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
     JSType type = hCls->GetObjectType();
     switch (type) {
         case JSType::TAGGED_ARRAY:
-            return GetArrayString(TaggedArray::Cast(entry), "TaggedArray[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::CONSTANT_POOL:
-            return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalConstantPool[");
         case JSType::PROFILE_TYPE_INFO:
-            return GetArrayString(TaggedArray::Cast(entry), "ProfileTypeInfo[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalProfileTypeInfo[");
         case JSType::TAGGED_DICTIONARY:
-            return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalDict[");
         case JSType::AOT_LITERAL_INFO:
-            return GetArrayString(TaggedArray::Cast(entry), "AOTLiteralInfo[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalAOTLiteralInfo[");
         case JSType::VTABLE:
-            return GetArrayString(TaggedArray::Cast(entry), "VTable[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalVTable[");
         case JSType::COW_TAGGED_ARRAY:
-            return GetArrayString(TaggedArray::Cast(entry), "COWArray[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalCOWArray[");
         case JSType::HCLASS:
-            return GetString("HiddenClass");
+            return GetString("HiddenClass(NonMovable)");
         case JSType::LINKED_NODE:
             return GetString("LinkedNode");
         case JSType::TRACK_INFO:
@@ -268,7 +269,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::SLICED_STRING:
             return GetString("BaseString");
         case JSType::JS_OBJECT: {
-            CString objName = CString("JSOBJECT(Ctor=");  // Ctor-name
+            CString objName = CString("JSObject");  // Ctor-name
             return GetString(objName);
         }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
@@ -315,13 +316,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Date");
         case JSType::JS_BOUND_FUNCTION:
             return GetString("Bound Function");
-        case JSType::JS_ARRAY: {
-            JSArray *jsArray = JSArray::Cast(entry);
-            CString jsArrayName("JSArray[");
-            jsArrayName.append(ToCString(jsArray->GetLength()));
-            jsArrayName.append("]");
-            return GetString(jsArrayName);
-        }
+        case JSType::JS_ARRAY:
+            return GetString("JSArray");
         case JSType::JS_TYPED_ARRAY:
             return GetString("Typed Array");
         case JSType::JS_INT8_ARRAY:
@@ -667,6 +663,13 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             }
             return node;
         }
+        if (entry.IsJSObject()) {
+            node = GenerateObjectNode(entry, size, isInFinish);
+            if (node == nullptr) {
+                LOG_ECMA(ERROR) << "function node nullptr";
+            }
+            return node;
+        }
         TaggedObject *obj = entry.GetTaggedObject();
         auto *baseClass = obj->GetClass();
         if (baseClass != nullptr) {
@@ -968,7 +971,7 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     if (existNode != nullptr) {
         if (isInFinish) {
-            existNode->SetName(GetString(CString(ParseFunctionName(obj))));
+            existNode->SetName(GetString(ParseFunctionName(obj)));
         }
         existNode->SetLive(true);
         return existNode;
@@ -977,7 +980,34 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("JSFunction"), NodeType::CLOSURE, selfsize,
                                obj);
     if (isInFinish) {
-        node->SetName(GetString(CString(ParseFunctionName(obj))));
+        node->SetName(GetString(ParseFunctionName(obj)));
+    }
+    if (!idExist) {
+        entryIdMap_->InsertId(addr, sequenceId);
+    }
+    entryMap_.InsertEntry(node);
+    InsertNodeUnique(node);
+    return node;
+}
+
+Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish)
+{
+    TaggedObject *obj = entry.GetTaggedObject();
+    Address addr = reinterpret_cast<Address>(obj);
+    Node *existNode = entryMap_.FindEntry(addr);
+    auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+    if (existNode != nullptr) {
+        if (isInFinish) {
+            existNode->SetName(GetString(ParseObjectName(obj)));
+        }
+        existNode->SetLive(true);
+        return existNode;
+    }
+    size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
+    Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("Object"), NodeType::OBJECT, selfsize,
+                               obj);
+    if (isInFinish) {
+        node->SetName(GetString(ParseObjectName(obj)));
     }
     if (!idExist) {
         entryIdMap_->InsertId(addr, sequenceId);
@@ -992,7 +1022,7 @@ void HeapSnapshot::FillEdges()
     size_t length = nodes_.size();
     auto iter = nodes_.begin();
     size_t count = 0;
-    while (++count < length) {
+    while (count++ < length) {
         ASSERT(*iter != nullptr);
         auto entryFrom = *iter;
         auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
@@ -1019,7 +1049,6 @@ void HeapSnapshot::FillEdges()
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
                     Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
                     Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
-                RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
@@ -1061,8 +1090,9 @@ CString *HeapSnapshot::GenerateEdgeName([[maybe_unused]] TaggedObject *from, [[m
     return GetString("[]");  // unAnalysed
 }
 
-std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
+CString HeapSnapshot::ParseFunctionName(TaggedObject *obj)
 {
+    CString result;
     JSFunctionBase *func = JSFunctionBase::Cast(obj);
     Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
@@ -1071,11 +1101,29 @@ std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
-    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
-    if (nameStr.empty()) {
-        return "anonymous";
+    const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
+    const CString &moduleStr = method->GetRecordNameStr();
+
+    if (!moduleStr.empty()) {
+        result.append(moduleStr).append(" ");
     }
-    return nameStr;
+    if (nameStr.empty()) {
+        DebugInfoExtractor *debugExtractor =
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+        if (debugExtractor == nullptr) {
+            return result.append(moduleStr).append(" anonymous");
+        }
+        int32_t line = debugExtractor->GetFristLine(methodId);
+        return result.append(moduleStr).append(" anonymous(line:").append(std::to_string(line)).append(")");
+    }
+    return result.append(nameStr);
+}
+
+const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
+{
+    ASSERT(JSTaggedValue(obj).IsJSObject());
+    JSThread *thread = vm_->GetJSThread();
+    return JSObject::ExtractConstructorAndRecordName(thread, obj);
 }
 
 Node *HeapSnapshot::InsertNodeUnique(Node *node)

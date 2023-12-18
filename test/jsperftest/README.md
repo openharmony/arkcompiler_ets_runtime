@@ -16,9 +16,9 @@
 ```
 
 ## 运行测试
-1) 调用入口：bash run_js_perf_test.sh $js_report_save_path
+1) 调用入口：bash run_js_perf_test.sh $js_report_save_path $openharmony_path
    * js_report_save_path：表示报告输出的目录路径，该路径同时也是历史报告路径
-   * 请在该文件中修改第5行的OPENHARMONY_OUT_PATH变量，将鸿蒙系统out目录的路径补充上，适配你的测试环境。注意是out目录的父目录路径。
+   * openharmony_path:  将鸿蒙系统根目录（out的父目录）的路径
    
 3) 运行生成看护报告说明
     ```bash

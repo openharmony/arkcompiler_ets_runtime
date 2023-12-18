@@ -387,6 +387,30 @@ namespace panda::ecmascript::kungfu {
     V(NewObjectRangeThrowException)                     \
     V(ThrowStackOverflowException)
 
+#define APPEND_JIT_SUFFIX(name, V) \
+    V(name##WithJitProf, name, SlotIDFormat::IMM8)
+
+#define APPEND_JIT_SUFFIX_IMM16(name, V) \
+    V(name##WithJitProf, name, SlotIDFormat::IMM16)
+
+#define ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(V)          \
+    ASM_INTERPRETER_BC_FUNC_HOT_JIT_PROFILER_STUB_LIST(V)     \
+
+#define ASM_INTERPRETER_BC_FUNC_HOT_JIT_PROFILER_STUB_LIST(V) \
+    APPEND_JIT_SUFFIX(HandleJmpImm8, V)                       \
+    APPEND_JIT_SUFFIX_IMM16(HandleJmpImm16, V)                \
+    APPEND_JIT_SUFFIX(HandleJmpImm32, V)                      \
+    APPEND_JIT_SUFFIX(HandleJeqzImm8, V)                      \
+    APPEND_JIT_SUFFIX_IMM16(HandleJeqzImm16, V)               \
+    APPEND_JIT_SUFFIX(HandleJeqzImm32, V)                     \
+    APPEND_JIT_SUFFIX(HandleJnezImm8, V)                      \
+    APPEND_JIT_SUFFIX_IMM16(HandleJnezImm16, V)               \
+    APPEND_JIT_SUFFIX(HandleJnezImm32, V)                     \
+    APPEND_JIT_SUFFIX(HandleReturn, V)                        \
+    APPEND_JIT_SUFFIX(HandleReturnundefined, V)               \
+    APPEND_JIT_SUFFIX(HandleSuspendgeneratorV8, V)            \
+    APPEND_JIT_SUFFIX(HandleAsyncgeneratorresolveV8V8V8, V)
+
 #define APPEND_SUFFIX(name, V) \
     V(name##WithProf, name, SlotIDFormat::IMM8)
 
@@ -548,6 +572,9 @@ public:
 #define DEF_VALID_BC_STUB_ID(name, ...) name,
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
+#define DEF_VALID_BC_STUB_ID(name, ...) name,
+        ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
+#undef DEF_VALID_BC_STUB_ID
         NUM_OF_VALID_STUBS
     };
 
@@ -580,6 +607,9 @@ public:
 #undef DEF_BC_STUB_ID
 #define DEF_BC_STUB_ID(name, ...) ID_##name,
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
+#undef DEF_BC_STUB_ID
+#define DEF_BC_STUB_ID(name, ...) ID_##name,
+        ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
         NUM_OF_STUBS,
         ID_Wide_Start = lastOpcode + 1,
         ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,

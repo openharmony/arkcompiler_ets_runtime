@@ -149,7 +149,6 @@ public:
     GateRef Load(VariableType type, GateRef base, GateRef offset);
     GateRef Load(VariableType type, GateRef base);
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
-    inline void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -758,20 +757,13 @@ public:
     GateRef RemoveTaggedWeakTag(GateRef weak);
     inline GateRef LoadHCIndexFromConstPool(GateRef cachedArray, GateRef cachedLength, GateRef traceId, Label *miss);
     inline GateRef LoadHCIndexInfosFromConstPool(GateRef jsFunc);
-    inline GateRef GetPropertiesCache(GateRef glue);
-    GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key);
-    inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result);
-    GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key);
-    GateRef GetKeyHashCode(GateRef glue, GateRef key);
-    inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
-    inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
-    inline GateRef GetSortedIndex(GateRef attr);
     inline GateRef GetAttrIndex(GateRef index);
     inline GateRef GetAttr(GateRef layoutInfo, GateRef index);
     inline GateRef GetKey(GateRef layoutInfo, GateRef index);
     inline GateRef GetKeyIndex(GateRef index);
-    GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum);
     GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
+    GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
+    GateRef IntToEcmaString(GateRef glue, GateRef number);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

@@ -96,7 +96,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache, bool jsStack)
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;
         ret = static_cast<int>(snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
-            i, offset, file));
+            index, offset, file));
         if (ret <= 0) {
             LOG_ECMA(ERROR) << "Backtrace snprintf_s failed";
             return;

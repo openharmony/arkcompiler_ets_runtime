@@ -23,6 +23,7 @@
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/log.h"
 #include "ecmascript/platform/file.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 void AnFileInfo::Save(const std::string &filename, Triple triple)

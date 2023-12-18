@@ -190,9 +190,9 @@ public:
         sccNode = node;
     }
 
-    int32 GetPuIdx() const
+    PUIdx GetPuIdx() const
     {
-        return (mirFunc != nullptr) ? static_cast<int32>(mirFunc->GetPuidx()) : -1;  // -1 is invalid idx
+        return (mirFunc != nullptr) ? static_cast<int32>(mirFunc->GetPuidx()) : PUIdx(UINT32_MAX);  // invalid idx
     }
 
     const std::string &GetMIRFuncName() const

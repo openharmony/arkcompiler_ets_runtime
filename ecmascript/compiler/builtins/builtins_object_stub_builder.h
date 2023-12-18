@@ -29,14 +29,23 @@ public:
     NO_COPY_SEMANTIC(BuiltinsObjectStubBuilder);
     void GenerateCircuit() override {}
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
+    GateRef CreateArrayFromList(GateRef glue, GateRef elements);
     void ToString(Variable *result, Label *exit, Label *slowPath);
     void Create(Variable *result, Label *exit, Label *slowPath);
     void Assign(Variable *result, Label *exit, Label *slowPath);
     void HasOwnProperty(Variable *result, Label *exit, Label *slowPath);
+    void Keys(Variable *result, Label *exit, Label *slowPath);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);
     GateRef TransProtoWithoutLayout(GateRef hClass, GateRef proto);
+    GateRef GetNumKeysFromLayoutInfo(GateRef object, GateRef end, GateRef layoutInfo);
+    GateRef IsUninitializedProperty(GateRef object, GateRef index, GateRef layoutInfo);
+    GateRef GetNumKeysFromDictionary(GateRef array);
+    GateRef CopyFromEnumCache(GateRef glue, GateRef elements);
+    GateRef GetAllEnumKeys(GateRef glue, GateRef obj);
+    GateRef GetEnumElementKeys(GateRef glue, GateRef obj);
+    void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef object, GateRef layoutInfo);
     void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void NameDictionaryAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source,

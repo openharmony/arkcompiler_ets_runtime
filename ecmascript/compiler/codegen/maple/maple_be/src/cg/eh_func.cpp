@@ -69,7 +69,7 @@ void EHFunc::CollectEHInformation(std::vector<std::pair<LabelIdx, CatchNode *>> 
                     DEBUG_ASSERT(ehType->GetKind() == kTypePointer, "ehType must be kTypePointer.");
                     MIRPtrType *ehPointedTy = static_cast<MIRPtrType *>(ehType);
                     if (ehPointedTy->GetPointedTyIdx() == static_cast<TyIdx>(PTY_void)) {
-                        DEBUG_ASSERT(mirModule->GetThrowableTyIdx() != 0, "throwable type id is 0");
+                        DEBUG_ASSERT(mirModule->GetThrowableTyIdx() != 0u, "throwable type id is 0");
                         const MIRType *throwType =
                             GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirModule->GetThrowableTyIdx());
                         MIRType *pointerType = cgFunc->GetBecommon().BeGetOrCreatePointerType(*throwType);

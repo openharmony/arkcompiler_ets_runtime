@@ -59,7 +59,7 @@ public:
         : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint) {}
     ~BaseDeserializer()
     {
-        data_.reset(nullptr);
+        data_->ResetPosition();
         objectVector_.clear();
         regionVector_.clear();
     }
@@ -157,7 +157,7 @@ private:
 private:
     JSThread *thread_;
     Heap *heap_;
-    std::unique_ptr<SerializeData> data_;
+    SerializeData* data_;
     void *engine_;
     uintptr_t oldSpaceBeginAddr_ {0};
     uintptr_t nonMovableSpaceBeginAddr_ {0};
