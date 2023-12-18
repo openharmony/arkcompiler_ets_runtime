@@ -461,7 +461,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 
         ClearIdleTask();
         // Adjust the old space capacity and global limit for the first partial GC with full mark.
-        // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
+        // Trigger full mark next time if the current survival rate is much less than half the average survival rates.
         AdjustBySurvivalRate(originalNewSpaceSize);
         memController_->StopCalculationAfterGC(gcType);
         if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
@@ -489,7 +489,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     // post gc heap verify
     isVerifying_ = true;
     sweeper_->EnsureAllTaskFinished();
-    failCount = Verification(this).VerifyAll();
+    auto failCount = Verification(this).VerifyAll();
     if (failCount > 0) {
         LOG_GC(FATAL) << "After gc heap corrupted and " << failCount << " corruptions";
     }
