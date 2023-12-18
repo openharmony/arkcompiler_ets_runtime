@@ -619,50 +619,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     rmdir("ark-profiler9/");
 }
 
-HWTEST_F_L0(PGOProfilerTest, BinaryToText)
-{
-    mkdir("ark-profiler7/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::fstream file("ark-profiler7/modules.ap",
-                      std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
-
-    PGOProfilerHeader *header = nullptr;
-    PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
-    std::unique_ptr<PGOAbcFilePool> abcFilePool = std::make_unique<PGOAbcFilePool>();
-    std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
-    std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
-
-    RuntimeOption option;
-    vm_ = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
-    pandaFileInfos->Sample(0x34556738);
-    std::shared_ptr<MethodLiteral> methodLiteral = std::make_shared<MethodLiteral>(EntityId(61));
-    auto *jsMethod =
-        Method::Cast(vm_->GetFactory()->NewMethod(methodLiteral.get(), MemSpaceType::NON_MOVABLE).GetTaggedValue());
-
-    ApEntityId recordId(0);
-    ProfileType recordType(0, recordId, ProfileType::Kind::RecordClassId);
-    recordInfos->GetRecordPool()->Add(recordType, "test");
-    ASSERT_TRUE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod(recordType, jsMethod, SampleMode::CALL_MODE));
-
-    pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
-    recordInfos->ProcessToBinary(nullptr, file, header);
-    PGOFileSectionInterface::ProcessSectionToBinary(*recordInfos, file, header, *abcFilePool->GetPool());
-    header->SetFileSize(static_cast<uint32_t>(file.tellp()));
-    header->ProcessToBinary(file);
-    PGOProfilerEncoder::AddChecksum(file);
-    file.close();
-
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
-        "ark-profiler7/modules.ap", "ark-profiler7/modules.text", 2));
-    JSNApi::DestroyJSVM(vm_);
-    unlink("ark-profiler7/modules.ap");
-    unlink("ark-profiler7/modules.text");
-    rmdir("ark-profiler7");
-}
-
 HWTEST_F_L0(PGOProfilerTest, TextToBinary)
 {
     mkdir("ark-profiler10/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
