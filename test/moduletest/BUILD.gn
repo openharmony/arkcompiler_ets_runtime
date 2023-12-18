@@ -215,6 +215,7 @@ group("ark_asm_test") {
     "container",
     "dataproperty",
     "dateparse",
+    "datetimezone",
     "decodeuricomponent",
     "definefunc",
     "deleteobjproperty",
