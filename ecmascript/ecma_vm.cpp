@@ -759,4 +759,34 @@ CString EcmaVM::GetCurrentModuleName()
     }
     return moduleName;
 }
+
+void EcmaVM::SetHmsModuleList(const std::vector<panda::HmsMap> &list)
+{
+    for (size_t i = 0; i < list.size(); i++) {
+        HmsMap hmsMap = list[i];
+        hmsModuleList_.emplace(hmsMap.originalPath.c_str(), hmsMap);
+    }
+}
+
+CString EcmaVM::GetHmsModule(const CString &module) const
+{
+    auto it = hmsModuleList_.find(module);
+    if (it == hmsModuleList_.end()) {
+        LOG_ECMA(FATAL) << " Get Hms Module failed";
+    }
+    HmsMap hmsMap = it->second;
+    return hmsMap.targetPath.c_str();
+}
+
+bool EcmaVM::IsHmsModule(const CString &moduleStr) const
+{
+    if (hmsModuleList_.empty()) {
+        return false;
+    }
+    auto it = hmsModuleList_.find(moduleStr);
+    if (it == hmsModuleList_.end()) {
+        return false;
+    }
+    return true;
+}
 }  // namespace panda::ecmascript

@@ -81,6 +81,12 @@ struct AlignedPointer;
 }
 }  // namespace ecmascript
 
+struct HmsMap {
+    std::string originalPath;
+    std::string targetPath;
+    uint32_t sinceVersion;
+};
+
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
@@ -1269,6 +1275,7 @@ public:
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list);
 
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);

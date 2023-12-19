@@ -33,6 +33,7 @@
 
 namespace panda {
 class JSNApi;
+struct HmsMap;
 namespace panda_file {
 class File;
 }  // namespace panda_file
@@ -426,6 +427,12 @@ public:
 
     CString GetCurrentModuleName();
 
+    void SetHmsModuleList(const std::vector<panda::HmsMap> &list);
+
+    bool IsHmsModule(const CString &moduleStr) const;
+
+    CString GetHmsModule(const CString &module) const;
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -587,6 +594,7 @@ private:
     CString moduleName_;
     CList<CString> deregisterModuleList_;
     CMap<CString, CString> mockModuleList_;
+    CMap<CString, HmsMap> hmsModuleList_;
 
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
