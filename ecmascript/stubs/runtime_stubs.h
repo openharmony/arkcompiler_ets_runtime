@@ -565,7 +565,8 @@ private:
                                                              const JSHandle<JSTaggedValue> &lexenv,
                                                              const JSHandle<JSTaggedValue> &constpool,
                                                              uint16_t methodId, uint16_t literalId,
-                                                             const JSHandle<JSTaggedValue> &module);
+                                                             const JSHandle<JSTaggedValue> &module,
+                                                             const JSHandle<JSTaggedValue> &length);
     static inline JSTaggedValue RuntimeCreateSharedClass(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
                                                          const JSHandle<JSTaggedValue> &lexenv,
@@ -700,7 +701,9 @@ private:
                                                    const JSHandle<JSTaggedValue> &newTarget, uint16_t firstArgIdx,
                                                    uint16_t length);
     static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
-                                                  uint16_t methodId, const JSHandle<JSTaggedValue> &module);
+                                                  uint16_t methodId, const JSHandle<JSTaggedValue> &module,
+                                                  uint16_t length, const JSHandle<JSTaggedValue> &envHandle,
+                                                  const JSHandle<JSTaggedValue> &homeObject);
     static inline void DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JSFunction> &func,
                                                  const JSHandle<JSTaggedValue> &ihc);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
@@ -714,9 +717,11 @@ private:
                                                                     const JSHandle<JSTaggedValue> &objVal,
                                                                     uint16_t firstArgRegIdx);
     static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                                    const JSHandle<JSTaggedValue> &homeObject);
+                                                    const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
+                                                    const JSHandle<JSTaggedValue> &env);
     static inline JSTaggedValue RuntimeDefineSendableMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                                            const JSHandle<JSTaggedValue> &homeObject);
+                                                            const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
+                                                            const JSHandle<JSTaggedValue> &env);
     static inline JSTaggedValue RuntimeCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &array);

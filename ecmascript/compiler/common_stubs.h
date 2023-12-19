@@ -45,7 +45,8 @@ namespace panda::ecmascript::kungfu {
     V(Dec)                            \
     V(Neg)                            \
     V(Not)                            \
-    V(ToBoolean)                      \
+    V(ToBooleanTrue)                  \
+    V(ToBooleanFalse)                 \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \
@@ -61,7 +62,14 @@ namespace panda::ecmascript::kungfu {
     V(TryLdGlobalByName)              \
     V(TryStGlobalByName)              \
     V(LdGlobalVar)                    \
+    V(LdObjByIndex)                   \
     V(StGlobalVar)                    \
+    V(StObjByIndex)                   \
+    V(StOwnByIndex)                   \
+    V(StOwnByName)                    \
+    V(StOwnByNameWithNameSet)         \
+    V(StOwnByValue)                   \
+    V(StOwnByValueWithNameSet)        \
     V(SetPropertyByValueWithOwn)      \
     V(TryLoadICByName)                \
     V(TryLoadICByValue)               \

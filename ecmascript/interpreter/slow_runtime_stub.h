@@ -142,16 +142,19 @@ public:
     static JSTaggedValue TryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop, JSTaggedValue value);
     static JSTaggedValue StArraySpread(JSThread *thread, JSTaggedValue dst, JSTaggedValue index, JSTaggedValue src);
 
-    static JSTaggedValue DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId, JSTaggedValue module);
-
+    static JSTaggedValue DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId,
+                                    JSTaggedValue module, uint16_t length, JSTaggedValue envHandle,
+                                    JSTaggedValue homeObject);
     static JSTaggedValue GetSuperConstructor(JSThread *thread, JSTaggedValue ctor);
     static JSTaggedValue SuperCall(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget, uint16_t firstVRegIdx,
                                    uint16_t length);
     static JSTaggedValue SuperCallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue newTarget,
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
-    static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
-    static JSTaggedValue DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
+    static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
+                                      uint16_t length, JSTaggedValue env);
+    static JSTaggedValue DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
+                                              uint16_t length, JSTaggedValue env);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
@@ -164,7 +167,8 @@ public:
                                                 JSTaggedValue lexenv);
     static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                JSTaggedValue lexenv, JSTaggedValue constpool,
-                                               uint16_t methodId, uint16_t literalId, JSTaggedValue module);
+                                               uint16_t methodId, uint16_t literalId, JSTaggedValue module,
+                                               JSTaggedValue length);
     static JSTaggedValue CreateSharedClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,
                                            JSTaggedValue constpool, uint16_t methodId, uint16_t literalId,
                                            uint16_t length, JSTaggedValue module);

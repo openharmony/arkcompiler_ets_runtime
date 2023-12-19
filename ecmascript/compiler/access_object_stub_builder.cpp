@@ -418,4 +418,244 @@ GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, cons
     env->SubCfgExit();
     return ret;
 }
+
+GateRef AccessObjectStubBuilder::StOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isHeapObject(env);
+    Label slowPath(env);
+    Label exit(env);
+    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    Label notClassConstructor(env);
+    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Bind(&notClassConstructor);
+    Label notClassPrototype(env);
+    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Bind(&notClassPrototype);
+    {
+        result = SetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), value, true);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex), {receiver, IntToTaggedInt(index), value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StOwnByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isHeapObject(env);
+    Label slowPath(env);
+    Label exit(env);
+    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    Label notClassConstructor(env);
+    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Bind(&notClassConstructor);
+    Label notClassPrototype(env);
+    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Bind(&notClassPrototype);
+    {
+        result = SetPropertyByValue(glue, receiver, key, value, true);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByValue), { receiver, key, value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StOwnByName(GateRef glue, GateRef receiver, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isJSObject(env);
+    Label slowPath(env);
+    Label exit(env);
+    Branch(IsJSObject(receiver), &isJSObject, &slowPath);
+    Bind(&isJSObject);
+    Label notClassConstructor(env);
+    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Bind(&notClassConstructor);
+    Label notClassPrototype(env);
+    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Bind(&notClassPrototype);
+    {
+        result = SetPropertyByName(glue, receiver, key, value, true, True());
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, key, value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StOwnByValueWithNameSet(GateRef glue, GateRef receiver, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isHeapObject(env);
+    Label slowPath(env);
+    Label notClassConstructor(env);
+    Label notClassPrototype(env);
+    Label notHole(env);
+    Label exit(env);
+    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    {
+        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Bind(&notClassConstructor);
+        {
+            Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+            Bind(&notClassPrototype);
+            {
+                result = SetPropertyByValue(glue, receiver, key, value, false);
+                Branch(TaggedIsHole(*result), &slowPath, &notHole);
+                Bind(&notHole);
+                {
+                    Label notexception(env);
+                    Branch(TaggedIsException(*result), &exit, &notexception);
+                    Bind(&notexception);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { value, key });
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByValueWithNameSet), { receiver, key, value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StOwnByNameWithNameSet(GateRef glue, GateRef receiver, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isJSObject(env);
+    Label notJSObject(env);
+    Label notClassConstructor(env);
+    Label notClassPrototype(env);
+    Label notHole(env);
+    Label exit(env);
+    Branch(IsJSObject(receiver), &isJSObject, &notJSObject);
+    Bind(&isJSObject);
+    {
+        Branch(IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
+        Bind(&notClassConstructor);
+        {
+            Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
+            Bind(&notClassPrototype);
+            {
+                result = SetPropertyByName(glue, receiver, key, value, true, True());
+                Branch(TaggedIsHole(*result), &notJSObject, &notHole);
+                Bind(&notHole);
+                {
+                    Label notException(env);
+                    Branch(TaggedIsException(*result), &exit, &notException);
+                    Bind(&notException);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), {value, key});
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&notJSObject);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByNameWithNameSet), { receiver, key, value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StObjByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        result = SetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), value, false);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StObjByIndex), {receiver, IntToTaggedInt(index), value});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::LdObjByIndex(GateRef glue, GateRef receiver, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), Hole());
+    Label fastPath(env);
+    Label slowPath(env);
+    Label exit(env);
+    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        varAcc = GetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), ProfileOperation());
+        Branch(TaggedIsHole(*varAcc), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        GateRef undefined = Undefined();
+        auto args = { receiver, IntToTaggedInt(index), TaggedFalse(), undefined };
+        varAcc = CallRuntime(glue, RTSTUB_ID(LdObjByIndex), args);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *varAcc;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

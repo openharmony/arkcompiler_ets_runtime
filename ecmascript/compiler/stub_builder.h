@@ -666,7 +666,7 @@ public:
     GateRef FastDiv(GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
-    GateRef FastToBoolean(GateRef value);
+    GateRef FastToBoolean(GateRef value, bool flag = true);
 
     // Add SpecialContainer
     GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);

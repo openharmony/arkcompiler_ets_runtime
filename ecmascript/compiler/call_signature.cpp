@@ -197,9 +197,14 @@ DEF_CALL_SIGNATURE(Not)
     UNARY_CALL_SIGNATURE(Not)
 }
 
-DEF_CALL_SIGNATURE(ToBoolean)
+DEF_CALL_SIGNATURE(ToBooleanTrue)
 {
-    UNARY_CALL_SIGNATURE(ToBoolean)
+    UNARY_CALL_SIGNATURE(ToBooleanTrue)
+}
+
+DEF_CALL_SIGNATURE(ToBooleanFalse)
+{
+    UNARY_CALL_SIGNATURE(ToBooleanFalse)
 }
 
 DEF_CALL_SIGNATURE(TypeOf)
@@ -432,6 +437,117 @@ DEF_CALL_SIGNATURE(StGlobalVar)
         VariableType::JS_ANY(),           // value
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StOwnByValue)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StOwnByValue", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StOwnByIndex)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StOwnByIndex", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY()); // hole or undefined
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StOwnByName)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StOwnByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StOwnByValueWithNameSet)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StOwnByValueWithNameSet", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StOwnByNameWithNameSet)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StOwnByNameWithNameSet", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(StObjByIndex)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StObjByIndex", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY()); // hole or undefined
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+DEF_CALL_SIGNATURE(LdObjByIndex)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("LdObjByIndex", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(), // glue
+        VariableType::JS_ANY(), // receiver
+        VariableType::INT32(), // index
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

@@ -4922,18 +4922,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto constpool = GetConstantPool(sp);
         auto module = GetEcmaModule(sp);
-        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module);
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        jsFunc->SetLength(length);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
-        jsFunc->SetLexicalEnv(thread, envHandle);
-
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
-        SET_ACC(JSTaggedValue(jsFunc));
 
+        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module,
+            length, envHandle, currentFunc->GetHomeObject());
+        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+        SET_ACC(JSTaggedValue(jsFunc));
         DISPATCH(DEFINEFUNC_IMM8_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEFUNC_IMM16_ID16_IMM8) {
@@ -4943,18 +4940,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto constpool = GetConstantPool(sp);
         auto module = GetEcmaModule(sp);
-        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module);
-        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
-
-        jsFunc->SetLength(length);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
-        jsFunc->SetLexicalEnv(thread, envHandle);
-
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-        jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
-        SET_ACC(JSTaggedValue(jsFunc));
 
+        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module,
+            length, envHandle, currentFunc->GetHomeObject());
+        JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
+
+        SET_ACC(JSTaggedValue(jsFunc));
         DISPATCH(DEFINEFUNC_IMM16_ID16_IMM8);
     }
     HANDLE_OPCODE(DEFINEMETHOD_IMM8_ID16_IMM8) {
@@ -4970,15 +4964,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetLength(length);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue taggedCurEnv = state->env;
-        result->SetLexicalEnv(thread, taggedCurEnv);
 
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
         SET_ACC(JSTaggedValue(result));
 
         DISPATCH(DEFINEMETHOD_IMM8_ID16_IMM8);
@@ -4996,15 +4987,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetLength(length);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue taggedCurEnv = state->env;
-        result->SetLexicalEnv(thread, taggedCurEnv);
 
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
         SET_ACC(JSTaggedValue(result));
 
         DISPATCH(DEFINEMETHOD_IMM16_ID16_IMM8);
@@ -5023,15 +5011,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue res =
             SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp),
-                                                   methodId, literaId, GetEcmaModule(sp));
+                                                   methodId, literaId, GetEcmaModule(sp), JSTaggedValue(length));
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
-        JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
-
-        cls->SetLexicalEnv(thread, state->env);
-
-        SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
 
         SET_ACC(res);
         DISPATCH(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
@@ -5050,15 +5033,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SAVE_PC();
         JSTaggedValue res =
             SlowRuntimeStub::CreateClassWithBuffer(thread, proto, state->env, GetConstantPool(sp),
-                                                   methodId, literaId, GetEcmaModule(sp));
+                                                   methodId, literaId, GetEcmaModule(sp), JSTaggedValue(length));
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
-        JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
-
-        cls->SetLexicalEnv(thread, state->env);
-
-        SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
 
         SET_ACC(res);
         DISPATCH(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
@@ -5077,16 +5055,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SAVE_PC();
         JSTaggedValue res =
             SlowRuntimeStub::CreateClassWithBuffer(thread, proto, lexenv, GetConstantPool(sp),
-                                                   methodId, methodId + 1, GetEcmaModule(sp));
+                                                   methodId, methodId + 1, GetEcmaModule(sp),
+                                                   JSTaggedValue(length));
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());
-        JSFunction *cls = JSFunction::Cast(res.GetTaggedObject());
-
-        lexenv = GET_VREG_VALUE(v0);  // slow runtime may gc
-        cls->SetLexicalEnv(thread, lexenv);
-
-        SlowRuntimeStub::SetClassConstructorLength(thread, res, JSTaggedValue(length));
 
         SET_ACC(res);
         DISPATCH(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
@@ -7486,15 +7459,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue homeObject = GET_ACC();
-        auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
-
-        result->SetLength(length);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue taggedCurEnv = state->env;
-        result->SetLexicalEnv(thread, taggedCurEnv);
-
+        auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject, length, taggedCurEnv);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
         SET_ACC(JSTaggedValue(result));
 
         DISPATCH(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);

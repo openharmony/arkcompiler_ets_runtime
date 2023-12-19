@@ -1297,14 +1297,16 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> length = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
                                         static_cast<uint16_t>(methodId.GetInt()),
-                                        static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
+                                        static_cast<uint16_t>(literalId.GetInt()),
+                                        module, length).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateSharedClass)
 {
-    RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
+    RUNTIME_STUBS_HEADER(CreateSharedClass);
     JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
@@ -2142,7 +2144,11 @@ DEF_RUNTIME_STUBS(DefineFunc)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue methodId = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    return RuntimeDefinefunc(thread, constpool, static_cast<uint16_t>(methodId.GetInt()), module).GetRawData();
+    uint16_t length = static_cast<uint16_t>(GetArg(argv, argc, 3).GetInt()); // 3: means the third parameter
+    JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 4); // 4: means the fourth parameter
+    JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 5); // 5: means the fifth parameter
+    return RuntimeDefinefunc(thread, constpool, static_cast<uint16_t>(methodId.GetInt()), module,
+        length, env, homeObject).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateRegExpWithLiteral)
@@ -2186,7 +2192,9 @@ DEF_RUNTIME_STUBS(DefineMethod)
     RUNTIME_STUBS_HEADER(DefineMethod);
     JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeDefineMethod(thread, method, homeObject).GetRawData();
+    uint16_t length = static_cast<uint16_t>(GetArg(argv, argc, 2).GetInt()); // 2: means the second parameter
+    JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    return RuntimeDefineMethod(thread, method, homeObject, length, env).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineSendableMethod)
@@ -2194,7 +2202,9 @@ DEF_RUNTIME_STUBS(DefineSendableMethod)
     RUNTIME_STUBS_HEADER(DefineSendableMethod);
     JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeDefineSendableMethod(thread, method, homeObject).GetRawData();
+    uint16_t length = static_cast<uint16_t>(GetArg(argv, argc, 2).GetInt()); // 2: means the second parameter
+    JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    return RuntimeDefineSendableMethod(thread, method, homeObject, length, env).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CallSpread)

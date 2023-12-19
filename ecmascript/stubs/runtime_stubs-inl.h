@@ -844,7 +844,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &lexenv,
                                                          const JSHandle<JSTaggedValue> &constpool,
                                                          uint16_t methodId, uint16_t literalId,
-                                                         const JSHandle<JSTaggedValue> &module)
+                                                         const JSHandle<JSTaggedValue> &module,
+                                                         const JSHandle<JSTaggedValue> &length)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -883,6 +884,11 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    cls->SetLexicalEnv(thread, lexenv.GetTaggedValue());
+    RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), length.GetTaggedValue());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
     return cls.GetTaggedValue();
 }
 
@@ -2066,7 +2072,9 @@ void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JS
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
-                                              uint16_t methodId, const JSHandle<JSTaggedValue> &module)
+                                              uint16_t methodId, const JSHandle<JSTaggedValue> &module,
+                                              uint16_t length, const JSHandle<JSTaggedValue> &envHandle,
+                                              const JSHandle<JSTaggedValue> &homeObject)
 {
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
@@ -2081,6 +2089,10 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
     DefineFuncTryUseAOTHClass(thread, result, ihc);
+
+    result->SetLength(length);
+    result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
+    result->SetHomeObject(thread, homeObject.GetTaggedValue());
 
     return result.GetTaggedValue();
 }
@@ -2204,17 +2216,25 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                                const JSHandle<JSTaggedValue> &homeObject)
+                                                const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
+                                                const JSHandle<JSTaggedValue> &env)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewJSFunction(methodHandle, homeObject).GetTaggedValue();
+    JSHandle<JSFunction> func = factory->NewJSFunction(methodHandle, homeObject);
+    func->SetLength(length);
+    func->SetLexicalEnv(thread, env);
+    return func.GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineSendableMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                                        const JSHandle<JSTaggedValue> &homeObject)
+                                                        const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
+                                                        const JSHandle<JSTaggedValue> &env)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewSFunction(methodHandle, homeObject).GetTaggedValue();
+    JSHandle<JSFunction> func = factory->NewSFunction(methodHandle, homeObject);
+    func->SetLength(length);
+    func->SetLexicalEnv(thread, env);
+    return func.GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
