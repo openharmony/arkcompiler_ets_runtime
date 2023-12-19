@@ -48,3 +48,16 @@ var c = p.next()
 print(c.value, c.done)
 var d = p.next()
 print(d.value, d.done)
+
+function* g1() { yield 1; }
+var iter = g1();
+var gf = iter.__proto__.constructor;
+print(Object.prototype.toString.call(gf));
+
+var GeneratorFunctionPrototype = Object.getPrototypeOf(g1);
+var GeneratorFunction = GeneratorFunctionPrototype.constructor;
+var GeneratorObjectPrototype = GeneratorFunctionPrototype.prototype;
+print(Object.getPrototypeOf(GeneratorFunction));
+var found_property_names = Object.getOwnPropertyNames(GeneratorObjectPrototype);
+found_property_names.sort();
+print(found_property_names);
