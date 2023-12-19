@@ -86,8 +86,7 @@ group("ark_js_moduletest") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-
-    # "helloworld",
+    "helloworld",
     "instanceofic",
     "intl",
     "jsonparser",
@@ -155,10 +154,10 @@ group("ark_js_moduletest") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [
-      "${test}:${test}Action",
-      "${test}:${test}ContextAction",
-    ]
+    deps += [ "${test}:${test}Action" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}ContextAction" ]
+    }
   }
 
   if (!is_debug) {
@@ -246,8 +245,7 @@ group("ark_asm_test") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-
-    # "helloworld",
+    "helloworld",
     "instanceofic",
     "intl",
     "jsonparser",
@@ -298,10 +296,10 @@ group("ark_asm_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [
-      "${test}:${test}AsmAction",
-      "${test}:${test}AsmContextAction",
-    ]
+    deps += [ "${test}:${test}AsmAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AsmContextAction" ]
+    }
   }
 
   if (!is_debug) {
@@ -377,8 +375,7 @@ group("ark_asm_single_step_test") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-
-    # "helloworld",
+    "helloworld",
     "instanceofic",
     "jsonparser",
     "jsonstringifier",
@@ -424,10 +421,10 @@ group("ark_asm_single_step_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [
-      "${test}:${test}AsmSingleStepAction",
-      "${test}:${test}AsmSingleStepContextAction",
-    ]
+    deps += [ "${test}:${test}AsmSingleStepAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AsmSingleStepContextAction" ]
+    }
   }
 
   if (!is_debug) {

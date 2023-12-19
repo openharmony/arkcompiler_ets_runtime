@@ -282,7 +282,7 @@ template("host_moduletest_action") {
   action("${_target_name_}ContextAction") {
     testonly = true
 
-    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_context(${host_toolchain})"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
     deps = [
       ":gen_${_target_name_}_abc",
@@ -303,10 +303,11 @@ template("host_moduletest_action") {
       js_vm_options += " --enable-ark-tools=true"
       js_vm_options += " --enable-force-gc=false"
     }
+    js_vm_options += " --enable-context=true"
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       js_vm_options,
       "--script-args",
@@ -360,6 +361,7 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+    _asm_run_options_ += " --enable-context=true"
 
     args = [
       "--script-file",
@@ -392,7 +394,7 @@ template("host_moduletest_action") {
   action("${_target_name_}AsmContextAction") {
     testonly = true
 
-    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_context(${host_toolchain})"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
     deps = [
       ":gen_${_target_name_}_abc",
@@ -420,7 +422,7 @@ template("host_moduletest_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _asm_run_options_,
       "--script-args",
@@ -502,7 +504,7 @@ template("host_moduletest_action") {
   action("${_target_name_}AsmSingleStepContextAction") {
     testonly = true
 
-    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_context(${host_toolchain})"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
     deps = [
       ":gen_${_target_name_}_abc",
@@ -525,10 +527,11 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+    _asm_run_options_ += " --enable-context=true"
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _asm_run_options_,
       "--script-args",
@@ -791,7 +794,7 @@ template("host_aot_js_test_action") {
   action("${_target_name_}AotContextAction") {
     testonly = true
 
-    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_context(${host_toolchain})"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
     deps = [
@@ -816,10 +819,11 @@ template("host_aot_js_test_action") {
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     _aot_run_options_ += _icu_data_path_options_
+    _aot_run_options_ += " --enable-context=true"
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _aot_run_options_,
       "--script-args",
@@ -1185,7 +1189,7 @@ template("host_aot_test_action") {
 
   action("${_target_name_}AotContextAction") {
     testonly = true
-    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_context(${host_toolchain})"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
     deps = [
@@ -1217,10 +1221,11 @@ template("host_aot_test_action") {
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
     }
+    _aot_run_options_ += " --enable-context=true"
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _aot_run_options_,
       "--script-args",

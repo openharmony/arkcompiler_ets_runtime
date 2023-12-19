@@ -113,6 +113,7 @@ enum CommandValues {
     OPTION_COMPILER_MODULE_METHODS,
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
+    OPTION_ENABLE_CONTEXT,
     OPTION_COMPILER_OPT_TYPE_LOWERING,
     OPTION_COMPILER_OPT_EARLY_ELIMINATION,
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
@@ -901,6 +902,16 @@ public:
         mergeAbc_ = value;
     }
 
+    void SetEnableContext(bool value)
+    {
+        enableContext_ = value;
+    }
+
+    bool IsEnableContext()
+    {
+        return enableContext_;
+    }
+
     void SetEnablePrintExecuteTime(bool value)
     {
         enablePrintExecuteTime_ = value;
@@ -1483,6 +1494,7 @@ private:
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSet_ {0};
+    bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
     bool reportModuleResolvingFailure_ {true};
