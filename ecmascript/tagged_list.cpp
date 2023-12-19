@@ -451,7 +451,7 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
     int beginIndex = 0;
     int endIndex = 0;
     int middleIndex = 0;
-    int compareResult = 0;
+    double compareResult = 0;
     for (int i = 1; i < length; i++) {
         beginIndex = 0;
         endIndex = i;
