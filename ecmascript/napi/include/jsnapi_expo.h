@@ -682,7 +682,7 @@ public:
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
         int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
-    Local<JSValueRef> ConstructorOptimize(const EcmaVM *vm, JSValueRef* argv[], int32_t length);
+    JSValueRef* ConstructorOptimize(const EcmaVM *vm, JSValueRef* argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
     bool Inherit(const EcmaVM *vm, Local<FunctionRef> parent);

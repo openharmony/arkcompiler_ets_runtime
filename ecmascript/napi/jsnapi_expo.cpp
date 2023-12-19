@@ -2175,30 +2175,27 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     return JSNApiHelper::ToLocal<JSValueRef>(resultValue);
 }
 
-Local<JSValueRef> FunctionRef::ConstructorOptimize(const EcmaVM *vm,
+JSValueRef* FunctionRef::ConstructorOptimize(const EcmaVM *vm,
     JSValueRef* argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(func, ERROR);
-    JSHandle<JSTaggedValue> newTarget = func;
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, *JSValueRef::Undefined(vm));
+    LocalScope scope(vm);
+    JSTaggedValue func = *reinterpret_cast<JSTaggedValue*>(this);
+    JSTaggedValue newTarget = func;
+    JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, newTarget, length);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
     for (int32_t i = 0; i < length; i++) {
-        JSTaggedValue arg = JSTaggedValue::Undefined();
-        if (argv[i] != nullptr) {
-            arg = JSNApiHelper::ToJSTaggedValue(argv[i]);
-        }
+        JSTaggedValue arg =
+            argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
         info->SetCallArg(i, arg);
     }
     JSTaggedValue result = JSFunction::ConstructInternal(info);
-
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
-    return JSNApiHelper::ToLocal<JSValueRef>(resultValue);
+    return reinterpret_cast<JSValueRef*>(resultValue.GetAddress());
 }
 
 Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
