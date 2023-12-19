@@ -492,8 +492,8 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
             JSHandle<JSFunction>(thread, JSTaggedValue::Exception()));
     }
 
-    ECMAObject::InitializeExtRefAndOwner(thread->GetEcmaVM(), JSHandle<JSObject>(constructor));
-    ECMAObject::InitializeExtRefAndOwner(thread->GetEcmaVM(), JSHandle<JSObject>(prototype));
+    JSHandle<ECMAObject>::Cast(constructor)->InitializeImmutableField();
+    JSHandle<ECMAObject>::Cast(prototype)->InitializeImmutableField();
     JSObject::SetIntegrityLevel(thread, prototype, IntegrityLevel::FROZEN);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
