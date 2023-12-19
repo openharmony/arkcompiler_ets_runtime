@@ -16,7 +16,7 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("ContainersTest") {
+host_unittest_action("Containers_001_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -26,11 +26,53 @@ host_unittest_action("ContainersTest") {
     "containers_hashmap_test.cpp",
     "containers_hashset_test.cpp",
     "containers_lightweightmap_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Containers_002_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "containers_lightweightset_test.cpp",
     "containers_linked_list_test.cpp",
     "containers_list_test.cpp",
     "containers_plainarray_test.cpp",
     "containers_queue_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Containers_003_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "containers_stack_test.cpp",
     "containers_treemap_test.cpp",
     "containers_treeset_test.cpp",
@@ -55,12 +97,20 @@ group("unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":ContainersTest" ]
+  deps = [
+    ":Containers_001_Test",
+    ":Containers_002_Test",
+    ":Containers_003_Test",
+  ]
 }
 
 group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":ContainersTestAction" ]
+  deps = [
+    ":Containers_001_TestAction",
+    ":Containers_002_TestAction",
+    ":Containers_003_TestAction",
+  ]
 }

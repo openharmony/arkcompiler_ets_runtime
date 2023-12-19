@@ -200,31 +200,6 @@ static Mutex *mutex = new panda::Mutex();
 #define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
 
-#define CHECK_HAS_PENDING_EXCEPTION(vm, returnVal)                                    \
-    do {                                                                                   \
-        if (vm->GetAndFastCheckJSThread()->HasPendingException()) {                        \
-            LOG_ECMA(ERROR) << "pending exception before jsnapi interface called"          \
-                            << ", which is " << __FUNCTION__ << " in line: " << __LINE__;  \
-            LOG_ECMA(ERROR) << panda::ecmascript::previewerTag << "print exception info:"; \
-            JSNApi::PrintExceptionInfo(vm);                                                \
-            return returnVal;                                                              \
-        }                                                                                  \
-    } while (false)
-
-#define CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm) \
-    CHECK_HAS_PENDING_EXCEPTION(vm, JSValueRef::Undefined(vm))
-
-#define CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm)                                \
-    do {                                                                                   \
-        if (vm->GetJSThread()->HasPendingException()) {                                    \
-            LOG_ECMA(ERROR) << "pending exception before jsnapi interface called"          \
-                            << ", which is " << __FUNCTION__ << " in line: " << __LINE__;  \
-            LOG_ECMA(ERROR) << panda::ecmascript::previewerTag << "print exception info:"; \
-            JSNApi::PrintExceptionInfo(vm);                                                \
-            return;                                                                        \
-        }                                                                                  \
-    } while (false)
-
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
 {
@@ -252,8 +227,7 @@ Local<PrimitiveRef> JSValueRef::False(const EcmaVM *vm)
 
 Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     if (IsUndefined() || IsNull()) {
         return Undefined(vm);
     }
@@ -265,8 +239,7 @@ Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
 
 Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (!obj->IsString()) {
@@ -278,8 +251,7 @@ Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 
 Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -293,8 +265,7 @@ bool JSValueRef::BooleaValue()
 
 int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(tagged, ERROR);
     if (tagged->IsNumber()) {
@@ -311,8 +282,7 @@ int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 
 uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     uint32_t number = JSTaggedValue::ToUint32(thread, JSNApiHelper::ToJSHandle(this));
     RETURN_VALUE_IF_ABRUPT(thread, 0);
     return number;
@@ -320,8 +290,7 @@ uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 
 int32_t JSValueRef::Int32Value(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     int32_t number = JSTaggedValue::ToInt32(thread, JSNApiHelper::ToJSHandle(this));
     RETURN_VALUE_IF_ABRUPT(thread, 0);
     return number;
@@ -329,8 +298,7 @@ int32_t JSValueRef::Int32Value(const EcmaVM *vm)
 
 Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> booleanObj(thread, JSTaggedValue(obj->ToBoolean()));
@@ -339,8 +307,7 @@ Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
 
 Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> bigIntObj(thread, JSTaggedValue::ToBigInt(thread, obj));
@@ -349,8 +316,7 @@ Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
 
 Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue::ToNumber(thread, obj));
@@ -360,8 +326,7 @@ Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)
 
 bool JSValueRef::IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> xValue = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(xValue, ERROR);
     JSHandle<JSTaggedValue> yValue = JSNApiHelper::ToJSHandle(value);
@@ -370,16 +335,14 @@ bool JSValueRef::IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value)
 
 Local<StringRef> JSValueRef::Typeof(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSTaggedValue value = FastRuntimeStub::FastTypeOf(thread, JSNApiHelper::ToJSTaggedValue(this));
     return JSNApiHelper::ToLocal<StringRef>(JSHandle<JSTaggedValue>(thread, value));
 }
 
 bool JSValueRef::InstanceOf(const EcmaVM *vm, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> origin = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(origin, ERROR);
     JSHandle<JSTaggedValue> target = JSNApiHelper::ToJSHandle(value);
@@ -388,6 +351,8 @@ bool JSValueRef::InstanceOf(const EcmaVM *vm, Local<JSValueRef> value)
     return result;
 }
 
+// Omit exception check for JSValueRef::IsXxx because ark calls here may not
+// cause side effect even pending exception exists.
 bool JSValueRef::IsUndefined()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsUndefined();
@@ -455,14 +420,12 @@ bool JSValueRef::IsObject()
 
 bool JSValueRef::IsArray(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_CHECK(vm);
     return JSNApiHelper::ToJSTaggedValue(this).IsArray(thread);
 }
 
-bool JSValueRef::IsJSArray(const EcmaVM *vm)
+bool JSValueRef::IsJSArray([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
     return JSNApiHelper::ToJSTaggedValue(this).IsJSArray();
 }
 
@@ -676,26 +639,17 @@ bool JSValueRef::IsJSPrimitiveSymbol()
 
 bool JSValueRef::IsGeneratorObject()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsGeneratorObject();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorObject();
 }
 
 bool JSValueRef::IsModuleNamespaceObject()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsModuleNamespace();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
 }
 
 bool JSValueRef::IsSharedArrayBuffer()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsSharedArrayBuffer();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsSharedArrayBuffer();
 }
 
 bool JSValueRef::IsJSLocale()
@@ -740,40 +694,27 @@ bool JSValueRef::IsJSListFormat()
 
 bool JSValueRef::IsAsyncGeneratorObject()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    return obj->IsAsyncGeneratorObject();
+    return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorObject();
 }
 
 bool JSValueRef::IsAsyncFunction()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsJSAsyncFunction();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
 }
 
 bool JSValueRef::IsArgumentsObject()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsArguments();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsArguments();
 }
 
 bool JSValueRef::IsGeneratorFunction()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    bool rst = obj->IsGeneratorFunction();
-    return rst;
+    return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorFunction();
 }
 
 bool JSValueRef::IsAsyncGeneratorFunction()
 {
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(obj, ERROR);
-    return obj->IsAsyncGeneratorFunction();
+    return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorFunction();
 }
 
 bool JSValueRef::IsArrayList()
@@ -855,8 +796,7 @@ bool JSValueRef::IsVector()
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
 
     JSHandle<JSArrayBuffer> buffer(JSNApiHelper::ToJSHandle(arrayBuffer));
@@ -867,22 +807,21 @@ Local<DataViewRef> DataViewRef::New(
 
 uint32_t DataViewRef::ByteLength()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(dataView, FATAL);
     return dataView->GetByteLength();
 }
 
 uint32_t DataViewRef::ByteOffset()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(dataView, FATAL);
     return dataView->GetByteOffset();
 }
 
 Local<ArrayBufferRef> DataViewRef::GetArrayBuffer(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(dataView, FATAL);
     JSHandle<JSTaggedValue> arrayBuffer(thread, dataView->GetViewedArrayBuffer());
@@ -893,12 +832,12 @@ Local<ArrayBufferRef> DataViewRef::GetArrayBuffer(const EcmaVM *vm)
 // ----------------------------------- PritimitiveRef ---------------------------------------
 Local<JSValueRef> PrimitiveRef::GetValue(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (obj->IsJSPrimitiveRef()) {
         JSTaggedValue primitiveValue = JSPrimitiveRef::Cast(obj->GetTaggedObject())->GetValue();
-        JSHandle<JSTaggedValue> value(vm->GetJSThread(), primitiveValue);
+        JSHandle<JSTaggedValue> value(thread, primitiveValue);
         return JSNApiHelper::ToLocal<JSValueRef>(value);
     }
     return Local<JSValueRef>();
@@ -907,8 +846,9 @@ Local<JSValueRef> PrimitiveRef::GetValue(const EcmaVM *vm)
 // ----------------------------------- NumberRef ---------------------------------------
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     if (std::isnan(input)) {
         input = ecmascript::base::NAN_VALUE;
     }
@@ -918,24 +858,27 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, double input)
 
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, int32_t input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, uint32_t input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
 
 Local<NumberRef> NumberRef::New(const EcmaVM *vm, int64_t input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<NumberRef>(number);
 }
@@ -948,25 +891,23 @@ double NumberRef::Value()
 // ----------------------------------- MapRef ---------------------------------------
 Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(map, FATAL);
-    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(),
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
                 map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
 }
 
 void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(map, ERROR);
-    JSMap::Set(vm->GetJSThread(), map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
+
+    JSMap::Set(thread, map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
 }
 
 Local<MapRef> MapRef::New(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> constructor = env->GetBuiltinsMapFunction();
@@ -980,48 +921,46 @@ Local<MapRef> MapRef::New(const EcmaVM *vm)
 
 int32_t MapRef::GetSize()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(map, FATAL);
     return map->GetSize();
 }
 
 int32_t MapRef::GetTotalElements()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(map, FATAL);
     return static_cast<int>((map->GetSize())) +
         LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetKey(entry)));
 }
 
 Local<JSValueRef> MapRef::GetValue(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetValue(entry)));
 }
 
 // ----------------------------------- MapIteratorRef ---------------------------------------
 int32_t MapIteratorRef::GetIndex()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, -1);
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(jsMapIter, FATAL);
     return jsMapIter->GetNextIndex();
 }
 
 Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsMapIter, FATAL);
     IterationKind iterKind = jsMapIter->GetIterationKind();
@@ -1045,14 +984,14 @@ Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 // ----------------------------------- SetIteratorRef ---------------------------------------
 int32_t SetIteratorRef::GetIndex()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, -1);
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(jsSetIter, FATAL);
     return jsSetIter->GetNextIndex();
 }
 
 Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsSetIter, FATAL);
     IterationKind iterKind = jsSetIter->GetIterationKind();
@@ -1076,9 +1015,8 @@ Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
 // ---------------------------------- Buffer -----------------------------------
 Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSArrayBuffer> arrayBuffer = JSHandle<JSArrayBuffer>::Cast(factory->NewJSArrayBuffer(length));
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current =
@@ -1087,7 +1025,7 @@ Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> currentTaggedValue(current);
     JSHandle<JSTaggedValue> obj(arrayBuffer);
-    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, currentTaggedValue);
+    bool result = JSTaggedValue::SetProperty(thread, obj, keyValue, currentTaggedValue);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     if (!result) {
         LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
@@ -1098,9 +1036,8 @@ Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
 Local<BufferRef> BufferRef::New(
     const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSArrayBuffer> arrayBuffer =
         factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::DeleteEntryPoint>(deleter), data);
 
@@ -1111,7 +1048,7 @@ Local<BufferRef> BufferRef::New(
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> currentTaggedValue(current);
     JSHandle<JSTaggedValue> obj(arrayBuffer);
-    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, currentTaggedValue);
+    bool result = JSTaggedValue::SetProperty(thread, obj, keyValue, currentTaggedValue);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     if (!result) {
         LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
@@ -1121,15 +1058,15 @@ Local<BufferRef> BufferRef::New(
 
 int32_t BufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(arrayBuffer, FATAL);
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
 void *BufferRef::GetBuffer()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(arrayBuffer, FATAL);
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
         return nullptr;
@@ -1174,8 +1111,7 @@ JSTaggedValue BufferRef::BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo 
 // ---------------------------------- Promise --------------------------------------
 Local<PromiseCapabilityRef> PromiseCapabilityRef::New(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> constructor(globalEnv->GetPromiseFunction());
     JSHandle<JSTaggedValue> capability(JSPromise::NewPromiseCapability(thread, constructor));
@@ -1184,8 +1120,7 @@ Local<PromiseCapabilityRef> PromiseCapabilityRef::New(const EcmaVM *vm)
 
 Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, capacity->GetPromise()));
@@ -1193,8 +1128,7 @@ Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
 
 bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(value);
@@ -1217,8 +1151,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 
 bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(reason);
@@ -1243,34 +1176,38 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 // ----------------------------------- SymbolRef -----------------------------------------
 Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
     if (!description.IsEmpty()) {
         JSTaggedValue desc = JSNApiHelper::ToJSTaggedValue(*description);
-        symbol->SetDescription(vm->GetJSThread(), desc);
+        symbol->SetDescription(thread, desc);
     }
     return JSNApiHelper::ToLocal<SymbolRef>(JSHandle<JSTaggedValue>(symbol));
 }
 
 Local<StringRef> SymbolRef::GetDescription(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSTaggedValue description = JSSymbol::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetDescription();
+    CROSS_THREAD_CHECK(vm);
+    JSTaggedValue description = JSSymbol::Cast(
+        JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetDescription();
     if (!description.IsString()) {
-        auto constants = vm->GetJSThread()->GlobalConstants();
+        auto constants = thread->GlobalConstants();
         return JSNApiHelper::ToLocal<StringRef>(constants->GetHandledEmptyString());
     }
-    JSHandle<JSTaggedValue> descriptionHandle(vm->GetJSThread(), description);
+    JSHandle<JSTaggedValue> descriptionHandle(thread, description);
     return JSNApiHelper::ToLocal<StringRef>(descriptionHandle);
 }
 
 // ----------------------------------- BooleanRef ---------------------------------------
-Local<BooleanRef> BooleanRef::New(const EcmaVM *vm, bool input)
+Local<BooleanRef> BooleanRef::New(const EcmaVM *vm, bool value)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
-    JSHandle<JSTaggedValue> boolean(thread, JSTaggedValue(input));
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    JSHandle<JSTaggedValue> boolean(thread, JSTaggedValue(value));
     return JSNApiHelper::ToLocal<BooleanRef>(boolean);
 }
 
@@ -1282,6 +1219,9 @@ bool BooleanRef::Value()
 // ----------------------------------- StringRef ----------------------------------------
 Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int length)
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     ObjectFactory *factory = vm->GetFactory();
     if (length < 0) {
         JSHandle<JSTaggedValue> current(factory->NewFromUtf8(utf8));
@@ -1293,6 +1233,9 @@ Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int 
 
 Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length)
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     ObjectFactory *factory = vm->GetFactory();
     if (length < 0) {
         JSHandle<JSTaggedValue> current(factory->NewFromUtf16(utf16));
@@ -1314,7 +1257,6 @@ uint32_t StringRef::Length()
 
 int32_t StringRef::Utf8Length(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
     JSHandle<EcmaString> strHandle(vm->GetJSThread(), EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this)));
     return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length();
 }
@@ -1339,7 +1281,8 @@ int StringRef::WriteLatin1(char *buffer, int length)
 
 Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
 {
-    JSHandle<JSTaggedValue> napiWapperString = vm->GetJSThread()->GlobalConstants()->GetHandledNapiWrapperString();
+    CROSS_THREAD_CHECK(vm);
+    JSHandle<JSTaggedValue> napiWapperString = thread->GlobalConstants()->GetHandledNapiWrapperString();
     return JSNApiHelper::ToLocal<StringRef>(napiWapperString);
 }
 
@@ -1371,8 +1314,9 @@ void* PromiseRejectInfo::GetData() const
 // ----------------------------------- BigIntRef ---------------------------------------
 Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, uint64_t input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<BigInt> big = BigInt::Uint64ToBigInt(thread, input);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<BigIntRef>(bigint);
@@ -1380,8 +1324,9 @@ Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, uint64_t input)
 
 Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, int64_t input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<BigInt> big = BigInt::Int64ToBigInt(thread, input);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<BigIntRef>(bigint);
@@ -1389,29 +1334,32 @@ Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, int64_t input)
 
 Local<JSValueRef> BigIntRef::CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<BigInt> big = BigInt::CreateBigWords(thread, sign, size, words);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<JSValueRef>(bigint);
 }
 
-void BigIntRef::BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless)
+void BigIntRef::BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(bigintVal, ERROR);
-    BigInt::BigIntToInt64(thread, bigintVal, cValue, lossless);
+    BigInt::BigIntToInt64(thread, bigintVal, value, lossless);
 }
 
-void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossless)
+void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(bigintVal, ERROR);
-    BigInt::BigIntToUint64(thread, bigintVal, cValue, lossless);
+    BigInt::BigIntToUint64(thread, bigintVal, value, lossless);
 }
 
 void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
@@ -1484,16 +1432,18 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
 // ----------------------------------- IntegerRef ---------------------------------------
 Local<IntegerRef> IntegerRef::New(const EcmaVM *vm, int input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> integer(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<IntegerRef>(integer);
 }
 
 Local<IntegerRef> IntegerRef::NewFromUnsigned(const EcmaVM *vm, unsigned int input)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
     JSHandle<JSTaggedValue> integer(thread, JSTaggedValue(input));
     return JSNApiHelper::ToLocal<IntegerRef>(integer);
 }
@@ -1506,7 +1456,7 @@ int IntegerRef::Value()
 // ----------------------------------- ObjectRef ----------------------------------------
 Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
     JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
@@ -1518,7 +1468,7 @@ Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyC
                                               const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
     JSHandle<JSTaggedValue> obj;
     auto CreateObjImpl = [vm, propertyCount, keys, attributes] (uintptr_t head) -> JSHandle<JSTaggedValue> {
@@ -1543,26 +1493,25 @@ Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyC
         obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
         free(desc);
     }
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
 }
 
 Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount,
                                                    const char **keys, const Local<JSValueRef> *values)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> obj = factory->CreateJSObjectWithNamedProperties(propertyCount, keys, values);
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
 }
 
 Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
                                                Local<FunctionRef> getter, Local<FunctionRef> setter)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> getterValue = JSNApiHelper::ToJSHandle(getter);
     JSHandle<JSTaggedValue> setterValue = JSNApiHelper::ToJSHandle(setter);
     JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
@@ -1573,7 +1522,7 @@ Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,
 
 bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
@@ -1587,13 +1536,12 @@ bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePoint
 
 bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
-    JSThread *thread = vm->GetJSThread();
     if (!obj->IsHeapObject()) {
         bool result = JSTaggedValue::SetProperty(thread, obj, keyValue, valueValue);
         RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1608,12 +1556,11 @@ bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> v
 
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
-    JSThread *thread = vm->GetJSThread();
     if (!obj->IsHeapObject()) {
         bool result = JSTaggedValue::SetProperty(thread, obj, key, valueValue);
         RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1628,9 +1575,8 @@ bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
     Local<FunctionRef> setter, PropertyAttribute attribute)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> getterValue = JSNApiHelper::ToJSHandle(getter);
     JSHandle<JSTaggedValue> setterValue = JSNApiHelper::ToJSHandle(setter);
     PropertyDescriptor desc(thread, attribute.IsWritable(), attribute.IsEnumerable(), attribute.IsConfigurable());
@@ -1647,9 +1593,8 @@ bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Loc
 
 Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
@@ -1666,9 +1611,8 @@ Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 
 Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, int32_t key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (!obj->IsHeapObject()) {
@@ -1683,8 +1627,7 @@ Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, int32_t key)
 
 bool ObjectRef::GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute &property)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
@@ -1715,8 +1658,7 @@ bool ObjectRef::GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
 
 Local<ArrayRef> ObjectRef::GetOwnPropertyNames(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSTaggedValue::GetOwnPropertyKeys(thread, obj));
@@ -1729,8 +1671,7 @@ Local<ArrayRef> ObjectRef::GetAllPropertyNames(const EcmaVM *vm, uint32_t filter
 {
     // This interface is only used by napi.
     // This interface currently only supports normal objects.
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSTaggedValue::GetAllPropertyKeys(thread, obj, filter));
@@ -1741,8 +1682,7 @@ Local<ArrayRef> ObjectRef::GetAllPropertyNames(const EcmaVM *vm, uint32_t filter
 
 Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSObject::EnumerableOwnNames(thread, obj));
@@ -1753,8 +1693,7 @@ Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
 
 Local<JSValueRef> ObjectRef::GetPrototype(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> prototype(thread, JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(object)));
@@ -1764,7 +1703,7 @@ Local<JSValueRef> ObjectRef::GetPrototype(const EcmaVM *vm)
 
 bool ObjectRef::SetPrototype(const EcmaVM *vm, Local<ObjectRef> prototype)
 {
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
     JSHandle<JSObject> proto(JSNApiHelper::ToJSHandle(prototype));
     bool result = JSTaggedValue::SetPrototype(thread, JSHandle<JSTaggedValue>(object), JSHandle<JSTaggedValue>(proto));
@@ -1774,8 +1713,7 @@ bool ObjectRef::SetPrototype(const EcmaVM *vm, Local<ObjectRef> prototype)
 
 bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute attribute)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
@@ -1788,8 +1726,7 @@ bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
 
 bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
@@ -1800,8 +1737,7 @@ bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 
 bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     bool result = JSTaggedValue::HasProperty(thread, object, key);
@@ -1811,8 +1747,7 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
 
 bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
@@ -1823,8 +1758,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
 
 bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
@@ -1835,9 +1769,8 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
 
 Local<JSValueRef> ObjectRef::Freeze(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSObject> obj(object);
@@ -1860,9 +1793,8 @@ Local<JSValueRef> ObjectRef::Freeze(const EcmaVM *vm)
 
 Local<JSValueRef> ObjectRef::Seal(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSObject> obj(object);
@@ -1885,37 +1817,45 @@ Local<JSValueRef> ObjectRef::Seal(const EcmaVM *vm)
 
 void ObjectRef::SetNativePointerFieldCount(int32_t count)
 {
+    // ObjectRef::New may return special value if exception occurs.
+    // So we need do special value check before use it.
+    DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(object, FATAL);
     object->SetNativePointerFieldCount(count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount()
 {
+    // ObjectRef::New may return special value if exception occurs.
+    // So we need do special value check before use it.
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(object, FATAL);
     return object->GetNativePointerFieldCount();
 }
 
 void *ObjectRef::GetNativePointerField(int32_t index)
 {
+    // ObjectRef::New may return special value if exception occurs.
+    // So we need do special value check before use it.
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(object, FATAL);
     return object->GetNativePointerField(index);
 }
 
 void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
     NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
+    // ObjectRef::New may return special value if exception occurs.
+    // So we need do special value check before use it.
+    DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(object, FATAL);
     object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
 Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, nullptr, nullptr,
         false, nativeBindingsize);
@@ -1925,7 +1865,7 @@ Local<NativePointerRef> NativePointerRef::New(const EcmaVM *vm, void *nativePoin
 Local<NativePointerRef> NativePointerRef::New(
     const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data,
         false, nativeBindingsize);
@@ -1934,15 +1874,15 @@ Local<NativePointerRef> NativePointerRef::New(
 
 void *NativePointerRef::Value()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSTaggedValue> nativePointer = JSNApiHelper::ToJSHandle(this);
-    LOG_IF_SPECIAL(nativePointer, FATAL);
     return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
 }
 
 // ---------------------------------- Buffer -----------------------------------
 Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSArrayBuffer> arrayBuffer = factory->NewJSArrayBuffer(length);
     return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
@@ -1951,7 +1891,7 @@ Local<ArrayBufferRef> ArrayBufferRef::New(const EcmaVM *vm, int32_t length)
 Local<ArrayBufferRef> ArrayBufferRef::New(
     const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSArrayBuffer> arrayBuffer =
         factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::DeleteEntryPoint>(deleter), data);
@@ -1960,7 +1900,7 @@ Local<ArrayBufferRef> ArrayBufferRef::New(
 
 int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(arrayBuffer, FATAL);
     return arrayBuffer->GetArrayBufferByteLength();
@@ -1968,6 +1908,7 @@ int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 
 void *ArrayBufferRef::GetBuffer()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(arrayBuffer, FATAL);
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
@@ -1979,13 +1920,14 @@ void *ArrayBufferRef::GetBuffer()
 
 void ArrayBufferRef::Detach(const EcmaVM *vm)
 {
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     arrayBuffer->Detach(thread);
 }
 
 bool ArrayBufferRef::IsDetach()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->IsDetach();
 }
@@ -1993,8 +1935,7 @@ bool ArrayBufferRef::IsDetach()
 // ---------------------------------- DateRef -----------------------------------
 Local<DateRef> DateRef::New(const EcmaVM *vm, double time)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
     JSHandle<JSFunction> dateFunction(globalEnv->GetDateFunction());
@@ -2005,8 +1946,7 @@ Local<DateRef> DateRef::New(const EcmaVM *vm, double time)
 
 Local<StringRef> DateRef::ToString(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(date, ERROR);
     JSTaggedValue dateStr = date->ToString(thread);
@@ -2020,8 +1960,8 @@ Local<StringRef> DateRef::ToString(const EcmaVM *vm)
 
 double DateRef::GetTime()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0.0);
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(date, ERROR);
     if (!date->IsDate()) {
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
@@ -2031,7 +1971,7 @@ double DateRef::GetTime()
 // ---------------------------------- TypedArray -----------------------------------
 uint32_t TypedArrayRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteLength();
@@ -2039,7 +1979,7 @@ uint32_t TypedArrayRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 
 uint32_t TypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteOffset();
@@ -2047,7 +1987,7 @@ uint32_t TypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm)
 
 uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetArrayLength();
@@ -2055,8 +1995,7 @@ uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
 
 Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typeArray, ERROR);
     JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
@@ -2067,8 +2006,7 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
@@ -2080,8 +2018,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
@@ -2092,7 +2029,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeF
 
 static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
 {
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_CHECK(vm);
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -2110,9 +2047,8 @@ static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callN
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
@@ -2128,9 +2064,8 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc,
     Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
@@ -2147,10 +2082,9 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    JSThread *thread = vm->GetJSThread();
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);
     }
@@ -2179,10 +2113,9 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     JSValueRef *const argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, *JSValueRef::Undefined(vm));
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, *JSValueRef::Undefined(vm));
     JSTaggedValue result;
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    JSThread *thread = vm->GetJSThread();
     ASSERT(IsFunction()); // IsFunction check has been done in napi.
     {
         LocalScope scope(vm);
@@ -2219,9 +2152,8 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
-    JSThread *thread = vm->GetJSThread();
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);
     }
@@ -2247,8 +2179,7 @@ Local<JSValueRef> FunctionRef::ConstructorOptimize(const EcmaVM *vm,
     JSValueRef* argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(func, ERROR);
     JSHandle<JSTaggedValue> newTarget = func;
@@ -2272,8 +2203,7 @@ Local<JSValueRef> FunctionRef::ConstructorOptimize(const EcmaVM *vm,
 
 Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(func, FATAL);
     JSHandle<JSTaggedValue> prototype(thread, JSHandle<JSFunction>(func)->GetFunctionPrototype());
@@ -2282,9 +2212,8 @@ Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
 
 bool FunctionRef::Inherit(const EcmaVM *vm, Local<FunctionRef> parent)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> parentValue = JSNApiHelper::ToJSHandle(parent);
     JSHandle<JSObject> parentHandle = JSHandle<JSObject>::Cast(parentValue);
     JSHandle<JSObject> thisHandle = JSHandle<JSObject>::Cast(JSNApiHelper::ToJSHandle(this));
@@ -2302,9 +2231,8 @@ bool FunctionRef::Inherit(const EcmaVM *vm, Local<FunctionRef> parent)
 
 void FunctionRef::SetName(const EcmaVM *vm, Local<StringRef> name)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     [[maybe_unused]] LocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSFunction *func = JSFunction::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject());
     JSTaggedValue key = JSNApiHelper::ToJSTaggedValue(*name);
     JSFunction::SetFunctionNameNoPrefix(thread, func, key);
@@ -2312,9 +2240,8 @@ void FunctionRef::SetName(const EcmaVM *vm, Local<StringRef> name)
 
 Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<JSTaggedValue> name = JSFunctionBase::GetFunctionName(thread, func);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -2323,9 +2250,8 @@ Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
 
 Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     EscapeLocalScope scope(vm);
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
@@ -2359,8 +2285,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
 
 bool FunctionRef::IsNative(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method(thread, func->GetMethod());
     return method->IsNativeWithCallField();
@@ -2368,8 +2293,7 @@ bool FunctionRef::IsNative(const EcmaVM *vm)
 
 void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool callNapi)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
     function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
@@ -2378,8 +2302,7 @@ void FunctionRef::SetData(const EcmaVM *vm, void *data, Deleter deleter, bool ca
 
 void* FunctionRef::GetData(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
     if (!function->IsCallNapi()) {
@@ -2396,8 +2319,7 @@ void* FunctionRef::GetData(const EcmaVM *vm)
 // ----------------------------------- ArrayRef ----------------------------------------
 Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSTaggedNumber arrayLen(length);
     JSHandle<JSTaggedValue> array = JSArray::ArrayCreate(thread, arrayLen);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -2406,14 +2328,13 @@ Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
 
 uint32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     return JSArray::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetArrayLength();
 }
 
 Local<JSValueRef> ArrayRef::GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(obj);
     JSHandle<JSTaggedValue> result = JSArray::FastGetPropertyByValue(thread, object, index);
     return JSNApiHelper::ToLocal<JSValueRef>(result);
@@ -2421,8 +2342,7 @@ Local<JSValueRef> ArrayRef::GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, 
 
 bool ArrayRef::SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> objectHandle = JSNApiHelper::ToJSHandle(obj);
     JSHandle<JSTaggedValue> valueHandle = JSNApiHelper::ToJSHandle(value);
     return JSArray::FastSetPropertyByValue(thread, objectHandle, index, valueHandle);
@@ -2433,7 +2353,6 @@ bool ArrayRef::SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t inde
 #define EXCEPTION_ERROR_NEW(name, type)                                                     \
     Local<JSValueRef> Exception::name(const EcmaVM *vm, Local<StringRef> message)           \
     {                                                                                       \
-        CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);                                   \
         JSThread *thread = vm->GetJSThread();                                               \
         if (thread->HasPendingException()) {                                                \
             thread->ClearException();                                                       \
@@ -2500,9 +2419,8 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
 // ---------------------------------------JSNApi-------------------------------------------
 PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, PatchErrorCode::INTERNAL_ERROR);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, PatchErrorCode::INTERNAL_ERROR);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-    JSThread *thread = vm->GetJSThread();
     return quickFixManager->LoadPatch(thread, patchFileName, baseFileName);
 }
 
@@ -2510,18 +2428,16 @@ PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm,
                                  const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
                                  const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, PatchErrorCode::INTERNAL_ERROR);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, PatchErrorCode::INTERNAL_ERROR);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-    JSThread *thread = vm->GetJSThread();
     return quickFixManager->LoadPatch(
         thread, patchFileName, patchBuffer, patchSize, baseFileName, baseBuffer, baseSize);
 }
 
 PatchErrorCode JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, PatchErrorCode::INTERNAL_ERROR);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, PatchErrorCode::INTERNAL_ERROR);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-    JSThread *thread = vm->GetJSThread();
     return quickFixManager->UnloadPatch(thread, patchFileName);
 }
 
@@ -2533,8 +2449,8 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
     if (exception.IsEmpty()) {
         return false;
     }
+    CROSS_THREAD_CHECK(vm);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-    JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> exceptionInfo = JSNApiHelper::ToJSHandle(exception);
     return quickFixManager->IsQuickFixCausedException(thread, exceptionInfo, patchFileName);
 }
@@ -2547,7 +2463,7 @@ void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, std::function<bool(std::strin
                         void **patchBuffer,
                         size_t &patchSize)> callBack)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_CHECK(vm);
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     quickFixManager->RegisterQuickFixQueryFunc(callBack);
 }
@@ -2593,7 +2509,7 @@ bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *da
 
 bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, void *taskInfo)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
@@ -2601,15 +2517,13 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(ERROR) << "Function is not concurrent";
         return false;
     }
-    ecmascript::JSThread *thread = vm->GetJSThread();
     transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
     return true;
 }
 
 void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
-    auto thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     ecmascript::FrameIterator it(current, thread);
     for (; !it.Done(); it.Advance<ecmascript::GCVisitedFlag::VISITED>()) {
@@ -2692,11 +2606,6 @@ bool JSNApi::IsProfiling(EcmaVM *vm)
 void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
 {
     const_cast<EcmaVM*>(vm)->SetProfilerState(value);
-}
-
-void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
-{
-    vm->SetSourceMapCallback(callback);
 }
 
 void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
@@ -2871,8 +2780,8 @@ void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableEr
 
 void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
 {
-    if (vm->GetJSThread() != nullptr && vm->IsInitialized()) {
-        CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_CHECK(vm);
+    if (thread != nullptr && vm->IsInitialized()) {
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
                 vm->CollectGarbage(vm->GetHeap()->SelectGCType(), ecmascript::GCReason::EXTERNAL_TRIGGER);
@@ -2930,7 +2839,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
         return false;
@@ -2970,7 +2879,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
         DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
@@ -2996,7 +2905,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (!handle.IsValid()) {
         LOG_ECMA(ERROR) << "[StartDebuggerForOldProcess] Get library handle fail: " << option.libraryPath;
@@ -3025,7 +2934,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
         DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
@@ -3094,7 +3003,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
@@ -3149,7 +3058,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
 
@@ -3169,7 +3078,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     if (vm == nullptr) {
         return false;
     }
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
 
     OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
@@ -3201,7 +3110,6 @@ bool JSNApi::StopDebugger(uint32_t tid)
 
     reinterpret_cast<StopOldDebug>(sym.Value())(tid, "PandaDebugger");
 
-    jsDebuggerManager->SetDebugMode(false);
     return true;
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
@@ -3212,7 +3120,7 @@ bool JSNApi::StopDebugger(uint32_t tid)
 bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
 #else
     return false;
@@ -3222,7 +3130,7 @@ bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     vm->GetJsDebuggerManager()->GetNotificationManager()->NativeCallingEvent(nativeAddress);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
@@ -3232,7 +3140,7 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
@@ -3242,7 +3150,7 @@ void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
 void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     // if load module, it needs to check whether clear singlestepper_
     vm->GetJsDebuggerManager()->ClearSingleStepper();
 #else
@@ -3257,7 +3165,7 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
         return;
     }
@@ -3268,13 +3176,13 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
         aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
     }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
+    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
 
 bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
-    JSThread *thread = vm->GetAssociatedJSThread();
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
@@ -3287,9 +3195,8 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
-    JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
@@ -3302,9 +3209,8 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
 bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                      const std::string &filename, bool needUpdate)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
-    JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
@@ -3317,9 +3223,8 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
 bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename,
                                  bool needUpdate)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
-    JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
@@ -3330,12 +3235,12 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
 bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &entry,
                            const std::string &filename, bool needUpdate)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute ark buffer with secure memory: " << filename;
     if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
         LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
         return false;
     }
-    JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
@@ -3348,12 +3253,12 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
 bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, const std::string &filename,
                                        bool needUpdate)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute module buffer with secure memory: " << filename;
     if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
         LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
         return false;
     }
-    JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
@@ -3442,7 +3347,7 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
 
 void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
@@ -3451,8 +3356,9 @@ uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     if (localAddress == 0) {
         return 0;
     }
+    CROSS_THREAD_CHECK(vm);
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
-    return ecmascript::EcmaHandleScope::NewHandle(vm->GetJSThread(), value);
+    return ecmascript::EcmaHandleScope::NewHandle(thread, value);
 }
 
 uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
@@ -3460,32 +3366,32 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     if (localAddress == 0) {
         return 0;
     }
+    CROSS_THREAD_CHECK(vm);
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
-    return vm->GetJSThread()->NewGlobalHandle(value);
+    return thread->NewGlobalHandle(value);
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->SetWeak(localAddress);
+    CROSS_THREAD_CHECK(vm);
+    return thread->SetWeak(localAddress);
 }
 
 uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
                                   WeakRefClearCallBack freeGlobalCallBack, WeakRefClearCallBack nativeFinalizeCallback)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->SetWeak(localAddress, ref, freeGlobalCallBack, nativeFinalizeCallback);
+    CROSS_THREAD_CHECK(vm);
+    return thread->SetWeak(localAddress, ref, freeGlobalCallBack, nativeFinalizeCallback);
 }
 
 uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, 0);
     if (localAddress == 0) {
         return 0;
     }
@@ -3494,16 +3400,17 @@ uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)
         LOG_ECMA(ERROR) << "The object of weak reference has been recycled!";
         return 0;
     }
-    return vm->GetJSThread()->ClearWeak(localAddress);
+    CROSS_THREAD_CHECK(vm);
+    return thread->ClearWeak(localAddress);
 }
 
 bool JSNApi::IsWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
     if (localAddress == 0) {
         return false;
     }
-    return vm->GetJSThread()->IsWeak(localAddress);
+    CROSS_THREAD_CHECK(vm);
+    return thread->IsWeak(localAddress);
 }
 
 void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
@@ -3511,13 +3418,13 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
-    vm->GetAndFastCheckJSThread()->DisposeGlobalHandle(addr);
+    CROSS_THREAD_CHECK(vm);
+    thread->DisposeGlobalHandle(addr);
 }
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
-    ecmascript::JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
     JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
 #if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
@@ -3547,8 +3454,7 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
 
 Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    ecmascript::JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
 #if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
     std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
     ecmascript::BaseDeserializer deserializer(thread, data.release(), hint);
@@ -3581,9 +3487,9 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
                                  const ecmascript::PromiseRejectionEvent operation,
                                  void* data)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::PromiseRejectCallback promiseRejectCallback =
-        vm->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
+        thread->GetCurrentEcmaContext()->GetPromiseRejectCallback();
     if (promiseRejectCallback != nullptr) {
         Local<JSValueRef> promiseVal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(promise));
         PromiseRejectInfo promiseRejectInfo(promiseVal, JSNApiHelper::ToLocal<JSValueRef>(reason),
@@ -3594,10 +3500,11 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
 
 void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
 {
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetPromiseRejectCallback(
+    CROSS_THREAD_CHECK(vm);
+    thread->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
+    thread->GetCurrentEcmaContext()->SetPromiseRejectCallback(
         reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
+    thread->GetCurrentEcmaContext()->SetData(data);
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
@@ -3624,17 +3531,16 @@ void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
 
 void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
 {
-    CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
     JSHandle<TaggedArray> array = vm->GetFactory()->EmptyArray();
-    JSHandle<MicroJobQueue> job = vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
-    MicroJobQueue::EnqueueJob(vm->GetJSThread(), job, QueueType::QUEUE_PROMISE, fun, array);
+    JSHandle<MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    MicroJobQueue::EnqueueJob(thread, job, QueueType::QUEUE_PROMISE, fun, array);
 }
 
 bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file)
 {
-    CHECK_HAS_PENDING_EXCEPTION(vm, false);
-    JSThread *thread = vm->GetAssociatedJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, ENTRY_POINTER, file.c_str())) {
         std::cerr << "Cannot execute panda file from memory" << std::endl;
         return false;
@@ -3644,9 +3550,8 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::CString entry = file.c_str();
-    JSThread *thread = vm->GetJSThread();
     ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
         ModulePathHelper::ParseOhmUrl(vm, entry, name, entry);
@@ -3679,8 +3584,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
 Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file,
                                                    const std::string &key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
 
@@ -3700,8 +3604,7 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
 
 Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
@@ -3752,8 +3655,7 @@ void JSNApi::DestroyAnDataManager()
 // ---------------------------------- Promise -------------------------------------
 Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
@@ -3773,8 +3675,7 @@ Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler
 
 Local<PromiseRef> PromiseRef::Finally(const EcmaVM *vm, Local<FunctionRef> handler)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
@@ -3794,8 +3695,7 @@ Local<PromiseRef> PromiseRef::Finally(const EcmaVM *vm, Local<FunctionRef> handl
 
 Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> handler)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
@@ -3815,8 +3715,7 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> handler)
 
 Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfilled, Local<FunctionRef> onRejected)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    JSThread *thread = vm->GetJSThread();
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
@@ -3838,20 +3737,21 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfil
 // ---------------------------------- ProxyRef -----------------------------------------
 Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetHandler()));
 }
 
 Local<JSValueRef> ProxyRef::GetTarget(const EcmaVM *vm)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetTarget()));
 }
 
 bool ProxyRef::IsRevoked()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
     return jsProxy->GetIsRevoked();
 }
@@ -3859,86 +3759,82 @@ bool ProxyRef::IsRevoked()
 // ---------------------------------- SetRef --------------------------------------
 int32_t SetRef::GetSize()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(set, FATAL);
     return set->GetSize();
 }
 
 int32_t SetRef::GetTotalElements()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(set, FATAL);
     return static_cast<int>(set->GetSize()) +
         LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(set, FATAL);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, set->GetValue(entry)));
 }
 
 // ---------------------------------- WeakMapRef --------------------------------------
 int32_t WeakMapRef::GetSize()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(weakMap, FATAL);
     return weakMap->GetSize();
 }
 
 int32_t WeakMapRef::GetTotalElements()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(weakMap, FATAL);
     return weakMap->GetSize() +
                 LinkedHashMap::Cast(weakMap->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> WeakMapRef::GetKey(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(weakMap, FATAL);
     JSTaggedValue key = weakMap->GetKey(entry);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key.GetWeakRawValue()));
 }
 
 Local<JSValueRef> WeakMapRef::GetValue(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(weakMap, FATAL);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, weakMap->GetValue(entry)));
 }
 
 // ---------------------------------- WeakSetRef --------------------------------------
 int32_t WeakSetRef::GetSize()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(weakSet, FATAL);
     return weakSet->GetSize();
 }
 
 int32_t WeakSetRef::GetTotalElements()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(weakSet, FATAL);
     return weakSet->GetSize() +
                 LinkedHashSet::Cast(weakSet->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> WeakSetRef::GetValue(const EcmaVM *vm, int entry)
 {
-    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(weakSet, FATAL);
     JSTaggedValue value = weakSet->GetValue(entry);
-    JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, value.GetWeakRawValue()));
 }
 

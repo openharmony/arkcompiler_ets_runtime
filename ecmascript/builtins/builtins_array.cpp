@@ -850,6 +850,40 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     return thisObjHandle.GetTaggedValue();
 }
 
+JSTaggedValue BuiltinsArray::FilterUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+    JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex, JSHandle<JSObject> newArrayHandle,
+    JSHandle<JSTaggedValue> &callbackFnHandle)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    JSTaggedValue callResult = GetTaggedBoolean(true);
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> toIndexHandle(thread, JSTaggedValue::Undefined());
+    while (k < len) {
+        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (exists) {
+            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (callResult.ToBoolean()) {
+                toIndexHandle.Update(JSTaggedValue(toIndex));
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                toIndex++;
+            }
+        }
+        k++;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
+
 // 22.1.3.7 Array.prototype.filter ( callbackfn [ , thisArg ] )
 JSTaggedValue BuiltinsArray::Filter(EcmaRuntimeCallInfo *argv)
 {
@@ -909,34 +943,7 @@ JSTaggedValue BuiltinsArray::Filter(EcmaRuntimeCallInfo *argv)
     if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Filter(newArrayHandle, thisObjHandle, argv, k, toIndex);
     }
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    const uint32_t argsLength = 3; // 3: «kValue, k, O»
-    JSTaggedValue callResult = GetTaggedBoolean(true);
-    while (k < len) {
-        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (exists) {
-            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            key.Update(JSTaggedValue(k));
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-            callResult = JSFunction::Call(info);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (callResult.ToBoolean()) {
-                toIndexHandle.Update(JSTaggedValue(toIndex));
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                toIndex++;
-            }
-        }
-        k++;
-    }
-
-    // 12. Return A.
-    return newArrayHandle.GetTaggedValue();
+    return FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len, toIndex, newArrayHandle, callbackFnHandle);
 }
 
 // 22.1.3.8 Array.prototype.find ( predicate [ , thisArg ] )
@@ -2104,7 +2111,8 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
     // 11. Let count be max(final – k, 0).
     int64_t count = final > k ? (final - k) : 0;
 
-    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()
+        && JSObject::GetPrototype(thisObjHandle).IsJSArray()) {
         return JSStableArray::Slice(thread, thisObjHandle, k, count);
     }
 
@@ -2325,11 +2333,11 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
                                                          JSTaggedNumber(static_cast<double>(actualDeleteCount)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
     if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::Splice(JSHandle<JSArray>::Cast(thisHandle), argv, start, insertCount,
-            actualDeleteCount, newArray);
+            actualDeleteCount, newArrayHandle, len);
     }
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 14. Let k be 0.
     // 15. Repeat, while k < actualDeleteCount
     //   a. Let from be ToString(actualStart+k).

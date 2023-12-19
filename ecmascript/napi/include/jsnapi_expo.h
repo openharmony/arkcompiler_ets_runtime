@@ -88,7 +88,6 @@ using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
-using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
@@ -790,8 +789,8 @@ public:
     static Local<BigIntRef> New(const EcmaVM *vm, uint64_t input);
     static Local<BigIntRef> New(const EcmaVM *vm, int64_t input);
     static Local<JSValueRef> CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words);
-    void BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless);
-    void BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossless);
+    void BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless);
+    void BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless);
     void GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words);
     uint32_t GetWordsArraySize();
 };
@@ -1238,7 +1237,6 @@ public:
         std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
-    static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);

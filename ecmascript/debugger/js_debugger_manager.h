@@ -185,6 +185,21 @@ public:
         return dropframeManager_.GetPromiseQueueSizeRecordOfTopFrame();
     }
 
+    void EnableObjectHashDisplay()
+    {
+        isObjHashDisplayEnabled_ = true;
+    }
+
+    void DisableObjectHashDisplay()
+    {
+        isObjHashDisplayEnabled_ = false;
+    }
+
+    bool IsObjHashDisplayEnabled()
+    {
+        return isObjHashDisplayEnabled_;
+    }
+
     static void AddJsDebuggerManager(uint32_t tid, JsDebuggerManager *jsDebuggerManager);
     static JsDebuggerManager* GetJsDebuggerManager(uint32_t tid);
 
@@ -192,6 +207,7 @@ private:
     bool isDebugMode_ {false};
     bool isDebugApp_ {false};
     bool isMixedDebugEnabled_ { false };
+    bool isObjHashDisplayEnabled_ { true };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};

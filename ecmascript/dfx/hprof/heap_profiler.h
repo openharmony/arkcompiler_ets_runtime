@@ -16,14 +16,15 @@
 #ifndef ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
 #define ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
 
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/dfx/hprof/progress.h"
+#include "ecmascript/dfx/hprof/string_hashmap.h"
+#include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
 class HeapSnapshot;
@@ -101,6 +102,11 @@ public:
     {
         return const_cast<Chunk *>(&chunk_);
     }
+    StringHashMap *GetEcmaStringTable() const
+    {
+        return const_cast<StringHashMap *>(&stringTable_);
+    }
+
 private:
     /**
      * trigger full gc to make sure no unreachable objects in heap
@@ -121,6 +127,7 @@ private:
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
     CVector<HeapSnapshot *> hprofs_;
+    StringHashMap stringTable_;
     bool isProfiling_ {false};
     EntryIdMap* entryIdMap_;
     std::unique_ptr<HeapTracker> heapTracker_;

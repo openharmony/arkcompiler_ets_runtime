@@ -24,8 +24,7 @@
 
 namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
-      heap_(heap),
+    : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       waterLine_(0)
 {
 }

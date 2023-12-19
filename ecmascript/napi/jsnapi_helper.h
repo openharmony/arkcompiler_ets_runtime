@@ -42,6 +42,49 @@
 #define LOG_IF_SPECIAL(handleValue, level) static_cast<void>(0)
 #endif
 
+#define CROSS_THREAD_CHECK(vm)                                                                  \
+    [[maybe_unused]] JSThread *thread = (vm)->GetAndFastCheckJSThread()
+
+#define CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, returnVal)                              \
+    CROSS_THREAD_CHECK(vm);                                                                      \
+    do {                                                                                         \
+        if (thread->HasPendingException()) {                                                     \
+            LOG_ECMA(ERROR) << "Pending exception before " << __FUNCTION__ << " called in line:" \
+                            << __LINE__ << ", exception details as follows:";                    \
+            JSNApi::PrintExceptionInfo(vm);                                                      \
+            return returnVal;                                                                    \
+        }                                                                                        \
+    } while (false)
+
+#define CROSS_THREAD_AND_EXCEPTION_CHECK(vm)                                                      \
+    CROSS_THREAD_CHECK(vm);                                                                       \
+    do {                                                                                          \
+        if (thread->HasPendingException()) {                                                      \
+            LOG_ECMA(ERROR) << "Pending exception before " << __FUNCTION__ << " called, in line:" \
+                            << __LINE__ << ", exception details as follows:";                     \
+            JSNApi::PrintExceptionInfo(vm);                                                       \
+            return;                                                                               \
+        }                                                                                         \
+    } while (false)
+
+#define DCHECK_SPECIAL_VALUE(jsValueRef)                                                     \
+    do {                                                                                     \
+        auto val = reinterpret_cast<JSTaggedValue *>(jsValueRef);                            \
+        if (UNLIKELY(val->IsSpecial())) {                                                    \
+            LOG_FULL(ERROR) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
+            return;                                                                          \
+        }                                                                                    \
+    } while (false)
+
+#define DCHECK_SPECIAL_VALUE_WITH_RETURN(jsValueRef, retValue)                               \
+    do {                                                                                     \
+        auto val = reinterpret_cast<JSTaggedValue *>(jsValueRef);                            \
+        if (UNLIKELY(val->IsSpecial())) {                                                    \
+            LOG_FULL(ERROR) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
+            return (retValue);                                                               \
+        }                                                                                    \
+    } while (false)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define TYPED_ARRAY_ALL(V) \
     V(Int8Array)           \

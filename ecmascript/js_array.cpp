@@ -455,7 +455,7 @@ void JSArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elemen
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(elements->Get(middleIndex));
-            int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
+            double compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 endIndex = middleIndex;

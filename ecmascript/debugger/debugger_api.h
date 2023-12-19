@@ -128,6 +128,8 @@ public:
     static void SetSingleStepStatus(JSDebugger *debugger, bool status);
     static bool GetSingleStepStatus(JSDebugger *debugger);
 
+    static int32_t GetObjectHash(const JSHandle<JSTaggedValue> &tagged);
+
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);
     static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);

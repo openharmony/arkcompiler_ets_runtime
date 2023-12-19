@@ -1436,36 +1436,36 @@ std::unique_ptr<icu::TimeZone> JSDateTimeFormat::ConstructTimeZone(const std::st
 std::map<std::string, std::string> JSDateTimeFormat::GetSpecialTimeZoneMap()
 {
     std::vector<std::string> specialTimeZones = {
-        "America/Argentina/ComodRivadavia"
-        "America/Knox_IN"
-        "Antarctica/McMurdo"
-        "Australia/ACT"
-        "Australia/LHI"
-        "Australia/NSW"
-        "Antarctica/DumontDUrville"
-        "Brazil/DeNoronha"
-        "CET"
-        "CST6CDT"
-        "Chile/EasterIsland"
-        "EET"
-        "EST"
-        "EST5EDT"
-        "GB"
-        "GB-Eire"
-        "HST"
-        "MET"
-        "MST"
-        "MST7MDT"
-        "Mexico/BajaNorte"
-        "Mexico/BajaSur"
-        "NZ"
-        "NZ-CHAT"
-        "PRC"
-        "PST8PDT"
-        "ROC"
-        "ROK"
-        "UCT"
-        "W-SU"
+        "America/Argentina/ComodRivadavia",
+        "America/Knox_IN",
+        "Antarctica/McMurdo",
+        "Australia/ACT",
+        "Australia/LHI",
+        "Australia/NSW",
+        "Antarctica/DumontDUrville",
+        "Brazil/DeNoronha",
+        "CET",
+        "CST6CDT",
+        "Chile/EasterIsland",
+        "EET",
+        "EST",
+        "EST5EDT",
+        "GB",
+        "GB-Eire",
+        "HST",
+        "MET",
+        "MST",
+        "MST7MDT",
+        "Mexico/BajaNorte",
+        "Mexico/BajaSur",
+        "NZ",
+        "NZ-CHAT",
+        "PRC",
+        "PST8PDT",
+        "ROC",
+        "ROK",
+        "UCT",
+        "W-SU",
         "WET"};
     std::map<std::string, std::string> map;
     for (const auto &item : specialTimeZones) {
@@ -1493,6 +1493,12 @@ std::string JSDateTimeFormat::ConstructFormattedTimeZoneID(const std::string &in
     } else if (count(tzStyleEntry.begin(), tzStyleEntry.end(), result)) {
         result = "UTC";
     }
+    std::map<std::string, std::string> map = JSDateTimeFormat::GetSpecialTimeZoneMap();
+    auto it = map.find(result);
+    if (it != map.end()) {
+        return it->second;
+    }
+
     return result;
 }
 
@@ -1506,7 +1512,7 @@ std::string JSDateTimeFormat::ToTitleCaseFunction(const std::string &input)
 
 bool JSDateTimeFormat::IsValidTimeZoneInput(const std::string &input)
 {
-    std::regex r("[a-zA-Z_-/]*");
+    std::regex r("[a-zA-Z_\\-/]*");
     bool isValid = regex_match(input, r);
     return isValid;
 }
@@ -1531,8 +1537,12 @@ std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &inp
             continue;
         }
     }
+    titleEntry.emplace_back(input.substr(leftPosition, input.length() - leftPosition));
     std::string result;
     size_t len = titleEntry.size();
+    if (len == 0) {
+        return ToTitleCaseFunction(input);
+    }
     for (size_t i = 0; i < len - 1; i++) {
         std::string titleValue = ToTitleCaseFunction(titleEntry[i]);
         if (titleValue == "Of" || titleValue == "Es" || titleValue == "Au") {

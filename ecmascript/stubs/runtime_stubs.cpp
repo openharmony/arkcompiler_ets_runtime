@@ -23,6 +23,9 @@
 #include "ecmascript/base/fast_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/js_stable_array.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -432,6 +435,26 @@ DEF_RUNTIME_STUBS(NewEcmaHClass)
         size.GetInt(), JSType(type.GetInt()), inlinedProps.GetInt())).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSArrayFilterUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayFilterUnStable);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSTaggedType toIndexValue = GetTArg(argv, argc, 4);  // 4: means the three parameter
+    int32_t toIndex = JSTaggedNumber(JSTaggedValue(toIndexValue)).GetNumber();
+    JSHandle<JSObject> newArrayHandle = JSMutableHandle<JSObject>(thread,
+        GetHArg<JSObject>(argv, argc, 5));  // 5: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
+        toIndex, newArrayHandle, callbackFnHandle);
+    return ret.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 {
     RUNTIME_STUBS_HEADER(UpdateLayOutAndAddTransition);
@@ -640,7 +663,7 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 
 DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
 {
-    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    RUNTIME_STUBS_HEADER(RegularJSObjDeletePrototype);
     JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue value = GetArg(argv, argc, 1);
     uint32_t index = 0;
