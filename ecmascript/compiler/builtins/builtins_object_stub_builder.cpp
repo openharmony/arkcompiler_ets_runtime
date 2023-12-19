@@ -1085,6 +1085,9 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
             }
             Bind(&notOnlyOwnKeys);
             {
+                Label numNotZero(env);
+                Branch(Int32GreaterThan(numOfKeys, Int32(0)), &numNotZero, &notHasProps);
+                Bind(&numNotZero);
                 NewObjectStubBuilder newBuilder(this);
                 GateRef keyArray = newBuilder.NewTaggedArray(glue,
                     Int32Add(numOfKeys, Int32(static_cast<int32_t>(EnumCache::ENUM_CACHE_HEADER_SIZE))));
@@ -1226,6 +1229,12 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
     GateRef msg = GetCallArg0(numArgs_);
     // 1. Let obj be ToObject(O).
     GateRef obj = ToObject(glue_, msg);
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Branch(HasPendingException(glue_), &isPendingException, &noPendingException);
+    Bind(&isPendingException);
+    Jump(exit);
+    Bind(&noPendingException);
     Label isFast(env);
     // EnumerableOwnNames(obj)
     GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
