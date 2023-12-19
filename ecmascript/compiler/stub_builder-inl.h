@@ -2367,6 +2367,13 @@ inline GateRef StubBuilder::GetTrackTypeInPropAttr(GateRef attr)
         Int32((1LLU << PropertyAttributes::TrackTypeField::SIZE) - 1));
 }
 
+inline GateRef StubBuilder::GetDictTrackTypeInPropAttr(GateRef attr)
+{
+    return Int32And(
+        Int32LSR(attr, Int32(PropertyAttributes::DictTrackTypeField::START_BIT)),
+        Int32((1LLU << PropertyAttributes::DictTrackTypeField::SIZE) - 1));
+}
+
 inline GateRef StubBuilder::GetRepInPropAttr(GateRef attr)
 {
     return Int32And(

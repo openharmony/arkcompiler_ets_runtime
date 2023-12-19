@@ -17,6 +17,8 @@
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript {
@@ -138,6 +140,8 @@ public:
                 UNREACHABLE();
         }
     }
+
+    static bool MatchTrackType(TrackType trackType, JSTaggedValue value);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,

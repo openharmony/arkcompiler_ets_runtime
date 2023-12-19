@@ -494,7 +494,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
 
     JSHandle<ECMAObject>::Cast(constructor)->InitializeImmutableField();
     JSHandle<ECMAObject>::Cast(prototype)->InitializeImmutableField();
-    JSObject::SetIntegrityLevel(thread, prototype, IntegrityLevel::FROZEN);
+    prototype->GetJSHClass()->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, lexenv);
@@ -765,7 +765,7 @@ void ClassHelper::AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTagged
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t index = layout->NumberOfElements();
-    PropertyAttributes attributes = PropertyAttributes::Default(true, true, true);
+    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
@@ -919,5 +919,41 @@ JSHandle<TaggedArray> ClassHelper::ExtractStaticFieldTypeArray(JSThread *thread,
         staticFieldArray->Set(thread, i + 1, fieldTypeArray->Get(staticFieldBegin + i + 1));
     }
     return staticFieldArray;
+}
+
+bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
+{
+    bool checkRet = false;
+    switch (trackType) {
+        case TrackType::NUMBER: {
+            checkRet = value.IsNumber();
+            break;
+        }
+        case TrackType::INT: {
+            checkRet = value.IsInt();
+            break;
+        }
+        case TrackType::DOUBLE: {
+            checkRet = value.IsDouble();
+            break;
+        }
+        case TrackType::BOOLEAN: {
+            checkRet = value.IsBoolean();
+            break;
+        }
+        case TrackType::STRING: {
+            checkRet = value.IsString();
+            break;
+        }
+        case TrackType::SENDABLE: {
+            checkRet = value.IsJSSharedFamily();
+            break;
+        }
+        case TrackType::NONE:
+        case TrackType::TAGGED:
+        default:
+            break;
+    }
+    return checkRet;
 }
 }  // namespace panda::ecmascript

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
@@ -118,6 +120,59 @@ GateRef StubBuilder::IsOwned(GateRef glue, GateRef holder)
     env->SubCfgEntry(&subEntry);
     GateRef isOwned = CallRuntime(glue, RTSTUB_ID(IsOwned), {holder});
     auto ret = isOwned;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::MatchTrackType(GateRef trackType, GateRef value)
+{
+    auto *env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label isNumber(env);
+    Label checkBoolean(env);
+    Label isBoolean(env);
+    Label checkString(env);
+    Label isString(env);
+    Label checkJSSharedFamily(env);
+    Label isJSSharedFamily(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NUMBER))), &isNumber, &checkBoolean);
+    Bind(&isNumber);
+    {
+        result = TaggedIsNumber(value);
+        Jump(&exit);
+    }
+    Bind(&checkBoolean);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::BOOLEAN))), &isBoolean, &checkString);
+        Bind(&isBoolean);
+        {
+            result = TaggedIsBoolean(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkString);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSSharedFamily);
+        Bind(&isString);
+        {
+            result = TaggedIsString(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkJSSharedFamily);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isJSSharedFamily, &exit);
+        Bind(&isJSSharedFamily);
+        {
+            result = TaggedIsSharedFamily(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
     return ret;
 }
@@ -3802,11 +3857,12 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
                             Bind(&isSharedObj);
                             {
-                                Label notOwned(env);
-                                Branch(TaggedIsTrue(IsOwned(glue, *holder)), &executeSetProp, &notOwned);
-                                Bind(&notOwned);
+                                Label typeMismatch(env);
+                                GateRef trackType = GetTrackTypeInPropAttr(attr);
+                                Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
+                                Bind(&typeMismatch);
                                 {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetNotOwnedSharedProperty));
+                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
                                     CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
                                     result = Exception();
                                     Jump(&exit);
@@ -3889,11 +3945,12 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
                             Bind(&isSharedObj);
                             {
-                                Label notOwned(env);
-                                Branch(TaggedIsTrue(IsOwned(glue, *holder)), &executeSetProp, &notOwned);
-                                Bind(&notOwned);
+                                Label typeMismatch(env);
+                                GateRef trackType = GetDictTrackTypeInPropAttr(attr1);
+                                Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
+                                Bind(&typeMismatch);
                                 {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetNotOwnedSharedProperty));
+                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
                                     CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
                                     result = Exception();
                                     Jump(&exit);

@@ -213,7 +213,7 @@ void Builtins::InitializeForSharing(const JSHandle<GlobalEnv> &env)
     InitializeSharedFunciton(env, sfuncPrototypeHClass);
     InitializeSharedObject(env, sobjIHClass, sobjFuncPrototype);
     env->SetSharedObjectFunctionPrototype(thread_, sobjFuncPrototype);
-    JSObject::SetIntegrityLevel(thread_, sobjFuncPrototype, IntegrityLevel::FROZEN);
+    sobjFuncPrototype->GetJSHClass()->SetExtensible(false);
 }
 
 void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sobjIHClass,

@@ -545,6 +545,7 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
     }
 
     os << "Attr(";
+    os << "[Raw: " << std::hex << attr.GetValue() << "]  ";
     if (attr.IsNoneAttributes()) {
         os << "NONE";
     }

@@ -396,6 +396,9 @@ void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
         desc.SetWritable(IsWritable());
         JSTaggedValue val = GetValue();
         desc.SetValue(JSHandle<JSTaggedValue>(thread_, val));
+        desc.SetTrackType(JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryElement()
+                              ? attributes_.GetDictTrackType()
+                              : attributes_.GetTrackType());
     } else {
         auto result = GetValue();
         bool isPropertyBox = result.IsPropertyBox();
@@ -584,6 +587,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
             JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread_, receiver));
             index = static_cast<uint32_t>(dict->FindEntry(key_.GetTaggedValue()));
             PropertyAttributes origin = dict->GetAttributes(index);
+            attr.SetDictTrackType(attr.GetTrackType());
             attr.SetDictionaryOrder(origin.GetDictionaryOrder());
             dict->SetAttributes(thread_, index, attr);
         } else {

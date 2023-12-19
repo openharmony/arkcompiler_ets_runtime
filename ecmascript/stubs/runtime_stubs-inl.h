@@ -2718,7 +2718,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
         if (resultValue.IsJSSharedFamily()) {
-            JSObject::SetIntegrityLevel(thread, JSHandle<JSObject>(thread, resultValue), IntegrityLevel::SEALED);
+            JSObject::Cast(resultValue.GetTaggedObject())->GetJSHClass()->SetExtensible(false);
         }
         return resultValue;
     }
@@ -2897,7 +2897,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
     JSHandle<JSTaggedValue> handleKey = JSTaggedValue::ToPropertyKey(thread, JSHandle<JSTaggedValue>(thread, propKey));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue);
+    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return JSTaggedValue::Undefined();

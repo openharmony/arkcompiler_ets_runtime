@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/profiler_operation.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -478,6 +479,7 @@ public:
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
     GateRef IsOwned(GateRef glue, GateRef holder);
+    GateRef MatchTrackType(GateRef trackType, GateRef value);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
@@ -579,6 +581,7 @@ public:
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetTrackTypeInPropAttr(GateRef attr, GateRef type);
     GateRef GetTrackTypeInPropAttr(GateRef attr);
+    GateRef GetDictTrackTypeInPropAttr(GateRef attr);
     GateRef GetRepInPropAttr(GateRef attr);
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);

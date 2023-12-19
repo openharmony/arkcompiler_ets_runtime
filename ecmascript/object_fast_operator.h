@@ -47,7 +47,7 @@ public:
 
     template<Status status = Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                  JSTaggedValue value);
+                                                  JSTaggedValue value, bool ignoreShared = false);
 
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
@@ -61,7 +61,7 @@ public:
 
     template<Status status = Status::None>
     static inline JSTaggedValue SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                   JSTaggedValue value);
+                                                   JSTaggedValue value, bool ignoreShared = false);
 
     static inline bool FastSetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                               JSTaggedValue value);

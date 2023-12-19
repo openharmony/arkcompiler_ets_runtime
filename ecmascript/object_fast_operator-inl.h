@@ -18,6 +18,8 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/ecma_string_table.h"
@@ -184,7 +186,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                    JSTaggedValue value)
+                                                    JSTaggedValue value, bool ignoreShared)
 {
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
@@ -251,9 +253,11 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
+                if (!ignoreShared && holder.IsJSSharedFamily()) {
+                    if (!ClassHelper::MatchTrackType(attr.GetTrackType(), value)) {
+                        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                    JSTaggedValue::Exception());
+                    }
                 }
                 JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value);
                 return JSTaggedValue::Undefined();
@@ -288,9 +292,11 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (CHECK_SHARED_OBJ_WITHOUT_OWNERSHIP(holder.GetTaggedObject(), thread)) {
-                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetNotOwnedSharedProperty),
-                                            JSTaggedValue::Exception());
+                if (!ignoreShared && holder.IsJSSharedFamily()) {
+                    if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
+                        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                    JSTaggedValue::Exception());
+                    }
                 }
                 dict->UpdateValue(thread, entry, value);
                 return JSTaggedValue::Undefined();
@@ -478,7 +484,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                     JSTaggedValue value)
+                                                     JSTaggedValue value, bool ignoreShared)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {
@@ -505,7 +511,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         } else {
             ObjectOperator::UpdateDetector(thread, receiver, key);
         }
-        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value);
+        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value, ignoreShared);
     }
     return JSTaggedValue::Hole();
 }

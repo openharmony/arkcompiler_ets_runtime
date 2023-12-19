@@ -2041,7 +2041,7 @@ DEF_RUNTIME_STUBS(NewThisObject)
         obj = factory->NewJSObjectByConstructor(ctor, newTarget);
     }
     if (obj.GetTaggedValue().IsJSSharedFamily()) {
-        JSObject::SetIntegrityLevel(thread, obj, IntegrityLevel::SEALED);
+        obj->GetJSHClass()->SetExtensible(false);
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return obj.GetTaggedType();  // state is not set here

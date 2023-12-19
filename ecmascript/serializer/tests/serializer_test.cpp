@@ -1655,10 +1655,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
         FunctionKind::NORMAL_FUNCTION);
     EXPECT_TRUE(*func1 != nullptr);
     JSHandle<JSTaggedValue> value4(thread, func1.GetTaggedValue());
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key3, value3);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key4, value4);
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1));
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2));
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key3, value3));
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key4, value4));
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -1691,7 +1691,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
     lexicalEnv->SetProperties(thread, 1, JSTaggedValue::Undefined());
     func1->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
     JSHandle<JSTaggedValue> value1(thread, func1.GetTaggedValue());
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1);
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1));
     JSHandle<JSFunction> func2 = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
         FunctionKind::DERIVED_CONSTRUCTOR);
     EXPECT_TRUE(*func2 != nullptr);
@@ -1701,7 +1701,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
     func1->SetHomeObject(thread, sObj1.GetTaggedValue());
     JSHandle<JSTaggedValue> value2(thread, func2.GetTaggedValue());
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2);
+    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2));
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -1732,8 +1732,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
                                   JSHandle<JSTaggedValue>(factory->NewEmptyJSObject()));
         }
         key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
-        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2),
-                              JSHandle<JSTaggedValue>(sObj1));
+        EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2),
+                              JSHandle<JSTaggedValue>(sObj1)));
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
@@ -1758,7 +1758,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject4)
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
     for (int i = 0; i < 512; i++) {
         key2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, key2, key1));
-        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2), value1);
+        EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), JSHandle<JSTaggedValue>(key2), value1));
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);

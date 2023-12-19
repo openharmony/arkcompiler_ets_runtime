@@ -865,11 +865,13 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             }
             return false;
         }
-        if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), thread)) {
-            if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
+        if (op->IsFound() && receiver->IsJSSharedFamily()) {
+            if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
+                if (mayThrow) {
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+                }
+                return false;
             }
-            return false;
         }
 
         if (receiver->IsJSProxy()) {
@@ -918,11 +920,13 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 }
                 return false;
             }
-            if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), thread)) {
-                if (mayThrow) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
+            if (receiver->IsJSSharedFamily()) {
+                if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
+                    if (mayThrow) {
+                        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+                    }
+                    return false;
                 }
-                return false;
             }
             isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
@@ -1247,11 +1251,6 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         return success;
     }
 
-    // update to un-owned's property are not supported
-    if (!ignoreShared && CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(op->GetReceiver(), op->GetThread())) {
-        THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetNotOwnedSharedProperty), false);
-    }
-
     // 3. Return true, if every field in Desc is absent
     // 4. Return true, if every field in Desc also occurs in current and the value of every field in Desc is the
     // same value as the corresponding field in current when compared using the SameValue algorithm.
@@ -1310,6 +1309,12 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
             if (!current.IsWritable()) {
                 if (desc.HasValue() && !JSTaggedValue::SameValue(current.GetValue(), desc.GetValue())) {
                     return false;
+                }
+            }
+            if (!ignoreShared && op->GetReceiver()->IsJSSharedFamily()) {
+                if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
+                    THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                false);
                 }
             }
         }
@@ -1569,12 +1574,12 @@ JSHandle<JSObject> JSObject::ObjectCreate(JSThread *thread, const JSHandle<JSObj
 
 // 7.3.4 CreateDataProperty (O, P, V)
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const JSHandle<JSTaggedValue> &value)
+                                  const JSHandle<JSTaggedValue> &value, bool ignoreShared)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
-                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue());
+                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), ignoreShared);
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1597,12 +1602,12 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 
 // 7.3.5 CreateMethodProperty (O, P, V)
 bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
+                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool ignoreShared)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
-    bool success = CreateDataProperty(thread, obj, key, value);
+    bool success = CreateDataProperty(thread, obj, key, value, ignoreShared);
     if (!success) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "failed to create data property", success);
     }

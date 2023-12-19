@@ -96,6 +96,16 @@ public:
         value_ = value;
     }
 
+    inline void SetTrackType(TrackType trackType)
+    {
+        trackType_ = trackType;
+    }
+
+    inline TrackType GetTrackType() const
+    {
+        return trackType_;
+    }
+
     inline bool IsWritable() const
     {
         return writable_;
@@ -220,6 +230,7 @@ private:
     bool hasWritable_ {false};
     bool hasEnumerable_ {false};
     bool hasConfigurable_ {false};
+    TrackType trackType_ {TrackType::NONE};
 
     JSHandle<JSTaggedValue> value_ {};
     JSHandle<JSTaggedValue> getter_ {};
@@ -418,7 +429,7 @@ public:
                                                  const JSHandle<JSTaggedValue> &key);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                   const JSHandle<JSTaggedValue> &value);
+                                   const JSHandle<JSTaggedValue> &value, bool ignoreShared = false);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                    const JSHandle<JSTaggedValue> &value);
@@ -427,7 +438,7 @@ public:
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool ignoreShared = false);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const JSHandle<JSTaggedValue> &value);
