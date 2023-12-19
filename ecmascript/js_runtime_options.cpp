@@ -226,6 +226,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-module-methods", required_argument, nullptr, OPTION_COMPILER_MODULE_METHODS},
         {"max-unmovable-space", required_argument, nullptr, OPTION_MAX_UNMOVABLE_SPACE},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
+        {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
@@ -295,7 +296,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         }
 
         // unknown option or required_argument option has no argument
-        if (option == '?') {
+        if (option == OPTION_DEFAULT) {
             ret = SetDefaultValue(const_cast<char *>(argv[optind - 1]));
             if (ret) {
                 continue;
@@ -671,6 +672,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetMergeAbc(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_CONTEXT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableContext(argBool);
                 } else {
                     return false;
                 }
