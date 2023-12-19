@@ -62,58 +62,56 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace OHOS {
+EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue newTgt, uint32_t argvLength)
+{
+    const uint8_t testDecodedSize = 2;
+    int32_t numActualArgs = argvLength / testDecodedSize + 1;
+    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
 
-    EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue newTgt, uint32_t argvLength)
-    {
-        const uint8_t testDecodedSize = 2;
-        int32_t numActualArgs = argvLength / testDecodedSize + 1;
-        JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        
-        size_t frameSize = 0;
-        if (thread->IsAsmInterpreter()) {
-            frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
-        } else {
-            frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
-        }
-        JSTaggedType *newSp = sp - frameSize;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        for (int i = numActualArgs; i > 0; i--) {
-            newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
-        }
-        EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
-        *(--newSp) = numActualArgs;
-        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
-        ecmaRuntimeCallInfo->SetNewTarget(newTgt);
-        return ecmaRuntimeCallInfo;
+    size_t frameSize = 0;
+    if (thread->IsAsmInterpreter()) {
+        frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
+    } else {
+        frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
     }
-
-    static JSTaggedType *SetupFrame(JSThread *thread, EcmaRuntimeCallInfo *info)
-    {
-        JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        size_t frameSize = 0;
-        if (thread->IsAsmInterpreter()) {
-            // 2 means thread and numArgs
-            frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
-        } else {
-            // 2 means thread and numArgs
-            frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
-        }
-        JSTaggedType *newSp = sp - frameSize;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-        InterpretedEntryFrame *state = reinterpret_cast<InterpretedEntryFrame *>(newSp) - 1;
-        state->base.type = ecmascript::FrameType::INTERPRETER_ENTRY_FRAME;
-        state->base.prev = sp;
-        state->pc = nullptr;
-        thread->SetCurrentSPFrame(newSp);
-        return sp;
+    JSTaggedType *newSp = sp - frameSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (int i = numActualArgs; i > 0; i--) {
+        newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
     }
+    EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
+    *(--newSp) = numActualArgs;
+    *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+    ecmaRuntimeCallInfo->SetNewTarget(newTgt);
+    return ecmaRuntimeCallInfo;
+}
 
-    void TearDownFrame(JSThread *thread, JSTaggedType *prev)
-    {
-        thread->SetCurrentSPFrame(prev);
+static JSTaggedType *SetupFrame(JSThread *thread, EcmaRuntimeCallInfo *info)
+{
+    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    size_t frameSize = 0;
+    const int num = 2;
+    // 2 means thread and numArgs
+    if (thread->IsAsmInterpreter()) {
+        frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
+    } else {
+        frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
     }
+    JSTaggedType *newSp = sp - frameSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
+    InterpretedEntryFrame *state = reinterpret_cast<InterpretedEntryFrame *>(newSp) - 1;
+    state->base.type = ecmascript::FrameType::INTERPRETER_ENTRY_FRAME;
+    state->base.prev = sp;
+    state->pc = nullptr;
+    thread->SetCurrentSPFrame(newSp);
+    return sp;
+}
 
-    JSHandle<JSAPIHashSet> ConstructobjectHashSet(JSThread *thread)
+void TearDownFrame(JSThread *thread, JSTaggedType *prev)
+{
+    thread->SetCurrentSPFrame(prev);
+}
+
+JSHandle<JSAPIHashSet> ConstructobjectHashSet(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -139,23 +137,26 @@ namespace OHOS {
     return setHandle;
 }
 
-    void JSValueRefIsHashSetFuzzTest([[maybe_unused]] const uint8_t* data, [[maybe_unused]] size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIHashSet> setHandle = ConstructobjectHashSet(thread);
-        JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(setHandle);
-        Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-        tag->IsHashSet();
-        JSNApi::DestroyJSVM(vm);
+void JSValueRefIsHashSetFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range..";
+        return;
     }
-
+    auto thread = vm->GetAssociatedJSThread();
+    JSHandle<JSAPIHashSet> setHandle = ConstructobjectHashSet(thread);
+    JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(setHandle);
+    Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
+    tag->IsHashSet();
+    JSNApi::DestroyJSVM(vm);
+}
 }
 
 // Fuzzer entry point.
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
     OHOS::JSValueRefIsHashSetFuzzTest(data, size);

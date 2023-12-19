@@ -197,6 +197,8 @@ group("fuzztest") {
     "containerstreemapset_fuzzer:fuzztest",
     "containerstreemapsetall_fuzzer:fuzztest",
     "containerstreemapvalues_fuzzer:fuzztest",
+    "copyableglobalisempty_fuzzer:fuzztest",
+    "copyableglobalsetandclearweak_fuzzer:fuzztest",
     "createbigwords_fuzzer:fuzztest",
     "dataviewrefnew_fuzzer:fuzztest",
     "daterefnew_fuzzer:fuzztest",
