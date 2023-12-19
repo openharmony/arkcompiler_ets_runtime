@@ -53,6 +53,7 @@ private:
 private:
     bool defaultTransfer_ {false};
     bool notSupport_ {false};
+    int32_t supportSymbol_ = 1;
     CUnorderedSet<uintptr_t> transferDataSet_;
 };
 }

@@ -413,7 +413,6 @@ public:
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
     void InitializeImmutableField();
-    static bool IsImmutableFromHashValue(uint64_t hashValue);
     // panzhenyu shall be deleted
     bool IsOwned([[maybe_unused]] uint32_t threadID)
     {
@@ -430,6 +429,9 @@ public:
         // no field in this object
         VisitRangeSlot<visitType>(visitor);
     }
+
+private:
+    static bool IsImmutableFromHashValue(uint64_t hashValue);
 };
 
 class JSObject : public ECMAObject {

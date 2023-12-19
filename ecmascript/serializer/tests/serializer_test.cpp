@@ -743,6 +743,30 @@ public:
         Destroy();
     }
 
+    void SerializeSharedObjectWithSymbol1(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedObject fail";
+        EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
+        JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
+
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSHandle<JSTaggedValue> key1(factory->NewFromASCII("number1"));
+        JSHandle<JSTaggedValue> key2(factory->NewFromASCII("boolean2"));
+        JSHandle<JSTaggedValue> key3(factory->NewFromASCII("string3"));
+        JSHandle<JSTaggedValue> val1 = JSObject::GetProperty(thread, sObj, key1).GetRawValue();
+        JSHandle<JSTaggedValue> val2 = JSObject::GetProperty(thread, sObj, key2).GetRawValue();
+        JSHandle<JSTaggedValue> val3 = JSObject::GetProperty(thread, sObj, key3).GetRawValue();
+        EXPECT_EQ(val1->GetInt(), 1024);
+        EXPECT_TRUE(val2->ToBoolean());
+        JSHandle<EcmaString> str3 = JSHandle<EcmaString>(val3);
+        JSHandle<EcmaString> strTest3 = factory->NewFromStdString("hello world!");
+        EXPECT_TRUE(JSTaggedValue::StringCompare(*str3, *strTest3));
+        Destroy();
+    }
+
     void ConcurrentFunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -1819,5 +1843,45 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction1)
     t1.join();
     delete serializer;
 };
+
+// HWTEST_F_L0(JSSerializerTest, SerializeSharedObjectWithSymbol)
+// {
+//     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+//     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+//     JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
+//     JSHandle<JSSharedObject> sObj =
+//         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+//     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("number1"));
+//     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("boolean2"));
+//     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("string3"));
+//     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1024));
+//     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue::True());
+//     JSHandle<JSTaggedValue> value3(factory->NewFromStdString("hello world!"));
+//     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1);
+//     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2);
+//     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key3, value3);
+
+//     // set symbol on layout and lexicalEnv
+//     JSHandle<JSTaggedValue> symbolStr(factory->NewFromASCII("symbol1"));
+//     JSHandle<JSSymbol> symbol = factory->NewSymbolWithTable(symbolStr);
+//     JSHandle<JSTaggedValue> value4(factory->NewFromStdString("this is symbol"));
+//     JSHandle<JSHClass> hclass(thread, sObj->GetJSHClass());
+//     JSHandle<LayoutInfo> layout = hclass->SetLayout(thread, layout);
+//     PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
+//     attributes.SetIsInlinedProps(true);
+//     attributes.SetRepresentation(Representation::TAGGED);
+//     layout->AddKey(thread, 0, symbol.GetTaggedValue(), attributes);
+    
+    
+//     ValueSerializer *serializer = new ValueSerializer(thread);
+//     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+//                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+//     EXPECT_TRUE(success) << "Serialize sObj fail";
+//     std::unique_ptr<SerializeData> data = serializer->Release();
+//     JSDeserializerTest jsDeserializerTest;
+//     std::thread t1(&JSDeserializerTest::SerializeSharedObjectWithSymbol1, jsDeserializerTest, data.release());
+//     t1.join();
+//     delete serializer;
+// };
 
 }  // namespace panda::test

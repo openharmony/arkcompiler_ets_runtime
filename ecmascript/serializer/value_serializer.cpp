@@ -64,6 +64,12 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
+        case JSType::SYMBOL: {
+            if (supportSymbol_ > 0) {
+                return true;
+            }
+            break;
+        }
         default:
             break;
     }
