@@ -132,6 +132,7 @@ public:
     void ResetPGOProfiler();
 
     bool IsEnablePGOProfiler() const;
+    bool IsEnableElementsKind() const;
 
     bool Initialize();
 

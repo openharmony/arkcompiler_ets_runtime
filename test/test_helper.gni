@@ -351,6 +351,10 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
+    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+      _asm_run_options_ += " --enable-elements-kind=true"
+    }
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
@@ -402,6 +406,10 @@ template("host_moduletest_action") {
     if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
         invoker.is_set_maxNonmovableSpaceCapacity) {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
+    }
+
+    if (defined(invoker.is_set_elemens_kind) && invoker.is_set_elemens_kind) {
+      _asm_run_options_ += " --enable-elements-kind=true"
     }
 
     if (defined(invoker.is_enable_enableArkTools) &&

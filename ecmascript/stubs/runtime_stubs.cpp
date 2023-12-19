@@ -39,6 +39,7 @@
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_runtime.h"
@@ -521,6 +522,59 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SetValueWithElementsKind)
+{
+    RUNTIME_STUBS_HEADER(SetValueWithElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSTaggedValue taggedIndex = GetArg(argv, argc, 2);
+    bool needTransition = static_cast<bool>(GetArg(argv, argc, 3).GetInt());
+    ElementsKind extraKind = static_cast<ElementsKind>(GetArg(argv, argc, 4).GetInt());
+    uint32_t index = static_cast<uint32_t>(taggedIndex.GetInt());
+    ElementAccessor::Set(thread, receiver, index, value, needTransition, extraKind);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(MigrateArrayWithKind)
+{
+    RUNTIME_STUBS_HEADER(MigrateArrayWithKind);
+    JSHandle<JSObject> object = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    ElementsKind oldKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));
+    ElementsKind newKind = static_cast<ElementsKind>(GetTArg(argv, argc, 2));
+    Elements::MigrateArrayWithKind(thread, object, oldKind, newKind);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetTaggedValueWithElementsKind)
+{
+    RUNTIME_STUBS_HEADER(GetTaggedValueWithElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSTaggedValue taggedIndex = GetArg(argv, argc, 1);
+
+    JSTaggedValue value = ElementAccessor::Get(receiver, taggedIndex.GetInt());
+
+    return value.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TryRestoreElementsKind)
+{
+    RUNTIME_STUBS_HEADER(TryRestoreElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>(GetHArg<JSTaggedValue>(argv, argc, 1));
+
+    JSHClass::TryRestoreElementsKind(thread, hclass, receiver);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewMutantTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewMutantTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)

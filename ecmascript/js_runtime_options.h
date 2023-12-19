@@ -157,6 +157,7 @@ enum CommandValues {
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
+    OPTION_ENABLE_ELEMENTSKIND,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -910,6 +911,16 @@ public:
         return enablePrintExecuteTime_;
     }
 
+    void SetEnableElementsKind(bool value)
+    {
+        enableElementsKind_ = value;
+    }
+
+    bool IsEnableElementsKind() const
+    {
+        return enableElementsKind_;
+    }
+
     void SetEnablePGOProfiler(bool value)
     {
         enablePGOProfiler_ = value;
@@ -1460,6 +1471,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
+    bool enableElementsKind_ {false};
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};

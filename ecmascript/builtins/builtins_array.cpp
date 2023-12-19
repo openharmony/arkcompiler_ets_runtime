@@ -815,19 +815,34 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     if (thisHandle->IsStableJSArray(thread)) {
         JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
-        TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
-        uint32_t length = srcElements->GetLength();
+        uint32_t length = ElementAccessor::GetElementsLength(thisObjHandle);
+        ElementsKind oldKind = thisObjHandle->GetClass()->GetElementsKind();
+        if (JSHClass::TransitToElementsKind(thread, thisObjHandle, value)) {
+            ElementsKind newKind = thisObjHandle->GetClass()->GetElementsKind();
+            Elements::MigrateArrayWithKind(thread, thisObjHandle, oldKind, newKind);
+        }
         if (length >= end) {
             for (int64_t idx = start; idx < end; idx++) {
-                srcElements->Set(thread, idx, value);
+                ElementAccessor::Set(thread, thisObjHandle, idx, value, false);
             }
             return thisObjHandle.GetTaggedValue();
         } else {
-            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
-            for (int64_t idx = start; idx < end; idx++) {
-                newElements->Set(thread, idx, value);
+            if (thisObjHandle->GetElements().IsMutantTaggedArray()) {
+                JSHandle<MutantTaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewMutantTaggedArray(len);
+                ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
+                JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
+                                                            value.GetTaggedValue(), kind));
+                for (int64_t idx = start; idx < end; idx++) {
+                    newElements->Set<false>(thread, idx, migratedValue);
+                }
+                thisObjHandle->SetElements(thread, newElements);
+            } else {
+                JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
+                for (int64_t idx = start; idx < end; idx++) {
+                    newElements->Set(thread, idx, value);
+                }
+                thisObjHandle->SetElements(thread, newElements);
             }
-            thisObjHandle->SetElements(thread, newElements);
             return thisObjHandle.GetTaggedValue();
         }
     }

@@ -225,6 +225,7 @@ group("ark_asm_test") {
     "dynamicimport",
     "dyninstruction",
     "ecmastringtable",
+    "elements_kind",
     "equal",
     "errorcause",
     "flatten",

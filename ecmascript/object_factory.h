@@ -344,13 +344,21 @@ public:
         return dstElements;
     }
 
+    JSHandle<JSObject> NewAndCopyJSArrayObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
+                                               uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
+    JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
+                                                        uint32_t oldLength, uint32_t k = 0);
+    JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
+                                                                    uint32_t newLength, uint32_t oldLength,
+                                                                    uint32_t k = 0);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
     // Copy on write array is allocated in nonmovable space by default.
     JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<MutantTaggedArray> NewMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
     JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> keys,
@@ -370,11 +378,13 @@ public:
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
                                       JSTaggedValue initVal = JSTaggedValue::Hole(),
-                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                      MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                      ElementsKind kind = ElementsKind::GENERIC);
     JSHandle<TaggedArray> CopyPartArray(const JSHandle<TaggedArray> &old, uint32_t start, uint32_t end);
     JSHandle<TaggedArray> CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
                                     JSTaggedValue initVal = JSTaggedValue::Hole(),
-                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                    MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                    ElementsKind kind = ElementsKind::GENERIC);
     JSHandle<TaggedArray> CopyFromEnumCache(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
@@ -392,6 +402,8 @@ public:
     JSHandle<EcmaString> GetEmptyString() const;
 
     JSHandle<TaggedArray> EmptyArray() const;
+
+    JSHandle<MutantTaggedArray> EmptyMutantArray() const;
 
     FreeObject *FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots = RemoveSlots::NO,
                                uintptr_t hugeObjectHead = 0);
@@ -725,6 +737,7 @@ private:
                                                   const JSHandle<EcmaString> &secondString);
 
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
+    JSHandle<MutantTaggedArray> NewEmptyMutantArray();
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
@@ -746,6 +759,8 @@ private:
                                                                    const PropertyDescriptor *descs);
     JSHandle<JSTaggedValue> CreateDictionaryJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                                         const Local<JSValueRef> *values);
+
+    JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass

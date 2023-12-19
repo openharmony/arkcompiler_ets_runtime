@@ -110,6 +110,11 @@ inline GateRef StubBuilder::Hole()
     return env_->GetBuilder()->HoleConstant();
 }
 
+inline GateRef StubBuilder::SpecialHole()
+{
+    return env_->GetBuilder()->SpecialHoleConstant();
+}
+
 inline GateRef StubBuilder::Null()
 {
     return env_->GetBuilder()->NullConstant();
@@ -777,6 +782,11 @@ inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
     return env_->GetBuilder()->ToTaggedInt(x);
 }
 
+inline GateRef StubBuilder::Int64ToTaggedIntPtr(GateRef x)
+{
+    return env_->GetBuilder()->ToTaggedIntPtr(x);
+}
+
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
@@ -1365,6 +1375,12 @@ inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
     GateRef elements = GetElementsArray(obj);
     GateRef objectType = GetObjectType(LoadHClass(elements));
     return env_->GetBuilder()->IsCOWArray(objectType);
+}
+
+inline GateRef StubBuilder::IsMutantTaggedArray(GateRef elements)
+{
+    GateRef objectType = GetObjectType(LoadHClass(elements));
+    return env_->GetBuilder()->IsMutantTaggedArray(objectType);
 }
 
 inline GateRef StubBuilder::IsWritable(GateRef attr)
@@ -2002,6 +2018,13 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
+}
+
+inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(int64_t)));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(VariableType::INT64(), elements, dataOffset);
 }
 
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)

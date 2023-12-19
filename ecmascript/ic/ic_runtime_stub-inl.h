@@ -299,6 +299,9 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
     }
 
     receiver->SynchronizedSetClass(newHClass);
+    JSHandle<JSHClass> newHClassHandle(thread, newHClass);
+    JSHandle<JSObject> objHandle(thread, receiver);
+    JSHClass::TryRestoreElementsKind(thread, newHClassHandle, objHandle);
     ASSERT(HandlerBase::IsField(handlerInfo));
 
     if (!HandlerBase::IsInlinedProps(handlerInfo)) {
@@ -309,7 +312,6 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<TaggedArray> properties;
-            JSHandle<JSObject> objHandle(thread, receiver);
             JSHandle<JSTaggedValue> valueHandle(thread, value);
             if (capacity == 0) {
                 capacity = JSObject::MIN_PROPERTIES_LENGTH;
@@ -472,12 +474,11 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSObject *receiver, JSTagged
         return JSTaggedValue::Hole();
     }
     uint32_t elementIndex = static_cast<uint32_t>(index);
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
-    if (elements->GetLength() <= elementIndex) {
+    if (ElementAccessor::GetElementsLength(receiver) <= elementIndex) {
         return JSTaggedValue::Hole();
     }
 
-    JSTaggedValue value = elements->Get(elementIndex);
+    JSTaggedValue value = ElementAccessor::Get(receiver, elementIndex);
     // TaggedArray elements
     return value;
 }
