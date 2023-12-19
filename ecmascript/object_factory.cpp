@@ -1001,7 +1001,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            ECMAObject::InitializeExtRefAndOwner(vm_, obj);
+            obj->InitializeImmutableField();
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1502,7 +1502,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
     JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
     JSHandle<JSObject> sfuncObj = JSHandle<JSObject>::Cast(sfunc);
-    ECMAObject::InitializeExtRefAndOwner(vm_, sfuncObj);
+    sfuncObj->InitializeImmutableField();
     return sfunc;
 }
 

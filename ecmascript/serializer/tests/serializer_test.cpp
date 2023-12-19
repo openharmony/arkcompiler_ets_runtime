@@ -629,7 +629,6 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedObject fail";
         EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
         JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
-        EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
 
         ObjectFactory *factory = ecmaVm->GetFactory();
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("number1"));
@@ -657,7 +656,6 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedObject fail";
         EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
         JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
-        EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
 
         ObjectFactory *factory = ecmaVm->GetFactory();
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("funcA"));
@@ -726,14 +724,12 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
         EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
         JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
-        EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
 
         EXPECT_TRUE(sFunc->IsCallable());
         EXPECT_FALSE(sFunc->GetProtoOrHClass().IsHole());
         EXPECT_TRUE(sFunc->GetLexicalEnv().IsTaggedArray());
         EXPECT_TRUE(sFunc->GetHomeObject().IsJSSharedObject());
         JSHandle<JSSharedObject> sObj(thread, sFunc->GetHomeObject());
-        EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
         Destroy();
     }
 
@@ -744,8 +740,6 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
         EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
-        JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
-        EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
         Destroy();
     }
 
@@ -1647,7 +1641,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
     JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
     JSHandle<JSSharedObject> sObj =
         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("number1"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("boolean2"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("string3"));
@@ -1670,7 +1663,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize sObj fail";
-    EXPECT_FALSE(sObj->IsOwned(thread->GetThreadId()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SharedObjectTest1, jsDeserializerTest, data.release());
@@ -1685,7 +1677,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
     JSHandle<JSTaggedValue> ctor = env->GetSharedObjectFunction();
     JSHandle<JSSharedObject> sObj =
         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    EXPECT_TRUE(sObj->IsOwned(thread->GetThreadId()));
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("funcA"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("funcB"));
     
@@ -1715,7 +1706,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize sObj fail";
-    EXPECT_FALSE(sObj->IsOwned(thread->GetThreadId()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SharedObjectTest2, jsDeserializerTest, data.release());
@@ -1787,7 +1777,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
         FunctionKind::NORMAL_FUNCTION);
-    EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
     JSHandle<JSTaggedValue> sFuncVal(sFunc);
     EXPECT_TRUE(sFuncVal->IsJSSharedFunction());
     EXPECT_TRUE(*sFunc != nullptr);
@@ -1807,8 +1796,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction)
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize sFunc fail";
-    EXPECT_FALSE(sFunc->IsOwned(thread->GetThreadId()));
-    EXPECT_FALSE(sObj->IsOwned(thread->GetThreadId()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest, jsDeserializerTest, data.release());
@@ -1822,12 +1809,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction1)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewJSSharedFunction(env, nullptr,
         FunctionKind::NORMAL_FUNCTION);
-    EXPECT_TRUE(sFunc->IsOwned(thread->GetThreadId()));
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize sFunc fail";
-    EXPECT_FALSE(sFunc->IsOwned(thread->GetThreadId()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest1, jsDeserializerTest, data.release());

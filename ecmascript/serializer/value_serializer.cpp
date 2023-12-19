@@ -60,16 +60,10 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
         case JSType::JS_OBJECT:
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
-        case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION: {
-            ECMAObject * ecmaObj = ECMAObject::Cast(object);
-            if (ecmaObj->IsOwned(thread_->GetThreadId())) {
-                return true;
-            }
-            break;
-        }
         default:
             break;
     }
@@ -165,12 +159,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
-        case JSType::JS_SHARED_FUNCTION:
-        case JSType::JS_SHARED_OBJECT: {
-            ECMAObject * ecmaObj = reinterpret_cast<ECMAObject *>(object);
-            ecmaObj->SetOwnership(thread_, 0);
-            break;
-        }
         default:
             break;
     }

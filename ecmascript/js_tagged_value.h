@@ -198,7 +198,7 @@ public:
     ARK_INLINE int GetInt() const
     {
         ASSERT_PRINT(IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << value_);
-        return static_cast<int>(value_ & (~TAG_MARK));
+        return static_cast<int>(value_ & 0x0000'0000'FFFF'FFFFULL);
     }
 
     ARK_INLINE JSTaggedType GetRawData() const

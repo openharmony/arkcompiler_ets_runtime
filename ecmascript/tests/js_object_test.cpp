@@ -1288,7 +1288,7 @@ HWTEST_F_L0(JSObjectTest, NativePointerField)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    obj->SetHash(87);
+    ECMAObject::SetHash(87, JSHandle<ECMAObject>::Cast(obj));
     EXPECT_TRUE(obj->GetHash() == 87);
 
     obj->SetNativePointerFieldCount(1);

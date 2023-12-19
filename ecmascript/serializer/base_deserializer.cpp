@@ -210,16 +210,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
         if (nativePointer->GetDeleter() != nullptr) {
             thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
         }
-    } else if (object->GetClass()->IsJSSharedObject()) {
-        ECMAObject *sObj = reinterpret_cast<ECMAObject *>(object);
-        sObj->SetOwnership(thread_, thread_->GetThreadId());
     } else if (object->GetClass()->IsJSFunction()) {
         // defer initialize concurrent function until constpool is set
         concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
-        if (object->GetClass()->IsJSSharedFunction()) {
-            ECMAObject *sObj = reinterpret_cast<ECMAObject *>(object);
-            sObj->SetOwnership(thread_, thread_->GetThreadId());
-        }
     }
     UpdateMaybeWeak(slot, addr, isWeak);
     if (!isRoot) {

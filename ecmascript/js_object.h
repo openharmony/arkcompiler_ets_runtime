@@ -330,15 +330,17 @@ private:
 
 
 // HashField possible layout:
-// [ hashValue ] | [ nativePointer ] | [extraInfo] | [ sObjOwner&extRef, hashValue, extraInfo, nativePointer, ... ]
+// [ hashValue ] | [extraInfo] | [ hashValue, extraInfo, nativePointer, ... ]
 // nativePointer number depends on the extraLength of taggedArray
 class ECMAObject : public TaggedObject {
 public:
-    // the high 32nd bit indicates whether a shared object is frozen, 0 means not frozen, 1 means frozen
-    static constexpr int EXTREF_AND_OWNER_INDEX = 0;
-    static constexpr int HASH_INDEX = 1;
-    static constexpr int FUNCTION_EXTRA_INDEX = 2;
-    static constexpr int RESOLVED_MAX_SIZE = 3;
+    /*
+     * Set immutable bit inside hash Int value: [0xFFFF000] [0000 or 0001 denotes whether Immutable] [32bits value]
+     */
+    static constexpr int IMMUTABLE_BIT_SHIFT = 32;
+    static constexpr int HASH_AND_IMMUTABLE_INDEX = 0;
+    static constexpr int FUNCTION_EXTRA_INDEX = 1;
+    static constexpr int RESOLVED_MAX_SIZE = 2;
 
     CAST_CHECK(ECMAObject, IsECMAObject);
 
@@ -349,7 +351,7 @@ public:
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
 
-    void SetHash(int32_t hash);
+    static void SetHash(int32_t hash, const JSHandle<ECMAObject> &obj);
     int32_t GetHash() const;
     bool HasHash() const;
 
@@ -363,18 +365,15 @@ public:
         const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
-    /*
-     * Caution! This function may trigger GC therefore you should not call this function during
-     * obj initialization. If necessary, call it at last when all other accessor have been initialized.
-     */
-    static void InitializeExtRefAndOwner(EcmaVM *vm, const JSHandle<JSObject> &obj);
-    /*
-     * Call this method only in serialization
-     */
-    void SetOwnership(JSThread* thread, uint32_t threadID);
-    bool IsOwned(uint32_t threadID);
-    void FreezeObj(JSThread* thread);
-    bool IsFrozen();
+    void InitializeImmutableField();
+    static bool IsImmutableFromHashValue(uint64_t hashValue);
+    // panzhenyu shall be deleted
+    bool IsOwned([[maybe_unused]] uint32_t threadID)
+    {
+        return true;
+    }
+    void BecomeImmutable(JSThread* thread);
+    bool IsImmutable();
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
