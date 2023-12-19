@@ -57,6 +57,8 @@ static constexpr uint8_t byteMark = 0x80;
 
 static constexpr uint8_t latin1Limit = 0xFF;
 
+static constexpr int32_t INVALID_UTF8 = -1;
+
 enum UtfLength : uint8_t { ONE = 1, TWO = 2, THREE = 3, FOUR = 4 };
 enum UtfOffset : uint8_t { SIX = 6, TEN = 10, TWELVE = 12, EIGHTEEN = 18 };
 
@@ -100,6 +102,8 @@ static inline uint32_t CombineTwoU16(uint16_t d0, uint16_t d1)
     codePoint += utf::LO_SUPPLEMENTS_MIN;
     return codePoint;
 }
+
+std::pair<int32_t, size_t> ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen);
 }  // namespace panda::ecmascript::base::utf_helper
 
 #endif  // ECMASCRIPT_BASE_UTF_HELPER_H

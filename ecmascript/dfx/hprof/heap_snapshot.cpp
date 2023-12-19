@@ -1070,26 +1070,6 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     }
 }
 
-void HeapSnapshot::BridgeAllReferences()
-{
-    // This Function is Unused
-    for (Edge *edge : edges_) {
-        auto *from = reinterpret_cast<TaggedObject *>(edge->GetFrom()->GetAddress());
-        auto *to = reinterpret_cast<TaggedObject *>(edge->GetTo()->GetAddress());
-        if (!JSTaggedValue(from).IsECMAObject()) {
-            continue;  // named it by other way
-        }
-        edge->SetName(GenerateEdgeName(from, to));
-    }
-}
-
-CString *HeapSnapshot::GenerateEdgeName([[maybe_unused]] TaggedObject *from, [[maybe_unused]] TaggedObject *to)
-{
-    // This Function is Unused
-    ASSERT(from != nullptr && from != to);
-    return GetString("[]");  // unAnalysed
-}
-
 CString HeapSnapshot::ParseFunctionName(TaggedObject *obj)
 {
     CString result;

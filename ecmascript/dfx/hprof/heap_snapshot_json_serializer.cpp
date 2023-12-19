@@ -250,16 +250,57 @@ void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, St
     for (auto key : stringTable->GetOrderedKeyStorage()) {
         if (i == capcity - 1) {
             writer->Write("\"");
-            writer->Write(*(stringTable->GetStringByKey(key)));  // No Comma for the last line
+            SerializeString(stringTable->GetStringByKey(key), writer); // No Comma for the last line
             writer->Write("\"\n");
         } else {
             writer->Write("\"");
-            writer->Write(*(stringTable->GetStringByKey(key)));
+            SerializeString(stringTable->GetStringByKey(key), writer);
             writer->Write("\",\n");
         }
         i++;
     }
     writer->Write("]\n");
+}
+
+void HeapSnapshotJSONSerializer::SerializeString(CString *str, StreamWriter *writer)
+{
+    const char *s = str->c_str();
+    while (*s != '\0') {
+        if (*s > ASCII_US && *s < ASCII_DEL) {
+            writer->WriteChar(*s);
+            s++;
+        } else if (*s <= ASCII_US || *s == ASCII_DEL) {
+            // special char convert to \u unicode
+            SerializeUnicodeChar(static_cast<uint32_t>(*s), writer);
+            s++;
+        } else {
+            // convert utf-8 to \u unicode
+            size_t len = 1;
+            while (len <= UTF8_MAX_BYTES && *(s + len) != '\0') {
+                len++;
+            }
+            auto [unicode, bytes] =
+                base::utf_helper::ConvertUtf8ToUnicodeChar(reinterpret_cast<const uint8_t *>(s), len);
+            if (unicode == base::utf_helper::INVALID_UTF8) {
+                LOG_ECMA(WARN) << "HeapSnapshotJSONSerializer::SerializeString, str is not utf-8";
+                writer->WriteChar('?');
+                s++;
+            } else {
+                SerializeUnicodeChar(unicode, writer);
+                s += bytes;
+            }
+        }
+    }
+}
+
+void HeapSnapshotJSONSerializer::SerializeUnicodeChar(uint32_t unicodeChar, StreamWriter *writer)
+{
+    static const char hexChars[] = "0123456789ABCDEF";
+    writer->Write("\\u");
+    writer->WriteChar(hexChars[(unicodeChar >> 0xC) & 0xF]);
+    writer->WriteChar(hexChars[(unicodeChar >> 0x8) & 0xF]);
+    writer->WriteChar(hexChars[(unicodeChar >> 0x4) & 0xF]);
+    writer->WriteChar(hexChars[unicodeChar & 0xF]);
 }
 
 void HeapSnapshotJSONSerializer::SerializerSnapshotClosure(StreamWriter *writer)
