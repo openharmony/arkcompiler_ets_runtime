@@ -587,6 +587,12 @@ inline bool JSTaggedValue::IsJSObject() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSObject();
 }
 
+inline bool JSTaggedValue::IsOnlyJSObject() const
+{
+    // Distinguish the JSObject and the subclasses of JSObject.
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsOnlyJSObject();
+}
+
 inline bool JSTaggedValue::IsECMAObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsECMAObject();

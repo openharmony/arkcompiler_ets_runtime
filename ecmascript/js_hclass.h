@@ -526,6 +526,11 @@ public:
         return (JSType::JS_OBJECT_FIRST <= jsType && jsType <= JSType::JS_OBJECT_LAST);
     }
 
+    inline bool IsOnlyJSObject() const
+    {
+        return GetObjectType() == JSType::JS_OBJECT;
+    }
+
     inline bool IsECMAObject() const
     {
         JSType jsType = GetObjectType();

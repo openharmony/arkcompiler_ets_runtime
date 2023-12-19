@@ -1012,6 +1012,22 @@ HWTEST_F_L0(JSTaggedValueTest, IsRegExp)
     ASSERT_FALSE(JSObject::IsRegExp(thread, obj));
 }
 
+HWTEST_F_L0(JSTaggedValueTest, IsOnlyJSObject)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<JSArray> array = factory->NewJSArray();
+    ASSERT_FALSE(array.GetTaggedValue().IsOnlyJSObject());
+    ASSERT_TRUE(array.GetTaggedValue().IsJSObject());
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectFuncPrototype = env->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objectFuncPrototype);
+    JSHandle<JSObject> object = thread->GetEcmaVM()->GetFactory()->NewJSObject(hclass);
+    ASSERT_TRUE(object.GetTaggedValue().IsOnlyJSObject());
+    ASSERT_TRUE(object.GetTaggedValue().IsJSObject());
+}
+
 HWTEST_F_L0(JSTaggedValueTest, SameValue)
 {
     EcmaVM *ecma = thread->GetEcmaVM();
