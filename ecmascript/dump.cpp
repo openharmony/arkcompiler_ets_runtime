@@ -3584,7 +3584,12 @@ void SourceTextModule::Dump(std::ostream &os) const
     GetNameDictionary().Dump(os);
     os << "\n";
     os << " - CycleRoot: ";
-    GetCycleRoot().Dump(os);
+    // avoid infinite dump
+    if (GetCycleRoot() != JSTaggedValue(this)) {
+        GetCycleRoot().Dump(os);
+    } else {
+        os << "this";
+    }
     os << "\n";
     os << " - TopLevelCapability: ";
     GetTopLevelCapability().Dump(os);
