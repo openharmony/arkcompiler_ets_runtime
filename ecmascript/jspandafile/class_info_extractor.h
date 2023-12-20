@@ -168,7 +168,8 @@ private:
                                      const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
 
     static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-                                   const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict);
+                                   const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
+                                    PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

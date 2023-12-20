@@ -481,7 +481,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
                                               staticProperties, ClassPropertyType::STATIC, lexenv);
         JSMutableHandle<NameDictionary> nameDict(thread, dict);
         if (staticFields > 0) {
-            AddFieldTypeToDict(thread, lexenv, staticFieldArray, nameDict);
+            AddFieldTypeToDict(thread, lexenv, staticFieldArray, nameDict,  PropertyAttributes::Default(false, true, false));
         }
         constructor->SetProperties(thread, nameDict);
     }
@@ -800,11 +800,10 @@ void ClassHelper::AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTagged
 
 void ClassHelper::AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                      const JSHandle<TaggedArray> &fieldTypeArray,
-                                     JSMutableHandle<NameDictionary> &dict)
+                                     JSMutableHandle<NameDictionary> &dict, PropertyAttributes attributes)
 {
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    PropertyAttributes attributes = PropertyAttributes::Default(true, true, true);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
@@ -897,7 +896,9 @@ void ClassHelper::DefineSendableInstanceHClass(JSThread *thread, const JSHandle<
         }
     }
     iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(clsPrototype));
+    iHClass->SetExtensible(false);
     ctor->SetProtoOrHClass(thread, iHClass);
+    ctor->GetJSHClass()->SetExtensible(false);
 }
 
 JSHandle<TaggedArray> ClassHelper::ExtractStaticFieldTypeArray(JSThread *thread,
