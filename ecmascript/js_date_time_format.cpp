@@ -1480,6 +1480,11 @@ std::string JSDateTimeFormat::ConstructFormattedTimeZoneID(const std::string &in
 {
     std::string result = input;
     transform(result.begin(), result.end(), result.begin(), toupper);
+    std::map<std::string, std::string> map = JSDateTimeFormat::GetSpecialTimeZoneMap();
+    auto it = map.find(result);
+    if (it != map.end()) {
+        return it->second;
+    }
     static const std::vector<std::string> tzStyleEntry = {
         "GMT", "ETC/UTC", "ETC/UCT", "GMT0", "ETC/GMT", "GMT+0", "GMT-0"
     };
@@ -1492,11 +1497,10 @@ std::string JSDateTimeFormat::ConstructFormattedTimeZoneID(const std::string &in
         result = ConstructGMTTimeZoneID(input);
     } else if (count(tzStyleEntry.begin(), tzStyleEntry.end(), result)) {
         result = "UTC";
-    }
-    std::map<std::string, std::string> map = JSDateTimeFormat::GetSpecialTimeZoneMap();
-    auto it = map.find(result);
-    if (it != map.end()) {
-        return it->second;
+    } else if (result.length() == STRING_LENGTH_3) {
+        return result;
+    } else {
+        return ToTitleCaseTimezonePosition(result);
     }
 
     return result;
