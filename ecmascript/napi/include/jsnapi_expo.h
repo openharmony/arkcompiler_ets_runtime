@@ -1287,6 +1287,8 @@ public:
     static void SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
                     const std::string &moduleName,
                     int32_t triggerMode)> &cb);
+    static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
+                    std::string &hapPath)> cb);
 
 private:
     static int vmCount_;

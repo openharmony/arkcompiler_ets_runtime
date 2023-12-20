@@ -481,12 +481,52 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     return extractor;
 }
 
+std::string GetModuleNameFromDesc(const std::string &desc)
+{
+    /*
+    handle desc like:
+    case1: /data/storage/el1/bundle/entry/ets/modules.abc -> entry/ets/modules.abc
+    case2: /data/storage/el1/bundle/entry/ets/widgets.abc -> entry/ets/widgets.abc
+    case3: /data/app/el1/bundle/public/com.xx.xx/entry/ets/modules.abc -> entry/ets/modules.abc
+    case4: /data/app/el1/bundle/public/com.xx.xx/entry/ets/widgets.abc -> entry/ets/widgets.abc
+    */
+    auto lastSlash = desc.rfind("/");
+    if (lastSlash == std::string::npos) {
+        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find fisrt /: " << desc;
+        return "";
+    }
+
+    auto secondLastSlash = desc.rfind("/", lastSlash - 1);
+    if (secondLastSlash == std::string::npos) {
+        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find second /: " << desc;
+        return "";
+    }
+
+    auto thirdLastSlash = desc.rfind("/", secondLastSlash - 1);
+    if (thirdLastSlash == std::string::npos) {
+        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find third /: " << desc;
+        return "";
+    }
+    // get moduleName from thirdLastSlash to secondLastSlash
+    return desc.substr(thirdLastSlash + 1, secondLastSlash - thirdLastSlash - 1);
+}
+
 std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
                                                                      const CString &desc, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
+
+    std::string moduleName = GetModuleNameFromDesc(desc.c_str());
+    std::string hapPath;
+    SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
+    if (callback) {
+        callback(moduleName, hapPath);
+        LOG_ECMA(DEBUG) << "SearchHapPathCallBack moduleName: " << moduleName
+                        << ", fileName:" << desc << ", hapPath: " << hapPath;
+        newJsPandaFile->SetHapPath(hapPath.c_str());
+    }
 
     CString methodName = entryPoint.data();
     if (newJsPandaFile->IsBundlePack()) {

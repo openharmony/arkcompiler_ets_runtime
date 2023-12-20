@@ -94,6 +94,16 @@ public:
 
     CString GetNormalizedFileDesc() const;
 
+    void SetHapPath(const CString &hapPath)
+    {
+        hapPath_ = hapPath;
+    }
+
+    const CString &GetJSPandaFileHapPath() const
+    {
+        return hapPath_;
+    }
+
     static CString GetNormalizedFileDesc(const CString &desc);
 
     uint32_t GetChecksum() const
@@ -426,7 +436,9 @@ private:
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
+    // please add member after *pf_. static constexpr int32_t PF_OFFSET = 0.
     const panda_file::File *pf_ {nullptr};
+    CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
