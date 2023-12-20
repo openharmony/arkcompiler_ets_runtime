@@ -5085,6 +5085,186 @@ static Local<MapRef> New(const EcmaVM *vm);
 Local<MapRef> result = MapRef::New(vm_);
 ```
 
+### GetSize
+
+int32_t GetSize();
+
+ 返回 `MapRef` 对象中键值对的数量，即 `Map` 对象的大小。
+
+通过 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+调用 `JSMap::GetSize` 方法获取 `Map` 对象的大小。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                   |
+| ------- | ---------------------- |
+| int32_t | 返回`Map` 对象的大小。 |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm_);
+int32_t size = mapRef->GetSize();
+```
+
+### GetTotalElements
+
+int32_t GetTotalElements();
+
+返回 `MapRef` 对象中所有元素的数量，包括实际存在的元素和已删除的元素。
+
+通过 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+调用 `JSMap::GetSize` 方法获取 `Map` 对象的大小，加上已删除元素的数量。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明                   |
+| ------- | ---------------------- |
+| int32_t | 对象中所有元素的数量。 |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm_);
+int32_t totalElements = mapRef->GetTotalElements();
+```
+
+### Get
+
+Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
+
+返回 `MapRef` 对象中指定键的值。
+
+在获取之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+调用 `map->Get` 方法获取与给定键对应的值。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明             |
+| ------ | ----------------- | ---- | ---------------- |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象。     |
+| key    | Local<JSValueRef> | 是   | 表示要获取的键。 |
+
+**返回值：**
+
+| 类型              | 说明                         |
+| ----------------- | ---------------------------- |
+| Local<JSValueRef> | 返回表示迭代类型的字符串值。 |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm_);
+Local<JSValueRef> myValue = MapRef->Get(myEcmaVM, myKey);
+```
+
+### GetKey
+
+Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
+
+获取 Map 对象中指定索引处的键。
+
+在获取之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+ 调用 `map->GetKey(entry)` 方法获取 Map 对象中指定索引处的键，并将结果转换为 `Local<JSValueRef>`。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                                          |
+| ------ | -------------- | ---- | --------------------------------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。                                  |
+| entry  | int            | 是   | 表示 Map 对象中的条目索引，用于获取相应的键。 |
+
+**返回值：**
+
+| 类型              | 说明                              |
+| ----------------- | --------------------------------- |
+| Local<JSValueRef> | 返回了 Map 对象中指定索引处的键。 |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm_);
+Local<JSValueRef> myKey = MapRef->GetKey(myEcmaVM, myEntry);
+```
+
+### GetValue
+
+Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+
+获取 Map 对象中指定索引处的值。
+
+在获取之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+调用 `map->GetValue(entry)` 方法获取 Map 对象中指定索引处的值，并将结果转换为 `Local<JSValueRef>`。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明               |
+| ------ | -------------- | ---- | ------------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。       |
+| entry  | int            | 是   | 用于获取相应的值。 |
+
+**返回值：**
+
+| 类型              | 说明                              |
+| ----------------- | --------------------------------- |
+| Local<JSValueRef> | 返回了 Map 对象中指定索引处的值。 |
+
+**示例：**
+
+```c++
+Local<MapRef> mapRef = MapRef::New(vm_);
+Local<JSValueRef> myValue = MapRef->Get(myEcmaVM, myEntry);
+```
+
+### Set
+
+void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
+
+ 向当前 `MapRef` 对象中设置键值对。
+
+在设置之前，通过 `CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `MapRef` 对象转换为 JavaScript 中的 `JSMap` 对象。
+
+调用 `JSMap::Set` 方法在 Map 对象中设置键值对。
+
+**参数：**
+
+| 参数名 | 类型              | 必填 | 说明             |
+| ------ | ----------------- | ---- | ---------------- |
+| vm     | const EcmaVM *    | 是   | 虚拟机对象。     |
+| key    | Local<JSValueRef> | 是   | 表示要设置的键。 |
+| value  | Local<JSValueRef> | 是   | 表示要设置的值。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+myMap.Set(myEcmaVM, myKey, myValue);
+```
+
 
 
 ## WeakMapRef
