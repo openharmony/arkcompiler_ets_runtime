@@ -603,7 +603,7 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     } else if (type == JSType::PROPERTY_BOX) {
         nodeType = NodeType::HIDDEN;
     } else if (type == JSType::JS_ARRAY || type == JSType::JS_TYPED_ARRAY) {
-        nodeType = NodeType::ARRAY;
+        nodeType = NodeType::OBJECT;
     } else if (type == JSType::JS_OBJECT) {
         nodeType = NodeType::OBJECT;
     } else if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
@@ -663,7 +663,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             }
             return node;
         }
-        if (entry.IsJSObject()) {
+        if (entry.IsOnlyJSObject()) {
             node = GenerateObjectNode(entry, size, isInFinish);
             if (node == nullptr) {
                 LOG_ECMA(ERROR) << "function node nullptr";
