@@ -577,6 +577,17 @@ DEF_RUNTIME_STUBS(NewMutantTaggedArray)
     return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DumpFindElementWithCache)
+{
+    RUNTIME_STUBS_HEADER(DumpFindElementWithCache);
+    JSHandle<LayoutInfo> layout = GetHArg<LayoutInfo>(argv, argc, 0);  // 0: means the first parameter
+    JSHandle<JSHClass> cls = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);        // 2: means the first parameter
+    JSTaggedValue propsNum = GetArg(argv, argc, 3);        // 3: means the first parameter
+    layout->DumpFindElementWithCache(thread, *cls, key, propsNum.GetInt());
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
     std::ostringstream oss;

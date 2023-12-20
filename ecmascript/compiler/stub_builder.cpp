@@ -3533,6 +3533,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         CallNGCRuntime(glue, RTSTUB_ID(Dump), {key});
                         CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(entry)});
                         CallNGCRuntime(glue, RTSTUB_ID(Dump), {IntToTaggedInt(Int32(111111))});
+                        CallRuntime(glue, RTSTUB_ID(DumpFindElementWithCache),
+                            { layOutInfo, hclass, key, IntToTaggedInt(propsNum) });
                         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                         result = Exception();
                         Jump(&exit);

@@ -120,6 +120,102 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     return index;
 }
 
+inline int LayoutInfo::DumpFindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key,
+                                                int propertiesNumber)
+{
+    ASSERT(NumberOfElements() >= propertiesNumber);
+    LOG_ECMA(INFO) << "DumpFindElementWithCache propertiesNumber: " << propertiesNumber;
+    LOG_ECMA(INFO) << "DumpFindElementWithCache NumberOfElements: " << NumberOfElements();
+    LOG_ECMA(INFO) << "DumpFindElementWithCache cls: " << std::hex << static_cast<JSTaggedType>(ToUintPtr(cls));
+    const int MAX_ELEMENTS_LINER_SEARCH = 9; // 9: Builtins Object properties number is nine;
+    if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
+        Span<struct Properties> sp(GetProperties(), propertiesNumber);
+        for (int i = 0; i < propertiesNumber; i++) {
+            if (sp[i].key_ == key) {
+                LOG_ECMA(INFO) << "DumpFindElementWithCache find in GetProperties index: " << i;
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    PropertiesCache *cache = thread->GetPropertiesCache();
+    int index = cache->DumpGet(cls, key);
+    if (index == PropertiesCache::NOT_FOUND) {
+        index = DumpBinarySearch(key, propertiesNumber);
+        LOG_ECMA(INFO) << "DumpFindElementWithCache find in BinarySearch index: " << index;
+        if (index != -1) {
+            cache->Set(cls, key, index);
+        }
+    } else {
+        LOG_ECMA(INFO) << "DumpFindElementWithCache find in GetPropertiesCache index: " << index;
+    }
+    return index;
+}
+
+inline int LayoutInfo::DumpBinarySearch(JSTaggedValue key, int propertiesNumber)
+{
+    ASSERT(NumberOfElements() >= propertiesNumber);
+    int low = 0;
+    int elements = NumberOfElements();
+    int high = elements - 1;
+    uint32_t keyHash = key.GetKeyHashCode();
+
+    ASSERT(low <= high);
+
+    while (low <= high) {
+        int mid = low + (high - low) / 2;  // 2: half
+        JSTaggedValue midKey = GetSortedKey(mid);
+        uint32_t midHash = midKey.GetKeyHashCode();
+        if (midHash > keyHash) {
+            high = mid - 1;
+        } else if (midHash < keyHash) {
+            low = mid + 1;
+        } else {
+            int sortIndex = static_cast<int>(GetSortedIndex(mid));
+            JSTaggedValue currentKey = GetKey(sortIndex);
+            if (currentKey == key) {
+                std::ostringstream oss;
+                currentKey.Dump(oss);
+                LOG_ECMA(INFO) << "DumpBinarySearch currentKey: " << oss.str();
+                return sortIndex < propertiesNumber ? sortIndex : -1;
+            }
+            int midLeft = mid;
+            int midRight = mid;
+            while (midLeft - 1 >= 0) {
+                sortIndex = static_cast<int>(GetSortedIndex(--midLeft));
+                currentKey = GetKey(sortIndex);
+                if (currentKey.GetKeyHashCode() == keyHash) {
+                    if (currentKey == key) {
+                        std::ostringstream oss;
+                        currentKey.Dump(oss);
+                        LOG_ECMA(INFO) << "DumpBinarySearch currentKey: " << oss.str();
+                        return sortIndex < propertiesNumber ? sortIndex : -1;
+                    }
+                } else {
+                    break;
+                }
+            }
+            while (midRight + 1 < elements) {
+                sortIndex = static_cast<int>(GetSortedIndex(++midRight));
+                currentKey = GetKey(sortIndex);
+                if (currentKey.GetKeyHashCode() == keyHash) {
+                    if (currentKey == key) {
+                        std::ostringstream oss;
+                        currentKey.Dump(oss);
+                        LOG_ECMA(INFO) << "DumpBinarySearch currentKey: " << oss.str();
+                        return sortIndex < propertiesNumber ? sortIndex : -1;
+                    }
+                } else {
+                    break;
+                }
+            }
+            return -1;
+        }
+    }
+    return -1;
+}
+
 inline int LayoutInfo::BinarySearch(JSTaggedValue key, int propertiesNumber)
 {
     ASSERT(NumberOfElements() >= propertiesNumber);
