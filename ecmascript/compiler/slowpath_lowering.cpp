@@ -733,7 +733,7 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
             LowerDefinePrivateProperty(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
             LowerDefineSendableClass(gate);
             break;
         case EcmaOpcode::CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16:

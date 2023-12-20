@@ -351,7 +351,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
-        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
             flags |= BytecodeFlags::READ_ENV;
             break;
         default:
@@ -443,7 +443,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
-        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -1655,11 +1655,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
-        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8: {
-            uint16_t methodId = READ_INST_16_1();
-            uint16_t literaId = READ_INST_16_3();
-            uint16_t length = READ_INST_16_5();
-            uint16_t v0 = READ_INST_8_7();
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8: {
+            uint16_t methodId = READ_INST_16_3();
+            uint16_t literaId = READ_INST_16_5();
+            uint16_t length = READ_INST_16_7();
+            uint16_t v0 = READ_INST_8_9();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ClassLiteralIDType, literaId));
             info.inputs.emplace_back(Immediate(length));

@@ -165,6 +165,24 @@ public:
         SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, length);
     }
 
+    inline bool IsGetterOrSetterFunction() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION || kind == FunctionKind::SETTER_FUNCTION;
+    }
+
+    inline bool IsGetterFunction() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION;
+    }
+
+    inline bool IsSetterFunction() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::SETTER_FUNCTION;
+    }
+
     inline bool IsBase() const
     {
         FunctionKind kind = GetFunctionKind();

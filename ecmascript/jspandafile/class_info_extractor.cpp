@@ -406,6 +406,31 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     return constructor;
 }
 
+void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
+                                         JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv)
+{
+    ASSERT(value->IsAccessorData());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<AccessorData> accessor(value);
+    auto getter = accessor->GetGetter();
+    if (getter.IsJSFunction()) {
+        JSHandle<JSFunction> func(thread, getter);
+        JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
+        propFunc->SetHomeObject(thread, homeObject);
+        propFunc->SetLexicalEnv(thread, lexenv);
+        accessor->SetGetter(thread, propFunc);
+    }
+    auto setter = accessor->GetSetter();
+    if (setter.IsJSFunction()) {
+        JSHandle<JSFunction> func(thread, setter);
+        JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
+        propFunc->SetHomeObject(thread, homeObject);
+        propFunc->SetLexicalEnv(thread, lexenv);
+        accessor->SetSetter(thread, propFunc);
+    }
+
+}
+
 JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thread,
                                                                    JSHandle<ClassInfoExtractor> &extractor,
                                                                    const JSHandle<JSTaggedValue> &lexenv,
@@ -414,9 +439,12 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
     JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
+    ClassHelper::FilterDuplicatedKeys(thread, staticKeys, staticProperties);
 
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
+    ClassHelper::FilterDuplicatedKeys(thread, nonStaticKeys, nonStaticProperties);
+
     JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreateSendableHClass(thread, nonStaticKeys,
                                                                                   nonStaticProperties, true);
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
@@ -447,6 +475,8 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
+            } else if (propValue->IsAccessorData()) {
+                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), lexenv);
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -472,6 +502,8 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
+            } else if (propValue->IsAccessorData()) {
+                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), lexenv);
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -499,6 +531,89 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, lexenv);
     return constructor;
+}
+
+// Process duplicated key due to getter/setter.
+void ClassHelper::FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
+                                       const JSHandle<TaggedArray> &properties)
+{
+    auto attr = PropertyAttributes::Default();
+    uint32_t length = keys->GetLength();
+    uint32_t left = 0;
+    uint32_t right = 0;
+    JSMutableHandle<NameDictionary> dict(
+        thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(length)));
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> existValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> index(thread, JSTaggedValue::Undefined());
+    for (; right < length; right++) {
+        key.Update(keys->Get(right));
+        value.Update(properties->Get(right));
+        int entry = dict->FindEntry(key.GetTaggedValue());
+        if (entry == -1) {
+            TryUpdateValue(thread, value);
+            index.Update(JSTaggedValue(left));
+            JSHandle<NameDictionary> newDict =
+                NameDictionary::PutIfAbsent(thread, dict, key, index, attr);
+            dict.Update(newDict);
+            if (left < right) {
+                keys->Set(thread, left, key);
+            }
+            properties->Set(thread, left, value);
+            left++;
+            continue;
+        }
+        auto existIndex = static_cast<uint32_t>(dict->GetValue(entry).GetNumber());
+        existValue.Update(properties->Get(existIndex));
+        bool needUpdateValue = TryUpdateExistValue(thread, existValue, value);
+        if (needUpdateValue) {
+            properties->Set(thread, existIndex, value);
+        }
+    }
+    if (left < right) {
+        keys->Trim(thread, left);
+        properties->Trim(thread, left);
+    }
+}
+
+bool ClassHelper::TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,
+                                      JSMutableHandle<JSTaggedValue> &value)
+{
+    bool needUpdateValue = true;
+    if (existValue->IsAccessorData()) {
+        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+            JSHandle<AccessorData> accessor(existValue);
+            UpdateValueToAccessor(thread, value, accessor);
+            needUpdateValue = false;
+        }
+    } else {
+        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+            JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+            UpdateValueToAccessor(thread, value, accessor);
+        }
+    }
+    return needUpdateValue;
+}
+
+void ClassHelper::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value)
+{
+    if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+        JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+        UpdateValueToAccessor(thread, value, accessor);
+    }
+}
+
+void ClassHelper::UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
+                                        JSHandle<AccessorData> &accessor)
+{
+    ASSERT(value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction());
+    if (JSHandle<JSFunction>(value)->IsGetterFunction()) {
+        accessor->SetGetter(thread, value);
+    } else {
+        accessor->SetSetter(thread, value);
+    }
+    value.Update(accessor);
 }
 
 JSHandle<JSHClass> ClassInfoExtractor::CreateSendableHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
@@ -578,6 +693,8 @@ JSHandle<NameDictionary> ClassHelper::BuildSendableDictionaryProperties(JSThread
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
             propValue.Update(propFunc);
+        } else if (propValue->IsAccessorData()) {
+            UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), lexenv);
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
         dict.Update(newDict);

@@ -214,6 +214,11 @@ void Builtins::InitializeForSharing(const JSHandle<GlobalEnv> &env)
     InitializeSharedObject(env, sobjIHClass, sobjFuncPrototype);
     env->SetSharedObjectFunctionPrototype(thread_, sobjFuncPrototype);
     sobjFuncPrototype->GetJSHClass()->SetExtensible(false);
+    JSHandle<JSHClass> functionClass =
+    factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSSharedFunction::SIZE,JSType::JS_SHARED_FUNCTION,
+                                  env->GetSharedFunctionPrototype());
+    functionClass->SetExtensible(false);
+    env->SetSharedFunctionClassWithoutProto(thread_, functionClass);
 }
 
 void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sobjIHClass,
@@ -241,9 +246,9 @@ void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHa
     // B.2.2.1 sObject.prototype.__proto__
     JSHandle<JSTaggedValue> protoKey(factory_->NewFromASCII("__proto__"));
     JSHandle<JSTaggedValue> protoGetter =
-        CreateSharedGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
+        CreateSharedGetterSetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter =
-        CreateSharedSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
+        CreateSharedGetterSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetSharedAccessor(sobjFuncPrototypeObj, protoKey, protoGetter, protoSetter);
 }
 
@@ -280,7 +285,7 @@ void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
     env->SetSharedConstructorClass(thread_, sharedConstructorClass);
 
     JSHandle<JSObject> sfuncPrototypeObj(sfuncPrototype);
-    StrictModeForbiddenAccessCallerArguments(env, sfuncPrototypeObj);
+    SharedStrictModeForbiddenAccessCallerArguments(env, sfuncPrototypeObj);
     // Function.prototype method
     // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
     SetSharedFunction(env, sfuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
@@ -3727,19 +3732,25 @@ void Builtins::SetSharedAccessor(const JSHandle<JSObject> &obj, const JSHandle<J
     JSObject::AddAccessor(thread_, JSHandle<JSTaggedValue>::Cast(obj), key, accessor, attr);
 }
 
-JSHandle<JSTaggedValue> Builtins::CreateSharedGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               std::string_view name, int length) const
+JSHandle<JSTaggedValue> Builtins::CreateSharedGetterSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                                           std::string_view name, int length) const
 {
     JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
     auto getter = NewSharedFunction(env, funcName, func, length);
     return JSHandle<JSTaggedValue>(getter);
 }
 
-JSHandle<JSTaggedValue> Builtins::CreateSharedSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               std::string_view name, int length) const
+void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
+                                                              const JSHandle<JSObject> &prototype) const
 {
-    JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
-    auto setter = NewSharedFunction(env, funcName, func, length);
-    return JSHandle<JSTaggedValue>(setter);
+    JSHandle<JSFunction> func =
+        factory_->NewJSSharedFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError),
+            FunctionKind::NORMAL_FUNCTION, kungfu::BuiltinsStubCSigns::INVALID, MemSpaceType::NON_MOVABLE);
+
+    JSHandle<JSTaggedValue> caller(factory_->NewFromASCII("caller"));
+    SetSharedAccessor(prototype, caller, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
+
+    JSHandle<JSTaggedValue> arguments(factory_->NewFromASCII("arguments"));
+    SetSharedAccessor(prototype, arguments, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
 }
 }  // namespace panda::ecmascript

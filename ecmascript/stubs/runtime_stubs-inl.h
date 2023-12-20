@@ -899,6 +899,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromSharedFamily), JSTaggedValue::Exception());
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    if (!base->IsHole() && !base->IsNull() && !base->IsJSSharedFunction()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "sendable class shouldn't extend non-sendable class",
+            JSTaggedValue::Exception());
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
@@ -907,7 +911,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry, true);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     auto literalLength = arrayHandle->GetLength();

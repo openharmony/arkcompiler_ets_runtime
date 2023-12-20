@@ -45,7 +45,8 @@ public:
                                                     JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
         JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
-        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
+        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>(),
+        bool sendableClass = false);
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                             size_t index, JSHandle<ConstantPool> constpool,
                                                             const CString &entryPoint = "");
@@ -54,7 +55,8 @@ public:
                                                       uint32_t offset, JSHandle<ConstantPool> constpool,
                                                       FunctionKind kind, uint16_t length,
                                                       const CString &entryPoint = "",
-                                                      bool isLoadedAOT = false, uint32_t entryIndex = 0);
+                                                      bool isLoadedAOT = false, uint32_t entryIndex = 0,
+                                                      bool sendableClass = false);
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
                                             std::vector<uint32_t> &methodOffsets);

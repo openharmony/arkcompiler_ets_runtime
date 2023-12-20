@@ -5025,15 +5025,15 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8));
 }
 
-DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V8)
+DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
-    GateRef methodId = ReadInst16_1(pc);
-    GateRef literalId = ReadInst16_3(pc);
-    GateRef length = ReadInst16_5(pc);
-    GateRef v0 = ReadInst8_7(pc);
+    GateRef methodId = ReadInst16_3(pc);
+    GateRef literalId = ReadInst16_5(pc);
+    GateRef length = ReadInst16_7(pc);
+    GateRef v0 = ReadInst8_9(pc);
 
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
@@ -5054,7 +5054,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V8)
     }
     Bind(&isNotException);
     varAcc = res;
-    DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8);
+    DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableLexenvImm16)

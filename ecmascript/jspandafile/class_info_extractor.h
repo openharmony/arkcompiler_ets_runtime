@@ -122,9 +122,15 @@ public:
     static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                              const JSHandle<TaggedArray> &fieldTypeArray,
                                              const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
+
     static JSHandle<TaggedArray> ExtractStaticFieldTypeArray(JSThread *thread,
                                                              const JSHandle<TaggedArray> &fieldTypeArray);
-    static TrackType FromFieldType(FieldType type) {
+
+    static void FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
+                                     const JSHandle<TaggedArray> &properties);
+
+    static TrackType FromFieldType(FieldType type)
+    {
         switch (type) {
             case FieldType::NONE:
                 return TrackType::NONE;
@@ -159,6 +165,9 @@ private:
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);
 
+    static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
+                                       JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv);
+
     static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                      const JSHandle<TaggedArray> &fieldTypeArray,
                                      const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
@@ -170,6 +179,14 @@ private:
     static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                    const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
                                     PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
+
+    static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,
+                                    JSMutableHandle<JSTaggedValue> &value);
+
+    static void TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value);
+
+    static void UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
+                                      JSHandle<AccessorData> &accessor);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

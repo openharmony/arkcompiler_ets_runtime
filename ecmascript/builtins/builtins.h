@@ -363,12 +363,10 @@ private:
     void SetSharedAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                            const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
 
-    JSHandle<JSTaggedValue> CreateSharedGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               std::string_view name, int length) const;
-
-    JSHandle<JSTaggedValue> CreateSharedSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               std::string_view name, int length) const;
-
+    JSHandle<JSTaggedValue> CreateSharedGetterSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                                     std::string_view name, int length) const;
+    void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSObject> &prototype) const;
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

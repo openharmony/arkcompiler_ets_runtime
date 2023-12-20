@@ -379,7 +379,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeToPropertyKeyPrefNone)                             \
     T(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)                \
     T(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)             \
-    T(HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V8)            \
+    T(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)       \
     T(HandleCallRuntimeNewSendableLexenvImm16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \

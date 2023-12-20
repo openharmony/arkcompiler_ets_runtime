@@ -148,6 +148,7 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
 #define READ_INST_8_6() READ_INST_8(7)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8_7() READ_INST_8(8)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8_8() READ_INST_8(9)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
+#define READ_INST_8_9() READ_INST_8(10)             // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8(offset) (*(pc + (offset)))
 #define MOVE_AND_READ_INST_8(currentInst, offset) \
     (currentInst) <<= 8;                          \
@@ -158,6 +159,7 @@ using panda::ecmascript::kungfu::CommonStubCSigns;
 #define READ_INST_16_2() READ_INST_16(4)
 #define READ_INST_16_3() READ_INST_16(5)
 #define READ_INST_16_5() READ_INST_16(7)
+#define READ_INST_16_7() READ_INST_16(9)
 #define READ_INST_16(offset)                            \
     ({                                                  \
         uint16_t currentInst = READ_INST_8(offset);     \
@@ -6048,14 +6050,14 @@ void InterpreterAssembly::HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8
     DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
 }
 
-void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V8(
+void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    uint16_t methodId = READ_INST_16_1();
-    uint16_t literaId = READ_INST_16_3();
-    uint16_t length = READ_INST_16_5();
-    uint16_t v0 = READ_INST_8_7();
+    uint16_t methodId = READ_INST_16_3();
+    uint16_t literaId = READ_INST_16_5();
+    uint16_t length = READ_INST_16_7();
+    uint16_t v0 = READ_INST_8_9();
     LOG_INST() << "intrinsics::definesendableclass"
                 << " method id:" << methodId << " base: v" << v0;
 
@@ -6071,7 +6073,7 @@ void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefId16Id16Imm16V
     ASSERT(res.IsClassConstructor());
     ASSERT(res.IsJSSharedFunction());
     SET_ACC(res);
-    DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_ID16_ID16_IMM16_V8);
+    DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
 }
 
 void InterpreterAssembly::HandleCallRuntimeNewSendableLexenvImm16(

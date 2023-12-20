@@ -79,6 +79,11 @@ GateRef InterpreterStubBuilder::ReadInst8_8(GateRef pc)
     return Load(VariableType::INT8(), pc, IntPtr(9));  // 9 : skip 1 byte of bytecode
 }
 
+GateRef InterpreterStubBuilder::ReadInst8_9(GateRef pc)
+{
+    return Load(VariableType::INT8(), pc, IntPtr(10));  // 10 : skip 1 byte of bytecode
+}
+
 GateRef InterpreterStubBuilder::ReadInst4_0(GateRef pc)
 {
     return Int8And(Load(VariableType::INT8(), pc, IntPtr(1)), Int8(0xf));
@@ -192,6 +197,15 @@ GateRef InterpreterStubBuilder::ReadInst16_6(GateRef pc)
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
     /* 6 : skip 8 bits of opcode, 8 bits of prefix and first 2 parameters of 16 bits */
     return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_6(pc)));
+}
+
+GateRef InterpreterStubBuilder::ReadInst16_7(GateRef pc)
+{
+    /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
+    GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_8(pc));
+    GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
+    /* 6 : skip 8 bits of opcode, 8 bits of prefix and first 2 parameters of 16 bits */
+    return Int16Add(currentInst2, ZExtInt8ToInt16(ReadInst8_9(pc)));
 }
 
 GateRef InterpreterStubBuilder::GetFrame(GateRef CurrentSp)
