@@ -1041,7 +1041,9 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
         Branch(*canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
         {
-            newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
+            GateRef singleCharTable = GetSingleCharTable(glue);
+            result = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(*data));
+            Jump(&exit);
         }
         Bind(&isUtf16Next);
         {
