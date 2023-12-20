@@ -15,7 +15,7 @@
 
 /*
  * @tc.name:fromCharCode
- * @tc.desc:test String.fromCharCode
+ * @tc.desc:test String.fromCharCode and charat
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
@@ -34,3 +34,10 @@ obj[str3] = 'jjj3';
 print(obj[8]);
 print(obj.Z);
 print(obj.q);
+
+var str4 = "wode每一天";
+var str5 = "wodekk";
+print(str4.charAt(4));
+print(str5.charAt(4));
+obj[str5.charAt(4)] = 'jjj4';
+print(obj.k);
