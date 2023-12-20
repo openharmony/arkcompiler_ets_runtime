@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -894,6 +895,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
                                                        uint16_t methodId, uint16_t literalId,
                                                        uint16_t length, const JSHandle<JSTaggedValue> &module)
 {
+    if (!base->IsJSSharedFamily() && !base->IsHole()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromSharedFamily), JSTaggedValue::Exception());
+    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
