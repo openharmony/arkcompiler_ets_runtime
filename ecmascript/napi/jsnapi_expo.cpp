@@ -2353,10 +2353,7 @@ bool ArrayRef::SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t inde
 #define EXCEPTION_ERROR_NEW(name, type)                                                     \
     Local<JSValueRef> Exception::name(const EcmaVM *vm, Local<StringRef> message)           \
     {                                                                                       \
-        JSThread *thread = vm->GetJSThread();                                               \
-        if (thread->HasPendingException()) {                                                \
-            thread->ClearException();                                                       \
-        }                                                                                   \
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));        \
         ObjectFactory *factory = vm->GetFactory();                                          \
                                                                                             \
         JSHandle<EcmaString> messageValue(JSNApiHelper::ToJSHandle(message));               \
