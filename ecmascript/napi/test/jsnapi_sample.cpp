@@ -70,6 +70,721 @@ protected:
     EcmaVM *vm_ = nullptr;
 };
 
+/* demo1 原始类型的使用。 */
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_IntegerRef)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_IntegerRef_int=============================================================";
+    int inputInt = 123; // int value = 123
+    Local<IntegerRef> intObject = IntegerRef::New(vm_, inputInt);
+    int intValue = intObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_IntegerRef_intValue : " << intValue;
+    Local<PrimitiveRef> pintObject = intObject;
+    GTEST_LOG_(INFO) << "sample_primitive_IntegerRef_pintObject_IsInt : " << pintObject->IsInt();
+    GTEST_LOG_(INFO) << "sample_primitive_IntegerRef_uint============================================================";
+    uint inputUint = 123; // uint value = 123
+    Local<IntegerRef> uintObject = IntegerRef::NewFromUnsigned(vm_, inputUint);
+    int uintValue = uintObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_uintValue : " << uintValue;
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_NumberRef)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_double===========================================================";
+    double inputDouble = 3.14; // double value = 3.14
+    Local<NumberRef> doubleObject = NumberRef::New(vm_, inputDouble);
+    double doubleValue = doubleObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_doubleValue : " << doubleValue;
+    Local<PrimitiveRef> pdoubleObject = doubleObject;
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_pdoubleObject_IsNumber : " << pdoubleObject->IsNumber();
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_int32_t==========================================================";
+    int32_t inputInt32t = 666; // int32-t value = 666
+    Local<NumberRef> int32tObject = NumberRef::New(vm_, inputInt32t);
+    double int32tValue = int32tObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_int32tValue : " << int32tValue;
+    Local<PrimitiveRef> pint32tObject = int32tObject;
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_pint32tObject_Int32Value : " << pint32tObject->Int32Value(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_uint32_t=========================================================";
+    uint32_t inputUint32t = 666; // uint32_t value = 666
+    Local<NumberRef> uint32tObject = NumberRef::New(vm_, inputUint32t);
+    double uint32tValue = uint32tObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_uint32tValue : " << uint32tValue;
+    Local<PrimitiveRef> puint32tObject = uint32tObject;
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_puint32tObject_Uint32Value : " << puint32tObject->Uint32Value(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_int64_t==========================================================";
+    int64_t inputInt64t = 666; // int64_t value = 666
+    Local<NumberRef> int64tObject = NumberRef::New(vm_, inputInt64t);
+    double int64tValue = int64tObject->Value();
+    GTEST_LOG_(INFO) << "sample_primitive_NumberRef_int64tValue : " << int64tValue;
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_BigIntRef_Uint64)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_uint64_t=========================================================";
+    uint64_t inputUint64t = 999; // uint64_t value = 999
+    Local<BigIntRef> uint64tObject = BigIntRef::New(vm_, inputUint64t);
+    int64_t ucValue = 0;
+    bool uLossless = true;
+    uint64_t ucValue1 = 0;
+    uint64tObject->BigIntToInt64(vm_, &ucValue, &uLossless);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_BigIntToInt64 : " << ucValue;
+    uint64tObject->BigIntToUint64(vm_, &ucValue1, &uLossless);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_BigIntToUint64 : " << ucValue1;
+    bool uSign = false;
+    uint32_t uSize = 3;
+    int uarraySize = 3;
+    const uint64_t uWords[3] = {666, 777, 888};
+    Local<JSValueRef> ubigWords = BigIntRef::CreateBigWords(vm_, uSign, uSize, uWords);
+    for (int i = 0; i < uarraySize; i++) {
+        GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_UwordsArrayindex"
+                         << " [ " << i << " ] : " << uWords[i];
+    }
+    Local<BigIntRef> ubigWordsRef(ubigWords);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_UArraySize : " << ubigWordsRef->GetWordsArraySize();
+    bool uresultSignBit = true;
+    int unewarraySize = 3;
+    uint64_t *uresultWords = new uint64_t[unewarraySize]();
+    ubigWordsRef->GetWordsArray(&uresultSignBit, uSize, uresultWords);
+    for (int i = 0; i < unewarraySize; i++) {
+        GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_uresultWords"
+                         << " [ " << i << " ] : " << uresultWords[i];
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_BigIntRef_Int64)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_int64_t==========================================================";
+    int64_t inputInt64t = 111; // int64_t value = 111
+    Local<BigIntRef> int64tObject = BigIntRef::New(vm_, inputInt64t);
+    int64_t icValue = 0;
+    bool iLossless = true;
+    uint64_t icValue1 = 0;
+    int64tObject->BigIntToInt64(vm_, &icValue, &iLossless);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_BigIntToInt64 : " << icValue;
+    int64tObject->BigIntToUint64(vm_, &icValue1, &iLossless);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_BigIntToUint64 : " << icValue1;
+    bool iSign = false;
+    uint32_t iSize = 3;
+    int iarraySize = 3;
+    const uint64_t iWords[3] = {222, 333, 444};
+    Local<JSValueRef> ibigWords = BigIntRef::CreateBigWords(vm_, iSign, iSize, iWords);
+    for (int i = 0; i < iarraySize; i++) {
+        GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iWordsArrayindex"
+                         << " [ " << i << " ] : " << iWords[i];
+    }
+    Local<BigIntRef> ibigWordsRef(ibigWords);
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iarraySize : " << ibigWordsRef->GetWordsArraySize();
+    bool iresultSignBit = true;
+    int inewarraySize = 3;
+    uint64_t *iresultWords = new uint64_t[inewarraySize]();
+    ibigWordsRef->GetWordsArray(&iresultSignBit, iSize, iresultWords);
+    for (int i = 0; i < inewarraySize; i++) {
+        GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iresultWords"
+                         << " [ " << i << " ] : " << iresultWords[i];
+    }
+    Local<PrimitiveRef> pint64tObject = int64tObject;
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_pint64tObject_IsBigInt : " << pint64tObject->IsBigInt();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_BooleanRef)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_true============================================================";
+    Local<BooleanRef> trueObject = BooleanRef::New(vm_, true);
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_trueObject_Value : " << trueObject->Value();
+    Local<PrimitiveRef> ptrueObject = trueObject;
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_ptrueObject_IsBoolean : " << ptrueObject->IsBoolean();
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_false===========================================================";
+    Local<BooleanRef> falseObject = BooleanRef::New(vm_, false);
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_falseObject_Value : " << falseObject->Value();
+    Local<PrimitiveRef> pfalseObject = falseObject;
+    GTEST_LOG_(INFO) << "sample_primitive_BooleanRef_pfalseObject_IsBoolean : " << pfalseObject->IsBoolean();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char=============================================================";
+    char utf8[12] = "Hello world";
+    Local<JSValueRef> local = StringRef::NewFromUtf8(vm_, utf8);
+    JSValueRef *jsValue = (*local);
+    StringRef *charObject = StringRef::Cast(jsValue);
+    EXPECT_EQ(charObject->Utf8Length(vm_), 12);
+    char buffer[12];
+    EXPECT_EQ(charObject->WriteUtf8(buffer, 12), 12);
+    std::string res(buffer);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject : " << res;
+    std::string charObjectStr = charObject->ToString();
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_ToString : " << charObjectStr;
+    uint32_t charSize = charObject->Length();
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_Length : " << charSize;
+    char cs[16] = {0};
+    int length = charObject->WriteLatin1(cs, 12);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_WriteLatin1 : " << length;
+    Local<StringRef> napiWrapperString = charObject->GetNapiWrapperString(vm_);
+    EXPECT_EQ(napiWrapperString->Utf8Length(vm_), 13);
+    char buffer1[12];
+    EXPECT_EQ(charObject->WriteUtf8(buffer1, 12), 12);
+    std::string res1(buffer1);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_GetNapiWrapperString : " << res1;
+    PrimitiveRef *pcharObject = charObject;
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_pcharObject_IsString : " << pcharObject->IsString();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char16)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16_t=========================================================";
+    const char16_t *utf16 = u"Hi,ABCDEF";
+    Local<JSValueRef> local = StringRef::NewFromUtf16(vm_, utf16);
+    JSValueRef *jsValue = (*local);
+    StringRef *char16tObject = StringRef::Cast(jsValue);
+    EXPECT_EQ(char16tObject->Utf8Length(vm_), 10);
+    char16_t buffer2[10];
+    EXPECT_EQ(char16tObject->WriteUtf16(buffer2, 9), 9);
+    std::string res2(buffer2, buffer2 + sizeof(buffer2) / sizeof(char16_t));
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject : " << res2 << std::endl;
+    std::string char16tObjectStr = char16tObject->ToString();
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_ToString : " << char16tObjectStr;
+    uint32_t charSize = char16tObject->Length();
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_Length : " << charSize;
+    char cs1[10] = {0};
+    int length = char16tObject->WriteLatin1(cs1, 10);
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_WriteLatin1 : " << length;
+    Local<StringRef> napiWrapperString = char16tObject->GetNapiWrapperString(vm_);
+    EXPECT_EQ(napiWrapperString->Utf8Length(vm_), 13);
+    char16_t buffer3[10];
+    EXPECT_EQ(char16tObject->WriteUtf16(buffer3, 9), 9);
+    std::string res3(buffer3, buffer3 + sizeof(buffer3) / sizeof(char16_t));
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject : " << res3;
+    PrimitiveRef *pchar16tObject = char16tObject;
+    GTEST_LOG_(INFO) << "sample_primitive_StringRef_pchar16tObject_IsString : " << pchar16tObject->IsString();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_SymbolRef)
+{
+    LocalScope scope(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_SymbolRef==================================================================";
+    Local<SymbolRef> symbolObject = SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "description"));
+    Local<StringRef> symbolDescription = symbolObject->GetDescription(vm_);
+    GTEST_LOG_(INFO) << "sample_primitive_symbol_description : " << symbolDescription->ToString();
+    Local<PrimitiveRef> psymbolObject = symbolObject;
+    GTEST_LOG_(INFO) << "sample_primitive_SymbolRef_Psym_IsSymbol : " << psymbolObject->IsSymbol();
+}
+
+/* demo2 本地指针包装的使用。 */
+class NativePointerTestClass {
+public:
+    NativePointerTestClass() : someProperty(0)
+    {
+        GTEST_LOG_(INFO) << "NativePointerTestClass Construction";
+    }
+
+    ~NativePointerTestClass()
+    {
+        GTEST_LOG_(INFO) << "NativePointerTestClass Destruction";
+    }
+
+    int GetsomeProperty() const
+    {
+        return someProperty;
+    }
+
+    void SetsomeProperty(int value)
+    {
+        someProperty = value;
+    }
+
+private:
+    int someProperty;
+};
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef)
+{
+    LocalScope scope(vm_);
+    NativePointerTestClass *nativePointerTestClass = new NativePointerTestClass();
+    GTEST_LOG_(INFO) << "sample_NativePointer adress: " << nativePointerTestClass;
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(
+        vm_, nativePointerTestClass,
+        [](void *value, void *hint) {
+            GTEST_LOG_(INFO) << "NativePointerCb value : " << value;
+            GTEST_LOG_(INFO) << "NativePointerCb hint  : " << hint;
+            NativePointerTestClass *ptr = static_cast<NativePointerTestClass *>(value);
+            delete ptr;
+        },
+        (void *)0x123);
+    NativePointerTestClass *yourClassPtr = static_cast<NativePointerTestClass *>(nativePoint->Value());
+    GTEST_LOG_(INFO) << "sample_NativePointer GetValue : " << yourClassPtr->GetsomeProperty();
+    yourClassPtr->SetsomeProperty(99);
+    GTEST_LOG_(INFO) << "sample_NativePointer SetValue : " << yourClassPtr->GetsomeProperty();
+    GTEST_LOG_(INFO) << "sample_NativePointer Value : " << nativePoint->Value();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef_String)
+{
+    LocalScope scope(vm_);
+    void *vps = new std::string("123456");
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(vm_, vps);
+    std::string *p = (std::string *)nativePoint->Value();
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_String Value : " << *p;
+    std::string value = "78910";
+    *p = value;
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_String ChangeValue : " << *((std::string *)nativePoint->Value());
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef_Double)
+{
+    LocalScope scope(vm_);
+    void *vpd = new double(123.456);
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(vm_, vpd);
+    double *p = (double *)nativePoint->Value();
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Double Value : " << *p;
+    double value = 66.66;
+    *p = value;
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Double ChangeValue: " << *((double *)nativePoint->Value());
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef_Char)
+{
+    LocalScope scope(vm_);
+    void *vpc = new char('a');
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(vm_, vpc);
+    char *p = (char *)nativePoint->Value();
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Char Value : " << *p;
+    *p = 'A';
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Char ChangeValue: " << *((char *)nativePoint->Value());
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef_Long)
+{
+    LocalScope scope(vm_);
+    void *vpl = new long(123456);
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(vm_, vpl);
+    long *p = (long *)nativePoint->Value();
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Long Value : " << *p;
+    long value = 2147483647;
+    *p = value;
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Long ChangeValue: " << *((long *)nativePoint->Value());
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_NativePointerRef_Int)
+{
+    LocalScope scope(vm_);
+    void *vpi = new int(123);
+    Local<NativePointerRef> nativePoint = NativePointerRef::New(vm_, vpi);
+    int *p = (int *)nativePoint->Value();
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Int Value : " << *p;
+    int value = 147483647;
+    *p = value;
+    GTEST_LOG_(INFO) << "sample_NativePointerRef_Int ChangeValue: " << *((int *)nativePoint->Value());
+}
+
+/* demo3 对object的操作 */
+static std::vector<Local<SymbolRef>> GetSymbolRef(EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "GetSymbolRef";
+    static std::vector<Local<SymbolRef>> value = { SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "symbolKey1")),
+                                                   SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "symbolKey2")),
+                                                   SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "symbolKey3")) };
+    return value;
+}
+
+Local<JSValueRef> Setter1(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Setter is running";
+    int cnt = 0; // 0 = first element
+    EscapeLocalScope scope(info->GetVM());
+    Local<JSValueRef> arg = info->GetCallArgRef(0);
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    if (value->IsNumber()) {
+        double num = value->ToNumber(info->GetVM())->Value();
+        int max = 100; // 100 = maxValue
+        int min = 0;   // 0 = minValue
+        if (num < min || num > max) {
+            return JSValueRef::Undefined(info->GetVM());
+        }
+    }
+    obj->Set(info->GetVM(), GetSymbolRef(info->GetVM())[cnt], arg);
+    return JSValueRef::Undefined(info->GetVM());
+}
+
+Local<JSValueRef> Setter2(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Setter is running";
+    int cnt = 1; // 1 = second element
+    EscapeLocalScope scope(info->GetVM());
+    Local<JSValueRef> arg = info->GetCallArgRef(0);
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    if (!arg->IsString()) {
+        return JSValueRef::Undefined(info->GetVM());
+    }
+    obj->Set(info->GetVM(), GetSymbolRef(info->GetVM())[cnt], arg);
+    return JSValueRef::Undefined(info->GetVM());
+}
+
+Local<JSValueRef> Setter3(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Setter is running";
+    int cnt = 2; // 2 = third element
+    EscapeLocalScope scope(info->GetVM());
+    Local<JSValueRef> arg = info->GetCallArgRef(0);
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    if (!arg->IsSymbol()) {
+        return JSValueRef::Undefined(info->GetVM());
+    }
+    obj->Set(info->GetVM(), GetSymbolRef(info->GetVM())[cnt], arg);
+    return JSValueRef::Undefined(info->GetVM());
+}
+
+Local<JSValueRef> Getter1(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Getter is running";
+    int cnt = 0; // 0 = first element
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    Local<JSValueRef> temp = obj->Get(info->GetVM(), GetSymbolRef(info->GetVM())[cnt]);
+    return temp->ToString(info->GetVM());
+}
+
+Local<JSValueRef> Getter2(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Getter is running";
+    int cnt = 1; // 1 = second element
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    Local<JSValueRef> temp = obj->Get(info->GetVM(), GetSymbolRef(info->GetVM())[cnt]);
+    return temp->ToString(info->GetVM());
+}
+
+Local<JSValueRef> Getter3(JsiRuntimeCallInfo *info)
+{
+    GTEST_LOG_(INFO) << "Getter is running";
+    int cnt = 2; // 2 = third element
+    Local<JSValueRef> value = info->GetThisRef();
+    Local<ObjectRef> obj = value->ToObject(info->GetVM());
+    Local<JSValueRef> temp = obj->Get(info->GetVM(), GetSymbolRef(info->GetVM())[cnt]);
+    if (!temp->IsSymbol()) {
+        JSValueRef::Undefined(info->GetVM());
+    }
+    Local<SymbolRef> str = temp;
+    return str->GetDescription(info->GetVM());
+}
+
+void ObjectRefSet(Local<ObjectRef> object, EcmaVM *vm, Local<SymbolRef> symbol)
+{
+    GTEST_LOG_(INFO) << "ObjectRefSet";
+    int cnt = 1; // 1 = key
+    bool b = object->Set(vm, cnt, StringRef::NewFromUtf8(vm, "TestValue1"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "Test2"), StringRef::NewFromUtf8(vm, "TestValue2"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "Test3"), StringRef::NewFromUtf8(vm, "TestValue3"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, symbol, StringRef::NewFromUtf8(vm, "symbolValue"));
+    ASSERT_TRUE(b);
+
+    Local<FunctionRef> getter1 = FunctionRef::New(vm, Getter1);
+    Local<FunctionRef> setter1 = FunctionRef::New(vm, Setter1);
+
+    Local<FunctionRef> getter2 = FunctionRef::New(vm, Getter2);
+    Local<FunctionRef> setter2 = FunctionRef::New(vm, Setter2);
+
+    Local<FunctionRef> getter3 = FunctionRef::New(vm, Getter3);
+    Local<FunctionRef> setter3 = FunctionRef::New(vm, Setter3);
+
+    PropertyAttribute attribute1(StringRef::NewFromUtf8(vm, "AttributeValue1"), true, true, false);
+    PropertyAttribute attribute2(StringRef::NewFromUtf8(vm, "AttributeValue2"), false, true, true);
+    PropertyAttribute attribute3(StringRef::NewFromUtf8(vm, "AttributeValue3"), true, false, true);
+    attribute1.SetGetter(getter1);
+    attribute1.SetSetter(setter1);
+    b = object->DefineProperty(vm, StringRef::NewFromUtf8(vm, "AttributeKey1"), attribute1);
+    ASSERT_TRUE(b);
+    b = object->DefineProperty(vm, StringRef::NewFromUtf8(vm, "Test2"), attribute2);
+    ASSERT_TRUE(b);
+    b = object->SetAccessorProperty(vm, StringRef::NewFromUtf8(vm, "Accessor1"), getter1, setter1);
+    ASSERT_TRUE(b);
+    b = object->SetAccessorProperty(vm, StringRef::NewFromUtf8(vm, "Test3"), getter2, setter2);
+    ASSERT_TRUE(b);
+    b = object->DefineProperty(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"), attribute3);
+    ASSERT_TRUE(b);
+    b = object->SetAccessorProperty(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"), getter3, setter3, attribute3);
+    ASSERT_TRUE(b);
+}
+
+void GetProperty(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "GetProperty";
+    Local<ArrayRef> names = object->GetOwnPropertyNames(vm);
+    int cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnPropertyNames cnt: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+}
+
+void Get(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "Get";
+    int cnt = 1; // 1 = key
+    Local<JSValueRef> value = object->Get(vm, cnt);
+    if (value->IsString()) {
+        GTEST_LOG_(INFO) << "Key:1  Value:" << value->ToString(vm)->ToString();
+    }
+    value = object->Get(vm, StringRef::NewFromUtf8(vm, "Test2"));
+    if (value->IsString()) {
+        GTEST_LOG_(INFO) << "Key:Test2  Value:" << value->ToString(vm)->ToString();
+    }
+    value = object->Get(vm, StringRef::NewFromUtf8(vm, "AttributeKey1"));
+    if (value->IsString()) {
+        GTEST_LOG_(INFO) << "Key:AttributeKey1  Value:" << value->ToString(vm)->ToString();
+    }
+    int num = 10; // 10 = randomness
+    object->Set(vm, StringRef::NewFromUtf8(vm, "Accessor1"), NumberRef::New(vm, num));
+    object->Set(vm, StringRef::NewFromUtf8(vm, "Test3"), StringRef::NewFromUtf8(vm, "Test3Value"));
+    object->Set(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"),
+        SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "AttributeKey3Value")));
+    Local<StringRef> str = object->Get(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"));
+    if (str->IsString()) {
+        GTEST_LOG_(INFO) << "Key:AttributeKey3  Value:" << str->ToString();
+    }
+    str = object->Get(vm, StringRef::NewFromUtf8(vm, "Accessor1"));
+    if (str->IsString()) {
+        GTEST_LOG_(INFO) << "Key:Accessor1  Value:" << str->ToString();
+    }
+    str = object->Get(vm, StringRef::NewFromUtf8(vm, "Test3"));
+    if (str->IsString()) {
+        GTEST_LOG_(INFO) << "Key:Test3  Value:" << str->ToString();
+    }
+}
+
+void SetValueAgain(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "SetValueAgain";
+    GTEST_LOG_(INFO) << "SetValueAgain";
+    int cnt = 1; // 1 = key
+    bool b = object->Set(vm, cnt, StringRef::NewFromUtf8(vm, "TestValueAgain1"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "Test3"), StringRef::NewFromUtf8(vm, "TestValueAgain3"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "AttributeKey1"),
+        StringRef::NewFromUtf8(vm, "AttributeValueAgain1"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"),
+        StringRef::NewFromUtf8(vm, "AttributeValueAgain3"));
+    ASSERT_TRUE(b);
+    b = object->Set(vm, StringRef::NewFromUtf8(vm, "Accessor1"), StringRef::NewFromUtf8(vm, "AttributeValueAgain2"));
+    ASSERT_TRUE(b);
+    GTEST_LOG_(INFO) << "GetValueAgain";
+    Get(object, vm);
+    GetProperty(object, vm);
+}
+
+void GetOwnEnumerablePropertyNames(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "GetOwnEnumerablePropertyNames";
+    Local<ArrayRef> names = object->GetOwnEnumerablePropertyNames(vm);
+    int cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnEnumerablePropertyNames cnt: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+}
+
+void GetAllPropertyNames(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "GetAllPropertyNames";
+    Local<ArrayRef> names = object->GetAllPropertyNames(vm, 0); // 0 = NATIVE_DEFAULT
+    int cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_DEFAULT: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+    names = object->GetAllPropertyNames(vm, 1); // 1 = NATIVE_WRITABLE
+    cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_WRITABLE: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+    names = object->GetAllPropertyNames(vm, 2); // 2 = NATIVE_ENUMERABLE
+    cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_ENUMERABLE: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+    names = object->GetAllPropertyNames(vm, 3); // 3 = NATIVE_CONFIGURABLE
+    cnt = names->Length(vm);
+    GTEST_LOG_(INFO) << "GetOwnPropertyNames NATIVE_CONFIGURABLE: " << cnt;
+    for (int i = 0; i < cnt; i++) {
+        Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
+        if (value->IsSymbol()) {
+            Local<SymbolRef> symbol = value;
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+        } else {
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+        }
+    }
+}
+
+void HasAndDelete(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "HasAndDelete";
+    bool b = object->Has(vm, 1); // 1 = key
+    ASSERT_TRUE(b);
+    b = object->Has(vm, StringRef::NewFromUtf8(vm, "Test2"));
+    ASSERT_TRUE(b);
+    b = object->Delete(vm, StringRef::NewFromUtf8(vm, "Test2"));
+    ASSERT_TRUE(b);
+    b = object->Has(vm, StringRef::NewFromUtf8(vm, "Test2"));
+    ASSERT_FALSE(b);
+}
+
+void FreezeAndSeal(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "FreezeAndSeal";
+    object->Seal(vm);
+    int num1 = 1; // 1 = key
+    int num2 = 2; // 2 = key
+    bool b = object->Set(vm, num1, StringRef::NewFromUtf8(vm, "Seal1"));
+    ASSERT_TRUE(b);
+    b = object->Delete(vm, num1);
+    ASSERT_FALSE(b);
+    b = object->Set(vm, num2, StringRef::NewFromUtf8(vm, "2"));
+    ASSERT_FALSE(b);
+    object->Freeze(vm);
+    PropertyAttribute attribute(StringRef::NewFromUtf8(vm, "FreezeValue"), true, true, false);
+    b = object->DefineProperty(vm, StringRef::NewFromUtf8(vm, "Freeze"), attribute);
+    ASSERT_FALSE(b);
+    b = object->Has(vm, num2);
+    ASSERT_FALSE(b);
+    b = object->Has(vm, StringRef::NewFromUtf8(vm, "Freeze"));
+    ASSERT_FALSE(b);
+    b = object->Delete(vm, num2);
+    ASSERT_FALSE(b);
+    b = object->Delete(vm, StringRef::NewFromUtf8(vm, "Freeze"));
+    ASSERT_FALSE(b);
+}
+
+void GetOwnProperty(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "GetOwnProperty";
+    PropertyAttribute value1;
+    bool b = object->GetOwnProperty(vm, NumberRef::New(vm, 1), value1);
+    ASSERT_TRUE(b);
+    PropertyAttribute value2;
+    b = object->GetOwnProperty(vm, StringRef::NewFromUtf8(vm, "AttributeKey1"), value2);
+    ASSERT_TRUE(b);
+    ASSERT_EQ(true, value2.IsWritable());
+    ASSERT_EQ(true, value2.IsEnumerable());
+    ASSERT_EQ(false, value2.IsConfigurable());
+    ASSERT_EQ(true, value2.HasWritable());
+    ASSERT_EQ(true, value2.HasConfigurable());
+    ASSERT_EQ(true, value2.HasEnumerable());
+    Local<JSValueRef> value = value2.GetValue(vm);
+    ASSERT_EQ("AttributeValue1", value->ToString(vm)->ToString());
+}
+
+class A {
+public:
+    void Test() const
+    {
+        GTEST_LOG_(INFO) << "Class A Test()";
+    }
+};
+
+void NativePointer(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "NativePointer";
+    int cnt = 10; // 10 = accommodate quantity
+    object->SetNativePointerFieldCount(cnt);
+    ASSERT_EQ(cnt, object->GetNativePointerFieldCount());
+    A *a = new A();
+    int cnt2 = 1; // 11 = random Numbers
+    int cnt3 = 11; // 1 = random Numbers
+    object->SetNativePointerField(cnt2, static_cast<void *>(a), nullptr, nullptr);
+    object->SetNativePointerField(cnt3, static_cast<void *>(a), nullptr, nullptr);
+    A *value1 = static_cast<A *>(object->GetNativePointerField(cnt2));
+    A *value2 = static_cast<A *>(object->GetNativePointerField(cnt3));
+    if (value1 == nullptr) {
+        GTEST_LOG_(INFO) << "SetNativePointerField is Error";
+    } else {
+        value1->Test();
+    }
+    if (value2 == nullptr) {
+        GTEST_LOG_(INFO) << "SetNativePointerField is OK";
+    }
+    Local<NativePointerRef> native = NativePointerRef::New(vm, static_cast<void *>(a));
+    bool b = object->ConvertToNativeBindingObject(vm, native);
+    ASSERT_TRUE(b);
+}
+
+void SetPrototype(Local<ObjectRef> object, EcmaVM *vm)
+{
+    GTEST_LOG_(INFO) << "SetPrototype";
+    int cnt = 111; // 111 = random Numbers
+    Local<NumberRef> obj = NumberRef::New(vm, cnt);
+    object->SetPrototype(vm, obj);
+    Local<JSValueRef> type = object->GetPrototype(vm);
+    if (type->IsUndefined() || type->IsNull()) {
+        return;
+    }
+    GTEST_LOG_(INFO) << "Prototype: " << type->Typeof(vm)->ToString();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, Sample_Demo3_ObjectRef)
+{
+    GTEST_LOG_(INFO) << "SetPrototype";
+    LocalScope scope(vm_);
+    GetSymbolRef(vm_);
+    Local<SymbolRef> symbol = SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "Symbol"));
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    SetPrototype(object, vm_);
+    ObjectRefSet(object, vm_, symbol);
+    GetProperty(object, vm_);
+    GetOwnProperty(object, vm_);
+    GetAllPropertyNames(object, vm_);
+    GetOwnEnumerablePropertyNames(object, vm_);
+    Get(object, vm_);
+    NativePointer(object, vm_);
+    SetValueAgain(object, vm_);
+    HasAndDelete(object, vm_);
+    FreezeAndSeal(object, vm_);
+}
 
 /* demo4 无参无返回值的函数的调用。 ts：
  * function FuncTest(): void {
@@ -607,6 +1322,497 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo5_class_test)
 
     GTEST_LOG_(INFO) << Greeter::StandardPosition(vm_)->ToString();
     GTEST_LOG_(INFO) << "sample_demo5_class_test =======================================";
+}
+
+/* demo7 数组的使用 */
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Int)
+{
+    LocalScope scope(vm_);
+    uint32_t length = 5; // array length = 5
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    uint32_t arrayLength = arrayObject->Length(vm_);
+    uint32_t index = 1; // array index = 0
+    for (int i = 0; i < (int)arrayLength; i++) {
+        Local<IntegerRef> intValue = IntegerRef::New(vm_, i * 10);
+        ArrayRef::SetValueAt(vm_, arrayObject, i, intValue);
+        GTEST_LOG_(INFO) << "sample_setIntValue_index_" << i << ": " << intValue->Value();
+    }
+    Local<IntegerRef> resultInt = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getIntValue_index_1: " << resultInt->Value();
+    int inputInt = 99;  // int data = 99
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, inputInt);
+    bool setResult = ArrayRef::SetValueAt(vm_, arrayObject, arrayLength, intValue);
+    GTEST_LOG_(INFO) << "sample_setIntValue_index_5: " << intValue->Value() << " setResult: " << setResult;
+    int changedInt = 66; // change data = 66
+    Local<IntegerRef> changedIntValue = IntegerRef::New(vm_, changedInt);
+    ArrayRef::SetValueAt(vm_, arrayObject, index, changedIntValue);
+    GTEST_LOG_(INFO) << "sample_changedIntValue_index_1: " << changedIntValue->Value();
+    Local<IntegerRef> resultChangedInt = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getChangedIntValue_index_1: " << resultChangedInt->Value();
+    for (int i = 0; i < (int)arrayLength; i++) {
+        Local<IntegerRef> printInt = ArrayRef::GetValueAt(vm_, arrayObject, i);
+        GTEST_LOG_(INFO) << "sample_printIntValue_index_" << i << ": " << printInt->Value();
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Bool)
+{
+    LocalScope scope(vm_);
+    uint32_t length = 5; // array length = 5
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    uint32_t arrayLength = arrayObject->Length(vm_);
+    bool inputBool = true; // bool data = true
+    uint32_t index = 0;    // array index = 0
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, inputBool);
+    for (int i = 0; i < (int)arrayLength; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObject, i, boolValue);
+        GTEST_LOG_(INFO) << "sample_setBoolValue_index_" << i << ": " << boolValue->Value();
+    }
+    Local<BooleanRef> resultBool = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getBoolValue_index_0: " << resultBool->Value();
+    bool setResult = ArrayRef::SetValueAt(vm_, arrayObject, arrayLength, boolValue);
+    GTEST_LOG_(INFO) << "sample_setBoolValue_index_5: " << boolValue->Value() << " setResult: " << setResult;
+    bool changedBool = false; // change data = false
+    Local<BooleanRef> changedBoolValue = BooleanRef::New(vm_, changedBool);
+    ArrayRef::SetValueAt(vm_, arrayObject, index, changedBoolValue);
+    GTEST_LOG_(INFO) << "sample_changedBoolValue_index_0: " << changedBoolValue->Value();
+    Local<BooleanRef> resultChangedBool = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getChangedBoolValue_index_0: " << resultChangedBool->Value();
+    for (int i = 0; i < (int)arrayLength; i++) {
+        Local<BooleanRef> printBool = ArrayRef::GetValueAt(vm_, arrayObject, i);
+        GTEST_LOG_(INFO) << "sample_printBoolValue_index_" << i << ": " << printBool->Value();
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Number)
+{
+    LocalScope scope(vm_);
+    uint32_t length = 5; // array length = 5
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    uint32_t arrayLength = arrayObject->Length(vm_);
+    uint32_t inputNumber = 40;  // number data = 40
+    uint32_t index = 0; // array index = 0
+    Local<NumberRef> numberValue = NumberRef::New(vm_, inputNumber);
+    for (int i = 0; i < (int)arrayLength; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObject, i, numberValue);
+        GTEST_LOG_(INFO) << "sample_setNumberValue_index_" << i << ": " << numberValue->Value();
+    }
+    Local<NumberRef> resultNumber = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getNumberValue_index_0: " << resultNumber->Value();
+    bool setResult = ArrayRef::SetValueAt(vm_, arrayObject, arrayLength, numberValue);
+    GTEST_LOG_(INFO) << "sample_setNumberValue_index_5: " << numberValue->Value() << " setResult: " << setResult;
+    uint32_t changedNumber = 50; // change data = 50
+    Local<NumberRef> changedNumberValue = NumberRef::New(vm_, changedNumber);
+    ArrayRef::SetValueAt(vm_, arrayObject, index, changedNumberValue);
+    GTEST_LOG_(INFO) << "sample_changedNumberValue_index_0: " << changedNumberValue->Value();
+    Local<NumberRef> resultChangedNumber = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    GTEST_LOG_(INFO) << "sample_getChangedNumberValue_index_0: " << resultChangedNumber->Value();
+    for (int i = 0; i < (int)arrayLength; i++) {
+        Local<NumberRef> printNumber = ArrayRef::GetValueAt(vm_, arrayObject, i);
+        GTEST_LOG_(INFO) << "sample_printNumberValue_index_" << i << ": " << printNumber->Value();
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_String)
+{
+    LocalScope scope(vm_);
+    uint32_t length = 5; // array length = 5
+    Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
+    uint32_t arrayLength = arrayObject->Length(vm_);
+    std::string inputString = "Sample Test";
+    uint32_t index = 0; // array index = 0
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, inputString.c_str());
+    for (int i = 0; i < (int)arrayLength; i++) {
+        ArrayRef::SetValueAt(vm_, arrayObject, i, stringValue);
+        char setBuffer[20];
+        stringValue->WriteUtf8(setBuffer, inputString.length());
+        std::string result(setBuffer);
+        GTEST_LOG_(INFO) << "sample_setStringValue_index_" << i << ": " << result;
+        memset_s(setBuffer, sizeof(setBuffer), 0, sizeof(setBuffer));
+    }
+    Local<StringRef> resultString = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    char getBuffer[20];
+    resultString->WriteUtf8(getBuffer, inputString.length());
+    std::string getResult(getBuffer);
+    GTEST_LOG_(INFO) << "sample_getStringValue_index_0: " << getResult;
+    bool setResult = ArrayRef::SetValueAt(vm_, arrayObject, arrayLength, stringValue);
+    GTEST_LOG_(INFO) << "sample_setStringValue_index_5"
+                     << " setResult: " << setResult;
+    std::string changedString = "Change Test";
+    Local<StringRef> changedStringValue = StringRef::NewFromUtf8(vm_, changedString.c_str());
+    ArrayRef::SetValueAt(vm_, arrayObject, index, changedStringValue);
+    Local<StringRef> resultChangedString = ArrayRef::GetValueAt(vm_, arrayObject, index);
+    char changedBuffer[20];
+    resultChangedString->WriteUtf8(changedBuffer, changedString.length());
+    std::string changedResult(changedBuffer);
+    GTEST_LOG_(INFO) << "sample_getChangedStringValue_index_0: " << changedResult;
+    for (int i = 0; i < (int)arrayLength; i++) {
+        Local<StringRef> printString = ArrayRef::GetValueAt(vm_, arrayObject, i);
+        char printBuffer[20];
+        printString->WriteUtf8(printBuffer, inputString.length());
+        std::string printResult(printBuffer);
+        GTEST_LOG_(INFO) << "sample_printStringValue_index_" << i << ": " << printResult;
+        memset_s(printBuffer, sizeof(printBuffer), 0, sizeof(printBuffer));
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int8Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 15; // arraybuffer length = 15
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    int8_t *ptr = (int8_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength; i++) {
+        *ptr = int8_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t int8ArrayLength = 6; // array length = 6
+    Local<Int8ArrayRef> typedArray = Int8ArrayRef::New(vm_, arrayBuffer, byteOffset, int8ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Int8Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Int8Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Int8Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    int8_t *result = (int8_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < int8ArrayLength; i++) {
+        int value = int8_t(*result);
+        GTEST_LOG_(INFO) << "sample_Int8Array_getInt8ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint8Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 15; // arraybuffer length = 15
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    uint8_t *ptr = (uint8_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength; i++) {
+        *ptr = uint8_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t Uint8ArrayLength = 6; // array length = 6
+    Local<Uint8ArrayRef> typedArray = Uint8ArrayRef::New(vm_, arrayBuffer, byteOffset, Uint8ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Uint8Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint8Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint8Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    uint8_t *result = (uint8_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < Uint8ArrayLength; i++) {
+        int value = uint8_t(*result);
+        GTEST_LOG_(INFO) << "sample_Uint8Array_getUint8ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint8ClampedArray)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 15; // arraybuffer length = 15
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    uint8_t *ptr = (uint8_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength; i++) {
+        *ptr = uint8_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t uint8ArrLength = 6; // array length = 6
+    Local<Uint8ClampedArrayRef> typedArray = Uint8ClampedArrayRef::New(vm_, arrayBuffer, byteOffset, uint8ArrLength);
+    GTEST_LOG_(INFO) << "sample_Uint8ClampedArray_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint8ClampedArray_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint8ClampedArray_arrayLength : " << typedArray->ArrayLength(vm_);
+    uint8_t *result = (uint8_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < uint8ArrLength; i++) {
+        int value = uint8_t(*result);
+        GTEST_LOG_(INFO) << "sample_Uint8ClampedArray_getUint8ClampedArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int16Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 30; // arraybuffer length = 30
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    int16_t *ptr = (int16_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 2; i++) {
+        *ptr = int16_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t int16ArrayLength = 6; // array length = 6
+    Local<Int16ArrayRef> typedArray = Int16ArrayRef::New(vm_, arrayBuffer, byteOffset, int16ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Int16Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Int16Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Int16Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    int16_t *result = (int16_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < int16ArrayLength; i++) {
+        int value = int16_t(*result);
+        GTEST_LOG_(INFO) << "sample_Int16Array_getInt16ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint16Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 30; // arraybuffer length = 30
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    uint16_t *ptr = (uint16_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 2; i++) {
+        *ptr = uint16_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t uint16ArrayLength = 6; // array length = 6
+    Local<Uint16ArrayRef> typedArray = Uint16ArrayRef::New(vm_, arrayBuffer, byteOffset, uint16ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Uint16Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint16Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint16Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    uint16_t *result = (uint16_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < uint16ArrayLength; i++) {
+        int value = uint16_t(*result);
+        GTEST_LOG_(INFO) << "sample_Uint16Array_getUint16ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int32Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 32; // arraybuffer length = 32
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    int32_t *ptr = (int32_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 4; i++) {
+        *ptr = int32_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t int32ArrayLength = 6; // array length = 6
+    Local<Int32ArrayRef> typedArray = Int32ArrayRef::New(vm_, arrayBuffer, byteOffset, int32ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Int32Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Int32Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Int32Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    int32_t *result = (int32_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < int32ArrayLength; i++) {
+        int value = int32_t(*result);
+        GTEST_LOG_(INFO) << "sample_Int32Array_getInt32ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint32Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 32; // arraybuffer length = 32
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    uint32_t *ptr = (uint32_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 4; i++) {
+        *ptr = uint32_t(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t uint32ArrayLength = 6; // array length = 6
+    Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, byteOffset, uint32ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Uint32Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint32Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Uint32Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    uint32_t *result = (uint32_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < uint32ArrayLength; i++) {
+        int value = uint32_t(*result);
+        GTEST_LOG_(INFO) << "sample_Uint32Array_getUint32ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Float32Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 32; // arraybuffer length = 32
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    float *ptr = (float *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 4; i++) {
+        *ptr = float(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t float32ArrayLength = 6; // array length = 6
+    Local<Float32ArrayRef> typedArray = Float32ArrayRef::New(vm_, arrayBuffer, byteOffset, float32ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Float32Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Float32Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Float32Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    float *result = (float *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < float32ArrayLength; i++) {
+        int value = float(*result);
+        GTEST_LOG_(INFO) << "sample_Float32Array_getFloat32ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Float64Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 64; // arraybuffer length = 64
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    double *ptr = (double *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 8; i++) {
+        *ptr = double(i + 10);
+        ptr++;
+    }
+    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t float64ArrayLength = 6; // array length = 6
+    Local<Float64ArrayRef> typedArray = Float64ArrayRef::New(vm_, arrayBuffer, byteOffset, float64ArrayLength);
+    GTEST_LOG_(INFO) << "sample_Float64Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Float64Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_Float64Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    double *result = (double *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < float64ArrayLength; i++) {
+        int value = double(*result);
+        GTEST_LOG_(INFO) << "sample_Float64Array_getFloat64ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_BigInt64Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 64; // arraybuffer length = 64
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    int64_t *ptr = (int64_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 8; i++) {
+        *ptr = int64_t(i * 100);
+        ptr++;
+    }
+    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t bigInt64ArrayLength = 6; // array length = 6
+    Local<BigInt64ArrayRef> typedArray = BigInt64ArrayRef::New(vm_, arrayBuffer, byteOffset, bigInt64ArrayLength);
+    GTEST_LOG_(INFO) << "sample_BigInt64Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_BigInt64Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_BigInt64Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    int64_t *result = (int64_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < bigInt64ArrayLength; i++) {
+        int value = int64_t(*result);
+        GTEST_LOG_(INFO) << "sample_BigInt64Array_getBigInt64ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_BigUint64Array)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 64; // arraybuffer length = 64
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    uint64_t *ptr = (uint64_t *)arrayBuffer->GetBuffer();
+    for (int i = 0; i < arrayLength / 8; i++) {
+        *ptr = int64_t(i * 100);
+        ptr++;
+    }
+    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t bigUint64ArrayLength = 6; // array length = 6
+    Local<BigUint64ArrayRef> typedArray = BigUint64ArrayRef::New(vm_, arrayBuffer, byteOffset, bigUint64ArrayLength);
+    GTEST_LOG_(INFO) << "sample_BigUint64Array_byteLength : " << typedArray->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_BigUint64Array_byteOffset : " << typedArray->ByteOffset(vm_);
+    GTEST_LOG_(INFO) << "sample_BigUint64Array_arrayLength : " << typedArray->ArrayLength(vm_);
+    uint64_t *result = (uint64_t *)typedArray->GetArrayBuffer(vm_)->GetBuffer();
+    for (int i = 0; i < bigUint64ArrayLength; i++) {
+        int value = uint64_t(*result);
+        GTEST_LOG_(INFO) << "sample_BigUint64Array_getBigUint64ArrayValue : " << value;
+        result++;
+    }
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_DataViewRef)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 15; // arraybuffer length = 15
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t dataViewLength = 7; // dataview length = 7
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, byteOffset, dataViewLength);
+    GTEST_LOG_(INFO) << "sample_DataView_byteLength : " << dataView->ByteLength();
+    GTEST_LOG_(INFO) << "sample_DataView_byteOffset : " << dataView->ByteOffset();
+    GTEST_LOG_(INFO) << "sample_DataView_getArrayBuffer : " << dataView->GetArrayBuffer(vm_)->GetBuffer();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayBuffer_New_Detach)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 32; // arraybuffer length = 32
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLength = arrayBuffer->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_ArrayBuffer_byteLength : " << arrayLength;
+    GTEST_LOG_(INFO) << "sample_ArrayBuffer_getArrayBuffer : " << arrayBuffer->GetBuffer();
+    arrayBuffer->Detach(vm_);
+    GTEST_LOG_(INFO) << "sample_ArrayBuffer_getDetachArrayBuffer : " << arrayBuffer->GetBuffer();
+    bool result = arrayBuffer->IsDetach();
+    GTEST_LOG_(INFO) << "sample_ArrayBuffer_getIsDetach : " << result;
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_ArrayBufferWithBuffer_New_Detach)
+{
+    static bool isFree = false;
+    struct Data {
+        int32_t length;
+    };
+    const int32_t length = 5;   // arraybuffer length = 5
+    Data *data = new Data();
+    data->length = length;
+    Deleter deleter = [](void *buffer, void *data) -> void {
+        delete[] reinterpret_cast<uint8_t *>(buffer);
+        Data *currentData = reinterpret_cast<Data *>(data);
+        delete currentData;
+        isFree = true;
+    };
+    LocalScope scope(vm_);
+    uint8_t *buffer = new uint8_t[length]();
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, buffer, length, deleter, data);
+    GTEST_LOG_(INFO) << "sample_ArrayBufferWithBuffer_byteLength : " << arrayBuffer->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_ArrayBufferWithBuffer_getArrayBuffer : " << arrayBuffer->GetBuffer();
+    arrayBuffer->Detach(vm_);
+    GTEST_LOG_(INFO) << "sample_ArrayBufferWithBuffer_getDetachArrayBuffer : " << arrayBuffer->GetBuffer();
+    bool result = arrayBuffer->IsDetach();
+    GTEST_LOG_(INFO) << "sample_ArrayBufferWithBuffer_getIsDetach : " << result;
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_Buffer_New_GetBuffer)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 5; // buffer length = 5
+    Local<BufferRef> buffer = BufferRef::New(vm_, length);
+    GTEST_LOG_(INFO) << "sample_Buffer_byteLength : " << buffer->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_Buffer_getBuffer : " << buffer->GetBuffer();
+}
+
+HWTEST_F_L0(JSNApiSampleTest, sample_BufferWithBuffer_New_GetBuffer)
+{
+    static bool isFree = false;
+    struct Data {
+        int32_t length;
+    };
+    const int32_t length = 5;   // buffer length = 5
+    Data *data = new Data();
+    data->length = length;
+    Deleter deleter = [](void *buffer, void *data) -> void {
+        delete[] reinterpret_cast<uint8_t *>(buffer);
+        Data *currentData = reinterpret_cast<Data *>(data);
+        delete currentData;
+        isFree = true;
+    };
+    LocalScope scope(vm_);
+    uint8_t *buffer = new uint8_t[length]();
+    Local<BufferRef> bufferObj = BufferRef::New(vm_, buffer, length, deleter, data);
+    GTEST_LOG_(INFO) << "sample_bufferWithBuffer_byteLength : " << bufferObj->ByteLength(vm_);
+    GTEST_LOG_(INFO) << "sample_bufferWithBuffer_getBuffer : " << bufferObj->GetBuffer();
 }
 
 // JSValueRef转为字符串输出。
