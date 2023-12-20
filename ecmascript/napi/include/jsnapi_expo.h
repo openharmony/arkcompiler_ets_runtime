@@ -1108,6 +1108,9 @@ class ECMA_PUBLIC_API MapIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
+    static Local<MapIteratorRef> New(const EcmaVM *vm, Local<MapRef> map);
+    ecmascript::EcmaRuntimeCallInfo* GetEcmaRuntimeCallInfo(const EcmaVM *vm);
+    static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo* ecmaRuntimeCallInfo);
 };
 
 class ECMA_PUBLIC_API JSNApi {
@@ -1325,6 +1328,9 @@ public:
     int32_t GetTotalElements();
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<WeakMapRef> New(const EcmaVM *vm);
+    void Set(const EcmaVM *vm, const Local<JSValueRef> &key, const Local<JSValueRef> &value);
+    bool Has(Local<JSValueRef> key);
 };
 
 class ECMA_PUBLIC_API SetRef : public ObjectRef {
