@@ -117,3 +117,23 @@ CallbackFn is not callable
 ,,baz
 ,,baz
 {"0":-1.6304390272817058e+308,"length":1}
+constructor
+get [Symbol.species]
+constructor
+1 1
+0 0
+constructor
+get [Symbol.species]
+constructor
+1 1
+0 0
+constructor
+get [Symbol.species]
+constructor
+1 1
+0 0
+constructor
+get [Symbol.species]
+constructor
+1 1
+0 0

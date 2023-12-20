@@ -25,16 +25,34 @@
 namespace panda::ecmascript {
 JSTaggedValue ElementAccessor::Get(JSHandle<JSObject> receiver, uint32_t idx)
 {
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
-    // waiting for elementsKind
-    (void) kind;
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     ASSERT(idx < elements->GetLength());
+    ElementsKind kind = receiver->GetClass()->GetElementsKind();
+    if (!elements->GetClass()->IsMutantTaggedArray()) {
+        kind = ElementsKind::GENERIC;
+    }
     // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    return JSTaggedValue(Barriers::GetValue<JSTaggedType>(elements->GetData(), offset));
+    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    return GetTaggedValueWithElementsKind(rawValue, kind);
+}
+
+JSTaggedValue ElementAccessor::Get(JSObject *receiver, uint32_t idx)
+{
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    ASSERT(idx < elements->GetLength());
+    ElementsKind kind = receiver->GetClass()->GetElementsKind();
+    if (!elements->GetClass()->IsMutantTaggedArray()) {
+        kind = ElementsKind::GENERIC;
+    }
+    // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
+    //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    return GetTaggedValueWithElementsKind(rawValue, kind);
 }
 
 bool ElementAccessor::IsDictionaryMode(JSHandle<JSObject> receiver)
@@ -43,7 +61,19 @@ bool ElementAccessor::IsDictionaryMode(JSHandle<JSObject> receiver)
     return elements->GetClass()->IsDictionary();
 }
 
+bool ElementAccessor::IsDictionaryMode(JSObject *receiver)
+{
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    return elements->GetClass()->IsDictionary();
+}
+
 uint32_t ElementAccessor::GetElementsLength(JSHandle<JSObject> receiver)
+{
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    return elements->GetLength();
+}
+
+uint32_t ElementAccessor::GetElementsLength(JSObject *receiver)
 {
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     return elements->GetLength();
@@ -81,7 +111,7 @@ JSTaggedValue ElementAccessor::GetTaggedValueWithElementsKind(JSTaggedType rawVa
 JSTaggedType ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind)
 {
     JSTaggedType convertedValue = base::SPECIAL_HOLE;
-    if (rawValue.IsHole()) {
+    if (rawValue.IsHole() && Elements::IsInNumbers(kind)) {
         return convertedValue;
     }
     switch (kind) {

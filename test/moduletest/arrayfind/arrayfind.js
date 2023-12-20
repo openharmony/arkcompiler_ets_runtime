@@ -13,12 +13,6 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:stringSlice
- * @tc.desc:test String.slice
- * @tc.type: FUNC
- * @tc.require: issueI5NO8G
- */
 
 const array1 = [5, 12, 8, 130, 44];
 const found = array1.find((element) => element > 10);
@@ -56,6 +50,25 @@ function isPrime(element, index, array) {
 	  return element > 1;
 }
 
-console.log([4, 6, 8, 12].find(isPrime)); // undefined，未找到
-console.log([4, 5, 8, 12].find(isPrime)); // 5
+console.log([4, 6, 8, 12].find(isPrime)); 
+console.log([4, 5, 8, 12].find(isPrime)); 
+//
+const numbers = [3, -1, 1, 4, 1, 5, 9, 2, 6];
+const firstTrough = numbers
+  .filter((num) => num > 0)
+  .find((num, idx, arr) => {
+    if (idx > 0 && num >= arr[idx - 1]) return false;
+    if (idx < arr.length - 1 && num >= arr[idx + 1]) return false;
+    return true;
+  });
+console.log(firstTrough); // 1
+
+const words = ["spray", "limit", "limits"];
+const deleteWords = words.find((word, index, arr) => {
+  arr.length=4
+  word="asd"
+  return word == "asd"
+});
+console.log(deleteWords);
+console.log(words.length);
 

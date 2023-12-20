@@ -19,6 +19,7 @@
 #include <cstddef>
 
 #include "ecmascript/common.h"
+#include "ecmascript/mem/c_string.h"
 
 namespace panda::ecmascript {
 class MemMap {
@@ -75,15 +76,17 @@ enum class PageTagType : uint8_t {
 #define PAGE_PROT_EXEC_READWRITE 7
 #endif
 
+static constexpr char HEAP_TAG[] = "ArkTS Heap";
+static constexpr char CODE_TAG[] = "ArkTS Code";
 MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
 void PagePreRead(void *mem, size_t size);
-void PageTag(void *mem, size_t size, PageTagType type);
+void PageTag(void *mem, size_t size, PageTagType type, const uint32_t threadId = 0);
 void PageClearTag(void *mem, size_t size);
-const char *GetPageTagString(PageTagType type);
+const CString GetPageTagString(PageTagType type, const uint32_t threadId = 0);
 void PageProtect(void *mem, size_t size, int prot);
 size_t PageSize();
 }  // namespace panda::ecmascript

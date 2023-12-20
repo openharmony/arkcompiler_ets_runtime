@@ -346,16 +346,22 @@ public:
                 case ConstPoolType::ARRAY_LITERAL: {
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
+                    ElementsKind dataKind = ElementsKind::NONE;
                     if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag, entryIndexes, literal)) {
                         literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
                                                                                 constpoolHandle, entry,
-                                                                                needSetAotFlag, entryIndexes));
+                                                                                needSetAotFlag, entryIndexes,
+                                                                                &dataKind));
                     }
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     arr->SetElements(thread, literal);
-                    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-                        JSHClass::TransitToElementsKind(thread, arr);
+                    if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind()) {
+                        ElementsKind oldKind = arr->GetClass()->GetElementsKind();
+                        JSHClass::TransitToElementsKind(thread, arr, dataKind);
+                        ElementsKind newKind = arr->GetClass()->GetElementsKind();
+                        JSHandle<JSObject> receiver(arr);
+                        Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
                     }
                     val = arr.GetTaggedValue();
                     break;

@@ -470,7 +470,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
                 // push arg3 and call
                 TempRegister2Scope scope2(assembler);
                 Register arg3 = __ TempRegister2();
-                __ Ldr(arg3, MemoryOperand(fp, DECUPLE_SLOT_SIZE)); // get arg2
+                __ Ldr(arg3, MemoryOperand(fp, OCTUPLE_SLOT_SIZE)); // get arg2
                 __ Stp(arg3, Register(X8), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
                 __ Blr(builtinStub);
                 __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
@@ -873,7 +873,7 @@ void OptimizedCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
     // 2 : 2 means pairs. X19 means calleesave and 16bytes align
     __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(Register(FP), sp, Immediate(FRAME_SLOT_SIZE));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
 }
 
 void OptimizedCall::PopOptimizedFrame(ExtendedAssembler *assembler)

@@ -91,9 +91,9 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> argArray = BuiltinsBase::GetCallArg(argv, 0);
     uint32_t len = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(argArray)->GetElements());
+    JSHandle<JSObject> argObj(argArray);
     // load on demand check
-    if (elements->GetLength() < len) {
+    if (ElementAccessor::GetElementsLength(argObj) < len) {
         TypedArrayHelper::CreateFromOrdinaryObject(argv, obj, arrayType);
     }
 
@@ -101,7 +101,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
 
-    JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
+    JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, argObj);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();
 }

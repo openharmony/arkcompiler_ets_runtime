@@ -119,6 +119,7 @@ void Heap::IterateOverObjects(const Callback &cb) const
 {
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
+    readOnlySpace_->IterateOverObjects(cb);
     appSpawnSpace_->IterateOverMarkedObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);

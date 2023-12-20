@@ -19,6 +19,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -89,7 +90,7 @@ void EntryIdMap::RemoveDeadEntryId(HeapSnapshot *snapshot)
     idMap_ = newIdMap;
 }
 
-HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeAreaAllocator())
+HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), stringTable_(vm), chunk_(vm->GetNativeAreaAllocator())
 {
     isProfiling_ = false;
     entryIdMap_ = GetChunk()->New<EntryIdMap>();
@@ -97,6 +98,7 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeArea
 
 HeapProfiler::~HeapProfiler()
 {
+    JSPandaFileManager::GetInstance()->ClearNameMap();
     ClearSnapshot();
     GetChunk()->Delete(entryIdMap_);
 }
@@ -313,8 +315,9 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
     }
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, captureNumericValue,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), isVmMode, isPrivate,
+                                                           captureNumericValue, traceAllocation, entryIdMap_,
+                                                           GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -323,8 +326,9 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, captureNumericValue,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), isVmMode, isPrivate,
+                                                           captureNumericValue, traceAllocation, entryIdMap_,
+                                                           GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();

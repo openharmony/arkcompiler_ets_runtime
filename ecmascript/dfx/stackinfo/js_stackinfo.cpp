@@ -133,15 +133,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
         std::ostringstream stack;
         Backtrace(stack, false, true);
         data = stack.str();
-        return data;
 #endif
-    }
-    // sourceMap callback
-    EcmaVM* vm = thread->GetEcmaVM();
-    SourceMapCallback sourceMapCallback_ = vm->GetSourceMapCallback();
-    if (sourceMapCallback_ != nullptr) {
-        std::string resData = sourceMapCallback_(data);
-        return resData;
     }
     return data;
 }

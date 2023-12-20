@@ -188,6 +188,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::AOT_LITERAL_INFO:
         case JSType::VTABLE:
         case JSType::COW_TAGGED_ARRAY:
+        case JSType::MUTANT_TAGGED_ARRAY:
         case JSType::PROFILE_TYPE_INFO:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
@@ -270,6 +271,52 @@ inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass,
     uint32_t propsNumber = hclass->NumberOfProps();
     int entry = layout->FindElementWithCache(thread, hclass, key, propsNumber);
     return entry;
+}
+
+template<bool checkDuplicateKeys /* = false*/>
+void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
+                                      JSHandle<JSHClass> &newJsHClass,
+                                      const JSHandle<JSTaggedValue> &key,
+                                      const PropertyAttributes &attr)
+{
+    ASSERT(!jshclass->IsDictionaryMode());
+    ASSERT(!newJsHClass->IsDictionaryMode());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // Add Property and metaData
+    uint32_t offset = attr.GetOffset();
+    newJsHClass->IncNumberOfProps();
+
+    {
+        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
+
+        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
+            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
+        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
+            layoutInfoHandle.Update(
+                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
+        }
+        newJsHClass->SetLayout(thread, layoutInfoHandle);
+        layoutInfoHandle->AddKey<checkDuplicateKeys>(thread, offset, key.GetTaggedValue(), attr);
+    }
+
+    // Add newClass to old hclass's transitions.
+    AddTransitions(thread, jshclass, newJsHClass, key, attr);
+}
+
+template<bool checkDuplicateKeys /* = false*/>
+JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
+                                                    const JSHandle<JSTaggedValue> &key,
+                                                    const PropertyAttributes &attr)
+{
+    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
+    if (newClass != nullptr) {
+        newClass->SetPrototype(thread, jshclass->GetPrototype());
+        return JSHandle<JSHClass>(thread, newClass);
+    }
+
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
+    AddPropertyToNewHClass<checkDuplicateKeys>(thread, jshclass, newJsHClass, key, attr);
+    return newJsHClass;
 }
 }  // namespace panda::ecmascript
 

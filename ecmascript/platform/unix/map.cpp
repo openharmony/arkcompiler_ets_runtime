@@ -79,10 +79,10 @@ void PagePreRead(void *mem, size_t size)
     madvise(mem, size, MADV_WILLNEED);
 }
 
-void PageTag(void *mem, size_t size, PageTagType type)
+void PageTag(void *mem, size_t size, PageTagType type, const uint32_t threadId)
 {
-    const char *tag = GetPageTagString(type);
-    PrctlSetVMA(mem, size, tag);
+    const CString &tag = GetPageTagString(type, threadId);
+    PrctlSetVMA(mem, size, tag.c_str());
 }
 
 void PageClearTag(void *mem, size_t size)

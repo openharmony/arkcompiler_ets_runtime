@@ -19,7 +19,7 @@
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/ecma_string_table.h"
-#include "ecmascript/element_accessor.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -36,6 +36,7 @@
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
+#include <sstream>
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -58,16 +59,16 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
     uint32_t index = 0;
     if (JSTaggedValue::ToElementIndex(key, &index)) {
         ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
-        TaggedArray *elements = TaggedArray::Cast(JSObject::Cast(receiver)->GetElements().GetTaggedObject());
-        if (elements->GetLength() == 0) {
+        JSHandle<JSObject> receiverObj(thread, receiver);
+        if (ElementAccessor::GetElementsLength(receiverObj) == 0) {
             return std::make_pair(JSTaggedValue::Hole(), true);  // Empty Array
         }
 
-        if (!elements->IsDictionaryMode()) {
-            if (elements->GetLength() <= index) {
+        if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
+            if (ElementAccessor::GetElementsLength(receiverObj) <= index) {
                 return std::make_pair(JSTaggedValue::Hole(), true);
             }
-            JSTaggedValue value = elements->Get(index);
+            JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
             return std::make_pair(value, true);
         } else {
             NumberDictionary *dictionary =
@@ -218,6 +219,17 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << entry;
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << "cint1";
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
                 }
@@ -254,6 +266,17 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    std::ostringstream oss1;
+                    receiver.Dump(oss1);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss1.str();
+                    std::ostringstream oss2;
+                    holder.Dump(oss2);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss2.str();
+                    std::ostringstream oss3;
+                    key.Dump(oss3);
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << oss3.str();
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << entry;
+                    LOG_ECMA(INFO) << "dump log for read-only crash " << "cint2";
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
                 }
@@ -366,24 +389,28 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             }
             return JSTaggedValue::Hole();
         }
-        TaggedArray *elements = TaggedArray::Cast(JSObject::Cast(holder)->GetElements().GetTaggedObject());
+        JSHandle<JSObject> arrayHandler(thread, holder);
+        TaggedArray *elements = TaggedArray::Cast(arrayHandler->GetElements().GetTaggedObject());
         if (!hclass->IsDictionaryElement()) {
             ASSERT(!elements->IsDictionaryMode());
             if (UNLIKELY(holder != receiver)) {
                 break;
             }
             if (index < elements->GetLength()) {
-                if (!elements->Get(index).IsHole()) {
+                JSTaggedValue oldValue = ElementAccessor::Get(arrayHandler, index);
+                if (!oldValue.IsHole()) {
                     if (holder.IsJSCOWArray()) {
                         [[maybe_unused]] EcmaHandleScope handleScope(thread);
                         JSHandle<JSArray> holderHandler(thread, holder);
+                        JSHandle<JSObject> obj(thread, holder);
                         JSHandle<JSTaggedValue> valueHandle(thread, value);
                         // CheckAndCopyArray may cause gc.
                         JSArray::CheckAndCopyArray(thread, holderHandler);
-                        TaggedArray::Cast(holderHandler->GetElements())->Set(thread, index, valueHandle);
+                        ElementAccessor::Set(thread, obj, index, valueHandle.GetTaggedValue(), true);
                         return JSTaggedValue::Undefined();
                     }
-                    elements->Set(thread, index, value);
+                    JSHandle<JSTaggedValue> valueHandle(thread, value);
+                    ElementAccessor::Set(thread, arrayHandler, index, valueHandle.GetTaggedValue(), true);
                     return JSTaggedValue::Undefined();
                 }
             }

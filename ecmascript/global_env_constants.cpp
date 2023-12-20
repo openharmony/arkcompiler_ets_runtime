@@ -117,6 +117,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::VTABLE));
+    SetConstant(ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
     InitGlobalConstantSpecial(thread);
     SetConstant(ConstantIndex::DICTIONARY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
@@ -302,9 +304,12 @@ void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
     // SPECIAL INIT
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
+    SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
+    SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
 }

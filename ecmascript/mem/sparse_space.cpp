@@ -25,9 +25,8 @@
 
 namespace panda::ecmascript {
 SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+    : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       sweepState_(SweepState::NO_SWEEP),
-      heap_(heap),
       liveObjectSize_(0)
 {
     allocator_ = new FreeListAllocator(heap);

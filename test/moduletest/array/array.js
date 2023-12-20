@@ -374,3 +374,42 @@ function f110() {
 Object.defineProperty(f99, Symbol.species, { configurable: true, enumerable: true, value: f110 });
 v98.constructor = f99;
 print(JSON.stringify(v98.splice(4)));
+
+var count;
+var params;
+class MyObserveArrray extends Array {
+    constructor(...args) {
+        super(...args);
+        print("constructor")
+        params = args;
+    }
+    static get [Symbol.species]() {
+        print("get [Symbol.species]")
+        count++;
+        return this;
+    }
+}
+
+count = 0;
+params = undefined;
+new MyObserveArrray().filter(() => { });
+print(count, 1);
+print(params, [0]);
+
+count = 0;
+params = undefined;
+new MyObserveArrray().concat(() => { });
+print(count, 1);
+print(params, [0]);
+
+count = 0;
+params = undefined;
+new MyObserveArrray().slice(() => { });
+print(count, 1);
+print(params, [0]);
+
+count = 0;
+params = undefined;
+new MyObserveArrray().splice(() => { });
+print(count, 1);
+print(params, [0]);

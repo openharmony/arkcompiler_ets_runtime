@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_TAGGED_ARRAY_H
 #define ECMASCRIPT_TAGGED_ARRAY_H
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 
@@ -104,6 +105,19 @@ static_assert((TaggedArray::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM
 class COWTaggedArray : public TaggedArray {
 public:
     CAST_CHECK(COWTaggedArray, IsCOWArray)
+    DECL_DUMP()
+private:
+    friend class ObjectFactory;
+};
+
+// A Mutant of TaggedArray which has numbers directly stored in Data section.
+// Used by JSArrays with specified elementsKind.
+class MutantTaggedArray : public TaggedArray {
+public:
+    inline void InitializeWithSpecialValue(JSTaggedType initValue, uint32_t length, uint32_t extraLength = 0);
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetLength());
+    CAST_CHECK(MutantTaggedArray, IsMutantTaggedArray)
     DECL_DUMP()
 private:
     friend class ObjectFactory;

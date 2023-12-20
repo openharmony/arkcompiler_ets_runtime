@@ -42,21 +42,98 @@ foreach(file, test_js_files) {
 
 module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("JsnapiTest") {
+host_unittest_action("Jsnapi_001_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "dfx_jsnapi_tests.cpp",
-    "jsnapi_tests.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "../../../:ecma_test_config" ]
 
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Jsnapi_002_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "jsnapi_first_tests.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Jsnapi_003_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "jsnapi_second_tests.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Jsnapi_004_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "jsnapi_third_tests.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -93,7 +170,12 @@ host_unittest_action("FFIWorkLoadTest") {
 
 group("unittest") {
   testonly = true
-  deps = [ ":JsnapiTest" ]
+  deps = [
+    ":Jsnapi_001_Test",
+    ":Jsnapi_002_Test",
+    ":Jsnapi_003_Test",
+    ":Jsnapi_004_Test",
+  ]
 }
 
 group("host_unittest") {

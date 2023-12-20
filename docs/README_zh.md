@@ -114,7 +114,7 @@ print("Hello World!!!");
    1. 设置搜索路径：
 
       ```
-      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
+      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
       ```
    2. 执行ark\_js\_vm：
 
@@ -135,7 +135,7 @@ print("Hello World!!!");
 编译生成反汇编工具：
 
 ```
-./build.sh --product-name rk3568 --build-target ark_host_linux_tools_packages
+./build.sh --product-name rk3568 --build-target arkcompiler/runtime_core:ark_host_linux_tools_packages
 ```
 
 执行如下命令，结果输出到output.pa文件中：
@@ -375,38 +375,38 @@ used time is: 0:01:04.439642
 * 编译生成AOT编译器：
 
   ```
-  ./build.sh --product-name rk3568  --build-target ets_frontend_build --build-target ark_js_host_linux_tools_packages --build-target ark_host_linux_tools_packages
+  ./build.sh --product-name rk3568  --build-target ets_frontend_build --build-target ark_js_host_linux_tools_packages --build-target arkcompiler/runtime_core:ark_host_linux_tools_packages
   ```
 
-#### 运行hello-world.ts
+* 新建hello-world.ts文件，写入以下源码：
 
-新建hello-world.ts文件，写入以下源码：
+  ```
+  declare function print(arg:any):string;
+  print('Hello World!!!')
+  ```
 
-```
-declare function print(arg:any):string;
-print('Hello World!!!')
-```
-
-运行步骤：
+#### 运行步骤
 
 1. 通过方舟前端生成hello-world.abc文件，编译命令：
 
    ```
-   /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc --module --merge-abc test1/test.ts
+   /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc --module --type-extractor --merge-abc hello-world.ts
    ```
-2. 执行hello-world.abc文件：
-
-   1. 设置搜索路径：
+2. 设置搜索路径：
 
       ```
-      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/icu:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
+      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/icu:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
       ```
-   2. 通过AOT编译器生成an和ai文件：
+3. 运行ark\_js\_vm，采集PGO信息，生成的PGO信息落盘在文件hello-world.ap：
+      ```
+      /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm --enable-pgo-profiler=true --compiler-pgo-profiler-path=hello-world.ap --entry-point=hello-world hello-world.abc
+      ```
+4. 通过AOT编译器生成an和ai文件，可以通过info日志观察到被编译的函数列表：
 
       ```
-      /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_aot_compiler  --aot-file=./hello-world hello-world.abc
+      /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_aot_compiler  --enable-pgo-profiler=true --compiler-pgo-profiler-path=hello-world.ap --log-level=info --aot-file=./hello-world hello-world.abc
       ```
-   3. 执行ark\_js\_vm：
+5. 执行ark\_js\_vm：
 
       ```
       /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm --aot-file=./hello-world --entry-point=hello-world hello-world.abc
@@ -588,7 +588,7 @@ $ ./es2abc [options] file.js
 编译生成反汇编工具：
 
 ```
-./build.sh --product-name rk3568 --build-target ark_host_linux_tools_packages
+./build.sh --product-name rk3568 --build-target arkcompiler/runtime_core:ark_host_linux_tools_packages
 ```
 
 命令行格式：
@@ -692,8 +692,8 @@ ark_js_vm [选项] 输入文件
 | 选项                    | 描述                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | --enable-pgo-profiler   | 开启pgo工具。默认值：“false”                                                    |
-| --pgo-profiler-path     | pgo profiler文件的保存路径。默认值：当前路径                                     |
-| --pgo-hotness-threshold | 热点函数的阈值，当函数的调用次数大于该值，则认为是热点函数。默认值：“2”             |
+| --compiler-pgo-profiler-path     | pgo profiler文件的保存路径。默认值："none"                                     |
+| --compiler-pgo-hotness-threshold | 热点函数的阈值，当函数的调用次数大于该值，则认为是热点函数。默认值：“2”             |
 
 输入文件：二进制格式的方舟字节码
 
@@ -708,8 +708,8 @@ ark_aot_compiler [选项] 输入文件
 ```
 | 选项                    | 描述                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------- |
-| --pgo-profiler-path     | pgo profiler文件路径。默认值：“none”                                     |
-| --pgo-hotness-threshold | 使能pgo编译的函数调用次数阈值，profile文件中记录的调用次数大于该阈值的函数才会进行编译。默认值：“2”|
+| --compiler-pgo-profiler-path     | pgo profiler文件路径。默认值："none"                                     |
+| --compiler-pgo-hotness-threshold | 使能pgo编译的函数调用次数阈值，profile文件中记录的调用次数大于该阈值的函数才会进行编译。默认值：“2”|
 
 输入文件：二进制格式的方舟字节码，ap文件
 

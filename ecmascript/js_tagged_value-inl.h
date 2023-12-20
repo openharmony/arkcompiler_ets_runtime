@@ -888,6 +888,11 @@ inline bool JSTaggedValue::IsCOWArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
 }
 
+inline bool JSTaggedValue::IsMutantTaggedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMutantTaggedArray();
+}
+
 inline bool JSTaggedValue::IsJSArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArray();
@@ -1554,6 +1559,15 @@ inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
         return JSTaggedValue(d);
     }
     return JSTaggedValue(static_cast<int32_t>(d));
+}
+
+inline bool JSTaggedValue::IsPureString(JSTaggedValue key)
+{
+    if (!key.IsString()) {
+        return false;
+    }
+    uint32_t idx;
+    return !StringToElementIndex(key, &idx);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

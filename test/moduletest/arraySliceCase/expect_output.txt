@@ -20,3 +20,4 @@ ant,bison,camel,duck,elephant
 2,,4
 3,4
 1,2,3
+1,true

@@ -327,17 +327,15 @@ bool EcmaStringTable::CheckStringTableValidity()
     return true;
 }
 
-JSTaggedValue SingleCharTable::CreateSingleCharTable(const JSThread *thread)
+void SingleCharTable::CreateSingleCharTable(JSThread *thread)
 {
-    auto table = static_cast<SingleCharTable*>(
-        *thread->GetEcmaVM()->GetFactory()->NewTaggedArray(MAX_ONEBYTE_CHARCODE,
-            JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE));
+    auto table = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(MAX_ONEBYTE_CHARCODE,
+        JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    table->Set(thread, 0, thread->GlobalConstants()->GetHandledZeroString().GetTaggedValue());
     for (uint32_t i = 1; i < MAX_ONEBYTE_CHARCODE; ++i) {
         std::string tmp(1, i + 0X00); // 1: size
         table->Set(thread, i, factory->NewFromASCIINonMovable(tmp).GetTaggedValue());
     }
-    return JSTaggedValue(table);
+    thread->SetSingleCharTable((table.GetTaggedValue()));
 }
 }  // namespace panda::ecmascript

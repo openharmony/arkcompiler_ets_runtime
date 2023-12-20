@@ -251,5 +251,16 @@ void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)
     factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
     SetLength(newLength);
 }
+
+void MutantTaggedArray::InitializeWithSpecialValue(JSTaggedType initValue, uint32_t length, uint32_t extraLength)
+{
+    SetLength(length);
+    SetExtraLength(extraLength);
+    for (uint32_t i = 0; i < length; i++) {
+        size_t offset = JSTaggedValue::TaggedTypeSize() * i;
+        // NOLINTNEXTLINE(readability-misleading-indentation)
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue);
+    }
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_INL_H

@@ -220,6 +220,11 @@ public:
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
     }
 
+    void ResetPosition()
+    {
+        position_ = 0;
+    }
+
 private:
     Chunk chunk_;
     DynChunk data_;

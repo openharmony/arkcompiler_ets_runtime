@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/heap_region_allocator.h"
 
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
@@ -35,7 +36,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
-    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular, isMachineCode);
+    auto pool = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), capacity, DEFAULT_REGION_SIZE,
+                                                         isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
@@ -75,6 +77,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
         UNREACHABLE();
     }
 #endif
-    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, cachedSize);
+    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase),
+                                                size, isRegular, cachedSize);
 }
 }  // namespace panda::ecmascript

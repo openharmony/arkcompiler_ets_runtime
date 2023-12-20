@@ -375,6 +375,7 @@ public:
     static bool ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, uint32_t *output);
     static bool ToElementIndex(JSTaggedValue key, uint32_t *output);
     static bool StringToElementIndex(JSTaggedValue key, uint32_t *output);
+    static bool IsPureString(JSTaggedValue key);
     uint32_t GetArrayLength() const;
 
     // ecma6 7.2 Testing and Comparison Operations
@@ -478,6 +479,7 @@ public:
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
     bool IsCOWArray() const;
+    bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
     bool IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;

@@ -30,13 +30,29 @@ arr = new Array(100)
 arr.splice(0, 20)
 print(arr.length)
 
-var array=new Array(10);
-var spliced = array.splice(1,1);
-for(let i=0;i<array.length;++i){
+var array = new Array(10);
+var spliced = array.splice(1, 1);
+for (let i = 0; i < array.length; ++i) {
     print(i in array)
 }
-var array1=new Array(10);
-var spliced1 = array1.splice(1,1,"a","b");
-for(let i=0;i<array1.length;++i){
+var array1 = new Array(10);
+var spliced1 = array1.splice(1, 1, "a", "b");
+for (let i = 0; i < array1.length; ++i) {
     print(i in array1)
+}
+
+array = [];
+spliced = undefined;
+for (var i = 0; i < 1; i++) {
+    let bad_start = { valueOf: function () { array.push(2 * i); return -1; } };
+    let bad_count = { valueOf: function () { array.push(2 * i + 1); return 1; } };
+    spliced = array.splice(bad_start, bad_count);
+    print("array.length", array.length);
+}
+for (let i = 0; i < 2; i++) {
+    let array = [1, 2, 3, 4];
+    print("array:", array);
+    if (i == 0) {
+        let spliced = array.splice(1, 3, 'one', 'two', 'three');
+    }
 }

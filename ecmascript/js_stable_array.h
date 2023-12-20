@@ -28,7 +28,8 @@ public:
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
-                                uint32_t insertCount, uint32_t actualDeleteCount, JSTaggedValue newArray);
+                                uint32_t insertCount, uint32_t actualDeleteCount,
+                                JSHandle<JSObject> newArrayHandle, uint32_t len);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
@@ -57,7 +58,7 @@ public:
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
                                                        DataViewType targetType, uint64_t targetOffset,
-                                                       uint32_t srcLength, JSHandle<TaggedArray> &elements);
+                                                       uint32_t srcLength, JSHandle<JSObject> &obj);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue With(JSThread *thread, JSHandle<JSArray> receiver,
                               int64_t insertCount, int64_t index, JSHandle<JSTaggedValue> value);

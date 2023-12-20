@@ -87,17 +87,19 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
 {
     DISALLOW_GARBAGE_COLLECTION;
     CString moduleRequestName = ConvertToString(moduleRequest.GetTaggedValue());
+    JSHandle<JSTaggedValue> moduleRequestStr(moduleRequest);
     auto vm = thread->GetEcmaVM();
     // check if module need to be mock
     if (vm->IsMockModule(moduleRequestName)) {
         moduleRequestName = vm->GetMockModule(moduleRequestName);
+        moduleRequestStr = JSHandle<JSTaggedValue>::Cast(vm->GetFactory()->NewFromUtf8(moduleRequestName.c_str()));
     }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
-        if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
-            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
+        if (moduleManager->IsImportedModuleLoaded(moduleRequestStr.GetTaggedValue())) {
+            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr.GetTaggedValue()));
         }
         return moduleManager->ResolveNativeModule(moduleRequestName, moduleType);
     }

@@ -97,7 +97,7 @@ void Tracing::TraceEventRecordTracingStart()
     std::string args = "{\"data\":{\"frameTreeNodeId\":1,\"frames\":[{";
     args += "\"frame\":\"0\",\"name\":\"\",";
     args += "\"processId\":" + std::to_string(getpid()) + ",";
-    args += "\"url\":\"\"}],";
+    args += "\"url\":\"https://url not exist/\"}],";
     args += "\"persistentIds\":true}}";
 
     TraceEvent event("disabled-by-default-devtools.timeline", "TracingStartedInBrowser", "I", getpid(), tid_);

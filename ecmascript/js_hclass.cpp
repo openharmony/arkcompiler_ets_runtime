@@ -215,7 +215,7 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     }
     obj->GetJSHClass()->SetIsDictionaryElement(true);
     obj->GetJSHClass()->SetIsStableElements(false);
-    obj->GetJSHClass()->SetElementsKind(ElementsKind::GENERIC);
+    obj->GetJSHClass()->SetElementsKind(ElementsKind::DICTIONARY);
 }
 
 void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
@@ -230,84 +230,48 @@ void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject>
     obj->GetJSHClass()->SetElementsKind(ElementsKind::HOLE_TAGGED);
 }
 
-JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
-                                                    const JSHandle<JSTaggedValue> &key,
-                                                    const PropertyAttributes &attr)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
-    if (newClass != nullptr) {
-        newClass->SetPrototype(thread, jshclass->GetPrototype());
-        return JSHandle<JSHClass>(thread, newClass);
-    }
-
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->IncNumberOfProps();
-    uint32_t offset = attr.GetOffset();
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) { // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-        }
-        newJsHClass->SetLayout(thread, layoutInfoHandle);
-        layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);
-    }
-
-    AddTransitions(thread, jshclass, newJsHClass, key, attr);
-    return newJsHClass;
-}
-
 void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                            const PropertyAttributes &attr)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
         newClass->SetPrototype(thread, jshclass->GetPrototype());
         obj->SynchronizedSetClass(newClass);
+        // Because we currently only supports Fast ElementsKind
+        JSHandle<JSHClass> newHClass(thread, newClass);
+        TryRestoreElementsKind(thread, newHClass, obj);
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
 #endif
         return;
     }
-
-    // 2. Create hclass
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-
-    // 3. Add Property and metaData
-    uint32_t offset = attr.GetOffset();
-    newJsHClass->IncNumberOfProps();
-
-    {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
-
-        if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
-            layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
-        } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
-            layoutInfoHandle.Update(
-                factory->ExtendLayoutInfo(layoutInfoHandle, offset));
-        }
-        newJsHClass->SetLayout(thread, layoutInfoHandle);
-        layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attr);
-    }
-
-    // 4. Add newClass to old hclass's transitions.
-    AddTransitions(thread, jshclass, newJsHClass, key, attr);
-
-    // 5. update hclass in object.
+    AddPropertyToNewHClass(thread, jshclass, newJsHClass, key, attr);
+    // update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
     obj->SynchronizedSetClass(*newJsHClass);
+    // Because we currently only supports Fast ElementsKind
+    TryRestoreElementsKind(thread, newJsHClass, obj);
 
     // Maintaining subtyping is no longer required when transition succeeds.
     if (jshclass->HasTSSubtyping()) {
         SubtypingOperator::TryMaintainTSSubtyping(thread, jshclass, newJsHClass, key);
     }
+}
+
+void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
+                                      const JSHandle<JSObject> &obj)
+{
+    ElementsKind newKind = ElementsKind::GENERIC;
+    if (newJsHClass->GetObjectType() == JSType::JS_ARRAY &&
+        obj->GetElements().IsMutantTaggedArray()) {
+        ElementsKind oldKind = newJsHClass->GetElementsKind();
+        Elements::MigrateArrayWithKind(thread, obj, oldKind, newKind);
+    }
+    newJsHClass->SetElementsKind(newKind);
 }
 
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -466,6 +430,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
         obj->SynchronizedSetClass(*newJsHClass);
+        TryRestoreElementsKind(thread, newJsHClass, obj);
     }
 }
 
@@ -540,26 +505,37 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 #endif
 
     receiver->SynchronizedSetClass(*newHClass);
+    TryRestoreElementsKind(thread, newHClass, receiver);
     // 4. Maybe Transition And Maintain subtypeing check
 }
 
-void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array)
+JSHClass* JSHClass::GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind)
+{
+    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    auto newKindIter = arrayHClassIndexMap.find(kind);
+    if (newKindIter != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(newKindIter->second);
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+        return hclass;
+    }
+    return nullptr;
+}
+
+void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
+                                     ElementsKind newKind)
 {
     JSTaggedValue elements = array->GetElements();
     if (!elements.IsTaggedArray()) {
         return;
     }
-    ElementsKind newKind = ElementsKind::NONE;
-    auto elementArray = TaggedArray::Cast(elements);
-    uint32_t length = elementArray->GetLength();
-    for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = elementArray->Get(i);
-        newKind = Elements::ToElementsKind(value, newKind);
-    }
     ElementsKind current = array->GetJSHClass()->GetElementsKind();
+    newKind = Elements::MergeElementsKind(newKind, current);
     if (newKind == current) {
         return;
     }
+    // Currently, we only support fast array elementsKind
+    ASSERT(array->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current));
     const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
     auto newKindIter = arrayHClassIndexMap.find(newKind);
     if (newKindIter != arrayHClassIndexMap.end()) {
@@ -570,8 +546,8 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
     }
 }
 
-bool JSHClass::TransitToElementsKind(
-    const JSThread *thread, const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &value, ElementsKind kind)
+bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
+                                     const JSHandle<JSTaggedValue> &value, ElementsKind kind)
 {
     if (!object->IsJSArray()) {
         return false;
@@ -586,6 +562,8 @@ bool JSHClass::TransitToElementsKind(
     if (newKind == current) {
         return false;
     }
+    // Currently, we only support fast array elementsKind
+    ASSERT(object->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current));
     const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
     auto newKindIter = arrayHClassIndexMap.find(newKind);
     if (newKindIter != arrayHClassIndexMap.end()) {

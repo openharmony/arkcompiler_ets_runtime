@@ -46,6 +46,7 @@ class ObjectFactory;
     V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, COWArrayClass, COW_ARRAY_CLASS_INDEX, ecma_roots_class)                                          \
+    V(JSTaggedValue, MutantTaggedArrayClass, MUTANT_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, EnvClass, ENV_CLASS_INDEX, ecma_roots_class)                                                     \
@@ -128,6 +129,7 @@ class ObjectFactory;
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
+    V(JSTaggedValue, ElementHoleClass, ELEMENT_HOLE_HCLASS_INDEX, ecma_roots_class)                                   \
     V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \
     V(JSTaggedValue, ElementNumberClass, ELEMENT_NUMBER_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementStringClass, ELEMENT_STRING_HCLASS_INDEX, ecma_roots_class)                               \
@@ -143,9 +145,12 @@ class ObjectFactory;
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
     V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                                   \
     V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                             \
+    V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                             \
+    V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                           \
     V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                       \
     V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)              \
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                         \
+    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
@@ -601,6 +606,11 @@ public:
     size_t GetEmptyArrayIndex() const
     {
         return static_cast<size_t>(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    }
+
+    size_t GetEmptyMutantArrayIndex() const
+    {
+        return static_cast<size_t>(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX);
     }
 
     size_t GetJSAPIContainersBegin() const
