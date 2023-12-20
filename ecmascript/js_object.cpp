@@ -2634,9 +2634,9 @@ void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
         // Hash position reserve in advance.
         if (value->IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value->GetTaggedObject());
-            JSTaggedType hashAndImmutable = array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData();
-            hashAndImmutable = (hashAndImmutable & ( 0xFFFF'FFFFULL << IMMUTABLE_BIT_SHIFT)) | hash;
-            array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hashAndImmutable));
+            HashFieldHelper hashAndImmutable(array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData());
+            hashAndImmutable.UpdateHash(hash);
+            array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hashAndImmutable.GetHashField()));
         } else if (value->IsNativePointer()) { // FunctionExtraInfo
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
@@ -2649,9 +2649,9 @@ void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
             UNREACHABLE();
         }
     } else {
-        JSTaggedType hashAndImmutable = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
-        hashAndImmutable = (hashAndImmutable & ( 0xFFFF'FFFFULL << IMMUTABLE_BIT_SHIFT)) | hash;
-        Barriers::SetPrimitive<JSTaggedType>(*obj, HASH_OFFSET, hashAndImmutable);
+        HashFieldHelper hashAndImmutable(Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET));
+        hashAndImmutable.UpdateHash(hash);
+        Barriers::SetPrimitive<JSTaggedType>(*obj, HASH_OFFSET, hashAndImmutable.GetHashField());
     }
 }
 
@@ -2731,8 +2731,9 @@ void ECMAObject::BecomeImmutable(JSThread* thread)
 {
     JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
     if (hashField.IsInt()) {
-        uint64_t ImmutableField = hashField.GetRawData() | (0x1ULL << IMMUTABLE_BIT_SHIFT);
-        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, ImmutableField);
+        HashFieldHelper hashAndImmutable(hashField.GetRawData());
+        hashAndImmutable.UpdateImmutable(true);
+        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, hashAndImmutable.GetHashField());
         return;
     }
     if (!hashField.IsTaggedArray()) {
@@ -2740,9 +2741,9 @@ void ECMAObject::BecomeImmutable(JSThread* thread)
         UNREACHABLE();
     }
     TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint64_t ImmutableField = array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData();
-    ImmutableField = ImmutableField | (0x1ULL << IMMUTABLE_BIT_SHIFT);
-    array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(ImmutableField));
+    HashFieldHelper hashAndImmutable(array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData());
+    hashAndImmutable.UpdateImmutable(true);
+    array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hashAndImmutable.GetHashField()));
 }
 
 bool ECMAObject::IsImmutable()
@@ -2763,8 +2764,8 @@ bool ECMAObject::IsImmutable()
 
 bool ECMAObject::IsImmutableFromHashValue(uint64_t hashValue)
 {
-    uint64_t ImmutableField = hashValue >> IMMUTABLE_BIT_SHIFT;
-    return (ImmutableField & 0x1ULL) == 0x1ULL;
+    HashFieldHelper hashAndImmutable(hashValue);
+    return hashAndImmutable.IsImmutable();
 }
 
 int32_t ECMAObject::GetNativePointerFieldCount() const

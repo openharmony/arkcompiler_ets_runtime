@@ -345,15 +345,51 @@ private:
 // nativePointer number depends on the extraLength of taggedArray
 class ECMAObject : public TaggedObject {
 public:
-    /*
-     * Set immutable bit inside hash Int value: [0xFFFF000] [0000 or 0001 denotes whether Immutable] [32bits value]
-     */
-    static constexpr int IMMUTABLE_BIT_SHIFT = 32;
     static constexpr int HASH_AND_IMMUTABLE_INDEX = 0;
     static constexpr int FUNCTION_EXTRA_INDEX = 1;
     static constexpr int RESOLVED_MAX_SIZE = 2;
 
     CAST_CHECK(ECMAObject, IsECMAObject);
+
+    class HashFieldHelper {
+    public:
+        explicit HashFieldHelper(uint64_t hashField) : hashField_(hashField) {};
+        static constexpr uint32_t HASH_BITFIELD_NUM = 32;
+        /*
+         * Set immutable bit inside hash Int value: [0xFFFF000] [0000 or 0001 denotes whether Immutable] [32bits value]
+         */
+        static constexpr uint32_t IMMUTABLE_BITFIELD_NUM = 1;
+        using hashBits = BitField<uint32_t, 0, HASH_BITFIELD_NUM>;               // 0~31
+        using immutableBit = hashBits::NextField<bool, IMMUTABLE_BITFIELD_NUM>;  // 32
+
+        uint32_t GetHash() const
+        {
+            return hashBits::Decode(hashField_);
+        }
+
+        bool IsImmutable() const
+        {
+            return immutableBit::Decode(hashField_);
+        }
+
+        void UpdateHash(uint32_t hash)
+        {
+            hashField_ = hashBits::Update(hashField_, hash);
+        }
+
+        void UpdateImmutable(bool immutable)
+        {
+            hashField_ = immutableBit::Update(hashField_, immutable);
+        }
+
+        uint64_t GetHashField() const
+        {
+            return hashField_;
+        }
+
+    private:
+        uint64_t hashField_;
+    };
 
     void SetCallable(bool flag);
     bool IsCallable() const;

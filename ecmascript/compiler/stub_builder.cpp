@@ -152,8 +152,8 @@ GateRef StubBuilder::IsImmutable(GateRef obj)
 
 GateRef StubBuilder::IsImmutableFromHashValue(GateRef hashValue)
 {
-    return TruncInt64ToInt1(Int64And(Int64LSR(hashValue, Int64(static_cast<uint64_t>(ECMAObject::IMMUTABLE_BIT_SHIFT))),
-                                     Int64(static_cast<uint64_t>((1LLU << 1) - 1))));
+    return TruncInt64ToInt1(Int64And(Int64LSR(hashValue, Int64(ECMAObject::HashFieldHelper::immutableBit::START_BIT)),
+                                     Int64((1LLU << ECMAObject::HashFieldHelper::immutableBit::SIZE) - 1)));
 }
 
 GateRef StubBuilder::MatchTrackType(GateRef trackType, GateRef value)
