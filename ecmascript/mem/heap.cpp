@@ -41,7 +41,7 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
-#if !WIN_OR_IOS_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif

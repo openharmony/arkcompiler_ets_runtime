@@ -605,7 +605,25 @@ group("host_unittest") {
     deps -= [
       ":BuiltinsInternational_001_TestAction",
       ":BuiltinsInternational_002_TestAction",
-      ":BuiltinsNaturalTestAction",
+      ":BuiltinsInternational_003_TestAction",
+      ":BuiltinsInternational_004_TestAction",
+      ":BuiltinsInternational_005_TestAction",
+      ":BuiltinsInternational_006_TestAction",
+      ":BuiltinsInternational_007_TestAction",
+      ":BuiltinsInternational_008_TestAction",
+      ":BuiltinsInternational_009_TestAction",
+      ":BuiltinsInternational_010_TestAction",
+      ":BuiltinsInternational_011_TestAction",
+      ":BuiltinsInternational_012_TestAction",
+      ":BuiltinsInternational_013_TestAction",
+      ":BuiltinsInternational_014_TestAction",
+      ":BuiltinsInternational_015_TestAction",
+      ":BuiltinsNatural_001_TestAction",
+      ":BuiltinsNatural_002_TestAction",
+      ":BuiltinsNatural_003_TestAction",
+      ":BuiltinsNatural_004_TestAction",
+      ":BuiltinsNatural_005_TestAction",
+      ":BuiltinsNatural_006_TestAction",
     ]
   }
 }

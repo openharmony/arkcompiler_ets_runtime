@@ -59,7 +59,7 @@ class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
 using PGOProfiler = pgo::PGOProfiler;
-#if !WIN_OR_IOS_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 class HeapProfiler;
 #endif
@@ -579,7 +579,7 @@ private:
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
     bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
-#if !WIN_OR_IOS_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
     CString assetPath_;

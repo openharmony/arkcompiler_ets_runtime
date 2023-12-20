@@ -88,7 +88,7 @@ bool AOTFileManager::LoadAnFile(const std::string &fileName)
 bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 {
     Snapshot snapshot(vm_);
-#if !WIN_OR_IOS_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     return snapshot.Deserialize(SnapshotType::AI, filename.c_str());
 #else
     return true;

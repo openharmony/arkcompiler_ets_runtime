@@ -38,7 +38,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
-#if !WIN_OR_IOS_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
@@ -534,7 +534,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    if (!WIN_OR_IOS_PLATFORM) {
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
     pgoProfiler_->Iterate(v);

@@ -32,7 +32,6 @@ group("ark_js_packages") {
       "ecmascript/pgo_profiler/prof_dump:profdump",
     ]
   }
-
 }
 
 group("ark_js_host_windows_tools_packages") {
@@ -69,7 +68,6 @@ group("ark_js_host_linux_tools_packages") {
   deps = []
 
   deps += [
-    "ecmascript/js_vm:ark_js_context(${host_toolchain})",
     "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
     "ecmascript/quick_fix:quick_fix(${host_toolchain})",
   ]
@@ -299,13 +297,7 @@ config("ark_jsruntime_common_config") {
   ]
 
   if (use_musl) {
-    defines += [
-      "PANDA_USE_MUSL",
-      "ECMASCRIPT_SUPPORT_CPUPROFILER",
-      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
-      "ECMASCRIPT_SUPPORT_HEAPSAMPLING",
-      "ECMASCRIPT_SUPPORT_SNAPSHOT",
-    ]
+    defines += [ "PANDA_USE_MUSL" ]
   }
 
   if (build_public_version) {
@@ -480,7 +472,7 @@ config("ark_jsruntime_common_config") {
     defines += [ "ENABLE_EXCEPTION_BACKTRACE" ]
 
     if (use_musl && (current_cpu == "arm" || current_cpu == "arm64") &&
-        !is_mingw && target_os != "ios" && !is_asan) {
+        !is_mac && !is_mingw && target_os != "ios" && !is_asan) {
       defines += [ "HOOK_ENABLE" ]
     }
   }
@@ -516,8 +508,9 @@ config("ecma_test_config") {
   if (enable_leak_check || is_asan) {
     defines = [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
-
-  ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  if (!is_mac) {
+    ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  }
 
   if (!ark_standalone_build) {
     ldflags += [ "-Wl,--lto-O0" ]
@@ -855,7 +848,7 @@ ecma_debugger_source = [
 ]
 
 ecma_profiler_source = [ "ecmascript/napi/dfx_jsnapi.cpp" ]
-if (!is_mingw && target_os != "ios") {
+if (!is_mingw && !is_mac && target_os != "ios") {
   if (ark_compile_mode == "debug") {
     ecma_profiler_source += [
       "ecmascript/dfx/cpu_profiler/cpu_profiler.cpp",

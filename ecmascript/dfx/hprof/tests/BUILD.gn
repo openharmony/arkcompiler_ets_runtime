@@ -150,7 +150,9 @@ group("host_unittest") {
     deps -= [
       ":HProfTestAction",
       ":HeapSamplingTestAction",
-      ":HeapTrackerTestAction",
+      ":HeapTrackerFirstTestAction",
+      ":HeapTrackerSecondTestAction",
+      ":HeapTrackerThirdTestAction",
     ]
   }
 }
