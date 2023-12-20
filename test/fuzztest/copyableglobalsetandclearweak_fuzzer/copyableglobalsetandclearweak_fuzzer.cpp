@@ -13,26 +13,32 @@
  * limitations under the License.
  */
 
+#include "copyableglobalsetandclearweak_fuzzer.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/ecma_global_storage.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "objectrefsetprototype_fuzzer.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
+
 namespace OHOS {
-void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_unused]]size_t size)
+void CopyableGlobalSetandClearWeakFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    EcmaVM *vm_ = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "Parameter out of range.";
         return;
     }
-    Local<ObjectRef> object = ObjectRef::New(vm_);
-    Local<ObjectRef> prototype = object->GetPrototype(vm_);
-    object->SetPrototype(vm_, prototype);
-    JSNApi::DestroyJSVM(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm);
+    Global<ObjectRef> globalObject(vm, object);
+    globalObject.SetWeak();
+    globalObject.ClearWeak();
+    JSNApi::DestroyJSVM(vm);
 }
 }
 
@@ -40,6 +46,6 @@ void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::ObjectRefSetPrototypeFuzzTest(data, size);
+    OHOS::CopyableGlobalSetandClearWeakFuzzTest(data, size);
     return 0;
 }

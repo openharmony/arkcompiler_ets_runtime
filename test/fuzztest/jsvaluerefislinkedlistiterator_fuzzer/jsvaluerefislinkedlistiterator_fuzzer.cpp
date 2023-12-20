@@ -95,12 +95,12 @@ static JSTaggedType *SetupFrame(JSThread *thread, EcmaRuntimeCallInfo *info)
 {
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     size_t frameSize = 0;
+    const int num = 2;
+    // 2 means thread and numArgs
     if (thread->IsAsmInterpreter()) {
-        // 2 means thread and numArgs
-        frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
     } else {
-        // 2 means thread and numArgs
-        frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
     }
     JSTaggedType *newSp = sp - frameSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
@@ -117,11 +117,14 @@ void TearDownFrame(JSThread *thread, JSTaggedType *prev)
     thread->SetCurrentSPFrame(prev);
 }
 
-void JSValueRefIsLinkedListIteratorFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void JSValueRefIsLinkedListIteratorFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        return;
+    }
     auto thread = vm->GetAssociatedJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
