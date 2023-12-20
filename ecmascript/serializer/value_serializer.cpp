@@ -64,8 +64,10 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
-        case JSType::SYMBOL: {
-            if (supportSymbol_ > 0) {
+        case JSType::SYMBOL:
+        case JSType::JS_FUNCTION:
+        case JSType::JS_FUNCTION_BASE: {
+            if (serializeSharedFamilyEvent_ > 0) {
                 return true;
             }
             break;
@@ -165,6 +167,12 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION: {
+            LOG_ECMA(INFO) << "serializeSharedFamilyEvent_ ++ type: " << JSHClass::DumpJSType(type);
+            serializeSharedFamilyEvent_++;
+            break;
+        }
         default:
             break;
     }
@@ -176,6 +184,8 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (type == JSType::JS_ARRAY) {
         JSArray *array = reinterpret_cast<JSArray *>(object);
         array->SetTrackInfo(thread_, trackInfo);
+    } else if (JSHClass::IsJSSharedType(type)) {
+        serializeSharedFamilyEvent_--;
     }
     if (arrayBufferDeferDetach) {
         ASSERT(object->GetClass()->IsArrayBuffer());
