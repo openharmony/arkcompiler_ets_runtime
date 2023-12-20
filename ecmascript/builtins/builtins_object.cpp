@@ -22,6 +22,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_realm.h"
 #include "ecmascript/object_factory.h"
@@ -524,7 +525,8 @@ JSTaggedValue BuiltinsObject::IsFrozen(EcmaRuntimeCallInfo *argv)
     }
 
     JSThread *thread = argv->GetThread();
-    if (CHECK_SHARED_HANDLE_WITHOUT_OWNERSHIP(obj, thread)) {
+    // immutable object always frozen.
+    if (ECMAObject::Cast(obj->GetTaggedObject())->IsImmutable()) {
         return GetTaggedBoolean(true);
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

@@ -866,6 +866,12 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             return false;
         }
         if (op->IsFound() && receiver->IsJSSharedFamily()) {
+            if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
+                if (mayThrow) {
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
+                }
+                return false;
+            }
             if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
                 if (mayThrow) {
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
@@ -921,6 +927,12 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 return false;
             }
             if (receiver->IsJSSharedFamily()) {
+                if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
+                    if (mayThrow) {
+                        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
+                    }
+                    return false;
+                }
                 if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
                     if (mayThrow) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
@@ -1312,6 +1324,9 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
                 }
             }
             if (!ignoreShared && op->GetReceiver()->IsJSSharedFamily()) {
+                if (JSObject::Cast(op->GetReceiver()->GetTaggedObject())->IsImmutable()) {
+                    THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetImmutableProperty), false);
+                }
                 if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
                     THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                 false);

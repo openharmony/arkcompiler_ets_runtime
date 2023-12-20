@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -113,15 +114,46 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
-GateRef StubBuilder::IsOwned(GateRef glue, GateRef holder)
+GateRef StubBuilder::IsImmutable(GateRef obj)
 {
-    auto env = GetEnvironment();
+    auto *env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
-    GateRef isOwned = CallRuntime(glue, RTSTUB_ID(IsOwned), {holder});
-    auto ret = isOwned;
+    Label isImmutableFromInt(env);
+    Label isImmutableFromArray(env);
+    Label checkArray(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+
+    GateRef hashOffset = IntPtr(JSObject::HASH_OFFSET);
+    GateRef hashField = Load(VariableType::INT64(), obj, hashOffset);
+    Branch(TaggedIsInt(hashField), &isImmutableFromInt, &checkArray);
+    Bind(&isImmutableFromInt);
+    {
+        result = IsImmutableFromHashValue(hashField);
+        Jump(&exit);
+    }
+    Bind(&checkArray);
+    {
+        Branch(TaggedIsJSArray(hashField), &isImmutableFromArray, &exit);
+        Bind(&isImmutableFromArray);
+        {
+            GateRef hashAndImmutableOffset = IntPtr(JSObject::HASH_AND_IMMUTABLE_INDEX);
+            GateRef hashValue = Load(VariableType::INT64(), hashField, hashAndImmutableOffset);
+            result = IsImmutableFromHashValue(hashValue);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::IsImmutableFromHashValue(GateRef hashValue)
+{
+    return TruncInt64ToInt1(Int64And(Int64LSR(hashValue, Int64(static_cast<uint64_t>(ECMAObject::IMMUTABLE_BIT_SHIFT))),
+                                     Int64(static_cast<uint64_t>((1LLU << 1) - 1))));
 }
 
 GateRef StubBuilder::MatchTrackType(GateRef trackType, GateRef value)
@@ -3857,6 +3889,17 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
                             Bind(&isSharedObj);
                             {
+                                Label isImmutable(env);
+                                Label checkTrackType(env);
+                                Branch(IsImmutable(*holder), &isImmutable, &checkTrackType);
+                                Bind(&isImmutable);
+                                {
+                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetImmutableProperty));
+                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                                    result = Exception();
+                                    Jump(&exit);
+                                }
+                                Bind(&checkTrackType);
                                 Label typeMismatch(env);
                                 GateRef trackType = GetTrackTypeInPropAttr(attr);
                                 Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
@@ -3945,6 +3988,17 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
                             Bind(&isSharedObj);
                             {
+                                Label isImmutable(env);
+                                Label checkTrackType(env);
+                                Branch(IsImmutable(*holder), &isImmutable, &checkTrackType);
+                                Bind(&isImmutable);
+                                {
+                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetImmutableProperty));
+                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                                    result = Exception();
+                                    Jump(&exit);
+                                }
+                                Bind(&checkTrackType);
                                 Label typeMismatch(env);
                                 GateRef trackType = GetDictTrackTypeInPropAttr(attr1);
                                 Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
