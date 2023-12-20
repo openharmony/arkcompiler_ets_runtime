@@ -1406,7 +1406,7 @@ JSNApi::SetMockModuleList(vm, mockModuleList);
 
 ###  SetHostPromiseRejectionTracker
 
-static *void* SetHostPromiseRejectionTracker(EcmaVM **vm*, *void* *cb, *void* *data);
+static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void *data);
 
 该函数用于设置 Ecma 上下文的主机 Promise 拒绝跟踪器，以及相关的回调函数和数据。
 
@@ -1421,7 +1421,7 @@ static *void* SetHostPromiseRejectionTracker(EcmaVM **vm*, *void* *cb, *void* *d
 | 参数名 | 类型     | 必填 | 说明                                    |
 | ------ | -------- | ---- | --------------------------------------- |
 | vm     | EcmaVM * | 是   | 虚拟机对象。                            |
-| *cb*   | Void *   | 是   | 表示主机 Promise 拒绝跟踪器的回调函数。 |
+| cb     | Void *   | 是   | 表示主机 Promise 拒绝跟踪器的回调函数。 |
 | data   | Void *   | 是   | 表示将要设置的数据。                    |
 
 **返回值：**
@@ -1437,7 +1437,7 @@ JSNApi::SetHostPromiseRejectionTracker(vm, data, data);
 
 ###  SetHostResolveBufferTracker
 
-static *void* SetHostResolveBufferTracker(EcmaVM *vm*,std::function<bool(std::string dirPath, uint8_t**buff, size_t *buffSize)> cb);
+static void SetHostResolveBufferTracker(EcmaVM vm,std::function<bool(std::string dirPath, uint8_t*buff, size_t buffSize)> cb);
 
 该函数用于设置 Ecma 虚拟机的主机解析缓冲区跟踪器回调函数。
 
@@ -1495,7 +1495,7 @@ JSNApi::SetUnloadNativeModuleCallback(vm, UnloadNativeModuleCallback);
 
 ###  SetNativePtrGetter
 
-static *void* SetNativePtrGetter(EcmaVM **vm*, void *cb);
+static void SetNativePtrGetter(EcmaVM *vm, void *cb);
 
 该函数用于设置 Ecma 虚拟机的本机指针获取器的回调函数。
 
@@ -1519,7 +1519,7 @@ JSNApi::SetNativePtrGetter(vm, cb);
 
 ###  SetSourceMapTranslateCallback
 
-static *void* SetSourceMapTranslateCallback(EcmaVM **vm*, SourceMapTranslateCallback *cb*);
+static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
 
 该函数用于设置 Ecma 虚拟机的源映射翻译回调函数。
 
@@ -1545,7 +1545,7 @@ JSNApi::SetSourceMapTranslateCallback(vm, SourceMapTranslateCallback);
 
 ###  DestroyMemMapAllocator
 
-static *void* DestroyMemMapAllocator();
+static void DestroyMemMapAllocator();
 
 该函数用于销毁内存映射分配器（MemMapAllocator）的实例。
 
@@ -1565,7 +1565,7 @@ JSNApi::DestroyMemMapAllocator();
 
 ###  DestroyPGOProfiler
 
-static *void* DestroyPGOProfiler();
+static void DestroyPGOProfiler();
 
 该函数用于销毁性能分析（PGO，Profile-Guided Optimization）的分析器管理器实例。
 
@@ -1587,7 +1587,7 @@ JSNApi::DestroyPGOProfiler();
 
 ###  ExecutePendingJob
 
-static *void* ExecutePendingJob(const EcmaVM **vm*);
+static void ExecutePendingJob(const EcmaVM *vm);
 
 该函数用于执行当前 Ecma 上下文中挂起的 Promise 任务。
 
@@ -1611,7 +1611,7 @@ JSNApi::ExecutePendingJob(vm);
 
 ###  PreFork
 
-static *void* PreFork(EcmaVM **vm*);
+static void PreFork(EcmaVM *vm);
 
 函数用于在执行 fork 操作之前，执行与 Ecma 虚拟机相关的预处理步骤。
 
@@ -1635,16 +1635,16 @@ JSNApi::PreFork(workerVm);
 
 ###  PostFork
 
-static *void* PostFork(EcmaVM **vm*, const RuntimeOption &*option*);
+static void PostFork(EcmaVM *vm, const RuntimeOption &option);
 
 该函数用于在执行 fork 操作之后，执行与 Ecma 虚拟机相关的后处理步骤。
 
 **参数：**
 
-| 参数名   | 类型                  | 必填 | 说明                 |
-| -------- | --------------------- | ---- | -------------------- |
-| vm       | EcmaVM *              | 是   | 虚拟机对象。         |
-| *option* | const RuntimeOption & | 是   | 运行时选项和配置的类 |
+| 参数名 | 类型                  | 必填 | 说明                 |
+| ------ | --------------------- | ---- | -------------------- |
+| vm     | EcmaVM *              | 是   | 虚拟机对象。         |
+| option | const RuntimeOption & | 是   | 运行时选项和配置的类 |
 
 **返回值：**
 
@@ -1700,7 +1700,7 @@ bool res =
 
 ###  TriggerGC
 
-static *void* TriggerGC(const EcmaVM **vm*, TRIGGER_GC_TYPE *gcType* = TRIGGER_GC_TYPE::SEMI_GC);
+static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
 
 该函数用于触发垃圾回收（GC）操作，可以选择不同的垃圾回收类型。
 
@@ -1710,10 +1710,10 @@ static *void* TriggerGC(const EcmaVM **vm*, TRIGGER_GC_TYPE *gcType* = TRIGGER_G
 
 **参数：**
 
-| 参数名   | 类型            | 必填 | 说明                                           |
-| -------- | --------------- | ---- | ---------------------------------------------- |
-| vm       | const EcmaVM *  | 是   | 虚拟机对象。                                   |
-| *gcType* | TRIGGER_GC_TYPE | 否   | 是一个枚举类型，表示触发GC（垃圾回收）的类型。 |
+| 参数名 | 类型            | 必填 | 说明                                           |
+| ------ | --------------- | ---- | ---------------------------------------------- |
+| vm     | const EcmaVM *  | 是   | 虚拟机对象。                                   |
+| gcType | TRIGGER_GC_TYPE | 否   | 是一个枚举类型，表示触发GC（垃圾回收）的类型。 |
 
 **返回值：**
 
@@ -1727,7 +1727,7 @@ JSNApi::TriggerGC(vm);
 
 ###  ThrowException
 
-static *void* ThrowException(const EcmaVM **vm*, Local<JSValueRef> *error*);
+static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
 
 该函数用于在 Ecma 虚拟机中抛出一个异常。
 
@@ -1756,7 +1756,7 @@ JSNApi::ThrowException(vm, error);
 
 ###  PrintExceptionInfo
 
-static *void* PrintExceptionInfo(const EcmaVM **vm*);
+static void PrintExceptionInfo(const EcmaVM *vm);
 
 该函数用于打印当前潜在的异常信息，获取当前潜在的异常，如果不存在异常则直接返回。
 
@@ -3309,6 +3309,131 @@ Local<MapRef> mapRef = MapRef::New(vm);
 bool res = mapRef->IsMap();
 ```
 
+### IsSet
+
+bool JSValueRef::IsSet();
+
+判断对象是否为Set类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                         |
+| ---- | -------------------------------------------- |
+| bool | 如果调用对象的类型为Set返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<SetRef> setRef = SetRef::New(vm);
+bool res = setRef->IsSet();
+```
+
+### IsJSPrimitiveString
+
+bool JSValueRef::IsJSPrimitiveString();
+
+判断对象是否为JSPrimitiveString类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                       |
+| ---- | ---------------------------------------------------------- |
+| bool | 如果调用对象的类型为JSPrimitiveString返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+JSHandle<JSTaggedValue> jstagValue;
+JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_STRING, jstagvalue);
+JSHandle<JSTaggedValue> jspString = JSHandle<JSTaggedValue>::Cast(jsprimitive);
+Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspString);
+bool res = object->IsJSPrimitiveNumber();
+```
+
+### IsJSPrimitiveSymbol
+
+bool JSValueRef::IsJSPrimitiveSymbol();
+
+判断对象是否为JSPrimitiveSymbol类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                                       |
+| ---- | ---------------------------------------------------------- |
+| bool | 如果调用对象的类型为JSPrimitiveSymbol返回True否则返回False |
+
+**示例：**
+
+```c++
+ObjectFactory *factory = vm->GetFactory();
+JSHandle<JSTaggedValue> jstagValue;
+JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jstagvalue);
+JSHandle<JSTaggedValue> jspSymbol = JSHandle<JSTaggedValue>::Cast(jsprimitive);
+Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspSymbol);
+bool res = object->IsJSPrimitiveNumber();
+```
+
+### IsWeakMap
+
+bool JSValueRef::IsWeakMap();
+
+判断对象是否为WeakMap类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                             |
+| ---- | ------------------------------------------------ |
+| bool | 如果调用对象的类型为WeakMap返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = WeakMapRef::New(vm);
+bool res = tag->IsWeakMap();
+```
+
+### IsWeakSet
+
+bool JSValueRef::IsWeakSet();
+
+判断对象是否为WeakSet类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型 | 说明                                             |
+| ---- | ------------------------------------------------ |
+| bool | 如果调用对象的类型为WeakSet返回True否则返回False |
+
+**示例：**
+
+```c++
+Local<JSValueRef> tag = WeakSetRef::New(vm);
+bool res = tag->IsWeakSet();
+```
+
+
+
 ## ObjectRef
 
 继承于JSValueRef，提供了一些方法，用于获取对象对象的一些JSValueRef类型的值。
@@ -3750,7 +3875,237 @@ int32_t input = 34;
 object->SetNativePointerFieldCount(input);
 ```
 
+### set
 
+bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
+
+bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
+
+在当前 `ObjectRef` 对象中设置键值对。
+
+在设置之前，通过 `CHECK_HAS_PENDING_EXCEPTION` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `ObjectRef` 对象转换为 JavaScript 中的 `JSTaggedValue` 对象。
+
+使用 `JSNApiHelper::ToJSHandle(key)` 和 `JSNApiHelper::ToJSHandle(value)` 将键和值转换为 JavaScript 中的 `JSTaggedValue` 对象。
+
+调用 `JSTaggedValue::SetProperty` 方法在对象中设置键值对。
+
+**参数：**
+
+| 参数名  | 类型              | 必填 | 说明             |
+| ------- | ----------------- | ---- | ---------------- |
+| vm      | const EcmaVM *    | 是   | 虚拟机对象。     |
+| key   | Local<JSValueRef> | 是   | 表示要设置的键。 |
+| key   | uint32_t        | 是   | 表示要设置的键。 |
+| value | Local<JSValueRef> | 是   | 表示要设置的值。 |
+
+**返回值：**
+
+| 类型 | 说明                        |
+| ---- | --------------------------- |
+| bool | 设置成功返回True反之False。 |
+
+**示例：**
+
+```c++
+Local<ObjectRef> object = ObjectRef::New(vm_);
+Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+Local<JSValueRef> toValue(toString);
+bool res = object->Set(vm_, key, toValue);
+bool res = object->Set(vm_, toValue, toValue);
+```
+
+###  Has
+
+bool Has(const EcmaVM *vm, uint32_t key);
+
+ 检查当前 `ObjectRef` 对象是否包含指定键的属性。
+
+ 在检查之前，通过 `CHECK_HAS_PENDING_EXCEPTION` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `ObjectRef` 对象转换为 JavaScript 中的 `JSTaggedValue` 对象。
+
+调用 `JSTaggedValue::HasProperty` 方法检查对象是否包含指定键的属性。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                 |
+| ------ | -------------- | ---- | -------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。         |
+| key    | uint32_t       | 是   | 表示要检查的属性键。 |
+
+**返回值：**
+
+| 类型 | 说明                      |
+| ---- | ------------------------- |
+| bool | 如果有返回True反之False。 |
+
+**示例：**
+
+```c++
+Local<ObjectRef> object = ObjectRef::New(vm_);
+Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+bool res = object->Has(vm_, key);
+```
+
+###  SetNativePointerField
+
+void SetNativePointerField(int32_t index,void *nativePointer = nullptr,NativePointerCallback callBack = nullptr,void *data = nullptr, size_t nativeBindingsize = 0);
+
+在当前 `ObjectRef` 对象中设置指定索引的本机指针字段。
+
+在设置之前，通过 `LOG_IF_SPECIAL` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `ObjectRef` 对象转换为 JavaScript 中的 `JSObject` 对象。
+
+调用 `JSObject::SetNativePointerField` 方法设置本机指针字段。
+
+**参数：**
+
+| 参数名            | 类型                  | 必填 | 说明                             |
+| ----------------- | --------------------- | ---- | -------------------------------- |
+| index             | int32_t               | 是   | 表示要设置的本机指针字段的索引。 |
+| nativePointer     | void*                 | 否   | 表示要设置的本机指针。           |
+| callBack          | NativePointerCallback | 否   | 表示本机指针的回调函数。         |
+| data              | void*                 | 否   | 表示与本机指针相关联的数据。     |
+| nativeBindingsize | size_t                | 是   | 表示本机绑定的大小。             |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+NativePointerCallback callBack = nullptr;
+void *vp1 = static_cast<void*>(new std::string("test"));
+void *vp2 = static_cast<void*>(new std::string("test"));
+object->SetNativePointerField(index, vp1, callBack, vp2);
+```
+
+###  Freeze
+
+static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
+
+该函数用于触发垃圾回收（GC）操作，可以选择不同的垃圾回收类型。
+
+通过调用虚拟机的 CollectGarbage 方法执行垃圾回收操作。
+
+在触发垃圾回收之前，通过 CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN 宏检查是否存在潜在的异常。
+
+**参数：**
+
+| 参数名   | 类型            | 必填 | 说明                                           |
+| -------- | --------------- | ---- | ---------------------------------------------- |
+| vm       | const EcmaVM *  | 是   | 虚拟机对象。                                   |
+| gcType | TRIGGER_GC_TYPE | 否   | 是一个枚举类型，表示触发GC（垃圾回收）的类型。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::TriggerGC(vm);
+```
+
+###  Seal
+
+static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
+
+该函数用于触发垃圾回收（GC）操作，可以选择不同的垃圾回收类型。
+
+通过调用虚拟机的 CollectGarbage 方法执行垃圾回收操作。
+
+在触发垃圾回收之前，通过 CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN 宏检查是否存在潜在的异常。
+
+**参数：**
+
+| 参数名   | 类型            | 必填 | 说明                                           |
+| -------- | --------------- | ---- | ---------------------------------------------- |
+| vm       | const EcmaVM *  | 是   | 虚拟机对象。                                   |
+| gcType | TRIGGER_GC_TYPE | 否   | 是一个枚举类型，表示触发GC（垃圾回收）的类型。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+JSNApi::TriggerGC(vm);
+```
+
+###  New
+
+Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)；
+
+创建一个新的 JavaScript 对象，并返回对该对象的本地引用。
+
+在创建之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+获取虚拟机的工厂对象和全局环境。
+
+使用全局环境中的 `GetObjectFunction` 函数获取对象构造函数。
+
+调用工厂的 `NewJSObjectByConstructor` 方法创建新的 JavaScript 对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型             | 说明                       |
+| ---------------- | -------------------------- |
+| Local<ObjectRef> | 返回新的 JavaScript 对象。 |
+
+**示例：**
+
+```c++
+Local<ObjectRef> myObject = ObjectRef::New(vm);
+```
+
+###   SetPrototype
+
+bool ObjectRef::SetPrototype(const EcmaVM *vm, Local<ObjectRef> prototype)
+
+设置当前 `ObjectRef` 对象的原型为指定的 `prototype` 对象。
+
+在设置之前，通过 `LOG_IF_SPECIAL` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `ObjectRef` 对象转换为 JavaScript 中的 `JSObject` 对象。
+
+使用 `JSNApiHelper::ToJSHandle(prototype)` 将传入的 `prototype` 对象转换为 JavaScript 中的 `JSObject` 对象。
+
+调用 `JSTaggedValue::SetPrototype` 方法设置对象的原型。
+
+**参数：**
+
+| 参数名    | 类型             | 必填 | 说明                   |
+| --------- | ---------------- | ---- | ---------------------- |
+| vm        | const EcmaVM *   | 是   | 虚拟机对象。           |
+| prototype | Local<ObjectRef> | 是   | 表示要设置的原型对象。 |
+
+**返回值：**
+
+| 类型 | 说明                        |
+| ---- | --------------------------- |
+| bool | 设置成功返回True反之False。 |
+
+**示例：**
+
+```c++
+Local<ObjectRef> object = ObjectRef::New(vm_);
+Local<ObjectRef> prototype = object->GetPrototype(vm_);
+object->SetPrototype(vm_, prototype);
+```
+
+ static Local<PromiseCapabilityRef> New(const EcmaVM *vm);
 
 
 
@@ -3987,6 +4342,38 @@ Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 5, 7);
 uint32_t len = dataView->ByteLength();
 ```
 
+### ByteOffset
+
+uint32_t TypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm);
+
+获取当前 `TypedArrayRef` 对象在关联的底层数组缓冲区中的字节偏移位置。
+
+在获取字节偏移之前，通过 `CHECK_HAS_PENDING_EXCEPTION` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `TypedArrayRef` 对象转换为 JavaScript 中的 `JSTypedArray` 对象。
+
+调用 `GetByteOffset` 方法获取实际的 TypedArray 在 ArrayBuffer 中的字节偏移位置。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型    | 说明                                                      |
+| ------- | --------------------------------------------------------- |
+| int32_t | 表示 TypedArray 对象在关联 ArrayBuffer 中的字节偏移位置。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> arrayOffsetBuffer = ArrayBufferRef::New(vm, length);
+Local<Int8ArrayRef> objOffset = Int8ArrayRef::New(vm, arrayOffsetBuffer, Offset, length);
+uint32_t byteOffset = obj->ByteOffset(vm);
+```
+
 ## Exception
 
 提供了一些静态方法，用于根据不同的错误类型创建一个对应的JS异常对象，并返回一个指向该对象的引用。
@@ -4169,6 +4556,40 @@ static Local<JSValueRef> ReferenceError(const EcmaVM *vm, Local<StringRef> messa
 ```c++
 Local<StringRef> message = StringRef::NewFromUtf8(vm_, "test error");
 Local<JSValueRef> result = Exception::ReferenceError(vm_, message);
+```
+
+### SyntaxError
+
+static Local<JSValueRef> SyntaxError(const EcmaVM *vm, Local<StringRef> message);
+
+创建一个 SyntaxError 类型的 JavaScript 异常对象。
+
+如果存在挂起的异常，则清除之。
+
+获取 `message` 的 `EcmaString` 对象，用于表示异常错误的消息。
+
+用 `ObjectFactory` 获取工厂实例，创建一个新的 JavaScript SyntaxError 对象。
+
+返回结果作为本地引用。
+
+**参数：**
+
+| 参数名  | 类型             | 必填 | 说明                 |
+| ------- | ---------------- | ---- | -------------------- |
+| vm      | const EcmaVM *   | 是   | 虚拟机对象。         |
+| message | Local<StringRef> | 是   | 表示异常错误的消息。 |
+
+**返回值：**
+
+| 类型                     | 说明                  |
+| ------------------------ | --------------------- |
+| static Local<JSValueRef> | ArrayRef 类型的对象。 |
+
+**示例：**
+
+```c++
+Local<StringRef> errorMessage = StringRef::NewFromUtf8(vm, "Invalid syntax");
+Local<JSValueRef> syntaxError = SyntaxError(vm, errorMessage);
 ```
 
 
@@ -5565,6 +5986,37 @@ ArrayRef::SetValueAt(vm_, arrayObj, index, intValue);
 Local<JSValueRef> result = ArrayRef::GetValueAt(vm_, arrayObj, 0);
 ```
 
+### New
+
+Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length = 0);
+
+创建一个具有指定长度的 JavaScript 数组对象。
+
+在创建数组对象之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+使用 `JSArray::ArrayCreate` 方法创建 JavaScript 中的数组对象，指定数组的长度为 `length`。
+
+使用 `JSNApiHelper::ToLocal<ArrayRef>(array)` 将 JavaScript 中的数组对象转换为本地的 `ArrayRef` 对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                     |
+| ------ | -------------- | ---- | ------------------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。             |
+| length | uint32_t       | 否   | 表示要创建的数组的长度。 |
+
+**返回值：**
+
+| 类型            | 说明                   |
+| --------------- | ---------------------- |
+| Local<ArrayRef> | ArrayRef  类型的对象。 |
+
+**示例：**
+
+```c++
+ Local<ArrayRef> myArray = ArrayRef::New(VM, length);
+```
+
 
 
 ## JsiRuntimeCallInfo
@@ -5592,6 +6044,29 @@ void* GetData();
 ```c++
 JsiRuntimeCallInfo object;
 void *result = object.GetData();
+```
+
+### GetVM
+
+EcmaVM *GetVM() const;
+
+获取与当前 `JsiRuntimeCallInfo` 对象相关联的 `EcmaVM` 指针。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明             |
+| ------- | ---------------- |
+| EcmaVM* | 返回EcmaVM指针。 |
+
+**示例：**
+
+```c++
+JsiRuntimeCallInfo callInfo;
+EcmaVM *vm = callInfo.GetVM();
 ```
 
 
@@ -5655,6 +6130,81 @@ Local<JSValueRef> reason(toStringReason);
 void *data = static_cast<void *>(new std::string("promisereject"));
 PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
 void *ptr = promisereject.GetData();
+```
+
+### PromiseRejectInfo
+
+PromiseRejectInfo(Local<JSValueRef> promise, Local<JSValueRef> reason,PromiseRejectInfo::PROMISE_REJECTION_EVENT operation, void* data);
+
+创建一个 `PromiseRejectInfo` 对象，用于保存与 Promise 被拒绝事件相关的信息。
+
+将传入的 `promise`、`reason`、`operation` 和 `data` 参数存储在对象的成员变量中。
+
+**参数：**
+
+| 参数名    | 类型                                       | 必填 | 说明                                  |
+| --------- | ------------------------------------------ | ---- | ------------------------------------- |
+| promise   | Local<JSValueRef>                          | 是   | 表示被拒绝的 Promise 对象。           |
+| reason    | Local<JSValueRef>                          | 是   | 表示 Promise 被拒绝的原因。           |
+| operation | PromiseRejectInfo::PROMISE_REJECTION_EVENT | 是   | 表示 Promise 被拒绝的事件类型。       |
+| data      | void*                                      | 是   | 表示与 Promise 被拒绝事件相关的数据。 |
+
+**返回值：**
+
+| 类型                                       | 说明                                       |
+| ------------------------------------------ | ------------------------------------------ |
+| PromiseRejectInfo::PROMISE_REJECTION_EVENT | `PromiseRejectInfo` 对象的操作类型枚举值。 |
+
+**示例：**
+
+```c++
+PromiseRejectInfo::PROMISE_REJECTION_EVENT operationType = myRejectInfo.GetOperation();
+```
+
+### GetReason
+
+  Local<JSValueRef> GetReason() const;
+
+获取存储在 `PromiseRejectInfo` 对象中的被拒绝的 Promise 的原因。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型              | 说明                                       |
+| ----------------- | ------------------------------------------ |
+| Local<JSValueRef> | `PromiseRejectInfo` 对象的操作类型枚举值。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> rejectionReason = myRejectInfo.GetReason();
+```
+
+### GetOperation
+
+PromiseRejectInfo::PROMISE_REJECTION_EVENT GetOperation() const;
+
+获取当前 `PromiseRejectInfo` 对象的操作类型。
+
+返回值是一个枚举值，表示 Promise 拒绝事件的具体操作类型。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型                                       | 说明                                       |
+| ------------------------------------------ | ------------------------------------------ |
+| PromiseRejectInfo::PROMISE_REJECTION_EVENT | `PromiseRejectInfo` 对象的操作类型枚举值。 |
+
+**示例：**
+
+```c++
+PromiseRejectInfo::PROMISE_REJECTION_EVENT operationType = myRejectInfo.GetOperation();
 ```
 
 
@@ -5753,6 +6303,40 @@ Local<PromiseRef> GetPromise(const EcmaVM *vm);
 Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
 Local<PromiseRef> promise = capability->GetPromise(vm_);
 ```
+
+### new
+
+static Local<PromiseCapabilityRef> New(const EcmaVM *vm);
+
+创建一个新的 `PromiseCapability` 对象，并返回对该对象的本地引用。
+
+在创建之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+获取虚拟机的线程、工厂对象和全局环境。
+
+使用全局环境中的 `GetPromiseFunction` 函数获取 `Promise` 构造函数。
+
+调用 `JSPromise::NewPromiseCapability` 方法创建新的 `PromiseCapability` 对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型                        | 说明                                       |
+| --------------------------- | ------------------------------------------ |
+| Local<PromiseCapabilityRef> | `PromiseRejectInfo` 对象的操作类型枚举值。 |
+
+**示例：**
+
+```c++
+Local<PromiseCapabilityRef> myPromiseCapability = PromiseCapabilityRef::New(vm);
+```
+
+
 
 ## SymbolRef : public PrimitiveRef 
 
@@ -5859,6 +6443,35 @@ explicit LocalScope(const EcmaVM *vm);
 
 ```c++
 LocalScope::LocalScope Scope(vm_);
+```
+
+### LocalScope
+
+inline LocalScope(const EcmaVM *vm, JSTaggedType value);
+
+构造函数：用于初始化 `LocalScope` 类的对象。
+
+获取当前线程的 `JSThread` 对象。
+
+通过 `reinterpret_cast` 将线程对象转换为 `JSThread*` 类型。
+
+使用 `EcmaHandleScope::NewHandle` 方法在句柄作用域中创建一个新的本地句柄。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                         |
+| ------ | -------------- | ---- | ---------------------------- |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。                 |
+| value  | JSTaggedType   | 是   | 表示要存储在本地句柄中的值。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+ LocalScope myLocalScope(myEcmaVM, someJSTaggedValue);
 ```
 
 
@@ -6265,3 +6878,155 @@ JSHandle<JSTaggedValue> proxytagvalue = JSHandle<JSTaggedValue>::Cast(proxyHandl
 Local<JSValueRef> result = JSNApiHelper::ToLocal<ProxyRef>(proxytagvalue)->GetHandler(vm_);
 ```
 
+## EscapeLocalScope：LocalScope
+
+`EscapeLocalScope` 类是一个继承自 `LocalScope` 的具体子类，用于管理局部变量的生命周期。
+它提供了一个方法 `Escape`，允许在局部范围内提前返回局部变量的 `Local` 对象。
+
+### EscapeLocalScope
+
+explicit EscapeLocalScope(const EcmaVM *vm);
+
+构造EscapeLocalScope对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+无
+
+**示例：**
+
+```c++
+EscapeLocalScope scope(vm);
+```
+
+## SetIteratorRef：ObjectRef
+
+SetIteratorRef 类是一个继承自 ObjectRef 的具体子类，用于操作 JavaScript Set 对象的迭代器。
+
+### GetIndex
+
+int32_t GetIndex();
+
+获取当前 `SetIteratorRef` 对象关联的 Set 迭代器的当前索引。
+
+通过 `JSNApiHelper::ToJSHandle(this)` 将当前的 `SetIteratorRef` 对象转换为 JavaScript 中的 `JSSetIterator` 对象。
+
+调用 `JSSetIterator` 对象的 `GetNextIndex` 方法获取当前迭代器的索引。
+
+**参数：**
+
+无
+
+**返回值：**
+
+| 类型    | 说明               |
+| ------- | ------------------ |
+| int32_t | 当前迭代器的索引。 |
+
+**示例：**
+
+```c++
+int32_t currentIndex = mySetIterator.GetIndex();
+```
+
+### GetKind
+
+Local<JSValueRef> GetKind(const EcmaVM *vm);
+
+获取当前 `SetIteratorRef` 对象关联的 Set 迭代器的迭代类型。
+
+在获取之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+ 通过 `JSNApiHelper::ToJSHandle(this)` 将当前的 `SetIteratorRef` 对象转换为 JavaScript 中的 `JSSetIterator` 对象。
+
+调用 `JSSetIterator` 对象的 `GetIterationKind` 方法获取迭代类型。
+
+根据迭代类型选择相应的字符串，然后使用 `StringRef::NewFromUtf8` 方法创建一个 `Local<JSValueRef>` 对象，表示字符串值。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型              | 说明                         |
+| ----------------- | ---------------------------- |
+| Local<JSValueRef> | 返回表示迭代类型的字符串值。 |
+
+**示例：**
+
+```c++
+Local<JSValueRef> iterationType = mySetIterator.GetKind(myEcmaVM);
+```
+
+## Uint8ClampedArrayRef：TypedArrayRef
+
+Uint8ClampedArrayRef 类是一个继承自 TypedArrayRef 的具体子类，用于操作 JavaScript 中的 Uint8ClampedArray 对象。
+
+### New
+static Local<Uint8ClampedArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,int32_t length);
+构造Uint8ClampedArrayRef对象。
+
+会调用宏定义创建 TypedArray 的通用模板。
+
+**参数：**
+
+| 参数名     | 类型                  | 必填 | 说明                                                        |
+| ---------- | --------------------- | ---- | ----------------------------------------------------------- |
+| vm         | const EcmaVM *        | 是   | 虚拟机对象。                                                |
+| buffer     | Local<ArrayBufferRef> | 是   | 表示与 `Uint8ClampedArray` 关联的 ArrayBuffer 对象。        |
+| byteOffset | int32_t               | 是   | 表示从 ArrayBuffer 的哪个字节开始创建 `Uint8ClampedArray`。 |
+| length     | int32_t               | 是   | 表示要创建的 `Uint8ClampedArray` 的长度。                   |
+
+**返回值：**
+
+| 类型                        | 说明                                     |
+| --------------------------- | ---------------------------------------- |
+| Local<Uint8ClampedArrayRef> | 返回`Local<Uint8ClampedArrayRef>` 对象。 |
+
+
+
+**示例：**
+
+```c++
+Local<Uint8ClampedArrayRef> myUint8ClampedArray = Uint8ClampedArrayRef::New(myEcmaVM, myArrayBuffer, Offset, length);
+```
+
+## Uint16ArrayRef：TypedArrayRef
+
+Uint16ArrayRef 类是一个继承自 TypedArrayRef 的具体子类，用于操作 JavaScript 中的 Uint16Array 对象。
+
+### New
+
+static Local<Uint16ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,int32_t length);
+
+通过该函数在 JavaScript 环境中创建一个新的 `Uint16Array` 对象。
+
+**参数：**
+
+| 参数名     | 类型                  | 必填 | 说明                                                  |
+| ---------- | --------------------- | ---- | ----------------------------------------------------- |
+| vm         | const EcmaVM *        | 是   | 虚拟机对象。                                          |
+| buffer     | Local<ArrayBufferRef> | 是   | 表示与 `Uint16Array` 关联的 ArrayBuffer 对象。        |
+| byteOffset | int32_t               | 是   | 表示从 ArrayBuffer 的哪个字节开始创建 `Uint16Array`。 |
+| length     | int32_t               | 是   | 表示要创建的 `Uint16Array` 的长度。                   |
+
+**返回值：**
+
+| 类型                  | 说明                               |
+| --------------------- | ---------------------------------- |
+| Local<Uint16ArrayRef> | 返回`Local<Uint16ArrayRef>` 对象。 |
+
+**示例：**
+
+```c++
+Local<Uint16ArrayRef> myUint16Array = Uint16ArrayRef::New(myEcmaVM, myArrayBuffer, Offset, length);
+```
