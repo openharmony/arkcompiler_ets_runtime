@@ -304,4 +304,57 @@ size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, s
     }
     return latin1Pos;
 }
+
+std::pair<int32_t, size_t> ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen)
+{
+    if (maxLen == 0) {
+        return {INVALID_UTF8, 0};
+    }
+    Span<const uint8_t> sp(utf8, maxLen);
+    // one byte
+    uint8_t d0 = sp[0];
+    if ((d0 & BIT_MASK_1) == 0) {
+        return {d0, UtfLength::ONE};
+    }
+    if (maxLen < UtfLength::TWO) {
+        return {INVALID_UTF8, 0};
+    }
+    // two bytes
+    uint8_t d1 = sp[UtfLength::ONE];
+    if ((d0 & BIT_MASK_3) == BIT_MASK_2) {
+        if ((d1 & BIT_MASK_2) == BIT_MASK_1) {
+            return {((d0 & utf::MASK_5BIT) << utf::DATA_WIDTH) | (d1 & utf::MASK_6BIT), UtfLength::TWO};
+        } else {
+            return {INVALID_UTF8, 0};
+        }
+    }
+    if (maxLen < UtfLength::THREE) {
+        return {INVALID_UTF8, 0};
+    }
+    // three bytes
+    uint8_t d2 = sp[UtfLength::TWO];
+    if ((d0 & BIT_MASK_4) == BIT_MASK_3) {
+        if (((d1 & BIT_MASK_2) == BIT_MASK_1) && ((d2 & BIT_MASK_2) == BIT_MASK_1)) {
+            return {((d0 & utf::MASK_4BIT) << UtfOffset::TWELVE) |
+                ((d1 & utf::MASK_6BIT) << utf::DATA_WIDTH) | (d2 & utf::MASK_6BIT), UtfLength::THREE};
+        } else {
+            return {INVALID_UTF8, 0};
+        }
+    }
+    if (maxLen < UtfLength::FOUR) {
+        return {INVALID_UTF8, 0};
+    }
+    // four bytes
+    uint8_t d3 = sp[UtfLength::THREE];
+    if ((d0 & BIT_MASK_5) == BIT_MASK_4) {
+        if (((d1 & BIT_MASK_2) == BIT_MASK_1) &&
+            ((d2 & BIT_MASK_2) == BIT_MASK_1) && ((d3 & BIT_MASK_2) == BIT_MASK_1)) {
+            return {((d0 & utf::MASK_4BIT) << UtfOffset::EIGHTEEN) | ((d1 & utf::MASK_6BIT) << UtfOffset::TWELVE) |
+                ((d2 & utf::MASK_6BIT) << utf::DATA_WIDTH) | (d3 & utf::MASK_6BIT), UtfLength::FOUR};
+        } else {
+            return {INVALID_UTF8, 0};
+        }
+    }
+    return {INVALID_UTF8, 0};
+}
 }  // namespace panda::ecmascript::base::utf_helper

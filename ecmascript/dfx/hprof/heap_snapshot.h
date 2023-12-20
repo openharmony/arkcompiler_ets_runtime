@@ -504,8 +504,6 @@ private:
     Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
-    void BridgeAllReferences();
-    CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
     CString ParseFunctionName(TaggedObject *obj);
     const CString ParseObjectName(TaggedObject *obj);
 

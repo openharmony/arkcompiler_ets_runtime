@@ -421,7 +421,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf8ToUtf16Pair)
     EXPECT_EQ(utf16Res, utf16Value);
     // code point lie in [0x80, 0x7FF], the length of utf8 code element byte is 2
     uint8_t utf8Value3[2] = {0xc2, 0x80}; // 0x80
-    uint8_t utf8Value4[2] = {0xDF, 0x7F}; // 0x7FF
+    uint8_t utf8Value4[2] = {0xDF, 0xBF}; // 0x7FF
     const uint8_t *utf8ValuePtr3 = utf8Value3;
     const uint8_t *utf8ValuePtr4 = utf8Value4;
     utf16Res = ConvertUtf8ToUtf16Pair(utf8ValuePtr3);
@@ -434,7 +434,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf8ToUtf16Pair)
     // code point lie in [0x800, 0xD7FF] or [0xDC00,0xFFFF], the length of utf8 code element byte is 3.
     // when code point lie in [0xD800, 0xDBFF], due to the use of UCS-2, it corresponds to 3 utf8 symbols.
     uint8_t utf8Value5[3] = {0xE0, 0xA0, 0x80}; // 0x800
-    uint8_t utf8Value6[3] = {0xEF, 0xBF, 0xBF}; // 0xD7FF
+    uint8_t utf8Value6[3] = {0xEF, 0xBF, 0xBF}; // 0xFFFF
     const uint8_t *utf8ValuePtr5 = utf8Value5;
     const uint8_t *utf8ValuePtr6 = utf8Value6;
     utf16Res = ConvertUtf8ToUtf16Pair(utf8ValuePtr5);
@@ -567,5 +567,93 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16)
     outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
     EXPECT_EQ(outPos, 0U);
     free(utf16Out);
+}
+
+/*
+* @tc.name: ConvertUtf8ToUnicodeChar
+* @tc.desc: Converts a UTF8 encoding sequence encoding a character into a unicode point, and returns the
+*           unicode point and the byte length of the utf8 encoding sequence.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(UtfHelperTest, ConvertUtf8ToUnicodeChar)
+{
+    std::pair<int32_t, size_t> invalidValue = {INVALID_UTF8, 0};
+    // utf-8 is one byte, code point lie in [0x00, 0x7F]
+    uint8_t utf8Value1[1] = {0x00}; // 0x00
+    uint8_t utf8Value2[1] = {0x7F}; // 0x7F
+    const uint8_t *utf8ValuePtr1 = utf8Value1;
+    const uint8_t *utf8ValuePtr2 = utf8Value2;
+    std::pair<int32_t, size_t> unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr1, UtfLength::ONE);
+    std::pair<int32_t, size_t> unicodeValue = {0x00, 1};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr2, UtfLength::ONE);
+    unicodeValue = {0x7F, 1};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr2, 0);
+    EXPECT_EQ(unicodeRes, invalidValue);
+
+    // utf-8 is two bytes, code point lie in [0x80, 0x7FF]
+    uint8_t utf8Value3[2] = {0xC2, 0x80}; // 0x80
+    uint8_t utf8Value4[2] = {0xDF, 0xBF}; // 0x7FF
+    const uint8_t *utf8ValuePtr3 = utf8Value3;
+    const uint8_t *utf8ValuePtr4 = utf8Value4;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr3, UtfLength::TWO);
+    unicodeValue = {0x80, 2};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr4, UtfLength::TWO);
+    unicodeValue = {0x7FF, 2};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    uint8_t utf8Value5[2] = {0xD0, 0x00}; // invalid
+    const uint8_t *utf8ValuePtr5 = utf8Value5;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr5, UtfLength::TWO);
+    EXPECT_EQ(unicodeRes, invalidValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr4, UtfLength::ONE);
+    EXPECT_EQ(unicodeRes, invalidValue);
+
+    // utf-8 is three bytes, code point lie in [0x800, 0xFFFF]
+    uint8_t utf8Value6[3] = {0xE0, 0xA0, 0x80}; // 0x800
+    uint8_t utf8Value7[3] = {0xED, 0x9F, 0xBF}; // 0xD7FF
+    const uint8_t *utf8ValuePtr6 = utf8Value6;
+    const uint8_t *utf8ValuePtr7 = utf8Value7;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr6, UtfLength::THREE);
+    unicodeValue = {0x800, 3};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr7, UtfLength::THREE);
+    unicodeValue = {0xD7FF, 3};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    uint8_t utf8Value8[3] = {0xEB, 0x80, 0x40}; // invalid
+    const uint8_t *utf8ValuePtr8 = utf8Value8;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr8, UtfLength::THREE);
+    EXPECT_EQ(unicodeRes, invalidValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr7, UtfLength::TWO);
+    EXPECT_EQ(unicodeRes, invalidValue);
+
+    // utf-8 is four bytes, code point lie in [0x10000, 0x10FFFF].
+    uint8_t utf8Value9[4] = {0xF0, 0x90, 0x80, 0x80}; // 0x10000
+    uint8_t utf8Value10[4] = {0xF4, 0x8F, 0xBF, 0xBF}; // 0x10FFFF
+    const uint8_t *utf8ValuePtr9 = utf8Value9;
+    const uint8_t *utf8ValuePtr10 = utf8Value10;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr9, UtfLength::FOUR);
+    unicodeValue = {0x10000, 4};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr10, UtfLength::FOUR);
+    unicodeValue = {0x10FFFF, 4};
+    EXPECT_EQ(unicodeRes, unicodeValue);
+    uint8_t utf8Value11[4] = {0xF4, 0x80, 0x80, 0x40}; // invalid
+    const uint8_t *utf8ValuePtr11 = utf8Value11;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr11, UtfLength::FOUR);
+    EXPECT_EQ(unicodeRes, invalidValue);
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr10, UtfLength::THREE);
+    EXPECT_EQ(unicodeRes, invalidValue);
+
+    // other exception
+    uint8_t utf8Value12[2] = {0x90, 0x00}; // invalid
+    const uint8_t *utf8ValuePtr12 = utf8Value12;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr12, UtfLength::FOUR);
+    EXPECT_EQ(unicodeRes, invalidValue);
+    uint8_t utf8Value13[2] = {0xF8, 0x00}; // invalid
+    const uint8_t *utf8ValuePtr13 = utf8Value13;
+    unicodeRes = ConvertUtf8ToUnicodeChar(utf8ValuePtr13, UtfLength::FOUR);
+    EXPECT_EQ(unicodeRes, invalidValue);
 }
 } // namespace panda:test

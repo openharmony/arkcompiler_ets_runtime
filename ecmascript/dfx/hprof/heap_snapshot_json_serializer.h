@@ -20,9 +20,9 @@
 #include <limits.h>
 #include <sstream>
 
-#include "ecmascript/mem/c_string.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/c_string.h"
 
 #include "securec.h"
 
@@ -42,24 +42,32 @@ public:
 
     void Write(const CString &str)
     {
-        ASSERT(str.size() <= static_cast<size_t>(INT_MAX));
-        auto len = static_cast<int>(str.size());
-        if (len <= 0) {
+        auto len = str.size();
+        ASSERT(len <= static_cast<size_t>(INT_MAX));
+        if (len == 0) {
             return;
         }
         const char *cur = str.c_str();
-        if (current_ + len > chunkSize_) {
-            chunk_.reserve(current_ + len);
+        const char *end = cur + len;
+        while (cur < end) {
+            int dstSize = chunkSize_ - current_;
+            int writeSize = std::min(static_cast<int>(end - cur), dstSize);
+            ASSERT(writeSize > 0);
+            if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+            }
+            cur += writeSize;
+            current_ += writeSize;
+            MaybeWriteChunk();
         }
-        int dstSize = static_cast<int>(chunk_.capacity()) - current_;
-        if (memcpy_s(chunk_.data() + current_, dstSize, cur, len) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-        }
-        current_ += len;
+    }
 
-        if (current_ >= chunkSize_) {
-            WriteChunk();
-        }
+    void WriteChar(char c)
+    {
+        ASSERT(c != '\0');
+        ASSERT(current_ < chunkSize_);
+        chunk_[current_++] = c;
+        MaybeWriteChunk();
     }
 
     void Write(uint64_t num)
@@ -76,6 +84,14 @@ public:
     }
 
 private:
+    void MaybeWriteChunk()
+    {
+        ASSERT(current_ <= chunkSize_);
+        if (current_ == chunkSize_) {
+            WriteChunk();
+        }
+    }
+
     void WriteChunk()
     {
         stream_->WriteChunk(chunk_.data(), current_);
@@ -97,6 +113,11 @@ public:
     static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
 
 private:
+    static constexpr char ASCII_US = 31;
+    static constexpr char ASCII_DEL = 127;
+    static constexpr uint8_t UTF8_MAX_BYTES = 4;
+
+private:
     static void SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer);
     static void SerializeNodes(HeapSnapshot *snapshot, StreamWriter *writer);
     static void SerializeEdges(HeapSnapshot *snapshot, StreamWriter *writer);
@@ -106,6 +127,8 @@ private:
     static void SerializeSamples(HeapSnapshot *snapshot, StreamWriter *writer);
     static void SerializeLocations(StreamWriter *writer);
     static void SerializeStringTable(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeString(CString *str, StreamWriter *writer);
+    static void SerializeUnicodeChar(uint32_t unicodeChar, StreamWriter *writer);
     static void SerializerSnapshotClosure(StreamWriter *writer);
 };
 }  // namespace panda::ecmascript
