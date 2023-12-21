@@ -278,7 +278,9 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
         }
     } else {
-        if (kind == FunctionKind::NORMAL_FUNCTION) {
+        if (kind == FunctionKind::NORMAL_FUNCTION ||
+            kind == FunctionKind::GETTER_FUNCTION ||
+            kind == FunctionKind::SETTER_FUNCTION) {
             functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
         } else {
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
