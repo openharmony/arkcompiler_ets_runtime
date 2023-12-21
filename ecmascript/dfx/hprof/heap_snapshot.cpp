@@ -39,7 +39,7 @@
 namespace panda::ecmascript {
 CString *HeapSnapshot::GetString(const CString &as)
 {
-    return stringTable_.GetString(as);
+    return stringTable_->GetString(as);
 }
 
 CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
@@ -98,6 +98,7 @@ HeapSnapshot::~HeapSnapshot()
     traceNodeIndex_.clear();
     entryIdMap_ = nullptr;
     chunk_ = nullptr;
+    stringTable_ = nullptr;
 }
 
 bool HeapSnapshot::BuildUp()
@@ -249,7 +250,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::PROFILE_TYPE_INFO:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalProfileTypeInfo[");
         case JSType::TAGGED_DICTIONARY:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalInternalDict[");
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalDict[");
         case JSType::AOT_LITERAL_INFO:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalAOTLiteralInfo[");
         case JSType::VTABLE:
@@ -608,7 +609,7 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     } else if (type == JSType::PROPERTY_BOX) {
         nodeType = NodeType::HIDDEN;
     } else if (type == JSType::JS_ARRAY || type == JSType::JS_TYPED_ARRAY) {
-        nodeType = NodeType::ARRAY;
+        nodeType = NodeType::OBJECT;
     } else if (type == JSType::JS_OBJECT || type == JSType::JS_SHARED_OBJECT) {
         nodeType = NodeType::OBJECT;
     } else if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
@@ -668,7 +669,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             }
             return node;
         }
-        if (entry.IsJSObject()) {
+        if (entry.IsOnlyJSObject()) {
             node = GenerateObjectNode(entry, size, isInFinish);
             if (node == nullptr) {
                 LOG_ECMA(ERROR) << "function node nullptr";
@@ -976,7 +977,7 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     if (existNode != nullptr) {
         if (isInFinish) {
-            existNode->SetName(GetString(CString(ParseFunctionName(obj))));
+            existNode->SetName(GetString(ParseFunctionName(obj)));
         }
         existNode->SetLive(true);
         return existNode;
@@ -985,7 +986,7 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("JSFunction"), NodeType::CLOSURE, selfsize,
                                obj);
     if (isInFinish) {
-        node->SetName(GetString(CString(ParseFunctionName(obj))));
+        node->SetName(GetString(ParseFunctionName(obj)));
     }
     if (!idExist) {
         entryIdMap_->InsertId(addr, sequenceId);
@@ -1075,29 +1076,9 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     }
 }
 
-void HeapSnapshot::BridgeAllReferences()
+CString HeapSnapshot::ParseFunctionName(TaggedObject *obj)
 {
-    // This Function is Unused
-    for (Edge *edge : edges_) {
-        auto *from = reinterpret_cast<TaggedObject *>(edge->GetFrom()->GetAddress());
-        auto *to = reinterpret_cast<TaggedObject *>(edge->GetTo()->GetAddress());
-        if (!JSTaggedValue(from).IsECMAObject()) {
-            continue;  // named it by other way
-        }
-        edge->SetName(GenerateEdgeName(from, to));
-    }
-}
-
-CString *HeapSnapshot::GenerateEdgeName([[maybe_unused]] TaggedObject *from, [[maybe_unused]] TaggedObject *to)
-{
-    // This Function is Unused
-    ASSERT(from != nullptr && from != to);
-    return GetString("[]");  // unAnalysed
-}
-
-std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
-{
-    std::string result;
+    CString result;
     JSFunctionBase *func = JSFunctionBase::Cast(obj);
     Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
@@ -1106,9 +1087,8 @@ std::string HeapSnapshot::ParseFunctionName(TaggedObject *obj)
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
-    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
-
-    const std::string &moduleStr = ConvertToStdString(method->GetRecordNameStr());
+    const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
+    const CString &moduleStr = method->GetRecordNameStr();
 
     if (!moduleStr.empty()) {
         result.append(moduleStr).append(" ");

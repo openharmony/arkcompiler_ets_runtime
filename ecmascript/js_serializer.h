@@ -180,8 +180,7 @@ public:
     JSDeserializer(JSThread *thread, uint8_t *data, size_t size, void *hint = nullptr)
         : thread_(thread), factory_(thread->GetEcmaVM()->GetFactory()),
         begin_(data), position_(data), end_(data + size), engine_(hint)
-    {
-    }
+    {}
     ~JSDeserializer();
     JSHandle<JSTaggedValue> Deserialize();
 
@@ -286,17 +285,14 @@ private:
 class Deserializer {
 public:
     Deserializer(JSThread *thread, SerializationData *data, void *hint)
-        : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint), data_(data) {}
+        : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint) {}
     ~Deserializer()
-    {
-        data_.reset(nullptr);
-    }
+    {}
 
     JSHandle<JSTaggedValue> ReadValue();
 
 private:
     ecmascript::JSDeserializer valueDeserializer_;
-    std::unique_ptr<SerializationData> data_;
 
     NO_COPY_SEMANTIC(Deserializer);
 };

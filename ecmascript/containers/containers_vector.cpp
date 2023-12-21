@@ -770,7 +770,7 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(elements->Get(middleIndex));
-            int32_t compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
+            double compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 endIndex = middleIndex;

@@ -110,6 +110,8 @@ public:
                             bool isNew = false);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
                              const JSHandle<JSTaggedValue> &fn);
+    static void SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                     const JSHandle<JSTaggedValue> &fn);
     
     template <class Callback>
     static JSTaggedValue ArrayCreateWithInit(JSThread *thread, uint32_t length, const Callback &cb)

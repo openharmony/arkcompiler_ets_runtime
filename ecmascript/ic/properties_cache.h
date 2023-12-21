@@ -35,6 +35,28 @@ public:
         }
         return NOT_FOUND;
     }
+    inline int DumpGet(JSHClass *jsHclass, JSTaggedValue key)
+    {
+        int hash = Hash(jsHclass, key);
+        PropertyKey &prop = keys_[hash];
+        if ((prop.hclass_ == jsHclass) && (prop.key_ == key)) {
+            LOG_ECMA(INFO) << "DumpGet hash: " << hash;
+            LOG_ECMA(INFO) << "DumpGet JSHClass addr: " << std::hex << static_cast<JSTaggedType>(ToUintPtr(jsHclass));
+            LOG_ECMA(INFO) << "DumpGet key addr : " << std::hex << key.GetRawData();
+            std::ostringstream oss1;
+            key.Dump(oss1);
+            LOG_ECMA(INFO) << "DumpGet key: " << oss1.str();
+
+            LOG_ECMA(INFO) << "DumpGet prop JSHClass addr: " <<
+                std::hex << static_cast<JSTaggedType>(ToUintPtr(prop.hclass_));
+            LOG_ECMA(INFO) << "DumpGet prop key addr: " << std::hex << prop.key_.GetRawData();
+            std::ostringstream oss;
+            prop.key_.Dump(oss);
+            LOG_ECMA(INFO) << "DumpGet prop key: " << oss.str();
+            return keys_[hash].results_;
+        }
+        return NOT_FOUND;
+    }
     inline void Set(JSHClass *jsHclass, JSTaggedValue key, int index)
     {
         int hash = Hash(jsHclass, key);
@@ -51,45 +73,6 @@ public:
     }
 
     static const int NOT_FOUND = -1;
-    static const uint32_t CACHE_LENGTH_BIT = 10;
-    static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
-    static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
-
-    struct PropertyKey : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
-                                                    base::AlignedPointer,
-                                                    JSTaggedValue,
-                                                    base::AlignedUint32> {
-        enum class Index : size_t {
-            HclassIndex = 0,
-            KeyIndex,
-            ResultsIndex,
-            NumOfMembers
-        };
-        static size_t GetHclassOffset(bool isArch32 = false)
-        {
-            return GetOffset<static_cast<size_t>(Index::HclassIndex)>(isArch32);
-        }
-
-        static size_t GetKeyOffset(bool isArch32 = false)
-        {
-            return GetOffset<static_cast<size_t>(Index::KeyIndex)>(isArch32);
-        }
-
-        static size_t GetResultsOffset(bool isArch32 = false)
-        {
-            return GetOffset<static_cast<size_t>(Index::ResultsIndex)>(isArch32);
-        }
-
-        static size_t GetPropertyKeySize()
-        {
-            return static_cast<size_t>(Index::NumOfMembers) * static_cast<size_t>(JSTaggedValue::TaggedTypeSize());
-        }
-        
-        static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
-        alignas(EAS) JSHClass *hclass_ {nullptr};
-        alignas(EAS) JSTaggedValue key_ {JSTaggedValue::Hole()};
-        alignas(EAS) int results_ {NOT_FOUND};
-    };
 
 private:
     PropertiesCache()
@@ -102,7 +85,11 @@ private:
     }
     ~PropertiesCache() = default;
 
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+    struct PropertyKey {
+        JSHClass *hclass_{nullptr};
+        JSTaggedValue key_{JSTaggedValue::Hole()};
+        int results_{NOT_FOUND};
+    };
 
     static inline int Hash(JSHClass *cls, JSTaggedValue key)
     {
@@ -110,6 +97,10 @@ private:
         uint32_t keyHash = key.GetKeyHashCode();
         return static_cast<int>((clsHash ^ keyHash) & CACHE_LENGTH_MASK);
     }
+
+    static const uint32_t CACHE_LENGTH_BIT = 10;
+    static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
+    static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
 
     std::array<PropertyKey, CACHE_LENGTH> keys_{};
 

@@ -49,9 +49,9 @@
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
     V("filter",         Filter,           1, ArrayFilter)                   \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
-    V("find",           Find,             1, INVALID)                       \
+    V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
-    V("findIndex",      FindIndex,        1, INVALID)                       \
+    V("findIndex",      FindIndex,        1, ArrayFindIndex)                \
     /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
     V("findLast",       FindLast,         1, INVALID)                       \
     /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \
@@ -181,31 +181,31 @@ public:
     // 22.1.3.26
     static JSTaggedValue ToLocaleString(EcmaRuntimeCallInfo *argv);
     // 22.1.3.27
-    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv); // no change
     // 22.1.3.28
-    static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv); // done
     // 22.1.3.29
-    static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Values(EcmaRuntimeCallInfo *argv); // no change
     // 22.1.3.31
-    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.13
-    static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.10
     static JSTaggedValue Flat(EcmaRuntimeCallInfo *argv);
     // es12 23.1.3.11
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
     // 23.1.3.1 Array.prototype.at ( index )
-    static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue At(EcmaRuntimeCallInfo *argv); // no change
     // 23.1.3.33 Array.prototype.toReversed ( )
-    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv); // no change
     // 23.1.3.39 Array.prototype.with ( index, value )
-    static JSTaggedValue With(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue With(EcmaRuntimeCallInfo *argv); // done
     // 23.1.3.34 Array.prototype.toSorted ( comparefn )
     static JSTaggedValue ToSorted(EcmaRuntimeCallInfo *argv);
     // 23.1.3.11
-    static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv); // no change
     // 23.1.3.12
-    static JSTaggedValue FindLastIndex(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FindLastIndex(EcmaRuntimeCallInfo *argv); // no change
     // 23.1.3.35 Array.prototype.toSpliced ( start, skipCount, ...items )
     static JSTaggedValue ToSpliced(EcmaRuntimeCallInfo *argv);
 
@@ -233,6 +233,10 @@ public:
     static JSTaggedValue ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
+
+    static JSTaggedValue FilterUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
+        JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
 
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \

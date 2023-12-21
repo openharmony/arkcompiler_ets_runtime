@@ -129,6 +129,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
+    "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
     "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
@@ -226,6 +227,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-module-methods", required_argument, nullptr, OPTION_COMPILER_MODULE_METHODS},
         {"max-unmovable-space", required_argument, nullptr, OPTION_MAX_UNMOVABLE_SPACE},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
+        {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
@@ -236,6 +238,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
         {"compiler-pgo-save-min-interval", required_argument, nullptr, OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL},
@@ -295,7 +298,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         }
 
         // unknown option or required_argument option has no argument
-        if (option == '?') {
+        if (option == OPTION_DEFAULT) {
             ret = SetDefaultValue(const_cast<char *>(argv[optind - 1]));
             if (ret) {
                 continue;
@@ -612,6 +615,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_ENABLE_ELEMENTSKIND:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableElementsKind(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_PGO_PROFILER_PATH:
                 if (*optarg == '\0') {
                     return false;
@@ -671,6 +682,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetMergeAbc(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_CONTEXT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableContext(argBool);
                 } else {
                     return false;
                 }

@@ -2052,9 +2052,16 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);
 
     //  Array.prototype_or_hclass
-    JSHandle<JSHClass> arrFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue);
+    JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
+    arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
     auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
+    if (thread_->GetEcmaVM()->IsEnablePGOProfiler() || thread_->GetEcmaVM()->IsEnableElementsKind()) {
+        // for all JSArray, the initial ElementsKind should be NONE
+        auto index = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+        auto hclassVal = globalConstant->GetGlobalConstantObject(index);
+        arrFuncInstanceHClass.Update(hclassVal);
+    }
 
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(

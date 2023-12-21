@@ -43,9 +43,8 @@ public:
     }
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
-protected:
-    Heap *heap_ {nullptr};
 
+protected:
     BumpPointerAllocator allocator_;
     size_t overShootSize_ {0};
     size_t allocateAfterLastGC_ {0};

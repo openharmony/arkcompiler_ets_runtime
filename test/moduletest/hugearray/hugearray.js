@@ -19,30 +19,5 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var arr = [];
-for (let i = 0; i < 100000; i++) {
-    if (i % 3 == 0) {
-        arr.shift();
-    } else {
-        arr.push({val : i});
-    }
-}
-print(arr.length);
-
-let v2 = new Array(2);
-let t = 0
-do {
-    try {
-        v2["lastIndexOf"](...16);
-    } catch (e) {
-        
-    }
-} while (t++ < 18000)
-print(t);
-
-let bytes = new Uint8Array(new ArrayBuffer(43584));
-let arr2 = [].slice.call(bytes);
-while (arr2.length) {
-    arr2.pop();
-}
-print(arr2.length);
+var string = "hugearray test start"
+print(string)

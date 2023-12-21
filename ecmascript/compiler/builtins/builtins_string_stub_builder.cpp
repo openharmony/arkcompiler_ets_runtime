@@ -71,15 +71,9 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
                 newBuilder.SetParameters(glue, 0);
                 Bind(&canBeCompress);
                 {
-                    Label afterNew(env);
-                    newBuilder.AllocLineStringObject(res, &afterNew, Int32(1), true);
-                    Bind(&afterNew);
-                    {
-                        GateRef dst = ChangeStringTaggedPointerToInt64(
-                            PtrAdd(res->ReadVariable(), IntPtr(LineEcmaString::DATA_OFFSET)));
-                        Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt16ToInt8(*value));
-                        Jump(exit);
-                    }
+                    GateRef singleCharTable = GetSingleCharTable(glue);
+                    res->WriteVariable(GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(*value)));
+                    Jump(exit);
                 }
                 Bind(&canNotBeCompress);
                 {
@@ -1047,7 +1041,9 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
         Branch(*canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
         {
-            newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
+            GateRef singleCharTable = GetSingleCharTable(glue);
+            result = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(*data));
+            Jump(&exit);
         }
         Bind(&isUtf16Next);
         {

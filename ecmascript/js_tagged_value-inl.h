@@ -587,6 +587,12 @@ inline bool JSTaggedValue::IsJSObject() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSObject();
 }
 
+inline bool JSTaggedValue::IsOnlyJSObject() const
+{
+    // Distinguish the JSObject and the subclasses of JSObject.
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsOnlyJSObject();
+}
+
 inline bool JSTaggedValue::IsECMAObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsECMAObject();
@@ -886,6 +892,11 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
 inline bool JSTaggedValue::IsCOWArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
+}
+
+inline bool JSTaggedValue::IsMutantTaggedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsMutantTaggedArray();
 }
 
 inline bool JSTaggedValue::IsJSArray() const

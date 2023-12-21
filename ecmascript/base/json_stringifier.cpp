@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -580,18 +581,18 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
 bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
                                         bool hasContent)
 {
-    JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
-    if (!elementsArr->IsDictionaryMode()) {
-        uint32_t elementsLen = elementsArr->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elementsArr->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(elementsArr->Get(i));
+                handleValue_.Update(ElementAccessor::Get(obj, i));
                 hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
     } else {
+        JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements());
         JSHandle<NumberDictionary> numberDic(elementsArr);
         CVector<JSHandle<JSTaggedValue>> sortArr;
         int size = numberDic->Size();

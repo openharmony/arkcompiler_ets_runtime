@@ -54,3 +54,32 @@ print(mixedNumericArray)
 
 print(["a", "c", , "b"].sort()); // ['a', 'b', 'c', empty]
 print([, undefined, "a", "b"].sort()); // ["a", "b", undefined, empty]
+
+var items = ["réservé", "premier", "cliché", "communiqué", "café", "adieu"];
+items.sort(function (a, b) {
+  return a.localeCompare(b);
+});
+print(items);
+
+const numbers1 = [3, 1, 4, 1, 5];
+const sorted1 = numbers1.sort((a, b) => a - b);
+sorted1[0] = 10;
+print(numbers1[0]); // 10
+
+const numbers = [3, 1, 4, 1, 5];
+const sorted = [...numbers].sort((a, b) => a - b);
+sorted[0] = 10;
+print(numbers[0]); // 3
+
+const arr1 = [3, 1, 4, 1, 5, 9];
+const compareFn = (a, b) => (a > b ? 1 : 0);
+arr1.sort(compareFn);
+print(arr1);
+
+const arr = [3, 1, 4, 1, 5, 9];
+const compareFn1 = (a, b) => (a > b ? -1 : 0);
+arr.sort(compareFn1);
+print(arr); 
+
+print(["a", "c", , "b"].sort()); // ['a', 'b', 'c', empty]
+print([, undefined, "a", "b"].sort()); // ["a", "b", undefined, empty]

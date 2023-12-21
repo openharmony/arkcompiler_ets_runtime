@@ -181,6 +181,11 @@ GateRef CircuitBuilder::IsTaggedArray(GateRef object)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TAGGED_ARRAY)));
 }
 
+GateRef CircuitBuilder::IsMutantTaggedArray(GateRef objectType)
+{
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY)));
+}
+
 GateRef CircuitBuilder::GetElementsArray(GateRef object)
 {
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
@@ -372,6 +377,12 @@ GateRef CircuitBuilder::HoleConstant()
 {
     auto type = GateType::TaggedValue();
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_HOLE, type);
+}
+
+GateRef CircuitBuilder::SpecialHoleConstant()
+{
+    auto type = GateType::NJSValue();
+    return GetCircuit()->GetConstantGate(MachineType::I64, base::SPECIAL_HOLE, type);
 }
 
 GateRef CircuitBuilder::NullPtrConstant()

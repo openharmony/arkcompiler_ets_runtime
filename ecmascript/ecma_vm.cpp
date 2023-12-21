@@ -201,6 +201,14 @@ bool EcmaVM::IsEnablePGOProfiler() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
 }
 
+bool EcmaVM::IsEnableElementsKind() const
+{
+    if (options_.IsWorker()) {
+        return false;
+    }
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
+}
+
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
@@ -225,7 +233,7 @@ bool EcmaVM::Initialize()
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
-
+    SingleCharTable::CreateSingleCharTable(thread_);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
@@ -233,7 +241,6 @@ bool EcmaVM::Initialize()
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
 
-    singleCharTable_ = SingleCharTable::CreateSingleCharTable(thread_);
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
 
@@ -527,7 +534,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    v(Root::ROOT_VM, ObjectSlot(ToUintPtr(&singleCharTable_)));
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }

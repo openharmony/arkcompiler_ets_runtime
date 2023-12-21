@@ -22,11 +22,15 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void JSValueRefToObjectValueFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void JSValueRefToObjectValueFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range..";
+        return;
+    }
     Local<ObjectRef> object = ObjectRef::New(vm);
     object->ToObject(vm);
     JSNApi::DestroyJSVM(vm);

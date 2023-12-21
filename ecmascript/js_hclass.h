@@ -203,6 +203,7 @@ struct Reference;
         TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BIGINT,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        MUTANT_TAGGED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         BYTE_ARRAY,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -394,6 +395,8 @@ public:
     static void AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                             const PropertyAttributes &attr);
 
+    static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
+                                       const JSHandle<JSObject> &obj);
     static JSHandle<JSHClass> TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSHClass> TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                               const JSHandle<JSTaggedValue> &proto);
@@ -405,9 +408,13 @@ public:
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
     static void TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
-    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array);
+    static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
+                                         const ElementsKind newKind);
+    static JSHClass* GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind);
+    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
+                                      ElementsKind newKind = ElementsKind::NONE);
     static bool TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
-        const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
+                                      const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
     static std::pair<bool, JSTaggedValue> ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
@@ -528,6 +535,11 @@ public:
         return (JSType::JS_OBJECT_FIRST <= jsType && jsType <= JSType::JS_OBJECT_LAST);
     }
 
+    inline bool IsOnlyJSObject() const
+    {
+        return GetObjectType() == JSType::JS_OBJECT;
+    }
+
     inline bool IsECMAObject() const
     {
         JSType jsType = GetObjectType();
@@ -603,6 +615,7 @@ public:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
+            case JSType::MUTANT_TAGGED_ARRAY:
                 return true;
             default:
                 return false;
@@ -628,6 +641,11 @@ public:
     {
         // Copy On Write ARRAY.
         return GetObjectType() == JSType::COW_TAGGED_ARRAY;
+    }
+
+    inline bool IsMutantTaggedArray() const
+    {
+        return GetObjectType() == JSType::MUTANT_TAGGED_ARRAY;
     }
 
     inline bool IsJSNativePointer() const

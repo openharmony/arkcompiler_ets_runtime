@@ -22,21 +22,17 @@ host_unittest_action("BuiltinsInternational_001_Test") {
   sources = [
     # test file
     "builtins_bigint_test.cpp",
-    "builtins_collator_test.cpp",
-    "builtins_date_time_format_test.cpp",
-    "builtins_displaynames_test.cpp",
-    "builtins_lazy_test.cpp",
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
-    "//arkcompiler/ets_runtime:icu_path_test_config",
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
   ]
 
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -51,23 +47,17 @@ host_unittest_action("BuiltinsInternational_002_Test") {
   sources = [
     # test file
     "builtins_intl_test.cpp",
-    "builtins_list_format_test.cpp",
-    "builtins_locale_test.cpp",
-    "builtins_number_format_test.cpp",
-    "builtins_plural_rules_test.cpp",
-    "builtins_relative_time_format_test.cpp",
-    "builtins_string_test.cpp",
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
-    "//arkcompiler/ets_runtime:icu_path_test_config",
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
   ]
 
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -76,7 +66,332 @@ host_unittest_action("BuiltinsInternational_002_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNaturalTest") {
+host_unittest_action("BuiltinsInternational_003_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_relative_time_format_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_004_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_collator_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_005_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_date_time_format_first_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_006_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_displaynames_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_007_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_lazy_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_008_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_list_format_first_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_009_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_locale_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_010_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_locale_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_011_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_number_format_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_012_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_plural_rules_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_013_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_string_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_014_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_date_time_format_second_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsInternational_015_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_list_format_second_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_001_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -86,37 +401,142 @@ host_unittest_action("BuiltinsNaturalTest") {
     "builtins_atomics_test.cpp",
     "builtins_boolean_test.cpp",
     "builtins_dataview_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_002_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_date_test.cpp",
     "builtins_errors_test.cpp",
     "builtins_finalization_registry_test.cpp",
     "builtins_function_test.cpp",
     "builtins_global_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_003_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_iterator_test.cpp",
     "builtins_json_test.cpp",
     "builtins_map_test.cpp",
     "builtins_math_test.cpp",
     "builtins_number_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_004_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_object_test.cpp",
     "builtins_promise_test.cpp",
     "builtins_proxy_test.cpp",
     "builtins_reflect_test.cpp",
     "builtins_regexp_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_005_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_set_test.cpp",
     "builtins_sharedarraybuffer_test.cpp",
     "builtins_string_iterator_test.cpp",
     "builtins_symbol_test.cpp",
     "builtins_typedarray_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("BuiltinsNatural_006_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_weak_map_test.cpp",
     "builtins_weak_ref_test.cpp",
     "builtins_weak_set_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "../../../:ecma_test_config" ]
 
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -132,7 +552,25 @@ group("unittest") {
   deps = [
     ":BuiltinsInternational_001_Test",
     ":BuiltinsInternational_002_Test",
-    ":BuiltinsNaturalTest",
+    ":BuiltinsInternational_003_Test",
+    ":BuiltinsInternational_004_Test",
+    ":BuiltinsInternational_005_Test",
+    ":BuiltinsInternational_006_Test",
+    ":BuiltinsInternational_007_Test",
+    ":BuiltinsInternational_008_Test",
+    ":BuiltinsInternational_009_Test",
+    ":BuiltinsInternational_010_Test",
+    ":BuiltinsInternational_011_Test",
+    ":BuiltinsInternational_012_Test",
+    ":BuiltinsInternational_013_Test",
+    ":BuiltinsInternational_014_Test",
+    ":BuiltinsInternational_015_Test",
+    ":BuiltinsNatural_001_Test",
+    ":BuiltinsNatural_002_Test",
+    ":BuiltinsNatural_003_Test",
+    ":BuiltinsNatural_004_Test",
+    ":BuiltinsNatural_005_Test",
+    ":BuiltinsNatural_006_Test",
   ]
 }
 
@@ -143,6 +581,24 @@ group("host_unittest") {
   deps = [
     ":BuiltinsInternational_001_TestAction",
     ":BuiltinsInternational_002_TestAction",
-    ":BuiltinsNaturalTestAction",
+    ":BuiltinsInternational_003_TestAction",
+    ":BuiltinsInternational_004_TestAction",
+    ":BuiltinsInternational_005_TestAction",
+    ":BuiltinsInternational_006_TestAction",
+    ":BuiltinsInternational_007_TestAction",
+    ":BuiltinsInternational_008_TestAction",
+    ":BuiltinsInternational_009_TestAction",
+    ":BuiltinsInternational_010_TestAction",
+    ":BuiltinsInternational_011_TestAction",
+    ":BuiltinsInternational_012_TestAction",
+    ":BuiltinsInternational_013_TestAction",
+    ":BuiltinsInternational_014_TestAction",
+    ":BuiltinsInternational_015_TestAction",
+    ":BuiltinsNatural_001_TestAction",
+    ":BuiltinsNatural_002_TestAction",
+    ":BuiltinsNatural_003_TestAction",
+    ":BuiltinsNatural_004_TestAction",
+    ":BuiltinsNatural_005_TestAction",
+    ":BuiltinsNatural_006_TestAction",
   ]
 }

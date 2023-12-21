@@ -25,6 +25,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/verification.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -1369,5 +1370,31 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), obj4->GetClass());
     EXPECT_EQ(obj3->GetClass(), hca.GetObject<JSHClass>());
     EXPECT_EQ(obj4->GetClass(), hcb.GetObject<JSHClass>());
+}
+
+HWTEST_F_L0(JSObjectTest, CreateObjectFromProperties)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> properties = factory->NewTaggedArray(2060); // 2060: array length
+
+    JSHandle<EcmaString> key1(factory->NewFromASCII("aa"));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
+
+    for (int i = 0; i < 1030; i++) {
+        JSHandle<EcmaString> key2(factory->NewFromASCII(std::to_string(i)));
+        JSHandle<EcmaString> key3 =
+            JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), key1, key2));
+        properties->Set(thread, 2 * i, key3.GetTaggedValue());
+        properties->Set(thread, 2 * i + 1, value1.GetTaggedValue());
+    }
+
+    JSHandle<JSObject> newObj = JSObject::CreateObjectFromProperties(thread, properties);
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetSweeper()->EnsureAllTaskFinished();
+    auto failCount = Verification(heap).VerifyAll();
+    if (failCount > 0) {
+        LOG_GC(FATAL) <<  "Heap occur dead object";
+    }
+    EXPECT_TRUE(newObj->GetClass()->IsDictionaryMode());
 }
 }  // namespace panda::test

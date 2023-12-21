@@ -166,11 +166,18 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
     V(JSArrayReduceUnStable)              \
+    V(JSArrayFilterUnStable)              \
     V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
     V(CopyAndUpdateObjLayout)             \
     V(UpdateHClassForElementsKind)        \
+    V(SetValueWithElementsKind)           \
+    V(MigrateArrayWithKind)               \
+    V(GetTaggedValueWithElementsKind)     \
+    V(TryRestoreElementsKind)             \
+    V(NewMutantTaggedArray)               \
+    V(DumpFindElementWithCache)           \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
     V(StGlobalRecord)                     \

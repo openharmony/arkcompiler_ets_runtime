@@ -16,6 +16,7 @@
 #include "ecmascript/js_map_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/linked_hash_table.h"
@@ -145,28 +146,28 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
     JSHandle<TaggedArray> elements = factory->ExtendArray(oldElements, totalElements);
+    newArrayHandle->SetElements(thread, elements);
     while (index < totalElements) {
         JSTaggedValue key = map->GetKey(index);
         if (!key.IsHole()) {
             keyHandle.Update(key);
             valueHandle.Update(map->GetValue(index));
             if (itemKind == IterationKind::KEY) {
-                elements->Set(thread, k, keyHandle);
+                ElementAccessor::Set(thread, newArrayHandle, k, keyHandle, true);
             } else if (itemKind == IterationKind::VALUE) {
-                elements->Set(thread, k, valueHandle);
+                ElementAccessor::Set(thread, newArrayHandle, k, valueHandle, true);
             } else {
                 JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
                 array->Set(thread, 0, keyHandle);
                 array->Set(thread, 1, valueHandle);
                 JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
-                elements->Set(thread, k, keyAndValue);
+                ElementAccessor::Set(thread, newArrayHandle, k, keyAndValue, true);
             }
             k++;
         }
         index++;
     }
     JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, k);
-    newArrayHandle->SetElements(thread, elements);
     return newArrayHandle.GetTaggedValue();
 }
 }  // namespace panda::ecmascript

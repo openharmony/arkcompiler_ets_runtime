@@ -20,3 +20,10 @@ Beluga,Blue,Humpback
 1,5,9,40,80,200,700
 a,b,c,
 a,b,,
+adieu,café,cliché,communiqué,premier,réserv
+10
+3
+3, 1, 4, 1, 5, 9
+9, 5, 4, 3, 1, 1
+a,b,c,undefined
+a,b,undefined,undefined

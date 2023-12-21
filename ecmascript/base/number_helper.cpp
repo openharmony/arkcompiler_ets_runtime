@@ -137,7 +137,7 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
             if (n == 0) {
                 return thread->GlobalConstants()->GetHandledZeroString().GetTaggedValue();
             }
-            JSHandle<SingleCharTable> singleCharTable(thread->GetEcmaVM()->GetSingleCharTable());
+            JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
             return singleCharTable->GetStringFromSingleCharTable(ToCharCode(n));
         }
     } else {

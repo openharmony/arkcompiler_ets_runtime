@@ -26,21 +26,25 @@ namespace ecmascript {
 class ElementAccessor {
 public:
     static JSTaggedValue Get(JSHandle<JSObject> receiver, uint32_t idx);
+    static JSTaggedValue Get(JSObject *receiver, uint32_t idx);
 
     template<typename T>
-    static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSHandle<T> &value);
+    static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSHandle<T> &value,
+                    bool needTransition, ElementsKind extraKind = ElementsKind::NONE);
 
     template <bool needBarrier = true>
-    static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSTaggedValue &value);
+    static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSTaggedValue &value,
+                    bool needTransition, ElementsKind extraKind = ElementsKind::NONE);
 
     static bool IsDictionaryMode(JSHandle<JSObject> receiver);
+    static bool IsDictionaryMode(JSObject *receiver);
 
     static uint32_t GetElementsLength(JSHandle<JSObject> receiver);
-
-private:
+    static uint32_t GetElementsLength(JSObject *receiver);
 
     static JSTaggedValue GetTaggedValueWithElementsKind(JSTaggedType rawValue, ElementsKind kind);
     static JSTaggedType ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
+private:
 };
 }  // namespace ecmascript
 }  // namespace panda

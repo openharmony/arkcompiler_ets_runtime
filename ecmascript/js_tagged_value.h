@@ -475,10 +475,12 @@ public:
     bool IsBoolean() const;
     bool IsSymbol() const;
     bool IsJSObject() const;
+    bool IsOnlyJSObject() const;
     bool IsJSGlobalObject() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
     bool IsCOWArray() const;
+    bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
     bool IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;

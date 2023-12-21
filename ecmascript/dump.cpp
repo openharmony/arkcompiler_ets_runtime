@@ -152,6 +152,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ProfileTypeInfo";
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
+        case JSType::MUTANT_TAGGED_ARRAY:
+            return "MutantTaggedArray";
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
@@ -497,6 +499,19 @@ static void DumpArrayClass(const TaggedArray *arr, std::ostream &os)
     }
 }
 
+static void DumpMutantTaggedArray(const MutantTaggedArray *arr, std::ostream &os)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetLength();
+    os << " <MutantTaggedArray[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->Get(i));
+        os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+        os << std::left << std::setw(DUMP_TYPE_OFFSET) << "[JSTaggedType] : " << val.GetRawData();
+        os << "\n";
+    }
+}
+
 static void DumpConstantPoolClass(const ConstantPool *pool, std::ostream &os)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -683,6 +698,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), os);
+            break;
+        case JSType::MUTANT_TAGGED_ARRAY:
+            DumpMutantTaggedArray(MutantTaggedArray::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), os);
@@ -1421,10 +1439,10 @@ void TaggedDoubleList::Dump(std::ostream &os) const
     os << " - delete node num: " << std::dec << NumberOfDeletedNodes() << "\n";
     os << "head-next: ";
     // 5 : 5 first element next ptr
-    GetElement(5).D();
+    GetElement(5).Dump(os);
     os << "head-pre: ";
     // 6 : 6 first element per ptr
-    GetElement(6).D();
+    GetElement(6).Dump(os);
     os << "\n";
     int i = 0;
     int next = GetElement(5).GetInt();
@@ -1433,10 +1451,10 @@ void TaggedDoubleList::Dump(std::ostream &os) const
         GetElement(next).DumpTaggedValue(os);
         os << " next: ";
         // 1 : 1 current element next ptr offset
-        GetElement(next + 1).D();
+        GetElement(next + 1).Dump(os);
         os << " pre: ";
         // 2 : 2 current element pre ptr offset
-        GetElement(next + 2).D();
+        GetElement(next + 2).Dump(os);
         os << "\n";
         next = GetElement(next + 1).GetInt();
         i++;
@@ -1449,7 +1467,7 @@ void TaggedSingleList::Dump(std::ostream &os) const
     int capacity = NumberOfNodes();
     os << "head-next: ";
     // 5 : 5 first element next ptr
-    GetElement(5).D();
+    GetElement(5).Dump(os);
     os << "\n";
     int i = 0;
     int next = GetElement(5).GetInt();
@@ -1458,7 +1476,7 @@ void TaggedSingleList::Dump(std::ostream &os) const
         GetElement(next).DumpTaggedValue(os);
         os << " next: ";
         // 1 : 1 current element next ptr offset
-        GetElement(next + 1).D();
+        GetElement(next + 1).Dump(os);
         os << "\n";
         next = GetElement(next + 1).GetInt();
         i++;
@@ -2006,7 +2024,7 @@ void JSFinalizationRegistry::Dump(std::ostream &os) const
     GetCleanupCallback().DumpTaggedValue(os);
     os << "\n";
     os << " - NoUnregister : ";
-    GetNoUnregister().D();
+    GetNoUnregister().Dump(os);
     os << "\n";
     os << " - MaybeUnregister : ";
     LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
@@ -2043,10 +2061,10 @@ void JSSetIterator::Dump(std::ostream &os) const
 void JSRegExpIterator::Dump(std::ostream &os) const
 {
     os << " - IteratingRegExp: ";
-    GetIteratingRegExp().D();
+    GetIteratingRegExp().Dump(os);
     os << "\n";
     os << " - IteratedString: ";
-    GetIteratedString().D();
+    GetIteratedString().Dump(os);
     os << "\n";
     os << " - Global: " << std::dec << GetGlobal() << "\n";
     os << " - Unicode: " << std::dec << GetUnicode() << "\n";
@@ -2349,16 +2367,16 @@ void JSRegExp::Dump(std::ostream &os) const
 {
     os << "\n";
     os << " - ByteCodeBuffer: ";
-    GetByteCodeBuffer().D();
+    GetByteCodeBuffer().Dump(os);
     os << "\n";
     os << " - OriginalSource: ";
-    GetOriginalSource().D();
+    GetOriginalSource().Dump(os);
     os << "\n";
     os << " - OriginalFlags: ";
-    GetOriginalFlags().D();
+    GetOriginalFlags().Dump(os);
     os << "\n";
     os << " - GroupName: ";
-    GetGroupName().D();
+    GetGroupName().Dump(os);
     os << "\n";
     os << " - Length: " << GetLength();
     os << "\n";
@@ -2393,6 +2411,11 @@ void LexicalEnv::Dump(std::ostream &os) const
 void COWTaggedArray::Dump(std::ostream &os) const
 {
     DumpArrayClass(this, os);
+}
+
+void MutantTaggedArray::Dump(std::ostream &os) const
+{
+    DumpMutantTaggedArray(this, os);
 }
 
 // NOLINTNEXTLINE(readability-function-size)
@@ -2901,15 +2924,6 @@ void JSAsyncGeneratorFunction::Dump(std::ostream &os) const
 
 void JSIntlBoundFunction::Dump(std::ostream &os) const
 {
-    os << " - NumberFormat: ";
-    GetNumberFormat().Dump(os);
-    os << "\n";
-    os << " - DateTimeFormat: ";
-    GetDateTimeFormat().Dump(os);
-    os << "\n";
-    os << " - Collator: ";
-    GetCollator().Dump(os);
-    os << "\n";
     JSObject::Dump(os);
 }
 
@@ -3813,6 +3827,18 @@ static void DumpArrayClass(const TaggedArray *arr, std::vector<Reference> &vec)
     }
 }
 
+static void DumpMutantTaggedArrayClass(const MutantTaggedArray *arr, std::vector<Reference> &vec)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->Get(i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
+}
+
 static void DumpElementClass(const TaggedArray *arr, std::vector<Reference> &vec)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -3864,6 +3890,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
+            return;
+        case JSType::MUTANT_TAGGED_ARRAY:
+            DumpMutantTaggedArrayClass(MutantTaggedArray::Cast(obj), vec);
             return;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
@@ -4629,6 +4658,11 @@ void ProfileTypeInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 void COWTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpArrayClass(this, vec);
+}
+
+void MutantTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DumpMutantTaggedArrayClass(this, vec);
 }
 
 void JSBoundFunction::DumpForSnapshot(std::vector<Reference> &vec) const

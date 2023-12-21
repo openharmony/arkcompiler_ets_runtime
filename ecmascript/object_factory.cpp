@@ -26,6 +26,8 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -923,11 +925,19 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
-JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor)
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
+                                                           uint32_t inlinedProps)
 {
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
-        JSHandle<JSHClass> jshclass(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
+        JSHandle<JSHClass> jshclass;
+        if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
+            jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
+        } else {
+            jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
+                                     env->GetObjectFunctionPrototype());
+        }
         JSHandle<JSObject> obj = NewJSObjectWithInit(jshclass);
         if (jshclass->IsJSSharedObject() && jshclass->IsDictionaryMode()) {
             auto maybeDict = jshclass->GetLayout();
@@ -939,7 +949,6 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
         }
         return obj;
     }
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSObject> result =
         NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
     if (thread_->HasPendingException()) {
@@ -2310,6 +2319,17 @@ JSHandle<TaggedArray> ObjectFactory::NewEmptyArray()
     return array;
 }
 
+JSHandle<MutantTaggedArray> ObjectFactory::NewEmptyMutantArray()
+{
+    NewObjectHook();
+    auto header = heap_->AllocateReadOnlyOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+    JSHandle<MutantTaggedArray> array(thread_, header);
+    array->SetLength(0);
+    array->SetExtraLength(0);
+    return array;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable)
 {
     if (nonMovable) {
@@ -2395,6 +2415,89 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArr
     }
     return dstElements;
 }
+
+JSHandle<JSObject> ObjectFactory::NewAndCopyJSArrayObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
+                                                          uint32_t oldLength, uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    JSHandle<TaggedArray> dstElements(NewTaggedArray(newLength));
+    JSHandle<JSObject> arrayObj = JSHandle<JSObject>(NewJSStableArrayWithElements(dstElements));
+    if (newLength == 0) {
+        return JSHandle<JSObject>(arrayObj);
+    }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        JSTaggedValue value = ElementAccessor::Get(thisObjHandle, i + k);
+        ElementAccessor::Set(thread_, arrayObj, i, value, true);
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        ElementAccessor::Set(thread_, arrayObj, i, JSTaggedValue::Hole(), true);
+    }
+    return arrayObj;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
+                                                                   uint32_t oldLength, uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements(NewTaggedArrayWithoutInit(newLength, spaceType));
+    JSHandle<TaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    if (newLength == 0) {
+        return dstElements;
+    }
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = oldLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            dstElements->Set(thread_, i, ElementAccessor::Get(thisObjHandle, i + k));
+        }
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
+                                                                               uint32_t newLength, uint32_t oldLength,
+                                                                               uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<MutantTaggedArray> dstElements(NewMutantTaggedArrayWithoutInit(newLength, spaceType));
+    JSHandle<MutantTaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    if (newLength == 0) {
+        return dstElements;
+    }
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = oldLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
+            JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
+                                                ElementAccessor::Get(thisObjHandle, i + k), kind));
+            dstElements->Set<false>(thread_, i, value);
+        }
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
+        JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue::Hole(),
+                                                                                                kind));
+        dstElements->Set<false>(thread_, i, value);
+    }
+    return dstElements;
+}
+
 // private
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
 {
@@ -2422,6 +2525,33 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
     return array;
 }
 
+// private
+JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
+{
+    NewObjectHook();
+    if (length == 0) {
+        return EmptyMutantArray();
+    }
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    TaggedObject *header = nullptr;
+    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
+    switch (spaceType) {
+        case MemSpaceType::SEMI_SPACE:
+            header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
+            break;
+        case MemSpaceType::OLD_SPACE:
+            header = heap_->AllocateOldOrHugeObject(arrayClass, size);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    JSHandle<MutantTaggedArray> array(thread_, header);
+    array->SetLength(length);
+    return array;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal)
 {
     NewObjectHook();
@@ -2445,6 +2575,19 @@ JSHandle<COWTaggedArray> ObjectFactory::NewCOWTaggedArray(uint32_t length, JSTag
     JSHandle<COWTaggedArray> cowArray(thread_, header);
     cowArray->InitializeWithSpecialValue(initVal, length);
     return cowArray;
+}
+
+JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArray(uint32_t length, JSTaggedType initVal)
+{
+    NewObjectHook();
+    ASSERT(length > 0);
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), size);
+    JSHandle<MutantTaggedArray> mutantTaggedArray(thread_, header);
+    mutantTaggedArray->InitializeWithSpecialValue(initVal, length);
+    return mutantTaggedArray;
 }
 
 JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
@@ -2529,12 +2672,19 @@ JSHandle<TaggedArray> ObjectFactory::NewDictionaryArray(uint32_t length)
 }
 
 JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,
-                                                 JSTaggedValue initVal, MemSpaceType type)
+                                                 JSTaggedValue initVal, MemSpaceType type,
+                                                 [[maybe_unused]] ElementsKind kind)
 {
     ASSERT(length > old->GetLength());
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    JSHClass *arrayClass = nullptr;
+    // If old element is Mutantarray, need conversion according to kind.
+    if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+        arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
+    } else {
+        arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    }
     TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(length);
@@ -2543,11 +2693,20 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     uint32_t oldLength = old->GetLength();
     for (uint32_t i = 0; i < oldLength; i++) {
         JSTaggedValue value = old->Get(i);
-        newArray->Set(thread_, i, value);
+        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+            newArray->Set<false>(thread_, i, value);
+        } else {
+            newArray->Set(thread_, i, value);
+        }
     }
 
     for (uint32_t i = oldLength; i < length; i++) {
-        newArray->Set(thread_, i, initVal);
+        if (initVal.IsHole() && old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+            JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
+            newArray->Set<false>(thread_, i, specialHole);
+        } else {
+            newArray->Set(thread_, i, initVal);
+        }
     }
 
     return newArray;
@@ -2582,13 +2741,13 @@ JSHandle<TaggedArray> ObjectFactory::CopyPartArray(const JSHandle<TaggedArray> &
 }
 
 JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
-                                               JSTaggedValue initVal, MemSpaceType type)
+                                               JSTaggedValue initVal, MemSpaceType type, ElementsKind kind)
 {
     if (newLength == 0) {
         return EmptyArray();
     }
     if (newLength > oldLength) {
-        return ExtendArray(old, newLength, initVal, type);
+        return ExtendArray(old, newLength, initVal, type, kind);
     }
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
@@ -2598,7 +2757,12 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
         JSHClass *cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject());
         header = AllocObjectWithSpaceType(size, cowArrayClass, type);
     } else {
-        JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+        JSHClass *arrayClass = nullptr;
+        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+            arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
+        } else {
+            arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+        }
         header = AllocObjectWithSpaceType(size, arrayClass, type);
     }
 
@@ -2608,7 +2772,11 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);
-        newArray->Set(thread_, i, value);
+        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+            newArray->Set<false>(thread_, i, value);
+        } else {
+            newArray->Set(thread_, i, value);
+        }
     }
 
     return newArray;
@@ -2750,6 +2918,11 @@ JSHandle<EcmaString> ObjectFactory::GetEmptyString() const
 JSHandle<TaggedArray> ObjectFactory::EmptyArray() const
 {
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
+}
+
+JSHandle<MutantTaggedArray> ObjectFactory::EmptyMutantArray() const
+{
+    return JSHandle<MutantTaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len,
@@ -3447,11 +3620,11 @@ JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<T
     return obj;
 }
 
-JSHandle<JSObject> ObjectFactory::NewEmptyJSObject()
+JSHandle<JSObject> ObjectFactory::NewEmptyJSObject(uint32_t inlinedProps)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
-    return NewJSObjectByConstructor(builtinObj);
+    return NewJSObjectByConstructor(builtinObj, inlinedProps);
 }
 
 JSHandle<JSObject> ObjectFactory::CreateNullJSObject()
@@ -4318,7 +4491,6 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
                            JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrHClass());
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
     array->SetElements(thread_, elements);
-
     array->SetLength(elements->GetLength());
     array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();

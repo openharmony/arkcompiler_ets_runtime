@@ -359,8 +359,10 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     JSArray::Cast(*obj)->SetArrayLength(thread, length);
 
     obj->SetElements(thread, elements);
+    JSHandle<JSArray> arr(obj);
+    JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
 
-    return JSHandle<JSArray>(obj);
+    return arr;
 }
 
 JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -455,7 +457,7 @@ void JSArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elemen
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(elements->Get(middleIndex));
-            int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
+            double compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 endIndex = middleIndex;
@@ -470,6 +472,41 @@ void JSArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elemen
                 elements->Set(thread, j, previousValue);
             }
             elements->Set(thread, endIndex, presentValue);
+        }
+    }
+}
+
+void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                   const JSHandle<JSTaggedValue> &fn)
+{
+    ASSERT(fn->IsUndefined() || fn->IsCallable());
+
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    uint32_t len = ElementAccessor::GetElementsLength(thisObjHandle);
+    for (uint32_t i = 1; i < len; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        presentValue.Update(ElementAccessor::Get(thisObjHandle, i));
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            middleValue.Update(ElementAccessor::Get(thisObjHandle, middleIndex));
+            int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            if (compareResult > 0) {
+                endIndex = middleIndex;
+            } else {
+                beginIndex = middleIndex + 1;
+            }
+        }
+
+        if (endIndex >= 0 && endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                previousValue.Update(ElementAccessor::Get(thisObjHandle, j - 1));
+                ElementAccessor::Set(thread, thisObjHandle, j, previousValue, false);
+            }
+            ElementAccessor::Set(thread, thisObjHandle, endIndex, presentValue, false);
         }
     }
 }

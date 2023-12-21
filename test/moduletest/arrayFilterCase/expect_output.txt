@@ -20,3 +20,5 @@ apple,grapes
 banana,mango,orange
 2,3,5,7,11,13
 {"value":6,"writable":true,"enumerable":true,"configurable":true}
+true
+true

@@ -19,6 +19,7 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
@@ -99,8 +100,10 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
     uint32_t oldLength = oldElements->GetLength();
-    JSHandle<TaggedArray> newElements = factory->CopyArray(oldElements, oldLength, newCapacity);
 
+    ElementsKind kind = obj->GetClass()->GetElementsKind();
+    JSHandle<TaggedArray> newElements = factory->CopyArray(oldElements, oldLength, newCapacity,
+                                                           JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE, kind);
     obj->SetElements(thread, newElements);
     if (thread->IsPGOProfilerEnable() && obj->IsJSArray()) {
         auto trackInfo = JSHandle<JSArray>(obj)->GetTrackInfo();
@@ -211,12 +214,7 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     JSHClass::TransitionToDictionary(thread, receiver);
 
     // trim in-obj properties space
-    if (numberInlinedProps > 0) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t newSize = receiver->GetClass()->GetObjectSize();
-        size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
-        factory->FillFreeObject(ToUintPtr(*receiver) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*receiver));
-    }
+    TrimInlinePropsSpace(thread, receiver, numberInlinedProps);
 
     return dict;
 }
@@ -231,7 +229,7 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue ::Undefined());
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = elements->Get(i);
+        JSTaggedValue value = ElementAccessor::Get(obj, i);
         if (value.IsHole()) {
             continue;
         }
@@ -389,8 +387,8 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         }
         elements = *JSObject::GrowElementsCapacity(thread, receiver, index + 1);
     }
-    elements->Set(thread, index, value);
-    JSHClass::TransitToElementsKind(thread, receiver, value, kind);
+    bool needTransition = true;
+    ElementAccessor::Set(thread, receiver, index, value, needTransition, kind);
     return true;
 }
 
@@ -565,16 +563,16 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
         }
     }
 
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    if (!elements->IsDictionaryMode()) {
-        uint32_t elementsLen = elements->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
-            if (!elements->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }
     } else {
+        JSHandle<TaggedArray> elements(thread, obj->GetElements());
         NumberDictionary::GetAllKeys(thread, JSHandle<NumberDictionary>(elements), elementIndex, keyArray);
     }
 }
@@ -597,13 +595,12 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
         }
     }
 
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
     JSHandle<JSTaggedValue> objValue(obj);
 
-    if (!elements->IsDictionaryMode()) {
-        uint32_t elementsLen = elements->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elements->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 ObjectOperator op(thread, objValue, i, OperatorType::OWN);
                 bool bIgnore = FilterHelper::IgnoreKeyByFilter<ObjectOperator>(op, filter);
                 if (bIgnore) {
@@ -614,6 +611,7 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
             }
         }
     } else {
+        JSHandle<TaggedArray> elements(thread, obj->GetElements());
         NumberDictionary::GetAllKeysByFilter(thread, JSHandle<NumberDictionary>(elements),
             keyArrayEffectiveLength, keyArray, filter);
     }
@@ -622,15 +620,15 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
 void JSObject::GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
                                            std::vector<JSTaggedValue> &keyVector)
 {
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    if (!elements->IsDictionaryMode()) {
-        uint32_t elementsLen = elements->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elements->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 keyVector.emplace_back(JSTaggedValue(i));
             }
         }
     } else {
+        JSHandle<TaggedArray> elements(thread, obj->GetElements());
         JSHandle<NumberDictionary> dict = JSHandle<NumberDictionary>::Cast(elements);
         dict->GetAllKeysIntoVector(keyVector);
     }
@@ -662,13 +660,12 @@ void JSObject::CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHand
         *keys += strLen;
     }
 
-    JSHandle<TaggedArray> arr(thread, obj->GetElements());
-    if (!arr->IsDictionaryMode()) {
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
         JSHandle<TaggedQueue> emptyQueue = thread->GetEcmaVM()->GetFactory()->GetEmptyTaggedQueue();
-        uint32_t elementsLen = arr->GetLength();
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (arr->Get(i).IsHole()) {
+            if (ElementAccessor::Get(obj, i).IsHole()) {
                 continue;
             }
             keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
@@ -681,6 +678,7 @@ void JSObject::CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHand
         }
         *keys += (elementIndex - preElementIndex);
     } else {
+        JSHandle<TaggedArray> arr(thread, obj->GetElements());
         NumberDictionary::GetAllEnumKeys(
             thread, JSHandle<NumberDictionary>(arr), elementIndex, elementArray, keys, lastLength);
     }
@@ -698,16 +696,16 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
         }
     }
 
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    if (!elements->IsDictionaryMode()) {
-        uint32_t elementsLen = elements->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
-            if (!elements->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(obj, i).IsHole()) {
                 auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }
     } else {
+        JSHandle<TaggedArray> elements(thread, obj->GetElements());
         uint32_t keys = 0;
         NumberDictionary::GetAllEnumKeys(thread, JSHandle<NumberDictionary>(elements), elementIndex, keyArray, &keys);
     }
@@ -767,15 +765,15 @@ uint32_t JSObject::GetNumberOfElements()
         numOfElements = JSPrimitiveRef::Cast(this)->GetStringLength();
     }
 
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
-    if (!elements->IsDictionaryMode()) {
-        uint32_t elementsLen = elements->GetLength();
+    if (!ElementAccessor::IsDictionaryMode(this)) {
+        uint32_t elementsLen = ElementAccessor::GetElementsLength(this);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!elements->Get(i).IsHole()) {
+            if (!ElementAccessor::Get(this, i).IsHole()) {
                 numOfElements++;
             }
         }
     } else {
+        TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
         numOfElements += static_cast<uint32_t>(NumberDictionary::Cast(elements)->EntriesCount());
     }
 
@@ -1404,6 +1402,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
     obj->SynchronizedSetClass(*newClass);
+    JSHClass::TryRestoreElementsKind(thread, newClass, obj);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
     return true;
@@ -1443,6 +1442,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
         obj->SynchronizedSetClass(*newHclass);
+        JSHClass::TryRestoreElementsKind(thread, newHclass, obj);
     }
 
     return true;
@@ -2250,16 +2250,14 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
-    const std::string &nameStr = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
+    const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
     const CString &moduleStr = method->GetRecordNameStr();
 
     if (!moduleStr.empty()) {
         result.append(moduleStr);
     }
     if (!nameStr.empty()) {
-        result.append(" ");
-        result.append(CString(nameStr));
-        result.append(" ");
+        result.append(" ").append(nameStr).append(" ");
     }
     result.append("JSObject");
     return result;
@@ -2530,7 +2528,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         SetAllPropertys(thread, obj, properties, propsLen, ihcVal);
         return obj;
     } else {
-        JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+        JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
         JSHClass::TransitionToDictionary(thread, obj);
 
         JSMutableHandle<NameDictionary> dict(
@@ -2622,6 +2620,17 @@ bool JSObject::UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue 
     }
     dict->UpdateValue(thread, entry, value);
     return true;
+}
+
+void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
+                                    uint32_t numberInlinedProps)
+{
+    if (numberInlinedProps > 0) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        uint32_t newSize = object->GetClass()->GetObjectSize();
+        size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
+        factory->FillFreeObject(ToUintPtr(*object) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*object));
+    }
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray

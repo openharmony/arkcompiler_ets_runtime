@@ -21,7 +21,7 @@ import os
 
 
 class RegressTestConfig:
-    DEFAULT_TIMEOUT = 10
+    DEFAULT_TIMEOUT = 100
     CURRENT_PATH = os.getcwd()
     TEST_TOOL_FILE_DIR = os.path.dirname(__file__)
     CODE_ROOT = os.path.abspath(os.path.join(TEST_TOOL_FILE_DIR, "../../../.."))

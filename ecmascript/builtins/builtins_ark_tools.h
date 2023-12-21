@@ -42,6 +42,7 @@
     V("print",                         ObjectDump,                    0, INVALID)         \
     V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
     V("timeInUs",                      TimeInUs,                      0, INVALID)         \
+    V("getElementsKind",               GetElementsKind,               1, INVALID)         \
     V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -125,6 +126,9 @@ public:
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTCompiled(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.GetElementsKind(array)
+    static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 

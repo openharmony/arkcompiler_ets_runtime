@@ -25,7 +25,7 @@
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define COMMON_MESSAGE_STRING_LIST(V)                                                        \
-    V(SetReadOnlyProperty, "Cannot set readonly property asm")                               \
+    V(SetReadOnlyProperty, "Cannot set readonly property")                                   \
     V(SetTypeMismatchedSharedProperty, "Cannot set shared property with mismatched type")    \
     V(ClassNotDerivedFromSharedFamily, "Class not derived from a shared family object")      \
     V(SetImmutableProperty, "Cannot set immutable property")                                 \

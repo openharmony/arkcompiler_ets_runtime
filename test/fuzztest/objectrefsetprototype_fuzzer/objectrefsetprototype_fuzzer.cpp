@@ -25,6 +25,10 @@ void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range.";
+        return;
+    }
     Local<ObjectRef> object = ObjectRef::New(vm_);
     Local<ObjectRef> prototype = object->GetPrototype(vm_);
     object->SetPrototype(vm_, prototype);

@@ -23,6 +23,9 @@
 #include "ecmascript/base/fast_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/js_stable_array.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -36,6 +39,7 @@
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_runtime.h"
@@ -432,6 +436,26 @@ DEF_RUNTIME_STUBS(NewEcmaHClass)
         size.GetInt(), JSType(type.GetInt()), inlinedProps.GetInt())).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSArrayFilterUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayFilterUnStable);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSTaggedType toIndexValue = GetTArg(argv, argc, 4);  // 4: means the three parameter
+    int32_t toIndex = JSTaggedNumber(JSTaggedValue(toIndexValue)).GetNumber();
+    JSHandle<JSObject> newArrayHandle = JSMutableHandle<JSObject>(thread,
+        GetHArg<JSObject>(argv, argc, 5));  // 5: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
+        toIndex, newArrayHandle, callbackFnHandle);
+    return ret.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 {
     RUNTIME_STUBS_HEADER(UpdateLayOutAndAddTransition);
@@ -500,12 +524,76 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetValueWithElementsKind)
+{
+    RUNTIME_STUBS_HEADER(SetValueWithElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSTaggedValue taggedIndex = GetArg(argv, argc, 2);
+    bool needTransition = static_cast<bool>(GetArg(argv, argc, 3).GetInt());
+    ElementsKind extraKind = static_cast<ElementsKind>(GetArg(argv, argc, 4).GetInt());
+    uint32_t index = static_cast<uint32_t>(taggedIndex.GetInt());
+    ElementAccessor::Set(thread, receiver, index, value, needTransition, extraKind);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(MigrateArrayWithKind)
+{
+    RUNTIME_STUBS_HEADER(MigrateArrayWithKind);
+    JSHandle<JSObject> object = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    ElementsKind oldKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));
+    ElementsKind newKind = static_cast<ElementsKind>(GetTArg(argv, argc, 2));
+    Elements::MigrateArrayWithKind(thread, object, oldKind, newKind);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetTaggedValueWithElementsKind)
+{
+    RUNTIME_STUBS_HEADER(GetTaggedValueWithElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSTaggedValue taggedIndex = GetArg(argv, argc, 1);
+
+    JSTaggedValue value = ElementAccessor::Get(receiver, taggedIndex.GetInt());
+
+    return value.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TryRestoreElementsKind)
+{
+    RUNTIME_STUBS_HEADER(TryRestoreElementsKind);
+    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>(GetHArg<JSTaggedValue>(argv, argc, 1));
+
+    JSHClass::TryRestoreElementsKind(thread, hclass, receiver);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewMutantTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewMutantTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(DumpFindElementWithCache)
+{
+    RUNTIME_STUBS_HEADER(DumpFindElementWithCache);
+    JSHandle<LayoutInfo> layout = GetHArg<LayoutInfo>(argv, argc, 0);  // 0: means the first parameter
+    JSHandle<JSHClass> cls = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue key = GetArg(argv, argc, 2);        // 2: means the first parameter
+    JSTaggedValue propsNum = GetArg(argv, argc, 3);        // 3: means the first parameter
+    layout->DumpFindElementWithCache(thread, *cls, key, propsNum.GetInt());
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
-    LOG_ECMA(ERROR) << "dump log for read-only crash " << oss.str();
+    LOG_ECMA(INFO) << "dump log for read-only crash " << oss.str();
 }
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
@@ -640,7 +728,7 @@ DEF_RUNTIME_STUBS(CallGetPrototype)
 
 DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
 {
-    RUNTIME_STUBS_HEADER(CallJSObjDeletePrototype);
+    RUNTIME_STUBS_HEADER(RegularJSObjDeletePrototype);
     JSHandle<JSObject> tagged = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue value = GetArg(argv, argc, 1);
     uint32_t index = 0;

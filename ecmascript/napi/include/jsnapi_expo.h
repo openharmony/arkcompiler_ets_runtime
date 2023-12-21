@@ -88,7 +88,6 @@ using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
-using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
@@ -790,8 +789,8 @@ public:
     static Local<BigIntRef> New(const EcmaVM *vm, uint64_t input);
     static Local<BigIntRef> New(const EcmaVM *vm, int64_t input);
     static Local<JSValueRef> CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words);
-    void BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless);
-    void BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossless);
+    void BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless);
+    void BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless);
     void GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words);
     uint32_t GetWordsArraySize();
 };
@@ -1109,6 +1108,9 @@ class ECMA_PUBLIC_API MapIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
+    static Local<MapIteratorRef> New(const EcmaVM *vm, Local<MapRef> map);
+    ecmascript::EcmaRuntimeCallInfo* GetEcmaRuntimeCallInfo(const EcmaVM *vm);
+    static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo* ecmaRuntimeCallInfo);
 };
 
 class ECMA_PUBLIC_API JSNApi {
@@ -1238,7 +1240,6 @@ public:
         std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
-    static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
@@ -1327,6 +1328,9 @@ public:
     int32_t GetTotalElements();
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<WeakMapRef> New(const EcmaVM *vm);
+    void Set(const EcmaVM *vm, const Local<JSValueRef> &key, const Local<JSValueRef> &value);
+    bool Has(Local<JSValueRef> key);
 };
 
 class ECMA_PUBLIC_API SetRef : public ObjectRef {

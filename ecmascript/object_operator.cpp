@@ -17,6 +17,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
@@ -622,8 +623,6 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         if (!elements->IsDictionaryMode()) {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
-                TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetElements())->Set(thread_,
-                    GetIndex(), value.GetTaggedValue());
             } else if (receiver->IsTypedArray()) {
                 JSTaggedValue holder = receiver.GetTaggedValue();
                 JSType jsType = holder.GetTaggedObject()->GetClass()->GetObjectType();
@@ -632,12 +631,16 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 if (typedArrayProperty.IsHole()) {
                     return false;
                 }
-            } else {
-                elements->Set(thread_, GetIndex(), value.GetTaggedValue());
+                return true;
             }
+            ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
             if (JSHClass::TransitToElementsKind(thread_, receiver, value)) {
                 SetIsTransition(true);
+                ElementsKind newKind = receiver->GetClass()->GetElementsKind();
+                // newKind != currentKind, we need to convert the whole array to the newKind.
+                Elements::MigrateArrayWithKind(thread_, receiver, oldKind, newKind);
             }
+            ElementAccessor::Set(thread_, receiver, GetIndex(), value, false);
             return true;
         }
 
@@ -827,12 +830,12 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedVa
 {
     ASSERT(IsElement() && GetIndex() < JSObject::MAX_ELEMENT_INDEX);
 
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
-    if (!elements->IsDictionaryMode()) {
-        elements->Set(thread_, index_, value);
+    if (!ElementAccessor::IsDictionaryMode(receiver)) {
+        ElementAccessor::Set(thread_, receiver, index_, value, true);
         return;
     }
 
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     NumberDictionary *dictionary = NumberDictionary::Cast(elements);
     dictionary->UpdateValue(thread_, GetIndex(), value);
 }
@@ -841,11 +844,11 @@ void ObjectOperator::DeleteElementInHolder() const
 {
     JSHandle<JSObject> obj(holder_);
 
-    TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
-    if (!elements->IsDictionaryMode()) {
-        elements->Set(thread_, index_, JSTaggedValue::Hole());
+    if (!ElementAccessor::IsDictionaryMode(obj)) {
+        ElementAccessor::Set(thread_, obj, index_, JSTaggedValue::Hole(), true, ElementsKind::HOLE);
         JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
     } else {
+        TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
         JSHandle<NumberDictionary> dictHandle(thread_, elements);
         JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread_, dictHandle, GetIndex());
         obj->SetElements(thread_, newDict);
@@ -920,7 +923,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
                 return;
             }
 
-            JSTaggedValue value = elements->Get(elementIndex_);
+            JSTaggedValue value = ElementAccessor::Get(obj, elementIndex_);
             if (value.IsHole()) {
                 return;
             }

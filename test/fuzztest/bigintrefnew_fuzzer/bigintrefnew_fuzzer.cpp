@@ -24,11 +24,15 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void BigIntRefNewFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void BigIntRefNewFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range.";
+        return;
+    }
     uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
     Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm, maxUint64);
     maxBigintUint64->Undefined(vm);

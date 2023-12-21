@@ -110,6 +110,11 @@ inline GateRef StubBuilder::Hole()
     return env_->GetBuilder()->HoleConstant();
 }
 
+inline GateRef StubBuilder::SpecialHole()
+{
+    return env_->GetBuilder()->SpecialHoleConstant();
+}
+
 inline GateRef StubBuilder::Null()
 {
     return env_->GetBuilder()->NullConstant();
@@ -782,6 +787,11 @@ inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
     return env_->GetBuilder()->ToTaggedInt(x);
 }
 
+inline GateRef StubBuilder::Int64ToTaggedIntPtr(GateRef x)
+{
+    return env_->GetBuilder()->ToTaggedIntPtr(x);
+}
+
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
@@ -1378,6 +1388,12 @@ inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
     return env_->GetBuilder()->IsCOWArray(objectType);
 }
 
+inline GateRef StubBuilder::IsMutantTaggedArray(GateRef elements)
+{
+    GateRef objectType = GetObjectType(LoadHClass(elements));
+    return env_->GetBuilder()->IsMutantTaggedArray(objectType);
+}
+
 inline GateRef StubBuilder::IsWritable(GateRef attr)
 {
     return Int32NotEqual(
@@ -1726,13 +1742,6 @@ inline GateRef StubBuilder::PropAttrGetOffset(GateRef attr)
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
 }
 
-inline GateRef StubBuilder::GetSortedIndex(GateRef attr)
-{
-    return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::SortedIndexField::START_BIT)),
-        Int32((1LLU << PropertyAttributes::SortedIndexField::SIZE) - 1));
-}
-
 // SetDictionaryOrder func in property_attribute.h
 inline GateRef StubBuilder::SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value)
 {
@@ -2020,6 +2029,13 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
+}
+
+inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(int64_t)));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(VariableType::INT64(), elements, dataOffset);
 }
 
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
@@ -2724,6 +2740,12 @@ inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef gl
     return Load(type, gConstAddr, constantIndex);
 }
 
+inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
+{
+    return Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetSingleCharTableOffset(env_->Is32Bit())));
+}
+
 inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
 {
     auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
@@ -2965,24 +2987,6 @@ inline GateRef StubBuilder::RemoveTaggedWeakTag(GateRef weak)
     return Int64ToTaggedPtr(IntPtrAnd(ChangeTaggedPointerToInt64(weak), IntPtr(~JSTaggedValue::TAG_WEAK)));
 }
 
-inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
-{
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    return Load(VariableType::NATIVE_POINTER(), currentContext, IntPtr(0));
-}
-
-inline GateRef StubBuilder::GetSortedKey(GateRef layoutInfo, GateRef index)
-{
-    GateRef fixedIdx = GetSortedIndex(layoutInfo, index);
-    return GetKey(layoutInfo, fixedIdx);
-}
-
-inline GateRef StubBuilder::GetSortedIndex(GateRef layoutInfo, GateRef index)
-{
-    return GetSortedIndex(GetAttr(layoutInfo, index));
-}
-
 inline GateRef StubBuilder::GetAttrIndex(GateRef index)
 {
     return Int32Add(Int32LSL(index, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)), Int32(LayoutInfo::ATTR_INDEX_OFFSET));
@@ -3003,28 +3007,6 @@ inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
 {
     GateRef fixedIdx = GetKeyIndex(index);
     return GetValueFromTaggedArray(layoutInfo, fixedIdx);
-}
-
-inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result)
-{
-    GateRef hash = HashFromHclassAndKey(glue, cls, key);
-    GateRef prop =
-        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
-    StoreWithNoBarrier(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()), cls);
-    StoreWithNoBarrier(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()), key);
-    StoreWithNoBarrier(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()), result);
-}
-
-inline void StubBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
-{
-    env_->GetBuilder()->StoreWithNoBarrier(type, base, offset, value);
-}
-
-inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key)
-{
-    GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
-    GateRef keyHash = GetKeyHashCode(glue, key);
-    return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

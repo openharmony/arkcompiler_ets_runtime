@@ -89,12 +89,12 @@ static JSTaggedType *SetupFrame(JSThread *thread, EcmaRuntimeCallInfo *info)
 {
     JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     size_t frameSize = 0;
+    const int num = 2;
+    // 2 means thread and numArgs
     if (thread->IsAsmInterpreter()) {
-        // 2 means thread and numArgs
-        frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        frameSize = InterpretedEntryFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
     } else {
-        // 2 means thread and numArgs
-        frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2;
+        frameSize = InterpretedFrame::NumOfMembers() + info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + num;
     }
     JSTaggedType *newSp = sp - frameSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
@@ -163,11 +163,15 @@ JSHandle<JSAPILightWeightSet> ConstructobjectLightWeightSet(JSThread *thread)
     return mapHandle;
 }
 
-void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range..";
+        return;
+    }
     auto thread = vm->GetAssociatedJSThread();
     JSHandle<JSAPILightWeightMap> mapHandle = ConstructobjectLightWeightMap(thread);
     JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
@@ -176,11 +180,15 @@ void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, [[
     JSNApi::DestroyJSVM(vm);
 }
 
-void JSValueRefIsLightWeightSetFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void JSValueRefIsLightWeightSetFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (size <= 0) {
+        LOG_ECMA(ERROR) << "Parameter out of range..";
+        return;
+    }
     auto thread = vm->GetAssociatedJSThread();
     JSHandle<JSAPILightWeightSet> mapHandle = ConstructobjectLightWeightSet(thread);
     JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);

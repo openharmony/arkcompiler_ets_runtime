@@ -80,7 +80,7 @@ public:
     std::shared_ptr<JSPandaFile> FindMergedJSPandaFile();
     void AddJSPandaFileVm(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile);
     void RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile *jsPandaFile);
-
+    void ClearNameMap();
 private:
     JSPandaFileManager() = default;
 

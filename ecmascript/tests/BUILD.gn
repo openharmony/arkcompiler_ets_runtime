@@ -26,63 +26,11 @@ host_unittest_action("EcmaVm_001_Test") {
     "builtins_test.cpp",
     "byte_array_test.cpp",
     "concurrent_marking_test.cpp",
-    "concurrent_sweep_test.cpp",
-    "dump_test.cpp",
-
-    # "ecma_string_test.cpp",
-    "constant_string_test.cpp",
-    "ecma_context_test.cpp",
-    "ecma_string_accessor_test.cpp",
-    "ecma_string_table_test.cpp",
-    "ecma_vm_test.cpp",
-    "frame_test.cpp",
-    "gc_test.cpp",
-    "global_dictionary_test.cpp",
-    "global_index_map_test.cpp",
-    "glue_regs_test.cpp",
-    "handle_leak_test.cpp",
-    "huge_object_test.cpp",
-    "incremental_marking_test.cpp",
-    "js_api_arraylist_iterator_test.cpp",
-    "js_api_arraylist_test.cpp",
-    "js_api_deque_iterator_test.cpp",
-    "js_api_deque_test.cpp",
-    "js_api_hashmap_iterator_test.cpp",
-    "js_api_hashmap_test.cpp",
-    "js_api_hashset_iterator_test.cpp",
-    "js_api_hashset_test.cpp",
-    "js_api_lightweightmap_iterator_test.cpp",
-    "js_api_lightweightmap_test.cpp",
-    "js_api_lightweightset_iterator_test.cpp",
-    "js_api_lightweightset_test.cpp",
-    "js_api_linked_list_iterator_test.cpp",
-    "js_api_linked_list_test.cpp",
-    "js_api_list_iterator_test.cpp",
-    "js_api_list_test.cpp",
-    "js_api_plain_array_iterator_test.cpp",
-    "js_api_plain_array_test.cpp",
-    "js_api_queue_iterator_test.cpp",
-    "js_api_queue_test.cpp",
-    "js_api_stack_iterator_test.cpp",
-    "js_api_stack_test.cpp",
-    "js_api_tree_map_iterator_test.cpp",
-    "js_api_tree_map_test.cpp",
-    "js_api_tree_set_iterator_test.cpp",
-    "js_api_tree_set_test.cpp",
-    "js_api_vector_iterator_test.cpp",
-    "js_api_vector_test.cpp",
-    "js_arguments_test.cpp",
-    "js_array_buffer_test.cpp",
-    "js_array_iterator_test.cpp",
-    "js_array_test.cpp",
-    "js_async_function_test.cpp",
-    "js_bigint_test.cpp",
-    "throw_oom_error_test.cpp",
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:asm_interp_enable_config",
-    "//arkcompiler/ets_runtime:ecma_test_config",
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
     "$ark_root/assembler:arkassembler_public_config",
     "$ark_root/libpandafile:arkfile_public_config",
   ]
@@ -90,7 +38,7 @@ host_unittest_action("EcmaVm_001_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -104,43 +52,26 @@ host_unittest_action("EcmaVm_002_Test") {
 
   sources = [
     # test file
-    "js_async_generator_object_test.cpp",
-    "js_collator_test.cpp",
-    "js_dataview_test.cpp",
-    "js_date_test.cpp",
-    "js_date_time_format_test.cpp",
-    "js_displaynames_test.cpp",
-    "js_finalization_registry_test.cpp",
-    "js_forin_iterator_test.cpp",
-    "js_function_test.cpp",
-    "js_generator_object_test.cpp",
-    "js_handle_test.cpp",
-    "js_hclass_test.cpp",
-    "js_iterator_test.cpp",
-    "js_list_format_test.cpp",
-    "js_locale_test.cpp",
-    "js_map_iterator_test.cpp",
-    "js_map_test.cpp",
-    "js_number_format_test.cpp",
-    "js_object_test.cpp",
-    "js_plural_rules_test.cpp",
-    "js_primitive_ref_test.cpp",
-    "js_promise_test.cpp",
-    "js_proxy_test.cpp",
-    "js_regexp_iterator_test.cpp",
-    "js_relative_time_format_test.cpp",
-    "locale_helper_test.cpp",
+    "concurrent_sweep_test.cpp",
+    "constant_string_test.cpp",
+    "dump_test.cpp",
+
+    # "ecma_string_test.cpp",
+    "ecma_context_test.cpp",
+    "ecma_string_accessor_test.cpp",
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
-    "//arkcompiler/ets_runtime:icu_path_test_config",
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
   ]
 
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -154,44 +85,12 @@ host_unittest_action("EcmaVm_003_Test") {
 
   sources = [
     # test file
-    "js_serializer_test.cpp",
-    "js_set_iterator_test.cpp",
-    "js_set_test.cpp",
-    "js_stable_array_test.cpp",
-    "js_symbol_test.cpp",
-    "js_tagged_number_test.cpp",
-    "js_tagged_queue_test.cpp",
-    "js_typed_array_test.cpp",
-    "js_verification_test.cpp",
-    "layout_info_test.cpp",
-    "lexical_env_test.cpp",
-    "linked_hash_table_test.cpp",
-    "linked_node_test.cpp",
-    "mem_controller_test.cpp",
-    "mem_map_allocator_test.cpp",
-    "native_pointer_test.cpp",
-    "object_factory_test.cpp",
-    "object_operator_test.cpp",
-    "rb_tree_node_test.cpp",
-    "read_only_space_test.cpp",
-    "symbol_table_test.cpp",
-    "tagged_array_test.cpp",
-    "tagged_dictionary_test.cpp",
-    "tagged_hash_array_test.cpp",
-    "tagged_tree_test.cpp",
-    "tagged_value_test.cpp",
-    "template_map_test.cpp",
-    "template_string_test.cpp",
-    "transitions_dictionary_test.cpp",
-    "waiter_list_test.cpp",
-    "weak_ref_old_gc_test.cpp",
-    "weak_ref_semi_gc_test.cpp",
-
-    # "weak_vector_test.cpp",
+    "ecma_string_table_test.cpp",
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
     "$ark_root/assembler:arkassembler_public_config",
     "$ark_root/libpandafile:arkfile_public_config",
   ]
@@ -199,8 +98,1230 @@ host_unittest_action("EcmaVm_003_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_004_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "global_index_map_test.cpp",
+    "glue_regs_test.cpp",
+    "handle_leak_test.cpp",
+    "huge_object_test.cpp",
+    "incremental_marking_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_005_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_arraylist_iterator_test.cpp",
+    "js_api_arraylist_test.cpp",
+    "js_api_deque_iterator_test.cpp",
+    "js_api_deque_test.cpp",
+    "js_api_hashmap_iterator_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_006_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_hashmap_test.cpp",
+    "js_api_hashset_iterator_test.cpp",
+    "js_api_hashset_test.cpp",
+    "js_api_lightweightmap_iterator_test.cpp",
+    "js_api_lightweightmap_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_007_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_lightweightset_iterator_test.cpp",
+    "js_api_lightweightset_test.cpp",
+    "js_api_linked_list_iterator_test.cpp",
+    "js_api_linked_list_test.cpp",
+    "js_api_list_iterator_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_008_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_list_test.cpp",
+    "js_api_plain_array_iterator_test.cpp",
+    "js_api_plain_array_test.cpp",
+    "js_api_queue_iterator_test.cpp",
+    "js_api_queue_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_009_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_stack_iterator_test.cpp",
+    "js_api_stack_test.cpp",
+    "js_api_tree_map_iterator_test.cpp",
+    "js_api_tree_map_test.cpp",
+    "js_api_tree_set_iterator_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_010_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_api_tree_set_test.cpp",
+    "js_api_vector_iterator_test.cpp",
+    "js_api_vector_test.cpp",
+    "js_arguments_test.cpp",
+    "js_array_buffer_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_011_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_array_iterator_test.cpp",
+    "js_array_test.cpp",
+    "js_async_function_test.cpp",
+    "js_bigint_test.cpp",
+    "throw_oom_error_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_012_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_async_generator_object_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_013_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_displaynames_test.cpp",
+    "js_finalization_registry_test.cpp",
+    "js_forin_iterator_test.cpp",
+    "js_function_test.cpp",
+    "js_generator_object_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_014_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_handle_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_015_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_map_iterator_test.cpp",
+    "js_map_test.cpp",
+    "js_number_format_test.cpp",
+    "js_object_test.cpp",
+    "js_plural_rules_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_016_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_primitive_ref_test.cpp",
+    "js_promise_test.cpp",
+    "js_proxy_test.cpp",
+    "js_regexp_iterator_test.cpp",
+    "js_relative_time_format_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_017_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "locale_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_018_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_serializer_test.cpp",
+    "js_set_iterator_test.cpp",
+    "js_set_test.cpp",
+    "js_stable_array_test.cpp",
+    "js_symbol_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_019_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_tagged_number_test.cpp",
+    "js_tagged_queue_test.cpp",
+    "js_typed_array_test.cpp",
+    "js_verification_test.cpp",
+    "layout_info_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_020_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "lexical_env_test.cpp",
+    "linked_hash_table_test.cpp",
+    "linked_node_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_021_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "native_pointer_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_022_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "symbol_table_test.cpp",
+    "tagged_array_test.cpp",
+    "tagged_dictionary_test.cpp",
+    "tagged_hash_array_test.cpp",
+    "tagged_tree_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_023_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "tagged_value_test.cpp",
+    "template_map_test.cpp",
+    "template_string_test.cpp",
+    "transitions_dictionary_test.cpp",
+    "waiter_list_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_024_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "weak_ref_old_gc_test.cpp",
+    "weak_ref_semi_gc_test.cpp",
+
+    # "weak_vector_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_025_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "mem_controller_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_026_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "mem_map_allocator_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_027_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_collator_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_028_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_dataview_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_029_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_date_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_030_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_date_time_format_first_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_031_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_hclass_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_032_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_iterator_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_033_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_list_format_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_034_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_locale_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_035_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "ecma_vm_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_036_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "frame_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_037_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_first_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_038_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "global_dictionary_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_039_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "object_factory_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_040_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "object_operator_first_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_041_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "rb_tree_node_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_042_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "read_only_space_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_043_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_second_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_044_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "object_operator_second_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_045_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_date_time_format_second_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_046_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "object_operator_third_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("EcmaVm_047_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_third_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
 
@@ -217,6 +1338,50 @@ group("unittest") {
     ":EcmaVm_001_Test",
     ":EcmaVm_002_Test",
     ":EcmaVm_003_Test",
+    ":EcmaVm_004_Test",
+    ":EcmaVm_005_Test",
+    ":EcmaVm_006_Test",
+    ":EcmaVm_007_Test",
+    ":EcmaVm_008_Test",
+    ":EcmaVm_009_Test",
+    ":EcmaVm_010_Test",
+    ":EcmaVm_011_Test",
+    ":EcmaVm_012_Test",
+    ":EcmaVm_013_Test",
+    ":EcmaVm_014_Test",
+    ":EcmaVm_015_Test",
+    ":EcmaVm_016_Test",
+    ":EcmaVm_017_Test",
+    ":EcmaVm_018_Test",
+    ":EcmaVm_019_Test",
+    ":EcmaVm_020_Test",
+    ":EcmaVm_021_Test",
+    ":EcmaVm_022_Test",
+    ":EcmaVm_023_Test",
+    ":EcmaVm_024_Test",
+    ":EcmaVm_025_Test",
+    ":EcmaVm_026_Test",
+    ":EcmaVm_027_Test",
+    ":EcmaVm_028_Test",
+    ":EcmaVm_029_Test",
+    ":EcmaVm_030_Test",
+    ":EcmaVm_031_Test",
+    ":EcmaVm_032_Test",
+    ":EcmaVm_033_Test",
+    ":EcmaVm_034_Test",
+    ":EcmaVm_035_Test",
+    ":EcmaVm_036_Test",
+    ":EcmaVm_037_Test",
+    ":EcmaVm_038_Test",
+    ":EcmaVm_039_Test",
+    ":EcmaVm_040_Test",
+    ":EcmaVm_041_Test",
+    ":EcmaVm_042_Test",
+    ":EcmaVm_043_Test",
+    ":EcmaVm_044_Test",
+    ":EcmaVm_045_Test",
+    ":EcmaVm_046_Test",
+    ":EcmaVm_047_Test",
   ]
 }
 
@@ -228,5 +1393,49 @@ group("host_unittest") {
     ":EcmaVm_001_TestAction",
     ":EcmaVm_002_TestAction",
     ":EcmaVm_003_TestAction",
+    ":EcmaVm_004_TestAction",
+    ":EcmaVm_005_TestAction",
+    ":EcmaVm_006_TestAction",
+    ":EcmaVm_007_TestAction",
+    ":EcmaVm_008_TestAction",
+    ":EcmaVm_009_TestAction",
+    ":EcmaVm_010_TestAction",
+    ":EcmaVm_011_TestAction",
+    ":EcmaVm_012_TestAction",
+    ":EcmaVm_013_TestAction",
+    ":EcmaVm_014_TestAction",
+    ":EcmaVm_015_TestAction",
+    ":EcmaVm_016_TestAction",
+    ":EcmaVm_017_TestAction",
+    ":EcmaVm_018_TestAction",
+    ":EcmaVm_019_TestAction",
+    ":EcmaVm_020_TestAction",
+    ":EcmaVm_021_TestAction",
+    ":EcmaVm_022_TestAction",
+    ":EcmaVm_023_TestAction",
+    ":EcmaVm_024_TestAction",
+    ":EcmaVm_025_TestAction",
+    ":EcmaVm_026_TestAction",
+    ":EcmaVm_027_TestAction",
+    ":EcmaVm_028_TestAction",
+    ":EcmaVm_029_TestAction",
+    ":EcmaVm_030_TestAction",
+    ":EcmaVm_031_TestAction",
+    ":EcmaVm_032_TestAction",
+    ":EcmaVm_033_TestAction",
+    ":EcmaVm_034_TestAction",
+    ":EcmaVm_035_TestAction",
+    ":EcmaVm_036_TestAction",
+    ":EcmaVm_037_TestAction",
+    ":EcmaVm_038_TestAction",
+    ":EcmaVm_039_TestAction",
+    ":EcmaVm_040_TestAction",
+    ":EcmaVm_041_TestAction",
+    ":EcmaVm_042_TestAction",
+    ":EcmaVm_043_TestAction",
+    ":EcmaVm_044_TestAction",
+    ":EcmaVm_045_TestAction",
+    ":EcmaVm_046_TestAction",
+    ":EcmaVm_047_TestAction",
   ]
 }
