@@ -728,6 +728,8 @@ private:
                                        PropertyKind kind);
     static bool IsSimpleEnumCacheValid(JSTaggedValue receiver);
     static bool IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver);
+    static void TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
+                                     uint32_t numberInlinedProps);
 };
 }  // namespace ecmascript
 }  // namespace panda

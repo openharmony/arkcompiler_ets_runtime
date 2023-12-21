@@ -213,12 +213,7 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     JSHClass::TransitionToDictionary(thread, receiver);
 
     // trim in-obj properties space
-    if (numberInlinedProps > 0) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t newSize = receiver->GetClass()->GetObjectSize();
-        size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
-        factory->FillFreeObject(ToUintPtr(*receiver) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*receiver));
-    }
+    TrimInlinePropsSpace(thread, receiver, numberInlinedProps);
 
     return dict;
 }
@@ -2495,7 +2490,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         SetAllPropertys(thread, obj, properties, propsLen, ihcVal);
         return obj;
     } else {
-        JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+        JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
         JSHClass::TransitionToDictionary(thread, obj);
 
         JSMutableHandle<NameDictionary> dict(
@@ -2587,6 +2582,17 @@ bool JSObject::UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue 
     }
     dict->UpdateValue(thread, entry, value);
     return true;
+}
+
+void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
+                                    uint32_t numberInlinedProps)
+{
+    if (numberInlinedProps > 0) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        uint32_t newSize = object->GetClass()->GetObjectSize();
+        size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
+        factory->FillFreeObject(ToUintPtr(*object) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*object));
+    }
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray

@@ -218,7 +218,7 @@ public:
 
     JSHandle<StoreTSHandler> NewStoreTSHandler();
 
-    JSHandle<JSObject> NewEmptyJSObject();
+    JSHandle<JSObject> NewEmptyJSObject(uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     // use for others create, prototype is Function.prototype
     // use for native function
@@ -519,7 +519,8 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
-    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor);
+    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
+                                                uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
