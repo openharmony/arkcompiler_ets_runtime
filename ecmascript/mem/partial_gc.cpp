@@ -110,7 +110,6 @@ void PartialGC::Mark()
     }
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
     if (heap_->IsFullMark()) {
-        heap_->GetJSThread()->ClearPropertiesCache();
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     } else {
         heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);

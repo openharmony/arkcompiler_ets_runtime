@@ -354,17 +354,6 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
     }
 }
 
-void JSThread::ClearPropertiesCache()
-{
-    // Hidden class are stored in non movable space, and only full mark and full gc need to clear.
-    for (auto item : contexts_) {
-        PropertiesCache* cache = item->GetPropertiesCache();
-        if (cache != nullptr) {
-            cache->Clear();
-        }
-    }
-}
-
 bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

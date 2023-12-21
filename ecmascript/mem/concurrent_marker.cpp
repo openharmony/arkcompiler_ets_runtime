@@ -131,7 +131,6 @@ void ConcurrentMarker::InitializeMarking()
     thread_->SetMarkStatus(MarkStatus::MARKING);
 
     if (heap_->IsFullMark()) {
-        thread_->ClearPropertiesCache();
         heapObjectSize_ = heap_->GetHeapObjectSize();
         heap_->GetOldSpace()->SelectCSet();
         heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
