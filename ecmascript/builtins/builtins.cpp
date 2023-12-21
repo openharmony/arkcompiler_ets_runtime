@@ -215,8 +215,8 @@ void Builtins::InitializeForSharing(const JSHandle<GlobalEnv> &env)
     env->SetSharedObjectFunctionPrototype(thread_, sobjFuncPrototype);
     sobjFuncPrototype->GetJSHClass()->SetExtensible(false);
     JSHandle<JSHClass> functionClass =
-    factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSSharedFunction::SIZE,JSType::JS_SHARED_FUNCTION,
-                                  env->GetSharedFunctionPrototype());
+        factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSSharedFunction::SIZE,
+                                      JSType::JS_SHARED_FUNCTION, env->GetSharedFunctionPrototype(), true);
     functionClass->SetExtensible(false);
     env->SetSharedFunctionClassWithoutProto(thread_, functionClass);
 }
@@ -297,6 +297,7 @@ void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
     // 19.2.3.5 Function.prototype.toString ( )
     SetSharedFunction(env, sfuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
         Function::FunctionPrototypeToString, FunctionLength::ZERO);
+    sfuncPrototype->GetJSHClass()->SetExtensible(false);
 }
 
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)

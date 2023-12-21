@@ -1533,7 +1533,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                                      const JSHandle<JSTaggedValue> &prototype)
+                                                      const JSHandle<JSTaggedValue> &prototype, bool sendable)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);
@@ -1550,7 +1550,8 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
     JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
     {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        PropertyAttributes attributes = sendable ? PropertyAttributes::DefaultAccessor(false, false, false) :
+            PropertyAttributes::DefaultAccessor(false, false, true);
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
@@ -1561,7 +1562,8 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
     // not set name in-object property on class which may have a name() method
     if (!JSFunction::IsClassConstructor(kind)) {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        PropertyAttributes attributes = sendable ? PropertyAttributes::DefaultAccessor(false, false, false) :
+            PropertyAttributes::DefaultAccessor(false, false, true);
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);

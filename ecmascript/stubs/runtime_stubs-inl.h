@@ -899,10 +899,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromSharedFamily), JSTaggedValue::Exception());
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    if (!base->IsHole() && !base->IsNull() && !base->IsJSSharedFunction()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "sendable class shouldn't extend non-sendable class",
-            JSTaggedValue::Exception());
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
