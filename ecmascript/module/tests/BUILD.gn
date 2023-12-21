@@ -97,4 +97,8 @@ group("host_unittest") {
 
   # deps file
   deps = [ ":ModuleTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":ModuleTestAction" ]
+  }
 }

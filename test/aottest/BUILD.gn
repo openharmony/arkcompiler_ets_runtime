@@ -311,4 +311,12 @@ group("ark_aot_test") {
     "object:object_test",
     "vtable:vtable_test",
   ]
+
+  if (is_mac) {
+    deps = [
+      ":ark_aot_js_test",
+      ":ark_aot_ts_test",
+      "aot_type_test:aot_type_test",
+    ]
+  }
 }

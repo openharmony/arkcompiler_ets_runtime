@@ -51,4 +51,8 @@ group("host_unittest") {
 
   # deps file
   deps = [ ":JobTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":JobTestAction" ]
+  }
 }

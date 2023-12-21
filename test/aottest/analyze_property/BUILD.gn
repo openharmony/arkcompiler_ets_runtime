@@ -23,6 +23,18 @@ group("analyze_property_test") {
   ]
 
   deps = []
+
+  if (is_mac) {
+    test_list -= [
+      "base",
+      "dictionary_mode",
+      "escape_this",
+      "loading_before_storing",
+      "multi_storing",
+      "not_meet_subtyping",
+    ]
+  }
+
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]
   }

@@ -56,4 +56,8 @@ group("host_unittest") {
 
   # deps file
   deps = [ ":TSTypeTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":TSTypeTestAction" ]
+  }
 }

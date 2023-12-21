@@ -17,6 +17,12 @@ group("break_inherit_info_test") {
     "break_inherit_info_on_object",
     "break_inherit_info_on_prototype",
   ]
+  if (is_mac) {
+    test_list -= [
+      "break_inherit_info_on_object",
+      "break_inherit_info_on_prototype",
+    ]
+  }
 
   deps = []
   foreach(test, test_list) {

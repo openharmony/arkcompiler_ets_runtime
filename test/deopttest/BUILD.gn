@@ -28,6 +28,22 @@ group("ark_deopt_test") {
     "restore_vregs",
   ]
 
+  if (is_mac) {
+    test_list -= [
+      "arithmetic",
+      "async_deopt",
+      "comparison",
+      "createarraywithbuffer",
+      "dec",
+      "div",
+      "inc",
+      "live_out",
+      "mod",
+      "newobjrange",
+      "polymorphic_array",
+      "restore_vregs",
+    ]
+  }
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

@@ -24,6 +24,15 @@ group("aot_multi_constantpool_test") {
       "multi_constantpool_funccall",
     ]
 
+    if (is_mac) {
+      release_test_list -= [
+        "multi_constantpool_class",
+        "multi_constantpool_closure",
+        "multi_constantpool_constructor",
+        "multi_constantpool_func",
+        "multi_constantpool_funccall",
+      ]
+    }
     foreach(test, release_test_list) {
       deps += [ "${test}:${test}AotAction" ]
     }

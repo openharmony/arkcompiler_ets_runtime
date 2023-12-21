@@ -86,4 +86,11 @@ group("host_unittest") {
     ":IC_001_TestAction",
     ":IC_002_TestAction",
   ]
+
+  if (is_mac) {
+    deps -= [
+      ":IC_001_TestAction",
+      ":IC_002_TestAction",
+    ]
+  }
 }

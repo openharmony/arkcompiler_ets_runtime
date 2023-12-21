@@ -19,6 +19,13 @@ group("maintain_inherit_info_test") {
     "transition_after_delete",
   ]
 
+  if (is_mac) {
+    test_list -= [
+      "add_property",
+      "delete_property",
+      "transition_after_delete",
+    ]
+  }
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

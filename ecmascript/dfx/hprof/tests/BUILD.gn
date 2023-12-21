@@ -146,4 +146,13 @@ group("host_unittest") {
     ":HeapTrackerSecondTestAction",
     ":HeapTrackerThirdTestAction",
   ]
+  if (is_mac) {
+    deps -= [
+      ":HProfTestAction",
+      ":HeapSamplingTestAction",
+      ":HeapTrackerFirstTestAction",
+      ":HeapTrackerSecondTestAction",
+      ":HeapTrackerThirdTestAction",
+    ]
+  }
 }

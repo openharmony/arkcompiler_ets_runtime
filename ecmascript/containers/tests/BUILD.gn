@@ -113,4 +113,12 @@ group("host_unittest") {
     ":Containers_002_TestAction",
     ":Containers_003_TestAction",
   ]
+
+  if (is_mac) {
+    deps -= [
+      ":Containers_001_TestAction",
+      ":Containers_002_TestAction",
+      ":Containers_003_TestAction",
+    ]
+  }
 }

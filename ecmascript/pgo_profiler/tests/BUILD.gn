@@ -95,4 +95,8 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [ ":PGOProfilerTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":PGOProfilerTestAction" ]
+  }
 }

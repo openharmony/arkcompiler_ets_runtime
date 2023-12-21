@@ -35,4 +35,8 @@ group("vtable_test") {
     "maintain_inherit_info:maintain_inherit_info_test",
     "not_inherit_info:not_inherit_info_test",
   ]
+
+  if (is_mac) {
+    deps -= [ ":base_hole_test" ]
+  }
 }

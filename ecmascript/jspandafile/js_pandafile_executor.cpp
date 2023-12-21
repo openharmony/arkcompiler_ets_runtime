@@ -41,13 +41,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
     if (!vm->IsBundlePack() && !excuteFromJob) {
-#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
+#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST) || defined(PANDA_TARGET_MACOS)
         name = filename;
         entry = entryPoint.data();
 #else
         CString normalName = PathHelper::NormalizePath(filename);
         ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS)
         if (name.empty()) {
             name = vm->GetAssetPath();
         }
@@ -152,7 +152,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBuffer");
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS)
     name = vm->GetAssetPath();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = vm->GetAssetPath();
@@ -314,7 +314,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBufferSecure");
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS)
     name = vm->GetAssetPath();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = vm->GetAssetPath();

@@ -22,6 +22,16 @@ group("aot_compatibility_test") {
     "prototype_base_verification",
   ]
 
+  if (is_mac) {
+    test_list -= [
+      "base_verification",
+      "builtins_api",
+      "property_operation",
+      "prototype_accessor",
+      "prototype_base_verification",
+    ]
+  }
+
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

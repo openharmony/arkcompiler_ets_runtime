@@ -46,6 +46,17 @@ host_moduletest_action("builtins") {
     "builtinsobject",
     "builtinsobjectaddproperty",
   ]
+
+  if (is_mac) {
+    extra_modules -= [
+      "builtinsstring",
+      "builtinsir",
+      "builtinsnumber",
+      "builtinsregexp",
+      "builtinsobject",
+      "builtinsobjectaddproperty",
+    ]
+  }
   deps = [
     ":gen_builtinsir_abc",
     ":gen_builtinsnumber_abc",

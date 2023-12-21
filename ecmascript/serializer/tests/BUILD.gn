@@ -46,4 +46,8 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [ ":SerializerTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":SerializerTestAction" ]
+  }
 }

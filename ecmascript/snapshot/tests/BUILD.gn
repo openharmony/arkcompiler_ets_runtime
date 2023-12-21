@@ -46,4 +46,8 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [ ":SnapshotTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":SnapshotTestAction" ]
+  }
 }

@@ -18,20 +18,19 @@ import("$build_root/toolchain/toolchain.gni")
 
 group("ark_js_packages") {
   deps = []
-  if (host_os != "mac") {
+
+  deps += [
+    ":libark_jsruntime",
+    "ecmascript/compiler:stub.an",
+    "ecmascript/js_vm:ark_js_vm",
+    "ecmascript/quick_fix:quick_fix",
+  ]
+  if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
+      is_ohos) {
     deps += [
-      ":libark_jsruntime",
-      "ecmascript/compiler:stub.an",
-      "ecmascript/js_vm:ark_js_vm",
-      "ecmascript/quick_fix:quick_fix",
+      "ecmascript/compiler:ark_aot_compiler",
+      "ecmascript/pgo_profiler/prof_dump:profdump",
     ]
-    if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
-        is_ohos) {
-      deps += [
-        "ecmascript/compiler:ark_aot_compiler",
-        "ecmascript/pgo_profiler/prof_dump:profdump",
-      ]
-    }
   }
 }
 
@@ -67,47 +66,45 @@ group("ark_js_host_mac_tools_packages") {
 
 group("ark_js_host_linux_tools_packages") {
   deps = []
-  if (host_os != "mac") {
+
+  deps += [
+    "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
+    "ecmascript/quick_fix:quick_fix(${host_toolchain})",
+  ]
+  if (is_standard_system) {
     deps += [
-      "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
-      "ecmascript/quick_fix:quick_fix(${host_toolchain})",
+      "ecmascript/compiler:ark_aot_compiler(${host_toolchain})",
+      "ecmascript/compiler:ark_stub_compiler(${host_toolchain})",
+      "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
     ]
-    if (is_standard_system) {
-      deps += [
-        "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
-        "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})",
-        "//arkcompiler/ets_runtime/ecmascript/compiler:ark_stub_compiler(${host_toolchain})",
-      ]
-    }
   }
 }
 
 group("ark_js_unittest") {
   testonly = true
   deps = []
-  if (host_os != "mac") {
-    deps += [
-      "ecmascript/pgo_profiler/tests:unittest",
-      "ecmascript/serializer/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/base/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/builtins/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/containers/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/debugger/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ic/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/jobs/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/module/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/napi/test:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/regexp/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/require/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
-    ]
-    if (is_ohos && is_standard_system) {
-      deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
-    }
+
+  deps += [
+    "ecmascript/base/tests:unittest",
+    "ecmascript/builtins/tests:unittest",
+    "ecmascript/containers/tests:unittest",
+    "ecmascript/debugger/tests:unittest",
+    "ecmascript/dfx/hprof/tests:unittest",
+    "ecmascript/ic/tests:unittest",
+    "ecmascript/jobs/tests:unittest",
+    "ecmascript/jspandafile/tests:unittest",
+    "ecmascript/module/tests:unittest",
+    "ecmascript/napi/test:unittest",
+    "ecmascript/pgo_profiler/tests:unittest",
+    "ecmascript/regexp/tests:unittest",
+    "ecmascript/require/tests:unittest",
+    "ecmascript/serializer/tests:unittest",
+    "ecmascript/snapshot/tests:unittest",
+    "ecmascript/tests:unittest",
+    "ecmascript/ts_types/tests:unittest",
+  ]
+  if (is_ohos && is_standard_system) {
+    deps += [ "test/fuzztest:fuzztest" ]
   }
 }
 
@@ -120,33 +117,32 @@ group("ark_js_perform") {
 group("ark_unittest") {
   testonly = true
   deps = []
-  if (host_os != "mac") {
-    # js unittest
-    deps += [
-      "ecmascript/base/tests:host_unittest",
-      "ecmascript/builtins/tests:host_unittest",
-      "ecmascript/containers/tests:host_unittest",
-      "ecmascript/dfx/hprof/tests:host_unittest",
-      "ecmascript/ic/tests:host_unittest",
-      "ecmascript/jobs/tests:host_unittest",
-      "ecmascript/jspandafile/tests:host_unittest",
-      "ecmascript/module/tests:host_unittest",
-      "ecmascript/napi/test:host_unittest",
-      "ecmascript/pgo_profiler/tests:host_unittest",
-      "ecmascript/regexp/tests:host_unittest",
-      "ecmascript/require/tests:host_unittest",
-      "ecmascript/serializer/tests:host_unittest",
-      "ecmascript/snapshot/tests:host_unittest",
-      "ecmascript/tests:host_unittest",
-      "ecmascript/ts_types/tests:host_unittest",
-    ]
-    if (!run_with_asan) {
-      if (!(ark_standalone_build && current_os == "ohos")) {
-        deps += [
-          "ecmascript/compiler/tests:host_unittest",
-          "ecmascript/ohos/tests:host_unittest",
-        ]
-      }
+
+  # js unittest
+  deps += [
+    "ecmascript/base/tests:host_unittest",
+    "ecmascript/builtins/tests:host_unittest",
+    "ecmascript/containers/tests:host_unittest",
+    "ecmascript/dfx/hprof/tests:host_unittest",
+    "ecmascript/ic/tests:host_unittest",
+    "ecmascript/jobs/tests:host_unittest",
+    "ecmascript/jspandafile/tests:host_unittest",
+    "ecmascript/module/tests:host_unittest",
+    "ecmascript/napi/test:host_unittest",
+    "ecmascript/pgo_profiler/tests:host_unittest",
+    "ecmascript/regexp/tests:host_unittest",
+    "ecmascript/require/tests:host_unittest",
+    "ecmascript/serializer/tests:host_unittest",
+    "ecmascript/snapshot/tests:host_unittest",
+    "ecmascript/tests:host_unittest",
+    "ecmascript/ts_types/tests:host_unittest",
+  ]
+  if (!run_with_asan) {
+    if (!(ark_standalone_build && current_os == "ohos")) {
+      deps += [
+        "ecmascript/compiler/tests:host_unittest",
+        "ecmascript/ohos/tests:host_unittest",
+      ]
     }
   }
 }
@@ -177,35 +173,38 @@ es2abc_gen_abc("es2abc_gen_builtins_d_abc") {
 group("ark_runtime_host_unittest") {
   testonly = true
   deps = []
-  if (host_os != "mac") {
-    # js unittest
+
+  # js unittest
+  deps += [
+    ":ark_unittest",
+    "$js_root/test/pgotypeinfer:ark_pgotypeinfer_test",
+  ]
+
+  # js bytecode test
+  deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
+
+  # quickfix test
+  deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
+  if (!ark_standalone_build && run_regress_test) {
+    deps += [ "$js_root/test/regresstest:ark_regress_test" ]
+  }
+
+  # execution test
+  deps += [ "$js_root/test/executiontest:ark_execution_test" ]
+
+  # ts aot test and asm test
+  if (!run_with_asan) {
     deps += [
-      ":ark_unittest",
-      "$js_root/test/pgotypeinfer:ark_pgotypeinfer_test",
+      "$js_root/test/aottest:ark_aot_test",
+
+      #"$js_root/test/moduletest:ark_asm_single_step_test",
+      "$js_root/test/deopttest:ark_deopt_test",
+      "$js_root/test/moduletest:ark_asm_test",
+      "$js_root/test/typeinfer:ark_typeinfer_test",
     ]
 
-    # js bytecode test
-    deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
-
-    # quickfix test
-    deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
-    if (!ark_standalone_build && run_regress_test) {
-      deps += [ "$js_root/test/regresstest:ark_regress_test" ]
-    }
-
-    # execution test
-    deps += [ "$js_root/test/executiontest:ark_execution_test" ]
-
-    # ts aot test and asm test
-    if (!run_with_asan) {
-      deps += [
-        "$js_root/test/aottest:ark_aot_test",
-
-        #"$js_root/test/moduletest:ark_asm_single_step_test",
-        "$js_root/test/deopttest:ark_deopt_test",
-        "$js_root/test/moduletest:ark_asm_test",
-        "$js_root/test/typeinfer:ark_typeinfer_test",
-      ]
+    if (is_mac) {
+      deps -= [ "$js_root/test/moduletest:ark_asm_test" ]
     }
   }
 }
@@ -342,6 +341,7 @@ config("ark_jsruntime_common_config") {
       defines -= ark_profiler_features
     }
   } else if (is_mac) {
+    cflags_cc += [ "-std=c++17" ]
     defines += [
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
@@ -508,8 +508,10 @@ config("ecma_test_config") {
   if (enable_leak_check || is_asan) {
     defines = [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
+  if (!is_mac) {
+    ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  }
 
-  ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
   if (!ark_standalone_build) {
     ldflags += [ "-Wl,--lto-O0" ]
   }
@@ -525,7 +527,7 @@ config("icu_path_test_config") {
 config("asm_interp_enable_config") {
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios" && !is_emulator) {
+      target_os != "ios" && !is_emulator) {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
@@ -1135,7 +1137,7 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
+      target_os != "ios") {
     deps += [ "ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -1183,7 +1185,7 @@ ohos_source_set("libark_jsruntime_static") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
+      target_os != "ios") {
     deps += [ "ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]

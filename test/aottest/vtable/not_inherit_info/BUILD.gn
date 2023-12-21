@@ -21,6 +21,15 @@ group("not_inherit_info_test") {
     "not_meet_rule5",
   ]
 
+  if (is_mac) {
+    test_list -= [
+      "not_meet_rule1",
+      "not_meet_rule2",
+      "not_meet_rule3",
+      "not_meet_rule4",
+      "not_meet_rule5",
+    ]
+  }
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

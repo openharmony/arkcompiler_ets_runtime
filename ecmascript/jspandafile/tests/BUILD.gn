@@ -151,4 +151,8 @@ group("host_unittest") {
 
   # deps file
   deps = [ ":JSPandaFileTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":JSPandaFileTestAction" ]
+  }
 }

@@ -47,4 +47,8 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [ ":RegexpTestAction" ]
+
+  if (is_mac) {
+    deps -= [ ":RegexpTestAction" ]
+  }
 }

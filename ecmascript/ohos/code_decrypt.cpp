@@ -14,8 +14,7 @@
  */
 #if defined(CODE_ENCRYPTION_ENABLE)
 #include <sys/ioctl.h>
-#include <linux/ioctl.h>
-#include <linux/types.h>
+#include <sys/types.h>
 #endif
 #include "ecmascript/ohos/code_decrypt.h"
 
