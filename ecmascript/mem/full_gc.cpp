@@ -70,7 +70,6 @@ void FullGC::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Initialize");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Prepare();
-    heap_->GetJSThread()->ClearPropertiesCache();
     auto callback = [](Region *current) {
         current->ResetAliveObject();
         current->ClearOldToNewRSet();
