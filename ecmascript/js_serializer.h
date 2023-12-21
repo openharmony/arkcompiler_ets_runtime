@@ -108,7 +108,12 @@ enum class SerializationUID : uint8_t {
 class JSSerializer {
 public:
     explicit JSSerializer(JSThread *thread) : thread_(thread) {}
-    ~JSSerializer() = default;
+    ~JSSerializer()
+    {
+        // clear transfer obj set after serialization
+        transferDataSet_.clear();
+    }
+
     bool SerializeJSTaggedValue(const JSHandle<JSTaggedValue> &value);
     void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
     void ClearTransferSet();

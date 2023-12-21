@@ -1100,13 +1100,6 @@ JSDeserializer::~JSDeserializer()
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(end_ - begin_));
-    size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
-    size_t dataSize = end_ - begin_;
-    if (dataSize > maxSerializerSize) {
-        LOG_ECMA(ERROR) << "The Serialization data size has exceed limit Size, current size is: " << dataSize <<
-            " max size is: " << maxSerializerSize;
-        return JSHandle<JSTaggedValue>();
-    }
     JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
     return res;
 }
@@ -2008,10 +2001,16 @@ bool Serializer::WriteValue(
         return false;
     }
     if (!valueSerializer_.SerializeJSTaggedValue(value)) {
+        valueSerializer_.ReleaseBuffer();
         return false;
     }
-    // clear transfer obj set after serialization
-    valueSerializer_.ClearTransferSet();
+    size_t maxSerializerSize = thread->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    if (data_->GetSize() > maxSerializerSize) {
+        LOG_ECMA(ERROR) << "The Serialization data size has exceed limit Size, current size is: " << data_->GetSize()
+            << " max size is: " << maxSerializerSize;
+        valueSerializer_.ReleaseBuffer();
+        return false;
+    }
     std::pair<uint8_t*, size_t> pair = valueSerializer_.ReleaseBuffer();
     data_->value_.reset(pair.first);
     data_->dataSize_ = pair.second;

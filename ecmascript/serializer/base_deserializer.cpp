@@ -33,12 +33,6 @@ namespace panda::ecmascript {
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(data_->Size()));
-    size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
-    if (data_->Size() > maxSerializerSize) {
-        LOG_ECMA(ERROR) << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
-                        << " max size is: " << maxSerializerSize;
-        return JSHandle<JSTaggedValue>();
-    }
     AllocateToDifferentSpaces();
     JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
     return res;
