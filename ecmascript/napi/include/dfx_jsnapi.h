@@ -103,7 +103,7 @@ public:
     };
     // To be compatible with old process.
     static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
-                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask);
+                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask, bool isDebugApp);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
     static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);
     static const SamplingInfo *GetAllocationProfile(const EcmaVM *vm);

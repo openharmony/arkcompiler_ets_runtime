@@ -2880,13 +2880,15 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
-// for previewer debugger.
+// for previewer, cross platform and testcase debugger
 bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                            [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
+    LOG_ECMA(INFO) << "JSNApi::StartDebugger, isDebugMode = " << option.isDebugMode
+        << ", port = " << option.port << ", instanceId = " << instanceId;
     if (vm == nullptr) {
         return false;
     }
@@ -2953,6 +2955,8 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
+    LOG_ECMA(INFO) << "JSNApi::StartDebuggerForOldProcess, isDebugMode = " << option.isDebugMode
+        << ", instanceId = " << instanceId;
     if (vm == nullptr) {
         return false;
     }
@@ -2963,16 +2967,16 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
         return false;
     }
 
-    using StartDebugger = bool (*)(
+    using StartDebug = bool (*)(
         const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebug");
     if (!sym) {
-        LOG_ECMA(ERROR) << "[StartDebugger] Resolve symbol fail: " << sym.Error().ToString();
+        LOG_ECMA(ERROR) << "[StartDebuggerForOldProcess] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
+    bool ret = reinterpret_cast<StartDebug>(sym.Value())(
         "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (!ret) {
         // Reset the config
@@ -3002,23 +3006,21 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 }
 
 // for socketpair process in ohos platform.
-bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
-                                        [[maybe_unused]] const DebugOption &option,
-                                        [[maybe_unused]] int socketfd,
-                                        [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
+bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid, [[maybe_unused]] int socketfd)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "JSNApi::StartDebuggerForSocketPair, tid = " << tid << ", socketfd = " << socketfd;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
         return false;
     }
     const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
     if (!handle.IsValid()) {
-        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail: " << option.libraryPath;
+        LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Get library handle fail";
         return false;
     }
 
-    using StartDebuggerForSocketPair = bool (*)(uint32_t, int);
+    using StartDebugForSocketpair = bool (*)(uint32_t, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
@@ -3026,7 +3028,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebuggerForSocketPair>(sym.Value())(tid, socketfd);
+    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd);
     if (!ret) {
         // Reset the config
         jsDebuggerManager->SetDebugMode(false);
@@ -3040,16 +3042,19 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid,
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
+// release or debug hap : aa start
+//                        aa start -D
+//                        new worker
 bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
                              [[maybe_unused]] EcmaVM *vm,
-                             [[maybe_unused]] const char *libraryPath,
                              [[maybe_unused]] const DebugOption &option,
                              [[maybe_unused]] int32_t instanceId,
                              [[maybe_unused]] const DebuggerPostTask &debuggerPostTask,
-                             [[maybe_unused]] bool debugApp, [[maybe_unused]] bool debugMode)
+                             [[maybe_unused]] bool debugApp)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    // debug app & -D; heap profile
+    LOG_ECMA(INFO) << "JSNApi::NotifyDebugMode, tid = " << tid << ", debugApp = " << debugApp
+        << ", isDebugMode = " << option.isDebugMode << ", instanceId = " << instanceId;
     if (vm == nullptr) {
         return false;
     }
@@ -3061,9 +3066,9 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
         return false;
     }
 
-    auto handle = panda::os::library_loader::Load(std::string(libraryPath));
+    auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
-        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << libraryPath << " " << errno;
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
         return false;
     }
     JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
@@ -3083,9 +3088,8 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
 
-    if (debugApp && debugMode) {
+    if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
-
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
             jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
         if (!symOfWaitForDebugger) {
@@ -3106,6 +3110,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
+    LOG_ECMA(INFO) << "JSNApi::StopDebugger";
     if (vm == nullptr) {
         return false;
     }
@@ -3144,6 +3149,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 bool JSNApi::StopDebugger(uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
     if (jsDebuggerManager == nullptr) {
         return false;
