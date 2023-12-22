@@ -605,10 +605,18 @@ bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, c
     }
     bool isInternalAccessor = IsAccessorDescriptor()
         && AccessorData::Cast(valueAccessor.GetTaggedObject())->IsInternal();
-    if (attrChanged) {
+    if (!attrChanged) {
+        return UpdateDataValue(receiver, value, isInternalAccessor);
+    }
+    if (attr.IsWritable()) {
+        TransitionForAttributeChanged(receiver, attr);
+        return UpdateDataValue(receiver, value, isInternalAccessor);
+    }
+    bool res = UpdateDataValue(receiver, value, isInternalAccessor);
+    if (res) {
         TransitionForAttributeChanged(receiver, attr);
     }
-    return UpdateDataValue(receiver, value, isInternalAccessor);
+    return res;
 }
 
 bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
