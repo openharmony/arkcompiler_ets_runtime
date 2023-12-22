@@ -4374,6 +4374,75 @@ Local<Int8ArrayRef> objOffset = Int8ArrayRef::New(vm, arrayOffsetBuffer, Offset,
 uint32_t byteOffset = obj->ByteOffset(vm);
 ```
 
+### ArrayLength
+
+uint32_t TypedArrayRef::ArrayLength(const EcmaVM *vm);
+
+获取当前 `TypedArrayRef` 对象的数组长度，即其中存储的元素的数量。
+
+在获取数组长度之前，通过 `CHECK_HAS_PENDING_EXCEPTION` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `TypedArrayRef` 对象转换为 JavaScript 中的 `JSTypedArray` 对象。
+
+调用 `GetArrayLength` 方法获取实际的数组长度。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型    | 说明                                         |
+| ------- | -------------------------------------------- |
+| int32_t | 表示 TypedArray 对象的数组长度（元素数量）。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, length);
+Local<Int8ArrayRef> obj = Int8ArrayRef::New(vm, arrayBuffer, 5, 6);
+uint32_t byteOffset = obj->ArrayLength(vm);
+```
+
+### GetArrayBuffer
+
+Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm);
+
+获取当前 `TypedArrayRef` 对象关联的 ArrayBufferRef 对象。
+
+在获取 ArrayBufferRef 之前，通过 `CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED` 宏检查是否存在潜在的异常。
+
+使用 `JSNApiHelper::ToJSHandle(this)` 将当前的 `TypedArrayRef` 对象转换为 JavaScript 中的 `JSTypedArray` 对象。
+
+调用 `JSTypedArray::GetOffHeapBuffer` 方法获取实际的 ArrayBuffer 对象。
+
+使用 `JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer)` 
+将 JavaScript 中的 ArrayBuffer 对象转换为本地的 `ArrayBufferRef` 对象。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| ------ | -------------- | ---- | ------------ |
+| vm     | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型                  | 说明                          |
+| --------------------- | ----------------------------- |
+| Local<ArrayBufferRef> | `ArrayBufferRef` 类型的对象。 |
+
+**示例：**
+
+```c++
+Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, length);
+Local<Int8ArrayRef> obj = Int8ArrayRef::New(vm, arrayBuffer, 5, 6);
+Local<ArrayBufferRef> byteOffset = obj->GetArrayBuffer(vm);
+```
+
+
+
 ## Exception
 
 提供了一些静态方法，用于根据不同的错误类型创建一个对应的JS异常对象，并返回一个指向该对象的引用。
