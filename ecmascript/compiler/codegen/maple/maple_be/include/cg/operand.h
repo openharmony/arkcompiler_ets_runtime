@@ -190,6 +190,8 @@ public:
         return false;
     }
 
+    // Custom deep copy
+    virtual Operand *CloneTree(MapleAllocator &allocator) const = 0;
     virtual Operand *Clone(MemPool &memPool) const = 0;
 
     /*
@@ -245,6 +247,11 @@ public:
 
     ~RegOperand() override = default;
     using OperandVisitable<RegOperand>::OperandVisitable;
+
+    RegOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<RegOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {
@@ -543,6 +550,12 @@ public:
     ~ImmOperand() override = default;
     using OperandVisitable<ImmOperand>::OperandVisitable;
 
+    ImmOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        // const MIRSymbol is not changed in cg, so we can do shallow copy
+        return allocator.GetMemPool()->New<ImmOperand>(*this);
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<ImmOperand>(*this);
@@ -830,6 +843,12 @@ public:
         symbol = nullptr;
     }
 
+    OfstOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        // const MIRSymbol is not changed in cg, so we can do shallow copy
+        return allocator.GetMemPool()->New<OfstOperand>(*this);
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<OfstOperand>(*this);
@@ -1100,7 +1119,8 @@ public:
           idxOpt(memOpnd.idxOpt),
           noExtend(memOpnd.noExtend),
           isStackMem(memOpnd.isStackMem),
-          isStackArgMem(memOpnd.isStackArgMem)
+          isStackArgMem(memOpnd.isStackArgMem),
+          isVolatile(memOpnd.isVolatile)
     {
     }
 
@@ -1108,6 +1128,21 @@ public:
 
     ~MemOperand() override = default;
     using OperandVisitable<MemOperand>::OperandVisitable;
+
+    MemOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        auto *memOpnd = allocator.GetMemPool()->New<MemOperand>(*this);
+        if (baseOpnd != nullptr) {
+            memOpnd->SetBaseRegister(*baseOpnd->CloneTree(allocator));
+        }
+        if (indexOpnd != nullptr) {
+            memOpnd->SetIndexRegister(*indexOpnd->CloneTree(allocator));
+        }
+        if (offsetOpnd != nullptr) {
+            memOpnd->SetOffsetOperand(*offsetOpnd->CloneTree(allocator));
+        }
+        return memOpnd;
+    }
 
     MemOperand *Clone(MemPool &memPool) const override
     {
@@ -1318,7 +1353,8 @@ public:
     {
         return (GetSize() == opnd.GetSize()) && (addrMode == opnd.addrMode) && (extend == opnd.extend) &&
                (GetBaseRegister() == opnd.GetBaseRegister()) && (GetIndexRegister() == opnd.GetIndexRegister()) &&
-               (GetSymbol() == opnd.GetSymbol()) && (GetOffsetOperand() == opnd.GetOffsetOperand());
+               (GetSymbol() == opnd.GetSymbol()) && (GetOffsetOperand() == opnd.GetOffsetOperand()) &&
+               (IsVolatile() == opnd.IsVolatile());
     }
 
     VaryType GetMemVaryType() const
@@ -1398,6 +1434,11 @@ public:
         extend = val;
     }
 
+    void SetVolatile(bool flag)
+    {
+        isVolatile = flag;
+    }
+
     bool IsIntactIndexed() const
     {
         return idxOpt == kIntact;
@@ -1411,6 +1452,11 @@ public:
     bool IsPreIndexed() const
     {
         return idxOpt == kPreIndex;
+    }
+
+    bool IsVolatile() const
+    {
+        return isVolatile;
     }
 
     std::string GetExtendAsString() const
@@ -1440,6 +1486,7 @@ private:
     bool noExtend = false;
     bool isStackMem = false;
     bool isStackArgMem = false;
+    bool isVolatile = false;  // based on mem info from ME
 };
 
 class LabelOperand : public OperandVisitable<LabelOperand> {
@@ -1451,6 +1498,11 @@ public:
 
     ~LabelOperand() override = default;
     using OperandVisitable<LabelOperand>::OperandVisitable;
+
+    LabelOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<LabelOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {
@@ -1534,6 +1586,15 @@ public:
 
     using OperandVisitable<ListOperand>::OperandVisitable;
 
+    ListOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        auto *listOpnd = allocator.GetMemPool()->New<ListOperand>(allocator);
+        for (auto regOpnd : opndList) {
+            listOpnd->PushOpnd(*regOpnd->CloneTree(allocator));
+        }
+        return listOpnd;
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<ListOperand>(*this);
@@ -1545,6 +1606,11 @@ public:
     }
 
     MapleList<RegOperand *> &GetOperands()
+    {
+        return opndList;
+    }
+
+    const MapleList<RegOperand *> &GetOperands() const
     {
         return opndList;
     }
@@ -1591,6 +1657,12 @@ public:
 
     ~StImmOperand() override = default;
     using OperandVisitable<StImmOperand>::OperandVisitable;
+
+    StImmOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        // const MIRSymbol is not changed in cg, so we can do shallow copy
+        return allocator.GetMemPool()->New<StImmOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {
@@ -1670,6 +1742,11 @@ public:
     ~ExtendShiftOperand() override = default;
     using OperandVisitable<ExtendShiftOperand>::OperandVisitable;
 
+    ExtendShiftOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<ExtendShiftOperand>(*this);
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<ExtendShiftOperand>(*this);
@@ -1714,6 +1791,11 @@ public:
 
     ~BitShiftOperand() override = default;
     using OperandVisitable<BitShiftOperand>::OperandVisitable;
+
+    BitShiftOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<BitShiftOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {
@@ -1779,6 +1861,11 @@ public:
         return comment;
     }
 
+    CommentOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<CommentOperand>(*this);
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<CommentOperand>(*this);
@@ -1824,6 +1911,15 @@ public:
         }
     }
 
+    ListConstraintOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        auto *constraintOpnd = allocator.GetMemPool()->New<ListConstraintOperand>(allocator);
+        for (auto stringOpnd : stringList) {
+            constraintOpnd->stringList.emplace_back(stringOpnd->CloneTree(allocator));
+        }
+        return constraintOpnd;
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.Clone<ListConstraintOperand>(*this);
@@ -1852,6 +1948,15 @@ public:
 
     ~PhiOperand() override = default;
     using OperandVisitable<PhiOperand>::OperandVisitable;
+
+    PhiOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        auto *phiOpnd = allocator.GetMemPool()->New<PhiOperand>(allocator);
+        for (auto phiPair : phiList) {
+            phiOpnd->InsertOpnd(phiPair.first, *phiPair.second->CloneTree(allocator));
+        }
+        return phiOpnd;
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {
@@ -1938,6 +2043,12 @@ public:
         symbol = &fsym;
     }
 
+    FuncNameOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        // const MIRSymbol is not changed in cg, so we can do shallow copy
+        return allocator.GetMemPool()->New<FuncNameOperand>(*this);
+    }
+
     Operand *Clone(MemPool &memPool) const override
     {
         return memPool.New<FuncNameOperand>(*this);
@@ -1969,11 +2080,7 @@ private:
 
 namespace operand {
 /* bit 0-7 for common */
-enum CommOpndDescProp : maple::uint64 {
-    kIsDef = 1ULL,
-    kIsUse = (1ULL << 1),
-    kIsVector = (1ULL << 2)
-};
+enum CommOpndDescProp : maple::uint64 { kIsDef = 1ULL, kIsUse = (1ULL << 1), kIsVector = (1ULL << 2) };
 
 /* bit 8-15 for reg */
 enum RegOpndDescProp : maple::uint64 {
@@ -1984,8 +2091,7 @@ enum RegOpndDescProp : maple::uint64 {
 };
 
 /* bit 16-23 for imm */
-enum ImmOpndDescProp : maple::uint64 {
-};
+enum ImmOpndDescProp : maple::uint64 {};
 
 /* bit 24-31 for mem */
 enum MemOpndDescProp : maple::uint64 {
@@ -2081,6 +2187,11 @@ public:
 
     ~CondOperand() override = default;
     using OperandVisitable<CondOperand>::OperandVisitable;
+
+    CondOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        return allocator.GetMemPool()->New<CondOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {

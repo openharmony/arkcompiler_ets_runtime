@@ -58,6 +58,8 @@ namespace maplebe {
 
 #define FOR_BB_INSNS_REV(INSN, BLOCK) \
     for (Insn * (INSN) = LAST_INSN(BLOCK); (INSN) != nullptr; (INSN) = (INSN)->GetPrev())
+#define FOR_BB_INSNS_REV_CONST(INSN, BLOCK) \
+    for (const Insn *(INSN) = LAST_INSN(BLOCK); (INSN) != nullptr; (INSN) = (INSN)->GetPrev())
 
 /* For iterating over insns in basic block when we might remove the current insn. */
 #define FOR_BB_INSNS_SAFE(INSN, BLOCK, NEXT)                                                                 \
@@ -75,6 +77,8 @@ using BBID = uint32;
 
 class BB {
 public:
+    static constexpr int32 kUnknownProb = -1;
+    static constexpr uint32 kBBIfSuccsSize = 2;
     enum BBKind : uint8 {
         kBBFallthru, /* default */
         kBBIf,       /* conditional branch */
@@ -97,6 +101,7 @@ public:
           ehSuccs(mallocator.Adapter()),
           loopPreds(mallocator.Adapter()),
           loopSuccs(mallocator.Adapter()),
+          succsProb(mallocator.Adapter()),
           liveInRegNO(mallocator.Adapter()),
           liveOutRegNO(mallocator.Adapter()),
           callInsns(mallocator.Adapter()),
@@ -158,6 +163,7 @@ public:
         if (next != nullptr) {
             next->prev = &bb;
         }
+        succsProb[&bb] = kUnknownProb;
         next = &bb;
     }
 
@@ -169,6 +175,7 @@ public:
             this->prev->next = &bb;
         }
         this->prev = &bb;
+        succsProb[&bb] = kUnknownProb;
     }
 
     Insn *InsertInsnBefore(Insn &existing, Insn &newInsn);
@@ -259,6 +266,7 @@ public:
         for (auto i = succs.begin(); i != succs.end(); ++i) {
             if (*i == &bb) {
                 succs.erase(i);
+                succsProb.erase(&bb);
                 return;
             }
         }
@@ -380,6 +388,17 @@ public:
         }
         return nullptr;
     }
+
+    const Insn *GetFirstMachineInsn() const
+    {
+        FOR_BB_INSNS_CONST(insn, this) {
+            if (insn->IsMachineInstruction()) {
+                return insn;
+            }
+        }
+        return nullptr;
+    }
+
     Insn *GetLastMachineInsn()
     {
         FOR_BB_INSNS_REV(insn, this) {
@@ -389,6 +408,17 @@ public:
         }
         return nullptr;
     }
+
+    const Insn *GetLastMachineInsn() const
+    {
+        FOR_BB_INSNS_REV_CONST(insn, this) {
+            if (insn->IsMachineInstruction() && !insn->IsPseudo()) {
+                return insn;
+            }
+        }
+        return nullptr;
+    }
+
     Insn *GetLastInsn()
     {
         return lastInsn;
@@ -409,17 +439,26 @@ public:
     {
         preds.insert(it, &bb);
     }
-    void InsertSucc(const MapleList<BB *>::iterator &it, BB &bb)
+    void InsertSucc(const MapleList<BB *>::iterator &it, BB &bb, int32 prob = kUnknownProb)
     {
         succs.insert(it, &bb);
+        succsProb[&bb] = prob;
     }
     const MapleList<BB *> &GetPreds() const
     {
         return preds;
     }
+    std::size_t GetPredsSize() const
+    {
+        return preds.size();
+    }
     const MapleList<BB *> &GetSuccs() const
     {
         return succs;
+    }
+    std::size_t GetSuccsSize() const
+    {
+        return succs.size();
     }
     const MapleList<BB *> &GetEhPreds() const
     {
@@ -477,9 +516,10 @@ public:
     {
         preds.push_back(&bb);
     }
-    void PushBackSuccs(BB &bb)
+    void PushBackSuccs(BB &bb, int32 prob = kUnknownProb)
     {
         succs.push_back(&bb);
+        succsProb[&bb] = prob;
     }
     void PushBackEhPreds(BB &bb)
     {
@@ -501,15 +541,16 @@ public:
     {
         preds.push_front(&bb);
     }
-    void PushFrontSuccs(BB &bb)
+    void PushFrontSuccs(BB &bb, int32 prob = kUnknownProb)
     {
         succs.push_front(&bb);
+        succsProb[&bb] = prob;
     }
     void ErasePreds(MapleList<BB *>::iterator it)
     {
         preds.erase(it);
     }
-    void EraseSuccs(MapleList<BB *>::iterator it)
+    void EraseSuccs(MapleList<BB *>::const_iterator it)
     {
         succs.erase(it);
     }
@@ -520,6 +561,20 @@ public:
     void RemoveSuccs(BB &bb)
     {
         succs.remove(&bb);
+        succsProb.erase(&bb);
+    }
+    void ReplaceSucc(const MapleList<BB *>::const_iterator it, BB &newBB)
+    {
+        int prob = succsProb[*it];
+        EraseSuccs(it);
+        PushBackSuccs(newBB, prob);
+    }
+
+    void ReplaceSucc(BB &oldBB, BB &newBB)
+    {
+        int prob = succsProb[&oldBB];
+        RemoveSuccs(oldBB);
+        PushBackSuccs(newBB, prob);
     }
     void RemoveEhPreds(BB &bb)
     {
@@ -536,6 +591,7 @@ public:
     void ClearSuccs()
     {
         succs.clear();
+        succsProb.clear();
     }
     void ClearEhPreds()
     {
@@ -919,6 +975,47 @@ public:
         return alignNopNum;
     }
 
+    // Check if a given BB mergee can be merged into this BB in the sense of control flow
+    // The condition is looser than CanMerge, since we only need this for debug info.
+    bool MayFoldInCfg(const BB &mergee) const
+    {
+        bool onePred = (mergee.GetPreds().size() == 1) && (mergee.GetPreds().front() == this);
+        bool oneSucc = (GetSuccs().size() == 1) && (GetSuccs().front() == &mergee);
+        return oneSucc && onePred;
+    }
+
+    // This means two bb are close to each other in cfg. Only for debug info.
+    // May add more conditions in the future.
+    bool IsCloseTo(const BB &tar) const
+    {
+        return MayFoldInCfg(tar);
+    }
+
+    int32 GetEdgeProb(const BB &bb) const
+    {
+        return succsProb.find(&bb)->second;
+    }
+
+    bool HasMachineInsn()
+    {
+        FOR_BB_INSNS(insn, this) {
+            if (insn->IsMachineInstruction()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool IsAdrpLabel() const
+    {
+        return isAdrpLabel;
+    }
+
+    void SetIsAdrpLabel()
+    {
+        isAdrpLabel = true;
+    }
+
 private:
     static const std::string bbNames[kBBLast];
     uint32 id;
@@ -940,6 +1037,7 @@ private:
     MapleList<BB *> ehSuccs;
     MapleList<BB *> loopPreds;
     MapleList<BB *> loopSuccs;
+    MapleMap<const BB *, int32> succsProb;
 
     /* this is for live in out analysis */
     MapleSet<regno_t> liveInRegNO;
@@ -1006,7 +1104,9 @@ private:
     bool needAlign = false;
     uint32 alignPower = 0;
     uint32 alignNopNum = 0;
-}; /* class BB */
+
+    bool isAdrpLabel = false;  // Indicate whether the address of this BB is referenced by adrp_label insn
+};                             /* class BB */
 
 struct BBIdCmp {
     bool operator()(const BB *lhs, const BB *rhs) const

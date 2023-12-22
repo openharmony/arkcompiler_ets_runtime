@@ -1635,6 +1635,7 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       stackMp(stackMp),
       func(mirFunc),
       exitBBVec(allocator.Adapter()),
+      noReturnCallBBVec(allocator.Adapter()),
       extendSet(allocator.Adapter()),
       lab2BBMap(allocator.Adapter()),
       beCommon(beCommon),
@@ -2074,12 +2075,14 @@ void CGFunc::TraverseAndClearCatchMark(BB &bb)
 void CGFunc::MarkCatchBBs()
 {
     /* First, suspect all bb to be in catch */
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         bb->SetIsCatch(true);
         bb->SetInternalFlag3(0); /* mark as not visited */
     }
     /* Eliminate cleanup section from catch */
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         if (bb->GetFirstStmt() == cleanupLabel) {
             bb->SetIsCatch(false);
             DEBUG_ASSERT(bb->GetSuccs().size() <= 1, "MarkCatchBBs incorrect cleanup label");
@@ -2113,7 +2116,8 @@ void CGFunc::MarkCatchBBs()
 void CGFunc::MarkCleanupEntryBB()
 {
     BB *cleanupEntry = nullptr;
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         bb->SetIsCleanup(0);     /* Use to mark cleanup bb */
         bb->SetInternalFlag3(0); /* Use to mark if visited. */
         if (bb->GetFirstStmt() == this->cleanupLabel) {
@@ -2134,7 +2138,8 @@ void CGFunc::MarkCleanupEntryBB()
     /* Check if all of the cleanup bb is at bottom of the function. */
     bool isCleanupArea = true;
     if (!mirModule.IsCModule()) {
-        FOR_ALL_BB_REV(bb, this) {
+        FOR_ALL_BB_REV(bb, this)
+        {
             if (isCleanupArea) {
                 DEBUG_ASSERT(bb->IsCleanup(),
                              "CG internal error, cleanup BBs should be at the bottom of the function.");
@@ -2286,7 +2291,8 @@ void CGFunc::UpdateCallBBFrequency()
     if (!func.HasFreqMap() || func.GetLastFreqMap().empty()) {
         return;
     }
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         if (bb->GetKind() != BB::kBBFallthru || !bb->HasCall()) {
             continue;
         }
@@ -2363,7 +2369,8 @@ void CGFunc::DumpCFG() const
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n****** CFG built by CG for " << funcSt->GetName() << " *******\n";
-    FOR_ALL_BB_CONST(bb, this) {
+    FOR_ALL_BB_CONST(bb, this)
+    {
         LogInfo::MapleLogger() << "=== BB ( " << std::hex << bb << std::dec << " ) <" << bb->GetKindName() << "> ===\n";
         LogInfo::MapleLogger() << "BB id:" << bb->GetId() << "\n";
         if (!bb->GetPreds().empty()) {
@@ -2400,7 +2407,8 @@ void CGFunc::DumpCGIR() const
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n******  CGIR for " << funcSt->GetName() << " *******\n";
-    FOR_ALL_BB_CONST(bb, this) {
+    FOR_ALL_BB_CONST(bb, this)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
@@ -2452,7 +2460,8 @@ void CGFunc::DumpCGIR() const
         LogInfo::MapleLogger() << "===\n";
         LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
 
-        FOR_BB_INSNS_CONST(insn, bb) {
+        FOR_BB_INSNS_CONST(insn, bb)
+        {
             insn->Dump();
         }
     }
@@ -2469,7 +2478,8 @@ void CGFunc::ClearLoopInfo()
 {
     loops.clear();
     loops.shrink_to_fit();
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         bb->ClearLoopPreds();
         bb->ClearLoopSuccs();
     }

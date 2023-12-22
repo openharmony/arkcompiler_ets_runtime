@@ -23,13 +23,13 @@
 #include "mir_builder.h"
 
 namespace maplebe {
-class AArch64CGPeepHole : CGPeepHole {
+class AArch64CGPeepHole : public CGPeepHole {
 public:
     /* normal constructor */
     AArch64CGPeepHole(CGFunc &f, MemPool *memPool) : CGPeepHole(f, memPool) {};
     /* constructor for ssa */
     AArch64CGPeepHole(CGFunc &f, MemPool *memPool, CGSSAInfo *cgssaInfo) : CGPeepHole(f, memPool, cgssaInfo) {};
-    ~AArch64CGPeepHole() = default;
+    ~AArch64CGPeepHole() override = default;
 
     void Run() override;
     bool DoSSAOptimize(BB &bb, Insn &insn) override;
@@ -69,21 +69,33 @@ private:
     bool reverse = false;
 };
 
-/*
- * Example 1)
- *  mov w5, #1
- *   ...
- *  mov w0, #0
- *  csel w5, w5, w0, NE    ===> cset w5, NE
+/* Condition: mov_imm1 value is 0(1/-1) && mov_imm value is 1/-1(0)
  *
- * Example 2)
- *  mov w5, #0
- *   ...
- *  mov w0, #1
- *  csel w5, w5, w0, NE    ===> cset w5,EQ
+ * Pattern 1: Two mov insn + One csel insn
  *
- * conditions:
- * 1. mov_imm1 value is 0(1) && mov_imm value is 1(0)
+ * Example 1:
+ *   mov w5, #1
+ *   ...
+ *   mov w0, #0
+ *   csel w5, w5, w0, NE    ===> cset   w5, NE
+ *
+ * Example 2:
+ *   mov w5, #0
+ *   ...
+ *   mov w0, #-1
+ *   csel w5, w5, w0, NE    ===> csetm  w5, EQ
+ *
+ * Pattern 2: One mov insn + One csel insn with RZR
+ *
+ * Example 1:
+ *   mov   w0, #4294967295
+ *   ......                       ====>        csetm  w1, EQ
+ *   csel  w1, w0, wzr, EQ
+ *
+ * Example 2:
+ *   mov   w0, #1
+ *   ......                       ====>        cset   w1, LE
+ *   csel  w1, wzr, w0, GT
  */
 class CselToCsetPattern : public CGPeepPattern {
 public:
@@ -91,6 +103,7 @@ public:
         : CGPeepPattern(cgFunc, currBB, currInsn, info)
     {
     }
+    CselToCsetPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
     ~CselToCsetPattern() override = default;
     void Run(BB &bb, Insn &insn) override;
     bool CheckCondition(Insn &insn) override;
@@ -102,8 +115,91 @@ public:
 private:
     bool IsOpndDefByZero(const Insn &insn) const;
     bool IsOpndDefByOne(const Insn &insn) const;
+    bool IsOpndDefByAllOnes(const Insn &insn) const;
+    bool CheckZeroCondition(const Insn &insn);
+    Insn *BuildCondSetInsn(const Insn &cselInsn) const;
+    void ZeroRun(BB &bb, Insn &insn);
+    bool isOne = false;
+    bool isAllOnes = false;
+    bool isZeroBefore = false;
+    Insn *prevMovInsn = nullptr;
     Insn *prevMovInsn1 = nullptr;
     Insn *prevMovInsn2 = nullptr;
+    RegOperand *useReg = nullptr;
+};
+
+// cmp w2, w3/imm
+// csel w0, w1, w1, NE   ===> mov w0, w1
+class CselToMovPattern : public CGPeepPattern {
+public:
+    CselToMovPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~CselToMovPattern() override = default;
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "CselToMovPattern";
+    }
+};
+
+/*
+ *  mov w1, #1
+ *  csel w2, w1, w0, EQ    ===> csinc w2, w0, WZR, NE
+ *
+ *  mov w1, #1
+ *  csel w2, w0, w1, EQ     ===> csinc w2, w0, WZR, EQ
+ */
+class CselToCsincRemoveMovPattern : public CGPeepPattern {
+public:
+    CselToCsincRemoveMovPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~CselToCsincRemoveMovPattern() override = default;
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "CselToCsincRemoveMovPattern";
+    }
+
+private:
+    bool IsOpndMovOneAndNewOpndOpt(const Insn &curInsn);
+    Insn *prevMovInsn = nullptr;
+    RegOperand *newSecondOpnd = nullptr;
+    CondOperand *cond = nullptr;
+    bool needReverseCond = false;
+};
+
+/*
+ *  cset w0, HS
+ *  add w2, w1, w0    ===> cinc w2, w1, hs
+ *
+ *  cset w0, HS
+ *  add w2, w0, w1    ===> cinc w2, w1, hs
+ */
+class CsetToCincPattern : public CGPeepPattern {
+public:
+    CsetToCincPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~CsetToCincPattern() override
+    {
+        defInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    bool CheckDefInsn(const RegOperand &opnd, Insn &insn);
+    bool CheckRegTyCc(const Insn &tempDefInsn, Insn &insn) const;
+    std::string GetPatternName() override
+    {
+        return "CsetToCincPattern";
+    }
+
+private:
+    Insn *defInsn = nullptr;
+    int32 csetOpnd1 = 0;
 };
 
 /*
@@ -139,6 +235,7 @@ public:
 private:
     MOperator SelectNewMop(ConditionCode condCode, bool inverse) const;
     Insn *prevInsn = nullptr;
+    LabelOperand *labelOpnd = nullptr;
 };
 
 /*
@@ -172,6 +269,79 @@ public:
 
 private:
     Insn *prevInsn = nullptr;
+};
+
+/*
+ * case:
+ * ldr R261(32), [R197, #300]
+ * ldr R262(32), [R208, #12]
+ * cmp (CC) R261, R262
+ * bne lable175.
+ * ldr R264(32), [R197, #304]
+ * ldr R265(32), [R208, #16]
+ * cmp (CC) R264, R265
+ * bne lable175.
+ * ====>
+ * ldr R261(64), [R197, #300]
+ * ldr R262(64), [R208, #12]
+ * cmp (CC) R261, R262
+ * bne lable175.
+ */
+class LdrCmpPattern : public CGPeepPattern {
+public:
+    LdrCmpPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~LdrCmpPattern() override
+    {
+        prevLdr1 = nullptr;
+        prevLdr2 = nullptr;
+        ldr1 = nullptr;
+        ldr2 = nullptr;
+        prevCmp = nullptr;
+        bne1 = nullptr;
+        bne2 = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "LdrCmpPattern";
+    }
+
+private:
+    bool IsLdr(const Insn *insn) const
+    {
+        if (insn == nullptr) {
+            return false;
+        }
+        return insn->GetMachineOpcode() == MOP_wldr;
+    }
+
+    bool IsCmp(const Insn *insn) const
+    {
+        if (insn == nullptr) {
+            return false;
+        }
+        return insn->GetMachineOpcode() == MOP_wcmprr;
+    }
+
+    bool IsBne(const Insn *insn) const
+    {
+        if (insn == nullptr) {
+            return false;
+        }
+        return insn->GetMachineOpcode() == MOP_bne;
+    }
+
+    bool SetInsns();
+    bool CheckInsns() const;
+    bool MemOffet4Bit(const MemOperand &m1, const MemOperand &m2) const;
+    Insn *prevLdr1 = nullptr;
+    Insn *prevLdr2 = nullptr;
+    Insn *ldr1 = nullptr;
+    Insn *ldr2 = nullptr;
+    Insn *prevCmp = nullptr;
+    Insn *bne1 = nullptr;
+    Insn *bne2 = nullptr;
 };
 
 /*
@@ -326,6 +496,28 @@ private:
     bool op2IsMvnDef = false;
 };
 
+// redundancy and elimination
+// and    w9, w8, #65535
+// rev16  w10, w9                  rev16  w10, w8
+// strh   w10, [x0,#10]    ===>    strh   w10, [x0,#10]
+class DeleteAndBeforeRevStrPattern : public CGPeepPattern {
+public:
+    DeleteAndBeforeRevStrPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    DeleteAndBeforeRevStrPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn)
+    {
+    }
+    ~DeleteAndBeforeRevStrPattern() override {}
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "DeleteAndBeforeRevStrPattern";
+    }
+};
+
 /*
  * and r0, r1, #4                  (the imm is n power of 2)
  * ...
@@ -354,6 +546,102 @@ public:
 
 private:
     Insn *prevInsn = nullptr;
+};
+
+/* and r0, r1, #1
+ * ...
+ * tbz r0, #0, .label
+ * ===> tbz r1, #0 .label
+ */
+class AndTbzPattern : public CGPeepPattern {
+public:
+    AndTbzPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    AndTbzPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~AndTbzPattern() override
+    {
+        prevInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AndTbzPattern";
+    }
+
+private:
+    Insn *prevInsn = nullptr;
+};
+
+/* Norm pattern
+ * combine {rev / rev16} & {tbz / tbnz} ---> {tbz / tbnz}
+ * rev16  w0, w0
+ * tbz    w0, #14    ===>   tbz w0, #6
+ *
+ * rev  w0, w0
+ * tbz  w0, #14    ===>   tbz w0, #22
+ */
+class NormRevTbzToTbzPattern : public CGPeepPattern {
+public:
+    NormRevTbzToTbzPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    NormRevTbzToTbzPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~NormRevTbzToTbzPattern() override
+    {
+        tbzInsn = nullptr;
+    }
+    std::string GetPatternName() override
+    {
+        return "NormRevTbzToTbzPattern";
+    }
+    bool CheckCondition(Insn &insn) override;
+    void Run(BB &bb, Insn &insn) override;
+
+private:
+    void SetRev16Value(const uint32 &oldValue, uint32 &revValue) const;
+    void SetWrevValue(const uint32 &oldValue, uint32 &revValue) const;
+    void SetXrevValue(const uint32 &oldValue, uint32 &revValue) const;
+    Insn *tbzInsn = nullptr;
+};
+
+/* Add/Sub & load/store insn mergence pattern:
+ * add  x0, x0, #255
+ * ldr  w1, [x0]        ====>    ldr  w1, [x0, #255]!
+ *
+ * stp  w1, w2, [x0]
+ * sub  x0, x0, #256    ====>    stp  w1, w2, [x0], #-256
+ * If new load/store insn is invalid and should be split, the pattern optimization will not work.
+ */
+class AddSubMergeLdStPattern : public CGPeepPattern {
+public:
+    AddSubMergeLdStPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    AddSubMergeLdStPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~AddSubMergeLdStPattern() override = default;
+    std::string GetPatternName() override
+    {
+        return "AddSubMergeLdStPattern";
+    }
+    bool CheckCondition(Insn &insn) override;
+    void Run(BB &bb, Insn &insn) override;
+
+private:
+    bool CheckIfCanBeMerged(const Insn *adjacentInsn, const Insn &insn);
+    Insn *FindRegInBB(const Insn &insn, bool isAbove) const;
+    Insn *nextInsn = nullptr;
+    Insn *prevInsn = nullptr;
+    Insn *insnToBeReplaced = nullptr;
+    bool isAddSubFront = false;
+    bool isLdStFront = false;
+    bool isInsnAdd = false;
+    RegOperand *insnDefReg = nullptr;
+    RegOperand *insnUseReg = nullptr;
 };
 
 class CombineSameArithmeticPattern : public CGPeepPattern {
@@ -484,7 +772,7 @@ public:
     }
 
 protected:
-    enum SpecificExtType : uint8 { EXTUNDEF = 0, SXTB, SXTH, SXTW, UXTB, UXTH, UXTW, SpecificExtTypeSize };
+    enum SpecificExtType : uint8 { EXTUNDEF = 0, SXTB, SXTH, SXTW, UXTB, UXTH, UXTW, AND, EXTTYPESIZE };
     enum OptSceneType : uint8 { kSceneUndef = 0, kSceneMov, kSceneLoad, kSceneSameExt };
     static constexpr uint8 kPrevLoadPatternNum = 6;
     static constexpr uint8 kPrevLoadMappingNum = 2;
@@ -492,7 +780,7 @@ protected:
     static constexpr uint64 kInvalidValue = 0;
     static constexpr uint8 kSameExtPatternNum = 4;
     static constexpr uint8 kSameExtMappingNum = 2;
-    uint64 extValueRangeTable[SpecificExtTypeSize][kValueTypeNum] = {
+    uint64 extValueRangeTable[EXTTYPESIZE][kValueTypeNum] = {
         /* {minValue, maxValue} */
         {kInvalidValue, kInvalidValue},      /* UNDEF */
         {0xFFFFFFFFFFFFFF80, 0x7F},          /* SXTB */
@@ -500,9 +788,10 @@ protected:
         {0xFFFFFFFF80000000, kInvalidValue}, /* SXTW */
         {0xFFFFFFFFFFFFFF00, kInvalidValue}, /* UXTB */
         {0xFFFFFFFFFFFF0000, kInvalidValue}, /* UXTH */
-        {kInvalidValue, kInvalidValue}       /* UXTW */
+        {kInvalidValue, kInvalidValue},      /* UXTW */
+        {kInvalidValue, kInvalidValue},      /* AND */
     };
-    MOperator loadMappingTable[SpecificExtTypeSize][kPrevLoadPatternNum][kPrevLoadMappingNum] = {
+    MOperator loadMappingTable[EXTTYPESIZE][kPrevLoadPatternNum][kPrevLoadMappingNum] = {
         /* {prevOrigMop, prevNewMop} */
         {{MOP_undef, MOP_undef},
          {MOP_undef, MOP_undef},
@@ -537,7 +826,7 @@ protected:
         {{MOP_wldrh, MOP_wldrh},
          {MOP_wldrb, MOP_wldrb},
          {MOP_wldr, MOP_wldrh},
-         {MOP_undef, MOP_undef},
+         {MOP_wldrsh, MOP_wldrh},
          {MOP_undef, MOP_undef},
          {MOP_undef, MOP_undef}}, /* UXTH */
         {{MOP_wldr, MOP_wldr},
@@ -545,9 +834,15 @@ protected:
          {MOP_wldrb, MOP_wldrb},
          {MOP_undef, MOP_undef},
          {MOP_undef, MOP_undef},
-         {MOP_undef, MOP_undef}} /* UXTW */
-    };
-    MOperator sameExtMappingTable[SpecificExtTypeSize][kSameExtPatternNum][kSameExtMappingNum] = {
+         {MOP_undef, MOP_undef}}, /* UXTW */
+        {{MOP_wldrb, MOP_wldrb},
+         {MOP_wldrsh, MOP_wldrb},
+         {MOP_wldrh, MOP_wldrb},
+         {MOP_xldrsw, MOP_wldrb},
+         {MOP_wldr, MOP_wldrb},
+         {MOP_undef, MOP_undef},
+         }};
+    MOperator sameExtMappingTable[EXTTYPESIZE][kSameExtPatternNum][kSameExtMappingNum] = {
         /* {prevMop, currMop} */
         {{MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}}, /* UNDEF */
         {{MOP_xsxtb32, MOP_xsxtb32},
@@ -566,18 +861,19 @@ protected:
         {{MOP_xuxtb32, MOP_xuxth32},
          {MOP_xuxth32, MOP_xuxth32},
          {MOP_undef, MOP_undef},
-         {MOP_undef, MOP_undef}},                                                                            /* UXTH */
-        {{MOP_xuxtw64, MOP_xuxtw64}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}} /* UXTW */
+         {MOP_undef, MOP_undef}},                                                                             /* UXTH */
+        {{MOP_xuxtw64, MOP_xuxtw64}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}}, /* UXTW */
+        {{MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}, {MOP_undef, MOP_undef}},     /* AND */
     };
 
 private:
     void SetSpecificExtType(const Insn &currInsn);
     void SetOptSceneType();
-    bool IsValidLoadExtPattern(Insn &currInsn, MOperator oldMop, MOperator newMop) const;
+    bool IsValidLoadExtPattern(MOperator oldMop, MOperator newMop) const;
     MOperator SelectNewLoadMopByBitSize(MOperator lowBitMop) const;
-    void ElimExtensionAfterLoad(Insn &currInsn);
-    void ElimExtensionAfterMov(Insn &currInsn);
-    void ElimExtensionAfterSameExt(Insn &currInsn);
+    void ElimExtensionAfterLoad(Insn &insn);
+    void ElimExtensionAfterMov(Insn &insn);
+    void ElimExtensionAfterSameExt(Insn &insn);
     void ReplaceExtWithMov(Insn &currInsn);
     Insn *prevInsn = nullptr;
     SpecificExtType extTypeIdx = EXTUNDEF;
@@ -711,8 +1007,8 @@ public:
 
 protected:
     enum ArithmeticType : uint8 { kUndef = 0, kAdd, kFAdd, kSub, kFSub, kNeg, kFNeg, kArithmeticTypeSize };
-    static constexpr uint8 newMopNum = 2;
-    MOperator curMop2NewMopTable[kArithmeticTypeSize][newMopNum] = {
+    static constexpr uint8 kNewMopNum = 2;
+    MOperator curMop2NewMopTable[kArithmeticTypeSize][kNewMopNum] = {
         /* {32bit_mop, 64bit_mop} */
         {MOP_undef, MOP_undef},         /* kUndef  */
         {MOP_wmaddrrrr, MOP_xmaddrrrr}, /* kAdd    */
@@ -752,6 +1048,7 @@ public:
     ~LsrAndToUbfxPattern() override = default;
     void Run(BB &bb, Insn &insn) override;
     bool CheckCondition(Insn &insn) override;
+    bool CheckIntersectedCondition(const Insn &insn);
     std::string GetPatternName() override
     {
         return "LsrAndToUbfxPattern";
@@ -759,6 +1056,38 @@ public:
 
 private:
     Insn *prevInsn = nullptr;
+    bool isWXSumOutOfRange = false;
+};
+
+/*
+ * lsl w1, w2, #m
+ * and w3, w1, #[(2^n-1 << m) ~ (2^n-1)]    --->    if n > m : ubfiz w3, w2, #m, #n-m
+ *
+ * and w1, w2, #2^n-1    --->    ubfiz w3, w2, #m, #n
+ * lsl w3, w1, #m
+ * Exclude the scenarios that can be optimized by prop.
+ */
+class LslAndToUbfizPattern : public CGPeepPattern {
+public:
+    LslAndToUbfizPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~LslAndToUbfizPattern() override
+    {
+        defInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    Insn *BuildNewInsn(const Insn &andInsn, const Insn &lslInsn, const Insn &useInsn) const;
+    bool CheckUseInsnMop(const Insn &useInsn) const;
+    std::string GetPatternName() override
+    {
+        return "LslAndToUbfizPattern";
+    }
+
+private:
+    Insn *defInsn = nullptr;
 };
 
 /*
@@ -823,6 +1152,7 @@ public:
         : CGPeepPattern(cgFunc, currBB, currInsn, info)
     {
     }
+    UbfxAndCbzToTbzPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
     ~UbfxAndCbzToTbzPattern() override
     {
         useInsn = nullptr;
@@ -839,17 +1169,51 @@ private:
     MOperator newMop = MOP_undef;
 };
 
-/*
- * Looking for identical mem insn to eliminate.
- * If two back-to-back is:
- * 1. str + str
- * 2. str + ldr
- * And the [MEM] is pattern of [base + offset]
- * 1. The [MEM] operand is exactly same then first
- *    str can be eliminate.
- * 2. The [MEM] operand is exactly same and src opnd
- *    of str is same as the dest opnd of ldr then
- *    ldr can be eliminate
+/* ubfx R1 R0 a b
+ * ubfx R2 R1 c d => ubfx R2 R0 a + c, min(b -c, d)
+ * ---------------------------------------------------
+ * for example:
+ * ubfx R1 R0 3 5
+ * ubfx R2 R1 2 8 => ubfx R2 R0 5 (2+3), 3 (min(3, 8))
+ */
+class UbfxAndMergetPattern : public CGPeepPattern {
+public:
+    UbfxAndMergetPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    UbfxAndMergetPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~UbfxAndMergetPattern() override
+    {
+        prevSrc = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "UbfxAndMergetPattern";
+    }
+
+private:
+    bool IsAllOneToMSB(int64 val) const;
+    int32 GetMSB(int64 val) const;
+    int64 prevLsb = -1;
+    int64 prevWidth = -1;
+    int64 currLsb = -1;
+    int64 currWidth = -1;
+    MOperator newMop = MOP_undef;
+    RegOperand *prevSrc = nullptr;
+};
+
+/* Find up identical two mem insns in local bb to eliminate redundancy, as following:
+ * 1. str[BOI] + str[BOI] :
+ *    Remove first str insn when the [MEM] operand is exactly same, and the [srcOpnd] of two str don't need to be same,
+ *    and there is no redefinition of [srcOpnd] between two strs.
+ * 2. str[BOI] + ldr[BOI] :
+ *    Remove ldr insn when the [MEM] operand is exactly same and the [srcOpnd] of str
+ *    is same as the [destOpnd] of ldr, and there is no redefinition of [srcOpnd] and [destOpnd] between two insns.
+ * 3. ldr[BOI] + ldr[BOI] :
+ *    Remove second ldr insn
  */
 class RemoveIdenticalLoadAndStorePattern : public CGPeepPattern {
 public:
@@ -859,7 +1223,7 @@ public:
     }
     ~RemoveIdenticalLoadAndStorePattern() override
     {
-        nextInsn = nullptr;
+        prevIdenticalInsn = nullptr;
     }
     void Run(BB &bb, Insn &insn) override;
     bool CheckCondition(Insn &insn) override;
@@ -869,8 +1233,11 @@ public:
     }
 
 private:
-    bool IsMemOperandsIdentical(const Insn &insn1, const Insn &insn2) const;
-    Insn *nextInsn = nullptr;
+    bool IsIdenticalMemOpcode(const Insn &curInsn, const Insn &checkedInsn) const;
+    Insn *FindPrevIdenticalMemInsn(const Insn &curInsn) const;
+    bool HasImplictSizeUse(const Insn &curInsn) const;
+    bool HasMemReferenceBetweenTwoInsns(const Insn &curInsn) const;
+    Insn *prevIdenticalInsn = nullptr;
 };
 
 /* ======== CGPeepPattern End ======== */
@@ -920,8 +1287,38 @@ public:
 };
 
 /*
- * Combining 2 STRs into 1 stp or 2 LDRs into 1 ldp, when they are
- * back to back and the [MEM] they access is conjointed.
+ *  mov dest1, imm
+ *  mul dest2, reg1, dest1
+ *  ===> if imm is 2^n
+ *  mov        dest1, imm
+ *  lsl dest2, reg1, n
+ */
+class MulImmToShiftPattern : public CGPeepPattern {
+public:
+    MulImmToShiftPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~MulImmToShiftPattern() override
+    {
+        movInsn = nullptr;
+    }
+    std::string GetPatternName() override
+    {
+        return "MulImmToShiftPattern";
+    }
+    bool CheckCondition(Insn &insn) override;
+    void Run(BB &bb, Insn &insn) override;
+
+private:
+    Insn *movInsn = nullptr;
+    uint32 shiftVal = 0;
+    MOperator newMop = MOP_undef;
+};
+
+/*
+ * Combining {2 str into 1 stp || 2 ldr into 1 ldp || 2 strb into 1 strh || 2 strh into 1 str},
+ * when they are back to back and the [MEM] they access is conjoined.
  */
 class CombineContiLoadAndStorePattern : public CGPeepPattern {
 public:
@@ -930,10 +1327,7 @@ public:
     {
         doAggressiveCombine = cgFunc.GetMirModule().IsCModule();
     }
-    ~CombineContiLoadAndStorePattern() override
-    {
-        memOpnd = nullptr;
-    }
+    ~CombineContiLoadAndStorePattern() override = default;
     void Run(BB &bb, Insn &insn) override;
     bool CheckCondition(Insn &insn) override;
     std::string GetPatternName() override
@@ -942,7 +1336,7 @@ public:
     }
 
 private:
-    std::vector<Insn *> FindPrevStrLdr(Insn &insn, regno_t destRegNO, regno_t memBaseRegNO, int64 baseOfst);
+    std::vector<Insn *> FindPrevStrLdr(Insn &insn, regno_t destRegNO, regno_t memBaseRegNO, int64 baseOfst) const;
     /*
      * avoid the following situation:
      * str x2, [x19, #8]
@@ -950,30 +1344,28 @@ private:
      * bl foo (change memory)
      * str x21, [x19, #16]
      */
-    bool IsRegNotSameMemUseInInsn(const Insn &insn, regno_t regNO, bool isStore, int64 baseOfst) const;
+    bool IsRegNotSameMemUseInInsn(const Insn &checkInsn, const Insn &curInsn, regno_t curBaseRegNO, bool isCurStore,
+                                  int64 curBaseOfst, int64 curMemRange) const;
+    bool IsValidNormalLoadOrStorePattern(const Insn &insn, const Insn &prevInsn, const MemOperand &memOpnd,
+                                         int64 curOfstVal, int64 prevOfstVal);
+    bool IsValidStackArgLoadOrStorePattern(const Insn &curInsn, const Insn &prevInsn, const MemOperand &curMemOpnd,
+                                           const MemOperand &prevMemOpnd, int64 curOfstVal, int64 prevOfstVal) const;
+    Insn *GenerateMemPairInsn(MOperator newMop, RegOperand &curDestOpnd, RegOperand &prevDestOpnd,
+                              MemOperand &combineMemOpnd, bool isCurDestFirst);
+    bool FindUseX16AfterInsn(const Insn &curInsn) const;
     void RemoveInsnAndKeepComment(BB &bb, Insn &insn, Insn &prevInsn) const;
-    MOperator GetMopHigherByte(MOperator mop) const;
-    bool SplitOfstWithAddToCombine(const Insn &curInsn, Insn &combineInsn, const MemOperand &memOperand) const;
-    Insn *FindValidSplitAddInsn(Insn &curInsn, RegOperand &baseOpnd) const;
-    bool PlaceSplitAddInsn(const Insn &curInsn, Insn &combineInsn, const MemOperand &memOpnd, RegOperand &baseOpnd,
-                           uint32 bitLen) const;
+
     bool doAggressiveCombine = false;
-    MemOperand *memOpnd = nullptr;
+    bool isPairAfterCombine = true;
 };
 
 /*
- * mov  x0, x1
- * ldr	x0, [x0]        --> ldr x0, [x1]
+ * add xt, xn, #imm               add  xt, xn, xm
+ * ldr xd, [xt]                   ldr xd, [xt]
+ * =====================>
+ * ldr xd, [xn, #imm]             ldr xd, [xn, xm]
  *
- * add	x0, x0, #64
- * ldr	x0, [x0]        --> ldr x0, [x0, #64]
- *
- * add	x0, x7, x0
- * ldr	x11, [x0]       --> ldr x11, [x0, x7]
- *
- * lsl	x1, x4, #3
- * add	x0, x0, x1
- * ldr	d1, [x0]        --> ldr d1, [x0, x4, lsl #3]
+ * load/store can do extend shift as well
  */
 class EnhanceStrLdrAArch64 : public PeepPattern {
 public:
@@ -1001,6 +1393,24 @@ public:
     void Run(BB &bb, Insn &insn) override;
 };
 
+class EliminateSpecifcSXTPattern : public CGPeepPattern {
+public:
+    EliminateSpecifcSXTPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~EliminateSpecifcSXTPattern() override
+    {
+        prevInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "EliminateSpecifcSXTPattern";
+    }
+
+private:
+    Insn *prevInsn = nullptr;
+};
+
 /* Eliminate the uxt[b|h|w] w0, w0;when w0 is satisify following:
  * i)  mov w0, #imm (#imm is not out of range)
  * ii) mov w0, R0(Is return value of call and return size is not of range)
@@ -1011,6 +1421,24 @@ public:
     explicit EliminateSpecifcUXTAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
     ~EliminateSpecifcUXTAArch64() override = default;
     void Run(BB &bb, Insn &insn) override;
+};
+
+class EliminateSpecifcUXTPattern : public CGPeepPattern {
+public:
+    EliminateSpecifcUXTPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~EliminateSpecifcUXTPattern() override
+    {
+        prevInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "EliminateSpecifcUXTPattern";
+    }
+
+private:
+    Insn *prevInsn = nullptr;
 };
 
 /* fmov ireg1 <- freg1   previous insn
@@ -1131,6 +1559,7 @@ public:
         prevInsn = nullptr;
     }
     void Run(BB &bb, Insn &insn) override;
+    bool HasImplicitSizeUse(const Insn &insn) const;
     bool CheckCondition(Insn &insn) override;
     std::string GetPatternName() override
     {
@@ -1266,6 +1695,18 @@ public:
     void Run(BB &bb, Insn &insn) override;
 };
 
+class AndCbzBranchesToTstPattern : public CGPeepPattern {
+public:
+    AndCbzBranchesToTstPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~AndCbzBranchesToTstPattern() override = default;
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AndCbzBranchesToTstPattern";
+    }
+};
+
 /*
  * Optimize the following patterns:
  *  and  w0, w0, #1  ====> and  w0, w0, #1
@@ -1314,6 +1755,29 @@ public:
 private:
     Insn *FindPreviousCmp(Insn &insn) const;
 };
+
+class AndCmpBranchesToCsetPattern : public CGPeepPattern {
+public:
+    AndCmpBranchesToCsetPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~AndCmpBranchesToCsetPattern() override
+    {
+        prevCmpInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AndCmpBranchesToCsetPattern";
+    }
+
+private:
+    Insn *prevAndInsn = nullptr;
+    Insn *prevCmpInsn = nullptr;
+};
+
 /*
  * We optimize the following pattern in this function:
  * cmp w[0-9]*, wzr  ====> tbz w[0-9]*, #31, .label
@@ -1339,6 +1803,43 @@ public:
     explicit ZeroCmpBranchesAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
     ~ZeroCmpBranchesAArch64() override = default;
     void Run(BB &bb, Insn &insn) override;
+};
+
+/*
+ * and	x0, x0, #281474976710655    ====> eor	x0, x0, x1
+ * and	x1, x1, #281474976710655          tst	x0, 281474976710655
+ * cmp	x0, x1                            bne	.L.5187__150
+ * bne	.L.5187__150
+ */
+class AndAndCmpBranchesToTstPattern : public CGPeepPattern {
+public:
+    AndAndCmpBranchesToTstPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~AndAndCmpBranchesToTstPattern() override
+    {
+        prevCmpInsn = nullptr;
+    }
+
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AndAndCmpBranchesToCsetPattern";
+    }
+
+private:
+    bool CheckCondInsn(const Insn &insn);
+    Insn *CheckAndGetPrevAndDefInsn(const RegOperand &regOpnd) const;
+    bool CheckAndSelectPattern();
+    RegOperand *ccReg = nullptr;
+    Insn *prevPrevAndInsn = nullptr;
+    Insn *prevAndInsn = nullptr;
+    Insn *prevCmpInsn = nullptr;
+    MOperator newTstMop = MOP_undef;
+    MOperator newEorMop = MOP_undef;
+    int64 tstImmVal = -1;
 };
 
 /*
@@ -1439,11 +1940,67 @@ public:
     void Run(BB &bb, Insn &insn) override;
 
 private:
-    bool PredBBCheck(BB &bb, bool checkCbz, const Operand &opnd) const;
+    bool PredBBCheck(BB &bb, bool checkCbz, const Operand &opnd, bool is64BitOnly) const;
     bool OpndDefByMovZero(const Insn &insn) const;
     bool NoPreDefine(Insn &testInsn) const;
     void ProcessBBHandle(BB *processBB, const BB &bb, const Insn &insn) const;
+    bool NoMoreThan32BitUse(Insn &testInsn) const;
     CGCFG *cgcfg;
+};
+
+/* we optimize the following scenarios in this pattern:
+ * for example 1:
+ * mov     w1, #9
+ * cmp     w0, #1              =>               cmp     w0, #1
+ * mov     w2, #8                               csel    w0, w0, wzr, EQ
+ * csel    w0, w1, w2, EQ                       add     w0, w0, #8
+ * for example 2:
+ * mov     w1, #8
+ * cmp     w0, #1              =>               cmp     w0, #1
+ * mov     w2, #9                               cset    w0, NE
+ * csel    w0, w1, w2, EQ                       add     w0, w0, #8
+ * for example 3:
+ * mov     w1, #3
+ * cmp     w0, #4              =>               cmp     w0, #4
+ * mov     w2, #7                               csel    w0, w0, wzr, EQ
+ * csel    w0, w1, w2, NE                       add     w0, w0, #3
+ * condition:
+ *  1. The source operand of the two mov instructions are immediate operand;
+ *  2. The difference value between two immediates is equal to the value being compared in the cmp insn;
+ *  3. The reg w1 and w2 are not used in the instructions after csel;
+ *  4. The condOpnd in csel insn must be CC_NE or CC_EQ;
+ *  5. If the value in w1 is less than value in w2, condition in csel must be CC_NE, otherwise,
+ *     the difference between them must be one;
+ *  6. If the value in w1 is more than value in w2, condition in csel must be CC_EQ, otherwise,
+ *     the difference between them must be one.
+ */
+class CombineMovInsnBeforeCSelPattern : public CGPeepPattern {
+public:
+    CombineMovInsnBeforeCSelPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn)
+        : CGPeepPattern(cgFunc, currBB, currInsn)
+    {
+    }
+    ~CombineMovInsnBeforeCSelPattern() override
+    {
+        insnMov2 = nullptr;
+        insnMov1 = nullptr;
+        cmpInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "CombineMovInsnBeforeCSelPattern";
+    }
+
+private:
+    Insn *FindPrevMovInsn(const Insn &insn, regno_t regNo) const;
+    Insn *FindPrevCmpInsn(const Insn &insn) const;
+    Insn *insnMov2 = nullptr;
+    Insn *insnMov1 = nullptr;
+    Insn *cmpInsn = nullptr;
+    bool needReverseCond = false;
+    bool needCsetInsn = false;
 };
 
 /*
@@ -1523,7 +2080,7 @@ public:
  * Remove following patterns:
  *   mov x0, XX
  *   mov x1, XX
- *    bl  MCC_IncDecRef_NaiveRCFast
+ *   bl  MCC_IncDecRef_NaiveRCFast
  */
 class RemoveIncRefPattern : public CGPeepPattern {
 public:
@@ -1569,6 +2126,42 @@ private:
     bool FindLondIntCmpWithZ(Insn &insn);
     bool IsPatternMatch();
     std::vector<Insn *> optInsn;
+};
+
+// pattern1 :
+// -----------------------------------------------------
+// lsr(304)  R327 R324 8
+// strb(462) R327 [R164, 10]    rev16 R327 R324
+// strb(462) R324 [R164, 11] => strh  R327 [R164 10]
+// pattern2 :
+// ldrb(362) R369 R163 7
+// ldrb(362) R371 R163 6           ldrh   R369 R163 6
+// add(157)  R374 R369 R371 LSL => rev16  R374 R369
+
+class LdrStrRevPattern : public CGPeepPattern {
+public:
+    LdrStrRevPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~LdrStrRevPattern() override
+    {
+        lsrInsn = nullptr;
+        adjacentInsn = nullptr;
+        curMemOpnd = nullptr;
+        adjacentMemOpnd = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "LdrStrRevPattern";
+    }
+
+private:
+    bool IsAdjacentMem(const MemOperand &memOperandLow, const MemOperand &memOperandHigh) const;
+    Insn *lsrInsn = nullptr;
+    Insn *adjacentInsn = nullptr;
+    MemOperand *curMemOpnd = nullptr;
+    MemOperand *adjacentMemOpnd = nullptr;
+    bool isStrInsn = false;
 };
 
 /*
@@ -1733,6 +2326,110 @@ private:
 };
 
 /*
+ * Replace following patterns:
+ *
+ * add   w1, w0, w1
+ * cmp   w1, #0       ====>  adds w1, w0, w1
+ *       EQ
+ *
+ * add   x1, x0, x1
+ * cmp   x1, #0       ====>  adds x1, x0, x1
+ *.......EQ
+ *
+ * ....
+ */
+class AddCmpZeroPattern : public CGPeepPattern {
+public:
+    AddCmpZeroPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~AddCmpZeroPattern() override
+    {
+        prevInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AddCmpZeroPattern";
+    }
+
+private:
+    bool CheckAddCmpZeroCheckAdd(const Insn &insn) const;
+    bool CheckAddCmpZeroContinue(const Insn &insn, const RegOperand &opnd) const;
+    bool CheckAddCmpZeroCheckCond(const Insn &insn) const;
+    Insn *prevInsn = nullptr;
+};
+
+/*
+ * Replace following pattern:
+ * sxtw  x1, w0
+ * lsl   x2, x1, #3  ====>  sbfiz x2, x0, #3, #32
+ *
+ * uxtw  x1, w0
+ * lsl   x2, x1, #3  ====>  ubfiz x2, x0, #3, #32
+ */
+class ComplexExtendWordLslAArch64 : public PeepPattern {
+public:
+    explicit ComplexExtendWordLslAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
+    ~ComplexExtendWordLslAArch64() override = default;
+    void Run(BB &bb, Insn &insn) override;
+
+private:
+    bool IsExtendWordLslPattern(const Insn &insn) const;
+};
+
+class ComplexExtendWordLslPattern : public CGPeepPattern {
+public:
+    ComplexExtendWordLslPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
+    ~ComplexExtendWordLslPattern() override
+    {
+        useInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "ComplexExtendWordLslPattern";
+    }
+
+private:
+    Insn *useInsn = nullptr;
+};
+
+/*
+ * Replace following patterns:
+ *
+ * add   w1, w0, w1
+ * cmp   w1, #0       ====>  adds w1, w0, w1
+ *       EQ
+ *
+ * add   x1, x0, x1
+ * cmp   x1, #0       ====>  adds x1, x0, x1
+ *       EQ
+ *
+ * ....
+ */
+class AddCmpZeroPatternSSA : public CGPeepPattern {
+public:
+    AddCmpZeroPatternSSA(CGFunc &cgFunc, BB &currBB, Insn &currInsn, CGSSAInfo &info)
+        : CGPeepPattern(cgFunc, currBB, currInsn, info)
+    {
+    }
+    ~AddCmpZeroPatternSSA() override
+    {
+        prevAddInsn = nullptr;
+    }
+    void Run(BB &bb, Insn &insn) override;
+    bool CheckCondition(Insn &insn) override;
+    std::string GetPatternName() override
+    {
+        return "AddCmpZeroPatternSSA";
+    }
+
+private:
+    Insn *prevAddInsn = nullptr;
+};
+
+/*
  * Optimize the following patterns:
  *  and  w0, w6, #1  ====> tbz  w6, 0, .label
  *  cmp  w0, #1
@@ -1814,6 +2511,7 @@ public:
     explicit AndCmpCsetEorCbzOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
     ~AndCmpCsetEorCbzOpt() override = default;
     void Run(BB &bb, Insn &insn) override;
+
 private:
     CGFunc *cgFunc;
 };
@@ -1830,6 +2528,7 @@ public:
     explicit AddLdrOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
     ~AddLdrOpt() override = default;
     void Run(BB &bb, Insn &insn) override;
+
 private:
     CGFunc *cgFunc;
 };
@@ -1846,6 +2545,7 @@ public:
     explicit CsetEorOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
     ~CsetEorOpt() override = default;
     void Run(BB &bb, Insn &insn) override;
+
 private:
     CGFunc *cgFunc;
 };
@@ -1862,26 +2562,9 @@ public:
     explicit MoveCmpOpt(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
     ~MoveCmpOpt() override = default;
     void Run(BB &bb, Insn &insn) override;
+
 private:
     CGFunc *cgFunc;
-};
-
-/*
- * Replace following pattern:
- * sxtw  x1, w0
- * lsl   x2, x1, #3  ====>  sbfiz x2, x0, #3, #32
- *
- * uxtw  x1, w0
- * lsl   x2, x1, #3  ====>  ubfiz x2, x0, #3, #32
- */
-class ComplexExtendWordLslAArch64 : public PeepPattern {
-public:
-    explicit ComplexExtendWordLslAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
-    ~ComplexExtendWordLslAArch64() override = default;
-    void Run(BB &bb, Insn &insn) override;
-
-private:
-    bool IsExtendWordLslPattern(const Insn &insn) const;
 };
 
 class AArch64PeepHole : public PeepPatternMatch {

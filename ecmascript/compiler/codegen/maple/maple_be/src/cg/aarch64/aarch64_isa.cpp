@@ -21,7 +21,7 @@ namespace maplebe {
  * Get the ldp/stp corresponding to ldr/str
  * mop : a ldr or str machine operator
  */
-MOperator GetMopPair(MOperator mop)
+MOperator GetMopPair(MOperator mop, bool isIncludeStrbStrh)
 {
     switch (mop) {
         case MOP_xldr:
@@ -44,6 +44,10 @@ MOperator GetMopPair(MOperator mop)
             return MOP_sstp;
         case MOP_qstr:
             return MOP_qstp;
+        case MOP_wstrb:
+            return isIncludeStrbStrh ? MOP_wstrh : MOP_undef;
+        case MOP_wstrh:
+            return isIncludeStrbStrh ? MOP_wstr : MOP_undef;
         default:
             DEBUG_ASSERT(false, "should not run here");
             return MOP_undef;
@@ -106,7 +110,7 @@ uint32 GetJumpTargetIdx(const Insn &insn)
             return kInsnFirstOpnd;
         }
         case MOP_xbr: {
-            DEBUG_ASSERT(insn.GetOperandSize() == 2, "ERR"); // must have 2
+            DEBUG_ASSERT(insn.GetOperandSize() == 2, "ERR");  // must have 2
             return kInsnSecondOpnd;
         }
             /* conditional jump */
@@ -140,6 +144,22 @@ uint32 GetJumpTargetIdx(const Insn &insn)
             CHECK_FATAL(false, "Not a jump insn");
     }
     return kInsnFirstOpnd;
+}
+
+// This api is only used for cgir verify, implemented by calling the memopndofst interface.
+int64 GetMemOpndOffsetValue(Operand *o)
+{
+    auto *memOpnd = static_cast<MemOperand *>(o);
+    CHECK_FATAL(memOpnd != nullptr, "memOpnd should not be nullptr");
+    // kBOR memOpnd has no offsetvalue, so return 0 for verify.
+    // todo: AArch64AddressingMode is different from BiShengC
+    if (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOrX) {
+        return 0;
+    }
+    // Offset value of kBOI & kLo12Li can be got.
+    OfstOperand *ofStOpnd = memOpnd->GetOffsetImmediate();
+    int64 offsetValue = ofStOpnd ? ofStOpnd->GetOffsetValue() : 0LL;
+    return offsetValue;
 }
 } /* namespace AArch64isa */
 } /* namespace maplebe */

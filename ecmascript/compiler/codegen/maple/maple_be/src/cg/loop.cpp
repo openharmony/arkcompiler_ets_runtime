@@ -69,6 +69,11 @@ void LoopHierarchy::PrintLoops(const std::string &name) const
     }
 }
 
+bool CGFuncLoops::IsBBLoopMember(const BB *bb)
+{
+    return (*(std::find(loopMembers.begin(), loopMembers.end(), bb)) == bb);
+}
+
 void CGFuncLoops::CheckOverlappingInnerLoops(const MapleVector<CGFuncLoops *> &iLoops,
                                              const MapleVector<BB *> &loopMem) const
 {
@@ -307,7 +312,8 @@ void LoopFinder::markExtraEntryAndEncl()
             // Collect all entries
             bool foundNewEntry = false;
             fill(visitedBBs.begin(), visitedBBs.end(), false);
-            FOR_ALL_BB(bb, cgFunc) {
+            FOR_ALL_BB(bb, cgFunc)
+            {
                 if (!visitedBBs[bb->GetId()]) {
                     dfsBBs.push(bb);
                     visitedBBs[bb->GetId()] = true;
@@ -639,13 +645,15 @@ void LoopFinder::FormLoopHierarchy()
     onPathBBs.clear();
     onPathBBs.resize(cgFunc->NumBBs(), false);
 
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         bb->SetLevel(0);
     }
     bool changed;
     do {
         changed = false;
-        FOR_ALL_BB(bb, cgFunc) {
+        FOR_ALL_BB(bb, cgFunc)
+        {
             if (!visitedBBs[bb->GetId()]) {
                 dfsBBs.push(bb);
                 seekCycles();

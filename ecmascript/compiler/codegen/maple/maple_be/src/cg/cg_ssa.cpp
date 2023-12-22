@@ -27,8 +27,10 @@ void CGSSAInfo::ConstructSSA()
     RenameVariablesForBB(domInfo->GetCommonEntryBB().GetId());
 #if DEBUG
     /* Check phiListOpnd, must be ssaForm */
-    FOR_ALL_BB(bb, cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsPhi()) {
                 continue;
             }
@@ -57,8 +59,10 @@ void CGSSAInfo::MarkInsnsInSSA(Insn &insn)
 
 void CGSSAInfo::InsertPhiInsn()
 {
-    FOR_ALL_BB(bb, cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -98,7 +102,8 @@ void CGSSAInfo::PrunedPhiInsertion(const BB &bb, RegOperand &virtualOpnd)
             Insn &phiInsn = codeGen->BuildPhiInsn(virtualOpnd, phiList);
             MarkInsnsInSSA(phiInsn);
             bool insertSuccess = false;
-            FOR_BB_INSNS(insn, phiBB) {
+            FOR_BB_INSNS(insn, phiBB)
+            {
                 if (insn->IsMachineInstruction()) {
                     (void)phiBB->InsertInsnBefore(*insn, phiInsn);
                     insertSuccess = true;
@@ -138,7 +143,8 @@ void CGSSAInfo::RenameBB(BB &bb)
         oriStackSize[it.first] = static_cast<int32>(it.second.size());
     }
     RenamePhi(bb);
-    FOR_BB_INSNS(insn, &bb) {
+    FOR_BB_INSNS(insn, &bb)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -258,10 +264,24 @@ void CGSSAInfo::SetReversePostOrder()
     }
 }
 
+Insn *CGSSAInfo::GetDefInsn(const RegOperand &useReg)
+{
+    if (!useReg.IsSSAForm()) {
+        return nullptr;
+    }
+    regno_t useRegNO = useReg.GetRegisterNumber();
+    VRegVersion *useVersion = FindSSAVersion(useRegNO);
+    CHECK_FATAL(useVersion != nullptr, "useVRegVersion must not be null based on ssa");
+    CHECK_FATAL(!useVersion->IsDeleted(), "deleted version");
+    DUInsnInfo *defInfo = useVersion->GetDefInsnInfo();
+    return defInfo == nullptr ? nullptr : defInfo->GetInsn();
+}
+
 void CGSSAInfo::DumpFuncCGIRinSSAForm() const
 {
     LogInfo::MapleLogger() << "\n******  SSA CGIR for " << cgFunc->GetName() << " *******\n";
-    FOR_ALL_BB_CONST(bb, cgFunc) {
+    FOR_ALL_BB_CONST(bb, cgFunc)
+    {
         LogInfo::MapleLogger() << "=== BB "
                                << " <" << bb->GetKindName();
         if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
@@ -294,7 +314,8 @@ void CGSSAInfo::DumpFuncCGIRinSSAForm() const
         LogInfo::MapleLogger() << "===\n";
         LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
 
-        FOR_BB_INSNS_CONST(insn, bb) {
+        FOR_BB_INSNS_CONST(insn, bb)
+        {
             if (insn->IsCfiInsn() && insn->IsDbgInsn()) {
                 insn->Dump();
             } else {

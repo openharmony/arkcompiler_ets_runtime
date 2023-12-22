@@ -957,6 +957,21 @@ public:
         return exitBBVec.at(index);
     }
 
+    MapleVector<BB *>::iterator EraseNoReturnCallBB(MapleVector<BB *>::iterator it)
+    {
+        return noReturnCallBBVec.erase(it);
+    }
+
+    void PushBackNoReturnCallBBsVec(BB &bb)
+    {
+        noReturnCallBBVec.emplace_back(&bb);
+    }
+
+    MapleVector<BB *> &GetNoRetCallBBVec()
+    {
+        return noReturnCallBBVec;
+    }
+
     void SetLab2BBMap(int32 index, BB &bb)
     {
         lab2BBMap[index] = &bb;
@@ -1619,6 +1634,7 @@ private:
     BB *commonExitBB = nullptr;     /* this post-dominate all BBs */
     Insn *volReleaseInsn = nullptr; /* use to record the release insn for volatile strore */
     MapleVector<BB *> exitBBVec;
+    MapleVector<BB *> noReturnCallBBVec;
     MapleSet<regno_t> extendSet; /* use to mark regs which spilled 32 bits but loaded 64 bits. */
     MapleUnorderedMap<LabelIdx, BB *> lab2BBMap;
     BECommon &beCommon;

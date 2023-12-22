@@ -34,7 +34,8 @@ namespace {
 using namespace maplebe;
 bool CanBBThrow(const BB &bb)
 {
-    FOR_BB_INSNS_CONST(insn, &bb) {
+    FOR_BB_INSNS_CONST(insn, &bb)
+    {
         if (insn->IsTargetInsn() && insn->CanThrow()) {
             return true;
         }
@@ -160,40 +161,46 @@ void CGCFG::BuildCFG()
 
 void CGCFG::CheckCFG()
 {
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         for (BB *sucBB : bb->GetSuccs()) {
             bool found = false;
             for (BB *sucPred : sucBB->GetPreds()) {
                 if (sucPred == bb) {
-                    if (found == false) {
+                    if (!found) {
                         found = true;
                     } else {
                         LogInfo::MapleLogger()
                             << "dup pred " << sucPred->GetId() << " for sucBB " << sucBB->GetId() << "\n";
+                        CHECK_FATAL_FALSE("CG_CFG check failed !");
                     }
                 }
             }
-            if (found == false) {
+            if (!found) {
                 LogInfo::MapleLogger() << "non pred for sucBB " << sucBB->GetId() << " for BB " << bb->GetId() << "\n";
+                CHECK_FATAL_FALSE("CG_CFG check failed !");
             }
         }
     }
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         for (BB *predBB : bb->GetPreds()) {
             bool found = false;
             for (BB *predSucc : predBB->GetSuccs()) {
                 if (predSucc == bb) {
-                    if (found == false) {
+                    if (!found) {
                         found = true;
                     } else {
                         LogInfo::MapleLogger()
                             << "dup succ " << predSucc->GetId() << " for predBB " << predBB->GetId() << "\n";
+                        CHECK_FATAL_FALSE("CG_CFG check failed !");
                     }
                 }
             }
-            if (found == false) {
+            if (!found) {
                 LogInfo::MapleLogger() << "non succ for predBB " << predBB->GetId() << " for BB " << bb->GetId()
                                        << "\n";
+                CHECK_FATAL_FALSE("CG_CFG check failed !");
             }
         }
     }
@@ -213,7 +220,8 @@ void CGCFG::CheckCFGFreq()
             CHECK_FATAL(false, "Verifyfreq failure BB frequency!");
         }
     };
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         if (bb->IsUnreachable() || bb->IsCleanup()) {
             continue;
         }
@@ -555,6 +563,24 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf)
     }
 }
 
+void CGCFG::UpdateCommonExitBBInfo()
+{
+    BB *commonExitBB = cgFunc->GetCommonExitBB();
+    ASSERT_NOT_NULL(commonExitBB);
+    commonExitBB->ClearPreds();
+    for (BB *exitBB : cgFunc->GetExitBBsVec()) {
+        if (!exitBB->IsUnreachable()) {
+            commonExitBB->PushBackPreds(*exitBB);
+        }
+    }
+    for (BB *noRetBB : cgFunc->GetNoRetCallBBVec()) {
+        if (!noRetBB->IsUnreachable()) {
+            commonExitBB->PushBackPreds(*noRetBB);
+        }
+    }
+    WontExitAnalysis();
+}
+
 void CGCFG::RetargetJump(BB &srcBB, BB &targetBB)
 {
     insnVisitor->ModifyJumpTarget(srcBB, targetBB);
@@ -607,16 +633,25 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
     return nullptr;
 }
 
-bool CGCFG::InLSDA(LabelIdx label, const EHFunc &ehFunc)
+bool CGCFG::InLSDA(LabelIdx label [[maybe_unused]], const EHFunc *ehFunc [[maybe_unused]])
 {
-    if (!label || ehFunc.GetLSDACallSiteTable() == nullptr) {
+#ifndef ONLY_C
+    /* the function have no exception handle module */
+    if (ehFunc == nullptr) {
         return false;
     }
-    if (label == ehFunc.GetLSDACallSiteTable()->GetCSTable().GetEndOffset()->GetLabelIdx() ||
-        label == ehFunc.GetLSDACallSiteTable()->GetCSTable().GetStartOffset()->GetLabelIdx()) {
+
+    if ((label == 0) || ehFunc->GetLSDACallSiteTable() == nullptr) {
+        return false;
+    }
+    if (label == ehFunc->GetLSDACallSiteTable()->GetCSTable().GetEndOffset()->GetLabelIdx() ||
+        label == ehFunc->GetLSDACallSiteTable()->GetCSTable().GetStartOffset()->GetLabelIdx()) {
         return true;
     }
-    return ehFunc.GetLSDACallSiteTable()->InCallSiteTable(label);
+    return ehFunc->GetLSDACallSiteTable()->InCallSiteTable(label);
+#else
+    return false;
+#endif
 }
 
 bool CGCFG::InSwitchTable(LabelIdx label, const CGFunc &func)
@@ -632,6 +667,11 @@ bool CGCFG::IsCompareAndBranchInsn(const Insn &insn) const
     return insnVisitor->IsCompareAndBranchInsn(insn);
 }
 
+bool CGCFG::IsTestAndBranchInsn(const Insn &insn) const
+{
+    return insnVisitor->IsTestAndBranchInsn(insn);
+}
+
 bool CGCFG::IsAddOrSubInsn(const Insn &insn) const
 {
     return insnVisitor->IsAddOrSubInsn(insn);
@@ -642,7 +682,8 @@ Insn *CGCFG::FindLastCondBrInsn(BB &bb) const
     if (bb.GetKind() != BB::kBBIf) {
         return nullptr;
     }
-    FOR_BB_INSNS_REV(insn, (&bb)) {
+    FOR_BB_INSNS_REV(insn, (&bb))
+    {
         if (insn->IsBranch()) {
             return insn;
         }
@@ -731,7 +772,7 @@ void CGCFG::UnreachCodeAnalysis()
         EHFunc *ehFunc = cgFunc->GetEHFunc();
         /* if unreachBB InLSDA ,replace unreachBB's label with nextReachableBB before remove it. */
         if (ehFunc != nullptr && ehFunc->NeedFullLSDA() &&
-            cgFunc->GetTheCFG()->InLSDA(unreachBB->GetLabIdx(), *ehFunc)) {
+            cgFunc->GetTheCFG()->InLSDA(unreachBB->GetLabIdx(), ehFunc)) {
             /* find next reachable BB */
             BB *nextReachableBB = nullptr;
             for (BB *curBB = unreachBB; curBB != nullptr; curBB = curBB->GetNext()) {
@@ -808,7 +849,8 @@ void CGCFG::WontExitAnalysis()
 
 BB *CGCFG::FindLastRetBB()
 {
-    FOR_ALL_BB_REV(bb, cgFunc) {
+    FOR_ALL_BB_REV(bb, cgFunc)
+    {
         if (bb->GetKind() == BB::kBBReturn) {
             return bb;
         }

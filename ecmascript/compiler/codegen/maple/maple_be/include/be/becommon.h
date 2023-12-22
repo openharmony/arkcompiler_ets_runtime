@@ -30,6 +30,11 @@ using namespace maple;
 
 enum BitsPerByte : uint8 { kBitsPerByte = 8, kLog2BitsPerByte = 3 };
 
+inline uint32 GetPointerBitSize()
+{
+    return GetPointerSize() * kBitsPerByte;
+}
+
 class JClassFieldInfo { /* common java class field info */
 public:
     /* constructors */

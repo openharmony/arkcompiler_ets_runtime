@@ -33,24 +33,29 @@ void Optimizer::Run(const std::string &funcName, bool checkOnly)
     }
     /* Search the cgFunc for multiple possible optimizations in one pass */
     if (!singlePassPatterns.empty()) {
-        BB *curBB = cgFunc->GetFirstBB();
-        bool flag = false;
-        while (curBB != nullptr) {
+        bool changed = false;
+        do {
+            changed = false;
             for (OptimizationPattern *p : singlePassPatterns) {
-                if (p->Optimize(*curBB)) {
-                    flag = p->IsKeepPosition();
-                    p->SetKeepPosition(false);
-                    break;
+                BB *curBB = cgFunc->GetFirstBB();
+                while (curBB != nullptr) {
+                    if (p->Optimize(*curBB)) {
+                        changed = true;
+                    }
+                    if (p->IsKeepPosition()) {
+                        p->SetKeepPosition(false);
+                    } else {
+                        curBB = curBB->GetNext();
+                    }
                 }
             }
-
-            if (flag) {
-                flag = false;
-            } else {
-                curBB = curBB->GetNext();
-            }
-        }
+        } while (changed);
     }
+
+    // Update commonExitBB info, especially in infinite loop case.
+    // But we can not get the commonExitBB by traversal CFG, so
+    // it needs to be handled separately.
+    cgFunc->GetTheCFG()->UpdateCommonExitBBInfo();
 
     if (CGOptions::IsDumpOptimizeCommonLog()) {
         constexpr int arrSize = 80;
@@ -64,14 +69,17 @@ void Optimizer::Run(const std::string &funcName, bool checkOnly)
     OptimizeLogger::GetLogger().ClearLocal();
 }
 
-void OptimizationPattern::Search2Op(bool noOptimize)
+bool OptimizationPattern::Search2Op(bool noOptimize)
 {
+    bool hasChange = false;
     checkOnly = noOptimize;
+    InitPattern();
     BB *curBB = cgFunc->GetFirstBB();
     while (curBB != nullptr) {
         bool changed = false;
         do {
             changed = Optimize(*curBB);
+            hasChange = hasChange || changed;
         } while (changed);
         if (keepPosition) {
             keepPosition = false;
@@ -79,6 +87,7 @@ void OptimizationPattern::Search2Op(bool noOptimize)
             curBB = curBB->GetNext();
         }
     }
+    return hasChange;
 }
 
 void OptimizationPattern::Log(uint32 bbID)
@@ -141,7 +150,8 @@ bool DotGenerator::IsBackEdge(const CGFunc &cgFunction, const BB &from, const BB
 
 void DotGenerator::DumpEdge(const CGFunc &cgFunction, std::ofstream &cfgFileOfStream, bool isIncludeEH)
 {
-    FOR_ALL_BB_CONST(bb, &cgFunction) {
+    FOR_ALL_BB_CONST(bb, &cgFunction)
+    {
         for (auto *succBB : bb->GetSuccs()) {
             cfgFileOfStream << "BB" << bb->GetId();
             cfgFileOfStream << " -> "
@@ -212,9 +222,11 @@ bool DotGenerator::FoundNormalOpndRegNum(const RegOperand &regOpnd, const Insn &
 
 void DotGenerator::DumpBBInstructions(const CGFunc &cgFunction, regno_t vReg, std::ofstream &cfgFile)
 {
-    FOR_ALL_BB_CONST(bb, &cgFunction) {
+    FOR_ALL_BB_CONST(bb, &cgFunction)
+    {
         if (vReg != 0) {
-            FOR_BB_INSNS_CONST(insn, bb) {
+            FOR_BB_INSNS_CONST(insn, bb)
+            {
                 bool found = false;
                 uint32 opndNum = insn->GetOperandSize();
                 for (uint32 i = 0; i < opndNum; ++i) {

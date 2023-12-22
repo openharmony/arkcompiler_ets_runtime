@@ -81,6 +81,10 @@ bool Insn::IsCall() const
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsCall();
 }
+bool Insn::IsSpecialCall() const
+{
+    return md ? md->IsSpecialCall() : false;
+}
 bool Insn::IsTailCall() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
@@ -204,6 +208,19 @@ Operand *Insn::GetMemOpnd() const
     }
     return nullptr;
 }
+
+uint32 Insn::GetMemOpndIdx() const
+{
+    uint32 opndIdx = kInsnMaxOpnd;
+    for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {
+        Operand &opnd = GetOperand(i);
+        if (opnd.IsMemoryAccessOperand()) {
+            return i;
+        }
+    }
+    return opndIdx;
+}
+
 void Insn::SetMemOpnd(MemOperand *memOpnd)
 {
     for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {

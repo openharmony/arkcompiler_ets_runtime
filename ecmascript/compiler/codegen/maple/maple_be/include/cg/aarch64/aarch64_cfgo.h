@@ -17,23 +17,38 @@
 #define MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_CFGO_H
 
 #include "cfgo.h"
+#include "aarch64_isa.h"
 
 namespace maplebe {
 class AArch64CFGOptimizer : public CFGOptimizer {
 public:
     AArch64CFGOptimizer(CGFunc &func, MemPool &memPool) : CFGOptimizer(func, memPool) {}
-    ~AArch64CFGOptimizer() = default;
+    ~AArch64CFGOptimizer() override = default;
     void InitOptimizePatterns() override;
 };
 
 class AArch64FlipBRPattern : public FlipBRPattern {
 public:
     explicit AArch64FlipBRPattern(CGFunc &func) : FlipBRPattern(func) {}
-    ~AArch64FlipBRPattern() = default;
+    ~AArch64FlipBRPattern() override = default;
 
 private:
     uint32 GetJumpTargetIdx(const Insn &insn) override;
     MOperator FlipConditionOp(MOperator flippedOp) override;
+};
+
+class AArch64CrossJumpBBPattern : public CrossJumpBBPattern {
+public:
+    explicit AArch64CrossJumpBBPattern(CGFunc &func) : CrossJumpBBPattern(func) {}
+    ~AArch64CrossJumpBBPattern() override = default;
+
+private:
+    uint32 GetJumpTargetIdx(const Insn &insn) const override;
+    MOperator FlipConditionOp(MOperator flippedOp) const override;
+    MOperator GetUnCondBranchMOP() const override
+    {
+        return MOP_xuncond;
+    }
 };
 } /* namespace maplebe */
 

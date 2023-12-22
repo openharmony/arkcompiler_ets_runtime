@@ -221,6 +221,7 @@ public:
     {
         return safePropInsns;
     }
+    Insn *GetDefInsn(const RegOperand &useReg);
     void DumpFuncCGIRinSSAForm() const;
     virtual void DumpInsnInSSAForm(const Insn &insn) const = 0;
     static uint32 SSARegNObase;
