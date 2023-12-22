@@ -313,7 +313,7 @@ group("ark_aot_test") {
   ]
 
   if (is_mac) {
-    deps = [
+    deps -= [
       ":ark_aot_js_test",
       ":ark_aot_ts_test",
       "aot_type_test:aot_type_test",

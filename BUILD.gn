@@ -510,6 +510,8 @@ config("ecma_test_config") {
   }
   if (!is_mac) {
     ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  } else {
+    ldflags = [ "-Wl" ]
   }
 
   if (!ark_standalone_build) {
