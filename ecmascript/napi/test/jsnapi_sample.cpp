@@ -734,7 +734,7 @@ void NativePointer(Local<ObjectRef> object, EcmaVM *vm)
     object->SetNativePointerFieldCount(cnt);
     ASSERT_EQ(cnt, object->GetNativePointerFieldCount());
     A *a = new A();
-    int cnt2 = 1; // 11 = random Numbers
+    int cnt2 = 1;  // 11 = random Numbers
     int cnt3 = 11; // 1 = random Numbers
     object->SetNativePointerField(cnt2, static_cast<void *>(a), nullptr, nullptr);
     object->SetNativePointerField(cnt3, static_cast<void *>(a), nullptr, nullptr);
@@ -1324,6 +1324,387 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo5_class_test)
     GTEST_LOG_(INFO) << "sample_demo5_class_test =======================================";
 }
 
+/* demo6 多态 ts：
+ * // 基类
+ * class Derive {
+ * baseNum: number = 1
+ * constructor(num: number){
+ * this.baseNum = num
+ * }
+ * Compute(): number {
+ * return this.baseNum
+ * }
+ * }
+ * // 子类1
+ * class DeriveDouble extends Derive {
+ * constructor(num: number){
+ * super(num);
+ * }
+ * Compute() : number {
+ * return this.baseNum * 2
+ * }
+ * }
+ * // 子类2
+ * class DerivedTriple extends Derive {
+ * constructor(num: number){
+ * super(num);
+ * }
+ * Compute() : number {
+ * return this.baseNum * 3
+ * }
+ * }
+ *
+ * // 测试：
+ * let d1: Derive;
+ * let d2: Derive;
+ * let d3: Derive;
+ * d1 = new Derive(5);//新建基类。
+ * d2 = new DeriveDouble(5);//新建子类。
+ * d3 = new DerivedTriple(5);//新建子类。
+ * let i1:number = d1.Compute();
+ * let i2:number = d2.Compute();
+ * let i3:number = d3.Compute();
+ * console.log(i1);
+ * console.log(i2);
+ * console.log(i3);
+ */
+
+/* 基类 ts:
+ * class Derive {
+ * baseNum: number = 1
+ * constructor(num: number){
+ * this.baseNum = num
+ * }
+ * Compute(): number {
+ * return this.baseNum
+ * }
+ * }
+ */
+class Derive {
+private:
+    // 新建ClassFunction
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm);
+
+public:
+    // 获取ClassFunction
+    static Local<FunctionRef> GetClassFunction(EcmaVM *vm);
+    static Local<Derive> New(EcmaVM *vm, Local<NumberRef> num);
+
+    static Local<NumberRef> Compute(EcmaVM *vm, Local<Derive> thisRef);
+
+private:
+    const static std::string CLASS_NAME;
+};
+
+const std::string Derive::CLASS_NAME = "DeriveClass";
+
+Local<FunctionRef> Derive::NewClassFunction(EcmaVM *vm)
+{
+    Local<FunctionRef> claFunc = FunctionRef::NewClassFunction(
+        vm,
+        // 构造函数调用
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+            // 获取参数。
+            Local<JSValueRef> num = runtimeInfo->GetCallArgRef(0);
+            // this.baseNum = num
+            thisRef->Set(vm, StringRef::NewFromUtf8(vm, "baseNum"), num);
+            return thisRef;
+        },
+        nullptr, nullptr);
+    Local<JSValueRef> jsProto = claFunc->GetFunctionPrototype(vm);
+    Local<ObjectRef> proto = jsProto->ToObject(vm);
+    // 添加非静态变量
+    proto->Set(vm, StringRef::NewFromUtf8(vm, "baseNum"), NumberRef::New(vm, 1));
+    // 添加非静态函数
+    proto->Set(vm, StringRef::NewFromUtf8(vm, "Compute"),
+        FunctionRef::New(vm,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+
+            Local<JSValueRef> jsNum = thisRef->Get(vm, StringRef::NewFromUtf8(vm, "baseNum"));
+            int num = jsNum->Int32Value(vm);
+            return NumberRef::New(vm, num);
+        }));
+    // 设置类名。
+    claFunc->SetName(vm, StringRef::NewFromUtf8(vm, Derive::CLASS_NAME.c_str()));
+    return claFunc;
+}
+
+Local<FunctionRef> Derive::GetClassFunction(EcmaVM *vm)
+{
+    Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
+    Local<JSValueRef> jsClaFunc = globalObj->Get(vm, StringRef::NewFromUtf8(vm, Derive::CLASS_NAME.c_str()));
+    if (jsClaFunc->IsFunction()) {
+        return jsClaFunc;
+    }
+    Local<FunctionRef> claFunc = Derive::NewClassFunction(vm);
+    // 添加到全局。
+    globalObj->Set(vm, claFunc->GetName(vm), claFunc);
+    return claFunc;
+}
+
+Local<Derive> Derive::New(EcmaVM *vm, Local<NumberRef> num)
+{
+    // 获取类函数。
+    Local<FunctionRef> claFunc = Derive::GetClassFunction(vm);
+    // 定义参数。
+    Local<JSValueRef> argv[1] = {num};
+    // 构造函数，构造对象。
+    Local<JSValueRef> jsObj = claFunc->Constructor(vm, argv, 1);
+    Local<ObjectRef> obj = jsObj->ToObject(vm);
+    return obj;
+}
+
+Local<NumberRef> Derive::Compute(EcmaVM *vm, Local<Derive> thisRef)
+{
+    Local<ObjectRef> objRef = thisRef;
+    Local<FunctionRef> func = objRef->Get(vm, StringRef::NewFromUtf8(vm, "Compute"));
+    return func->Call(vm, objRef, nullptr, 0);
+}
+
+/* 子类1 ts:
+ * class DeriveDouble extends Base {
+ * constructor(num: number){
+ * super(num);
+ * }
+ * Compute() : number {
+ * return this.baseNum * 2
+ * }
+ * }
+ */
+class DeriveDouble : public Derive {
+private:
+    DeriveDouble() = default;
+    // 新建ClassFunction
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm);
+
+public:
+    // 获取ClassFunction
+    static Local<FunctionRef> GetClassFunction(EcmaVM *vm);
+    static Local<DeriveDouble> New(EcmaVM *vm, Local<NumberRef> num);
+    ~DeriveDouble() = default;
+
+public:
+    // 设置类名
+    const static std::string CLASS_NAME;
+};
+
+const std::string DeriveDouble::CLASS_NAME = "DeriveDoubleClass";
+
+Local<FunctionRef> DeriveDouble::NewClassFunction(EcmaVM *vm)
+{
+    Local<FunctionRef> claFunc = FunctionRef::NewClassFunction(
+        vm,
+        // 构造函数调用
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // 获取参数。
+            Local<JSValueRef> num = runtimeInfo->GetCallArgRef(0);
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+            // 修改父类。
+            thisRef->Set(vm, StringRef::NewFromUtf8(vm, "baseNum"), num);
+            return thisRef;
+        },
+        nullptr, nullptr);
+    // 设置类名。
+    claFunc->SetName(vm, StringRef::NewFromUtf8(vm, DeriveDouble::CLASS_NAME.c_str()));
+
+    // 添加非静态函数
+    Local<ObjectRef> proto = claFunc->GetFunctionPrototype(vm)->ToObject(vm);
+    proto->Set(vm, StringRef::NewFromUtf8(vm, "Compute"),
+        FunctionRef::New(vm,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+            Local<JSValueRef> jsNum = thisRef->Get(vm, StringRef::NewFromUtf8(vm, "baseNum"));
+            int num = jsNum->Int32Value(vm);
+            int multiple = 2; // 函数功能，2倍返回。
+            num *= multiple;
+            return NumberRef::New(vm, num);
+        }));
+    // 父类。
+    Local<FunctionRef> claFuncBase = Derive::GetClassFunction(vm);
+    // 继承。
+    claFunc->Inherit(vm, claFuncBase);
+    return claFunc;
+}
+
+Local<FunctionRef> DeriveDouble::GetClassFunction(EcmaVM *vm)
+{
+    Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
+    Local<JSValueRef> jsClaFunc = globalObj->Get(vm, StringRef::NewFromUtf8(vm, DeriveDouble::CLASS_NAME.c_str()));
+    if (jsClaFunc->IsFunction()) {
+        return jsClaFunc;
+    }
+    Local<FunctionRef> claFunc = DeriveDouble::NewClassFunction(vm);
+    globalObj->Set(vm, claFunc->GetName(vm), claFunc);
+    return claFunc;
+}
+
+Local<DeriveDouble> DeriveDouble::New(EcmaVM *vm, Local<NumberRef> num)
+{
+    // 获取类函数。
+    Local<FunctionRef> claFunc = DeriveDouble::GetClassFunction(vm);
+    // 定义参数。
+    Local<JSValueRef> argv[1] = {num};
+    // 构造函数，构造对象。
+    Local<JSValueRef> jsObj = claFunc->Constructor(vm, argv, 1);
+    Local<ObjectRef> obj = jsObj->ToObject(vm);
+    return obj;
+}
+
+/* 子类2 ts:
+ * class DerivedTriple extends Derive {
+ * constructor(num: number){
+ * super(num);
+ * }
+ * Compute() : number {
+ * return this.baseNum * 3
+ * }
+ * }
+ */
+class DerivedTriple : public Derive {
+private:
+    DerivedTriple() = default;
+    // 新建ClassFunction
+    static Local<FunctionRef> NewClassFunction(EcmaVM *vm);
+
+public:
+    // 获取ClassFunction
+    static Local<FunctionRef> GetClassFunction(EcmaVM *vm);
+    static Local<DerivedTriple> New(EcmaVM *vm, Local<NumberRef> num);
+    ~DerivedTriple() = default;
+
+public:
+    // 设置类名
+    const static std::string CLASS_NAME;
+};
+
+const std::string DerivedTriple::CLASS_NAME = "DerivedTripleClass";
+
+Local<FunctionRef> DerivedTriple::NewClassFunction(EcmaVM *vm)
+{
+    Local<FunctionRef> claFunc = FunctionRef::NewClassFunction(
+        vm,
+        // 构造函数调用
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // 获取参数。
+            Local<JSValueRef> num = runtimeInfo->GetCallArgRef(0);
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+            // 修改父类。
+            thisRef->Set(vm, StringRef::NewFromUtf8(vm, "baseNum"), num);
+            return thisRef;
+        },
+        nullptr, nullptr);
+    // 设置类名。
+    claFunc->SetName(vm, StringRef::NewFromUtf8(vm, DerivedTriple::CLASS_NAME.c_str()));
+
+    // 添加非静态函数
+    Local<ObjectRef> proto = claFunc->GetFunctionPrototype(vm)->ToObject(vm);
+    proto->Set(vm, StringRef::NewFromUtf8(vm, "Compute"),
+        FunctionRef::New(vm,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // 获取this
+            Local<JSValueRef> jsThisRef = runtimeInfo->GetThisRef();
+            Local<ObjectRef> thisRef = jsThisRef->ToObject(vm);
+            Local<JSValueRef> jsNum = thisRef->Get(vm, StringRef::NewFromUtf8(vm, "baseNum"));
+            int num = jsNum->Int32Value(vm);
+            int multiple = 3; // 函数功能，3倍返回。
+            num *= multiple;
+            return NumberRef::New(vm, num);
+        }));
+    // 父类。
+    Local<FunctionRef> claFuncBase = Derive::GetClassFunction(vm);
+    // 继承。
+    claFunc->Inherit(vm, claFuncBase);
+    return claFunc;
+}
+
+Local<FunctionRef> DerivedTriple::GetClassFunction(EcmaVM *vm)
+{
+    Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
+    Local<JSValueRef> jsClaFunc = globalObj->Get(vm, StringRef::NewFromUtf8(vm, DerivedTriple::CLASS_NAME.c_str()));
+    if (jsClaFunc->IsFunction()) {
+        return jsClaFunc;
+    }
+    Local<FunctionRef> claFunc = DerivedTriple::NewClassFunction(vm);
+    globalObj->Set(vm, claFunc->GetName(vm), claFunc);
+    return claFunc;
+}
+
+Local<DerivedTriple> DerivedTriple::New(EcmaVM *vm, Local<NumberRef> num)
+{
+    // 获取类函数。
+    Local<FunctionRef> claFunc = DerivedTriple::GetClassFunction(vm);
+    // 定义参数。
+    Local<JSValueRef> argv[1] = {num};
+    // 构造函数，构造对象。
+    Local<JSValueRef> jsObj = claFunc->Constructor(vm, argv, 1);
+    Local<ObjectRef> obj = jsObj->ToObject(vm);
+    return obj;
+}
+
+/* 测试。ts:
+ * let d1: Derive;
+ * let d2: Derive;
+ * let d3: Derive;
+ * d1 = new Derive(5);//新建基类。
+ * d2 = new DeriveDouble(5);//新建子类。
+ * d3 = new DerivedTriple(5);//新建子类。
+ * let i1:number = d1.Compute();
+ * let i2:number = d2.Compute();
+ * let i3:number = d3.Compute();
+ * console.log(i1);
+ * console.log(i2);
+ * console.log(i3);
+ */
+HWTEST_F_L0(JSNApiSampleTest, sample_demo6_polymorphic_test)
+{
+    GTEST_LOG_(INFO) << "sample_demo6_polymorphic_test =======================================";
+    LocalScope scope(vm_);
+
+    int num = 5;
+
+    Local<Derive> d1 = Derive::New(vm_, NumberRef::New(vm_, num));
+    Local<Derive> d2 = DeriveDouble::New(vm_, NumberRef::New(vm_, num));
+    Local<Derive> d3 = DerivedTriple::New(vm_, NumberRef::New(vm_, num));
+
+    Local<NumberRef> i1 = Derive::Compute(vm_, d1);
+    Local<NumberRef> i2 = Derive::Compute(vm_, d2);
+    Local<NumberRef> i3 = Derive::Compute(vm_, d3);
+
+    GTEST_LOG_(INFO) << "i1 = " << i1->Int32Value(vm_);
+    GTEST_LOG_(INFO) << "i2 = " << i2->Int32Value(vm_);
+    GTEST_LOG_(INFO) << "i3 = " << i3->Int32Value(vm_);
+
+    GTEST_LOG_(INFO) << "sample_demo6_polymorphic_test =======================================";
+}
+
 /* demo7 数组的使用 */
 HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Int)
 {
@@ -1339,7 +1720,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Int)
     }
     Local<IntegerRef> resultInt = ArrayRef::GetValueAt(vm_, arrayObject, index);
     GTEST_LOG_(INFO) << "sample_getIntValue_index_1: " << resultInt->Value();
-    int inputInt = 99;  // int data = 99
+    int inputInt = 99; // int data = 99
     Local<IntegerRef> intValue = IntegerRef::New(vm_, inputInt);
     bool setResult = ArrayRef::SetValueAt(vm_, arrayObject, arrayLength, intValue);
     GTEST_LOG_(INFO) << "sample_setIntValue_index_5: " << intValue->Value() << " setResult: " << setResult;
@@ -1390,8 +1771,8 @@ HWTEST_F_L0(JSNApiSampleTest, sample_ArrayRef_Number)
     uint32_t length = 5; // array length = 5
     Local<ArrayRef> arrayObject = ArrayRef::New(vm_, length);
     uint32_t arrayLength = arrayObject->Length(vm_);
-    uint32_t inputNumber = 40;  // number data = 40
-    uint32_t index = 0; // array index = 0
+    uint32_t inputNumber = 40; // number data = 40
+    uint32_t index = 0;        // array index = 0
     Local<NumberRef> numberValue = NumberRef::New(vm_, inputNumber);
     for (int i = 0; i < (int)arrayLength; i++) {
         ArrayRef::SetValueAt(vm_, arrayObject, i, numberValue);
@@ -1467,7 +1848,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int8Array)
         *ptr = int8_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t byteOffset = 5;      // byte offset = 5
     int32_t int8ArrayLength = 6; // array length = 6
     Local<Int8ArrayRef> typedArray = Int8ArrayRef::New(vm_, arrayBuffer, byteOffset, int8ArrayLength);
     GTEST_LOG_(INFO) << "sample_Int8Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1492,7 +1873,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint8Array)
         *ptr = uint8_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t byteOffset = 5;       // byte offset = 5
     int32_t Uint8ArrayLength = 6; // array length = 6
     Local<Uint8ArrayRef> typedArray = Uint8ArrayRef::New(vm_, arrayBuffer, byteOffset, Uint8ArrayLength);
     GTEST_LOG_(INFO) << "sample_Uint8Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1517,7 +1898,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint8ClampedArray)
         *ptr = uint8_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t byteOffset = 5;     // byte offset = 5
     int32_t uint8ArrLength = 6; // array length = 6
     Local<Uint8ClampedArrayRef> typedArray = Uint8ClampedArrayRef::New(vm_, arrayBuffer, byteOffset, uint8ArrLength);
     GTEST_LOG_(INFO) << "sample_Uint8ClampedArray_byteLength : " << typedArray->ByteLength(vm_);
@@ -1542,7 +1923,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int16Array)
         *ptr = int16_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t byteOffset = 4;       // byte offset = 4
     int32_t int16ArrayLength = 6; // array length = 6
     Local<Int16ArrayRef> typedArray = Int16ArrayRef::New(vm_, arrayBuffer, byteOffset, int16ArrayLength);
     GTEST_LOG_(INFO) << "sample_Int16Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1567,7 +1948,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint16Array)
         *ptr = uint16_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t byteOffset = 4;        // byte offset = 4
     int32_t uint16ArrayLength = 6; // array length = 6
     Local<Uint16ArrayRef> typedArray = Uint16ArrayRef::New(vm_, arrayBuffer, byteOffset, uint16ArrayLength);
     GTEST_LOG_(INFO) << "sample_Uint16Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1592,7 +1973,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Int32Array)
         *ptr = int32_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t byteOffset = 4;       // byte offset = 4
     int32_t int32ArrayLength = 6; // array length = 6
     Local<Int32ArrayRef> typedArray = Int32ArrayRef::New(vm_, arrayBuffer, byteOffset, int32ArrayLength);
     GTEST_LOG_(INFO) << "sample_Int32Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1617,7 +1998,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Uint32Array)
         *ptr = uint32_t(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t byteOffset = 4;        // byte offset = 4
     int32_t uint32ArrayLength = 6; // array length = 6
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, byteOffset, uint32ArrayLength);
     GTEST_LOG_(INFO) << "sample_Uint32Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1642,7 +2023,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Float32Array)
         *ptr = float(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 4;  // byte offset = 4
+    int32_t byteOffset = 4;         // byte offset = 4
     int32_t float32ArrayLength = 6; // array length = 6
     Local<Float32ArrayRef> typedArray = Float32ArrayRef::New(vm_, arrayBuffer, byteOffset, float32ArrayLength);
     GTEST_LOG_(INFO) << "sample_Float32Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1667,7 +2048,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_Float64Array)
         *ptr = double(i + 10);
         ptr++;
     }
-    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t byteOffset = 8;         // byte offset = 8
     int32_t float64ArrayLength = 6; // array length = 6
     Local<Float64ArrayRef> typedArray = Float64ArrayRef::New(vm_, arrayBuffer, byteOffset, float64ArrayLength);
     GTEST_LOG_(INFO) << "sample_Float64Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1692,7 +2073,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_BigInt64Array)
         *ptr = int64_t(i * 100);
         ptr++;
     }
-    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t byteOffset = 8;          // byte offset = 8
     int32_t bigInt64ArrayLength = 6; // array length = 6
     Local<BigInt64ArrayRef> typedArray = BigInt64ArrayRef::New(vm_, arrayBuffer, byteOffset, bigInt64ArrayLength);
     GTEST_LOG_(INFO) << "sample_BigInt64Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1717,7 +2098,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_TypedArrayRef_BigUint64Array)
         *ptr = int64_t(i * 100);
         ptr++;
     }
-    int32_t byteOffset = 8;  // byte offset = 8
+    int32_t byteOffset = 8;           // byte offset = 8
     int32_t bigUint64ArrayLength = 6; // array length = 6
     Local<BigUint64ArrayRef> typedArray = BigUint64ArrayRef::New(vm_, arrayBuffer, byteOffset, bigUint64ArrayLength);
     GTEST_LOG_(INFO) << "sample_BigUint64Array_byteLength : " << typedArray->ByteLength(vm_);
@@ -1736,7 +2117,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_DataViewRef)
     LocalScope scope(vm_);
     const int32_t length = 15; // arraybuffer length = 15
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    int32_t byteOffset = 5;  // byte offset = 5
+    int32_t byteOffset = 5;     // byte offset = 5
     int32_t dataViewLength = 7; // dataview length = 7
     Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, byteOffset, dataViewLength);
     GTEST_LOG_(INFO) << "sample_DataView_byteLength : " << dataView->ByteLength();
@@ -1764,7 +2145,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_ArrayBufferWithBuffer_New_Detach)
     struct Data {
         int32_t length;
     };
-    const int32_t length = 5;   // arraybuffer length = 5
+    const int32_t length = 5; // arraybuffer length = 5
     Data *data = new Data();
     data->length = length;
     Deleter deleter = [](void *buffer, void *data) -> void {
@@ -1799,7 +2180,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_BufferWithBuffer_New_GetBuffer)
     struct Data {
         int32_t length;
     };
-    const int32_t length = 5;   // buffer length = 5
+    const int32_t length = 5; // buffer length = 5
     Data *data = new Data();
     data->length = length;
     Deleter deleter = [](void *buffer, void *data) -> void {
@@ -1813,6 +2194,70 @@ HWTEST_F_L0(JSNApiSampleTest, sample_BufferWithBuffer_New_GetBuffer)
     Local<BufferRef> bufferObj = BufferRef::New(vm_, buffer, length, deleter, data);
     GTEST_LOG_(INFO) << "sample_bufferWithBuffer_byteLength : " << bufferObj->ByteLength(vm_);
     GTEST_LOG_(INFO) << "sample_bufferWithBuffer_getBuffer : " << bufferObj->GetBuffer();
+}
+
+/* domo8 异步操作。 ts:
+ * new Promise(function (resolve, reject) {
+ * var a = 0;
+ * var b = 1;
+ * if (b == 0) reject("Divide zero");
+ * else resolve(a / b);
+ * }).then(function (value) {
+ * console.log("a / b = " + value);
+ * }).catch(function (err) {
+ * console.log(err);
+ * }).finally(function () {
+ * console.log("End");
+ * });
+ */
+HWTEST_F_L0(JSNApiSampleTest, sample_demo8_async_test_1)
+{
+    GTEST_LOG_(INFO) << "sample_demo8_async_test_1 =======================================";
+    LocalScope scope(vm_);
+
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+    capability->GetPromise(vm_)
+        ->Then(vm_, FunctionRef::New(vm_,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            Local<JSValueRef> jsNum = runtimeInfo->GetCallArgRef(0);
+            int num = jsNum->Int32Value(vm);
+            // ts: console.log("a / b = " + value);
+            GTEST_LOG_(INFO) << "a / b = " << num;
+            return JSValueRef::Undefined(vm);
+        }))
+        ->Catch(vm_, FunctionRef::New(vm_,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            Local<JSValueRef> jsStr = runtimeInfo->GetCallArgRef(0);
+            std::string err = jsStr->ToString(vm)->ToString();
+            // ts: console.log(err);
+            GTEST_LOG_(INFO) << err;
+            return JSValueRef::Undefined(vm);
+        }))
+        ->Finally(vm_, FunctionRef::New(vm_,
+        // 函数体
+        [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            // ts: console.log("End");
+            GTEST_LOG_(INFO) << "End";
+            return JSValueRef::Undefined(vm);
+        }));
+
+    int a = 0;
+    int b = 0;
+    if (b == 0) {
+        capability->Reject(vm_, StringRef::NewFromUtf8(vm_, "Divide zero"));
+    } else {
+        capability->Resolve(vm_, NumberRef::New(vm_, int(a / b)));
+    }
+
+    GTEST_LOG_(INFO) << "sample_demo8_async_test_1 =======================================";
 }
 
 // JSValueRef转为字符串输出。
@@ -1967,6 +2412,75 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo9_map_test_2_WeakMapref)
     GTEST_LOG_(INFO) << "sample_demo9_map_test_2_WeakMapref =======================================";
 }
 
+/* demo10 set 的使用 */
+HWTEST_F_L0(JSNApiSampleTest, sample_demo10_set)
+{
+    GTEST_LOG_(INFO) << "sample_demo10_set =======================================";
+    LocalScope scope(vm_);
+    Local<SetRef> set = SetRef::New(vm_);
+
+    set->Add(vm_, StringRef::NewFromUtf8(vm_, "val1"));
+    int num2 = 222; // random number
+    set->Add(vm_, NumberRef::New(vm_, num2));
+    set->Add(vm_, BooleanRef::New(vm_, true));
+    set->Add(vm_, SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "val4")));
+    set->Add(vm_, StringRef::NewFromUtf8(vm_, "val5"));
+    int num6 = 666; // random number
+    set->Add(vm_, IntegerRef::New(vm_, num6));
+
+    int32_t size = set->GetSize();
+    GTEST_LOG_(INFO) << "size : " << size;
+    int32_t totalElement = set->GetTotalElements();
+    GTEST_LOG_(INFO) << "total element : " << totalElement;
+
+    for (int i = 0; i < size; ++i) {
+        Local<JSValueRef> jsVal = set->GetValue(vm_, i);
+        GTEST_LOG_(INFO) << "for set index : " << i << "    val : " << jsValue2String(vm_, jsVal);
+    }
+
+    // Iterator
+    Local<SetIteratorRef> setIter = SetIteratorRef::New(vm_, set);
+    ecmascript::EcmaRuntimeCallInfo *info = setIter->GetEcmaRuntimeCallInfo(vm_);
+
+    Local<StringRef> kind = setIter->GetKind(vm_);
+    GTEST_LOG_(INFO) << "Set Iterator kind : " << kind->ToString();
+
+    for (Local<ArrayRef> array = SetIteratorRef::Next(vm_, info); array->IsArray(vm_);
+        array = SetIteratorRef::Next(vm_, info)) {
+        int index = setIter->GetIndex() - 1;
+        Local<JSValueRef> jsVal = ArrayRef::GetValueAt(vm_, array, 1);
+        GTEST_LOG_(INFO) << "for set iterator index : " << index << "    val : " << jsValue2String(vm_, jsVal);
+    }
+    GTEST_LOG_(INFO) << "sample_demo10_set =======================================";
+}
+
+/* demo10 WeakSet 的使用 */
+HWTEST_F_L0(JSNApiSampleTest, sample_demo10_weakset)
+{
+    GTEST_LOG_(INFO) << "sample_demo10_weakset =======================================";
+    LocalScope scope(vm_);
+    Local<WeakSetRef> weakSet = WeakSetRef::New(vm_);
+
+    weakSet->Add(vm_, StringRef::NewFromUtf8(vm_, "val1"));
+    int num2 = 666; // random number
+    weakSet->Add(vm_, NumberRef::New(vm_, num2));
+    weakSet->Add(vm_, BooleanRef::New(vm_, true));
+    weakSet->Add(vm_, SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "val4")));
+    weakSet->Add(vm_, StringRef::NewFromUtf8(vm_, "val5"));
+    int num6 = 666; // random number
+    weakSet->Add(vm_, IntegerRef::New(vm_, num6));
+
+    int32_t size = weakSet->GetSize();
+    GTEST_LOG_(INFO) << "size : " << size;
+    int32_t totalElement = weakSet->GetTotalElements();
+    GTEST_LOG_(INFO) << "total element : " << totalElement;
+
+    for (int i = 0; i < size; ++i) {
+        Local<JSValueRef> jsVal = weakSet->GetValue(vm_, i);
+        GTEST_LOG_(INFO) << "for weakset index : " << i << "    val : " << jsValue2String(vm_, jsVal);
+    }
+    GTEST_LOG_(INFO) << "sample_demo10_weakset =======================================";
+}
 
 // json对象获取值。
 void JsonObjGetValue(EcmaVM *vm, Local<ObjectRef> obj)
@@ -2381,5 +2895,256 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_4_stringify_array3)
     Local<JSValueRef> json3 = JSON::Stringify(vm_, arr);
     GTEST_LOG_(INFO) << " js arr 3 json : " << json3->ToString(vm_)->ToString();
     GTEST_LOG_(INFO) << "sample_demo11_json_test_4_stringify_array3 =======================================";
+}
+
+/* demo12 异常的抛出和处理 */
+// 抛出异常的测试函数
+Local<JSValueRef> ThrowErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:Error");
+        Local<JSValueRef> error = Exception::Error(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowRangeErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:RangeError");
+        Local<JSValueRef> error = Exception::RangeError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowReferenceErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:ReferenceError");
+        Local<JSValueRef> error = Exception::ReferenceError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowSyntaxErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:SyntaxError");
+        Local<JSValueRef> error = Exception::SyntaxError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowTypeErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:TypeError");
+        Local<JSValueRef> error = Exception::TypeError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowAggregateErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:AggregateError");
+        Local<JSValueRef> error = Exception::AggregateError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowEvalErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:EvalError");
+        Local<JSValueRef> error = Exception::EvalError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowOOMErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:OOMError");
+        Local<JSValueRef> error = Exception::OOMError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+Local<JSValueRef> ThrowTerminationErrorFuncTest(const EcmaVM *vm, Local<NumberRef> par)
+{
+    int i = par->Int32Value(vm);
+    if (i == 0) {
+        std::string errStr = std::string("function:").append(__func__).append("err:TerminationError");
+        Local<JSValueRef> error = Exception::TerminationError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
+        JSNApi::ThrowException(vm, error);
+        return JSValueRef::Undefined(vm);
+    }
+    int num = 2; // 函数的功能，原数字的2倍。
+    return NumberRef::New(vm, i * num);
+}
+
+// 处理异常，用 JSNApi 类中的函数。
+void ClearAndPrintException4JSNApi(const EcmaVM *vm, const std::string log)
+{
+    if (!JSNApi::HasPendingException(vm)) {
+        GTEST_LOG_(INFO) << log << " no exception .";
+        return;
+    }
+
+    JSNApi::PrintExceptionInfo(vm);
+    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm);
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
+    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+
+    GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
+    GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
+    GTEST_LOG_(INFO) << log << " exception stack : " << exceptionStack;
+};
+
+// 处理异常，用 TryCatch 类中的函数。
+void ClearAndPrintException4TryCatch1(const EcmaVM *vm, const std::string log)
+{
+    TryCatch tryCatch(vm);
+    if (!tryCatch.HasCaught()) {
+        GTEST_LOG_(INFO) << log << " no exception .";
+        return;
+    }
+    Local<ObjectRef> exception = tryCatch.GetAndClearException();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
+    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+
+    GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
+    GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
+    GTEST_LOG_(INFO) << log << " exception stack : " << exceptionStack;
+};
+
+// 处理异常，用 TryCatch 类中的函数。
+void ClearAndPrintException4TryCatch2(const EcmaVM *vm, const std::string log)
+{
+    TryCatch tryCatch(vm);
+    if (!tryCatch.HasCaught()) {
+        GTEST_LOG_(INFO) << log << " no exception .";
+        return;
+    }
+
+    Local<ObjectRef> exception = tryCatch.GetException();
+    tryCatch.ClearException();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
+    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+
+    GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
+    GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
+    GTEST_LOG_(INFO) << log << " exception stack : " << exceptionStack;
+    tryCatch.Rethrow();
+};
+
+// 异常没有处理重新抛出异常，用 TryCatch 类中的函数。
+void PrintAndRethrowException4TryCatch3(const EcmaVM *vm, const std::string log)
+{
+    TryCatch tryCatch(vm);
+    if (!tryCatch.HasCaught()) {
+        GTEST_LOG_(INFO) << log << " no exception .";
+        return;
+    }
+
+    Local<ObjectRef> exception = tryCatch.GetAndClearException();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
+    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+
+    GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
+    GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
+    GTEST_LOG_(INFO) << log << " exception stack : " << exceptionStack;
+    tryCatch.Rethrow();
+};
+
+/* demo12 异常的抛出和处理 */
+HWTEST_F_L0(JSNApiSampleTest, sample_demo12_exception_test)
+{
+    GTEST_LOG_(INFO) << "sample_demo12_exception_test =======================================";
+    LocalScope scope(vm_);
+    // Error
+    Local<JSValueRef> exception1 = ThrowErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception1->IsUndefined()) {
+        ClearAndPrintException4JSNApi(vm_, "ThrowErrorFuncTest");
+    }
+    // RangeError
+    Local<JSValueRef> exception2 = ThrowRangeErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception2->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowRangeErrorFuncTest");
+    }
+    // ReferenceError
+    Local<JSValueRef> exception3 = ThrowReferenceErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception3->IsUndefined()) {
+        ClearAndPrintException4TryCatch2(vm_, "ThrowReferenceErrorFuncTest");
+    }
+    // SyntaxError
+    Local<JSValueRef> exception4 = ThrowSyntaxErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception4->IsUndefined()) {
+        PrintAndRethrowException4TryCatch3(vm_, "ThrowSyntaxErrorFuncTest");
+        ClearAndPrintException4TryCatch1(vm_, "ThrowSyntaxErrorFuncTest");
+    }
+    // TypeError
+    Local<JSValueRef> exception5 = ThrowTypeErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception5->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowTypeErrorFuncTest");
+    }
+    // AggregateError
+    Local<JSValueRef> exception6 = ThrowAggregateErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception6->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowAggregateErrorFuncTest");
+    }
+    // EvalError
+    Local<JSValueRef> exception7 = ThrowEvalErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception7->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowEvalErrorFuncTest");
+    }
+    // OOMError
+    Local<JSValueRef> exception8 = ThrowOOMErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception8->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowOOMErrorFuncTest");
+    }
+    // TerminationError
+    Local<JSValueRef> exception9 = ThrowTerminationErrorFuncTest(vm_, NumberRef::New(vm_, 0));
+    if (exception9->IsUndefined()) {
+        ClearAndPrintException4TryCatch1(vm_, "ThrowTerminationErrorFuncTest");
+    }
+    GTEST_LOG_(INFO) << "sample_demo12_exception_test =======================================";
 }
 }

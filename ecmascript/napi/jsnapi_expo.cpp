@@ -901,7 +901,6 @@ void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> valu
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
-
     JSMap::Set(thread, map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
 }
 
@@ -1041,6 +1040,37 @@ Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
             break;
     }
     return result;
+}
+
+Local<SetIteratorRef> SetIteratorRef::New(const EcmaVM *vm, Local<SetRef> set)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSSet> jsSet(JSNApiHelper::ToJSHandle(set));
+    IterationKind iterKind = IterationKind::KEY_AND_VALUE;
+    JSHandle<JSTaggedValue> setIteratorKeyAndValue =
+        JSSetIterator::CreateSetIterator(vm->GetJSThread(), JSHandle<JSTaggedValue>::Cast(jsSet), iterKind);
+    return JSNApiHelper::ToLocal<JSValueRef>(setIteratorKeyAndValue);
+}
+
+ecmascript::EcmaRuntimeCallInfo *SetIteratorRef::GetEcmaRuntimeCallInfo(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
+    JSHandle<LinkedHashSet> linkedHashSet(vm->GetJSThread(), jsSetIter->GetIteratedSet());
+    uint32_t size = linkedHashSet->GetLength();
+    return ecmascript::EcmaInterpreter::NewRuntimeCallInfo(vm->GetJSThread(),
+        JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::Undefined()),
+        JSHandle<JSTaggedValue>(vm->GetJSThread(), jsSetIter.GetTaggedValue()),
+        JSHandle<JSTaggedValue>(vm->GetJSThread(), JSTaggedValue::Undefined()), size);
+}
+
+Local<ArrayRef> SetIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> nextTagValResult(vm->GetJSThread(), JSSetIterator::Next(ecmaRuntimeCallInfo));
+    JSHandle<JSTaggedValue> iteratorVal(vm->GetJSThread(),
+        JSIterator::IteratorValue(vm->GetJSThread(), nextTagValResult).GetTaggedValue());
+    return JSNApiHelper::ToLocal<ArrayRef>(iteratorVal);
 }
 
 // ---------------------------------- Buffer -----------------------------------
@@ -3808,6 +3838,28 @@ Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, set->GetValue(entry)));
 }
 
+Local<SetRef> SetRef::New(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ObjectFactory *factory = vm->GetJSThread()->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetJSThread()->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(vm->GetJSThread());
+    set->SetLinkedSet(vm->GetJSThread(), hashSet);
+    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
+    return JSNApiHelper::ToLocal<SetRef>(setTag);
+}
+
+void SetRef::Add(const EcmaVM *vm, Local<JSValueRef> value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(set, ERROR);
+    JSSet::Add(vm->GetJSThread(), set, JSNApiHelper::ToJSHandle(value));
+}
+
 // ---------------------------------- WeakMapRef --------------------------------------
 int32_t WeakMapRef::GetSize()
 {
@@ -3893,6 +3945,28 @@ Local<JSValueRef> WeakSetRef::GetValue(const EcmaVM *vm, int entry)
     LOG_IF_SPECIAL(weakSet, FATAL);
     JSTaggedValue value = weakSet->GetValue(entry);
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, value.GetWeakRawValue()));
+}
+
+Local<WeakSetRef> WeakSetRef::New(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ObjectFactory *factory = vm->GetJSThread()->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetJSThread()->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSWeakSet> weakSet =
+        JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashWeakSet = LinkedHashSet::Create(vm->GetJSThread());
+    weakSet->SetLinkedSet(vm->GetJSThread(), hashWeakSet);
+    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(weakSet);
+    return JSNApiHelper::ToLocal<WeakSetRef>(setTag);
+}
+
+void WeakSetRef::Add(const EcmaVM *vm, Local<JSValueRef> value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakSet, ERROR);
+    JSWeakSet::Add(vm->GetJSThread(), weakSet, JSNApiHelper::ToJSHandle(value));
 }
 
 TryCatch::~TryCatch() {}

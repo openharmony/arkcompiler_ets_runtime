@@ -1338,6 +1338,8 @@ public:
     int32_t GetSize();
     int32_t GetTotalElements();
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<SetRef> New(const EcmaVM *vm);
+    void Add(const EcmaVM *vm, Local<JSValueRef> value);
 };
 
 class ECMA_PUBLIC_API WeakSetRef : public ObjectRef {
@@ -1345,12 +1347,17 @@ public:
     int32_t GetSize();
     int32_t GetTotalElements();
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    static Local<WeakSetRef> New(const EcmaVM *vm);
+    void Add(const EcmaVM *vm, Local<JSValueRef> value);
 };
 
 class ECMA_PUBLIC_API SetIteratorRef : public ObjectRef {
 public:
     int32_t GetIndex();
     Local<JSValueRef> GetKind(const EcmaVM *vm);
+    static Local<SetIteratorRef> New(const EcmaVM *vm, Local<SetRef> set);
+    ecmascript::EcmaRuntimeCallInfo *GetEcmaRuntimeCallInfo(const EcmaVM *vm);
+    static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 }
 #endif
