@@ -277,7 +277,8 @@ public:
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
             bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, sendableClass);
+                thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr,
+                sendableClass);
             JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
             classLiteral->SetArray(thread, literalArray);
             val = classLiteral.GetTaggedValue();

@@ -418,6 +418,7 @@ void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle
         JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
+        propFunc->GetClass()->SetExtensible(false);
         accessor->SetGetter(thread, propFunc);
     }
     auto setter = accessor->GetSetter();
@@ -426,6 +427,7 @@ void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle
         JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
+        propFunc->GetClass()->SetExtensible(false);
         accessor->SetSetter(thread, propFunc);
     }
 
@@ -474,6 +476,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
                 JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
+                propFunc->GetClass()->SetExtensible(false);
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), lexenv);
@@ -501,6 +504,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
                 JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
+                propFunc->GetClass()->SetExtensible(false);
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), lexenv);
@@ -692,6 +696,7 @@ JSHandle<NameDictionary> ClassHelper::BuildSendableDictionaryProperties(JSThread
             JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
+            propFunc->GetClass()->SetExtensible(false);
             propValue.Update(propFunc);
         } else if (propValue->IsAccessorData()) {
             UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), lexenv);

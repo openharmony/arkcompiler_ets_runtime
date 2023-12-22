@@ -721,7 +721,7 @@ private:
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                           const JSHandle<JSTaggedValue> &prototype, bool sendable = false);
+                                           const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass, bool sendableClass);
 
@@ -769,6 +769,9 @@ private:
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
+    // For sharedobject
+    JSHandle<JSHClass> CreateSharedNormalFunctionClass(uint32_t size, JSType type,
+                                                       const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
     friend class JSHClass;    // HC transition need hclass

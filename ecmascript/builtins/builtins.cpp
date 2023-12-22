@@ -214,11 +214,6 @@ void Builtins::InitializeForSharing(const JSHandle<GlobalEnv> &env)
     InitializeSharedObject(env, sobjIHClass, sobjFuncPrototype);
     env->SetSharedObjectFunctionPrototype(thread_, sobjFuncPrototype);
     sobjFuncPrototype->GetJSHClass()->SetExtensible(false);
-    JSHandle<JSHClass> functionClass =
-        factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSSharedFunction::SIZE,
-                                      JSType::JS_SHARED_FUNCTION, env->GetSharedFunctionPrototype(), true);
-    functionClass->SetExtensible(false);
-    env->SetSharedFunctionClassWithoutProto(thread_, functionClass);
 }
 
 void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sobjIHClass,
@@ -229,7 +224,7 @@ void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHa
     JSHandle<JSFunction> sobjectFunction =
         factory_->NewJSSharedFunction(env, reinterpret_cast<void *>(BuiltinsSharedObject::SharedObjectConstructor),
                                       FunctionKind::BUILTIN_CONSTRUCTOR);
-    InitializeSharedCtor(env, sobjIHClass, sobjectFunction, "SharedObject", FunctionLength::ONE);
+    InitializeSharedCtor(sobjIHClass, sobjectFunction, "SharedObject", FunctionLength::ONE);
     env->SetSharedObjectFunction(thread_, sobjectFunction);
     // sObject method.
     for (const base::BuiltinFunctionEntry &entry: Object::GetObjectFunctions()) {
@@ -250,6 +245,7 @@ void Builtins::InitializeSharedObject(const JSHandle<GlobalEnv> &env, const JSHa
     JSHandle<JSTaggedValue> protoSetter =
         CreateSharedGetterSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetSharedAccessor(sobjFuncPrototypeObj, protoKey, protoGetter, protoSetter);
+    sobjectFunction->GetJSHClass()->SetExtensible(false);
 }
 
 void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
@@ -273,16 +269,20 @@ void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
     JSHandle<JSFunction> sfuncFunction =
         factory_->NewJSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedFunction::SharedFunctionConstructor),
         sfuncIHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
-    InitializeSharedCtor(env, sfuncIHClass, sfuncFunction, "SharedFunction", FunctionLength::ONE);
-
+    InitializeSharedCtor(sfuncIHClass, sfuncFunction, "SharedFunction", FunctionLength::ONE);
+    env->SetSharedFunctionFunction(thread_, sfuncFunction);
     env->SetSharedFunctionPrototype(thread_, sfuncPrototype);
 
     JSHandle<JSTaggedValue> sfuncPrototypeVal(sfuncPrototype);
     JSHandle<JSHClass> sharedConstructorClass =
         factory_->NewEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, sfuncPrototypeVal);
     sharedConstructorClass->SetConstructor(true);
-
     env->SetSharedConstructorClass(thread_, sharedConstructorClass);
+
+    JSHandle<JSHClass> functionClass =
+        factory_->CreateSharedNormalFunctionClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION,
+                                                  env->GetSharedFunctionPrototype());
+    env->SetSharedFunctionClassWithoutProto(thread_, functionClass);
 
     JSHandle<JSObject> sfuncPrototypeObj(sfuncPrototype);
     SharedStrictModeForbiddenAccessCallerArguments(env, sfuncPrototypeObj);
@@ -297,6 +297,7 @@ void Builtins::InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
     // 19.2.3.5 Function.prototype.toString ( )
     SetSharedFunction(env, sfuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
         Function::FunctionPrototypeToString, FunctionLength::ZERO);
+    sfuncFunction->GetJSHClass()->SetExtensible(false);
     sfuncPrototype->GetJSHClass()->SetExtensible(false);
 }
 
@@ -3683,8 +3684,8 @@ void Builtins::SetSharedFunctionLength(const JSHandle<JSFunction> &ctor, int len
     JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), lengthKeyHandle, lengthDesc, true);
 }
 
-void Builtins::InitializeSharedCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &protoHClass,
-                                    const JSHandle<JSFunction> &ctor, std::string_view name, int length) const
+void Builtins::InitializeSharedCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
+                                    std::string_view name, int length) const
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     SetSharedFunctionLength(ctor, length);
@@ -3696,11 +3697,6 @@ void Builtins::InitializeSharedCtor(const JSHandle<GlobalEnv> &env, const JSHand
     JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor, true);
 
     ctor->SetFunctionPrototype(thread_, protoHClass.GetTaggedValue());
-
-    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    PropertyDescriptor globalDesc(thread_, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
-    JSObject::DefineOwnProperty(thread_, globalObject, nameString, globalDesc, true);
 }
 
 JSHandle<JSFunction> Builtins::NewSharedFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
@@ -3711,6 +3707,7 @@ JSHandle<JSFunction> Builtins::NewSharedFunction(const JSHandle<GlobalEnv> &env,
         FunctionKind::NORMAL_FUNCTION, builtinId, MemSpaceType::NON_MOVABLE);
     SetSharedFunctionLength(function, length);
     SetSharedFunctionName(function, key);
+    function->GetJSHClass()->SetExtensible(false);
     return function;
 }
 
@@ -3744,8 +3741,8 @@ JSHandle<JSTaggedValue> Builtins::CreateSharedGetterSetter(const JSHandle<Global
                                                            std::string_view name, int length) const
 {
     JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8(name));
-    auto getter = NewSharedFunction(env, funcName, func, length);
-    return JSHandle<JSTaggedValue>(getter);
+    JSHandle<JSFunction> function = NewSharedFunction(env, funcName, func, length);
+    return JSHandle<JSTaggedValue>(function);
 }
 
 void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,

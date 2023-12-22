@@ -341,8 +341,8 @@ private:
                                 const JSHandle<JSObject> &sobjFuncPrototype) const;
     void InitializeSharedFunciton(const JSHandle<GlobalEnv> &env,
                                   const JSHandle<JSHClass> &sfuncPrototypeHClass) const;
-    void InitializeSharedCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &protoHClass,
-                              const JSHandle<JSFunction> &ctor, std::string_view name, int length) const;
+    void InitializeSharedCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
+                              std::string_view name, int length) const;
 
     void SetSharedFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const;
     void SetSharedFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &name) const;
