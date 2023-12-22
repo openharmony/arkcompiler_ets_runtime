@@ -1663,7 +1663,7 @@ template("host_quickfix_test_action") {
 
     quickfix_options = " --merge-abc true "
     if (is_mac) {
-      quickfix_optios = " --merge-abc true  --asm-interpreter=false"
+      quickfix_options = " --merge-abc true  --asm-interpreter=false"
     }
 
     args = [
