@@ -39,6 +39,11 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
 
+    uint32_t oldLen = JSArray::Cast(*self)->GetArrayLength();
+    if (oldLen == newLen) {
+        return true;
+    }
+
     if (!IsArrayLengthWritable(thread, self)) {
         if (mayThrow) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
@@ -46,7 +51,6 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
         return false;
     }
 
-    uint32_t oldLen = JSArray::Cast(*self)->GetArrayLength();
     JSArray::SetCapacity(thread, self, oldLen, newLen);
     return true;
 }
