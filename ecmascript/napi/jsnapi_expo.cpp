@@ -2560,6 +2560,11 @@ void JSNApi::SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::stri
     vm->SetMockModuleList(list);
 }
 
+void JSNApi::SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list)
+{
+    vm->SetHmsModuleList(list);
+}
+
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
 {
     vm->SetConcurrentCallback(cb, data);

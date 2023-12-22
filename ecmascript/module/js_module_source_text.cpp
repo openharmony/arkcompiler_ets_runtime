@@ -94,6 +94,16 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         moduleRequestName = vm->GetMockModule(moduleRequestName);
         moduleRequestStr = JSHandle<JSTaggedValue>::Cast(vm->GetFactory()->NewFromUtf8(moduleRequestName.c_str()));
     }
+    
+    /*
+     * Before: @xxx:****
+     * After:  bundleName/moduleName@namespace/moduleName/xxx/xxx
+     * Don't load native module
+     */
+    if (vm->IsHmsModule(moduleRequestName)) {
+        moduleRequestName = vm->GetHmsModule(moduleRequestName);
+        moduleRequestStr = JSHandle<JSTaggedValue>::Cast(vm->GetFactory()->NewFromUtf8(moduleRequestName.c_str()));
+    }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
