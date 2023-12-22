@@ -119,6 +119,8 @@ group("ark_js_moduletest") {
     "regexpcallthrow",
     "regexpflagd",
     "regress",
+
+    #"regressdatetime",
     "regressdefineproperty",
     "require",
     "setobjectwithproto",
