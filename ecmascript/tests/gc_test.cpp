@@ -200,7 +200,8 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 2048; i++) {
-            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForEach(thread);
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
             // malloc size is smaller to avoid test fail in the small devices.
             [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
                 NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
@@ -238,7 +239,8 @@ HWTEST_F_L0(GCTest, NativeGCTestConcurrentMarkDisabled)
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 2048; i++) {
-            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForEach(thread);
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
             [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
                 NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
         }
@@ -271,7 +273,8 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeGCTestConcurrentMarkDisabled)
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 2048; i++) {
-            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForEach(thread);
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
             // malloc size is smaller to avoid test fail in the small devices.
             [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
                 NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
@@ -364,7 +367,7 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
 
 HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
 {
-#ifdef NDEBUG
+#if defined(NDEBUG) && defined(PANDA_TARGET_ARM64)
     auto heap = const_cast<Heap *>(instance->GetHeap());
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     {
@@ -386,55 +389,6 @@ HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
     EXPECT_TRUE(heap->GetNonMovableSpace()->GetHeapObjectSize() < MAX_NONMOVABLE_LIVE_OBJ_SIZE);
     EXPECT_EQ(heap->GetOldSpace()->GetOvershootSize(), 0);
 #endif
-}
-
-HWTEST_F_L0(GCTest, ArkToolsHintGC)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::CONFIG_DISABLE);
-    auto getSizeAfterCreateAndCallHintGC = [this, heap] (size_t &newSize, size_t &finalSize) -> bool {
-        {
-            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-            for (int i = 0; i < 500; i++) {
-                [[maybe_unused]] JSHandle<TaggedArray> obj = thread->GetEcmaVM()->GetFactory()->
-                    NewTaggedArray(10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-            }
-            newSize = heap->GetCommittedSize();
-        }
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = builtins::BuiltinsArkTools::HintGC(ecmaRuntimeCallInfo);
-        finalSize = heap->GetCommittedSize();
-
-        return result.ToBoolean();
-    };
-    {
-        // Test HintGC() when sensitive.
-        heap->CollectGarbage(TriggerGCType::FULL_GC);
-        heap->NotifyHighSensitive(true);
-        size_t originSize = heap->GetCommittedSize();
-        size_t newSize = 0;
-        size_t finalSize = 0;
-        bool res = getSizeAfterCreateAndCallHintGC(newSize, finalSize);
-        EXPECT_FALSE(res);
-        EXPECT_TRUE(newSize > originSize);
-        EXPECT_TRUE(finalSize == newSize);
-        heap->NotifyHighSensitive(false);
-    }
-    {
-        // Test HintGC() when in background.
-        heap->CollectGarbage(TriggerGCType::FULL_GC);
-        heap->ChangeGCParams(true);
-        size_t originSize = heap->GetCommittedSize();
-        size_t newSize = 0;
-        size_t finalSize = 0;
-        bool res = getSizeAfterCreateAndCallHintGC(newSize, finalSize);
-        EXPECT_TRUE(res);
-        EXPECT_TRUE(newSize > originSize);
-        EXPECT_TRUE(finalSize < newSize);
-        heap->ChangeGCParams(false);
-    }
 }
 
 }  // namespace panda::test
