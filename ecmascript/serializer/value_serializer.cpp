@@ -169,7 +169,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            LOG_ECMA(INFO) << "serializeSharedFamilyEvent_ ++ type: " << JSHClass::DumpJSType(type);
             serializeSharedFamilyEvent_++;
             break;
         }
