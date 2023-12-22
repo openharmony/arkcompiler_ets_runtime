@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
 #include "ecmascript/compiler/pgo_bc_info.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
@@ -702,6 +703,17 @@ public:
     bool IsSkippedMethod(uint32_t methodOffset) const
     {
         return bytecodeInfo_.IsSkippedMethod(methodOffset);
+    }
+
+    bool FilterMethod(const MethodLiteral *methodLiteral, const MethodPcInfo &methodPCInfo) const
+    {
+        auto recordName = MethodLiteral::GetRecordName(jsPandaFile_, methodLiteral->GetMethodId());
+        bool methodSizeIsIllegal = methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize();
+        bool methodFilteredByPGO = !pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral->GetMethodId());
+        if (methodSizeIsIllegal || methodFilteredByPGO) {
+            return true;
+        }
+        return false;
     }
 
     const JSPandaFile *GetJSPandaFile() const

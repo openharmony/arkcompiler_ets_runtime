@@ -236,7 +236,10 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
-        newClass->SetPrototype(thread, jshclass->GetPrototype());
+        // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
+        if (newClass->IsTS()) {
+            newClass->SetPrototype(thread, jshclass->GetPrototype());
+        }
         obj->SynchronizedSetClass(newClass);
         // Because we currently only supports Fast ElementsKind
         JSHandle<JSHClass> newHClass(thread, newClass);
@@ -244,6 +247,11 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
 #endif
+        // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
+        if (newClass->IsTS() && newClass->IsPrototype()) {
+            JSHClass::RefreshUsers(thread, jshclass, JSHandle<JSHClass>(thread, newClass));
+            JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, newClass));
+        }
         return;
     }
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);

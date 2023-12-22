@@ -35,9 +35,10 @@ namespace panda::ecmascript::kungfu {
 
 class JSBytecodeMetaData : public GateMetaData {
 public:
-    explicit JSBytecodeMetaData(size_t valuesIn, EcmaOpcode opcode, uint32_t pcOffset, GateFlags flags)
-        : GateMetaData(OpCode::JS_BYTECODE, flags, 1, 1, valuesIn),
-        opcode_(opcode), pcOffset_(pcOffset)
+    explicit JSBytecodeMetaData(
+        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags)
+        : GateMetaData(OpCode::JS_BYTECODE, flags, 1, 1, valuesIn), methodId_(methodId), opcode_(opcode),
+          pcOffset_(pcOffset), bcIndex_(bcIndex)
     {
         SetKind(GateMetaData::Kind::JSBYTECODE);
     }
@@ -62,9 +63,19 @@ public:
         return static_cast<const JSBytecodeMetaData*>(meta);
     }
 
+    uint32_t GetMethodId() const
+    {
+        return methodId_;
+    }
+
     uint32_t GetPcOffset() const
     {
         return pcOffset_;
+    }
+
+    uint32_t GetBcIndex() const
+    {
+        return bcIndex_;
     }
 
     void SetType(PGOTypeRef type)
@@ -127,8 +138,10 @@ public:
     }
 
 private:
+    uint32_t methodId_;
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
+    uint32_t bcIndex_;
     uint32_t elementsLength_ { 0 };
     PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};

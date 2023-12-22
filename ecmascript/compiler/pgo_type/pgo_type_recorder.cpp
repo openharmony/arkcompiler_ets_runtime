@@ -20,6 +20,8 @@ namespace panda::ecmascript::kungfu {
 using PGOType = pgo::PGOType;
 using PGOObjectInfo = pgo::PGOObjectInfo;
 
+PGOTypeRecorder::PGOTypeRecorder(const PGOProfilerDecoder &decoder) : decoder_(decoder) {}
+
 PGOTypeRecorder::PGOTypeRecorder(
     const PGOProfilerDecoder &decoder, const JSPandaFile *jsPandaFile, uint32_t methodOffset)
     : decoder_(decoder)

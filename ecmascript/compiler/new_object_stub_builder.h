@@ -53,7 +53,7 @@ public:
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
-    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef method, GateRef index);
+    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);

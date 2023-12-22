@@ -36,7 +36,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(maxAotMethodSize),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(vm, jsPandaFile),
+      snapshotCPData_(vm, jsPandaFile, &pfDecoder),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
@@ -50,7 +50,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(1),
       pfDecoder_(pfDecoder),
-      snapshotCPData_(vm, jsPandaFile),
+      snapshotCPData_(vm, jsPandaFile, &pfDecoder),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);

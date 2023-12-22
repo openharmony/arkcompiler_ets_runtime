@@ -105,42 +105,29 @@ bool PGOHClassTreeDesc::DumpForChild(JSTaggedType child, ProfileType childType)
     auto iter = transitionLayout_.find(childType);
     if (iter != transitionLayout_.end()) {
         childLayout = iter->second;
+        return JSHClass::UpdateChildLayoutDesc(childHClass, childLayout);
     } else {
         childLayout = new ChildHClassLayoutDesc(childType);
         transitionLayout_.emplace(childType, childLayout);
+        return JSHClass::DumpForChildHClass(childHClass, childLayout);
     }
-
-    return JSHClass::DumpForChildHClass(childHClass, childLayout);
 }
 
-bool PGOHClassTreeDesc::UpdateForChild(ProfileType rootType, JSTaggedType child, ProfileType childType)
-{
-    ASSERT(rootType.IsRootType());
-    ASSERT(!childType.IsRootType());
-    auto rootIter = transitionLayout_.find(rootType);
-    auto hclass = JSHClass::Cast(JSTaggedValue(child).GetTaggedObject());
-    if (rootIter != transitionLayout_.end()) {
-        auto rootLayout = rootIter->second;
-        JSHClass::UpdateRootLayoutDesc(hclass, this, rootLayout);
-    }
-    auto childIter = transitionLayout_.find(childType);
-    if (childIter != transitionLayout_.end()) {
-        auto childLayout = childIter->second;
-        JSHClass::UpdateChildLayoutDesc(hclass, childLayout);
-    }
-    return true;
-}
-
-bool PGOHClassTreeDesc::UpdateLayout(ProfileType rootType, JSTaggedType curHClass, ProfileType curType)
+bool PGOHClassTreeDesc::UpdateLayout(JSTaggedType curHClass, ProfileType curType)
 {
     if (curType.IsRootType()) {
         return DumpForRoot(curHClass, curType);
     } else {
-        return UpdateForChild(rootType, curHClass, curType);
+        return DumpForChild(curHClass, curType);
     }
 }
 
-bool PGOHClassTreeDesc::DumpForTransition(
+bool PGOHClassTreeDesc::IsDumped(ProfileType curType) const
+{
+    return transitionLayout_.find(curType) != transitionLayout_.end();
+}
+
+bool PGOHClassTreeDesc::UpdateForTransition(
     JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType)
 {
     if (parentType.IsRootType()) {

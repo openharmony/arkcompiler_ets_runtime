@@ -180,6 +180,7 @@ libark_jsoptimizer_sources = [
   "type_inference/method_type_infer.cpp",
   "type_inference/pgo_type_infer.cpp",
   "type_inference/pgo_type_infer_helper.cpp",
+  "type_info_accessors.cpp",
   "type_recorder.cpp",
   "typed_array_stub_builder.cpp",
   "value_numbering.cpp",

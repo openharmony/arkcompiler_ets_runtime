@@ -766,6 +766,10 @@ template("host_aot_js_test_action") {
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     _aot_run_options_ += _icu_data_path_options_
 
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -814,6 +818,10 @@ template("host_aot_js_test_action") {
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
       _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
     }
 
     _icu_data_path_options_ =

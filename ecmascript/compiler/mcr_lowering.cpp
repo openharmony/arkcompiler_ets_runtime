@@ -185,6 +185,7 @@ void MCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef marker = acc_.GetValueIn(gate, 0);
 
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED);
     auto hasChanged = builder_.GetHasChanged(marker);
     builder_.DeoptCheck(builder_.BoolNot(hasChanged), frameState,
         DeoptType::PROTOTYPECHANGED);

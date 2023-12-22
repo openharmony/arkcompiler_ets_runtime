@@ -174,13 +174,13 @@ public:
         return metaBuilder_.Nop();
     }
 
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode,
-        uint32_t pcOffset, bool writable, bool hasFrameState)
+    const GateMetaData* JSBytecode(size_t valuesIn, uint32_t methodId, EcmaOpcode opcode,
+        uint32_t pcOffset, uint32_t bcIndex, bool writable, bool hasFrameState)
     {
         GateFlags writableFlags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
         GateFlags frameStateFlags = hasFrameState ? GateFlags::HAS_FRAME_STATE : GateFlags::NONE_FLAG;
         GateFlags flags = static_cast<GateFlags>(writableFlags | frameStateFlags);
-        return metaBuilder_.JSBytecode(valuesIn, opcode, pcOffset, flags);
+        return metaBuilder_.JSBytecode(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)

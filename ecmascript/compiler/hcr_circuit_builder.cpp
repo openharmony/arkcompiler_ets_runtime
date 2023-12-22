@@ -419,7 +419,7 @@ GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateR
     return newGate;
 }
 
-GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode,
+GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
                                               GateRef constPoolIndex, GateRef elementIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -429,7 +429,7 @@ GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAc
     ArrayMetaDataAccessor accessor(kind, mode);
     GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(accessor.ToValue()),
                                             MachineType::I64,
-                                            { currentControl, currentDepend, constPoolIndex,
+                                            { currentControl, currentDepend, cpId, constPoolIndex,
                                               elementIndex, frameState },
                                             GateType::NJSValue());
     currentLabel->SetControl(newGate);

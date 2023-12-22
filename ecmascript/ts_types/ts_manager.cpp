@@ -1212,6 +1212,7 @@ void TSManager::SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t meth
 {
     curCPID_ = GetConstantPoolIDByMethodOffset(jsPandaFile, methodOffset);
     curCP_ = vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, curCPID_);
+    curJSPandaFile_ = jsPandaFile;
 }
 
 int32_t TSManager::GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
@@ -1252,9 +1253,22 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
     return gateType;
 }
 
-JSTaggedValue TSManager::GetStringFromConstantPool(const uint16_t stringId) const
+uint32_t TSManager::GetConstantPoolId(uint32_t methodOffset) const
 {
-    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    panda_file::IndexAccessor indexAccessor(*(curJSPandaFile_->GetPandaFile()),
+                                            panda_file::File::EntityId(methodOffset));
+    return static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
+}
+
+JSTaggedValue TSManager::GetConstantPool(uint32_t methodOffset) const
+{
+    uint32_t cpId = GetConstantPoolId(methodOffset);
+    return thread_->GetCurrentEcmaContext()->FindConstpool(curJSPandaFile_, cpId);
+}
+
+JSTaggedValue TSManager::GetStringFromConstantPool(uint32_t methodId, const uint16_t stringId) const
+{
+    JSHandle<ConstantPool> constantPool(thread_, GetConstantPool(methodId));
     return ConstantPool::GetStringFromCache(thread_, constantPool.GetTaggedValue(), stringId);
 }
 

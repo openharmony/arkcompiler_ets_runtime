@@ -1212,14 +1212,14 @@ JSTaggedValue SlowRuntimeStub::NotifyConcurrentResult(JSThread *thread, JSTagged
     return RuntimeStubs::RuntimeNotifyConcurrentResult(thread, result, hint);
 }
 
-JSTaggedValue SlowRuntimeStub::UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
-                                            JSTaggedValue newjshclass, JSTaggedValue key)
+JSTaggedValue SlowRuntimeStub::UpdateAOTHClass(JSThread *thread, JSTaggedValue jshclass,
+                                               JSTaggedValue newjshclass, JSTaggedValue key)
 {
-    INTERPRETER_TRACE(thread, UpdateHClass);
+    INTERPRETER_TRACE(thread, UpdateAOTHClass);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSHClass> oldhclass(thread, jshclass);
     JSHandle<JSHClass> newhclass(thread, newjshclass);
-    return RuntimeStubs::RuntimeUpdateHClass(thread, oldhclass, newhclass, key);
+    return RuntimeStubs::RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key);
 }
 
 JSTaggedValue SlowRuntimeStub::DefineField(JSThread *thread, JSTaggedValue obj,

@@ -96,7 +96,7 @@ HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
 
-        for (int i = 0; i < 1024 * 2; i++) {
+        for (int i = 0; i < 128 * 62; i++) {
             [[maybe_unused]] JSHandle<TaggedArray> obj =
                 instance->GetFactory()->NewTaggedArray(1024, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
         }

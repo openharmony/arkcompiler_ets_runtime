@@ -23,7 +23,7 @@ namespace panda::ecmascript::kungfu {
     V(StoreModuleVar, STORE_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 3)                          \
     V(OrdinaryHasInstance, ORDINARY_HAS_INSTANCE, GateFlags::CHECKABLE, 1, 1, 2)                \
     V(LdLocalModuleVar, LD_LOCAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)
-    
+
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                             \
@@ -47,7 +47,7 @@ namespace panda::ecmascript::kungfu {
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)                         \
-    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 3)   \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define HCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                              \

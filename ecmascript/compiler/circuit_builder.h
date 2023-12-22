@@ -336,7 +336,7 @@ public:
 
     // ************************************************************* High IR **********************************************************************************
     GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
-    GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode,
+    GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
                                   GateRef constPoolIndex, GateRef elementIndex);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
@@ -598,6 +598,7 @@ public:
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
+    inline GateRef TaggedIsNotNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);

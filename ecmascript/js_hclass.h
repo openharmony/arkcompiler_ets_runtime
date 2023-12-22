@@ -1761,6 +1761,8 @@ public:
     }
 
     inline static JSHClass *FindRootHClass(JSHClass *hclass);
+    inline static JSTaggedValue FindProtoHClass(JSHClass *hclass);
+    inline static JSTaggedValue FindProtoRootHClass(JSHClass *hclass);
     inline static void UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                         const JSHandle<JSHClass> &child);
 

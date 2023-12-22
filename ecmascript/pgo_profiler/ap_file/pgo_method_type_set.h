@@ -159,7 +159,7 @@ private:
             return offset_ < right.offset_;
         }
 
-        int32_t GetCount()
+        int32_t GetCount() const
         {
             return type_.GetCount();
         }

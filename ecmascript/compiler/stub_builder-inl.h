@@ -2109,9 +2109,10 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
 inline GateRef StubBuilder::GetIhcFromAOTLiteralInfo(GateRef info)
 {
     auto len = GetLengthOfTaggedArray(info);
-    GateRef ihcOffset = Int32Mul(
-        Int32Sub(len, Int32(AOTLiteralInfo::AOT_IHC_INDEX)), Int32(JSTaggedValue::TaggedTypeSize()));
-    return Load(VariableType::JS_ANY(), info, ZExtInt32ToInt64(ihcOffset));
+    GateRef aotIhcIndex = Int32Sub(len, Int32(AOTLiteralInfo::AOT_IHC_INDEX));
+    GateRef ihcOffset = Int32Mul(aotIhcIndex, Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(ihcOffset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(VariableType::JS_ANY(), info, dataOffset);
 }
 
 inline void StubBuilder::SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)

@@ -134,6 +134,15 @@ public:
 
     bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const;
 
+    template <typename Callback>
+    bool IterateHClassTreeDesc(Callback callback) const
+    {
+        if (!isLoaded_ || !isVerifySuccess_) {
+            return false;
+        }
+        return recordSimpleInfos_->IterateHClassTreeDesc(callback);
+    }
+
     bool IsLoaded() const
     {
         return isLoaded_;
@@ -174,6 +183,15 @@ public:
         }
         abcName = entry->GetData();
         return true;
+    }
+
+    bool GetABCIdByJSPandaFile(const JSPandaFile *jsPandaFile, ApEntityId &entryId) const
+    {
+        if (abcFilePool_ == nullptr) {
+            return false;
+        }
+        CString name = jsPandaFile->GetNormalizedFileDesc();
+        return abcFilePool_->GetEntryIdByNormalizedName(name, entryId);
     }
 
 private:

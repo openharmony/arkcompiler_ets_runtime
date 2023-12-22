@@ -444,7 +444,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         dstArray->SetElements(thread, dstElements);
         dstArray->SetArrayLength(thread, length);
         TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
-        for (uint32_t i = 0; i < length; i++) { 
+        for (uint32_t i = 0; i < length; i++) {
             JSTaggedValue reg = srcElements->Get(thread, i);
             if (reg.IsHole()) {
                 JSTaggedValue reg2 = JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue();
@@ -2034,6 +2034,37 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
     return tagged;
 }
 
+void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JSFunction> &func,
+                                             const JSHandle<JSTaggedValue> &ihc)
+{
+    FunctionKind kind = Method::Cast(func->GetMethod())->GetFunctionKind();
+    // The HClass of AOT comes from .ai deserialization
+    if (!ihc->IsUndefined() && kind == FunctionKind::BASE_CONSTRUCTOR) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        func->SetProtoOrHClass(thread, ihc);
+
+        // build inheritance
+        JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
+        JSHandle<JSObject> clsPrototype(thread, func->GetFunctionPrototype());
+        clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+
+        // set "constructor" in prototype
+        JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+        PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(func), true, false, true);
+        JSObject::DefineOwnProperty(thread, clsPrototype, constructorKey, descriptor);
+
+        // enable prototype change marker
+        JSHClass::EnablePHCProtoChangeMarker(thread,
+            JSHandle<JSHClass>(thread, parentPrototype->GetTaggedObject()->GetClass()));
+        if (ihc->IsJSHClass()) {
+            JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(ihc));
+        } else {
+            JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, clsPrototype->GetClass()));
+        }
+    }
+}
+
 JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
                                               uint16_t methodId, const JSHandle<JSTaggedValue> &module)
 {
@@ -2047,25 +2078,10 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(),
                                                             module.GetTaggedValue(), methodId);
     const JSHandle<Method> methodHandle(thread, method);
-
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
-    FunctionKind kind = methodHandle->GetFunctionKind();
-    if (!ihc->IsUndefined() &&
-        kind == FunctionKind::NORMAL_FUNCTION &&
-        kind == FunctionKind::BASE_CONSTRUCTOR) {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
-        result->SetProtoOrHClass(thread, ihc);
-        JSHandle<JSObject> clsPrototype(thread, result->GetFunctionPrototype());
-        clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
-        JSHClass::EnableProtoChangeMarker(thread,
-            JSHandle<JSHClass>(thread, result->GetFunctionPrototype().GetTaggedObject()->GetClass()));
-    }
+    DefineFuncTryUseAOTHClass(thread, result, ihc);
 
-    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
-    }
     return result.GetTaggedValue();
 }
 
@@ -2883,7 +2899,7 @@ bool RuntimeStubs::IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, c
     return false;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeUpdateHClass(JSThread *thread,
+JSTaggedValue RuntimeStubs::RuntimeUpdateAOTHClass(JSThread *thread,
     const JSHandle<JSHClass> &oldhclass, const JSHandle<JSHClass> &newhclass, JSTaggedValue key)
 {
 #if ECMASCRIPT_ENABLE_IC

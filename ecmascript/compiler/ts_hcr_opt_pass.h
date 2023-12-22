@@ -47,6 +47,11 @@ private:
         return methodName_;
     }
 
+    JSTaggedValue GetStringFromCP(uint32_t methodOffset, uint32_t cpIdx) const
+    {
+        return tsManager_->GetStringFromConstantPool(methodOffset, cpIdx);
+    }
+
     GateRef VisitTypedBinaryOp(GateRef gate);
 
     GateRef VisitStringBinOp(GateRef gate);

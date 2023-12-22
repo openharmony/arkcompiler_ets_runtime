@@ -140,9 +140,10 @@ public:
 
     explicit GateMetaBuilder(Chunk* chunk);
 
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t pcOffset, GateFlags flags)
+    const GateMetaData *JSBytecode(
+        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags)
     {
-        return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, pcOffset, flags);
+        return new (chunk_) JSBytecodeMetaData(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)

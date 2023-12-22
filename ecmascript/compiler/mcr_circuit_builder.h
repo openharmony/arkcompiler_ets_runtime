@@ -464,6 +464,11 @@ GateRef CircuitBuilder::TaggedIsNull(GateRef x)
     return Equal(x, NullConstant());
 }
 
+GateRef CircuitBuilder::TaggedIsNotNull(GateRef x)
+{
+    return NotEqual(x, NullConstant());
+}
+
 GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
 {
     return BoolOr(TaggedIsFalse(x), TaggedIsTrue(x));

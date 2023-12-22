@@ -27,6 +27,7 @@
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
@@ -127,6 +128,7 @@ private:
                     ProfileTypeInfo *profileTypeInfo);
     void DumpDefineClass(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
+    bool FunctionKindVerify(const JSFunction *ctorFunction);
     void DumpCreateObject(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                           uint32_t slotId, ProfileTypeInfo *profileTypeInfo, int32_t traceId);
     void DumpCall(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
@@ -139,9 +141,10 @@ private:
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 
     void UpdateLayout(JSHClass *hclass);
-    void AddTranstionLayout(JSHClass *parent, JSHClass *child);
+    void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
     void AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *hold, JSHClass *holdTra);
+    void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
     void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);

@@ -184,16 +184,41 @@ void FunctionParser::GenerateHClass(const PGOHClassGenerator &generator, const P
 PGOTypeParser::PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *ptManager)
     : decoder_(decoder), ptManager_(ptManager)
 {
-    parsers_.emplace_back(std::make_unique<ClassParser>(ptManager));
     parsers_.emplace_back(std::make_unique<EmptyArrayParser>(ptManager));
     parsers_.emplace_back(std::make_unique<ArrayLiteralParser>(ptManager));
     parsers_.emplace_back(std::make_unique<ObjectLiteralParser>(ptManager));
-    parsers_.emplace_back(std::make_unique<FunctionParser>(ptManager));
 }
 
 void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
 {
     const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
+    PGOTypeRecorder typeRecorder(decoder_);
+    typeRecorder.IterateHClassTreeDesc([this, typeRecorder](PGOHClassTreeDesc *desc) {
+        auto rootType = desc->GetProfileType();
+        auto protoPt = desc->GetProtoPt();
+        PGOSampleType rootSampleType(rootType);
+        auto thread = ptManager_->GetJSThread();
+        const PGOHClassGenerator generator(typeRecorder, ptManager_);
+        if (rootType.IsClassType()) {
+            if (!protoPt.IsPrototype()) {
+                return;
+            }
+            auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
+            if (phValue.IsUndefined()) {
+                generator.GenerateHClass(PGOSampleType(protoPt));
+            }
+            phValue = ptManager_->QueryHClass(protoPt, protoPt);
+            if (phValue.IsUndefined()) {
+                return;
+            }
+            JSHandle<JSHClass> phclass(thread, phValue);
+            JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+            generator.GenerateIHClass(rootSampleType, prototype);
+        } else {
+            generator.GenerateHClass(rootSampleType);
+        }
+    });
+
     collector.IterateAllMethods([this, jsPandaFile, &collector](uint32_t methodOffset) {
         PGOTypeRecorder typeRecorder(decoder_, jsPandaFile, methodOffset);
         const PGOHClassGenerator generator(typeRecorder, ptManager_);

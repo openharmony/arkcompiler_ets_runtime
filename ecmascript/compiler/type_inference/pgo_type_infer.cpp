@@ -239,7 +239,8 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t pr
     // polymorphism is not currently supported
     JSTaggedValue prop = JSTaggedValue::Undefined();
     if (propIndex != INVALID_INDEX) {
-        prop = tsManager_->GetStringFromConstantPool(propIndex);
+        auto methodOffset = acc_.TryGetMethodOffset(gate);
+        prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
     }
     ChunkSet<GateType> inferTypes = helper_.GetInferTypes(chunk_, types, prop);
     AddProfiler(gate, tsType, *pgoRwTypes, inferTypes);

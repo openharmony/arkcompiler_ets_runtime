@@ -548,6 +548,19 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
     return 0;
 }
 
+uint32_t GateAccessor::TryGetBcIndex(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+        case OpCode::JS_BYTECODE:
+            return gatePtr->GetJSBytecodeMetaData()->GetBcIndex();
+        default:
+            break;
+    }
+    return INVALID_BC_INDEX;
+}
+
 uint32_t GateAccessor::TryGetMethodOffset(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -556,6 +569,9 @@ uint32_t GateAccessor::TryGetMethodOffset(GateRef gate) const
         case OpCode::FRAME_ARGS: {
             UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetFirstValue();
+        }
+        case OpCode::JS_BYTECODE: {
+            return gatePtr->GetJSBytecodeMetaData()->GetMethodId();
         }
         default:
             break;
@@ -1820,6 +1836,25 @@ bool GateAccessor::IsLoopBackUse(GateRef gate, const UseIterator &useIt) const
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
         return IsLoopHead(GetState(*useIt));
     }
+    return false;
+}
+
+bool GateAccessor::IsCreateArray(GateRef gate) const
+{
+    if (GetOpCode(gate) != OpCode::JS_BYTECODE) {
+        return false;
+    }
+    EcmaOpcode ecmaop = GetByteCodeOpcode(gate);
+    switch (ecmaop) {
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+            return true;
+        default:
+            return false;
+    }
+    UNREACHABLE();
     return false;
 }
 }  // namespace panda::ecmascript::kungfu

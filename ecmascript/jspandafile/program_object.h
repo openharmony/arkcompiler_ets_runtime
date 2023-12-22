@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
@@ -230,8 +231,11 @@ public:
         uint32_t entryIndex = 0;
         if (isLoadedAOT && val.IsAOTLiteralInfo()) {
             JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
-            entryIndex = static_cast<uint32_t>(entryIndexes->GetObjectFromCache(0).GetInt()); // 0: only one method
-            hasEntryIndex = true;
+            int entryIndexVal = entryIndexes->GetObjectFromCache(0).GetInt(); // 0: only one method
+            if (entryIndexVal != static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE)) {
+                hasEntryIndex = true;
+                entryIndex = static_cast<uint32_t>(entryIndexVal);
+            }
             val = JSTaggedValue::Hole();
         }
 
@@ -333,6 +337,11 @@ public:
                     JSTaggedValue ihcVal = JSTaggedValue::Undefined();
                     if (needSetAotFlag) {
                         ihcVal = entryIndexes->GetIhc();
+                        if (!ihcVal.IsUndefined()) {
+                            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+                            JSHClass::Cast(ihcVal.GetTaggedObject())->SetPrototype(thread,
+                                                                                   env->GetObjectFunctionPrototype());
+                        }
                     }
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties, ihcVal);
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {

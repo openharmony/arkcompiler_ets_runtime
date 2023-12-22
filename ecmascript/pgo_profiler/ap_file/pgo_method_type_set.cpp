@@ -76,6 +76,13 @@ bool PGOMethodTypeSet::ParseFromBinary(PGOContext &context, void **buffer)
             auto *opTypeInfo = reinterpret_cast<RWScalarOpTypeInfoRef *>(typeInfo);
             RWScalarOpTypeInfo info(opTypeInfo->GetOffset());
             info.ConvertFrom(context, *opTypeInfo);
+            for (int j = 0; j < info.GetCount(); j++) {
+                if (info.GetTypeRef().GetObjectInfo(j).GetProtoChainMarker() == ProtoChainMarker::EXSIT) {
+                    auto protoChainRef = base::ReadBufferInSize<PGOProtoChainRef>(buffer);
+                    auto protoChain = PGOProtoChain::ConvertFrom(context, protoChainRef);
+                    const_cast<PGOObjectInfo &>(info.GetTypeRef().GetObjectInfo(j)).SetProtoChain(protoChain);
+                }
+            }
             rwScalarOpTypeInfos_.emplace(info);
         }
     }
@@ -86,7 +93,7 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
 {
     uint32_t number = 0;
     std::stringstream methodStream;
-    for (auto typeInfo : scalarOpTypeInfos_) {
+    for (auto &typeInfo : scalarOpTypeInfos_) {
         if (!typeInfo.GetType().IsNone()) {
             PGOSampleTypeRef sampleTypeRef = PGOSampleTypeRef::ConvertFrom(context, typeInfo.GetType());
             ScalarOpTypeInfoRef infoRef(typeInfo.GetOffset(), sampleTypeRef);
@@ -94,11 +101,18 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
             number++;
         }
     }
-    for (auto typeInfo : rwScalarOpTypeInfos_) {
+    for (auto &typeInfo : rwScalarOpTypeInfos_) {
         if (typeInfo.GetCount() != 0) {
             RWScalarOpTypeInfoRef infoRef(typeInfo.GetOffset());
             infoRef.ConvertFrom(context, typeInfo);
             methodStream.write(reinterpret_cast<char *>(&infoRef), infoRef.Size());
+            for (int i = 0; i < typeInfo.GetCount(); i++) {
+                if (typeInfo.GetTypeRef().GetObjectInfo(i).GetProtoChainMarker() == ProtoChainMarker::EXSIT) {
+                    auto protoChain = typeInfo.GetTypeRef().GetObjectInfo(i).GetProtoChain();
+                    auto protoChainRef = PGOProtoChainRef::ConvertFrom(context, protoChain);
+                    methodStream.write(reinterpret_cast<char *>(protoChainRef), protoChainRef->Size());
+                }
+            }
             number++;
         }
     }

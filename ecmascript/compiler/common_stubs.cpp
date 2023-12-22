@@ -687,7 +687,7 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, Undefined(),
+    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, IntPtr(0),
         Undefined(), slotId, ProfileOperation()));
 }
 

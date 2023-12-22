@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
@@ -92,6 +93,11 @@ public:
     IRModule* GetAOTModule() const
     {
         return aotModule_;
+    }
+
+    bool FilterMethod(const MethodLiteral *methodLiteral, const MethodPcInfo &methodPCInfo) const
+    {
+        return bcInfoCollector_->FilterMethod(methodLiteral, methodPCInfo);
     }
 
     bool IsSkippedMethod(uint32_t methodOffset) const

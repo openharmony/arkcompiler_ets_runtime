@@ -364,7 +364,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdPrivateProperty)                  \
     V(StPrivateProperty)                  \
     V(TestIn)                             \
-    V(UpdateHClass)                       \
+    V(UpdateAOTHClass)                    \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
     V(ArraySort)                          \
@@ -700,6 +700,8 @@ private:
                                                    uint16_t length);
     static inline JSTaggedValue RuntimeDefinefunc(JSThread *thread, const JSHandle<JSTaggedValue> &constpool,
                                                   uint16_t methodId, const JSHandle<JSTaggedValue> &module);
+    static inline void DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JSFunction> &func,
+                                                 const JSHandle<JSTaggedValue> &ihc);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
@@ -794,7 +796,7 @@ private:
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
     static inline bool IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
                                                                  JSTaggedValue key);
-    static inline JSTaggedValue RuntimeUpdateHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
+    static inline JSTaggedValue RuntimeUpdateAOTHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
         const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);

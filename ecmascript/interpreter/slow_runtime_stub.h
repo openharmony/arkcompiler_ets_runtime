@@ -198,8 +198,8 @@ public:
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
     static JSTaggedValue TestIn(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
-    static JSTaggedValue UpdateHClass(JSThread *thread, JSTaggedValue jshclass,
-                                      JSTaggedValue newjshclass, JSTaggedValue key);
+    static JSTaggedValue UpdateAOTHClass(JSThread *thread, JSTaggedValue jshclass,
+                                         JSTaggedValue newjshclass, JSTaggedValue key);
 
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);

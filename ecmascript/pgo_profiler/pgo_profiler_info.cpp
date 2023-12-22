@@ -608,7 +608,10 @@ bool PGORecordDetailInfos::AddDefine(
     PGOHClassTreeDesc descInfo(type.GetProfileType());
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter == hclassTreeDescInfos_.end()) {
+        descInfo.SetProtoPt(type.GetProtoTypePt());
         hclassTreeDescInfos_.emplace(descInfo);
+    } else {
+        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(type.GetProtoTypePt());
     }
     return true;
 }
@@ -633,27 +636,53 @@ bool PGORecordDetailInfos::UpdateLayout(ProfileType rootType, JSTaggedType hclas
     PGOHClassTreeDesc descInfo(rootType);
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter != hclassTreeDescInfos_.end()) {
-        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateLayout(rootType, hclass, curType);
+        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateLayout(hclass, curType);
     } else {
+        if (!descInfo.UpdateLayout(hclass, curType)) {
+            return false;
+        }
+        hclassTreeDescInfos_.emplace(descInfo);
         return false;
     }
     return true;
 }
 
-bool PGORecordDetailInfos::AddTransitionLayout(
+bool PGORecordDetailInfos::UpdateTransitionLayout(
     ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType)
 {
     PGOHClassTreeDesc descInfo(rootType);
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter != hclassTreeDescInfos_.end()) {
-        return const_cast<PGOHClassTreeDesc &>(*iter).DumpForTransition(parent, parentType, child, childType);
+        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateForTransition(parent, parentType, child, childType);
     } else {
-        if (!descInfo.DumpForTransition(parent, parentType, child, childType)) {
+        if (!descInfo.UpdateForTransition(parent, parentType, child, childType)) {
             return false;
         }
         hclassTreeDescInfos_.emplace(descInfo);
     }
     return true;
+}
+
+void PGORecordDetailInfos::AddRootPtType(ProfileType rootType, ProfileType ptType)
+{
+    PGOHClassTreeDesc descInfo(rootType);
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(ptType);
+    } else {
+        descInfo.SetProtoPt(ptType);
+        hclassTreeDescInfos_.emplace(descInfo);
+    }
+}
+
+bool PGORecordDetailInfos::IsDumped(ProfileType rootType, ProfileType curType) const
+{
+    PGOHClassTreeDesc descInfo(rootType);
+    auto iter = hclassTreeDescInfos_.find(descInfo);
+    if (iter != hclassTreeDescInfos_.end()) {
+        return const_cast<PGOHClassTreeDesc &>(*iter).IsDumped(curType);
+    }
+    return false;
 }
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
@@ -684,6 +713,7 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
         auto result = hclassTreeDescInfos_.find(fromInfo);
         if (result == hclassTreeDescInfos_.end()) {
             PGOHClassTreeDesc descInfo(fromInfo.GetProfileType());
+            descInfo.SetProtoPt(fromInfo.GetProtoPt());
             descInfo.Merge(fromInfo);
             hclassTreeDescInfos_.emplace(descInfo);
         } else {
@@ -804,8 +834,10 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
         }
 
         PGOSampleTypeRef classRef = PGOSampleTypeRef::ConvertFrom(*this, profileType);
+        auto protoSt = PGOSampleType(typeInfo.GetProtoPt());
+        PGOSampleTypeRef protoClassRef = PGOSampleTypeRef::ConvertFrom(*this, protoSt);
         void *addr = allocator->Allocate(size);
-        auto descInfos = new (addr) PGOHClassTreeDescInnerRef(size, classRef);
+        auto descInfos = new (addr) PGOHClassTreeDescInnerRef(size, classRef, protoClassRef);
         descInfos->Merge(typeInfo);
         stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);
@@ -1006,6 +1038,7 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
         auto result = hclassTreeDescInfos_.find(hclassTreeDescInfo);
         if (result == hclassTreeDescInfos_.end()) {
             PGOHClassTreeDesc descInfo(hclassTreeDescInfo.GetProfileType());
+            descInfo.SetProtoPt(hclassTreeDescInfo.GetProtoPt());
             descInfo.Merge(hclassTreeDescInfo);
             hclassTreeDescInfos_.emplace(descInfo);
         } else {

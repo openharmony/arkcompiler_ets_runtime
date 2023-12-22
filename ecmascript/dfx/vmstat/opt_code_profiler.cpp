@@ -17,6 +17,10 @@
 #include <iomanip>
 #include "ecmascript/base/config.h"
 
+#include "ecmascript/js_function.h"
+#include "ecmascript/method.h"
+#include "ecmascript/js_handle.h"
+
 namespace panda::ecmascript {
 using EcmaOpcode = kungfu::EcmaOpcode;
 
@@ -36,8 +40,9 @@ void OptCodeProfiler::PrintAndReset()
     LOG_ECMA(INFO) << "Runtime Statistics of optimized code path:";
     static constexpr int nameRightAdjustment = 46;
     static constexpr int numberRightAdjustment = 15;
-    static constexpr int hundred = 100;
+    static constexpr int hundred = 85;
     LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Bytecode"
+                   << std::setw(numberRightAdjustment) << "bcIndex"
                    << std::setw(numberRightAdjustment) << "Count"
                    << std::setw(numberRightAdjustment) << "TypedPathCount"
                    << std::setw(numberRightAdjustment) << "SlowPathCount"
@@ -56,6 +61,7 @@ void OptCodeProfiler::PrintAndReset()
         }
 
         LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << kungfu::GetEcmaOpcodeStr(it->first)
+                       << std::setw(numberRightAdjustment) << "NA"
                        << std::setw(numberRightAdjustment) << val.Count()
                        << std::setw(numberRightAdjustment) << val.TypedPathCount()
                        << std::setw(numberRightAdjustment) << val.SlowPathCount()
@@ -70,13 +76,116 @@ void OptCodeProfiler::PrintAndReset()
         LOG_ECMA(INFO) << "------------------------------------------------------------"
                        << "---------------------------------------------------------";
         LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << "Total"
+                       << std::setw(numberRightAdjustment) << "NA"
                        << std::setw(numberRightAdjustment) << totalCount
                        << std::setw(numberRightAdjustment) << totalTypedPathCount
                        << std::setw(numberRightAdjustment) << totalSlowPathCount
                        << std::setw(numberRightAdjustment) << totalTypedPathCount * hundred / totalCount << "%";
     }
+
+    FilterMethodToPrint();
+    ResetMethodInfo();
 #endif
 }
+
+void OptCodeProfiler::FilterMethodToPrint()
+{
+    std::vector<std::pair<uint64_t, Name>> profVec;
+    for (auto it = methodIdToName_.begin(); it != methodIdToName_.end(); it++) {
+        profVec.emplace_back(std::make_pair(it->first, it->second));
+    }
+    std::sort(profVec.begin(), profVec.end(),
+              [](std::pair<uint64_t, Name> &x, std::pair<uint64_t, Name> &y) -> bool {
+                  return x.second.Count() > y.second.Count();
+              });
+
+    auto itr = profVec.begin();
+    for (int i = 0; i < printMehodCount_ && itr != profVec.end(); i++) {
+        PrintMethodRecord(itr->first, itr->second.GetName());
+        itr++;
+    }
+}
+
+void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
+{
+    LOG_ECMA(INFO) << "==== methodId: " << key.GetMehodId() << ", methodName: " << methodName.c_str()
+                   << ", abcName: " << abcNames_[key.GetAbcId()] << " ====";
+
+    static constexpr int nameRightAdjustment = 46;
+    static constexpr int numberRightAdjustment = 15;
+    static constexpr int hundred = 85;
+    BcRecord& bcRecord = methodIdToRecord_[key.Value()];
+    for (auto it = bcRecord.begin(); it != bcRecord.end(); it++) {
+        Record record = it->second;
+        if (record.Count() == 0 || record.Count() < static_cast<uint64_t>(skipMaxCount_)) {
+            break;
+        }
+
+        LOG_ECMA(INFO) << std::right << std::setw(nameRightAdjustment) << kungfu::GetEcmaOpcodeStr(record.GetOpCode())
+                       << std::setw(numberRightAdjustment) << it->first
+                       << std::setw(numberRightAdjustment) << record.Count()
+                       << std::setw(numberRightAdjustment) << record.GetFast()
+                       << std::setw(numberRightAdjustment) << record.GetSlow()
+                       << std::setw(numberRightAdjustment) << record.GetFast() * hundred / record.Count() << "%";
+    }
+}
+
+void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpcode opcode, Mode mode)
+    {
+        auto it = profMap_.find(opcode);
+        if (it != profMap_.end()) {
+            (mode == Mode::TYPED_PATH) ? (it->second.typedPathValue++) : (it->second.slowPathValue++);
+        }
+
+        // methodId & methodName
+        auto funcPoint = JSFunction::Cast(func->GetTaggedObject());
+        auto method = funcPoint->GetMethod();
+        if (!method.IsMethod()) {
+            return;
+        }
+        auto methodPoint = Method::Cast(method);
+        auto methodId = methodPoint->GetMethodId().GetOffset();
+        auto methodName = methodPoint->GetMethodName();
+
+        const auto *pf = methodPoint->GetJSPandaFile();
+        ASSERT(pf != nullptr);
+        auto pfName = pf->GetJSPandaFileDesc();
+        auto itr = std::find(abcNames_.begin(), abcNames_.end(), pfName);
+        uint32_t index = 0;
+        if (itr != abcNames_.end()) {
+            index = std::distance(abcNames_.begin(), itr);
+        } else {
+            abcNames_.emplace_back(pfName);
+            index = abcNames_.size();
+        }
+
+        Key key(index, methodId);
+        // deal methodIdToName
+        auto result = methodIdToName_.find(key.Value());
+        if (result != methodIdToName_.end()) {
+            result->second.Inc();
+        } else {
+            methodIdToName_.emplace(key.Value(), Name(methodName));
+        }
+
+        // deal methodIdToRecord_
+        auto result2 = methodIdToRecord_.find(key.Value());
+        if (result2 == methodIdToRecord_.end()) {
+            BcRecord bcRecord;
+            bcRecord.emplace(bcIndex, Record(opcode));
+            methodIdToRecord_.emplace(key.Value(), bcRecord);
+        }
+        result2 = methodIdToRecord_.find(key.Value());
+
+        auto result3 = result2->second.find(bcIndex);
+        if (result3 != result2->second.end()) {
+            (mode == Mode::TYPED_PATH) ? (result3->second.IncFast()) : (result3->second.IncSlow());
+        } else {
+            auto record = Record(opcode);
+            (mode == Mode::TYPED_PATH) ? (record.IncFast()) : (record.IncSlow());
+            result2->second.emplace(bcIndex, record);
+        }
+    }
 
 OptCodeProfiler::~OptCodeProfiler()
 {
