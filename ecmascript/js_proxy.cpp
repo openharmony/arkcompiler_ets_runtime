@@ -637,6 +637,9 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     // 11. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!booleanTrapResult) {
+        if (mayThrow) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: 'set' return false", false);
+        }
         return false;
     }
     // 13. Let targetDesc be target.[[GetOwnProperty]](P).
