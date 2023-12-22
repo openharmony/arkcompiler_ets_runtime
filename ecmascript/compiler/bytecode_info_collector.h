@@ -208,9 +208,9 @@ public:
         return outerMethodId_;
     }
 
-    inline uint32_t SetOutMethodId(uint32_t outMethodId)
+    inline void SetOutMethodId(uint32_t outMethodId)
     {
-        return outerMethodId_ = outMethodId;
+        outerMethodId_ = outMethodId;
     }
 
     inline uint32_t GetOutMethodOffset() const
@@ -218,9 +218,9 @@ public:
         return outerMethodOffset_;
     }
 
-    inline uint32_t SetOutMethodOffset(uint32_t outMethodOffset)
+    inline void SetOutMethodOffset(uint32_t outMethodOffset)
     {
-        return outerMethodOffset_ = outMethodOffset;
+        outerMethodOffset_ = outMethodOffset;
     }
 
     inline uint32_t GetNumOfLexVars() const
@@ -228,9 +228,11 @@ public:
         return numOfLexVars_;
     }
 
-    inline uint32_t SetNumOfLexVars(uint32_t numOfLexVars)
+    inline void SetNumOfLexVars(uint32_t numOfLexVars)
     {
-        return numOfLexVars_ = numOfLexVars;
+        if (numOfLexVars > numOfLexVars_) {
+            numOfLexVars_ = numOfLexVars;
+        }
     }
 
     inline LexicalEnvStatus GetLexEnvStatus() const
@@ -238,9 +240,9 @@ public:
         return status_;
     }
 
-    inline LexicalEnvStatus SetLexEnvStatus(LexicalEnvStatus status)
+    inline void SetLexEnvStatus(LexicalEnvStatus status)
     {
-        return status_ = status;
+        status_ = status;
     }
 
     inline uint32_t GetMethodPcInfoIndex() const
@@ -248,9 +250,9 @@ public:
         return methodPcInfoIndex_;
     }
 
-    inline uint32_t SetMethodPcInfoIndex(uint32_t methodPcInfoIndex)
+    inline void SetMethodPcInfoIndex(uint32_t methodPcInfoIndex)
     {
-        return methodPcInfoIndex_ = methodPcInfoIndex;
+        methodPcInfoIndex_ = methodPcInfoIndex;
     }
 
     inline uint32_t GetMethodInfoIndex() const
@@ -258,9 +260,9 @@ public:
         return methodInfoIndex_;
     }
 
-    inline uint32_t SetMethodInfoIndex(uint32_t methodInfoIndex)
+    inline void SetMethodInfoIndex(uint32_t methodInfoIndex)
     {
-        return methodInfoIndex_ = methodInfoIndex;
+        methodInfoIndex_ = methodInfoIndex;
     }
 
     inline void AddInnerMethod(uint32_t offset, bool isConstructor)
