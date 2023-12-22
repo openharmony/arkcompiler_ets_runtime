@@ -870,7 +870,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 }
                 return false;
             }
-            if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
+            if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
                 if (mayThrow) {
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
                 }
@@ -931,7 +931,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                     }
                     return false;
                 }
-                if (!ClassHelper::MatchTrackType(op->GetAttr().GetTrackType(), value.GetTaggedValue())) {
+                if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
                     if (mayThrow) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
                     }

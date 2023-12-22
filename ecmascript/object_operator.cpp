@@ -386,6 +386,13 @@ bool ObjectOperator::IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key)
     return (start <= addr) && (addr <= end);
 }
 
+TrackType ObjectOperator::GetTrackType() const
+{
+    return JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryElement()
+                              ? attributes_.GetDictTrackType()
+                              : attributes_.GetTrackType();
+}
+
 void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -397,9 +404,7 @@ void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
         desc.SetWritable(IsWritable());
         JSTaggedValue val = GetValue();
         desc.SetValue(JSHandle<JSTaggedValue>(thread_, val));
-        desc.SetTrackType(JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryElement()
-                              ? attributes_.GetDictTrackType()
-                              : attributes_.GetTrackType());
+        desc.SetTrackType(GetTrackType());
     } else {
         auto result = GetValue();
         bool isPropertyBox = result.IsPropertyBox();

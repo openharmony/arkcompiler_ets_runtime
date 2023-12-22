@@ -270,6 +270,7 @@ public:
     }
 
     void ToPropertyDescriptor(PropertyDescriptor &desc) const;
+    TrackType GetTrackType() const;
     void LookupProperty();
     void GlobalLookupProperty();
     inline void ReLookupPropertyInReceiver()
