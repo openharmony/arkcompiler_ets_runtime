@@ -3321,8 +3321,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
     vm1_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm1_ != nullptr) << "Cannot create Runtime";
     vm1_->SetEnableForceGC(true);
-    JSNApi::DestroyJSVM(vm1_);
     vm1_->SetEnableForceGC(false);
+    JSNApi::DestroyJSVM(vm1_);
 }
 
 /**
