@@ -254,7 +254,6 @@ Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
-    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<NativePointerRef>(obj);
 }
 
@@ -346,9 +345,7 @@ bool JSValueRef::InstanceOf(const EcmaVM *vm, Local<JSValueRef> value)
     JSHandle<JSTaggedValue> origin = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(origin, ERROR);
     JSHandle<JSTaggedValue> target = JSNApiHelper::ToJSHandle(value);
-    bool result = JSObject::InstanceOf(thread, origin, target);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSObject::InstanceOf(thread, origin, target);
 }
 
 // Omit exception check for JSValueRef::IsXxx because ark calls here may not
@@ -1604,15 +1601,11 @@ bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> v
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
     if (!obj->IsHeapObject()) {
-        bool result = JSTaggedValue::SetProperty(thread, obj, keyValue, valueValue);
-        RETURN_VALUE_IF_ABRUPT(thread, false);
-        return result;
+        return JSTaggedValue::SetProperty(thread, obj, keyValue, valueValue);
     }
-    bool result = ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
-                                                             keyValue.GetTaggedValue(),
-                                                             valueValue.GetTaggedValue());
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                      keyValue.GetTaggedValue(),
+                                                      valueValue.GetTaggedValue());
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
@@ -1623,14 +1616,10 @@ bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
     if (!obj->IsHeapObject()) {
-        bool result = JSTaggedValue::SetProperty(thread, obj, key, valueValue);
-        RETURN_VALUE_IF_ABRUPT(thread, false);
-        return result;
+        return JSTaggedValue::SetProperty(thread, obj, key, valueValue);
     }
-    bool result = ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(),
-                                                             key, valueValue.GetTaggedValue());
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(),
+                                                      key, valueValue.GetTaggedValue());
 }
 
 bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
@@ -1647,9 +1636,7 @@ bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Loc
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
-    bool result = JSTaggedValue::DefineOwnProperty(thread, obj, keyValue, desc);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::DefineOwnProperty(thread, obj, keyValue, desc);
 }
 
 Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
@@ -1723,8 +1710,8 @@ Local<ArrayRef> ObjectRef::GetOwnPropertyNames(const EcmaVM *vm)
     JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSTaggedValue::GetOwnPropertyKeys(thread, obj));
-    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
 }
 
@@ -1736,8 +1723,8 @@ Local<ArrayRef> ObjectRef::GetAllPropertyNames(const EcmaVM *vm, uint32_t filter
     JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSTaggedValue::GetAllPropertyKeys(thread, obj, filter));
-    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
 }
 
@@ -1747,8 +1734,8 @@ Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
     JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSObject::EnumerableOwnNames(thread, obj));
-    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
 }
 
@@ -1767,9 +1754,7 @@ bool ObjectRef::SetPrototype(const EcmaVM *vm, Local<ObjectRef> prototype)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
     JSHandle<JSObject> proto(JSNApiHelper::ToJSHandle(prototype));
-    bool result = JSTaggedValue::SetPrototype(thread, JSHandle<JSTaggedValue>(object), JSHandle<JSTaggedValue>(proto));
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::SetPrototype(thread, JSHandle<JSTaggedValue>(object), JSHandle<JSTaggedValue>(proto));
 }
 
 bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute attribute)
@@ -1780,9 +1765,7 @@ bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     PropertyDescriptor desc(thread, attribute.IsWritable(), attribute.IsEnumerable(), attribute.IsConfigurable());
     desc.SetValue(JSNApiHelper::ToJSHandle(attribute.GetValue(vm)));
-    bool result = JSTaggedValue::DefinePropertyOrThrow(thread, object, keyValue, desc);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::DefinePropertyOrThrow(thread, object, keyValue, desc);
 }
 
 bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
@@ -1791,9 +1774,7 @@ bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = JSTaggedValue::HasProperty(thread, object, keyValue);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::HasProperty(thread, object, keyValue);
 }
 
 bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
@@ -1801,9 +1782,7 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
-    bool result = JSTaggedValue::HasProperty(thread, object, key);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::HasProperty(thread, object, key);
 }
 
 bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
@@ -1812,9 +1791,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
-    bool result = JSTaggedValue::DeleteProperty(thread, object, keyValue);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::DeleteProperty(thread, object, keyValue);
 }
 
 bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
@@ -1823,9 +1800,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
-    bool result = JSTaggedValue::DeleteProperty(thread, object, keyHandle);
-    RETURN_VALUE_IF_ABRUPT(thread, false);
-    return result;
+    return JSTaggedValue::DeleteProperty(thread, object, keyHandle);
 }
 
 Local<JSValueRef> ObjectRef::Freeze(const EcmaVM *vm)
