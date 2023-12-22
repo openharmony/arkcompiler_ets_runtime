@@ -2968,6 +2968,9 @@ void Builtins::InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandl
     JSHandle<JSObject> generatorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
 
     // GeneratorObject.prototype method
+    // Generator.prototype.constructor(value)
+    SetFunction(env, generatorPrototype, "constructor",
+                GeneratorObject::GeneratorFunctionConstructor, FunctionLength::ONE);
     // 26.5.1.2 Generator.prototype.next(value)
     SetFunction(env, generatorPrototype, "next", GeneratorObject::GeneratorPrototypeNext, FunctionLength::ONE);
     // 26.5.1.3 Generator.prototype.return(value)
