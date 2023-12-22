@@ -473,6 +473,7 @@ public:
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
     JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
+    JSHandle<JSFunction> CloneJSSharedFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
 
@@ -770,6 +771,10 @@ private:
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
     // For sharedobject
+    JSHandle<JSFunction> NewJSSharedFunction(const JSHandle<Method> &methodHandle,
+                                             const JSHandle<JSTaggedValue> &homeObject);
+    JSHandle<JSFunction> NewJSSharedFunctionByHClass(const JSHandle<Method> &methodHandle,
+                                                     const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> CreateSharedNormalFunctionClass(uint32_t size, JSType type,
                                                        const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass

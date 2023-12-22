@@ -269,6 +269,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         module, entryIndex, isLoadedAOT, &canFastCall);
     JSHandle<JSHClass> functionClass;
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> jsFunc;
     if (sendableClass) {
         if (kind == FunctionKind::NORMAL_FUNCTION ||
             kind == FunctionKind::GETTER_FUNCTION ||
@@ -277,6 +278,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         } else {
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
         }
+        jsFunc = factory->NewJSSharedFunctionByHClass(method, functionClass);
     } else {
         if (kind == FunctionKind::NORMAL_FUNCTION ||
             kind == FunctionKind::GETTER_FUNCTION ||
@@ -285,8 +287,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         } else {
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
         }
+        jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
     }
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
     jsFunc->SetLength(length);
 
     return jsFunc;

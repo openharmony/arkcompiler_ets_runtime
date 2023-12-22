@@ -157,6 +157,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8:
         case EcmaOpcode::GETUNMAPPEDARGS:
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::NOP:
@@ -254,6 +255,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
@@ -352,6 +354,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8:
+        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16:
             flags |= BytecodeFlags::READ_ENV;
             break;
         default:
@@ -444,6 +448,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
         case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8:
+        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -835,6 +841,14 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
+            uint16_t methodId = READ_INST_16_2();
+            uint16_t length = READ_INST_8_4();
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
+            info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
@@ -1672,6 +1686,14 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(numVars));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             info.vregOut.emplace_back(builder->GetEnvVregIdx());
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16: {
+            uint32_t count = READ_INST_16_1();
+            uint32_t literalId = READ_INST_16_3();
+            info.inputs.emplace_back(Immediate(count));
+            info.inputs.emplace_back(Immediate(literalId));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::TONUMERIC_IMM8:

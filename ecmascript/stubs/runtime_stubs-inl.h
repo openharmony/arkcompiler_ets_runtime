@@ -2193,6 +2193,13 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     return factory->NewJSFunction(methodHandle, homeObject).GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::RuntimeDefineSendableMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
+                                                        const JSHandle<JSTaggedValue> &homeObject)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewJSSharedFunction(methodHandle, homeObject).GetTaggedValue();
+}
+
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
                                               const JSHandle<JSTaggedValue> &func,
                                               const JSHandle<JSTaggedValue> &obj,
@@ -2908,7 +2915,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
-    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
+    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module, bool sendable)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
@@ -2927,7 +2934,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
     }
 
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry);
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry,
+                                                                      sendable);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();
@@ -2942,6 +2950,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         if (LIKELY(literalValue.IsJSFunction())) {
             JSFunction *func = JSFunction::Cast(literalValue.GetTaggedObject());
             func->SetLexicalEnv(thread, handleLexicalEnv.GetTaggedValue());
+            func->GetClass()->SetExtensible(false);
             Method::Cast(func->GetMethod())->SetModule(thread, handleModule.GetTaggedValue());
         }
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);

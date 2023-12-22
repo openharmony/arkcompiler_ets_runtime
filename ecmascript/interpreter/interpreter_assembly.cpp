@@ -6097,6 +6097,43 @@ void InterpreterAssembly::HandleCallRuntimeNewSendableLexenvImm16(
     DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleCallRuntimeDefineSendableMethodImm8Id16Imm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint16_t methodId = READ_INST_16_2();
+    uint16_t length = READ_INST_8_4();
+    LOG_INST() << "intrinsics::definesendablemethod length: " << length;
+    SAVE_ACC();
+    constpool = GetConstantPool(sp);
+    Method *method =
+        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
+    ASSERT(method != nullptr);
+    RESTORE_ACC();
+
+    SAVE_PC();
+    JSTaggedValue homeObject = GET_ACC();
+    auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
+
+    result->SetLength(length);
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    JSTaggedValue taggedCurEnv = state->env;
+    result->SetLexicalEnv(thread, taggedCurEnv);
+
+    SET_ACC(JSTaggedValue(result));
+
+    DISPATCH(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeCreateSendablePrivatePropertyPrefImm16Id16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16);
+}
+
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

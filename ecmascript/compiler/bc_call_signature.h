@@ -380,7 +380,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)                \
     T(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)             \
     T(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)       \
-    T(HandleCallRuntimeNewSendableLexenvImm16)
+    T(HandleCallRuntimeNewSendableLexenvImm16)                            \
+    T(HandleCallRuntimeDefineSendableMethodImm8Id16Imm8)                  \
+    T(HandleCallRuntimeCreateSendablePrivatePropertyPrefImm16Id16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \

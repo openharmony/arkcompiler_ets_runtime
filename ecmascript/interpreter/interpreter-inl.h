@@ -1021,7 +1021,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 9;
+    constexpr size_t numCallRuntimeOps = 11;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -7463,6 +7463,46 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         GET_FRAME(sp)->env = res;
         DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8) {
+        uint16_t methodId = READ_INST_16_2();
+        uint16_t length = READ_INST_8_4();
+        LOG_INST() << "intrinsics::definesendablemethod length: " << length;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        auto module = GetEcmaModule(sp);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
+        RESTORE_ACC();
+
+        SAVE_PC();
+        JSTaggedValue homeObject = GET_ACC();
+        auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
+
+        result->SetLength(length);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue taggedCurEnv = state->env;
+        result->SetLexicalEnv(thread, taggedCurEnv);
+
+        SET_ACC(JSTaggedValue(result));
+
+        DISPATCH(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        JSTaggedValue constpool = GetConstantPool(sp);
+        JSTaggedValue module = GetEcmaModule(sp);
+        uint32_t count = READ_INST_16_1();
+        uint32_t literalId = READ_INST_16_3();
+        LOG_INST() << "intrinsics::callruntime.createsendableprivateproperty "
+                   << "count:" << count << ", literalId:" << literalId;
+
+        JSTaggedValue res = SlowRuntimeStub::CreateSendablePrivateProperty(thread, lexicalEnv,
+            count, constpool, literalId, module);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

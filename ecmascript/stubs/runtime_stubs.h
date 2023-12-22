@@ -303,6 +303,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CreateObjectHavingMethod)           \
     V(CreateObjectWithExcludedKeys)       \
     V(DefineMethod)                       \
+    V(DefineSendableMethod)               \
     V(ThrowSetterIsUndefinedException)    \
     V(ThrowNotCallableException)          \
     V(ThrowCallConstructorException)      \
@@ -358,6 +359,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NotifyConcurrentResult)             \
     V(DefineField)                        \
     V(CreatePrivateProperty)              \
+    V(CreateSendablePrivateProperty)      \
     V(DefinePrivateProperty)              \
     V(LdPrivateProperty)                  \
     V(StPrivateProperty)                  \
@@ -710,6 +712,8 @@ private:
                                                                     uint16_t firstArgRegIdx);
     static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject);
+    static inline JSTaggedValue RuntimeDefineSendableMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
+                                                            const JSHandle<JSTaggedValue> &homeObject);
     static inline JSTaggedValue RuntimeCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &array);
@@ -778,7 +782,7 @@ private:
     static inline JSTaggedValue RuntimeDefineField(JSThread *thread, JSTaggedValue obj,
                                                    JSTaggedValue propKey, JSTaggedValue value);
     static inline JSTaggedValue RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue constpool,
-        uint32_t count, JSTaggedValue lexicalEnv, uint32_t literalId, JSTaggedValue module);
+        uint32_t count, JSTaggedValue lexicalEnv, uint32_t literalId, JSTaggedValue module, bool sendable = false);
     static inline JSTaggedValue RuntimeDefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
     static inline JSTaggedValue RuntimeLdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,

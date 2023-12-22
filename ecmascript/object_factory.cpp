@@ -607,6 +607,18 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
     return cloneFunc;
 }
 
+JSHandle<JSFunction> ObjectFactory::CloneJSSharedFunction(JSHandle<JSFunction> func)
+{
+    JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
+    JSHandle<Method> method(thread_, func->GetMethod());
+    JSHandle<JSFunction> cloneFunc = NewJSSharedFunctionByHClass(method, jshclass);
+
+    JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
+    cloneFunc->SetLength(func->GetLength());
+    return cloneFunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                                    bool canShareHClass)
 {
@@ -1509,7 +1521,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv
 {
     JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
-    JSHandle<JSFunction> sfunc = NewJSFunctionByHClass(method, hclass);
+    JSHandle<JSFunction> sfunc = NewJSSharedFunctionByHClass(method, hclass);
     JSHandle<JSObject> sfuncObj = JSHandle<JSObject>::Cast(sfunc);
     sfuncObj->InitializeImmutableField();
     return sfunc;
@@ -1658,6 +1670,15 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     defaultHclass->SetClassConstructor(true);
     defaultHclass->SetConstructor(true);
     return defaultHclass;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSSharedFunctionByHClass(const JSHandle<Method> &method,
+                                                                const JSHandle<JSHClass> &hclass)
+{
+    JSHandle<JSFunction> function(NewOldSpaceJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
+    function->SetMethod(thread_, method);
+    return function;
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
@@ -4607,6 +4628,18 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     JSHandle<JSFunction> jsfunc = NewJSFunctionByHClass(methodHandle, hclass);
     ASSERT_NO_ABRUPT_COMPLETION(thread_);
     return jsfunc;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<Method> &methodHandle,
+                                                        const JSHandle<JSTaggedValue> &homeObject)
+{
+    ASSERT(homeObject->IsECMAObject());
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedFunctionClassWithoutProto());
+    JSHandle<JSFunction> jsFunc = NewJSSharedFunctionByHClass(methodHandle, hclass);
+    jsFunc->SetHomeObject(thread_, homeObject);
+    ASSERT_NO_ABRUPT_COMPLETION(thread_);
+    return jsFunc;
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle,

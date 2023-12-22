@@ -415,19 +415,19 @@ void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle
     auto getter = accessor->GetGetter();
     if (getter.IsJSFunction()) {
         JSHandle<JSFunction> func(thread, getter);
-        JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
+        JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
-        propFunc->GetClass()->SetExtensible(false);
+        ASSERT(!propFunc->GetClass()->IsExtensible());
         accessor->SetGetter(thread, propFunc);
     }
     auto setter = accessor->GetSetter();
     if (setter.IsJSFunction()) {
         JSHandle<JSFunction> func(thread, setter);
-        JSHandle<JSFunction> propFunc = factory->CloneJSFuction(func);
+        JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
-        propFunc->GetClass()->SetExtensible(false);
+        ASSERT(!propFunc->GetClass()->IsExtensible());
         accessor->SetSetter(thread, propFunc);
     }
 
@@ -473,10 +473,10 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
             propValue.Update(nonStaticProperties->Get(index));
             // constructor don't need to clone
             if (propValue->IsJSFunction() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
-                propFunc->GetClass()->SetExtensible(false);
+                ASSERT(!propFunc->GetClass()->IsExtensible());
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), lexenv);
@@ -501,10 +501,10 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
-                propFunc->GetClass()->SetExtensible(false);
+                ASSERT(!propFunc->GetClass()->IsExtensible());
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), lexenv);
@@ -693,10 +693,10 @@ JSHandle<NameDictionary> ClassHelper::BuildSendableDictionaryProperties(JSThread
             continue;
         }
         if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+            JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
-            propFunc->GetClass()->SetExtensible(false);
+            ASSERT(!propFunc->GetClass()->IsExtensible());
             propValue.Update(propFunc);
         } else if (propValue->IsAccessorData()) {
             UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), lexenv);
@@ -1072,7 +1072,10 @@ bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
             checkRet = value.IsJSSharedFamily();
             break;
         }
-        case TrackType::NONE:
+        case TrackType::NONE: {
+            checkRet = true;
+            break;
+        }
         case TrackType::TAGGED:
         default:
             break;

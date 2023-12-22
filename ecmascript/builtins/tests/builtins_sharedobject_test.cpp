@@ -70,7 +70,7 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     ASSERT_FALSE(ctorHClass->IsExtensible());
     ASSERT_TRUE(ctorHClass->IsConstructor());
     ASSERT_TRUE(ctorHClass->IsJSSharedFunction());
-    
+
     // SharedFunction.prototype
     auto proto = ctorHClass->GetProto();
     ASSERT_EQ(proto, env->GetSharedFunctionPrototype().GetTaggedValue());

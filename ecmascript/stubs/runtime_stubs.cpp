@@ -2189,6 +2189,14 @@ DEF_RUNTIME_STUBS(DefineMethod)
     return RuntimeDefineMethod(thread, method, homeObject).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DefineSendableMethod)
+{
+    RUNTIME_STUBS_HEADER(DefineSendableMethod);
+    JSHandle<Method> method = GetHArg<Method>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeDefineSendableMethod(thread, method, homeObject).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CallSpread)
 {
     RUNTIME_STUBS_HEADER(CallSpread);
@@ -2575,6 +2583,17 @@ DEF_RUNTIME_STUBS(CreatePrivateProperty)
     uint32_t literalId = GetArg(argv, argc, 3).GetInt();  // 3: means the third parameter
     JSTaggedValue module = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CreateSendablePrivateProperty)
+{
+    RUNTIME_STUBS_HEADER(CreateSendablePrivateProperty);
+    JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    uint32_t count = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
+    JSTaggedValue constpool = GetArg(argv, argc, 2);  // 2: means the second parameter
+    uint32_t literalId = GetArg(argv, argc, 3).GetInt();  // 3: means the third parameter
+    JSTaggedValue module = GetArg(argv, argc, 4);  // 4: means the fourth parameter
+    return RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module, true).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefinePrivateProperty)

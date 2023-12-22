@@ -151,6 +151,7 @@ public:
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
+    static JSTaggedValue DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
@@ -186,6 +187,8 @@ public:
     static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
     static JSTaggedValue DefineField(JSThread *thread, JSTaggedValue obj, JSTaggedValue propKey, JSTaggedValue value);
     static JSTaggedValue CreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
+        uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module);
+    static JSTaggedValue CreateSendablePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module);
     static JSTaggedValue DefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
