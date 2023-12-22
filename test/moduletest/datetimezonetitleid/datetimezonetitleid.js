@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-try {
-    new Intl.DateTimeFormat("en" , { timeZone: "US/Alaska0" });
-} catch (e) {
-    print(e instanceof RangeError);
-}
+
+let dtf = new Intl.DateTimeFormat("de", {timeZone:"America/bueNos_airES"});
+print("America/Buenos_Aires" === dtf.resolvedOptions().timeZone);
