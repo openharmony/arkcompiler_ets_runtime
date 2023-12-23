@@ -54,9 +54,11 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     DISALLOW_GARBAGE_COLLECTION;
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
-    auto sharedObjectPrototype = env->GetSharedObjectFunctionPrototype();
+    auto sharedObjectPrototype = env->GetSObjectFunctionPrototype();
     JSHClass *hclass = sharedObjectPrototype->GetTaggedObject()->GetClass();
     ASSERT_FALSE(hclass->IsExtensible());
+    ASSERT_FALSE(hclass->IsConstructor());
+    ASSERT_FALSE(hclass->IsCallable());
     ASSERT_TRUE(hclass->IsJSSharedObject());
     ASSERT_TRUE(hclass->GetProto().IsNull());
 
@@ -65,27 +67,30 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::GetOwnProperty(thread, JSHandle<JSObject>(sharedObjectPrototype), constructorKey, desc);
     auto ctor = desc.GetValue();
-    ASSERT_EQ(ctor.GetTaggedValue(), env->GetSharedObjectFunction().GetTaggedValue());
+    ASSERT_EQ(ctor.GetTaggedValue(), env->GetSObjectFunction().GetTaggedValue());
     JSHClass *ctorHClass = ctor->GetTaggedObject()->GetClass();
     ASSERT_FALSE(ctorHClass->IsExtensible());
     ASSERT_TRUE(ctorHClass->IsConstructor());
+    ASSERT_TRUE(ctorHClass->IsCallable());
     ASSERT_TRUE(ctorHClass->IsJSSharedFunction());
 
     // SharedFunction.prototype
     auto proto = ctorHClass->GetProto();
-    ASSERT_EQ(proto, env->GetSharedFunctionPrototype().GetTaggedValue());
+    ASSERT_EQ(proto, env->GetSFunctionPrototype().GetTaggedValue());
     ASSERT_TRUE(proto.IsJSSharedFunction());
     JSHClass *protoHClass = proto.GetTaggedObject()->GetClass();
     ASSERT_FALSE(protoHClass->IsExtensible());
-    ASSERT_TRUE(!protoHClass->IsConstructor());
+    ASSERT_FALSE(protoHClass->IsConstructor());
+    ASSERT_TRUE(protoHClass->IsCallable());
 
     // SharedObject.prototype
-    auto sobjProto = protoHClass->GetProto();
-    ASSERT_EQ(sobjProto, sharedObjectPrototype.GetTaggedValue());
-    ASSERT_TRUE(sobjProto.IsJSSharedObject());
-    JSHClass *sobjProtoHClass = sobjProto.GetTaggedObject()->GetClass();
-    ASSERT_FALSE(sobjProtoHClass->IsExtensible());
-    ASSERT_TRUE(!sobjProtoHClass->IsConstructor());
+    auto sObjProto = protoHClass->GetProto();
+    ASSERT_EQ(sObjProto, sharedObjectPrototype.GetTaggedValue());
+    ASSERT_TRUE(sObjProto.IsJSSharedObject());
+    JSHClass *sObjProtoHClass = sObjProto.GetTaggedObject()->GetClass();
+    ASSERT_FALSE(sObjProtoHClass->IsExtensible());
+    ASSERT_FALSE(sObjProtoHClass->IsConstructor());
+    ASSERT_FALSE(sObjProtoHClass->IsCallable());
 }
 
 HWTEST_F_L0(BuiltinsSharedObjectTest, SharedFunction)
@@ -93,21 +98,39 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedFunction)
     DISALLOW_GARBAGE_COLLECTION;
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
-    auto sharedFunctionPrototype = env->GetSharedFunctionPrototype();
+    auto sFunctionPrototype = env->GetSFunctionPrototype();
     // SharedFunction
     PropertyDescriptor desc(thread);
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(sharedFunctionPrototype), constructorKey, desc);
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(sFunctionPrototype), constructorKey, desc);
     auto ctor = desc.GetValue();
-    ASSERT_EQ(ctor.GetTaggedValue(), env->GetSharedFunctionFunction().GetTaggedValue());
+    ASSERT_EQ(ctor.GetTaggedValue(), env->GetSFunctionFunction().GetTaggedValue());
     JSHClass *ctorHClass = ctor->GetTaggedObject()->GetClass();
     ASSERT_FALSE(ctorHClass->IsExtensible());
     ASSERT_TRUE(ctorHClass->IsConstructor());
+    ASSERT_TRUE(ctorHClass->IsCallable());
     ASSERT_TRUE(ctorHClass->IsJSSharedFunction());
 
-    JSHandle<JSHClass> normalFunctionClass(env->GetSharedFunctionClassWithoutProto());
+    JSHandle<JSHClass> normalFunctionClass(env->GetSFunctionClassWithoutProto());
     ASSERT_FALSE(normalFunctionClass->IsExtensible());
     ASSERT_FALSE(normalFunctionClass->IsConstructor());
+    ASSERT_TRUE(ctorHClass->IsCallable());
     ASSERT_TRUE(ctorHClass->IsJSSharedFunction());
+}
+
+HWTEST_F_L0(BuiltinsSharedObjectTest, SharedBuiltinsMethod)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto sFunctionPrototype = env->GetSFunctionPrototype();
+    auto callStr = factory->NewFromASCII("call");
+    PropertyDescriptor desc(thread);
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(sFunctionPrototype), JSHandle<JSTaggedValue>(callStr), desc);
+    auto method = desc.GetValue();
+    JSHClass *hclass = method->GetTaggedObject()->GetClass();
+    ASSERT_FALSE(hclass->IsExtensible());
+    ASSERT_TRUE(!hclass->IsConstructor());
+    ASSERT_TRUE(hclass->IsCallable());
+    ASSERT_TRUE(hclass->IsJSSharedFunction());
 }
 }  // namespace panda::test

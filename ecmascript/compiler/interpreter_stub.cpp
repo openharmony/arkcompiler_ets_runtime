@@ -5039,7 +5039,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateSendableClass),
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateSharedClass),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedInt(methodId),
                                 Int16ToTaggedInt(literalId),

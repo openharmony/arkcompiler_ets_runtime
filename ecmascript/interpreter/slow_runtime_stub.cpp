@@ -1121,17 +1121,17 @@ JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedV
                                                       constpoolHandle, methodId, literalId, moduleHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::CreateSendableClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,
-                                                   JSTaggedValue constpool, uint16_t methodId, uint16_t literalId,
-                                                   uint16_t length, JSTaggedValue module)
+JSTaggedValue SlowRuntimeStub::CreateSharedClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,
+                                                 JSTaggedValue constpool, uint16_t methodId, uint16_t literalId,
+                                                 uint16_t length, JSTaggedValue module)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
     JSHandle<JSTaggedValue> moduleHandle(thread, module);
-    return RuntimeStubs::RuntimeCreateSendableClass(thread, baseHandle, lexenvHandle, constpoolHandle, methodId,
-                                                    literalId, length, moduleHandle);
+    return RuntimeStubs::RuntimeCreateSharedClass(thread, baseHandle, lexenvHandle, constpoolHandle, methodId,
+                                                  literalId, length, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base)
@@ -1240,7 +1240,8 @@ JSTaggedValue SlowRuntimeStub::CreateSendablePrivateProperty(JSThread *thread, J
     uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
 {
     INTERPRETER_TRACE(thread, CreateSendablePrivateProperty);
-    return RuntimeStubs::RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module, true);
+    return RuntimeStubs::RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module,
+                                                      ClassKind::SENDABLE);
 }
 
 JSTaggedValue SlowRuntimeStub::DefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,

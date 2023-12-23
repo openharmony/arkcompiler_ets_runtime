@@ -236,7 +236,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
     V(CreateClassWithBuffer)              \
-    V(CreateSendableClass)                \
+    V(CreateSharedClass)                  \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -565,16 +565,16 @@ private:
                                                              const JSHandle<JSTaggedValue> &constpool,
                                                              uint16_t methodId, uint16_t literalId,
                                                              const JSHandle<JSTaggedValue> &module);
-    static inline JSTaggedValue RuntimeCreateSendableClass(JSThread *thread,
-                                                           const JSHandle<JSTaggedValue> &base,
-                                                           const JSHandle<JSTaggedValue> &lexenv,
-                                                           const JSHandle<JSTaggedValue> &constpool,
-                                                           uint16_t methodId, uint16_t literalId, uint16_t length,
-                                                           const JSHandle<JSTaggedValue> &module);
+    static inline JSTaggedValue RuntimeCreateSharedClass(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &base,
+                                                         const JSHandle<JSTaggedValue> &lexenv,
+                                                         const JSHandle<JSTaggedValue> &constpool,
+                                                         uint16_t methodId, uint16_t literalId, uint16_t length,
+                                                         const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base,
-                                                                       bool sendable = false);
+                                                                       ClassKind kind = ClassKind::NON_SENDABLE);
     static inline JSTaggedValue RuntimeSetClassConstructorLength(JSThread *thread, JSTaggedValue ctor,
                                                                  JSTaggedValue length);
     static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,
@@ -782,7 +782,8 @@ private:
     static inline JSTaggedValue RuntimeDefineField(JSThread *thread, JSTaggedValue obj,
                                                    JSTaggedValue propKey, JSTaggedValue value);
     static inline JSTaggedValue RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue constpool,
-        uint32_t count, JSTaggedValue lexicalEnv, uint32_t literalId, JSTaggedValue module, bool sendable = false);
+        uint32_t count, JSTaggedValue lexicalEnv, uint32_t literalId, JSTaggedValue module,
+        ClassKind kind = ClassKind::NON_SENDABLE);
     static inline JSTaggedValue RuntimeDefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
     static inline JSTaggedValue RuntimeLdPrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,

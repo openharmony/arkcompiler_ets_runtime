@@ -3420,7 +3420,7 @@ void SlowPathLowering::LowerDefineSendableClass(GateRef gate)
 
     auto args = { proto, lexicalEnv, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
                   builder_.ToTaggedInt(length), module };
-    GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(CreateSendableClass), args);
+    GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(CreateSharedClass), args);
     ReplaceHirWithValue(gate, newGate);
 }
 

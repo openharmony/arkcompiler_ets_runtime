@@ -7440,8 +7440,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SAVE_PC();
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue res =
-            SlowRuntimeStub::CreateSendableClass(thread, base, state->env, GetConstantPool(sp), methodId,
-                                                 literaId, length, GetEcmaModule(sp));
+            SlowRuntimeStub::CreateSharedClass(thread, base, state->env, GetConstantPool(sp), methodId,
+                                               literaId, length, GetEcmaModule(sp));
 
         INTERPRETER_RETURN_IF_ABRUPT(res);
         ASSERT(res.IsClassConstructor());

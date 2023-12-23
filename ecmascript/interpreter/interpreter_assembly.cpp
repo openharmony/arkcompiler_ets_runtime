@@ -6066,8 +6066,8 @@ void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16I
     SAVE_PC();
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue res =
-        SlowRuntimeStub::CreateSendableClass(thread, base, state->env, GetConstantPool(sp), methodId, literaId,
-                                             length, GetModule(sp));
+        SlowRuntimeStub::CreateSharedClass(thread, base, state->env, GetConstantPool(sp), methodId, literaId,
+                                           length, GetModule(sp));
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
     ASSERT(res.IsClassConstructor());

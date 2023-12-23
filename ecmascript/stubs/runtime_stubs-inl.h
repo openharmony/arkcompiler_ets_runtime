@@ -888,12 +888,12 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     return cls.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
-                                                       const JSHandle<JSTaggedValue> &base,
-                                                       const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSTaggedValue> &constpool,
-                                                       uint16_t methodId, uint16_t literalId,
-                                                       uint16_t length, const JSHandle<JSTaggedValue> &module)
+JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
+                                                     const JSHandle<JSTaggedValue> &base,
+                                                     const JSHandle<JSTaggedValue> &lexenv,
+                                                     const JSHandle<JSTaggedValue> &constpool,
+                                                     uint16_t methodId, uint16_t literalId,
+                                                     uint16_t length, const JSHandle<JSTaggedValue> &module)
 {
     if (!base->IsJSSharedFamily() && !base->IsHole()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromSharedFamily), JSTaggedValue::Exception());
@@ -907,7 +907,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry, true);
+    auto literalObj =
+        ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry, ClassKind::SENDABLE);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     auto literalLength = arrayHandle->GetLength();
@@ -923,7 +924,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
                                                                              staticFieldArray);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, true);
+    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, ClassKind::SENDABLE);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t arrayLength = fieldTypeArray->GetLength();
@@ -936,7 +937,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSendableClass(JSThread *thread,
 JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                    const JSHandle<JSTaggedValue> &ctor,
                                                                    const JSHandle<JSTaggedValue> &base,
-                                                                   bool sendable)
+                                                                   ClassKind kind)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -962,12 +963,13 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     Method *method = Method::Cast(JSHandle<JSFunction>::Cast(ctor)->GetMethod().GetTaggedObject());
     if (parent->IsHole()) {
         method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
-        parentPrototype = sendable ? env->GetSharedObjectFunctionPrototype() : env->GetObjectFunctionPrototype();
-        parent = sendable ? env->GetSharedFunctionPrototype() : env->GetFunctionPrototype();
+        parentPrototype =
+            (kind == ClassKind::SENDABLE) ? env->GetSObjectFunctionPrototype() : env->GetObjectFunctionPrototype();
+        parent = (kind == ClassKind::SENDABLE) ? env->GetSFunctionPrototype() : env->GetFunctionPrototype();
     } else if (parent->IsNull()) {
         method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
-        parent = sendable ? env->GetSharedFunctionPrototype() : env->GetFunctionPrototype();
+        parent = (kind == ClassKind::SENDABLE) ? env->GetSFunctionPrototype() : env->GetFunctionPrototype();
     } else if (!parent->IsConstructor()) {
         return RuntimeThrowTypeError(thread, "parent class is not constructor");
     } else {
@@ -2197,7 +2199,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineSendableMethod(JSThread *thread, const 
                                                         const JSHandle<JSTaggedValue> &homeObject)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewJSSharedFunction(methodHandle, homeObject).GetTaggedValue();
+    return factory->NewSFunction(methodHandle, homeObject).GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
@@ -2915,7 +2917,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
-    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module, bool sendable)
+    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module, ClassKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
@@ -2935,7 +2937,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
     }
 
     JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry,
-                                                                      sendable);
+                                                                      kind);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();

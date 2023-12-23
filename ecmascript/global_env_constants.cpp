@@ -340,9 +340,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
                 factory->CreateDefaultClassPrototypeHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
     SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
-        factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject()), false));
-    SetConstant(ConstantIndex::SHARED_CLASS_CONSTRUCTOR_HCLASS_INDEX,
-        factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject()), true));
+        factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
 }
 
 void GlobalEnvConstants::InitGlobalCaches()

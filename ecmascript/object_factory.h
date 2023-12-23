@@ -227,7 +227,7 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
                                        MemSpaceType spaceType = OLD_SPACE);
-    JSHandle<JSFunction> NewJSSharedFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
+    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
         FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
         kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
         MemSpaceType spaceType = OLD_SPACE);
@@ -473,7 +473,7 @@ public:
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
     JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
-    JSHandle<JSFunction> CloneJSSharedFunction(JSHandle<JSFunction> func);
+    JSHandle<JSFunction> CloneSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
 
@@ -724,7 +724,7 @@ private:
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                            const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
-    JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass, bool sendableClass);
+    JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 
     // used for creating ref.prototype in buildins, such as Number.prototype
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSHClass> &hclass,
@@ -771,12 +771,14 @@ private:
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
     // For sharedobject
-    JSHandle<JSFunction> NewJSSharedFunction(const JSHandle<Method> &methodHandle,
-                                             const JSHandle<JSTaggedValue> &homeObject);
-    JSHandle<JSFunction> NewJSSharedFunctionByHClass(const JSHandle<Method> &methodHandle,
-                                                     const JSHandle<JSHClass> &hclass);
-    JSHandle<JSHClass> CreateSharedNormalFunctionClass(uint32_t size, JSType type,
-                                                       const JSHandle<JSTaggedValue> &prototype);
+    JSHandle<JSFunction> NewSFunction(const JSHandle<Method> &methodHandle,
+                                      const JSHandle<JSTaggedValue> &homeObject);
+    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+                                              FunctionKind kind);
+    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
+                                              const JSHandle<JSHClass> &hclass);
+    JSHandle<JSHClass> CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
+                                                        const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
     friend class JSHClass;    // HC transition need hclass

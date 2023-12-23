@@ -415,7 +415,7 @@ void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle
     auto getter = accessor->GetGetter();
     if (getter.IsJSFunction()) {
         JSHandle<JSFunction> func(thread, getter);
-        JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(func);
+        JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
         ASSERT(!propFunc->GetClass()->IsExtensible());
@@ -424,7 +424,7 @@ void ClassHelper::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle
     auto setter = accessor->GetSetter();
     if (setter.IsJSFunction()) {
         JSHandle<JSFunction> func(thread, setter);
-        JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(func);
+        JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
         propFunc->SetLexicalEnv(thread, lexenv);
         ASSERT(!propFunc->GetClass()->IsExtensible());
@@ -473,7 +473,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
             propValue.Update(nonStaticProperties->Get(index));
             // constructor don't need to clone
             if (propValue->IsJSFunction() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 ASSERT(!propFunc->GetClass()->IsExtensible());
@@ -501,7 +501,7 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 ASSERT(!propFunc->GetClass()->IsExtensible());
@@ -586,13 +586,13 @@ bool ClassHelper::TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTagged
 {
     bool needUpdateValue = true;
     if (existValue->IsAccessorData()) {
-        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
             JSHandle<AccessorData> accessor(existValue);
             UpdateValueToAccessor(thread, value, accessor);
             needUpdateValue = false;
         }
     } else {
-        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
             JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
             UpdateValueToAccessor(thread, value, accessor);
         }
@@ -602,7 +602,7 @@ bool ClassHelper::TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTagged
 
 void ClassHelper::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value)
 {
-    if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction()) {
+    if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
         JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
         UpdateValueToAccessor(thread, value, accessor);
     }
@@ -611,8 +611,8 @@ void ClassHelper::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue
 void ClassHelper::UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
                                         JSHandle<AccessorData> &accessor)
 {
-    ASSERT(value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetterFunction());
-    if (JSHandle<JSFunction>(value)->IsGetterFunction()) {
+    ASSERT(value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter());
+    if (JSHandle<JSFunction>(value)->IsGetter()) {
         accessor->SetGetter(thread, value);
     } else {
         accessor->SetSetter(thread, value);
@@ -693,7 +693,7 @@ JSHandle<NameDictionary> ClassHelper::BuildSendableDictionaryProperties(JSThread
             continue;
         }
         if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneJSSharedFunction(JSHandle<JSFunction>::Cast(propValue));
+            JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
             ASSERT(!propFunc->GetClass()->IsExtensible());

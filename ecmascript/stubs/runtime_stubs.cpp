@@ -1302,7 +1302,7 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CreateSendableClass)
+DEF_RUNTIME_STUBS(CreateSharedClass)
 {
     RUNTIME_STUBS_HEADER(CreateClassWithBuffer);
     JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
@@ -1312,10 +1312,10 @@ DEF_RUNTIME_STUBS(CreateSendableClass)
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSTaggedValue length = GetArg(argv, argc, 5);  // 5: means the fifth parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
-    return RuntimeCreateSendableClass(thread, base, lexenv, constpool,
-                                      static_cast<uint16_t>(methodId.GetInt()),
-                                      static_cast<uint16_t>(literalId.GetInt()),
-                                      static_cast<uint16_t>(length.GetInt()), module).GetRawData();
+    return RuntimeCreateSharedClass(thread, base, lexenv, constpool,
+                                    static_cast<uint16_t>(methodId.GetInt()),
+                                    static_cast<uint16_t>(literalId.GetInt()),
+                                    static_cast<uint16_t>(length.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
@@ -2593,7 +2593,9 @@ DEF_RUNTIME_STUBS(CreateSendablePrivateProperty)
     JSTaggedValue constpool = GetArg(argv, argc, 2);  // 2: means the second parameter
     uint32_t literalId = GetArg(argv, argc, 3).GetInt();  // 3: means the third parameter
     JSTaggedValue module = GetArg(argv, argc, 4);  // 4: means the fourth parameter
-    return RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module, true).GetRawData();
+    auto ret =
+        RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module, ClassKind::SENDABLE);
+    return ret.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefinePrivateProperty)

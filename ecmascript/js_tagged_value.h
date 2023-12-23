@@ -50,6 +50,7 @@ enum class ComparisonResult {
     UNDEFINED  // at least one of x or y was undefined or NaN
 };
 
+enum class ClassKind : uint8_t { SENDABLE = 0, NON_SENDABLE };
 class JSTaggedValue : public JSTaggedValueInternals {
 public:
     static JSTaggedValue Cast(TaggedObject *object)

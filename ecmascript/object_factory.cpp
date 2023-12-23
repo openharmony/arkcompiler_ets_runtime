@@ -607,11 +607,11 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
     return cloneFunc;
 }
 
-JSHandle<JSFunction> ObjectFactory::CloneJSSharedFunction(JSHandle<JSFunction> func)
+JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
 {
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
     JSHandle<Method> method(thread_, func->GetMethod());
-    JSHandle<JSFunction> cloneFunc = NewJSSharedFunctionByHClass(method, jshclass);
+    JSHandle<JSFunction> cloneFunc = NewSFunctionByHClass(method, jshclass);
 
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
@@ -1516,12 +1516,17 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
     return newObj;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
+JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
     FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId, MemSpaceType spaceType)
 {
     JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedConstructorClass());
-    JSHandle<JSFunction> sfunc = NewJSSharedFunctionByHClass(method, hclass);
+    JSHandle<JSHClass> hclass;
+    if (JSFunction::IsConstructorKind(kind)) {
+        hclass = JSHandle<JSHClass>::Cast(env->GetSConstructorClass());
+    } else {
+        hclass = JSHandle<JSHClass>::Cast(env->GetSNormalFunctionClass());
+    }
+    JSHandle<JSFunction> sfunc = NewSFunctionByHClass(method, hclass);
     JSHandle<JSObject> sfuncObj = JSHandle<JSObject>::Cast(sfunc);
     sfuncObj->InitializeImmutableField();
     return sfunc;
@@ -1636,7 +1641,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hc
     return defaultHclass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *hclass, bool sendableClass)
+JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *hclass)
 {
     uint32_t size = ClassInfoExtractor::STATIC_RESERVED_LENGTH;
     JSHandle<LayoutInfo> layout = CreateLayoutInfo(size, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
@@ -1650,8 +1655,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
         if (index == ClassInfoExtractor::PROTOTYPE_INDEX) {
             attributes = PropertyAttributes::DefaultAccessor(false, false, false);
         } else {
-            attributes = sendableClass ? PropertyAttributes::Default(false, false, false) :
-                PropertyAttributes::Default(false, false, true);
+            attributes = PropertyAttributes::Default(false, false, true);
         }
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
@@ -1659,12 +1663,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
         layout->AddKey(thread_, index, array->Get(index), attributes);
     }
 
-    JSHandle<JSHClass> defaultHclass;
-    if (sendableClass) {
-        defaultHclass = NewEcmaHClass(hclass, JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, size);
-    } else {
-        defaultHclass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
-    }
+    JSHandle<JSHClass> defaultHclass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
     defaultHclass->SetLayout(thread_, layout);
     defaultHclass->SetNumberOfProps(size);
     defaultHclass->SetClassConstructor(true);
@@ -1672,13 +1671,20 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     return defaultHclass;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSSharedFunctionByHClass(const JSHandle<Method> &method,
-                                                                const JSHandle<JSHClass> &hclass)
+JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> &method,
+                                                         const JSHandle<JSHClass> &hclass)
 {
     JSHandle<JSFunction> function(NewOldSpaceJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
     return function;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+                                                         FunctionKind kind)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
+    return NewSFunctionByHClass(method, hclass);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
@@ -4630,13 +4636,13 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     return jsfunc;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSSharedFunction(const JSHandle<Method> &methodHandle,
-                                                        const JSHandle<JSTaggedValue> &homeObject)
+JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<Method> &methodHandle,
+                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSharedFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = NewJSSharedFunctionByHClass(methodHandle, hclass);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+    JSHandle<JSFunction> jsFunc = NewSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread_, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread_);
     return jsFunc;
@@ -4844,8 +4850,8 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
     return JSHandle<JSTaggedValue>(object);
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateSharedNormalFunctionClass(uint32_t size, JSType type,
-                                                                  const JSHandle<JSTaggedValue> &prototype)
+JSHandle<JSHClass> ObjectFactory::CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
+                                                                   const JSHandle<JSTaggedValue> &prototype)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);

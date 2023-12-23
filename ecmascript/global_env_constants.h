@@ -125,7 +125,6 @@ class ObjectFactory;
     V(JSTaggedValue, MethodClass, METHOD_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
-    V(JSTaggedValue, SharedClassConstructorClass, SHARED_CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
