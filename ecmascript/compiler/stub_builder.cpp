@@ -152,22 +152,23 @@ GateRef StubBuilder::IsImmutable(GateRef obj)
 
 GateRef StubBuilder::IsImmutableFromHashValue(GateRef hashValue)
 {
-    return TruncInt64ToInt1(Int64And(Int64LSR(hashValue, Int64(ECMAObject::HashFieldHelper::immutableBit::START_BIT)),
-                                     Int64((1LLU << ECMAObject::HashFieldHelper::immutableBit::SIZE) - 1)));
+    using immutableBit = ECMAObject::HashFieldHelper::immutableBit;
+    return TruncInt64ToInt1(
+        Int64And(Int64LSR(hashValue, Int64(immutableBit::START_BIT)), Int64((1LLU << immutableBit::SIZE) - 1)));
 }
 
-GateRef StubBuilder::MatchTrackType(GateRef trackType, GateRef value)
+void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
     auto *env = GetEnvironment();
-    Label subEntry(env);
-    env->SubCfgEntry(&subEntry);
     Label isNumber(env);
     Label checkBoolean(env);
     Label isBoolean(env);
     Label checkString(env);
     Label isString(env);
-    Label checkJSSharedFamily(env);
-    Label isJSSharedFamily(env);
+    Label checkJSShared(env);
+    Label isJSShared(env);
+    Label checkJSNone(env);
+    Label isJSNone(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
     Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NUMBER))), &isNumber, &checkBoolean);
@@ -187,26 +188,34 @@ GateRef StubBuilder::MatchTrackType(GateRef trackType, GateRef value)
     }
     Bind(&checkString);
     {
-        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSSharedFamily);
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSShared);
         Bind(&isString);
         {
             result = TaggedIsString(value);
             Jump(&exit);
         }
     }
-    Bind(&checkJSSharedFamily);
+    Bind(&checkJSShared);
     {
-        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isJSSharedFamily, &exit);
-        Bind(&isJSSharedFamily);
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isJSShared, &checkJSNone);
+        Bind(&isJSShared);
         {
-            result = TaggedIsSharedFamily(value);
+            result = TaggedIsShared(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkJSNone);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NONE))), &isJSNone, &exit);
+        Bind(&isJSNone);
+        {
+            // bypass none type
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    Branch(*result, executeSetProp, typeMismatch);
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
@@ -3679,33 +3688,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
-                            Label isSharedObj(env);
                             Label executeSetProp(env);
-                            Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
-                            Bind(&isSharedObj);
-                            {
-                                Label isImmutable(env);
-                                Label checkTrackType(env);
-                                Branch(IsImmutable(*holder), &isImmutable, &checkTrackType);
-                                Bind(&isImmutable);
-                                {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetImmutableProperty));
-                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-                                    result = Exception();
-                                    Jump(&exit);
-                                }
-                                Bind(&checkTrackType);
-                                Label typeMismatch(env);
-                                GateRef trackType = GetTrackTypeInPropAttr(attr);
-                                Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
-                                Bind(&typeMismatch);
-                                {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
-                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-                                    result = Exception();
-                                    Jump(&exit);
-                                }
-                            }
+                            CheckUpdateSharedType(false, &result, glue, jsType, attr, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
@@ -3778,33 +3762,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
-                            Label isSharedObj(env);
                             Label executeSetProp(env);
-                            Branch(IsJSSharedType(jsType), &isSharedObj, &executeSetProp);
-                            Bind(&isSharedObj);
-                            {
-                                Label isImmutable(env);
-                                Label checkTrackType(env);
-                                Branch(IsImmutable(*holder), &isImmutable, &checkTrackType);
-                                Bind(&isImmutable);
-                                {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetImmutableProperty));
-                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-                                    result = Exception();
-                                    Jump(&exit);
-                                }
-                                Bind(&checkTrackType);
-                                Label typeMismatch(env);
-                                GateRef trackType = GetDictTrackTypeInPropAttr(attr1);
-                                Branch(MatchTrackType(trackType, value), &executeSetProp, &typeMismatch);
-                                Bind(&typeMismatch);
-                                {
-                                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
-                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-                                    result = Exception();
-                                    Jump(&exit);
-                                }
-                            }
+                            CheckUpdateSharedType(true, &result, glue, jsType, attr1, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();

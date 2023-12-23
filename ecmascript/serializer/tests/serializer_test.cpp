@@ -1729,6 +1729,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
     EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1));
     JSHandle<JSFunction> func2 = thread->GetEcmaVM()->GetFactory()->NewSFunction(env, nullptr,
         FunctionKind::DERIVED_CONSTRUCTOR);
+    EXPECT_TRUE(value1->IsCallable());
     EXPECT_TRUE(*func2 != nullptr);
     hclass = JSFunction::GetOrCreateInitialJSHClass(thread, func2);
     EXPECT_TRUE(hclass != nullptr);
@@ -1828,6 +1829,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction)
     JSHandle<JSSharedObject> sObj =
         JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
     sFunc->SetHomeObject(thread, sObj.GetTaggedValue());
+    EXPECT_TRUE(sFunc->IsCallable());
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));

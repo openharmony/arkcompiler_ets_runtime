@@ -66,7 +66,7 @@ GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsSharedFamily(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsShared(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
@@ -125,7 +125,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsSharedFamily(GateRef obj)
+GateRef CircuitBuilder::TaggedIsShared(GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -135,7 +135,7 @@ GateRef CircuitBuilder::TaggedIsSharedFamily(GateRef obj)
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = TaggedObjectIsSharedFamily(obj);
+        result = TaggedObjectIsShared(obj);
         Jump(&exit);
     }
     Bind(&exit);

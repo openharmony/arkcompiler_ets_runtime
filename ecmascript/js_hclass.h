@@ -333,6 +333,14 @@ enum class EnumCacheKind : uint8_t {
 
 }  // namespace EnumCache
 
+namespace JSShared {
+// check mode for js shared
+enum SCheckMode: uint8_t {
+    SKIP = 0,
+    CHECK
+};
+} // namespace JSShared
+
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
@@ -880,7 +888,7 @@ public:
         return GetObjectType() == JSType::JS_SHARED_FUNCTION;
     }
 
-    bool IsJSSharedFamily() const
+    bool IsJSShared() const
     {
         return IsJSSharedType(GetObjectType());
     }

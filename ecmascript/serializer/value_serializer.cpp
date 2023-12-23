@@ -67,7 +67,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::SYMBOL:
         case JSType::JS_FUNCTION:
         case JSType::JS_FUNCTION_BASE: {
-            if (serializeSharedFamilyEvent_ > 0) {
+            if (serializeSharedEvent_ > 0) {
                 return true;
             }
             break;
@@ -169,7 +169,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
-            serializeSharedFamilyEvent_++;
+            serializeSharedEvent_++;
             break;
         }
         default:
@@ -184,7 +184,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         JSArray *array = reinterpret_cast<JSArray *>(object);
         array->SetTrackInfo(thread_, trackInfo);
     } else if (JSHClass::IsJSSharedType(type)) {
-        serializeSharedFamilyEvent_--;
+        serializeSharedEvent_--;
     }
     if (arrayBufferDeferDetach) {
         ASSERT(object->GetClass()->IsArrayBuffer());

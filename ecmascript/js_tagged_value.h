@@ -648,7 +648,7 @@ public:
     bool IsModuleNamespace() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
-    bool IsJSSharedFamily() const;
+    bool IsJSShared() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,

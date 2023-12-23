@@ -16,10 +16,7 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/ecma_string_table.h"
@@ -186,7 +183,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                    JSTaggedValue value, bool ignoreShared)
+                                                    JSTaggedValue value, JSShared::SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
@@ -254,7 +251,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (!ignoreShared && holder.IsJSSharedFamily()) {
+                if (holder.IsJSShared() && (sCheckMode == JSShared::SCheckMode::CHECK)) {
                     if (JSObject::Cast(receiver.GetTaggedObject())->IsImmutable()) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty),
                                                     JSTaggedValue::Exception());
@@ -298,7 +295,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (!ignoreShared && holder.IsJSSharedFamily()) {
+                if (!sCheckMode && holder.IsJSShared()) {
                     if (JSObject::Cast(receiver.GetTaggedObject())->IsImmutable()) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty),
                                                     JSTaggedValue::Exception());
@@ -498,7 +495,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                     JSTaggedValue value, bool ignoreShared)
+                                                     JSTaggedValue value, JSShared::SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {
@@ -525,7 +522,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         } else {
             ObjectOperator::UpdateDetector(thread, receiver, key);
         }
-        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value, ignoreShared);
+        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value, sCheckMode);
     }
     return JSTaggedValue::Hole();
 }

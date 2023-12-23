@@ -27,7 +27,7 @@ namespace panda::ecmascript {
 #define COMMON_MESSAGE_STRING_LIST(V)                                                        \
     V(SetReadOnlyProperty, "Cannot set readonly property")                                   \
     V(SetTypeMismatchedSharedProperty, "Cannot set shared property with mismatched type")    \
-    V(ClassNotDerivedFromSharedFamily, "Class not derived from a shared family object")      \
+    V(ClassNotDerivedFromShared, "Class not derived from a shared object")                   \
     V(SetImmutableProperty, "Cannot set immutable property")                                 \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ")            \

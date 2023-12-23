@@ -225,7 +225,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
-    GateRef TaggedIsSharedFamily(GateRef obj);
+    GateRef TaggedIsShared(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
@@ -328,7 +328,7 @@ public:
     GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
-    GateRef IsJSSharedFamily(GateRef obj);
+    GateRef IsJSShared(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
@@ -460,6 +460,7 @@ public:
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr, GateRef value, Label *executeSetProp, Label *exit);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
@@ -486,7 +487,7 @@ public:
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
     GateRef IsImmutable(GateRef obj);
     GateRef IsImmutableFromHashValue(GateRef hashValue);
-    GateRef MatchTrackType(GateRef trackType, GateRef value);
+    void MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);

@@ -53,7 +53,7 @@ private:
 private:
     bool defaultTransfer_ {false};
     bool notSupport_ {false};
-    int32_t serializeSharedFamilyEvent_ = 0;
+    int32_t serializeSharedEvent_ = 0;
     CUnorderedSet<uintptr_t> transferDataSet_;
 };
 }

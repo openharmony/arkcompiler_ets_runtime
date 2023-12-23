@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/js_handle.h"
@@ -71,7 +72,7 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
         } else if (!JSFunction::IsClassConstructor(kind)) {  // class ctor do nothing
             PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
             [[maybe_unused]] bool success = JSObject::DefineOwnProperty(thread, JSHandle<JSObject>(func),
-                                                                        globalConst->GetHandledPrototypeString(), desc, true);
+                                                                        globalConst->GetHandledPrototypeString(), desc, JSShared::SCheckMode::SKIP);
             ASSERT(success);
         }
     } else if (HasAccessor(kind)) {

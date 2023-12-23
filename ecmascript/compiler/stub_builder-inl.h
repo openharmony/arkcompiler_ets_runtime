@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_INL_H
 #define ECMASCRIPT_COMPILER_STUB_INL_H
 
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 #include "ecmascript/accessor_data.h"
@@ -598,9 +599,9 @@ inline GateRef StubBuilder::TaggedIsString(GateRef obj)
     return env_->GetBuilder()->TaggedIsString(obj);
 }
 
-inline GateRef StubBuilder::TaggedIsSharedFamily(GateRef obj)
+inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedIsSharedFamily(obj);
+    return env_->GetBuilder()->TaggedIsShared(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
@@ -1226,7 +1227,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
-inline GateRef StubBuilder::IsJSSharedFamily(GateRef obj)
+inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return IsJSSharedType(objectType);
@@ -2041,6 +2042,28 @@ inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, Gate
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 {
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+}
+
+inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType,
+                                               GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label isSharedObj(env);
+    // TODO(hzzhouzebin) wrapped with a function
+    Branch(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
+    Bind(&isSharedObj);
+    {
+        Label typeMismatch(env);
+        GateRef trackType = isDicMode ? GetDictTrackTypeInPropAttr(attr) : GetTrackTypeInPropAttr(attr);
+        MatchTrackType(trackType, value, executeSetProp, &typeMismatch);
+        Bind(&typeMismatch);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            *result = Exception();
+            Jump(exit);
+        }
+    }
 }
 
 inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)

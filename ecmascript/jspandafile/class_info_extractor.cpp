@@ -1069,7 +1069,7 @@ bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
             break;
         }
         case TrackType::SENDABLE: {
-            checkRet = value.IsJSSharedFamily();
+            checkRet = value.IsJSShared();
             break;
         }
         case TrackType::NONE: {

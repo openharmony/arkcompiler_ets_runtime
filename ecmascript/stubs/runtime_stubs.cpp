@@ -2118,7 +2118,7 @@ DEF_RUNTIME_STUBS(NewThisObject)
     } else {
         obj = factory->NewJSObjectByConstructor(ctor, newTarget);
     }
-    if (obj.GetTaggedValue().IsJSSharedFamily()) {
+    if (obj.GetTaggedValue().IsJSShared()) {
         obj->GetJSHClass()->SetExtensible(false);
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());

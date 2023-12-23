@@ -413,11 +413,6 @@ public:
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(int32_t count);
     void InitializeImmutableField();
-    // panzhenyu shall be deleted
-    bool IsOwned([[maybe_unused]] uint32_t threadID)
-    {
-        return true;
-    }
     void BecomeImmutable(JSThread* thread);
     bool IsImmutable();
 
@@ -467,7 +462,7 @@ public:
                                                  const JSHandle<JSTaggedValue> &key);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                   const JSHandle<JSTaggedValue> &value, bool ignoreShared = false);
+                                   const JSHandle<JSTaggedValue> &value, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                    const JSHandle<JSTaggedValue> &value);
@@ -476,7 +471,8 @@ public:
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool ignoreShared = false);
+                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                          JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const JSHandle<JSTaggedValue> &value);
@@ -528,13 +524,13 @@ public:
 
     // [[DefineOwnProperty]]
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc, bool ignoreShared = false);
+                                  const PropertyDescriptor &desc, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                   const PropertyDescriptor &desc);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, bool ignoreShared = false);
+                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const PropertyDescriptor &desc);
@@ -543,7 +539,7 @@ public:
                                                const PropertyDescriptor &current);
 
     static bool ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                   const PropertyDescriptor &current, bool ignoreShared = false);
+                                                   const PropertyDescriptor &current, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key);

@@ -16,9 +16,6 @@
 #ifndef ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -895,8 +892,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
                                                      uint16_t methodId, uint16_t literalId,
                                                      uint16_t length, const JSHandle<JSTaggedValue> &module)
 {
-    if (!base->IsJSSharedFamily() && !base->IsHole()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromSharedFamily), JSTaggedValue::Exception());
+    if (!base->IsJSShared() && !base->IsHole()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromShared), JSTaggedValue::Exception());
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2730,7 +2727,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
-        if (resultValue.IsJSSharedFamily()) {
+        if (resultValue.IsJSShared()) {
             JSObject::Cast(resultValue.GetTaggedObject())->GetJSHClass()->SetExtensible(false);
         }
         return resultValue;
@@ -2910,7 +2907,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
     JSHandle<JSTaggedValue> handleKey = JSTaggedValue::ToPropertyKey(thread, JSHandle<JSTaggedValue>(thread, propKey));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue, true);
+    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue, JSShared::SCheckMode::SKIP);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return JSTaggedValue::Undefined();

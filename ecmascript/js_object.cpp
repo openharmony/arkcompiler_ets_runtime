@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -863,7 +862,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             }
             return false;
         }
-        if (op->IsFound() && receiver->IsJSSharedFamily()) {
+        if (op->IsFound() && receiver->IsJSShared()) {
             if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
                 if (mayThrow) {
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
@@ -924,7 +923,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 }
                 return false;
             }
-            if (receiver->IsJSSharedFamily()) {
+            if (hasReceiver && receiver->IsJSShared()) {
                 if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
                     if (mayThrow) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
@@ -1184,9 +1183,9 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                 const PropertyDescriptor &desc, bool ignoreShared)
+                                 const PropertyDescriptor &desc, JSShared::SCheckMode sCheckMode)
 {
-    return OrdinaryDefineOwnProperty(thread, obj, key, desc, ignoreShared);
+    return OrdinaryDefineOwnProperty(thread, obj, key, desc, sCheckMode);
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1197,7 +1196,7 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, bool ignoreShared)
+                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc, JSShared::SCheckMode sCheckMode)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 1. Let current be O.[[GetOwnProperty]](P).
@@ -1208,7 +1207,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
     // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, ignoreShared);
+    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, sCheckMode);
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1225,7 +1224,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
 
 // 9.1.6.3 ValidateAndApplyPropertyDescriptor (O, P, extensible, Desc, current)
 bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                  const PropertyDescriptor &current, bool ignoreShared)
+                                                  const PropertyDescriptor &current, JSShared::SCheckMode sCheckMode)
 {
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
@@ -1321,8 +1320,8 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
                     return false;
                 }
             }
-            if (!ignoreShared && op->GetReceiver()->IsJSSharedFamily()) {
-                if (JSObject::Cast(op->GetReceiver()->GetTaggedObject())->IsImmutable()) {
+            if (op->HasHolder() && op->GetHolder()->IsJSShared() && (sCheckMode == JSShared::SCheckMode::CHECK)) {
+                if (JSObject::Cast(op->GetHolder()->GetTaggedObject())->IsImmutable()) {
                     THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetImmutableProperty), false);
                 }
                 if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
@@ -1589,12 +1588,12 @@ JSHandle<JSObject> JSObject::ObjectCreate(JSThread *thread, const JSHandle<JSObj
 
 // 7.3.4 CreateDataProperty (O, P, V)
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const JSHandle<JSTaggedValue> &value, bool ignoreShared)
+                                  const JSHandle<JSTaggedValue> &value, JSShared::SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
-                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), ignoreShared);
+                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), sCheckMode);
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1617,12 +1616,13 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 
 // 7.3.5 CreateMethodProperty (O, P, V)
 bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool ignoreShared)
+                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                         JSShared::SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
-    bool success = CreateDataProperty(thread, obj, key, value, ignoreShared);
+    bool success = CreateDataProperty(thread, obj, key, value, sCheckMode);
     if (!success) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "failed to create data property", success);
     }
@@ -2585,7 +2585,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         for (size_t i = 0; i < propsLen; i++) {
             auto value = properties->Get(i * 2 + 1);
             auto attr = layoutInfo->GetAttr(i);
-            if (attr.UpdateTrackType(value) && !oldHC->IsJSSharedFamily()) {
+            if (attr.UpdateTrackType(value) && !oldHC->IsJSShared()) {
                 layoutInfo->SetNormalAttr(thread, i, attr);
             }
             obj->SetPropertyInlinedProps(thread, i, value);
