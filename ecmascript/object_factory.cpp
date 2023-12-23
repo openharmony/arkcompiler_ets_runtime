@@ -4298,7 +4298,8 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIndirectExportEntries(thread_, undefinedValue);
     obj->SetStarExportEntries(thread_, undefinedValue);
     obj->SetNameDictionary(thread_, undefinedValue);
-    obj->SetCycleRoot(thread_, undefinedValue);
+    // [[CycleRoot]]: For a module not in a cycle, this would be the module itself.
+    obj->SetCycleRoot(thread_, obj);
     obj->SetTopLevelCapability(thread_, undefinedValue);
     obj->SetAsyncParentModules(thread_, undefinedValue);
     obj->SetHasTLA(false);
