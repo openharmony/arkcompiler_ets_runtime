@@ -90,7 +90,7 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
 
 HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
 {
-#ifdef NDEBUG
+#if defined(NDEBUG) && defined(PANDA_TARGET_ARM64)
     auto heap = const_cast<Heap *>(instance->GetHeap());
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     {

@@ -200,7 +200,8 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 2048; i++) {
-            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScopeForeach(thread);
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024);
             // malloc size is smaller to avoid test fail in the small devices.
             [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
                 NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
