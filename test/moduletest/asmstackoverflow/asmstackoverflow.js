@@ -219,3 +219,12 @@ try {
 } catch (e) {
     print("callnew stackoverflow2");
 }
+
+// PoC
+var source = Array(2500).join("(") + "a" + Array(2500).join(")");
+try {
+    var r = RegExp(source);
+    r.test("\x80");
+} catch (e) {
+    print(e.name)
+}

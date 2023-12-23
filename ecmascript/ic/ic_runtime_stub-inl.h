@@ -376,7 +376,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadGlobal(JSTaggedValue handler)
 {
     ASSERT(handler.IsPropertyBox());
     PropertyBox *cell = PropertyBox::Cast(handler.GetTaggedObject());
-    if (cell->IsInvalid()) {
+    if (cell->IsInvalid() || cell->GetValue().IsAccessorData()) {
         return JSTaggedValue::Hole();
     }
     JSTaggedValue ret = cell->GetValue();
@@ -389,7 +389,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreGlobal(JSThread *thread, JSTaggedVa
     INTERPRETER_TRACE(thread, StoreGlobal);
     ASSERT(handler.IsPropertyBox());
     PropertyBox *cell = PropertyBox::Cast(handler.GetTaggedObject());
-    if (cell->IsInvalid()) {
+    if (cell->IsInvalid() || cell->GetValue().IsAccessorData()) {
         return JSTaggedValue::Hole();
     }
     ASSERT(!cell->GetValue().IsAccessorData());
