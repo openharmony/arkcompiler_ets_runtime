@@ -37,8 +37,6 @@ public:
 
     static JSHandle<Derived> Create(const JSThread *thread, int numberOfNodes = DEFAULT_ARRAY_LENGHT);
     static JSHandle<Derived> GrowCapacity(const JSThread *thread, const JSHandle<Derived> &taggedList);
-    static JSTaggedValue AddNode(const JSThread *thread, const JSHandle<Derived> &taggedList,
-                                 const JSHandle<JSTaggedValue> &value, const int index, int prevDataIndex);
     static JSTaggedValue TaggedListToArray(const JSThread *thread, const JSHandle<Derived> &taggedList);
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<Derived> &taggedList);
     void CopyArray(const JSThread *thread, JSHandle<Derived> &taggedList);
@@ -134,6 +132,8 @@ public:
                              const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Insert(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
                                 const JSHandle<JSTaggedValue> &value, const int index);
+    static JSTaggedValue AddNode(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
+                                 const JSHandle<JSTaggedValue> &value, const int index, int prevDataIndex);
     static JSTaggedValue Set(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
                              const int index, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue ReplaceAllElements(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
@@ -176,6 +176,8 @@ public:
                                   const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Insert(JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList,
                                 const JSHandle<JSTaggedValue> &value, const int index);
+    static JSTaggedValue AddNode(const JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList,
+                                 const JSHandle<JSTaggedValue> &value, const int index, int prevDataIndex);
     static JSTaggedValue Set(JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList, const int index,
                              const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue ConvertToArray(const JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList);

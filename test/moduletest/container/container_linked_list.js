@@ -347,4 +347,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test LinkedList fail: " + flag);
     }
+
+    let mList = new LinkedList();
+    for (let i = 1; i <= 10; ++i) {
+        mList.add(i);
+    }
+
+    for (let i = 1; i <= 10; ++i) {
+        mList.remove(i);
+    }
+
+    for (let i = 1; i <= 3; ++i) {
+        mList.add(i);
+    }
+
+    if (mList.getLast() != 3 ||
+       ("convertToArray = " + mList.convertToArray()) != "convertToArray = 1,2,3") {
+        print("Test LinkedList fail!!!");
+    }
 }
