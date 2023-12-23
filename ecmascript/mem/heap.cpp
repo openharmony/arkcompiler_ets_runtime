@@ -439,7 +439,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     return;
                 }
                 partialGC_->RunPhases();
-                CheckNonMovableSpaceOOM();
                 break;
             }
             case TriggerGCType::FULL_GC:
@@ -491,7 +490,15 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         ecmaVm_->GetEcmaGCStats()->RecordStatisticAfterGC();
         ecmaVm_->GetEcmaGCStats()->PrintGCStatistic();
     }
-    // weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
+
+    if (gcType_ == TriggerGCType::OLD_GC) {
+        // During full concurrent mark, non movable space can have 2M overshoot size temporarily, which means non
+        // movable space max heap size can reach to 18M temporarily, but after partial old gc, the size must retract to
+        // below 16M, Otherwise, old GC will be triggered frequently. Non-concurrent mark period, non movable space max
+        // heap size is 16M, if exceeded, an OOM exception will be thrown, this check is to do this.
+        CheckNonMovableSpaceOOM();
+    }
+    // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     InvokeWeakNodeNativeFinalizeCallback();
 

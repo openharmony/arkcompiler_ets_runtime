@@ -33,7 +33,7 @@ WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
       parallelGCTaskPhase_(UNDEFINED_TASK)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_[i] = new ProcessQueue(heap);
+        continuousQueue_.at(i) = new ProcessQueue(heap);
     }
     workSpace_ =
         ToUintPtr(heap_->GetNativeAreaAllocator()->AllocateBuffer(SPACE_SIZE));
@@ -43,9 +43,9 @@ WorkManager::~WorkManager()
 {
     Finish();
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_[i]->Destroy();
-        delete continuousQueue_[i];
-        continuousQueue_[i] = nullptr;
+        continuousQueue_.at(i)->Destroy();
+        delete continuousQueue_.at(i);
+        continuousQueue_.at(i) = nullptr;
     }
 
     heap_->GetNativeAreaAllocator()->FreeBuffer(
@@ -54,7 +54,7 @@ WorkManager::~WorkManager()
 
 bool WorkManager::Push(uint32_t threadId, TaggedObject *object)
 {
-    WorkNode *&inNode = works_[threadId].inNode_;
+    WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->PushObject(ToUintPtr(object))) {
         PushWorkNodeToGlobal(threadId);
         return inNode->PushObject(ToUintPtr(object));
@@ -75,7 +75,7 @@ bool WorkManager::Push(uint32_t threadId, TaggedObject *object, Region *region)
 
 void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 {
-    WorkNode *&inNode = works_[threadId].inNode_;
+    WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->IsEmpty()) {
         workStack_.Push(inNode);
         inNode = AllocateWorkNode();
@@ -88,8 +88,8 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 
 bool WorkManager::Pop(uint32_t threadId, TaggedObject **object)
 {
-    WorkNode *&outNode = works_[threadId].outNode_;
-    WorkNode *&inNode = works_[threadId].inNode_;
+    WorkNode *&outNode = works_.at(threadId).outNode_;
+    WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!outNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
         if (!inNode->IsEmpty()) {
             WorkNode *tmp = outNode;
@@ -105,16 +105,16 @@ bool WorkManager::Pop(uint32_t threadId, TaggedObject **object)
 
 bool WorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
 {
-    return workStack_.Pop(&works_[threadId].outNode_);
+    return workStack_.Pop(&works_.at(threadId).outNode_);
 }
 
 size_t WorkManager::Finish()
 {
     size_t aliveSize = 0;
     for (uint32_t i = 0; i < threadNum_; i++) {
-        WorkNodeHolder &holder = works_[i];
+        WorkNodeHolder &holder = works_.at(i);
         if (holder.weakQueue_ != nullptr) {
-            holder.weakQueue_->FinishMarking(continuousQueue_[i]);
+            holder.weakQueue_->FinishMarking(continuousQueue_.at(i));
             delete holder.weakQueue_;
             holder.weakQueue_ = nullptr;
         }
@@ -140,7 +140,7 @@ void WorkManager::Finish(size_t &aliveSize, size_t &promotedSize)
 {
     aliveSize = Finish();
     for (uint32_t i = 0; i < threadNum_; i++) {
-        WorkNodeHolder &holder = works_[i];
+        WorkNodeHolder &holder = works_.at(i);
         promotedSize += holder.promotedSize_;
     }
     initialized_.store(false, std::memory_order_release);
@@ -152,11 +152,11 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     spaceStart_ = workSpace_;
     spaceEnd_ = workSpace_ + SPACE_SIZE;
     for (uint32_t i = 0; i < threadNum_; i++) {
-        WorkNodeHolder &holder = works_[i];
+        WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
-        holder.weakQueue_->BeginMarking(heap_, continuousQueue_[i]);
+        holder.weakQueue_->BeginMarking(heap_, continuousQueue_.at(i));
         holder.aliveSize_ = 0;
         holder.promotedSize_ = 0;
         if (gcType != TriggerGCType::OLD_GC) {
