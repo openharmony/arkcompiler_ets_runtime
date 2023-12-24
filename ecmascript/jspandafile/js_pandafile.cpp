@@ -284,6 +284,8 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
     FunctionKind kind;
     switch (funcKind) {
         case panda_file::FunctionKind::NONE:
+            kind = FunctionKind::NONE_FUNCTION;
+            break;
         case panda_file::FunctionKind::FUNCTION:
             kind = FunctionKind::BASE_CONSTRUCTOR;
             break;

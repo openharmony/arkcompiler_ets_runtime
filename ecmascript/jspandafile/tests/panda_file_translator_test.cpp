@@ -130,7 +130,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     PandaFileTranslator::TranslateClasses(pf.get(), CString(methodName));
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) != nullptr);
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
-                                    ecmascript::FunctionKind::BASE_CONSTRUCTOR);
+                                    ecmascript::FunctionKind::NONE_FUNCTION);
     pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 }  // namespace panda::test
