@@ -2285,8 +2285,6 @@ GateRef StubBuilder::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
     Label exit(env);
     Label cellIsInvalid(env);
     Label cellNotInvalid(env);
-    Label cellIsAccessorData(env);
-    Label cellIsNotAccessorData(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Branch(IsInvalidPropertyBox(cell), &cellIsInvalid, &cellNotInvalid);
     Bind(&cellIsInvalid);
@@ -2294,12 +2292,6 @@ GateRef StubBuilder::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
         Jump(&exit);
     }
     Bind(&cellNotInvalid);
-    Branch(IsAccessorPropertyBox(cell), &cellIsAccessorData, &cellIsNotAccessorData);
-    Bind(&cellIsAccessorData);
-    {
-        Jump(&exit);
-    }
-    Bind(&cellIsNotAccessorData);
     {
         Store(VariableType::JS_ANY(), glue, cell, IntPtr(PropertyBox::VALUE_OFFSET), value);
         result = Undefined();

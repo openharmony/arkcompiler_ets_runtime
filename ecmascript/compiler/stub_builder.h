@@ -374,7 +374,6 @@ public:
     GateRef HandlerBaseGetAttrIndex(GateRef attr);
     GateRef HandlerBaseGetRep(GateRef attr);
     GateRef IsInvalidPropertyBox(GateRef obj);
-    GateRef IsAccessorPropertyBox(GateRef obj);
     GateRef GetValueFromPropertyBox(GateRef obj);
     void SetValueToPropertyBox(GateRef glue, GateRef obj, GateRef value);
     GateRef GetTransitionHClass(GateRef obj);

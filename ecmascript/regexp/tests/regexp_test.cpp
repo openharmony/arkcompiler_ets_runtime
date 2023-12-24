@@ -121,7 +121,7 @@ HWTEST_F_L0(RegExpTest, ParseError1)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("0{2,1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -131,7 +131,7 @@ HWTEST_F_L0(RegExpTest, ParseError2)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("^[z-a]$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -141,7 +141,7 @@ HWTEST_F_L0(RegExpTest, ParseError3)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -151,7 +151,7 @@ HWTEST_F_L0(RegExpTest, ParseError4)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a**");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -161,7 +161,7 @@ HWTEST_F_L0(RegExpTest, ParseError5)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a***");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -171,7 +171,7 @@ HWTEST_F_L0(RegExpTest, ParseError6)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a**");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -181,7 +181,7 @@ HWTEST_F_L0(RegExpTest, ParseError7)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a++");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -191,7 +191,7 @@ HWTEST_F_L0(RegExpTest, ParseError8)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a+++");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -201,7 +201,7 @@ HWTEST_F_L0(RegExpTest, ParseError9)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a???");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -211,7 +211,7 @@ HWTEST_F_L0(RegExpTest, ParseError10)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a????");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -221,7 +221,7 @@ HWTEST_F_L0(RegExpTest, ParseError11)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("*a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -231,7 +231,7 @@ HWTEST_F_L0(RegExpTest, ParseError12)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("**a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -241,7 +241,7 @@ HWTEST_F_L0(RegExpTest, ParseError13)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("+a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -251,7 +251,7 @@ HWTEST_F_L0(RegExpTest, ParseError14)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("++a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -261,7 +261,7 @@ HWTEST_F_L0(RegExpTest, ParseError15)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("?a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -271,7 +271,7 @@ HWTEST_F_L0(RegExpTest, ParseError16)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("??a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -281,7 +281,7 @@ HWTEST_F_L0(RegExpTest, ParseError17)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("x{1}{1,}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -291,7 +291,7 @@ HWTEST_F_L0(RegExpTest, ParseError18)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("x{1,2}{1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -301,7 +301,7 @@ HWTEST_F_L0(RegExpTest, ParseError19)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("x{1,}{1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -311,7 +311,7 @@ HWTEST_F_L0(RegExpTest, ParseError20)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("x{0,1}{1,}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -321,7 +321,7 @@ HWTEST_F_L0(RegExpTest, ParseError21)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[b-ac-e]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -331,7 +331,7 @@ HWTEST_F_L0(RegExpTest, ParseError22)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\10b-G]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -341,7 +341,7 @@ HWTEST_F_L0(RegExpTest, ParseError23)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\0b-G]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -351,7 +351,7 @@ HWTEST_F_L0(RegExpTest, ParseError24)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -361,7 +361,7 @@ HWTEST_F_L0(RegExpTest, ParseError25)
     RegExpParser parser = RegExpParser(chunk_);
     CString source(")");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -371,7 +371,7 @@ HWTEST_F_L0(RegExpTest, ParseError26)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("{");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -381,7 +381,7 @@ HWTEST_F_L0(RegExpTest, ParseError27)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -391,7 +391,7 @@ HWTEST_F_L0(RegExpTest, ParseError28)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -401,7 +401,7 @@ HWTEST_F_L0(RegExpTest, ParseError29)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -411,7 +411,7 @@ HWTEST_F_L0(RegExpTest, ParseError30)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\c");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -421,7 +421,7 @@ HWTEST_F_L0(RegExpTest, ParseError31)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\c\024");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -431,7 +431,7 @@ HWTEST_F_L0(RegExpTest, ParseError32)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\c]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -441,7 +441,7 @@ HWTEST_F_L0(RegExpTest, ParseError33)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\c\024]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -451,7 +451,7 @@ HWTEST_F_L0(RegExpTest, ParseError34)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\d-a]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -461,7 +461,7 @@ HWTEST_F_L0(RegExpTest, ParseError35)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\s-a]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -471,7 +471,7 @@ HWTEST_F_L0(RegExpTest, ParseError36)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\s-\\w]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -481,7 +481,7 @@ HWTEST_F_L0(RegExpTest, ParseError37)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[a-\\w]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -491,7 +491,7 @@ HWTEST_F_L0(RegExpTest, ParseError38)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\{");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -501,7 +501,7 @@ HWTEST_F_L0(RegExpTest, ParseError39)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\/");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -514,7 +514,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
             source += CString(&cu, 1);
             RegExpParser parser = RegExpParser(chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-            parser.Parse(thread);
+            parser.Parse();
             bool parseResult = parser.IsError();
             ASSERT_TRUE(parseResult);
         }
@@ -525,7 +525,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
             source += CString(&cu, 1);
             RegExpParser parser = RegExpParser(chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-            parser.Parse(thread);
+            parser.Parse();
             bool parseResult = parser.IsError();
             ASSERT_TRUE(parseResult);
         }
@@ -537,7 +537,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
             source += CString("]");
             RegExpParser parser = RegExpParser(chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-            parser.Parse(thread);
+            parser.Parse();
             bool parseResult = parser.IsError();
             ASSERT_TRUE(parseResult);
         }
@@ -549,7 +549,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
             source += CString("]");
             RegExpParser parser = RegExpParser(chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-            parser.Parse(thread);
+            parser.Parse();
             bool parseResult = parser.IsError();
             ASSERT_TRUE(parseResult);
         }
@@ -561,7 +561,7 @@ HWTEST_F_L0(RegExpTest, ParseError44)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -571,7 +571,7 @@ HWTEST_F_L0(RegExpTest, ParseError45)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\1]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -581,7 +581,7 @@ HWTEST_F_L0(RegExpTest, ParseError46)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\00");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -591,7 +591,7 @@ HWTEST_F_L0(RegExpTest, ParseError47)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\00]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -601,7 +601,7 @@ HWTEST_F_L0(RegExpTest, ParseError48)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_TRUE(parseResult);
 }
@@ -611,7 +611,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError1)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a{10,2147483648}"); // 2^31
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -621,7 +621,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError2)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a{10,4294967306}"); // 2^32+10
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -631,7 +631,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError3)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\⥚]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -641,7 +641,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError4)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\⊲|\\⇐]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 }
@@ -652,7 +652,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("ab");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -677,7 +677,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec2)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(((ab)|(cd)|(de))|((ef)|(gh)|(jk)))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -714,7 +714,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec3)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(aa|aabaac|ba|b|c)*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -742,7 +742,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec4)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -767,7 +767,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec5)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a?");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -792,7 +792,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec6)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(z)((a+)?(b+)?(c))*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -830,7 +830,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec7)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("^abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -855,7 +855,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec8)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("abc$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -880,7 +880,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec9)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("er\\B");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -905,7 +905,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec10)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("d\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -930,7 +930,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec11)
     RegExpParser parser = RegExpParser(chunk_);
     CString source(".");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -955,7 +955,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec12)
     RegExpParser parser = RegExpParser(chunk_);
     CString source(".");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 8);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -980,7 +980,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec13)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1005,7 +1005,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec14)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1030,7 +1030,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec15)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?=a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1055,7 +1055,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec16)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1080,7 +1080,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec17)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a\\n");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1104,7 +1104,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec18)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?=a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1121,7 +1121,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec19)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?!a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1146,7 +1146,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec20)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(?=(a+))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1174,7 +1174,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec21)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?=a(?=b))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1199,7 +1199,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec22)
     RegExpParser parser = RegExpParser(chunk_);
     CString source(".+:");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1224,7 +1224,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec23)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?<=a(?<!b))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1248,7 +1248,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec24)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(?<=ab(?<!bc))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1265,7 +1265,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec25)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(?<=(ab))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1293,7 +1293,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec26)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[a-z]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1318,7 +1318,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec27)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[^a-b]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1343,7 +1343,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec28)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\s");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1368,7 +1368,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec29)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("()|");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1395,7 +1395,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec30)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("|()");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
@@ -1421,7 +1421,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec31)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a(a|b)\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1447,7 +1447,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec32)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(a(a|b))\\2");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1476,7 +1476,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec33)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("qya+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1500,7 +1500,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec34)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("qy(?=\\s+)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1523,7 +1523,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec35)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(\\d{4})-(\\d{2})-(\\d{2})");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1555,7 +1555,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec36)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("quick\\s(brown).+?(jumps)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1584,7 +1584,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec37)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(ab){1,2}?c");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1610,7 +1610,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec38)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("^(([a-z]+)*[a-z]\\.)+[a-z]{2,}$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1639,7 +1639,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec39)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(a*)b\\1+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1665,7 +1665,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec40)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a*?");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1688,7 +1688,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec41)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(.*?)a(?!(a+)b\\2c)\\2(.*)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1718,7 +1718,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec42)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[a-c\\d]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1741,7 +1741,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec43)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[\\d][\n][^\\d]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1764,7 +1764,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec44)
     RegExpParser parser = RegExpParser(chunk_);
     CString source(".[\b].");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1787,7 +1787,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec45)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[^\b]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1810,7 +1810,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec46)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("([\\S]+([ \t]+[\\S]+)*)[ \t]*=[ \t]*[\\S]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1836,7 +1836,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec47)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("[^o]t\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1859,7 +1859,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec49)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(a(b)\\4(5)(5))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1894,7 +1894,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec50)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(?<year>\\d{4})-(?<date>\\d{2}-(?<day>\\d\\d))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1925,7 +1925,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec51)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\u0000");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1944,7 +1944,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec52)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("(aa).+\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1970,7 +1970,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec53)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\x01");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -1992,7 +1992,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec54)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\bot");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -2008,7 +2008,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec55)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("e\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -2031,7 +2031,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec56)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("a啊");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -2053,7 +2053,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec57)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\udf06");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -2068,7 +2068,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec58)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\udf06");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
     RegExpExecutor executor(regExpCachedChunk_);
@@ -2091,7 +2091,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec59)
     RegExpParser parser = RegExpParser(chunk_);
     CString source("\\v");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
-    parser.Parse(thread);
+    parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 

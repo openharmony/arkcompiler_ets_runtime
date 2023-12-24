@@ -369,21 +369,6 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
     return false;
 }
 
-bool JSThread::DoAsmStackOverflowCheck()
-{
-    // check stack overflow because infinite recursion may occur
-    if (IsAsmInterpreter() && UNLIKELY(GetCurrentStackPosition() < GetStackLimit())) {
-        LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
-        if (LIKELY(!HasPendingException())) {
-            ObjectFactory *factory = GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
-            SetException(error.GetTaggedValue());
-        }
-        return true;
-    }
-    return false;
-}
-
 uintptr_t *JSThread::ExpandHandleStorage()
 {
     return GetCurrentEcmaContext()->ExpandHandleStorage();

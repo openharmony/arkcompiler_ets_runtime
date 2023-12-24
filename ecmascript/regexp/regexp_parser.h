@@ -89,10 +89,10 @@ public:
         flags_ = flags;
     }
 
-    void Parse(JSThread *thread);
-    void ParseDisjunction(JSThread *thread, bool isBackward);
-    void ParseAlternative(JSThread *thread, bool isBackward);
-    bool ParseAssertionCapture(JSThread *thread, int *captureIndex, bool isBackward);
+    void Parse();
+    void ParseDisjunction(bool isBackward);
+    void ParseAlternative(bool isBackward);
+    bool ParseAssertionCapture(int *captureIndex, bool isBackward);
     void ParseQuantifier(size_t atomBcStart, int captureStart, int captureEnd);
     int ParseDecimalDigits();
     int ParseAtomEscape(bool isBackward);

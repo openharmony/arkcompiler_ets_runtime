@@ -32,4 +32,3 @@ callstatic3 stackoverflow
 callstaticrange stackoverflow
 callnew stackoverflow
 callnew stackoverflow2
-SyntaxError

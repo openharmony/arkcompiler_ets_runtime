@@ -1688,13 +1688,6 @@ inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)
     return TaggedIsHole(value);
 }
 
-inline GateRef StubBuilder::IsAccessorPropertyBox(GateRef obj)
-{
-    GateRef valueOffset = IntPtr(PropertyBox::VALUE_OFFSET);
-    GateRef value = Load(VariableType::JS_ANY(), obj, valueOffset);
-    return TaggedIsAccessor(value);
-}
-
 inline GateRef StubBuilder::GetValueFromPropertyBox(GateRef obj)
 {
     GateRef valueOffset = IntPtr(PropertyBox::VALUE_OFFSET);

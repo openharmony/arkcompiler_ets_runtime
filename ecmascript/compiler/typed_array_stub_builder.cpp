@@ -114,7 +114,6 @@ GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array
     Label exit(env);
     Label notDetached(env);
     Label indexIsvalid(env);
-    Label slowPath(env);
     GateRef buffer = GetViewedArrayBuffer(array);
     Branch(IsDetachedBuffer(buffer), &exit, &notDetached);
     Bind(&notDetached);
@@ -125,12 +124,6 @@ GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array
         {
             GateRef offset = GetByteOffset(array);
             result = GetValueFromBuffer(buffer, TruncInt64ToInt32(index), offset, jsType);
-            Branch(TaggedIsNumber(*result), &exit, &slowPath);
-        }
-        Bind(&slowPath);
-        {
-            result = CallRuntime(glue, RTSTUB_ID(GetTypeArrayPropertyByIndex),
-                { array, IntToTaggedInt(index), IntToTaggedInt(jsType) });
             Jump(&exit);
         }
     }
