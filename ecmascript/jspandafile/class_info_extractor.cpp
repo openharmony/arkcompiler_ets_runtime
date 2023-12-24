@@ -528,8 +528,6 @@ JSHandle<JSFunction> ClassHelper::DefineSendableClassFromExtractor(JSThread *thr
             JSHandle<JSFunction>(thread, JSTaggedValue::Exception()));
     }
 
-    JSHandle<ECMAObject>::Cast(constructor)->InitializeImmutableField();
-    JSHandle<ECMAObject>::Cast(prototype)->InitializeImmutableField();
     prototype->GetJSHClass()->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);

@@ -1017,12 +1017,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_OOM_ERROR:
         case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ASYNCITERATOR:
-        case JSType::JS_ITERATOR: {
-            break;
-        }
         case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION: {
-            obj->InitializeImmutableField();
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_ITERATOR: {
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1527,8 +1524,6 @@ JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
         hclass = JSHandle<JSHClass>::Cast(env->GetSNormalFunctionClass());
     }
     JSHandle<JSFunction> sfunc = NewSFunctionByHClass(method, hclass);
-    JSHandle<JSObject> sfuncObj = JSHandle<JSObject>::Cast(sfunc);
-    sfuncObj->InitializeImmutableField();
     return sfunc;
 }
 

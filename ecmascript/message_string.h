@@ -28,7 +28,6 @@ namespace panda::ecmascript {
     V(SetReadOnlyProperty, "Cannot set readonly property")                                   \
     V(SetTypeMismatchedSharedProperty, "Cannot set shared property with mismatched type")    \
     V(ClassNotDerivedFromShared, "Class not derived from a shared object")                   \
-    V(SetImmutableProperty, "Cannot set immutable property")                                 \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ")            \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \

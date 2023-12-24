@@ -114,49 +114,6 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
-GateRef StubBuilder::IsImmutable(GateRef obj)
-{
-    auto *env = GetEnvironment();
-    Label subEntry(env);
-    env->SubCfgEntry(&subEntry);
-    Label isImmutableFromInt(env);
-    Label isImmutableFromArray(env);
-    Label checkArray(env);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::BOOL(), True());
-
-    GateRef hashOffset = IntPtr(JSObject::HASH_OFFSET);
-    GateRef hashField = Load(VariableType::INT64(), obj, hashOffset);
-    Branch(TaggedIsInt(hashField), &isImmutableFromInt, &checkArray);
-    Bind(&isImmutableFromInt);
-    {
-        result = IsImmutableFromHashValue(hashField);
-        Jump(&exit);
-    }
-    Bind(&checkArray);
-    {
-        Branch(TaggedIsJSArray(hashField), &isImmutableFromArray, &exit);
-        Bind(&isImmutableFromArray);
-        {
-            GateRef hashAndImmutableOffset = IntPtr(JSObject::HASH_AND_IMMUTABLE_INDEX);
-            GateRef hashValue = Load(VariableType::INT64(), hashField, hashAndImmutableOffset);
-            result = IsImmutableFromHashValue(hashValue);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::IsImmutableFromHashValue(GateRef hashValue)
-{
-    using immutableBit = ECMAObject::HashFieldHelper::immutableBit;
-    return TruncInt64ToInt1(
-        Int64And(Int64LSR(hashValue, Int64(immutableBit::START_BIT)), Int64((1LLU << immutableBit::SIZE) - 1)));
-}
-
 void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
     auto *env = GetEnvironment();

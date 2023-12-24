@@ -485,8 +485,6 @@ public:
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
-    GateRef IsImmutable(GateRef obj);
-    GateRef IsImmutableFromHashValue(GateRef hashValue);
     void MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);

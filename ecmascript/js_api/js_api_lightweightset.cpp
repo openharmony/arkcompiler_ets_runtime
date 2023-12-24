@@ -463,9 +463,7 @@ uint32_t JSAPILightWeightSet::Hash(JSTaggedValue key)
         uint32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
         if (hash == 0) {
             hash = static_cast<uint32_t>(base::RandomGenerator::GenerateIdentityHash());
-            JSThread *thread = ECMAObject::Cast(key.GetTaggedObject())->GetJSThread();
-            JSHandle<ECMAObject> ecmaObj(thread, key);
-            ECMAObject::SetHash(hash, ecmaObj);
+            ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash);
         }
         return hash;
     }

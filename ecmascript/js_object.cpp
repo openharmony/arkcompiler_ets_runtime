@@ -863,12 +863,6 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
             return false;
         }
         if (op->IsFound() && receiver->IsJSShared()) {
-            if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
-                if (mayThrow) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
-                }
-                return false;
-            }
             if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
                 if (mayThrow) {
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
@@ -924,12 +918,6 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 return false;
             }
             if (hasReceiver && receiver->IsJSShared()) {
-                if (JSObject::Cast(receiver->GetTaggedObject())->IsImmutable()) {
-                    if (mayThrow) {
-                        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty), false);
-                    }
-                    return false;
-                }
                 if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
                     if (mayThrow) {
                         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
@@ -1321,9 +1309,6 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
                 }
             }
             if (op->HasHolder() && op->GetHolder()->IsJSShared() && (sCheckMode == JSShared::SCheckMode::CHECK)) {
-                if (JSObject::Cast(op->GetHolder()->GetTaggedObject())->IsImmutable()) {
-                    THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetImmutableProperty), false);
-                }
                 if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
                     THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                 false);
@@ -2634,33 +2619,29 @@ void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObj
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray
-void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
+void ECMAObject::SetHash(int32_t hash)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
-    JSThread *thread = obj->GetJSThread();
-    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
-    if (value->IsHeapObject()) {
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    if (value.IsHeapObject()) {
+        JSThread *thread = this->GetJSThread();
         // Hash position reserve in advance.
-        if (value->IsTaggedArray()) {
-            TaggedArray *array = TaggedArray::Cast(value->GetTaggedObject());
-            HashFieldHelper hashAndImmutable(array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData());
-            hashAndImmutable.UpdateHash(hash);
-            array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hashAndImmutable.GetHashField()));
-        } else if (value->IsNativePointer()) { // FunctionExtraInfo
+        if (value.IsTaggedArray()) {
+            TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
+            array->Set(thread, array->GetExtraLength() + HASH_INDEX, JSTaggedValue(hash));
+        } else if (value.IsNativePointer()) { // FunctionExtraInfo
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(0);
-            newArray->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hash));
-            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value.GetTaggedValue());
-            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+            newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
+            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
+            Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
-        HashFieldHelper hashAndImmutable(Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET));
-        hashAndImmutable.UpdateHash(hash);
-        Barriers::SetPrimitive<JSTaggedType>(*obj, HASH_OFFSET, hashAndImmutable.GetHashField());
+        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, JSTaggedValue(hash).GetRawData());
     }
 }
 
@@ -2671,7 +2652,7 @@ int32_t ECMAObject::GetHash() const
     if (value.IsHeapObject()) {
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
-            return array->Get(HASH_AND_IMMUTABLE_INDEX).GetInt();
+            return array->Get(array->GetExtraLength() + HASH_INDEX).GetInt();
         } else {
             // Default is 0
             return 0;
@@ -2698,7 +2679,7 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
         JSThread *thread = this->GetJSThread();
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
-            JSHandle<JSNativePointer> pointer(thread, array->Get(RESOLVED_MAX_SIZE + index));
+            JSHandle<JSNativePointer> pointer(thread, array->Get(index));
             return pointer->GetExternalPointer();
         }
     }
@@ -2715,66 +2696,18 @@ void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
-            JSHandle<JSTaggedValue> current =
-                JSHandle<JSTaggedValue>(thread, array->Get(thread, RESOLVED_MAX_SIZE + index));
+            JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
-                array->Set(thread, RESOLVED_MAX_SIZE + index, JSTaggedValue::Hole());
+                array->Set(thread, index, JSTaggedValue::Hole());
             } else {
                 JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
                     nativePointer, callBack, data, false, nativeBindingsize);
-                array->Set(thread, RESOLVED_MAX_SIZE + index, pointer.GetTaggedValue());
+                array->Set(thread, index, pointer.GetTaggedValue());
             }
         }
     }
-}
-
-void ECMAObject::InitializeImmutableField()
-{
-    JSTaggedType hashValue = JSTaggedValueInternals::TAG_INT;
-    Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, hashValue);
-}
-
-void ECMAObject::BecomeImmutable(JSThread* thread)
-{
-    JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
-    if (hashField.IsInt()) {
-        HashFieldHelper hashAndImmutable(hashField.GetRawData());
-        hashAndImmutable.UpdateImmutable(true);
-        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, hashAndImmutable.GetHashField());
-        return;
-    }
-    if (!hashField.IsTaggedArray()) {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-    TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    HashFieldHelper hashAndImmutable(array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData());
-    hashAndImmutable.UpdateImmutable(true);
-    array->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(hashAndImmutable.GetHashField()));
-}
-
-bool ECMAObject::IsImmutable()
-{
-    JSTaggedValue hashField = Barriers::GetValue<JSTaggedValue>(this, HASH_OFFSET);
-    if (hashField.IsInt()) {
-        return IsImmutableFromHashValue(hashField.GetRawData());
-    }
-    if (!hashField.IsTaggedArray()) {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-        return false;
-    }
-    TaggedArray *array = TaggedArray::Cast(hashField.GetTaggedObject());
-    uint64_t hash = array->Get(HASH_AND_IMMUTABLE_INDEX).GetRawData();
-    return IsImmutableFromHashValue(hash);
-}
-
-bool ECMAObject::IsImmutableFromHashValue(uint64_t hashValue)
-{
-    HashFieldHelper hashAndImmutable(hashValue);
-    return hashAndImmutable.IsImmutable();
 }
 
 int32_t ECMAObject::GetNativePointerFieldCount() const
@@ -2806,25 +2739,25 @@ void ECMAObject::SetNativePointerFieldCount(int32_t count)
                 JSHandle<TaggedArray> newArray =
                     thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
                 newArray->SetExtraLength(count);
-                newArray->Set(thread, HASH_AND_IMMUTABLE_INDEX, array->Get(HASH_AND_IMMUTABLE_INDEX));
-                newArray->Set(thread, FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
+                newArray->Set(thread, count + HASH_INDEX, array->Get(HASH_INDEX));
+                newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
                 Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
             }
         } else if (value->IsJSNativePointer()) {
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(count);
-            newArray->Set(thread, HASH_AND_IMMUTABLE_INDEX, JSTaggedValue(JSTaggedValueInternals::TAG_INT));
-            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
+            newArray->Set(thread, count + HASH_INDEX, JSTaggedValue(0));
+            newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
-        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
         newArray->SetExtraLength(count);
-        newArray->Set(thread, HASH_AND_IMMUTABLE_INDEX, value);
+        newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }

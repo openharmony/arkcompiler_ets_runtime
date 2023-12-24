@@ -244,9 +244,7 @@ int LinkedHash::Hash(JSTaggedValue key)
         int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
         if (hash == 0) {
             hash = base::RandomGenerator::GenerateIdentityHash();
-            JSThread *thread = ECMAObject::Cast(key.GetTaggedObject())->GetJSThread();
-            JSHandle<ECMAObject> ecmaObj(thread, key);
-            ECMAObject::SetHash(hash, ecmaObj);
+            ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash);
         }
         return hash;
     }

@@ -252,10 +252,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     break;
                 }
                 if (holder.IsJSShared() && (sCheckMode == JSShared::SCheckMode::CHECK)) {
-                    if (JSObject::Cast(receiver.GetTaggedObject())->IsImmutable()) {
-                        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty),
-                                                    JSTaggedValue::Exception());
-                    }
                     if (!ClassHelper::MatchTrackType(attr.GetTrackType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
@@ -296,10 +292,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     break;
                 }
                 if (!sCheckMode && holder.IsJSShared()) {
-                    if (JSObject::Cast(receiver.GetTaggedObject())->IsImmutable()) {
-                        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetImmutableProperty),
-                                                    JSTaggedValue::Exception());
-                    }
                     if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());

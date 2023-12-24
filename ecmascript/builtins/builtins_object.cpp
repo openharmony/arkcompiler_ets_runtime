@@ -525,10 +525,6 @@ JSTaggedValue BuiltinsObject::IsFrozen(EcmaRuntimeCallInfo *argv)
     }
 
     JSThread *thread = argv->GetThread();
-    // immutable object always frozen.
-    if (ECMAObject::Cast(obj->GetTaggedObject())->IsImmutable()) {
-        return GetTaggedBoolean(true);
-    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 2.Return TestIntegrityLevel(O, "frozen").
