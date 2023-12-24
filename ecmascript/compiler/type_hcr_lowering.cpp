@@ -1637,7 +1637,7 @@ GateRef TypeHCRLowering::LoadSupers(GateRef hclass)
 
 GateRef TypeHCRLowering::GetLengthFromSupers(GateRef supers)
 {
-    return builder_.LoadConstOffset(VariableType::INT32(), supers, TaggedArray::EXTRACT_LENGTH_OFFSET);
+    return builder_.LoadConstOffset(VariableType::INT32(), supers, TaggedArray::EXTRA_LENGTH_OFFSET);
 }
 
 GateRef TypeHCRLowering::GetValueFromSupers(GateRef supers, size_t index)
