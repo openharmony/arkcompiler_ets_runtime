@@ -715,13 +715,13 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             LowerDefineFieldByName(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
             LowerDefineFieldByValue(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
             LowerDefineFieldByIndex(gate);
             break;
         case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
@@ -730,8 +730,23 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
             LowerCreatePrivateProperty(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
             LowerDefinePrivateProperty(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerCallInit(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
+            LowerDefineSendableClass(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16:
+            LowerNewSendableLexenv(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8:
+            LowerDefineSendableMethod(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16:
+            LowerCreateSendablePrivateProperty(gate);
             break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
@@ -3391,6 +3406,93 @@ void SlowPathLowering::LowerDefinePrivateProperty(GateRef gate)
     GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
         builder_.ToTaggedInt(levelIndex), builder_.ToTaggedInt(slotIndex), obj, value});
     ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerDefineSendableClass(GateRef gate)
+{
+    // 5: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef proto = acc_.GetValueIn(gate, 3);
+    GateRef literalId = acc_.GetValueIn(gate, 1);
+    GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
+    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+
+    auto args = { proto, lexicalEnv, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
+                  builder_.ToTaggedInt(length), module };
+    GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(CreateSharedClass), args);
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerNewSendableLexenv(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef lexEnv = acc_.GetValueIn(gate, 1);
+    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::NewLexicalEnv,
+        { glue_, lexEnv, builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0)) });
+    ReplaceHirWithValue(gate, result);
+}
+
+void SlowPathLowering::LowerDefineSendableMethod(GateRef gate)
+{
+    // 4: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    auto method = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, methodId, ConstPoolType::METHOD);
+    GateRef length = acc_.GetValueIn(gate, 1);
+    GateRef homeObject = acc_.GetValueIn(gate, 3);  // 3: second arg
+
+    Label defaultLabel(&builder_);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineSendableMethod), {method, homeObject}, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &defaultLabel);
+    builder_.Bind(&defaultLabel);
+    {
+        builder_.SetLengthToFunction(glue_, result, length);
+        GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
+        builder_.SetLexicalEnvToFunction(glue_, result, env);
+        builder_.Jump(&successExit);
+    }
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
+}
+
+void SlowPathLowering::LowerCreateSendablePrivateProperty(GateRef gate)
+{
+    const int id = RTSTUB_ID(CreateSendablePrivateProperty);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef count = acc_.GetValueIn(gate, 0);
+    GateRef literalId = acc_.GetValueIn(gate, 1);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 2);
+    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+
+    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
+        builder_.ToTaggedInt(count), constpool, builder_.ToTaggedInt(literalId), module});
+    ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerCallInit(GateRef gate)
+{
+    // same as callthis0
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS0_IMM8_V8));
+    GateRef newTarget = builder_.Undefined();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef func = acc_.GetValueIn(gate, 1);
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj}, {glue_, func, thisObj});
 }
 
 void SlowPathLowering::LowerLdStr(GateRef gate)

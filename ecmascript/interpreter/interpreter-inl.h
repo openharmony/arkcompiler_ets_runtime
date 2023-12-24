@@ -569,6 +569,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define READ_INST_8_6() READ_INST_8(7)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8_7() READ_INST_8(8)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8_8() READ_INST_8(9)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
+#define READ_INST_8_9() READ_INST_8(10)             // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8(offset) (*(pc + (offset)))
 #define MOVE_AND_READ_INST_8(currentInst, offset) \
     currentInst <<= 8;                            \
@@ -581,6 +582,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define READ_INST_16_4() READ_INST_16(6)
 #define READ_INST_16_5() READ_INST_16(7)
 #define READ_INST_16_6() READ_INST_16(8)
+#define READ_INST_16_7() READ_INST_16(9)
 #define READ_INST_16(offset)                          \
     ({                                                \
         uint16_t currentInst = READ_INST_8(offset);   \
@@ -1019,7 +1021,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 7;
+    constexpr size_t numCallRuntimeOps = 11;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -1369,6 +1371,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DEPRECATED_CALL_INITIALIZE();
             callThis = false;
             DEPRECATED_CALL_PUSH_ARGS(RANGE);
+        }
+        HANDLE_OPCODE(CALLRUNTIME_CALLINIT_PREF_IMM8_V8) {
+            // same as callthis0
+            actualNumArgs = ActualNumArgsOfCall::CALLARG0;
+            startReg = READ_INST_8_2();
+            LOG_INST() << "callruntime.callinit, v" << startReg;
+            CALL_INITIALIZE();
+            callThis = true;
+            CALL_PUSH_ARGS(0);
         }
         setVregsAndFrameNative:
             startReg--;
@@ -7334,7 +7345,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SlowRuntimeStub::NotifyConcurrentResult(thread, acc, funcObj);
         DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8) {
+    HANDLE_OPCODE(DEFINEFIELDBYNAME_IMM8_ID16_V8) {
         uint16_t stringId = READ_INST_16_1();
         uint32_t v0 = READ_INST_8_3();
 
@@ -7351,11 +7362,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8);
+        DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8) {
-        uint32_t v0 = READ_INST_8_1();
-        uint32_t v1 = READ_INST_8_2();
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8) {
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
 
         JSTaggedValue obj = GET_VREG_VALUE(v1);
         JSTaggedValue propKey = GET_VREG_VALUE(v0);
@@ -7367,11 +7378,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8) {
-        uint32_t index = READ_INST_32_1();
-        uint32_t v0 = READ_INST_8_5();
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8) {
+        uint32_t index = READ_INST_32_2();
+        uint32_t v0 = READ_INST_8_6();
 
         JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue propKey = JSTaggedValue(index);
@@ -7383,7 +7394,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE) {
         LOG_INST() << "intrinsics::callruntime.topropertykey";
@@ -7407,11 +7418,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8) {
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8) {
         JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
-        uint32_t levelIndex = READ_INST_16_1();
-        uint32_t slotIndex = READ_INST_16_3();
-        uint32_t v0 = READ_INST_8_5();
+        uint32_t levelIndex = READ_INST_16_2();
+        uint32_t slotIndex = READ_INST_16_4();
+        uint32_t v0 = READ_INST_8_6();
 
         JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue value = GET_ACC();
@@ -7423,7 +7434,84 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::DefinePrivateProperty(thread, lexicalEnv,
             levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
+        DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8) {
+        uint16_t methodId = READ_INST_16_3();
+        uint16_t literaId = READ_INST_16_5();
+        uint16_t length = READ_INST_16_7();
+        uint16_t v0 = READ_INST_8_9();
+        LOG_INST() << "intrinsics::definesendableclass"
+                   << " method id:" << methodId << " base: v" << v0;
+
+        JSTaggedValue base = GET_VREG_VALUE(v0);
+
+        SAVE_PC();
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res =
+            SlowRuntimeStub::CreateSharedClass(thread, base, state->env, GetConstantPool(sp), methodId,
+                                               literaId, length, GetEcmaModule(sp));
+
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        ASSERT(res.IsClassConstructor());
+        ASSERT(res.IsJSSharedFunction());
+        SET_ACC(res);
+        DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16) {
+        uint16_t numVars = READ_INST_16_1();
+        LOG_INST() << "intrinsics::newsendablelexenv"
+                   << " imm " << numVars;
+
+        JSTaggedValue res = FastRuntimeStub::NewLexicalEnv(thread, factory, numVars);
+        if (res.IsHole()) {
+            SAVE_PC();
+            res = SlowRuntimeStub::NewLexicalEnv(thread, numVars);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+        }
+        SET_ACC(res);
+        GET_FRAME(sp)->env = res;
+        DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8) {
+        uint16_t methodId = READ_INST_16_2();
+        uint16_t length = READ_INST_8_4();
+        LOG_INST() << "intrinsics::definesendablemethod length: " << length;
+        SAVE_ACC();
+        auto constpool = GetConstantPool(sp);
+        auto module = GetEcmaModule(sp);
+        Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
+        ASSERT(method != nullptr);
+        RESTORE_ACC();
+
+        SAVE_PC();
+        JSTaggedValue homeObject = GET_ACC();
+        auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
+
+        result->SetLength(length);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue taggedCurEnv = state->env;
+        result->SetLexicalEnv(thread, taggedCurEnv);
+
+        SET_ACC(JSTaggedValue(result));
+
+        DISPATCH(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16) {
+        JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
+        JSTaggedValue constpool = GetConstantPool(sp);
+        JSTaggedValue module = GetEcmaModule(sp);
+        uint32_t count = READ_INST_16_1();
+        uint32_t literalId = READ_INST_16_3();
+        LOG_INST() << "intrinsics::callruntime.createsendableprivateproperty "
+                   << "count:" << count << ", literalId:" << literalId;
+
+        JSTaggedValue res = SlowRuntimeStub::CreateSendablePrivateProperty(thread, lexicalEnv,
+            count, constpool, literalId, module);
+        INTERPRETER_RETURN_IF_ABRUPT(res);
+        DISPATCH(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

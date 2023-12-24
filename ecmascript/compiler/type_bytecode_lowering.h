@@ -144,6 +144,7 @@ private:
     void LowerTypedCallthisrange(GateRef gate);
     void LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc);
     void LowerTypedThisCall(GateRef gate, GateRef func, GateRef actualArgc, uint32_t argc);
+    void LowerTypedCallInit(GateRef gate);
     bool IsLoadVtable(GateRef func);
     bool CanOptimizeAsFastCall(GateRef func);
     void CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,

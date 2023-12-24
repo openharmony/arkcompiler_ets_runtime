@@ -821,6 +821,112 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
     return SetProperty(&op, value, mayThrow);
 }
 
+bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
+                                                 const JSHandle<JSTaggedValue> &value,
+                                                 JSHandle<JSTaggedValue> &receiver)
+{
+    ASSERT(receiver->IsJSProxy());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    if (op->IsElement()) {
+        key.Update(JSTaggedValue(op->GetElementIndex()));
+    } else {
+        key.Update(op->GetKey().GetTaggedValue());
+    }
+
+    PropertyDescriptor existDesc(thread);
+    JSProxy::GetOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, existDesc);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (!existDesc.IsEmpty()) {
+        if (existDesc.IsAccessorDescriptor()) {
+            return false;
+        }
+
+        if (!existDesc.IsWritable()) {
+            return false;
+        }
+
+        PropertyDescriptor valueDesc(thread, value);
+        return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, valueDesc);
+    }
+    return CreateDataProperty(thread, JSHandle<JSObject>(receiver), key, value);
+}
+
+bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
+                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
+{
+    JSThread *thread = op->GetThread();
+    if (!op->IsWritable()) {
+        if (mayThrow) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+        }
+        return false;
+    }
+
+    if (!receiver->IsECMAObject()) {
+        if (mayThrow) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Receiver is not a JSObject", false);
+        }
+        return false;
+    }
+    if (op->IsFound() && receiver->IsJSShared()) {
+        if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+            if (mayThrow) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+            }
+            return false;
+        }
+    }
+
+    if (receiver->IsJSProxy()) {
+        return SetPropertyForDataDescriptorProxy(thread, op, value, receiver);
+    }
+
+    // 5e. If existingDescriptor is not undefined, then
+    bool hasReceiver = false;
+    if (op->HasReceiver()) {
+        op->ReLookupPropertyInReceiver();
+        hasReceiver = true;
+    }
+    bool isSuccess = true;
+    if (op->IsFound() && !op->IsOnPrototype()) {
+        // i. If IsAccessorDescriptor(existingDescriptor) is true, return false.
+        if (op->IsAccessorDescriptor() && !isInternalAccessor) {
+            return false;
+        }
+
+        // ii. If existingDescriptor.[[Writable]] is false, return false.
+        if (!op->IsWritable()) {
+            if (mayThrow) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+            }
+            return false;
+        }
+        if (hasReceiver && receiver->IsJSShared() &&
+            !ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+            if (mayThrow) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+            }
+            return false;
+        }
+        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
+    } else {
+        // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
+        if (!receiver->IsExtensible(thread)) {
+            if (mayThrow) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "receiver is not Extensible", false);
+            }
+            return false;
+        }
+        if (hasReceiver || isInternalAccessor) {
+            return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
+        } else {
+            return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
+        }
+    }
+    return isSuccess;
+}
+
 bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
     JSThread *thread = op->GetThread();
@@ -849,83 +955,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
 
     // 5. If IsDataDescriptor(ownDesc) is true, then
     if (!op->IsAccessorDescriptor() || isInternalAccessor) {
-        if (!op->IsWritable()) {
-            if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
-            }
-            return false;
-        }
-
-        if (!receiver->IsECMAObject()) {
-            if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "Receiver is not a JSObject", false);
-            }
-            return false;
-        }
-
-        if (receiver->IsJSProxy()) {
-            JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-            if (op->IsElement()) {
-                key.Update(JSTaggedValue(op->GetElementIndex()));
-            } else {
-                key.Update(op->GetKey().GetTaggedValue());
-            }
-
-            PropertyDescriptor existDesc(thread);
-            JSProxy::GetOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, existDesc);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            if (!existDesc.IsEmpty()) {
-                if (existDesc.IsAccessorDescriptor()) {
-                    return false;
-                }
-
-                if (!existDesc.IsWritable()) {
-                    return false;
-                }
-
-                PropertyDescriptor valueDesc(thread, value);
-                return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, valueDesc);
-            }
-            return CreateDataProperty(thread, JSHandle<JSObject>(receiver), key, value);
-        }
-
-        // 5e. If existingDescriptor is not undefined, then
-        bool hasReceiver = false;
-        if (op->HasReceiver()) {
-            op->ReLookupPropertyInReceiver();
-            hasReceiver = true;
-        }
-        bool isSuccess = true;
-        if (op->IsFound() && !op->IsOnPrototype()) {
-            // i. If IsAccessorDescriptor(existingDescriptor) is true, return false.
-            if (op->IsAccessorDescriptor() && !isInternalAccessor) {
-                return false;
-            }
-
-            // ii. If existingDescriptor.[[Writable]] is false, return false.
-            if (!op->IsWritable()) {
-                if (mayThrow) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
-                }
-                return false;
-            }
-            isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
-        } else {
-            // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
-            if (!receiver->IsExtensible(thread)) {
-                if (mayThrow) {
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "receiver is not Extensible", false);
-                }
-                return false;
-            }
-            if (hasReceiver || isInternalAccessor) {
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
-            } else {
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
-            }
-        }
-        return isSuccess;
+        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor);
     }
     // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
     ASSERT(op->IsAccessorDescriptor());
@@ -1155,9 +1185,9 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                 const PropertyDescriptor &desc)
+                                 const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
-    return OrdinaryDefineOwnProperty(thread, obj, key, desc);
+    return OrdinaryDefineOwnProperty(thread, obj, key, desc, sCheckMode);
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1168,7 +1198,8 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc)
+                                         const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
+                                         SCheckMode sCheckMode)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 1. Let current be O.[[GetOwnProperty]](P).
@@ -1179,7 +1210,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
     // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
+    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, sCheckMode);
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
@@ -1194,9 +1225,31 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
 }
 
+bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
+                                                      const PropertyDescriptor &current, SCheckMode sCheckMode)
+{
+    // 8a i. Return false, if the [[Writable]] field of current is false and the [[Writable]] field of Desc
+    // is true.
+    if (!current.IsWritable() && desc.HasWritable() && desc.IsWritable()) {
+        return false;
+    }
+    // 8a ii. If the [[Writable]] field of current is false, then
+    if (!current.IsWritable()) {
+        if (desc.HasValue() && !JSTaggedValue::SameValue(current.GetValue(), desc.GetValue())) {
+            return false;
+        }
+    }
+    if (op->HasHolder() && op->GetHolder()->IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
+        if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
+            THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+        }
+    }
+    return true;
+}
+
 // 9.1.6.3 ValidateAndApplyPropertyDescriptor (O, P, extensible, Desc, current)
 bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                  const PropertyDescriptor &current)
+                                                  const PropertyDescriptor &current, SCheckMode sCheckMode)
 {
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
@@ -1280,18 +1333,8 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         // 8. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true, then
     } else if (current.IsDataDescriptor() && desc.IsDataDescriptor()) {
         // 8a. If the [[Configurable]] field of current is false, then
-        if (!current.IsConfigurable()) {
-            // 8a i. Return false, if the [[Writable]] field of current is false and the [[Writable]] field of Desc
-            // is true.
-            if (!current.IsWritable() && desc.HasWritable() && desc.IsWritable()) {
-                return false;
-            }
-            // 8a ii. If the [[Writable]] field of current is false, then
-            if (!current.IsWritable()) {
-                if (desc.HasValue() && !JSTaggedValue::SameValue(current.GetValue(), desc.GetValue())) {
-                    return false;
-                }
-            }
+        if (!current.IsConfigurable() && !ValidateDataDescriptorWhenConfigurable(op, desc, current, sCheckMode)) {
+            return false;
         }
         // 8b. Else the [[Configurable]] field of current is true, so any change is acceptable.
     } else {  // 9. Else IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true,
@@ -1551,12 +1594,12 @@ JSHandle<JSObject> JSObject::ObjectCreate(JSThread *thread, const JSHandle<JSObj
 
 // 7.3.4 CreateDataProperty (O, P, V)
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const JSHandle<JSTaggedValue> &value)
+                                  const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-    auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
-                                        (thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue());
+    auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>(
+        thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), sCheckMode);
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1579,12 +1622,13 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 
 // 7.3.5 CreateMethodProperty (O, P, V)
 bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
+                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                         SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
-    bool success = CreateDataProperty(thread, obj, key, value);
+    bool success = CreateDataProperty(thread, obj, key, value, sCheckMode);
     if (!success) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "failed to create data property", success);
     }
@@ -2547,7 +2591,7 @@ void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
         for (size_t i = 0; i < propsLen; i++) {
             auto value = properties->Get(i * 2 + 1);
             auto attr = layoutInfo->GetAttr(i);
-            if (attr.UpdateTrackType(value)) {
+            if (attr.UpdateTrackType(value) && !oldHC->IsJSShared()) {
                 layoutInfo->SetNormalAttr(thread, i, attr);
             }
             obj->SetPropertyInlinedProps(thread, i, value);
@@ -2596,12 +2640,12 @@ void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObj
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray
-void ECMAObject::SetHash(int32_t hash)
+void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
-        JSThread *thread = this->GetJSThread();
+        JSThread *thread = (*obj)->GetJSThread();
         // Hash position reserve in advance.
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
@@ -2612,13 +2656,13 @@ void ECMAObject::SetHash(int32_t hash)
             newArray->SetExtraLength(0);
             newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
             newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
-            Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
-        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, JSTaggedValue(hash).GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(*obj, HASH_OFFSET, JSTaggedValue(hash).GetRawData());
     }
 }
 

@@ -26,6 +26,8 @@ namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define COMMON_MESSAGE_STRING_LIST(V)                                                        \
     V(SetReadOnlyProperty, "Cannot set readonly property")                                   \
+    V(SetTypeMismatchedSharedProperty, "Cannot set shared property with mismatched type")    \
+    V(ClassNotDerivedFromShared, "Class not derived from a shared object")                   \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions ")            \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \
@@ -97,5 +99,6 @@ public:
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GET_MESSAGE_STRING_ID(name) static_cast<int>((MessageString::MessageId::Message_##name))
+#define GET_MESSAGE_STRING(name)  MessageString::GetMessageString(GET_MESSAGE_STRING_ID(name)).c_str()
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MESSAGE_STRING_H

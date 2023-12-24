@@ -50,6 +50,7 @@ enum class ComparisonResult {
     UNDEFINED  // at least one of x or y was undefined or NaN
 };
 
+enum class ClassKind : uint8_t { SENDABLE = 0, NON_SENDABLE };
 class JSTaggedValue : public JSTaggedValueInternals {
 public:
     static JSTaggedValue Cast(TaggedObject *object)
@@ -645,6 +646,9 @@ public:
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
     bool IsModuleNamespace() const;
+    bool IsJSSharedObject() const;
+    bool IsJSSharedFunction() const;
+    bool IsJSShared() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,

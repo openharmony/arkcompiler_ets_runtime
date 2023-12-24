@@ -163,10 +163,14 @@ CString JSHClass::DumpJSType(JSType type)
             return "NativePointer";
         case JSType::JS_OBJECT:
             return "Object";
+        case JSType::JS_SHARED_OBJECT:
+            return  "SharedObject";
         case JSType::JS_FUNCTION_BASE:
             return "Function Base";
         case JSType::JS_FUNCTION:
             return "Function";
+        case JSType::JS_SHARED_FUNCTION:
+            return "Shared Function";
         case JSType::JS_ERROR:
             return "Error";
         case JSType::JS_EVAL_ERROR:
@@ -536,11 +540,12 @@ static void DumpPropertyKey(JSTaggedValue key, std::ostream &os)
         DumpStringClass(EcmaString::Cast(key.GetTaggedObject()), os);
     } else if (key.IsSymbol()) {
         JSSymbol *sym = JSSymbol::Cast(key.GetTaggedObject());
-        auto desc = sym->GetDescription();
-        if (desc.IsString()) {
-            DumpStringClass(EcmaString::Cast(desc.GetTaggedObject()), os);
+        if (sym->GetDescription().IsString()) {
+            os << "Symbol(\"";
+            DumpStringClass(EcmaString::Cast(sym->GetDescription().GetTaggedObject()), os);
+            os << "\")";
         } else {
-            os << "[Description not a string]";
+            os << "Symbol(" << sym << ")";
         }
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -555,6 +560,7 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
     }
 
     os << "Attr(";
+    os << "[Raw: " << std::hex << attr.GetValue() << "]  ";
     if (attr.IsNoneAttributes()) {
         os << "NONE";
     }
@@ -567,6 +573,7 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
     if (attr.IsConfigurable()) {
         os << "C";
     }
+
     os << ")";
 
     os << " InlinedProps: " << attr.IsInlinedProps();
@@ -714,6 +721,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
+        case JSType::JS_SHARED_OBJECT:
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
@@ -738,6 +746,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::ACCESSOR_DATA:
             break;
+        case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_FUNCTION:
             needDumpHClass = true;
             JSFunction::Cast(obj)->Dump(os);
@@ -1482,6 +1491,11 @@ void JSObject::Dump(std::ostream &os) const
     os << " - prototype: ";
     jshclass->GetPrototype().DumpTaggedValue(os);
     os << "\n";
+
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    os << " - hash: " << std::hex << hashField;
+    value.Dump(os);
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     os << " - elements: " << std::hex << elements;
@@ -3915,10 +3929,12 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
+        case JSType::JS_SHARED_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_FUNCTION_BASE:
         case JSType::JS_FUNCTION:
+        case JSType::JS_SHARED_FUNCTION:
             JSFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_BOUND_FUNCTION:

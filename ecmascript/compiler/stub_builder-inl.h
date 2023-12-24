@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_INL_H
 #define ECMASCRIPT_COMPILER_STUB_INL_H
 
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 #include "ecmascript/accessor_data.h"
@@ -596,6 +597,11 @@ inline GateRef StubBuilder::TaggedIsObject(GateRef x)
 inline GateRef StubBuilder::TaggedIsString(GateRef obj)
 {
     return env_->GetBuilder()->TaggedIsString(obj);
+}
+
+inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsShared(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
@@ -1219,6 +1225,12 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
+}
+
+inline GateRef StubBuilder::IsJSShared(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return IsJSSharedType(objectType);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -2039,6 +2051,33 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
+inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType,
+                                               GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label isSharedObj(env);
+    Branch(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
+    Bind(&isSharedObj);
+    {
+        Label typeMismatch(env);
+        GateRef trackType = isDicMode ? GetDictTrackTypeInPropAttr(attr) : GetTrackTypeInPropAttr(attr);
+        MatchTrackType(trackType, value, executeSetProp, &typeMismatch);
+        Bind(&typeMismatch);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            *result = Exception();
+            Jump(exit);
+        }
+    }
+}
+
+inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
+{
+    return BoolOr(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
+                  Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_FUNCTION))));
+}
+
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
@@ -2371,6 +2410,13 @@ inline GateRef StubBuilder::GetTrackTypeInPropAttr(GateRef attr)
     return Int32And(
         Int32LSR(attr, Int32(PropertyAttributes::TrackTypeField::START_BIT)),
         Int32((1LLU << PropertyAttributes::TrackTypeField::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::GetDictTrackTypeInPropAttr(GateRef attr)
+{
+    return Int32And(
+        Int32LSR(attr, Int32(PropertyAttributes::DictTrackTypeField::START_BIT)),
+        Int32((1LLU << PropertyAttributes::DictTrackTypeField::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::GetRepInPropAttr(GateRef attr)

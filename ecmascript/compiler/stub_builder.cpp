@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
@@ -109,6 +112,67 @@ void StubBuilder::LoopEnd(Label *loopHead)
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
     env_->SetCurrentLabel(nullptr);
+}
+
+void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch)
+{
+    auto *env = GetEnvironment();
+    Label isNumber(env);
+    Label checkBoolean(env);
+    Label isBoolean(env);
+    Label checkString(env);
+    Label isString(env);
+    Label checkJSShared(env);
+    Label isJSShared(env);
+    Label checkJSNone(env);
+    Label isJSNone(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NUMBER))), &isNumber, &checkBoolean);
+    Bind(&isNumber);
+    {
+        result = TaggedIsNumber(value);
+        Jump(&exit);
+    }
+    Bind(&checkBoolean);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::BOOLEAN))), &isBoolean, &checkString);
+        Bind(&isBoolean);
+        {
+            result = TaggedIsBoolean(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkString);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSShared);
+        Bind(&isString);
+        {
+            result = TaggedIsString(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkJSShared);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isJSShared, &checkJSNone);
+        Bind(&isJSShared);
+        {
+            result = TaggedIsShared(value);
+            Jump(&exit);
+        }
+    }
+    Bind(&checkJSNone);
+    {
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NONE))), &isJSNone, &exit);
+        Bind(&isJSNone);
+        {
+            // bypass none type
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    Branch(*result, executeSetProp, typeMismatch);
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
@@ -3589,6 +3653,9 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
+                            Label executeSetProp(env);
+                            CheckUpdateSharedType(false, &result, glue, jsType, attr, value, &executeSetProp, &exit);
+                            Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
                                 glue, layOutInfo, attr, entry, value, callback);
@@ -3660,6 +3727,9 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
+                            Label executeSetProp(env);
+                            CheckUpdateSharedType(true, &result, glue, jsType, attr1, value, &executeSetProp, &exit);
+                            Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
                             Jump(&exit);

@@ -17,6 +17,8 @@
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript {
@@ -25,6 +27,13 @@ namespace panda::ecmascript {
 // Attention: keys accessor stores the property key and properties accessor stores the property value, but elements
 // accessor stores the key-value pair abuttally.
 using EntityId = panda_file::File::EntityId;
+enum class FieldType {
+    NONE = 0,
+    NUMBER = (1 << 0),
+    STRING = (1 << 1),
+    BOOLEAN = (1 << 2),
+    TS_TYPE_REF = (1 << 3),
+};
 class ClassInfoExtractor : public TaggedObject {
 public:
     static constexpr uint8_t NON_STATIC_RESERVED_LENGTH = 1;
@@ -54,7 +63,9 @@ public:
     static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                       JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
-
+    static JSHandle<JSHClass> CreateSendableHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+                                                   JSHandle<TaggedArray> &properties, bool isProtoClass,
+                                                   uint32_t extraLength = 0);
     static void CorrectConstructorHClass(JSThread *thread,
                                          JSHandle<TaggedArray> &properties,
                                          JSHClass *constructorHClass);
@@ -102,6 +113,7 @@ public:
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
 
+    static bool MatchTrackType(TrackType trackType, JSTaggedValue value);
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
@@ -110,6 +122,73 @@ private:
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);
+};
+
+class SendableClassDefiner : public ClassHelper {
+public:
+    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread,
+                                                                 JSHandle<ClassInfoExtractor> &extractor,
+                                                                 const JSHandle<JSTaggedValue> &lexenv,
+                                                                 const JSHandle<TaggedArray> &fieldTypeArray);
+
+    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                             const JSHandle<TaggedArray> &fieldTypeArray,
+                                             const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
+
+    static JSHandle<TaggedArray> ExtractStaticFieldTypeArray(JSThread *thread,
+                                                             const JSHandle<TaggedArray> &fieldTypeArray);
+
+    static void FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
+                                     const JSHandle<TaggedArray> &properties);
+
+private:
+    static TrackType FromFieldType(FieldType type)
+    {
+        switch (type) {
+            case FieldType::NONE:
+                return TrackType::NONE;
+            case FieldType::NUMBER:
+                return TrackType::NUMBER;
+            case FieldType::STRING:
+                return TrackType::STRING;
+            case FieldType::BOOLEAN:
+                return TrackType::BOOLEAN;
+            case FieldType::TS_TYPE_REF:
+                return TrackType::SENDABLE;
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread,
+                                                                      const JSHandle<JSObject> &object,
+                                                                      JSHandle<TaggedArray> &keys,
+                                                                      JSHandle<TaggedArray> &properties,
+                                                                      ClassPropertyType type,
+                                                                      const JSHandle<JSTaggedValue> &lexenv);
+
+    static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
+                                       JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv);
+
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                     const JSHandle<TaggedArray> &fieldTypeArray,
+                                     const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
+
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                     const JSHandle<TaggedArray> &fieldTypeArray,
+                                     const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
+
+    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
+                                   const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
+                                   PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
+
+    static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,
+                                    JSMutableHandle<JSTaggedValue> &value);
+
+    static void TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value);
+
+    static void UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
+                                      JSHandle<AccessorData> &accessor);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

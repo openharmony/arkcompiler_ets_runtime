@@ -94,6 +94,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::HCLASS:
             SerializeHClassFieldIndividually(root, start, end);
             return true;
+        case JSType::JS_FUNCTION:
+            SerializeJSFunctionFieldIndividually(root, start, end);
+            return true;
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
             return true;
@@ -115,7 +118,12 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
             case JSHClass::PROTOTYPE_OFFSET: {
                 JSHClass *kclass = reinterpret_cast<JSHClass *>(root);
                 JSTaggedValue proto = kclass->GetPrototype();
-                SerializeObjectProto(kclass, proto);
+                JSType type = kclass->GetObjectType();
+                if (type == JSType::JS_SHARED_OBJECT || type == JSType::JS_SHARED_FUNCTION) {
+                    SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                } else {
+                    SerializeObjectProto(kclass, proto);
+                }
                 slot++;
                 break;
             }
@@ -139,6 +147,29 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
                 data_->WriteEncodeFlag(EncodeFlag::ROOT_OBJECT);
                 data_->WriteUint32(globalConst->GetEmptyArrayIndex());
+                slot++;
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                slot++;
+                break;
+            }
+        }
+    }
+}
+
+void BaseSerializer::SerializeJSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::JS_FUNCTION);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case JSFunction::WORK_NODE_POINTER_OFFSET: {
+                data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
+                data_->WriteUint32(sizeof(uintptr_t));
+                data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
                 slot++;
                 break;
             }

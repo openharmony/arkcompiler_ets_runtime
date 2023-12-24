@@ -607,6 +607,18 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
     return cloneFunc;
 }
 
+JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
+{
+    JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
+    JSHandle<Method> method(thread_, func->GetMethod());
+    JSHandle<JSFunction> cloneFunc = NewSFunctionByHClass(method, jshclass);
+
+    JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
+    cloneFunc->SetLength(func->GetLength());
+    return cloneFunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                                    bool canShareHClass)
 {
@@ -938,8 +950,16 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
             jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
                                      env->GetObjectFunctionPrototype());
         }
-
-        return NewJSObjectWithInit(jshclass);
+        JSHandle<JSObject> obj = NewJSObjectWithInit(jshclass);
+        if (jshclass->IsJSSharedObject() && jshclass->IsDictionaryMode()) {
+            auto maybeDict = jshclass->GetLayout();
+            if (maybeDict.IsDictionary()) {
+                auto dict = JSHandle<TaggedArray>(thread_, maybeDict);
+                auto properties = NewAndCopyNameDictionary(dict, dict->GetLength());
+                obj->SetProperties(thread_, properties);
+            }
+        }
+        return obj;
     }
     JSHandle<JSObject> result =
         NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
@@ -962,7 +982,16 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     }
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
-    return NewJSObjectWithInit(jshclass);
+    JSHandle<JSObject> obj = NewJSObjectWithInit(jshclass);
+    if (jshclass->IsJSSharedObject() && jshclass->IsDictionaryMode()) {
+        auto maybeDict = jshclass->GetLayout();
+        if (maybeDict.IsDictionary()) {
+            auto dict = JSHandle<TaggedArray>(thread_, maybeDict);
+            auto properties = NewAndCopyNameDictionary(dict, dict->GetLength());
+            obj->SetProperties(thread_, properties);
+        }
+    }
+    return obj;
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass)
@@ -988,6 +1017,8 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_OOM_ERROR:
         case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ASYNCITERATOR:
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
             break;
         }
@@ -1482,6 +1513,20 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
     return newObj;
 }
 
+JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
+    FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId, MemSpaceType spaceType)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
+    JSHandle<JSHClass> hclass;
+    if (JSFunction::IsConstructorKind(kind)) {
+        hclass = JSHandle<JSHClass>::Cast(env->GetSConstructorClass());
+    } else {
+        hclass = JSHandle<JSHClass>::Cast(env->GetSNormalFunctionClass());
+    }
+    JSHandle<JSFunction> sfunc = NewSFunctionByHClass(method, hclass);
+    return sfunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
                                                   FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
                                                   MemSpaceType spaceType)
@@ -1619,6 +1664,22 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     defaultHclass->SetClassConstructor(true);
     defaultHclass->SetConstructor(true);
     return defaultHclass;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> &method,
+                                                         const JSHandle<JSHClass> &hclass)
+{
+    JSHandle<JSFunction> function(NewOldSpaceJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
+    function->SetMethod(thread_, method);
+    return function;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+                                                         FunctionKind kind)
+{
+    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
+    return NewSFunctionByHClass(method, hclass);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
@@ -2350,6 +2411,27 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length)
+{
+    JSHandle<TaggedArray> dstElements = NewDictionaryArray(length);
+    if (length == 0) {
+        return dstElements;
+    }
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = length * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < length; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
     }
     return dstElements;
 }
@@ -4550,6 +4632,18 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     return jsfunc;
 }
 
+JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<Method> &methodHandle,
+                                                 const JSHandle<JSTaggedValue> &homeObject)
+{
+    ASSERT(homeObject->IsECMAObject());
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+    JSHandle<JSFunction> jsFunc = NewSFunctionByHClass(methodHandle, hclass);
+    jsFunc->SetHomeObject(thread_, homeObject);
+    ASSERT_NO_ABRUPT_COMPLETION(thread_);
+    return jsFunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle,
                                                   const JSHandle<JSTaggedValue> &homeObject)
 {
@@ -4750,5 +4844,39 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
     }
     object->SetProperties(thread_, dict);
     return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSHClass> ObjectFactory::CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
+                                                                   const JSHandle<JSTaggedValue> &prototype)
+{
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);
+    uint32_t fieldOrder = 0;
+    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, false);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
+        fieldOrder++;
+    }
+
+    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, false);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                 globalConst->GetHandledNameString().GetTaggedValue(), attributes);
+        fieldOrder++;
+    }
+    functionClass->SetLayout(thread_, layoutInfoHandle);
+    functionClass->SetNumberOfProps(fieldOrder);
+    functionClass->SetCallable(true);
+    functionClass->SetExtensible(false);
+    return functionClass;
 }
 }  // namespace panda::ecmascript

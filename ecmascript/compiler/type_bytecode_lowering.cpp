@@ -329,6 +329,9 @@ void TypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             LowerTypedCallthisrange(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerTypedCallInit(gate);
+            break;
         case EcmaOpcode::TYPEOF_IMM8:
         case EcmaOpcode::TYPEOF_IMM16:
             LowerTypedTypeOf(gate);
@@ -2021,6 +2024,33 @@ void TypeBytecodeLowering::LowerTypedCallthisrange(GateRef gate)
         return;
     }
     LowerTypedThisCall(gate, func, actualArgc, numIns - callTargetIndex - fixedInputsNum);
+}
+
+void TypeBytecodeLowering::LowerTypedCallInit(GateRef gate)
+{
+    // same as callthis0
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef func = acc_.GetValueIn(gate, 1);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::ARRAY, func);
+    if (id == BuiltinsStubCSigns::ID::SORT) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { thisObj }, id, true);
+        return;
+    }
+    BuiltinsStubCSigns::ID pgoFuncId = GetPGOBuiltinId(gate);
+    if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, { thisObj }, pgoFuncId, true);
+        return;
+    }
+    if (!CanOptimizeAsFastCall(func)) {
+        return;
+    }
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS0_IMM8_V8));
+    LowerTypedThisCall(gate, func, actualArgc, 0);
 }
 
 void TypeBytecodeLowering::AddProfiling(GateRef gate)

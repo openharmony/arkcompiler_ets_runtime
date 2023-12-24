@@ -336,7 +336,37 @@ private:
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
+    void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env);
+    void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
+                           const JSHandle<JSObject> &sObjFuncPrototype) const;
+    void InitializeSFunciton(const JSHandle<GlobalEnv> &env,
+                             const JSHandle<JSHClass> &sFuncPrototypeHClass) const;
+    void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
+                         std::string_view name, int length) const;
 
+    void SetSFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const;
+    void SetSFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &name) const;
+    void SetSFunctionLength(const JSHandle<JSFunction> &ctor, int length) const;
+
+    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
+                                      EcmaEntrypoint func, int length,
+                                      kungfu::BuiltinsStubCSigns::ID builtinId =
+                                      kungfu::BuiltinsStubCSigns::INVALID) const;
+
+    void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
+                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
+                      kungfu::BuiltinsStubCSigns::INVALID) const;
+
+    void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                      const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                      kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+    void SetSAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
+                      const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
+
+    JSHandle<JSTaggedValue> CreateSGetterSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
+                                                std::string_view name, int length) const;
+    void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSObject> &prototype) const;
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

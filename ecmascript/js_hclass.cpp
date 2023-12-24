@@ -589,7 +589,7 @@ std::pair<bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThre
     auto hclass = receiver->GetJSHClass();
     auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     attr = layout->GetAttr(attr.GetOffset());
-    if (thread->IsPGOProfilerEnable() && attr.UpdateTrackType(value.GetTaggedValue())) {
+    if (thread->IsPGOProfilerEnable() && !hclass->IsJSShared() && attr.UpdateTrackType(value.GetTaggedValue())) {
         layout->SetNormalAttr(thread, attr.GetOffset(), attr);
     }
 

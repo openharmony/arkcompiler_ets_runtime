@@ -13,12 +13,16 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:objseal
- * @tc.desc:test object seal
- * @tc.type: FUNC
- * @tc.require: issue#I7F9ZT
- */
-let obj = { a: '111', b: 42, c:'333', d:'hello there'};
-Object.seal(obj);
-print("test successful !!!");
+#include "ecmascript/builtins/builtins_shared_function.h"
+
+namespace panda::ecmascript::builtins {
+JSTaggedValue BuiltinsSharedFunction::SharedFunctionConstructor(EcmaRuntimeCallInfo *argv)
+{
+    // not support
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Function, Constructor);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    THROW_TYPE_ERROR_AND_RETURN(thread, "Not support eval. Forbidden using new SharedFuction()/SharedFuction().",
+                                JSTaggedValue::Exception());
+}
+}  // namespace panda::ecmascript::builtins

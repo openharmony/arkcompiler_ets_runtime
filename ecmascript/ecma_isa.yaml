@@ -674,3 +674,7 @@ groups:
         acc: inout:top
         prefix: ecma
         format: [pref_op_imm1_16_imm2_16]
+      - sig: ecma.callinit imm, v:in:top
+        acc: in:top
+        format: [pref_op_imm_8_v_8]
+        prefix: ecma

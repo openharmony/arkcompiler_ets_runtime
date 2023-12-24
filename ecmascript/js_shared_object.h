@@ -13,12 +13,20 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:objseal
- * @tc.desc:test object seal
- * @tc.type: FUNC
- * @tc.require: issue#I7F9ZT
- */
-let obj = { a: '111', b: 42, c:'333', d:'hello there'};
-Object.seal(obj);
-print("test successful !!!");
+#ifndef ECMASCRIPT_JS_SHARED_OBJECT_H
+#define ECMASCRIPT_JS_SHARED_OBJECT_H
+
+#include "ecmascript/js_object.h"
+
+namespace panda::ecmascript {
+
+class JSSharedObject : public JSObject {
+public:
+    CAST_CHECK(JSSharedObject, IsJSSharedObject);
+    static constexpr size_t SIZE = JSObject::SIZE;
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
+};
+} // namespace panda::ecmascript
+#endif // ECMASCRIPT_JS_SHARED_OBJECT_H

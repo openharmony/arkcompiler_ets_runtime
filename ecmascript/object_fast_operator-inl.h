@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 
+#include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/object_fast_operator.h"
 
 #include "ecmascript/ecma_string_table.h"
@@ -33,6 +34,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_dictionary.h"
@@ -181,7 +183,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                    JSTaggedValue value)
+                                                    JSTaggedValue value, SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
@@ -249,6 +251,12 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
+                if (holder.IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
+                    if (!ClassHelper::MatchTrackType(attr.GetTrackType(), value)) {
+                        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                    JSTaggedValue::Exception());
+                    }
+                }
                 JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value);
                 return JSTaggedValue::Undefined();
             }
@@ -282,6 +290,12 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 }
                 if (UNLIKELY(holder != receiver)) {
                     break;
+                }
+                if (!sCheckMode && holder.IsJSShared()) {
+                    if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
+                        THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                    JSTaggedValue::Exception());
+                    }
                 }
                 dict->UpdateValue(thread, entry, value);
                 return JSTaggedValue::Undefined();
@@ -473,7 +487,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                     JSTaggedValue value)
+                                                     JSTaggedValue value, SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {
@@ -500,7 +514,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
         } else {
             ObjectOperator::UpdateDetector(thread, receiver, key);
         }
-        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value);
+        return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value, sCheckMode);
     }
     return JSTaggedValue::Hole();
 }

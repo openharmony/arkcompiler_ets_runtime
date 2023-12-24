@@ -45,6 +45,8 @@ class TaggedQueue;
 class NumberDictionary;
 
 using EnumCacheKind = EnumCache::EnumCacheKind;
+using SCheckMode = JSShared::SCheckMode;
+
 // Integrity level for objects
 enum IntegrityLevel { SEALED, FROZEN };
 
@@ -92,6 +94,16 @@ public:
     inline void SetValue(JSHandle<JSTaggedValue> value)
     {
         value_ = value;
+    }
+
+    inline void SetTrackType(TrackType trackType)
+    {
+        trackType_ = trackType;
+    }
+
+    inline TrackType GetTrackType() const
+    {
+        return trackType_;
     }
 
     inline bool IsWritable() const
@@ -218,6 +230,7 @@ private:
     bool hasWritable_ {false};
     bool hasEnumerable_ {false};
     bool hasConfigurable_ {false};
+    TrackType trackType_ {TrackType::NONE};
 
     JSHandle<JSTaggedValue> value_ {};
     JSHandle<JSTaggedValue> getter_ {};
@@ -326,6 +339,10 @@ private:
     PropertyMetaData metaData_ {0U};
 };
 
+
+// HashField possible layout:
+// [ hashValue ] | [extraInfo] | [ hashValue, extraInfo, nativePointer, ... ]
+// nativePointer number depends on the extraLength of taggedArray
 class ECMAObject : public TaggedObject {
 public:
     static constexpr int HASH_INDEX = 0;
@@ -341,7 +358,7 @@ public:
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
 
-    void SetHash(int32_t hash);
+    static void SetHash(int32_t hash, const JSHandle<ECMAObject> &obj);
     int32_t GetHash() const;
     bool HasHash() const;
 
@@ -399,7 +416,7 @@ public:
                                                  const JSHandle<JSTaggedValue> &key);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                   const JSHandle<JSTaggedValue> &value);
+                                   const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                    const JSHandle<JSTaggedValue> &value);
@@ -408,7 +425,8 @@ public:
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const JSHandle<JSTaggedValue> &value);
@@ -460,13 +478,14 @@ public:
 
     // [[DefineOwnProperty]]
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                   const PropertyDescriptor &desc);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc);
+                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const PropertyDescriptor &desc);
@@ -475,7 +494,8 @@ public:
                                                const PropertyDescriptor &current);
 
     static bool ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
-                                                   const PropertyDescriptor &current);
+                                                   const PropertyDescriptor &current,
+                                                   SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key);
@@ -730,6 +750,13 @@ private:
     static bool IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver);
     static void TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
                                      uint32_t numberInlinedProps);
+    static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
+                                                       const PropertyDescriptor &current, SCheckMode sCheckMode);
+    static bool SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
+                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
+    static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
+                                                  const JSHandle<JSTaggedValue> &value,
+                                                  JSHandle<JSTaggedValue> &receiver);
 };
 }  // namespace ecmascript
 }  // namespace panda

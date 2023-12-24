@@ -22,7 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowDB)                                 \
     T(HandleOverflowDC)                                 \
     T(HandleOverflowDD)                                 \
     T(HandleOverflowDE)                                 \
@@ -277,6 +276,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdPrivatePropertyImm8Imm16Imm16)                              \
     T(HandleStPrivatePropertyImm8Imm16Imm16V8)                            \
     T(HandleTestInImm8Imm16Imm16)                                         \
+    T(HandleDefineFieldByNameImm8Id16V8)                                  \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
     T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \
@@ -373,12 +373,16 @@ namespace panda::ecmascript::kungfu {
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(V, T, D)                    \
     T(HandleCallRuntimeNotifyConcurrentResultPrefNone)                    \
-    T(HandleCallRuntimeDefineFieldByNamePrefId16V8)                       \
-    T(HandleCallRuntimeDefineFieldByValuePrefV8V8)                        \
-    T(HandleCallRuntimeDefineFieldByIndexPrefImm32V8)                     \
+    T(HandleCallRuntimeDefineFieldByValuePrefImm8V8V8)                    \
+    T(HandleCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)                 \
     T(HandleCallRuntimeToPropertyKeyPrefNone)                             \
     T(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)                \
-    T(HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8)
+    T(HandleCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8)         \
+    T(HandleCallRuntimeCallInitPrefImm8V8)                                \
+    T(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)       \
+    T(HandleCallRuntimeNewSendableLexenvImm16)                            \
+    T(HandleCallRuntimeDefineSendableMethodImm8Id16Imm8)                  \
+    T(HandleCallRuntimeCreateSendablePrivatePropertyPrefImm16Id16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \

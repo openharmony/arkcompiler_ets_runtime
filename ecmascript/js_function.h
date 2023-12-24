@@ -165,6 +165,18 @@ public:
         SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, length);
     }
 
+    inline bool IsGetterOrSetter() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION || kind == FunctionKind::SETTER_FUNCTION;
+    }
+
+    inline bool IsGetter() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION;
+    }
+
     inline bool IsBase() const
     {
         FunctionKind kind = GetFunctionKind();
@@ -457,6 +469,15 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, DONE_OFFSET, SIZE);
     DECL_DUMP()
+};
+
+class JSSharedFunction : public JSFunction {
+public:
+    CAST_CHECK(JSSharedFunction, IsJSSharedFunction);
+    static constexpr size_t SIZE = JSFunction::SIZE;
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
 };
 
 }  // namespace panda::ecmascript

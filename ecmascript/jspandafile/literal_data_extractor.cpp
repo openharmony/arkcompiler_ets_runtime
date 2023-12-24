@@ -232,11 +232,41 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
     return literals;
 }
 
+JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm, JSHandle<Method> method,
+                                                                     FunctionKind kind, ClassKind classKind)
+{
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> jsFunc;
+    JSHandle<JSHClass> functionClass;
+    if (classKind == ClassKind::SENDABLE) {
+        if (kind == FunctionKind::NORMAL_FUNCTION ||
+            kind == FunctionKind::GETTER_FUNCTION ||
+            kind == FunctionKind::SETTER_FUNCTION) {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+        } else {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+        }
+        jsFunc = factory->NewSFunctionByHClass(method, functionClass);
+    } else {
+        if (kind == FunctionKind::NORMAL_FUNCTION ||
+            kind == FunctionKind::GETTER_FUNCTION ||
+            kind == FunctionKind::SETTER_FUNCTION) {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+        } else {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+        }
+        jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
+    }
+    return jsFunc;
+}
+
 JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                  uint32_t offset, JSHandle<ConstantPool> constpool,
                                                                  FunctionKind kind, uint16_t length,
                                                                  const CString &entryPoint,
-                                                                 bool isLoadedAOT, uint32_t entryIndex)
+                                                                 bool isLoadedAOT, uint32_t entryIndex,
+                                                                 ClassKind classKind)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
@@ -267,15 +297,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
         module, entryIndex, isLoadedAOT, &canFastCall);
     JSHandle<JSHClass> functionClass;
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    if (kind == FunctionKind::NORMAL_FUNCTION) {
-        functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    } else {
-        functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    }
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
+    JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     jsFunc->SetLength(length);
-
     return jsFunc;
 }
 
@@ -430,7 +453,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                                                                EntityId id, JSHandle<ConstantPool> constpool,
                                                                const CString &entryPoint, bool isLoadedAOT,
                                                                JSHandle<AOTLiteralInfo> entryIndexes,
-                                                               ElementsKind *newKind)
+                                                               ElementsKind *newKind, ClassKind classKind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
@@ -442,7 +465,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     int index = 0;
     lda.EnumerateLiteralVals(
         id, [literals, &pos, factory, thread, jsPandaFile,
-             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT, newKind]
+             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT, newKind, classKind]
         (const LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -496,13 +519,17 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     }
                     JSHandle<JSFunction> jsFunc =
                         DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool,
-                            kind, length, entryPoint, needSetAotFlag, entryIndex);
+                            kind, length, entryPoint, needSetAotFlag, entryIndex, classKind);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
                 case LiteralTag::ACCESSOR: {
                     JSHandle<AccessorData> accessor = factory->NewAccessorData();
                     jt = accessor.GetTaggedValue();
+                    break;
+                }
+                case LiteralTag::LITERALARRAY: {
+                    jt = JSTaggedValue(std::get<uint32_t>(value));
                     break;
                 }
                 case LiteralTag::NULLVALUE: {

@@ -623,7 +623,6 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Label empty(env);
     Label tryGetEnumCache(env);
     Label cacheHit(env);
-
     Branch(TaggedIsString(obj), &isString, &isNotString);
     Bind(&isString);
     {

@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/profiler_operation.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -224,6 +225,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef TaggedIsShared(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
@@ -326,6 +328,7 @@ public:
     GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
+    GateRef IsJSShared(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
@@ -458,6 +461,8 @@ public:
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
+                               GateRef value, Label *executeSetProp, Label *exit);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
@@ -468,6 +473,7 @@ public:
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
+    GateRef IsJSSharedType(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
@@ -481,6 +487,7 @@ public:
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
+    void MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
@@ -582,6 +589,7 @@ public:
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetTrackTypeInPropAttr(GateRef attr, GateRef type);
     GateRef GetTrackTypeInPropAttr(GateRef attr);
+    GateRef GetDictTrackTypeInPropAttr(GateRef attr);
     GateRef GetRepInPropAttr(GateRef attr);
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);

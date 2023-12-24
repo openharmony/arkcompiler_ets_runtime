@@ -13,12 +13,16 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:objseal
- * @tc.desc:test object seal
- * @tc.type: FUNC
- * @tc.require: issue#I7F9ZT
- */
-let obj = { a: '111', b: 42, c:'333', d:'hello there'};
-Object.seal(obj);
-print("test successful !!!");
+#ifndef ECMASCRIPT_BUILTINS_BUILTINS_SHARED_OBJECT_H
+#define ECMASCRIPT_BUILTINS_BUILTINS_SHARED_OBJECT_H
+
+#include "ecmascript/base/builtins_base.h"
+#include "ecmascript/ecma_runtime_call_info.h"
+
+namespace panda::ecmascript::builtins {
+class BuiltinsSharedObject : public base::BuiltinsBase {
+public:
+    static JSTaggedValue SharedObjectConstructor(EcmaRuntimeCallInfo *argv);
+};
+}  // namespace panda::ecmascript::builtins
+#endif  // ECMASCRIPT_BUILTINS_BUILTINS_SHARED_OBJECT_H

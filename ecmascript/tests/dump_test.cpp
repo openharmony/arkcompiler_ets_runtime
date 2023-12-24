@@ -433,7 +433,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_SYNTAX_ERROR:
             case JSType::JS_OOM_ERROR:
             case JSType::JS_TERMINATION_ERROR:
-            case JSType::JS_OBJECT: {
+            case JSType::JS_OBJECT:
+            case JSType::JS_SHARED_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSObject> jsObj = NewJSObject(thread, factory, globalEnv);
                 DUMP_FOR_HANDLE(jsObj);
@@ -457,7 +458,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
                 break;
             }
-            case JSType::JS_FUNCTION: {
+            case JSType::JS_FUNCTION:
+            case JSType::JS_SHARED_FUNCTION: {
                 CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 4U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc);

@@ -601,6 +601,7 @@ public:
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);
+    inline GateRef TaggedIsShared(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
@@ -610,6 +611,7 @@ public:
     inline GateRef TaggedObjectIsJSArray(GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
+    inline GateRef TaggedObjectIsShared(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef TaggedTrue();

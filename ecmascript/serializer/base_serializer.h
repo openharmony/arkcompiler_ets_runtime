@@ -54,6 +54,7 @@ protected:
     void SerializeObjectField(TaggedObject *object);
     bool SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeHClassFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeJSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeMethodFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);

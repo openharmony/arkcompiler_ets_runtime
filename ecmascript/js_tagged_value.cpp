@@ -39,6 +39,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"

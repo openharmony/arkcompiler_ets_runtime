@@ -268,7 +268,7 @@ public:
     static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = CALLRUNTIME_PREFIX_OPCODE_INDEX;
 
     static constexpr uint32_t LAST_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::TESTIN_IMM8_IMM16_IMM16);
+        static_cast<uint32_t>(EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8);
     static constexpr uint32_t LAST_DEPRECATED_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8);
     static constexpr uint32_t LAST_WIDE_OPCODE =
@@ -276,7 +276,7 @@ public:
     static constexpr uint32_t LAST_THROW_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
     static constexpr uint32_t LAST_CALLRUNTIME_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
+        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16);
 
     static_assert(CALLRUNTIME_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE));
@@ -335,6 +335,7 @@ public:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
                 return true;
             default:
                 return false;
@@ -432,6 +433,7 @@ public:
             case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+            case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
                 return true;
             default:
                 return false;
@@ -892,7 +894,8 @@ public:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::CALLTHIS0_IMM8_V8: {
+            case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
                 return gateNumIn + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget, this
             }
             default: {

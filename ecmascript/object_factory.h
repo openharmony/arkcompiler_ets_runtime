@@ -22,6 +22,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/js_shared_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
@@ -226,6 +227,10 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
                                        MemSpaceType spaceType = OLD_SPACE);
+    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
+        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = OLD_SPACE);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
@@ -348,6 +353,7 @@ public:
                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
+    JSHandle<TaggedArray> NewAndCopyNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
@@ -467,6 +473,7 @@ public:
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
     JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
+    JSHandle<JSFunction> CloneSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
 
@@ -763,6 +770,15 @@ private:
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
+    // For sharedobject
+    JSHandle<JSFunction> NewSFunction(const JSHandle<Method> &methodHandle,
+                                      const JSHandle<JSTaggedValue> &homeObject);
+    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+                                              FunctionKind kind);
+    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
+                                              const JSHandle<JSHClass> &hclass);
+    JSHandle<JSHClass> CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
+                                                        const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
     friend class JSHClass;    // HC transition need hclass
