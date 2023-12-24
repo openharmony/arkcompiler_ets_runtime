@@ -27,8 +27,7 @@ namespace panda::ecmascript {
 // Attention: keys accessor stores the property key and properties accessor stores the property value, but elements
 // accessor stores the key-value pair abuttally.
 using EntityId = panda_file::File::EntityId;
-enum class FieldType
-{
+enum class FieldType {
     NONE = 0,
     NUMBER = (1 << 0),
     STRING = (1 << 1),
@@ -123,7 +122,6 @@ private:
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements);
-
 };
 
 class SendableClassDefiner : public ClassHelper {
@@ -144,7 +142,8 @@ public:
                                      const JSHandle<TaggedArray> &properties);
 
 private:
-    static TrackType FromFieldType(FieldType type) {
+    static TrackType FromFieldType(FieldType type)
+    {
         switch (type) {
             case FieldType::NONE:
                 return TrackType::NONE;
