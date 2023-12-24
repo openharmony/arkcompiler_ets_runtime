@@ -358,7 +358,7 @@ public:
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
 
-    void SetHash(int32_t hash);
+    static void SetHash(int32_t hash, const JSHandle<ECMAObject> &obj);
     int32_t GetHash() const;
     bool HasHash() const;
 

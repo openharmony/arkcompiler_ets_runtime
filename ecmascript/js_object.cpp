@@ -2619,12 +2619,12 @@ void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObj
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray
-void ECMAObject::SetHash(int32_t hash)
+void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
-        JSThread *thread = this->GetJSThread();
+        JSThread *thread = (*obj)->GetJSThread();
         // Hash position reserve in advance.
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
@@ -2635,13 +2635,13 @@ void ECMAObject::SetHash(int32_t hash)
             newArray->SetExtraLength(0);
             newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
             newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
-            Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
-        Barriers::SetPrimitive<JSTaggedType>(this, HASH_OFFSET, JSTaggedValue(hash).GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(*obj, HASH_OFFSET, JSTaggedValue(hash).GetRawData());
     }
 }
 
