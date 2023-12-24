@@ -37,6 +37,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::JS_URI_ERROR:
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
+        case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_DATE:
         case JSType::JS_ARRAY:
         case JSType::JS_MAP:
@@ -94,14 +95,18 @@ bool ValueSerializer::WriteValue(JSThread *thread, const JSHandle<JSTaggedValue>
         vm_->GetSnapshotEnv()->Initialize();
     }
     SerializeJSTaggedValue(value.GetTaggedValue());
-    // clear transfer obj set after serialization
-    transferDataSet_.clear();
     if (value->IsHeapObject()) {
         vm_->GetSnapshotEnv()->ClearEnvMap();
     }
     if (notSupport_) {
         LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);
+        return false;
+    }
+    size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    if (data_->Size() > maxSerializerSize) {
+        LOG_ECMA(ERROR) << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
+                        << " max size is: " << maxSerializerSize;
         return false;
     }
     return true;

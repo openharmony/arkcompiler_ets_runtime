@@ -23,7 +23,11 @@ namespace panda::ecmascript {
 class ValueSerializer : public BaseSerializer {
 public:
     explicit ValueSerializer(JSThread *thread) : BaseSerializer(thread) {}
-    ~ValueSerializer() override = default;
+    ~ValueSerializer()
+    {
+        // clear transfer obj set after serialization
+        transferDataSet_.clear();
+    }
     NO_COPY_SEMANTIC(ValueSerializer);
     NO_MOVE_SEMANTIC(ValueSerializer);
 
