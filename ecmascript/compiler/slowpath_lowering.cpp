@@ -715,13 +715,13 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             LowerDefineFieldByName(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
             LowerDefineFieldByValue(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
             LowerDefineFieldByIndex(gate);
             break;
         case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
@@ -730,8 +730,11 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
             LowerCreatePrivateProperty(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
             LowerDefinePrivateProperty(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerCallInit(gate);
             break;
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
             LowerDefineSendableClass(gate);
@@ -3476,6 +3479,20 @@ void SlowPathLowering::LowerCreateSendablePrivateProperty(GateRef gate)
     GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
         builder_.ToTaggedInt(count), constpool, builder_.ToTaggedInt(literalId), module});
     ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerCallInit(GateRef gate)
+{
+    // same as callthis0
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS0_IMM8_V8));
+    GateRef newTarget = builder_.Undefined();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef func = acc_.GetValueIn(gate, 1);
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj}, {glue_, func, thisObj});
 }
 
 void SlowPathLowering::LowerLdStr(GateRef gate)

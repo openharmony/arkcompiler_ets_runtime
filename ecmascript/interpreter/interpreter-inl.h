@@ -1372,6 +1372,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             callThis = false;
             DEPRECATED_CALL_PUSH_ARGS(RANGE);
         }
+        HANDLE_OPCODE(CALLRUNTIME_CALLINIT_PREF_IMM8_V8) {
+            // same as callthis0
+            actualNumArgs = ActualNumArgsOfCall::CALLARG0;
+            startReg = READ_INST_8_2();
+            LOG_INST() << "callruntime.callinit, v" << startReg;
+            CALL_INITIALIZE();
+            callThis = true;
+            CALL_PUSH_ARGS(0);
+        }
         setVregsAndFrameNative:
             startReg--;
         deprecatedSetVregsAndFrameNative: {
@@ -7336,7 +7345,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SlowRuntimeStub::NotifyConcurrentResult(thread, acc, funcObj);
         DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8) {
+    HANDLE_OPCODE(DEFINEFIELDBYNAME_IMM8_ID16_V8) {
         uint16_t stringId = READ_INST_16_1();
         uint32_t v0 = READ_INST_8_3();
 
@@ -7353,11 +7362,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8);
+        DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8) {
-        uint32_t v0 = READ_INST_8_1();
-        uint32_t v1 = READ_INST_8_2();
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8) {
+        uint32_t v0 = READ_INST_8_2();
+        uint32_t v1 = READ_INST_8_3();
 
         JSTaggedValue obj = GET_VREG_VALUE(v1);
         JSTaggedValue propKey = GET_VREG_VALUE(v0);
@@ -7369,11 +7378,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8) {
-        uint32_t index = READ_INST_32_1();
-        uint32_t v0 = READ_INST_8_5();
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8) {
+        uint32_t index = READ_INST_32_2();
+        uint32_t v0 = READ_INST_8_6();
 
         JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue propKey = JSTaggedValue(index);
@@ -7385,7 +7394,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8);
+        DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE) {
         LOG_INST() << "intrinsics::callruntime.topropertykey";
@@ -7409,11 +7418,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
     }
-    HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8) {
+    HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8) {
         JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
-        uint32_t levelIndex = READ_INST_16_1();
-        uint32_t slotIndex = READ_INST_16_3();
-        uint32_t v0 = READ_INST_8_5();
+        uint32_t levelIndex = READ_INST_16_2();
+        uint32_t slotIndex = READ_INST_16_4();
+        uint32_t v0 = READ_INST_8_6();
 
         JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue value = GET_ACC();
@@ -7425,7 +7434,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::DefinePrivateProperty(thread, lexicalEnv,
             levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
+        DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8) {
         uint16_t methodId = READ_INST_16_3();

@@ -35,6 +35,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
                 case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
                 case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+                case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
                     TryInlineNativeCallThis(gate);
                     break;
                 case EcmaOpcode::CALLARG0_IMM8:

@@ -311,6 +311,7 @@ private:
     void LowerToPropertyKey(GateRef gate);
     void LowerCreatePrivateProperty(GateRef gate);
     void LowerDefinePrivateProperty(GateRef gate);
+    void LowerCallInit(GateRef gate);
     void LowerDefineSendableClass(GateRef gate);
     void LowerNewSendableLexenv(GateRef gate);
     void LowerDefineSendableMethod(GateRef gate);

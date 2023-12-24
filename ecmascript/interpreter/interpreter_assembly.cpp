@@ -6008,25 +6008,25 @@ void InterpreterAssembly::HandleCallRuntimeNotifyConcurrentResultPrefNone(
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
 
-void InterpreterAssembly::HandleCallRuntimeDefineFieldByNamePrefId16V8(
+void InterpreterAssembly::HandleDefineFieldByNameImm8Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    DISPATCH(CALLRUNTIME_DEFINEFIELDBYNAME_PREF_ID16_V8);
+    DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
 }
 
-void InterpreterAssembly::HandleCallRuntimeDefineFieldByValuePrefV8V8(
+void InterpreterAssembly::HandleCallRuntimeDefineFieldByValuePrefImm8V8V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_V8_V8);
+    DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8);
 }
 
-void InterpreterAssembly::HandleCallRuntimeDefineFieldByIndexPrefImm32V8(
+void InterpreterAssembly::HandleCallRuntimeDefineFieldByIndexPrefImm8Imm32V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM32_V8);
+    DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8);
 }
 
 void InterpreterAssembly::HandleCallRuntimeToPropertyKeyPrefNone(
@@ -6043,11 +6043,18 @@ void InterpreterAssembly::HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16(
     DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
 }
 
-void InterpreterAssembly::HandleCallRuntimeDefinePrivatePropertyPrefImm16Imm16V8(
+void InterpreterAssembly::HandleCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM16_IMM16_V8);
+    DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeCallInitPrefImm8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_CALLINIT_PREF_IMM8_V8);
 }
 
 void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8(
