@@ -154,7 +154,7 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
     }
     Bind(&checkJSShared);
     {
-        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isJSShared, &checkJSNone);
+        Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::SENDABLE))), &isJSShared, &checkJSNone);
         Bind(&isJSShared);
         {
             result = TaggedIsShared(value);

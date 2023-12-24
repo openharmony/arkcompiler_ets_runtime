@@ -151,6 +151,7 @@ group("ark_js_moduletest") {
     "getpropertybyic",
     "regressdate",
     "objectfreeze",
+    "sharedcheck",
   ]
 
   deps = []
@@ -295,6 +296,7 @@ group("ark_asm_test") {
     "regexp",
     "deregistermodule",
     "getpropertybyic",
+    "sharedcheck",
   ]
 
   deps = []
@@ -420,6 +422,7 @@ group("ark_asm_single_step_test") {
     "yieldstar",
     "getpropertybyic",
     "regressarraybuffer",
+    "sharedcheck",
   ]
 
   deps = []

@@ -857,7 +857,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     JSThread *thread = op->GetThread();
     if (!op->IsWritable()) {
         if (mayThrow) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty), false);
         }
         return false;
     }
@@ -897,7 +897,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         // ii. If existingDescriptor.[[Writable]] is false, return false.
         if (!op->IsWritable()) {
             if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty), false);
             }
             return false;
         }
@@ -914,7 +914,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
         if (!receiver->IsExtensible(thread)) {
             if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "receiver is not Extensible", false);
+                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
             }
             return false;
         }

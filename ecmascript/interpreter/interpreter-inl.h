@@ -4552,7 +4552,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::StPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
-        DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+        DISPATCH(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8);
     }
     HANDLE_OPCODE(TESTIN_IMM8_IMM16_IMM16) {
         JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;

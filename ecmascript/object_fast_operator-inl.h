@@ -233,7 +233,8 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     LOG_ECMA(INFO) << "dump log for read-only crash " << entry;
                     LOG_ECMA(INFO) << "dump log for read-only crash " << "cint1";
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
+                                                JSTaggedValue::Exception());
                 }
                 if (hclass->IsTS()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
@@ -286,7 +287,8 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     LOG_ECMA(INFO) << "dump log for read-only crash " << entry;
                     LOG_ECMA(INFO) << "dump log for read-only crash " << "cint2";
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-                    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
+                                                JSTaggedValue::Exception());
                 }
                 if (UNLIKELY(holder != receiver)) {
                     break;
@@ -321,7 +323,8 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
     JSHandle<JSTaggedValue> valueHandle(thread, value);
 
     if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot add property in prevent extensions ", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
+                                    JSTaggedValue::Exception());
     }
     AddPropertyByName(thread, objHandle, keyHandle, valueHandle, PropertyAttributes::Default());
     return JSTaggedValue::Undefined();
@@ -885,7 +888,8 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
     INTERPRETER_TRACE(thread, AddPropertyByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot add property in prevent extensions ", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
+                                    JSTaggedValue::Exception());
     }
 
     bool success = JSObject::AddElementInternal(thread, JSHandle<JSObject>(thread, receiver), index,
