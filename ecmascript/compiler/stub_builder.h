@@ -460,7 +460,8 @@ public:
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
-    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr, GateRef value, Label *executeSetProp, Label *exit);
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
+                               GateRef value, Label *executeSetProp, Label *exit);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);

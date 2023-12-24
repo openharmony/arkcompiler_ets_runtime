@@ -183,7 +183,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                    JSTaggedValue value, JSShared::SCheckMode sCheckMode)
+                                                    JSTaggedValue value, SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
@@ -251,7 +251,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (holder.IsJSShared() && (sCheckMode == JSShared::SCheckMode::CHECK)) {
+                if (holder.IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
                     if (!ClassHelper::MatchTrackType(attr.GetTrackType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
@@ -487,7 +487,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                     JSTaggedValue value, JSShared::SCheckMode sCheckMode)
+                                                     JSTaggedValue value, SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {

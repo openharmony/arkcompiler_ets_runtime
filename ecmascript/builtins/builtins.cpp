@@ -224,19 +224,19 @@ void Builtins::InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<
     // SharedObject constructor (forbidden use NewBuiltinConstructor)
     JSHandle<JSFunction> sObjectFunction =
         factory_->NewSFunction(env, reinterpret_cast<void *>(BuiltinsSharedObject::SharedObjectConstructor),
-                                      FunctionKind::BUILTIN_CONSTRUCTOR);
+                               FunctionKind::BUILTIN_CONSTRUCTOR);
     InitializeSCtor(sObjIHClass, sObjectFunction, "SharedObject", FunctionLength::ONE);
     env->SetSObjectFunction(thread_, sObjectFunction);
     // sObject method.
-    for (const base::BuiltinFunctionEntry &entry: Object::GetObjectFunctions()) {
+    for (const base::BuiltinFunctionEntry &entry : Object::GetObjectFunctions()) {
         SetSFunction(env, JSHandle<JSObject>(sObjectFunction), entry.GetName(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
+                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     // sObject.prototype method
     JSHandle<JSObject> sObjFuncPrototypeObj(sObjFuncPrototype);
-    for (const base::BuiltinFunctionEntry &entry: Object::GetObjectPrototypeFunctions()) {
-        SetSFunction(env, sObjFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
+    for (const base::BuiltinFunctionEntry &entry : Object::GetObjectPrototypeFunctions()) {
+        SetSFunction(env, sObjFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(), entry.GetLength(),
+                     entry.GetBuiltinStubId());
     }
 
     // B.2.2.1 sObject.prototype.__proto__
@@ -3680,7 +3680,7 @@ void Builtins::SetSFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread_, name, false, false, false);
-    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), nameKey, nameDesc, JSShared::SCheckMode::SKIP);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), nameKey, nameDesc, SCheckMode::SKIP);
 }
 
 void Builtins::SetSFunctionLength(const JSHandle<JSFunction> &ctor, int length) const
@@ -3689,7 +3689,7 @@ void Builtins::SetSFunctionLength(const JSHandle<JSFunction> &ctor, int length) 
     JSHandle<JSTaggedValue> lengthKeyHandle = globalConst->GetHandledLengthString();
     JSTaggedValue taggedLength(length);
     PropertyDescriptor lengthDesc(thread_, JSHandle<JSTaggedValue>(thread_, taggedLength), false, false, false);
-    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), lengthKeyHandle, lengthDesc, JSShared::SCheckMode::SKIP);
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(ctor), lengthKeyHandle, lengthDesc, SCheckMode::SKIP);
 }
 
 void Builtins::InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
@@ -3702,7 +3702,7 @@ void Builtins::InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHa
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(ctor), false, false, false);
     JSHandle<JSObject> prototype(thread_, protoHClass->GetProto());
-    JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor, JSShared::SCheckMode::SKIP);
+    JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor, SCheckMode::SKIP);
 
     ctor->SetFunctionPrototype(thread_, protoHClass.GetTaggedValue());
 }
@@ -3732,7 +3732,7 @@ void Builtins::SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObj
 {
     JSHandle<JSFunction> function(NewSFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), false, false, false);
-    JSObject::DefineOwnProperty(thread_, obj, key, descriptor, JSShared::SCheckMode::SKIP);
+    JSObject::DefineOwnProperty(thread_, obj, key, descriptor, SCheckMode::SKIP);
 }
 
 void Builtins::SetSAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,

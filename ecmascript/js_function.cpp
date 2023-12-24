@@ -71,8 +71,8 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             }
         } else if (!JSFunction::IsClassConstructor(kind)) {  // class ctor do nothing
             PropertyDescriptor desc(thread, accessor, kind != FunctionKind::BUILTIN_CONSTRUCTOR, false, false);
-            [[maybe_unused]] bool success = JSObject::DefineOwnProperty(thread, JSHandle<JSObject>(func),
-                                                                        globalConst->GetHandledPrototypeString(), desc, JSShared::SCheckMode::SKIP);
+            [[maybe_unused]] bool success = JSObject::DefineOwnProperty(
+                thread, JSHandle<JSObject>(func), globalConst->GetHandledPrototypeString(), desc, SCheckMode::SKIP);
             ASSERT(success);
         }
     } else if (HasAccessor(kind)) {

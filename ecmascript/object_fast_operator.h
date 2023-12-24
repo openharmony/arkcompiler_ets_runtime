@@ -21,6 +21,8 @@
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
+using SCheckMode = JSShared::SCheckMode;
+
 class ObjectFastOperator final {
 public:
     enum class Status: uint8_t {
@@ -45,9 +47,9 @@ public:
     static inline JSTaggedValue GetPropertyByName(JSThread *thread, JSTaggedValue receiver,
                                                   JSTaggedValue key);
 
-    template<Status status = Status::None>
+    template <Status status = Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                  JSTaggedValue value, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
+                                                  JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
@@ -59,9 +61,9 @@ public:
     template<Status status = Status::None>
     static inline JSTaggedValue GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
-    template<Status status = Status::None>
+    template <Status status = Status::None>
     static inline JSTaggedValue SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                   JSTaggedValue value, JSShared::SCheckMode sCheckMode = JSShared::SCheckMode::CHECK);
+                                                   JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static inline bool FastSetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                               JSTaggedValue value);

@@ -2049,7 +2049,6 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
 {
     auto *env = GetEnvironment();
     Label isSharedObj(env);
-    // TODO(hzzhouzebin) wrapped with a function
     Branch(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
     Bind(&isSharedObj);
     {
