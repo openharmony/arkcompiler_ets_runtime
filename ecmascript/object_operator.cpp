@@ -388,7 +388,7 @@ bool ObjectOperator::IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key)
 
 TrackType ObjectOperator::GetTrackType() const
 {
-    return JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryElement()
+    return JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryMode()
                               ? attributes_.GetDictTrackType()
                               : attributes_.GetTrackType();
 }

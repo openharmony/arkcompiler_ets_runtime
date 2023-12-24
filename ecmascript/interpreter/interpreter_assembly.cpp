@@ -6080,7 +6080,7 @@ void InterpreterAssembly::HandleCallRuntimeNewSendableLexenvImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-   uint16_t numVars = READ_INST_16_1();
+    uint16_t numVars = READ_INST_16_1();
     LOG_INST() << "intrinsics::newsendablelexenv"
                << " imm " << numVars;
 

@@ -916,9 +916,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
 
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
-    JSHandle<TaggedArray> staticFieldArray = ClassHelper::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
-    JSHandle<JSFunction> cls = ClassHelper::DefineSendableClassFromExtractor(thread, extractor, lexenv,
-                                                                             staticFieldArray);
+    JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
+    JSHandle<JSFunction> cls =
+        SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, lexenv,
+                                                               staticFieldArray);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, ClassKind::SENDABLE);
@@ -927,7 +928,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     uint32_t arrayLength = fieldTypeArray->GetLength();
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
     fieldTypeArray->Trim(thread, instanceFieldNums * 2); // 2: key-type
-    ClassHelper::DefineSendableInstanceHClass(thread, lexenv, fieldTypeArray, cls, base);
+    SendableClassDefiner::DefineSendableInstanceHClass(thread, lexenv, fieldTypeArray, cls, base);
     return cls.GetTaggedValue();
 }
 

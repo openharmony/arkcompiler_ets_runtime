@@ -108,16 +108,30 @@ public:
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread,
-                                                                 JSHandle<ClassInfoExtractor> &extractor,
-                                                                 const JSHandle<JSTaggedValue> &lexenv,
-                                                                 const JSHandle<TaggedArray> &fieldTypeArray);
-
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
+
+    static bool MatchTrackType(TrackType trackType, JSTaggedValue value);
+private:
+    static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
+                                                              JSHandle<TaggedArray> &keys,
+                                                              JSHandle<TaggedArray> &properties, ClassPropertyType type,
+                                                              const JSHandle<JSTaggedValue> &lexenv);
+
+    static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
+                                         JSHandle<TaggedArray> &elements);
+
+};
+
+class SendableClassDefiner : public ClassHelper {
+public:
+    static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread,
+                                                                 JSHandle<ClassInfoExtractor> &extractor,
+                                                                 const JSHandle<JSTaggedValue> &lexenv,
+                                                                 const JSHandle<TaggedArray> &fieldTypeArray);
 
     static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                              const JSHandle<TaggedArray> &fieldTypeArray,
@@ -129,8 +143,8 @@ public:
     static void FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
                                      const JSHandle<TaggedArray> &properties);
 
-    static TrackType FromFieldType(FieldType type)
-    {
+private:
+    static TrackType FromFieldType(FieldType type) {
         switch (type) {
             case FieldType::NONE:
                 return TrackType::NONE;
@@ -147,23 +161,12 @@ public:
         }
     }
 
-    static bool MatchTrackType(TrackType trackType, JSTaggedValue value);
-
-private:
-    static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                                              JSHandle<TaggedArray> &keys,
-                                                              JSHandle<TaggedArray> &properties, ClassPropertyType type,
-                                                              const JSHandle<JSTaggedValue> &lexenv);
-
     static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread,
                                                                       const JSHandle<JSObject> &object,
                                                                       JSHandle<TaggedArray> &keys,
                                                                       JSHandle<TaggedArray> &properties,
                                                                       ClassPropertyType type,
                                                                       const JSHandle<JSTaggedValue> &lexenv);
-
-    static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                         JSHandle<TaggedArray> &elements);
 
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv);
@@ -178,7 +181,7 @@ private:
 
     static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                    const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
-                                    PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
+                                   PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
 
     static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,
                                     JSMutableHandle<JSTaggedValue> &value);

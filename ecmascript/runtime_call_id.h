@@ -247,7 +247,7 @@ namespace panda::ecmascript {
     V(DefinePrivateProperty)        \
     V(CreateSharedClass)            \
     V(DefineSendableMethod)         \
-    V(CreateSendablePrivateProperty)\
+    V(CreateSendablePrivateProperty) \
     V(UpdateHClass)                 \
     V(SetGeneratorState)
 
