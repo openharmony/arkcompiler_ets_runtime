@@ -267,7 +267,6 @@ std::string RegExpRef::GetOriginalFlags()
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
     uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
     std::string strFlags = "";
