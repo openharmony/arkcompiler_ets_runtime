@@ -294,7 +294,7 @@ bool DebuggerApi::GetSingleStepStatus(JSDebugger *debugger)
     return debugger->GetSingleStepStatus();
 }
 
-int32_t DebuggerApi::GetObjectHash(const JSHandle<JSTaggedValue> &tagged)
+int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
 {
     if (!tagged->IsECMAObject()) {
         return 0;
@@ -302,7 +302,9 @@ int32_t DebuggerApi::GetObjectHash(const JSHandle<JSTaggedValue> &tagged)
     bool hasHash = ECMAObject::Cast(tagged->GetTaggedObject())->HasHash();
     if (!hasHash) {
         int32_t hash = base::RandomGenerator::GenerateIdentityHash();
-        ECMAObject::Cast(tagged->GetTaggedObject())->SetHash(hash);
+        auto ecmaObj = ECMAObject::Cast(tagged->GetTaggedObject());
+        JSHandle<ECMAObject> ecmaObjHandle(ecmaVM->GetJSThread(), ecmaObj);
+        ECMAObject::SetHash(hash, ecmaObjHandle);
         return hash;
     } else {
         return ECMAObject::Cast(tagged->GetTaggedObject())->GetHash();
