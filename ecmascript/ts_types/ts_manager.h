@@ -495,16 +495,19 @@ public:
 
     int32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
+    uint32_t GetConstantPoolId(uint32_t methodId) const;
+    JSTaggedValue GetConstantPool(uint32_t methodId) const;
+
     JSHandle<JSTaggedValue> PUBLIC_API GetConstantPool() const
     {
         return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
     }
 
-    JSTaggedValue PUBLIC_API GetStringFromConstantPool(const uint16_t stringId) const;
+    JSTaggedValue PUBLIC_API GetStringFromConstantPool(uint32_t methodId, const uint16_t stringId) const;
 
-    inline std::string PUBLIC_API GetStdStringFromConstantPool(const uint16_t stringId) const
+    inline std::string PUBLIC_API GetStdStringFromConstantPool(uint32_t methodId, const uint16_t stringId) const
     {
-        JSTaggedValue str = GetStringFromConstantPool(stringId);
+        JSTaggedValue str = GetStringFromConstantPool(methodId, stringId);
         return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
     }
 
@@ -739,6 +742,7 @@ private:
     // so that subsequent passes (type_infer, type_bytecode_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
+    const JSPandaFile *curJSPandaFile_ {nullptr};
 
     std::unordered_map<GlobalTypeID, GlobalTSTypeRef, HashGlobalTypeID> idGTMap_ {};
     std::map<GlobalTSTypeRef, std::tuple<CString, CString, uint32_t>> gtLiteralOffsetMap_ {};

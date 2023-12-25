@@ -22,16 +22,10 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
-enum CallKind : uint8_t {
-    CALL,
-    CALL_THIS,
-    CALL_SETTER,
-    CALL_GETTER,
-    INVALID
-};
 class CircuitRootScope {
 public:
     explicit CircuitRootScope(Circuit *circuit)
@@ -47,69 +41,6 @@ public:
 private:
     Circuit *circuit_ {nullptr};
     GateRef root_ { 0 };
-};
-
-class CallGateInfo {
-public:
-    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt, uint32_t type,
-                          PropertyLookupResult plr = PropertyLookupResult())
-        : call_(call), kind_(kind), gt_(gt), type_(type), plr_(plr)
-    {
-    }
-
-    ~CallGateInfo() = default;
-
-    GateRef GetCallGate() const
-    {
-        return call_;
-    }
-
-    bool IsCallThis() const
-    {
-        return kind_ == CallKind::CALL_THIS;
-    }
-
-    bool IsNormalCall() const
-    {
-        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS;
-    }
-
-    bool IsCallAccessor() const
-    {
-        return kind_ == CallKind::CALL_SETTER || kind_ == CallKind::CALL_GETTER;
-    }
-
-    bool IsCallGetter() const
-    {
-        return kind_ == CallKind::CALL_GETTER;
-    }
-
-    bool IsCallSetter() const
-    {
-        return kind_ == CallKind::CALL_SETTER;
-    }
-
-    GlobalTSTypeRef GetFuncGT() const
-    {
-        return gt_;
-    }
-
-    uint32_t GetType() const
-    {
-        return type_;
-    }
-
-    PropertyLookupResult GetPlr() const
-    {
-        return plr_;
-    }
-
-private:
-    GateRef call_ {Circuit::NullGate()};
-    CallKind kind_ {CallKind::INVALID};
-    GlobalTSTypeRef gt_;
-    uint32_t type_;
-    PropertyLookupResult plr_;
 };
 
 class TSInlineLowering {
@@ -179,42 +110,44 @@ private:
 
     void CollectInlineInfo();
     void GetInlinedMethodId(GateRef gate);
-    void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
-    void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
+    void CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList);
+    void TryInline(InlineTypeInfoAccessor &info, ChunkQueue<InlineTypeInfoAccessor> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
-    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, CallGateInfo &info);
-    void ReplaceCallInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
+    void InlineCall(
+        MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral *method, InlineTypeInfoAccessor &info);
+    void ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
     void ReplaceReturnGate(GateRef callGate);
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
-    bool CheckParameter(GateRef gate, CallGateInfo &info, MethodLiteral* method);
-    void LowerToInlineCall(CallGateInfo &info, const std::vector<GateRef> &args, MethodLiteral* method);
+    bool CheckParameter(GateRef gate, InlineTypeInfoAccessor &info, MethodLiteral* method);
+    void LowerToInlineCall(InlineTypeInfoAccessor &info, const std::vector<GateRef> &args, MethodLiteral* method);
     void RemoveRoot();
-    void BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitBuilder &builder);
+    void BuildFrameStateChain(InlineTypeInfoAccessor &info, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
-    void InlineFuncCheck(const CallGateInfo &info);
+    void InlineFuncCheck(const InlineTypeInfoAccessor &info);
     void SupplementType(GateRef callGate, GateRef targetGate);
-    void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
+    void UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
-    bool IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOffset);
+    bool IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset);
     PropertyLookupResult IsAccessor(GateRef receiver, GateRef constData);
     GlobalTSTypeRef GetAccessorFuncType(GateRef receiver, GateRef constData);
-    void CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
-    void CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
-    void InlineAccessorCheck(const CallGateInfo &info);
-    void InlineCheck(CallGateInfo &info);
+    void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
+    void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
+    void InlineAccessorCheck(const InlineTypeInfoAccessor &info);
+    void InlineCheck(InlineTypeInfoAccessor &info);
     GateRef GetAccessorReceiver(GateRef gate);
-    GateRef GetFrameArgs(CallGateInfo &info);
-    void ReplaceAccessorInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
-    void ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
-    GateRef BuildAccessor(CallGateInfo &info);
+    GateRef GetFrameArgs(InlineTypeInfoAccessor &info);
+    void ReplaceAccessorInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
+    void ReplaceInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
+    GateRef BuildAccessor(InlineTypeInfoAccessor &info);
     GateRef GetCallSetterValue(GateRef gate);
-    GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter);
-    GateRef GetFrameState(CallGateInfo &info);
-    void SetInitCallTargetAndConstPoolId(CallGateInfo &info);
-    void AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets, uint32_t inlineMethodOffset);
+    GlobalTSTypeRef GetAccessorFuncGT(GateRef gate, GateRef receiver, GateRef constData, bool isCallSetter);
+    GateRef GetFrameState(InlineTypeInfoAccessor &info);
+    void SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info);
+    void AnalyseFastAccessor(
+        InlineTypeInfoAccessor &info, std::vector<const uint8_t *> pcOffsets, uint32_t inlineMethodOffset);
 
     Circuit *circuit_ {nullptr};
     JSThread *thread_ {nullptr};

@@ -163,7 +163,15 @@ public:
 
     void AddChildHClassLayoutDesc(const ProfileType &type)
     {
+        if (type_.GetRaw() == type.GetRaw()) {
+            return;
+        }
         childs_.emplace(type);
+    }
+
+    bool FindChild(const ProfileType &type)
+    {
+        return childs_.find(type) != childs_.end();
     }
 
     inline size_t GetChildSize() const
@@ -287,6 +295,16 @@ public:
         return type_;
     }
 
+    void SetProtoPt(ProfileType protoPt)
+    {
+        protoPt_ = protoPt;
+    }
+
+    ProfileType GetProtoPt() const
+    {
+        return protoPt_;
+    }
+
     void Merge(const PGOHClassTreeDesc &from);
 
     bool operator<(const PGOHClassTreeDesc &right) const
@@ -299,9 +317,9 @@ public:
 
     bool DumpForRoot(JSTaggedType root, ProfileType rootType);
     bool DumpForChild(JSTaggedType child, ProfileType childType);
-    bool UpdateForChild(ProfileType rootType, JSTaggedType child, ProfileType childType);
-    bool DumpForTransition(JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
-    bool UpdateLayout(ProfileType rootType, JSTaggedType curHClass, ProfileType curType);
+    bool UpdateForTransition(JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
+    bool UpdateLayout(JSTaggedType curHClass, ProfileType curType);
+    bool IsDumped(ProfileType curType) const;
 
     template<typename Callback>
     void IterateChilds(Callback callback) const
@@ -324,6 +342,7 @@ private:
     }
 
     ProfileType type_;
+    ProfileType protoPt_;
     CMap<ProfileType, HClassLayoutDesc *> transitionLayout_;
 };
 
@@ -532,8 +551,8 @@ private:
 template <typename SampleType>
 class PGOHClassTreeTemplate {
 public:
-    PGOHClassTreeTemplate(size_t size, SampleType type)
-        : size_(size), type_(type) {}
+    PGOHClassTreeTemplate(size_t size, SampleType type, SampleType protoSt)
+        : size_(size), type_(type), protoSt_(protoSt) {}
 
     static size_t CaculateSize(const PGOHClassTreeDesc &desc)
     {
@@ -602,6 +621,7 @@ public:
     PGOHClassTreeDesc Convert(PGOContext& context)
     {
         PGOHClassTreeDesc desc(ProfileType(context, GetType().GetProfileType()));
+        desc.SetProtoPt(ProfileType(context, GetProtoSt().GetProfileType()));
         auto root = GetRoot();
         if (root->GetProfileType().IsNone()) {
             return desc;
@@ -632,6 +652,11 @@ public:
         return type_;
     }
 
+    SampleType GetProtoSt() const
+    {
+        return protoSt_;
+    }
+
 private:
     const RootHClassLayoutDescInner *GetRoot() const
     {
@@ -651,6 +676,7 @@ private:
 
     int32_t size_;
     SampleType type_;
+    SampleType protoSt_;
     int32_t childCount_ { 0 };
     RootHClassLayoutDescInner rootHClassLayout_;
 };

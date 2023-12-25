@@ -3632,9 +3632,16 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     return SetLayoutInObjHClass(properties, length, rootHClass);
 }
 
-JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length)
+JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length,
+    JSTaggedValue ihcVal)
 {
-    JSHandle<JSHClass> hclass = GetObjectLiteralHClass(properties, length);
+    JSHandle<JSHClass> hclass;
+    if (ihcVal.IsUndefined()) {
+        hclass = GetObjectLiteralHClass(properties, length);
+    } else {
+        hclass = JSHandle<JSHClass>(thread_, ihcVal);
+    }
+
     JSHandle<JSObject> obj = NewOldSpaceJSObject(hclass);
     InitializeJSObject(obj, hclass);
     return obj;

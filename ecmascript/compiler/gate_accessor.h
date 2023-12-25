@@ -88,6 +88,8 @@ private:
 
 class GateAccessor {
 public:
+    constexpr static uint32_t INVALID_BC_INDEX = 0;
+
     // do not create new gate or modify self during iteration
     struct ConstUseIterator {
         ConstUseIterator(const Circuit* circuit, const Out* out) : circuit_(circuit), out_(out)
@@ -422,6 +424,7 @@ public:
     bool TypedCallIsNoGC(GateRef gate) const;
     bool IsNoGC(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
+    uint32_t TryGetBcIndex(GateRef gate) const;
     uint32_t TryGetMethodOffset(GateRef gate) const;
     GateRef GetFrameArgs(GateRef gate) const;
     void UpdateMethodOffset(GateRef gate, uint32_t methodOffset);
@@ -599,6 +602,8 @@ public:
 
     bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
     void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
+    bool IsCreateArray(GateRef gate) const;
+
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);

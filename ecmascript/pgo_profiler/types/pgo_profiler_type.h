@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "ecmascript/elements.h"
 #include "ecmascript/mem/region.h"
@@ -374,6 +375,89 @@ using PGOSampleType = PGOSampleTemplate<ProfileType>;
 using PGOSampleTypeRef = PGOSampleTemplate<ProfileTypeRef>;
 
 template <typename PGOProfileType>
+class PGOProtoChainTemplate {
+public:
+    PGOProtoChainTemplate() = default;
+    PGOProtoChainTemplate(int32_t size, int32_t count) : size_(size), count_(count) {};
+
+    static PGOProtoChainTemplate *CreateProtoChain(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
+    {
+        auto count = protoChain.size();
+        size_t size = sizeof(PGOProtoChainTemplate);
+        if (count != 0) {
+            size += sizeof(PGOProfileType) * (count - 1) * 2;
+        }
+        auto result = reinterpret_cast<PGOProtoChainTemplate *>(malloc(size));
+        new (result) PGOProtoChainTemplate(size, count);
+        PGOProfileType *curPt = &(result->rootType_);
+        for (auto iter : protoChain) {
+            *curPt = iter.first;
+            curPt = curPt + 1;
+            *curPt = iter.second;
+            curPt = curPt + 1;
+        }
+        return result;
+    }
+
+    static void DeleteProtoChain(PGOProtoChainTemplate *protoChain)
+    {
+        free(protoChain);
+    }
+
+    template <typename FromType>
+    static PGOProtoChainTemplate *ConvertFrom(PGOContext &context, FromType *from)
+    {
+        auto count = from->GetCount();
+        size_t size = sizeof(PGOProtoChainTemplate);
+        if (count != 0) {
+            size += sizeof(PGOProfileType) * (count - 1) * 2;
+        }
+        auto result = reinterpret_cast<PGOProtoChainTemplate *>(malloc(size));
+        new (result) PGOProtoChainTemplate(size, count);
+        PGOProfileType *curPt = &(result->rootType_);
+        from->IterateProtoChain([&context, &curPt] (auto rootType, auto childType) {
+            *curPt = PGOProfileType(context, rootType);
+            curPt = curPt + 1;
+            *curPt = PGOProfileType(context, childType);
+            curPt = curPt + 1;
+        });
+        return result;
+    }
+
+    template <typename Callback>
+    void IterateProtoChain(Callback callback) const
+    {
+        for (int i = 0; i < count_; i++) {
+            callback(*(&rootType_ + i), *(&rootType_ + i + 1));
+        }
+    }
+
+    int32_t GetCount()
+    {
+        return count_;
+    }
+
+    int32_t Size()
+    {
+        return size_;
+    }
+
+private:
+    int32_t size_;
+    int32_t count_;
+    PGOProfileType rootType_ {PGOProfileType()};
+    PGOProfileType childType_ {PGOProfileType()};
+};
+
+using PGOProtoChain = PGOProtoChainTemplate<ProfileType>;
+using PGOProtoChainRef = PGOProtoChainTemplate<ProfileTypeRef>;
+
+enum class ProtoChainMarker : uint8_t {
+    EXSIT,
+    NOT_EXSIT,
+};
+
+template <typename PGOProfileType>
 class PGOObjectTemplate {
 public:
     PGOObjectTemplate() = default;
@@ -382,6 +466,15 @@ public:
         PGOProfileType holdType, PGOProfileType holdTraRootType, PGOProfileType holdTraType)
         : receiverRootType_(receiverRootType), receiverType_(receiverType), holdRootType_(holdRootType),
         holdType_(holdType), holdTraRootType_(holdTraRootType), holdTraType_(holdTraType) {}
+
+    void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
+    {
+        protoChainMarker_ = ProtoChainMarker::EXSIT;
+        if (protoChain_ != nullptr) {
+            PGOProtoChainTemplate<PGOProfileType>::DeleteProtoChain(protoChain_);
+        }
+        protoChain_ = PGOProtoChainTemplate<PGOProfileType>::CreateProtoChain(protoChain);
+    }
 
     template <typename FromType>
     void ConvertFrom(PGOContext &context, const FromType &from)
@@ -392,6 +485,7 @@ public:
         holdType_ = PGOProfileType(context, from.GetHoldType());
         holdTraRootType_ = PGOProfileType(context, from.GetHoldTraRootType());
         holdTraType_ = PGOProfileType(context, from.GetHoldTraType());
+        protoChainMarker_ = from.GetProtoChainMarker();
     }
 
     std::string GetInfoString() const
@@ -447,6 +541,21 @@ public:
         return holdTraType_;
     }
 
+    ProtoChainMarker GetProtoChainMarker() const
+    {
+        return protoChainMarker_;
+    }
+
+    PGOProtoChainTemplate<PGOProfileType> *GetProtoChain() const
+    {
+        return protoChain_;
+    }
+
+    void SetProtoChain(PGOProtoChainTemplate<PGOProfileType> *protoChain)
+    {
+        protoChain_ = protoChain;
+    }
+
     bool IsNone() const
     {
         return receiverType_.IsNone();
@@ -488,6 +597,8 @@ private:
     PGOProfileType holdType_ { PGOProfileType() };
     PGOProfileType holdTraRootType_ { PGOProfileType() };
     PGOProfileType holdTraType_ { PGOProfileType() };
+    ProtoChainMarker protoChainMarker_ {ProtoChainMarker::NOT_EXSIT};
+    PGOProtoChainTemplate<PGOProfileType> *protoChain_ { nullptr };
 };
 using PGOObjectInfo = PGOObjectTemplate<ProfileType>;
 using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef>;
@@ -536,7 +647,7 @@ public:
         }
     }
 
-    PGOObjectInfoType GetObjectInfo(uint32_t index) const
+    const PGOObjectInfoType &GetObjectInfo(uint32_t index) const
     {
         ASSERT(index < count_);
         return infos_[index];
@@ -698,6 +809,40 @@ public:
     bool operator==(const PGOTypeRef &right) const
     {
         return type_ == right.type_;
+    }
+
+    bool IsValid() const
+    {
+        return type_ != nullptr;
+    }
+
+    bool IsValidCallMethodId() const
+    {
+        if (type_ == nullptr) {
+            return false;
+        }
+        if (!type_->IsScalarOpType()) {
+            return false;
+        }
+        auto sampleType = static_cast<const PGOSampleType*>(type_);
+        if (sampleType->IsProfileType()) {
+            if (sampleType->GetProfileType().IsMethodId()) {
+                return sampleType->GetProfileType().IsValidCallMethodId();
+            }
+        }
+        return false;
+    }
+
+    uint32_t GetCallMethodId() const
+    {
+        auto sampleType = static_cast<const PGOSampleType*>(type_);
+        return sampleType->GetProfileType().GetCallMethodId();
+    }
+
+    uint64_t GetValue() const
+    {
+        auto sampleType = static_cast<const PGOSampleType*>(type_);
+        return sampleType->GetProfileType().GetRaw();
     }
 
     const PGOSampleType* GetPGOSampleType()

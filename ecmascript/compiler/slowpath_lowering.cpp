@@ -2901,13 +2901,18 @@ void SlowPathLowering::AddProfiling(GateRef gate, bool skipGenerator)
             skipGenerator) {
             return;
         }
-        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-        GateRef mode =
-            builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::SLOW_PATH)));
-        GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(gate),
-                                                 { constOpcode, mode }, gate);
-        acc_.SetDep(gate, profiling);
+
+        if (acc_.HasFrameState(gate)) {
+            GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
+            auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+            GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
+            GateRef mode =
+                builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::SLOW_PATH)));
+            GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(gate),
+                { func, bcIndex, constOpcode, mode }, gate);
+            acc_.SetDep(gate, profiling);
+        }
     }
 }
 

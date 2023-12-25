@@ -18,8 +18,12 @@
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
 namespace panda::ecmascript::kungfu {
+using ApEntityId = pgo::ApEntityId;
+using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
+
 #define DATA_TYPE_LIST(V)                     \
     V(STRING, StringSnapshot)                 \
     V(METHOD, MethodSnapshot)                 \
@@ -37,13 +41,21 @@ public:
         uint32_t constantPoolIdx_ {0};
         uint32_t methodOffset_ {0};
         uint32_t bcIndex_ {0};
+        uint32_t ctorMethodOffset_ {0}; // class constructor
     };
 
-    BaseSnapshotInfo() = default;
+    BaseSnapshotInfo(EcmaVM *vm,
+                     const JSPandaFile *jsPandaFile,
+                     const PGOProfilerDecoder *pfDecoder)
+        : vm_(vm),
+          thread_(vm->GetJSThread()),
+          jsPandaFile_(jsPandaFile),
+          pfDecoder_(pfDecoder)
+    {}
+
     virtual ~BaseSnapshotInfo() = default;
 
-    virtual void StoreDataToGlobalData(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-        SnapshotGlobalData &globalData, const std::set<uint32_t> &skippedMethods) = 0;
+    virtual void StoreDataToGlobalData(SnapshotGlobalData &globalData, const std::set<uint32_t> &skippedMethods) = 0;
 
     void Record(ItemData &data);
 
@@ -54,19 +66,34 @@ protected:
 
     static ItemKey GetItemKey(uint32_t constantPoolId, uint32_t constantPoolIdx);
 
-    void CollectLiteralInfo(EcmaVM *vm, JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
+    bool TryGetABCId(ApEntityId &abcId);
+
+    JSHandle<JSTaggedValue> TryGetHClass(ProfileType rootType, ProfileType childType) const;
+
+    JSHandle<JSTaggedValue> TryGetHClassByPGOTypeLocation(PGOTypeLocation loc) const;
+
+    void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool, const std::set<uint32_t> &skippedMethods,
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
                             int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE);
 
-    CUnorderedMap<ItemKey, ItemData> info_;
+    CUnorderedMap<ItemKey, ItemData> info_ {};
+    EcmaVM *vm_ {nullptr};
+    JSThread *thread_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
+    const PGOProfilerDecoder *pfDecoder_ {nullptr};
 };
 
-#define DEFINE_INFO_CLASS(V, name)                                                                \
-    class name##Info final : public BaseSnapshotInfo {                                            \
-    public:                                                                                       \
-        virtual void StoreDataToGlobalData(EcmaVM *vm, const JSPandaFile *jsPandaFile,            \
-            SnapshotGlobalData &globalData, const std::set<uint32_t> &skippedMethods) override;   \
+#define DEFINE_INFO_CLASS(V, name)                                          \
+    class name##Info final : public BaseSnapshotInfo {                      \
+    public:                                                                 \
+        name##Info(EcmaVM *vm,                                              \
+                   const JSPandaFile *jsPandaFile,                          \
+                   const PGOProfilerDecoder *pfDecoder)                     \
+        : BaseSnapshotInfo(vm, jsPandaFile, pfDecoder) {}                   \
+                                                                            \
+        virtual void StoreDataToGlobalData(SnapshotGlobalData &globalData,  \
+            const std::set<uint32_t> &skippedMethods) override;             \
     };
 
     DATA_TYPE_LIST(DEFINE_INFO_CLASS)
@@ -74,11 +101,11 @@ protected:
 
 class SnapshotConstantPoolData {
 public:
-    SnapshotConstantPoolData(EcmaVM *vm, const JSPandaFile *jsPandaFile)
-        : vm_(vm), jsPandaFile_(jsPandaFile)
+    SnapshotConstantPoolData(EcmaVM *vm, const JSPandaFile *jsPandaFile, const PGOProfilerDecoder *pfDecoder)
+        : jsPandaFile_(jsPandaFile)
     {
 #define ADD_INFO(V, name)                               \
-    infos_.emplace_back(std::make_unique<name##Info>());
+    infos_.emplace_back(std::make_unique<name##Info>(vm, jsPandaFile, pfDecoder));
     DATA_TYPE_LIST(ADD_INFO)
 #undef ADD_INFO
     }
@@ -102,7 +129,6 @@ private:
         infos_.at(infoIdx)->Record(itemData);
     }
 
-    EcmaVM *vm_;
     const JSPandaFile *jsPandaFile_;
     CVector<std::unique_ptr<BaseSnapshotInfo>> infos_ {};
 };

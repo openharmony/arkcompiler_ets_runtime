@@ -487,7 +487,7 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef method, GateRef index)
+GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -496,18 +496,21 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto val = GetValueFromTaggedArray(constpool, index);
-    Label isAOTLiteral(env);
-    Label notAOTLiteral(env);
+    Label isHeapObject(env);
     Label afterAOTLiteral(env);
-    Branch(IsAOTLiteralInfo(val), &isAOTLiteral, &notAOTLiteral);
+    Branch(TaggedIsHeapObject(val), &isHeapObject, &afterAOTLiteral);
     {
-        Bind(&isAOTLiteral);
-        ihc = GetIhcFromAOTLiteralInfo(val);
-        Jump(&afterAOTLiteral);
-        Bind(&notAOTLiteral);
-        Jump(&afterAOTLiteral);
+        Bind(&isHeapObject);
+        Label isAOTLiteral(env);
+        Branch(IsAOTLiteralInfo(val), &isAOTLiteral, &afterAOTLiteral);
+        {
+            Bind(&isAOTLiteral);
+            ihc = GetIhcFromAOTLiteralInfo(val);
+            Jump(&afterAOTLiteral);
+        }
     }
     Bind(&afterAOTLiteral);
+    GateRef method = GetMethodFromConstPool(glue, constpool, module, index);
     GateRef hclass = LoadHClassFromMethod(glue, method);
     result = NewJSObject(glue, hclass);
     SetExtensibleToBitfield(glue, hclass, true);
@@ -1129,11 +1132,12 @@ GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
     Bind(&aotLoad);
     {
         auto pfAddr = LoadPfHeaderFromConstPool(jsFunc);
-        GateRef traceId = TruncPtrToInt32(PtrSub(IntPtr(pc), pfAddr));
+        GateRef traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
         GateRef hcIndex = LoadHCIndexFromConstPool(hcIndexInfos, indexInfosLength, traceId, &originLoad);
         GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
             IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
-        ret = Load(VariableType::JS_POINTER(), gConstAddr, hcIndex);
+        GateRef offset = Int32Mul(Int32(sizeof(JSTaggedValue)), hcIndex);
+        ret = Load(VariableType::JS_POINTER(), gConstAddr, offset);
         Jump(&exit);
     }
     Bind(&originLoad);

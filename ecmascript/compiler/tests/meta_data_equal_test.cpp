@@ -136,10 +136,10 @@ HWTEST_F_L0(MetaDataEqualTests, HCRMetaDataEqualTest)
     builder.SetEnvironment(&env);
 
     // JSBytecodeMetaData
-    auto meta = circuit.JSBytecode(0, EcmaOpcode::JEQZ_IMM8, 0, true, false);
+    auto meta = circuit.JSBytecode(0, 0, EcmaOpcode::JEQZ_IMM8, 0, 0, true, false);
     auto gate =
         circuit.NewGate(meta, MachineType::I64, {Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
-    auto meta2 = circuit.JSBytecode(0, EcmaOpcode::JEQZ_IMM8, 0, true, false);
+    auto meta2 = circuit.JSBytecode(0, 0, EcmaOpcode::JEQZ_IMM8, 0, 0, true, false);
     auto gate2 =
         circuit.NewGate(meta2, MachineType::I64, {Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
 

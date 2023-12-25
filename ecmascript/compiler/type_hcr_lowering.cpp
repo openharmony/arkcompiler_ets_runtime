@@ -1768,6 +1768,7 @@ void TypeHCRLowering::LowerInlineAccessorCheck(GateRef gate)
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
     auto protoHClass = builder_.LoadHClass(prototype);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED);
     auto prototypeHasChanged = builder_.GetHasChanged(marker);
     auto accessorHasChanged = builder_.GetAccessorHasChanged(marker);
     auto markerCheck = builder_.BoolAnd(builder_.BoolNot(prototypeHasChanged), builder_.BoolNot(accessorHasChanged));

@@ -28,6 +28,7 @@ using PGORWOpType = pgo::PGORWOpType;
 
 class PGOTypeRecorder {
 public:
+    explicit PGOTypeRecorder(const PGOProfilerDecoder &decoder);
     PGOTypeRecorder(const PGOProfilerDecoder &decoder, const JSPandaFile *jsPandaFile, uint32_t methodOffset);
     ~PGOTypeRecorder() = default;
 
@@ -49,6 +50,12 @@ public:
     inline bool GetHClassTreeDesc(PGOSampleType type, PGOHClassTreeDesc **desc) const
     {
         return decoder_.GetHClassTreeDesc(type, desc);
+    }
+
+    template <typename Callback>
+    void IterateHClassTreeDesc(Callback callback) const
+    {
+        decoder_.IterateHClassTreeDesc(callback);
     }
 
 private:

@@ -310,6 +310,17 @@ public:
         type_ = IsRootBits::Update(type_, root);
     }
 
+    bool IsValidCallMethodId() const
+    {
+        return GetCallMethodId() > 0;
+    }
+
+    uint32_t GetCallMethodId() const
+    {
+        ASSERT(IsMethodId());
+        return GetId();
+    }
+
     JSType GetBuiltinsId() const
     {
         ASSERT(IsBuiltinsType());

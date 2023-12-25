@@ -2436,10 +2436,12 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
 DEF_RUNTIME_STUBS(ProfileOptimizedCode)
 {
     RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
-    EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 0).GetInt());
-    OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
+    int bcIndex = GetArg(argv, argc, 1).GetInt();
+    EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 2).GetInt());
+    OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 3).GetInt());
     OptCodeProfiler *profiler = thread->GetCurrentEcmaContext()->GetOptCodeProfiler();
-    profiler->Update(ecmaOpcode, mode);
+    profiler->Update(func, bcIndex, ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -2554,15 +2556,15 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
     return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(UpdateHClass)
+DEF_RUNTIME_STUBS(UpdateAOTHClass)
 {
-    RUNTIME_STUBS_HEADER(UpdateHClass);
+    RUNTIME_STUBS_HEADER(UpdateAOTHClass);
     JSTaggedValue oldhc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue newhc = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSHClass> oldhclass(thread, oldhc);
     JSHandle<JSHClass> newhclass(thread, newhc);
-    return RuntimeUpdateHClass(thread, oldhclass, newhclass, key).GetRawData();
+    return RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineField)
@@ -3304,16 +3306,7 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     RUNTIME_STUBS_HEADER(AOTEnableProtoChangeMarker);
     JSHandle<JSFunction> result(GetHArg<JSTaggedValue>(argv, argc, 0)); // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> ihc = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
-    result->SetProtoOrHClass(thread, ihc);
-    JSHandle<JSObject> clsPrototype(thread, result->GetFunctionPrototype());
-    clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
-    JSHClass::EnableProtoChangeMarker(thread,
-        JSHandle<JSHClass>(thread, result->GetFunctionPrototype().GetTaggedObject()->GetClass()));
-    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(result.GetTaggedValue().GetRawData());
-    }
+    DefineFuncTryUseAOTHClass(thread, result, ihc);
     return JSTaggedValue::Hole().GetRawData();
 }
 

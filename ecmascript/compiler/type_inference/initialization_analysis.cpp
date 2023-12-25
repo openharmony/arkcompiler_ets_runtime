@@ -91,7 +91,8 @@ void InitializationAnalysis::CollectInitializationType(GateRef gate, ThisUsage t
     }
 
     uint16_t index = acc_.GetConstantValue(acc_.GetValueIn(gate, 1));  // 1: stringId
-    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(methodOffset, index);
 
     if (valueType.IsNumberType()) {
         valueType = GateType::NumberType();
@@ -114,7 +115,8 @@ void InitializationAnalysis::CollectInitializationInfo(GateRef gate, ThisUsage t
     if (!CheckSimpleCFG(gate, index)) {
         return;
     }
-    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(methodOffset, index);
     TSTypeAccessor typeAccessor(tsManager_, classType_);
     typeAccessor.MarkPropertyInitialized(propKey);
 }

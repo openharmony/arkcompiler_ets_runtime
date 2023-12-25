@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
+
 namespace panda::ecmascript::kungfu {
 class NTypeHCRLowering : public PassVisitor {
 public:
@@ -29,9 +30,11 @@ public:
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
           acc_(circuit),
+          thread_(ctx->GetEcmaVM()->GetJSThread()),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
+          jsPandaFile_(ctx->GetJSPandaFile()),
           recordName_(recordName),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -63,11 +66,24 @@ private:
         return acc_.GetFrameState(gate);
     }
 
+    JSTaggedValue GetConstantpoolValue(uint32_t cpId)
+    {
+        return thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, cpId);
+    }
+
+    JSTaggedValue GetArrayLiteralValue(uint32_t cpId, uint32_t cpIdx)
+    {
+        JSTaggedValue cp = GetConstantpoolValue(cpId);
+        return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(thread_, cp, cpIdx, recordName_);
+    }
+
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
+    JSThread *thread_ {nullptr};
     CircuitBuilder builder_;
     GateRef dependEntry_;
     TSManager *tsManager_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
     const CString &recordName_;
     panda_file::File::EntityId methodId_ {0};
     bool profiling_ {false};

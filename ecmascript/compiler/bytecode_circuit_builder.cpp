@@ -561,7 +561,9 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb)
     bool writable = !bytecodeInfo.NoSideEffects();
     bool hasFrameState = bytecodeInfo.HasFrameState();
     size_t pcOffset = GetPcOffset(iterator.Index());
-    auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, writable, hasFrameState);
+    auto methodOffset = method_->GetMethodId().GetOffset();
+    auto meta = circuit_->JSBytecode(
+        numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), writable, hasFrameState);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -598,7 +600,9 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     if (bytecodeInfo.IsCondJump() && bb.succs.size() == 2) { // 2: two succ
         size_t pcOffset = GetPcOffset(iterator.Index());
-        auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, false, false);
+        auto methodOffset = method_->GetMethodId().GetOffset();
+        auto meta = circuit_->JSBytecode(
+            numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), false, false);
         auto numValues = meta->GetNumIns();
         GateRef gate = circuit_->NewGate(meta, std::vector<GateRef>(numValues, Circuit::NullGate()));
         gateAcc_.NewIn(gate, 0, state);

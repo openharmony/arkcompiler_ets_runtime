@@ -76,21 +76,20 @@ void NTypeHCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
 void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef aotElmIndex = acc_.GetValueIn(gate, 1);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef cpId = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef aotElmIndex = acc_.GetValueIn(gate, 2);
     auto elementIndex = acc_.GetConstantValue(aotElmIndex);
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
     GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
-    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-        thread, constpoolHandle.GetTaggedValue(), constPoolIndex, recordName_);
-    JSHandle<JSArray> arrayHandle(thread, arr);
+    uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
+    JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
+    JSHandle<JSArray> arrayHandle(thread_, arr);
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
     uint32_t literialLength = arrayLiteral->GetLength();
     uint32_t arrayLength = acc_.GetArraySize(gate);

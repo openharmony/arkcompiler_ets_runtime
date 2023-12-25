@@ -160,8 +160,10 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = acc_.GetValueIn(gate, 0);
     uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
-    panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    uint32_t cpId = tsManager_->GetConstantPoolId(methodOffset);
+    JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
+    panda_file::File::EntityId id = ConstantPool::GetIdFromCache(cp, cpIdx);
 
     int elementIndex = ptManager_->GetElementsIndexByEntityId(id);
     if (elementIndex == -1) { // slowpath
@@ -171,7 +173,9 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     GateRef elementIndexGate = builder_.IntPtr(elementIndex);
-    GateRef array = builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, index, elementIndexGate);
+    GateRef cpIdGr = builder_.Int32(cpId);
+    GateRef array =
+        builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index, elementIndexGate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -232,15 +236,19 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
             current = gate;
         }
 
-        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-        GateRef mode =
-            builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
-        GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
-                                                 { constOpcode, mode }, gate);
-        acc_.SetDep(current, profiling);
-        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
+        if (acc_.HasFrameState(gate)) {
+            GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
+            EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+            auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+            GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
+            GateRef mode =
+                builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
+            GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
+                { func, bcIndex, constOpcode, mode }, gate);
+            acc_.SetDep(current, profiling);
+            builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
+        }
     }
 }
 

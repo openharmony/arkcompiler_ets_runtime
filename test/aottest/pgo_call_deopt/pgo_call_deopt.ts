@@ -20,6 +20,9 @@ function foo() {
 }
 
 function callFoo(f: (n: number) => number, a: number): number {
+    for (let i = 0; i < 100; i++) {
+        f(a);
+    }
     return f(a);
 }
 

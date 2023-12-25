@@ -84,6 +84,17 @@ public:
         return &(iter->second);
     }
 
+    bool GetEntryIdByNormalizedName(const V &value, ApEntityId &entryId) const
+    {
+        for (const auto &entry : pool_) {
+            if (JSPandaFile::GetNormalizedFileDesc(entry.second.GetData()) == value) {
+                entryId = entry.first;
+                return true;
+            }
+        }
+        return false;
+    }
+
     void Clear()
     {
         pool_.clear();

@@ -467,9 +467,11 @@ public:
 
     bool AddRwUseInfo(ProfileType rootType);
     bool AddRootLayout(JSTaggedType hclass, ProfileType rootType);
-    bool AddTransitionLayout(ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child,
-        ProfileType childType);
+    bool UpdateTransitionLayout(
+        ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
     bool UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType);
+    void AddRootPtType(ProfileType rootType, ProfileType ptType);
+    bool IsDumped(ProfileType rootType, ProfileType curType) const;
 
     void Merge(const PGORecordDetailInfos &recordInfos);
 
@@ -634,6 +636,15 @@ public:
             return true;
         }
         return false;
+    }
+
+    template <typename Callback>
+    bool IterateHClassTreeDesc(Callback callback) const
+    {
+        for (auto treeDescInfo : hclassTreeDescInfos_) {
+            callback(&treeDescInfo);
+        }
+        return true;
     }
 
     void MatchAndMarkMethod(const CString &abcNormalizedDesc, const CString &recordName, const char *methodName,

@@ -11,9 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: callFoo1@pgo_call caller function name: func_main_0@pgo_call
 [trace] aot inline function name: foo@pgo_call caller function name: callFoo1@pgo_call
-[trace] aot inline function name: callFoo1@pgo_call caller function name: func_main_0@pgo_call
 [trace] aot inline function name: foo@pgo_call caller function name: callFoo1@pgo_call
 [trace] aot inline function name: callFoo2@pgo_call caller function name: func_main_0@pgo_call
 [trace] aot inline function name: foo@pgo_call caller function name: callFoo2@pgo_call
@@ -28,4 +26,6 @@
 [trace] aot inline function name: bar@pgo_call caller function name: callFoo2@pgo_call
 [trace] aot inline function name: callFoo2@pgo_call caller function name: func_main_0@pgo_call
 [trace] aot inline function name: foo@pgo_call caller function name: callFoo2@pgo_call
+[trace] aot inline function name: callFoo1@pgo_call caller function name: func_main_0@pgo_call
+[trace] aot inline function name: foo@pgo_call caller function name: callFoo1@pgo_call
 a

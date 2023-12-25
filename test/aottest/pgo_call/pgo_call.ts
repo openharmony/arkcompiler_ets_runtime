@@ -55,4 +55,6 @@ let ret = callFoo3(<any>mol, 1);
 
 callFoo2(bar, 1);   // bot callFoo2 and bar inlined
 callFoo2(foo, 1);   // bot callFoo2 and foo inlined
+callFoo1(foo, 1);
+
 print(ret);

@@ -68,8 +68,11 @@ GateRef TSHCROptPass::ConvertStringEqualToConst(GateRef left, GateRef right)
 {
     uint32_t leftId = acc_.GetStringIdFromLdaStrGate(left);
     uint32_t rightId = acc_.GetStringIdFromLdaStrGate(right);
-    JSHandle<EcmaString> leftStr(thread_, tsManager_->GetStringFromConstantPool(leftId));
-    JSHandle<EcmaString> rightStr(thread_, tsManager_->GetStringFromConstantPool(rightId));
+
+    auto leftMethodOffset = acc_.TryGetMethodOffset(left);
+    auto rightMethodOffset = acc_.TryGetMethodOffset(right);
+    JSHandle<EcmaString> leftStr(thread_, GetStringFromCP(leftMethodOffset, leftId));
+    JSHandle<EcmaString> rightStr(thread_, GetStringFromCP(rightMethodOffset, rightId));
     bool isEqual = EcmaStringAccessor::StringsAreEqual(thread_->GetEcmaVM(), leftStr, rightStr);
     if (isEqual) {
         return builder_.Boolean(true);
@@ -81,7 +84,8 @@ bool TSHCROptPass::IsSingleCharString(GateRef gate)
 {
     if (acc_.IsConstString(gate)) {
         uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
-        JSTaggedValue str = tsManager_->GetStringFromConstantPool(strId);
+        auto methodOffset = acc_.TryGetMethodOffset(gate);
+        JSTaggedValue str = GetStringFromCP(methodOffset, strId);
         return EcmaStringAccessor(str).GetLength() == 1;
     }
     return acc_.IsSingleCharGate(gate);
@@ -91,7 +95,8 @@ GateRef TSHCROptPass::ConvertConstSingleCharToInt32(GateRef gate)
 {
     ASSERT(acc_.IsConstString(gate));
     uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
-    JSTaggedValue str = tsManager_->GetStringFromConstantPool(strId);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    JSTaggedValue str = tsManager_->GetStringFromConstantPool(methodOffset, strId);
     ASSERT(EcmaStringAccessor(str).GetLength() == 1);
     uint16_t strToInt = EcmaStringAccessor(str).Get(0);
     return builder_.Int32(strToInt);

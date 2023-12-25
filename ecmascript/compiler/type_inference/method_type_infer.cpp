@@ -779,7 +779,8 @@ bool MethodTypeInfer::InferStObjByName(GateRef gate)
     GateType receiverType = gateAccessor_.GetGateType(receiver);
 
     uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));  // 1: index of key
-    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
+    auto methodOffset = gateAccessor_.TryGetMethodOffset(gate);
+    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(methodOffset, index);
     if (tsManager_->IsNamespaceTypeKind(receiverType)) {
         if (tsManager_->AddNamespacePropType(receiverType, propKey, valueType)) {
             Enqueue(receiver);
@@ -821,7 +822,8 @@ bool MethodTypeInfer::InferLdStr(GateRef gate)
 
 bool MethodTypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
-    JSTaggedValue name = tsManager_->GetStringFromConstantPool(index);
+    auto methodOffset = gateAccessor_.TryGetMethodOffset(gate);
+    JSTaggedValue name = tsManager_->GetStringFromConstantPool(methodOffset, index);
     if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::ARRAY, objType) || tsManager_->IsTypedArrayType(objType)) {
         auto thread = tsManager_->GetThread();
         JSTaggedValue lengthKey = thread->GlobalConstants()->GetLengthString();
@@ -1015,8 +1017,10 @@ bool MethodTypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
 
     bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
     auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
+    auto methodOffset = gateAccessor_.TryGetMethodOffset(gate);
     GlobalTSTypeRef type = isString ?
-        tsManager_->GetSuperPropType(classType.GetGTRef(), tsManager_->GetStringFromConstantPool(index), propType) :
+        tsManager_->GetSuperPropType(classType.GetGTRef(),
+        tsManager_->GetStringFromConstantPool(methodOffset, index), propType) :
         tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
     if (tsManager_->IsGetterSetterFunc(type)) {
         auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
@@ -1449,12 +1453,13 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
     uint16_t funcNameStrId = gateAccessor_.GetConstantValue(funcName);
-    auto funcNameString = tsManager_->GetStdStringFromConstantPool(funcNameStrId);
+    auto methodOffset = gateAccessor_.TryGetMethodOffset(gate);
+    auto funcNameString = tsManager_->GetStdStringFromConstantPool(methodOffset, funcNameStrId);
     if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
         GateRef constId = gateAccessor_.GetValueIn(expectedGate, 0);
         uint16_t strId = gateAccessor_.GetConstantValue(constId);
-        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId);
+        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(methodOffset, strId);
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
@@ -1491,7 +1496,9 @@ void MethodTypeInfer::PGOTypeCheck(GateRef gate) const
     }
     auto thisObjName = gateAccessor_.GetValueIn(thisObj, 1);
     uint16_t thisObjNameStrId = gateAccessor_.GetConstantValue(thisObjName);
-    auto thisObjNameString = tsManager_->GetStdStringFromConstantPool(thisObjNameStrId);
+    auto methodOffset = gateAccessor_.TryGetMethodOffset(gate);
+    auto thisObjNameString = tsManager_->GetStdStringFromConstantPool(methodOffset,
+        thisObjNameStrId);
     // 2. funcName
     auto func = gateAccessor_.GetValueIn(gate, 3);
     if (!IsByteCodeGate(func)) {
@@ -1503,14 +1510,14 @@ void MethodTypeInfer::PGOTypeCheck(GateRef gate) const
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
     uint16_t funcNameStrId = gateAccessor_.GetConstantValue(funcName);
-    auto funcNameString = tsManager_->GetStdStringFromConstantPool(funcNameStrId);
+    auto funcNameString = tsManager_->GetStdStringFromConstantPool(methodOffset, funcNameStrId);
     // 3. check whether it is ArkTools.pgoAssertType()
     if (thisObjNameString == "ArkTools" && funcNameString == "pgoAssertType") {
         // 4. expected type
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 2);
         GateRef constId = gateAccessor_.GetValueIn(expectedGate, 0);
         uint16_t strId = gateAccessor_.GetConstantValue(constId);
-        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId); // expected type
+        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(methodOffset, strId);
         // 5. pgo type
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 1);
         auto pgoType = gateAccessor_.TryGetPGOType(valueGate); // pgo type

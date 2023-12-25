@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "libpandabase/utils/utf.h"
@@ -27,11 +28,11 @@ namespace panda::ecmascript::kungfu {
 void TSInlineLowering::RunTSInlineLowering()
 {
     circuit_->AdvanceTime();
-    ChunkQueue<CallGateInfo> workList(chunk_);
+    ChunkQueue<InlineTypeInfoAccessor> workList(chunk_);
     UpdateWorkList(workList);
 
     while (!workList.empty()) {
-        CallGateInfo info = workList.front();
+        InlineTypeInfoAccessor &info = workList.front();
         workList.pop();
         TryInline(info, workList);
     }
@@ -60,10 +61,16 @@ void TSInlineLowering::GetInlinedMethodId(GateRef gate)
         GlobalTSTypeRef gt = funcType.GetGTRef();
         methodOffset = tsManager_->GetFuncMethodOffset(gt);
     }
+    if (methodOffset == 0) {
+        auto pgoType = acc_.TryGetPGOType(gate);
+        if (pgoType.IsValidCallMethodId()) {
+            methodOffset = pgoType.GetCallMethodId();
+        }
+    }
     acc_.UpdateMethodOffset(gate, methodOffset);
 }
 
-void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList)
+void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
@@ -101,7 +108,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo
     }
 }
 
-void TSInlineLowering::TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList)
+void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<InlineTypeInfoAccessor> &workList)
 {
     GateRef gate = info.GetCallGate();
     // inline doesn't support try-catch
@@ -111,8 +118,7 @@ void TSInlineLowering::TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &w
     }
 
     MethodLiteral* inlinedMethod = nullptr;
-    GlobalTSTypeRef gt = info.GetFuncGT();
-    auto methodOffset = tsManager_->GetFuncMethodOffset(gt);
+    uint32_t methodOffset = info.GetCallMethodId();
     if (methodOffset == 0 || ctx_->IsSkippedMethod(methodOffset)) {
         return;
     }
@@ -127,6 +133,9 @@ void TSInlineLowering::TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &w
     auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
     auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
     auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
+    if (ctx_->FilterMethod(inlinedMethod, methodPcInfo)) {
+        return;
+    }
     GateRef frameState = GetFrameState(info);
     GateRef frameArgs = acc_.GetValueIn(frameState);
     size_t inlineCallCounts = GetOrInitialInlineCounts(frameArgs);
@@ -199,16 +208,13 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
 }
 
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method,
-                                  CallGateInfo &info)
+                                  InlineTypeInfoAccessor &info)
 {
     const JSPandaFile *jsPandaFile = ctx_->GetJSPandaFile();
     TSManager *tsManager = ctx_->GetTSManager();
     CompilerLog *log = ctx_->GetCompilerLog();
     CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
-    if (!hasTyps) {
-        return;
-    }
     const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
     std::string fileName = jsPandaFile->GetFileName();
     std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
@@ -242,8 +248,11 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     pipeline.RunPass<PGOTypeInferPass>();
 }
 
-bool TSInlineLowering::CheckParameter(GateRef gate, CallGateInfo &info, MethodLiteral* method)
+bool TSInlineLowering::CheckParameter(GateRef gate, InlineTypeInfoAccessor &info, MethodLiteral* method)
 {
+    if (method == nullptr) {
+        return false;
+    }
     if (info.IsCallAccessor()) {
         return true;
     }
@@ -254,7 +263,7 @@ bool TSInlineLowering::CheckParameter(GateRef gate, CallGateInfo &info, MethodLi
     return declaredNumArgs == (numIns - fixedInputsNum);
 }
 
-void TSInlineLowering::ReplaceCallInput(CallGateInfo &info, GateRef glue, MethodLiteral *method)
+void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method)
 {
     GateRef gate = info.GetCallGate();
     bool isCallThis = info.IsCallThis();
@@ -289,7 +298,7 @@ void TSInlineLowering::ReplaceCallInput(CallGateInfo &info, GateRef glue, Method
     LowerToInlineCall(info, vec, method);
 }
 
-void TSInlineLowering::ReplaceAccessorInput(CallGateInfo &info, GateRef glue, MethodLiteral *method)
+void TSInlineLowering::ReplaceAccessorInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method)
 {
     GateRef gate = info.GetCallGate();
     std::vector<GateRef> vec;
@@ -326,7 +335,7 @@ void TSInlineLowering::ReplaceAccessorInput(CallGateInfo &info, GateRef glue, Me
     LowerToInlineCall(info, vec, method);
 }
 
-GateRef TSInlineLowering::BuildAccessor(CallGateInfo &info)
+GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
 {
     GateRef gate = info.GetCallGate();
     Environment env(gate, circuit_, &builder_);
@@ -357,7 +366,7 @@ GateRef TSInlineLowering::BuildAccessor(CallGateInfo &info)
     return accessor;
 }
 
-void TSInlineLowering::ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method)
+void TSInlineLowering::ReplaceInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method)
 {
     if (info.IsNormalCall()) {
         ReplaceCallInput(info, glue, method);
@@ -468,7 +477,8 @@ void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, Gat
     acc_.DeleteGate(gate);
 }
 
-void TSInlineLowering::LowerToInlineCall(CallGateInfo &info, const std::vector<GateRef> &args, MethodLiteral* method)
+void TSInlineLowering::LowerToInlineCall(
+    InlineTypeInfoAccessor &info, const std::vector<GateRef> &args, MethodLiteral *method)
 {
     GateRef callGate = info.GetCallGate();
     // replace in value/args
@@ -499,7 +509,7 @@ void TSInlineLowering::LowerToInlineCall(CallGateInfo &info, const std::vector<G
     RemoveRoot();
 }
 
-void TSInlineLowering::InlineFuncCheck(const CallGateInfo &info)
+void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
 {
     GateRef gate = info.GetCallGate();
     GateRef callState = acc_.GetState(gate);
@@ -509,8 +519,7 @@ void TSInlineLowering::InlineFuncCheck(const CallGateInfo &info)
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
     // Do not load from inlineFunc beacause type in inlineFunc could be modified by others
-    GlobalTSTypeRef funcGt = info.GetFuncGT();
-    auto methodOffset = tsManager_->GetFuncMethodOffset(funcGt);
+    uint32_t methodOffset = info.GetCallMethodId();
     GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()),
         MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
         GateType::NJSValue());
@@ -518,7 +527,7 @@ void TSInlineLowering::InlineFuncCheck(const CallGateInfo &info)
     acc_.ReplaceDependIn(gate, ret);
 }
 
-void TSInlineLowering::InlineAccessorCheck(const CallGateInfo &info)
+void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
 {
     ASSERT(info.IsCallAccessor());
     GateRef gate = info.GetCallGate();
@@ -543,7 +552,7 @@ void TSInlineLowering::InlineAccessorCheck(const CallGateInfo &info)
     acc_.ReplaceDependIn(gate, ret);
 }
 
-void TSInlineLowering::InlineCheck(CallGateInfo &info)
+void TSInlineLowering::InlineCheck(InlineTypeInfoAccessor &info)
 {
     if (info.IsNormalCall()) {
         InlineFuncCheck(info);
@@ -563,7 +572,7 @@ void TSInlineLowering::RemoveRoot()
     acc_.DeleteGate(circuitRoot);
 }
 
-void TSInlineLowering::BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitBuilder &builder)
+void TSInlineLowering::BuildFrameStateChain(InlineTypeInfoAccessor &info, BytecodeCircuitBuilder &builder)
 {
     GateRef preFrameState = GetFrameState(info);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
@@ -592,7 +601,7 @@ void TSInlineLowering::SupplementType(GateRef callGate, GateRef targetGate)
     }
 }
 
-void TSInlineLowering::UpdateWorkList(ChunkQueue<CallGateInfo> &workList)
+void TSInlineLowering::UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList)
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -617,23 +626,29 @@ size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
 }
 
 
-bool TSInlineLowering::IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOffset)
+bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset)
 {
+    GateRef caller = info.GetCallGate();
     GateRef frameArgs = GetFrameArgs(info);
-    GateRef caller = acc_.GetValueIn(frameArgs);
-    auto funcType = acc_.GetGateType(caller);
-    GlobalTSTypeRef gt = funcType.GetGTRef();
-    if (!tsManager_->IsFunctionTypeKind(gt)) {
-        return false;
+    while (acc_.GetOpCode(caller) == OpCode::JS_BYTECODE) {
+        auto callerMethodOffset = acc_.TryGetMethodOffset(caller);
+        if (callerMethodOffset == calleeMethodOffset) {
+            return true;
+        }
+        frameArgs = acc_.GetFrameArgs(frameArgs);
+        if (frameArgs == Circuit::NullGate()) {
+            break;
+        }
+        caller = acc_.GetValueIn(frameArgs);
     }
-    auto callerMethodOffset = tsManager_->GetFuncMethodOffset(gt);
-    return callerMethodOffset == calleeMethodOffset;
+    return false;
 }
 
 PropertyLookupResult TSInlineLowering::IsAccessor(GateRef gate, GateRef constData)
 {
     uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
     // PGO currently does not support call, so GT is still used to support inline operations.
     // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
     if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
@@ -668,7 +683,8 @@ PropertyLookupResult TSInlineLowering::IsAccessor(GateRef gate, GateRef constDat
     return plr;
 }
 
-GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter)
+GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef gate, GateRef receiver, GateRef constData,
+    bool isCallSetter)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
@@ -676,12 +692,13 @@ GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef co
     GlobalTSTypeRef classGT = tsManager_->GetClassType(classInstanceGT);
     TSTypeAccessor tsTypeAcc(tsManager_, classGT);
     uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
     GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, isCallSetter);
     return funcGT;
 }
 
-void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind)
+void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
     GateRef receiver = GetAccessorReceiver(gate);
     GateRef constData = acc_.GetValueIn(gate, 1);
@@ -689,21 +706,19 @@ void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> 
     GateType receiverType = acc_.GetGateType(receiver);
     GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
     if (plr.IsAccessor() && tsManager_->IsClassInstanceTypeKind(classInstanceGT)) {
-        GlobalTSTypeRef gt = GetAccessorFuncGT(receiver, constData, IsCallSetter(kind));
+        GlobalTSTypeRef gt = GetAccessorFuncGT(gate, receiver, constData, IsCallSetter(kind));
         if (!gt.IsDefault()) {
-            workList.push(CallGateInfo(gate, kind, gt, 0, plr));
+            workList.emplace(thread_, circuit_, gate, kind, plr);
             lastCallId_ = acc_.GetId(gate);
         }
     }
 }
 
-void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind)
+void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
-    size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
-    auto funcType = acc_.GetGateType(acc_.GetValueIn(gate, funcIndex));
-    if (tsManager_->IsFunctionTypeKind(funcType)) {
-        GlobalTSTypeRef gt = funcType.GetGTRef();
-        workList.push(CallGateInfo(gate, kind, gt, funcType.Value()));
+    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, kind);
+    if (tacc.IsEnableInline()) {
+        workList.push(tacc);
         lastCallId_ = acc_.GetId(gate);
     }
 }
@@ -728,7 +743,7 @@ GateRef TSInlineLowering::GetCallSetterValue(GateRef gate)
     return acc_.GetValueIn(gate, 3); // 3: value
 }
 
-GateRef TSInlineLowering::GetFrameState(CallGateInfo &info)
+GateRef TSInlineLowering::GetFrameState(InlineTypeInfoAccessor &info)
 {
     GateRef gate = info.GetCallGate();
     if (info.IsNormalCall()) {
@@ -739,13 +754,13 @@ GateRef TSInlineLowering::GetFrameState(CallGateInfo &info)
     return frameState;
 }
 
-GateRef TSInlineLowering::GetFrameArgs(CallGateInfo &info)
+GateRef TSInlineLowering::GetFrameArgs(InlineTypeInfoAccessor &info)
 {
     GateRef frameState = GetFrameState(info);
     return acc_.GetValueIn(frameState);
 }
 
-void TSInlineLowering::SetInitCallTargetAndConstPoolId(CallGateInfo &info)
+void TSInlineLowering::SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info)
 {
     if (initCallTarget_ == Circuit::NullGate()) {
         GateRef frameArgs = GetFrameArgs(info);
@@ -755,7 +770,7 @@ void TSInlineLowering::SetInitCallTargetAndConstPoolId(CallGateInfo &info)
     }
 }
 
-void TSInlineLowering::AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets,
+void TSInlineLowering::AnalyseFastAccessor(InlineTypeInfoAccessor &info, std::vector<const uint8_t*> pcOffsets,
                                            uint32_t inlineMethodOffset)
 {
     isFastAccessor_ = false;

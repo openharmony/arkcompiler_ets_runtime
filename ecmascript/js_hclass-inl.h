@@ -253,15 +253,31 @@ inline JSHClass *JSHClass::FindRootHClass(JSHClass *hclass)
     return root;
 }
 
+inline JSTaggedValue JSHClass::FindProtoHClass(JSHClass *hclass)
+{
+    auto proto = hclass->GetProto();
+    if (proto.IsJSObject()) {
+        auto prototypeObj = JSObject::Cast(proto);
+        return JSTaggedValue(prototypeObj->GetClass());
+    }
+    return JSTaggedValue::Undefined();
+}
+
+inline JSTaggedValue JSHClass::FindProtoRootHClass(JSHClass *hclass)
+{
+    auto proto = hclass->GetProto();
+    if (proto.IsJSObject()) {
+        auto prototypeObj = JSObject::Cast(proto);
+        auto prototypeHClass = prototypeObj->GetClass();
+        return JSTaggedValue(JSHClass::FindRootHClass(prototypeHClass));
+    }
+    return JSTaggedValue::Undefined();
+}
+
 inline void JSHClass::UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                        const JSHandle<JSHClass> &child)
 {
-    auto rootHClass = parent->GetParent();
-    if (rootHClass.IsJSHClass()) {
-        child->SetParent(thread, rootHClass);
-    } else {
-        child->SetParent(thread, parent);
-    }
+    child->SetParent(thread, parent);
 }
 
 inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)

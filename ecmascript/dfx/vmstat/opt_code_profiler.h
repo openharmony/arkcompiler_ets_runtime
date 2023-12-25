@@ -18,6 +18,34 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 
+// bcIndex   bytecode   count    fast    slow    typerate
+// ====================(print all)=======================
+// ........
+// ======================================================
+// total
+
+// tip: not print if count below 10000
+// ====================(top1 method: name, methodId)=====
+// .......
+// (bcIndex   bytecode   count    fast    slow    typerate)
+// .......
+// ======================================================
+
+// ====================(top2 method: name)===============
+// .......
+// ======================================================
+
+// .......
+
+// ====================(top10 method: name)==============
+// .......
+// ======================================================
+
+// methodId, abcId, bcIndex, Value1(opcode, fastcount, slowcount)，Value2(methodName, totalcount)
+// key: methodId, abcId
+// std::map<key, <bcIndex, Value1>>
+// std::map<key, Value2>
+
 namespace panda::ecmascript {
 class OptCodeProfiler {
 public:
@@ -56,6 +84,92 @@ public:
         uint64_t slowPathValue;
     };
 
+    struct Key {
+        Key(uint32_t abcId, uint32_t methodId)
+        {
+            abcAndMethodId_ = (((uint64_t)abcId) << 32) + methodId; // 32： 32bit
+        }
+
+        Key(uint64_t key) : abcAndMethodId_(key) {};
+
+        uint32_t GetAbcId() const
+        {
+            return (uint32_t) (abcAndMethodId_ >> 32); // 32: 32bit
+        }
+
+        uint32_t GetMehodId() const
+        {
+            return (uint32_t) abcAndMethodId_;
+        }
+
+        uint64_t Value() const
+        {
+            return abcAndMethodId_;
+        }
+
+        uint64_t abcAndMethodId_;
+    };
+
+    struct Name {
+        Name(std::string name) : methodName_(name), totalCount_(1) {}
+
+        uint64_t Count() const
+        {
+            return totalCount_;
+        }
+
+        void Inc()
+        {
+            totalCount_ = totalCount_ + 1;
+        }
+
+        std::string GetName() const
+        {
+            return methodName_;
+        }
+
+        std::string methodName_;
+        uint64_t totalCount_;
+    };
+
+    struct Record {
+        Record(EcmaOpcode opcode) : opcode_(opcode), fast_(0), slow_(0) {}
+
+        uint64_t Count() const
+        {
+            return fast_ + slow_;
+        }
+
+        uint64_t GetFast() const
+        {
+            return fast_;
+        }
+
+        uint64_t GetSlow() const
+        {
+            return slow_;
+        }
+
+        EcmaOpcode GetOpCode() const
+        {
+            return opcode_;
+        }
+
+        void IncFast()
+        {
+            fast_ = fast_ + 1;
+        }
+
+        void IncSlow()
+        {
+            slow_ = slow_ + 1;
+        }
+
+        EcmaOpcode opcode_;
+        uint64_t fast_;
+        uint64_t slow_;
+    };
+
     OptCodeProfiler()
     {
 #if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
@@ -69,18 +183,26 @@ public:
 
     ~OptCodeProfiler();
 
-    void Update(EcmaOpcode opcode, Mode mode)
-    {
-        auto it = profMap_.find(opcode);
-        if (it != profMap_.end()) {
-            (mode == Mode::TYPED_PATH) ? (it->second.typedPathValue++) : (it->second.slowPathValue++);
-        }
-    }
+    void Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpcode opcode, Mode mode);
 
     void PrintAndReset();
 
+    using BcRecord = std::map<int, Record>;
 private:
+    void FilterMethodToPrint();
+    void PrintMethodRecord(Key key, std::string methodName);
+    void ResetMethodInfo()
+    {
+        methodIdToRecord_.clear();
+        methodIdToName_.clear();
+    }
+
+    int printMehodCount_ {10};
+    int skipMaxCount_ {10000};
     std::map<EcmaOpcode, Value> profMap_;
+    std::map<uint64_t, BcRecord> methodIdToRecord_;
+    std::map<uint64_t, Name> methodIdToName_;
+    std::vector<CString> abcNames_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_VMSTAT_OPT_CODE_PROFILER_H

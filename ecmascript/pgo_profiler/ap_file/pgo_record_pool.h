@@ -104,6 +104,11 @@ public:
         return pool_->GetEntry(entryId);
     }
 
+    bool GetEntryIdByNormalizedName(const CString &value, ApEntityId &entryId) const
+    {
+        return pool_->GetEntryIdByNormalizedName(value, entryId);
+    }
+
     void Clear()
     {
         pool_->Clear();
@@ -257,7 +262,7 @@ public:
         pool_->SetGetSectionCb(GetSection);
         pool_->SetSupportCb(Support);
     }
-    
+
     void Merge(const PGOContext &context, PGOAbcFilePool &pool)
     {
         if (pool.GetPool() == nullptr) {
