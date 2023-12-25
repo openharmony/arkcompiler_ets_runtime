@@ -18,12 +18,11 @@
 #include <sys/time.h>
 
 #include "gtest/gtest.h"
-
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_locale.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/containers/containers_hashset.h"
 #include "ecmascript/containers/containers_lightweightmap.h"
 #include "ecmascript/containers/containers_lightweightset.h"
@@ -36,14 +35,14 @@
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
-#include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api/js_api_tree_map.h"
-#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_bigint.h"
@@ -56,22 +55,22 @@
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_number_format.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_set.h"
-#include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_set_iterator.h"
+#include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_number_format.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_deregister.h"
+#include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/object_factory.h"
@@ -5194,19 +5193,6 @@ void Attach1([[maybe_unused]] void *buffer)
     GTEST_LOG_(INFO) << "attach is running";
 }
 
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_Set01)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<FunctionRef> object = ObjectRef::New(vm_);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Set(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::Set01);
-}
-
 HWTEST_F_L0(JSNApiSplTest, ObjectRef_Set02)
 {
     LocalScope scope(vm_);
@@ -5364,78 +5350,6 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetPrototype)
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(ObjectRef::SetPrototype);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_DefineProperty)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    Local<JSValueRef> value = ObjectRef::New(vm_);
-    PropertyAttribute attribute(value, true, true, true);
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->DefineProperty(vm_, key, attribute);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::DefineProperty);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_Has01)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Has(vm_, key);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::Has01);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_Has02)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    uint32_t key = 123;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Has(vm_, key);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::Has02);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_Delete01)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Delete(vm_, key);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::Delete01);
-}
-
-HWTEST_F_L0(JSNApiSplTest, ObjectRef_Delete02)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_, reinterpret_cast<void *>(Detach1), reinterpret_cast<void *>(Attach1));
-    uint32_t key = 123;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        object->Delete(vm_, key);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(ObjectRef::Delete02);
 }
 
 HWTEST_F_L0(JSNApiSplTest, ObjectRef_Freeze)
@@ -6300,7 +6214,7 @@ HWTEST_F_L0(JSNApiSplTest, PostFork)
     TEST_TIME(JSValueRef::PostFork);
 }
 
-HWTEST_F_L0(JSNApiSplTest, addWorker)
+HWTEST_F_L0(JSNApiSplTest, AddWorker)
 {
     LocalScope scope(vm_);
     CalculateForTime();
@@ -6308,7 +6222,7 @@ HWTEST_F_L0(JSNApiSplTest, addWorker)
     gettimeofday(&g_beginTime, nullptr);
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::addWorker(vm_, workerVm);
+        JSNApi::AddWorker(vm_, workerVm);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSValueRef::addWorker);
@@ -6323,7 +6237,7 @@ HWTEST_F_L0(JSNApiSplTest, DeleteWorker)
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::addWorker(vm_, workerVm);
+        JSNApi::AddWorker(vm_, workerVm);
         JSNApi::DeleteWorker(vm_, workerVm);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -8054,8 +7968,8 @@ HWTEST_F_L0(JSNApiSplTest, FunctionRef_Constructor)
     CalculateForTime();
     Local<FunctionRef> cls = FunctionRef::NewClassFunction(vm_, FunCallback, nullptr, nullptr);
     Local<JSValueRef> argv[1];          // 1 = Array Size
-    int num = 1.3;                      // 1.3 = random number
-    argv[0] = NumberRef::New(vm_, 1.3); // 0 = The first element
+    int num = 13;                      // 13 = random number
+    argv[0] = NumberRef::New(vm_, num); // 0 = The first element
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         cls->Constructor(vm_, argv, 1);
