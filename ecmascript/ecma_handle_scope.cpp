@@ -74,7 +74,7 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
     thread->CheckJSTaggedType(value);
     if (result == nullptr) {
         LOG_ECMA(ERROR) << "result is nullptr, New handle fail!";
-        return nullptr;
+        return 0U;
     }
 #endif
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
