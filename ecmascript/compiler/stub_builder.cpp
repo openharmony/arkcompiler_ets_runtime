@@ -4392,8 +4392,18 @@ GateRef StubBuilder::GetCtorPrototype(GateRef ctor)
     Label exit(env);
     Label isHClass(env);
     Label isPrototype(env);
+    Label isHeapObject(env);
+    Label notHeapObject(env);
 
     GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), ctor, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(TaggedIsHeapObject(ctorProtoOrHC), &isHeapObject, &notHeapObject);
+    Bind(&notHeapObject);
+    {
+        // If go slow path, return hole.
+        constructorPrototype = Hole();
+        Jump(&exit);
+    }
+    Bind(&isHeapObject);
     Branch(IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
     Bind(&isHClass);
     {
@@ -4476,7 +4486,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                     Bind(&getCtorProtoFastPath);
                     {
                         constructorPrototype = GetCtorPrototype(target);
-                        Jump(&gotCtorPrototype);
+                        Branch(TaggedIsHole(*constructorPrototype), &getCtorProtoSlowPath, &gotCtorPrototype);
                     }
                 }
                 Bind(&getCtorProtoSlowPath);

@@ -413,3 +413,8 @@ params = undefined;
 new MyObserveArrray().splice(() => { });
 print(count, 1);
 print(params, [0]);
+
+// Test Array.includes if array trans to dictionary mode
+var arr25 = []
+arr25[1025] = 0;
+print(arr25.includes({}, 414));

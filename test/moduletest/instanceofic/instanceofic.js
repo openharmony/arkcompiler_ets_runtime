@@ -76,3 +76,14 @@ try {
 } catch (e) {
     print("CallbackFn is not callable");
 }
+
+// Test instanceof if constructor's prototype has been modified
+function function_prototype_changed() {
+
+}
+try {
+    function_prototype_changed.prototype = 5;
+    Array instanceof function_prototype_changed;
+} catch (e) {
+    print(e.name)
+}

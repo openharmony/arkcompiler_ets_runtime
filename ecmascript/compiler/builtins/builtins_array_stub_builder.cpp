@@ -1464,6 +1464,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    Label isDictMode(env);
     Label isHeapObject(env);
     Label isJsArray(env);
     Label notFound(env);
@@ -1472,6 +1473,8 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Bind(&isHeapObject);
     Branch(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    Branch(IsDictionaryMode(thisValue), &isDictMode, slowPath);
+    Bind(&isDictMode);
     GateRef thisLen = GetArrayLength(thisValue);
     Branch(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
     Bind(&thisLenNotZero);
