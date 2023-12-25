@@ -21,6 +21,7 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/heap.h"
+#include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
 static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value)
