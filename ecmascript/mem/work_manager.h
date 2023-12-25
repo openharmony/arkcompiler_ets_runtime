@@ -158,37 +158,37 @@ public:
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {
-        works_[threadId].weakQueue_->PushBack(weak);
+        works_.at(threadId).weakQueue_->PushBack(weak);
     }
 
     inline void IncreaseAliveSize(uint32_t threadId, size_t size)
     {
-        works_[threadId].aliveSize_ += size;
+        works_.at(threadId).aliveSize_ += size;
     }
 
     inline void IncreasePromotedSize(uint32_t threadId, size_t size)
     {
-        works_[threadId].promotedSize_ += size;
+        works_.at(threadId).promotedSize_ += size;
     }
 
     inline ProcessQueue *GetWeakReferenceQueue(uint32_t threadId) const
     {
-        return works_[threadId].weakQueue_;
+        return works_.at(threadId).weakQueue_;
     }
 
     inline TlabAllocator *GetTlabAllocator(uint32_t threadId) const
     {
-        return works_[threadId].allocator_;
+        return works_.at(threadId).allocator_;
     }
 
     inline void PushSlotNeedUpdate(uint32_t threadId, SlotNeedUpdate slot)
     {
-        works_[threadId].pendingUpdateSlots_.emplace_back(slot);
+        works_.at(threadId).pendingUpdateSlots_.emplace_back(slot);
     }
 
     inline bool GetSlotNeedUpdate(uint32_t threadId, SlotNeedUpdate *slot)
     {
-        std::vector<SlotNeedUpdate> &pendingUpdateSlots = works_[threadId].pendingUpdateSlots_;
+        std::vector<SlotNeedUpdate> &pendingUpdateSlots = works_.at(threadId).pendingUpdateSlots_;
         if (pendingUpdateSlots.empty()) {
             return false;
         }
@@ -214,8 +214,8 @@ private:
 
     Heap *heap_;
     uint32_t threadNum_;
-    WorkNodeHolder works_[MAX_TASKPOOL_THREAD_NUM + 1] {};
-    ContinuousStack<JSTaggedType> *continuousQueue_[MAX_TASKPOOL_THREAD_NUM + 1];
+    std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
     uintptr_t workSpace_;
     uintptr_t spaceStart_;
