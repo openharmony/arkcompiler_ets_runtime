@@ -1944,8 +1944,9 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
     auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
-    if (thread_->GetEcmaVM()->IsEnablePGOProfiler() || thread_->GetEcmaVM()->IsEnableElementsKind()) {
+    if (thread_->GetEcmaVM()->IsEnableElementsKind()) {
         // for all JSArray, the initial ElementsKind should be NONE
+        // For PGO, currently we do not support elementsKind for builtins
         auto index = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
         auto hclassVal = globalConstant->GetGlobalConstantObject(index);
         arrFuncInstanceHClass.Update(hclassVal);

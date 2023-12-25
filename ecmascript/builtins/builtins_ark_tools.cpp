@@ -344,6 +344,26 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(method->IsAotWithCallField());
 }
 
+// It is used to check whether a function is aot compiled and deopted at runtime.
+JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
+    Method *method = func->GetCallTarget();
+    bool isAotCompiled = method->IsAotWithCallField();
+    if (isAotCompiled) {
+        uint32_t deoptedCount = method->GetDeoptThreshold();
+        uint32_t deoptThreshold = thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold();
+        return JSTaggedValue(deoptedCount != deoptThreshold);
+    }
+
+    return JSTaggedValue(false);
+}
+
 JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

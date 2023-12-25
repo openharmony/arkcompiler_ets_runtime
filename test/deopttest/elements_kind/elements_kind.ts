@@ -13,29 +13,22 @@
  * limitations under the License.
  */
 
-let a = [1, 2, 3];
-let b = [1, , 3];
-let c = [1, 2, 'test', 1];
-let d = [1, 2, 3, 4.23];
-let e = new Array(3);
+declare function print(arg:any, arg1?: any):string;
 
-function foo(p) {
-  p[1] = 1.1;
+function foo () {
+    let a : number[][];
+    a = new Array(500);
+    for (let i = 0; i < 500; i++) {
+        // let arr = new Array(500);
+        let arr = new Array(500);
+        a[i] = arr;
+        for (let j = 0; j < 500; j++) {
+            a[i][j];
+        }
+    }
 }
 
-function foo1(p) {
-  p[2] = 'test';
-}
+print(ArkTools.isAOTDeoptimized(foo));
+foo();
+print(ArkTools.isAOTDeoptimized(foo));
 
-function foo2(p) {
-  p[1] = 1;
-}
-
-for (let i = 0; i < 1000; i++) {
-  foo(a);
-  foo(b);
-  foo(c);
-  foo1(d);
-  foo2(e);
-}
-c[6] = 1;
