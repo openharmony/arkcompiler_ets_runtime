@@ -24,7 +24,7 @@
     ```bash
     1. jsperftest生成的daily报告，excel格式
     	命名格式：js_perf_test_result_年月日.xlsx，比如js_perf_test_result_20231206.xlsx。
-    2. 报告表格表头输出"用例名称"、"执行状态"、"用例执行耗时(ns)"、"昨日用例执行耗时(ns)"、"是否劣化"、"执行日志"、"备注"；
+    2. 报告表格表头输出"用例名称"、"场景"、"执行状态"、"ark用例执行耗时(ms)"、"昨日ark用例执行耗时(ms)"、"是否劣化"、"v 8(ms)"、"v 8 --jitless(ms)"、"v 8/ark"、"v 8 jitless/ark"、"hyperlink"、"备注"；
        表格最后，会追加汇总信息：用例数总数、执行成功数、失败数，劣化数目等内容。具体内容，请参见附录“daily报告”。
     3. 有执行失败时，当前用例的“执行状态”单元格内容会标记。
     4. “是否劣化”列，取值：true，false。当用例前一天性能数据不存在、js用例执行异常、执行失败，都归于没有劣化。
@@ -40,58 +40,28 @@
 
 ## 附录
 
-### valueOf.js用例执行日志：
-
-```bash
-[gc] Ark Auto adapter memory pool capacity:6845104128
-[compiler] loaded stub file successfully
-NaN
-NaN
-time: 0
-NaN
-NaN
-time: 2
-NaN
-NaN
-time: 0
-NaN
-NaN
-time: 0
-[ecmascript] Runtime State duration:2740100(ns)
-[ecmascript] panda runtime stat:
-[ecmascript]     InterPreter && GC && C++ Builtin Function    Time(ns)       Count MaxTime(ns) AvgTime(ns)
-[ecmascript] =====================================================================================================================
-[ecmascript] ---------------------------------------------------------------------------------------------------------------------
-[ecmascript]                    Interpreter Total Time(ns)           0
-[ecmascript]                    BuiltinsApi Total Time(ns)           0
-[ecmascript]              AbstractOperation Total Time(ns)           0
-[ecmascript]                         Memory Total Time(ns)           0
-[ecmascript]                        Runtime Total Time(ns)           0
-[ecmascript] ---------------------------------------------------------------------------------------------------------------------
-[ecmascript]                                Total Time(ns)           0
-[ecmascript] remove js pandafile by vm destruct, file:/home/lhb/test/valueOf.abc
-```
-
 ### Daily报告
 
-| 用例名称                        | 执行状态 | 用例执行耗时（ns) | 昨日用例执行耗时(ns) | 是否劣化 | 执行日志                                        | 备注                             |
-| ------------------------------- | -------- | ----------------- | -------------------- | -------- | ----------------------------------------------- | -------------------------------- |
-| Reflect/deleteProperty.js       | pass     | 285600            | 285612               | False    |                                                 |                                  |
-| Reflect/deleteProperty.js       | pass     | 118700            | 117900               | False    |                                                 |                                  |
-| Reflect/construct.js            | pass     | 129000            | 140182               | True     | [gc] Ark Auto adapter memory pool capacity..... | last day excute time(ns): 140182 |
-| Reflect/getPrototypeOf.js       | pass     | 120300            | 120100               | False    |                                                 |                                  |
-| Array/to-spliced.js             | fail     |                   | 539500               | False    | [gc] Ark Auto adapter memory pool capacity..... |                                  |
-|                                 |          |                   |                      |          |                                                 |                                  |
-|                                 |          |                   |                      |          |                                                 |                                  |
-| Degraded percentage upper limit | 0.05     |                   |                      |          |                                                 |                                  |
-| Totle js case count             | 5        |                   |                      |          |                                                 |                                  |
-| Pass count                      | 4        |                   |                      |          |                                                 |                                  |
-| Fail count                      | 1        |                   |                      |          |                                                 |                                  |
-| Degraded count                  | 1        |                   |                      |          |                                                 |                                  |
-| Total excute time is(s)         | 00:00:01 |                   |                      |          |                                                 |                                  |
+| 用例名称                                                | 场景               | 执行状态       | ark用例执行耗时(ms) | 是否劣化 | v 8(ms) | v 8 --jitless(ms) | v 8/ark              | v 8 jitless/ark     | hyperlink                                                    | 备注 |
+| ------------------------------------------------------- | ------------------ | -------------- | ------------------- | -------- | ------ | ---------------- | ------------------- | ------------------ | ------------------------------------------------------------ | ---- |
+| decodeuricomponent/decodeuricomponent.js                | decodeuricomponent | pass           | 42                  | NA       | 18     | 33               | 0.428571428571428   | 0.7857142857142857 | https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test/decodeuricomponent/decodeuricomponent.js |      |
+| finalizationregistry/finalizationregistryconstructor.js | testconstructor    | pass           | 6                   | NA       | 10     | 26               | 1.6666666666666667  | 4.333333333333333  | https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test/finalizationregistry/finalizationregistryconstructor.js |      |
+| finalizationregistry/register.js                        | testregister       | pass           | 16                  | NA       | 14     | 44               | 0.875               | 2.75               | https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test/finalizationregistry/register.js |      |
+| finalizationregistry/unregister.js                      | testunregister     | pass           | 20                  | NA       | 51     | 99               | 2.55                | 4.95               | https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test/finalizationregistry/unregister.js |      |
+| decodeuri/decodeuri.js                                  | decodeuri          | pass           | 46                  | NA       | 19     | 36               | 0.41304347826086957 | 0.782608695652174  | https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test/decodeuri/decodeuri.js |      |
+|                                                         |                    |                |                     |          |        |                  |                     |                    |                                                              |      |
+|                                                         |                    |                |                     |          |        |                  |                     |                    |                                                              |      |
+| 劣化判定比率上限                                        |                    | 0.05           |                     |          |        |                  |                     |                    |                                                              |      |
+| Totle js case count                                     |                    | 1341           |                     |          |        |                  |                     |                    |                                                              |      |
+| Pass count                                              |                    | 1341           |                     |          |        |                  |                     |                    |                                                              |      |
+| Fail count                                              |                    | 0              |                     |          |        |                  |                     |                    |                                                              |      |
+| ark今日劣化数量                                         |                    | 2              |                     |          |        |                  |                     |                    |                                                              |      |
+| Total excute time is(s)                                 |                    | 0:06:19.699970 |                     |          |        |                  |                     |                    |                                                              |      |
+| v 8/ark 劣化数量                                         |                    | 1110           |                     |          |        |                  |                     |                    |                                                              |      |
+| v 8 jitless/ark 劣化数量                                 |                    | 1136           |                     |          |        |                  |                     |                    |                                                              |      |
 
 说明：
 
-- “昨日用例执行耗时（ns)”默认是隐藏的。
-- 执行日志的内容，请参见示例：附录“valueOf.js用例执行日志”。
-- 公里执行失败、劣化时，都会有日志信息
+- E列“昨日用例执行耗时（ns)”默认是隐藏的。
+- G列 “v 8(ms)”是有基准数据每月1、11、21日会生成v 8执行时间的基准数据，其他时间都不进行v 8执行用例操作，直接获取前边最近的基准数据
+- H列 “v 8 --jitless(ms)”是有基准数据每月1、11、21日会生成v 8 --jitless执行时间的基准数据，其他时间都不进行v 8 --jitless执行用例操作，直接获取前边最近的v 8 --jitless基准数据
