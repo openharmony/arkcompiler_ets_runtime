@@ -95,6 +95,7 @@ using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
+using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 class EcmaVM {
@@ -299,6 +300,16 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
+    }
+    
+    void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
+    {
+        SearchHapPathCallBack_ = cb;
+    }
+
+    SearchHapPathCallBack GetSearchHapPathCallBack() const
+    {
+        return SearchHapPathCallBack_;
     }
 
     void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
@@ -609,6 +620,9 @@ private:
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};
     void *concurrentData_ {nullptr};
+
+    // serch happath callback
+    SearchHapPathCallBack SearchHapPathCallBack_ {nullptr};
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;
