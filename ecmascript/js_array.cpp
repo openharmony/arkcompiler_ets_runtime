@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
@@ -46,7 +47,7 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
 
     if (!IsArrayLengthWritable(thread, self)) {
         if (mayThrow) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot assign to read only property", false);
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty), false);
         }
         return false;
     }

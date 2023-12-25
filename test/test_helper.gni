@@ -153,9 +153,19 @@ template("host_moduletest_action") {
     _timeout_ = invoker.timeout
   }
 
-  _test_js_path_ = "./${_target_name_}.js"
+  _src_dir_ = "."
+  if (defined(invoker.src_dir) && invoker.src_dir != "") {
+    _src_dir_ = invoker.src_dir
+  }
+
+  _src_postfix_ = "js"
+  if (defined(invoker.src_postfix) && invoker.src_postfix != "") {
+    _src_postfix_ = invoker.src_postfix
+  }
+
+  _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-  _test_expect_path_ = "./expect_output.txt"
+  _test_expect_path_ = "${_src_dir_}/expect_output.txt"
 
   if (_is_json_) {
     merge_file_raw = "./${_target_name_}.txt"
@@ -851,7 +861,12 @@ template("host_aot_test_action") {
   _target_name_ = "${target_name}"
   _deps_ = invoker.deps
 
-  _test_ts_path_ = "./${_target_name_}.ts"
+  _src_dir_ = "."
+  if (defined(invoker.src_dir) && invoker.src_dir != "") {
+    _src_dir_ = invoker.src_dir
+  }
+
+  _test_ts_path_ = "${_src_dir_}/${_target_name_}.ts"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
   _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
@@ -861,8 +876,8 @@ template("host_aot_test_action") {
       "$target_out_dir/slowpath/${_target_name_}.ai"
   _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
-  _test_expect_path_ = "./expect_output.txt"
-  _test_pgo_expect_path_ = "./pgo_expect_output.txt"
+  _test_expect_path_ = "${_src_dir_}/expect_output.txt"
+  _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
