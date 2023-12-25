@@ -1497,6 +1497,11 @@ ProfileType PGOProfiler::CreateRecordProfileType(ApEntityId abcId, ApEntityId cl
 
 JSTaggedValue PGOProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key)
 {
+    // This is a temporary solution for Instanceof Only!
+    // Do NOT use this function for other purpose.
+    if (currHC->IsDictionaryMode()) {
+        return JSTaggedValue(currHC);
+    }
     while (!JSTaggedValue(currHC).IsUndefinedOrNull()) {
         if (LIKELY(!currHC->IsDictionaryMode())) {
             int entry = JSHClass::FindPropertyEntry(vm_->GetJSThread(), currHC, key);
