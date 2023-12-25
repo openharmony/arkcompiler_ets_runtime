@@ -1055,6 +1055,7 @@ void HeapSnapshot::FillEdges()
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
                     Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
                     Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
+                RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
@@ -1071,7 +1072,8 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     if (entryFrom->GetType() != NodeType::CLOSURE) {
         return;
     }
-    if (*entryTo->GetName() != "" && *entryTo->GetName() != "InternalAccessor") {
+    if (*entryFrom->GetName() == "JSFunction" && *entryTo->GetName() != "" &&
+        *entryTo->GetName() != "InternalAccessor") {
         entryFrom->SetName(GetString(*entryTo->GetName()));
     }
 }
