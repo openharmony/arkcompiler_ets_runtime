@@ -295,7 +295,7 @@ void Tracing::NativeCalling([[maybe_unused]] const void *nativeAddress)
 {
     return;
 }
-void Tracing::NativeReturnJS()
+void Tracing::NativeReturn([[maybe_unused]] const void *nativeAddress)
 {
     return;
 }

@@ -38,7 +38,7 @@ public:
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void NativeCalling(const void *nativeAddress) = 0;
-    virtual void NativeReturnJS() = 0;
+    virtual void NativeReturn(const void *nativeAddress) = 0;
     virtual void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) = 0;
     virtual void MethodExit(JSHandle<Method> method) = 0;
 };
@@ -97,10 +97,10 @@ public:
         }
     }
 
-    void NativeReturnJSEvent() const
+    void NativeReturnEvent(const void *nativeAddress) const
     {
         for (auto it: listeners_) {
-            it->NativeReturnJS();
+            it->NativeReturn(nativeAddress);
         }
     }
 
