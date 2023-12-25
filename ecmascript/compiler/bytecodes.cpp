@@ -1638,8 +1638,10 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
             uint32_t v0 = READ_INST_8_3();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;

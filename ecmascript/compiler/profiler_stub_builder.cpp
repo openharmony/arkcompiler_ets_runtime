@@ -754,6 +754,8 @@ GateRef ProfilerStubBuilder::GetSlotID(GateRef pc, SlotIDFormat format)
         auto low = Load(VariableType::INT8(), pc, IntPtr(1));
         auto result = Int16Add(hight, ZExtInt8ToInt16(low));
         return ZExtInt16ToInt32(result);
+    } else if (format == SlotIDFormat::PREF_IMM8) {
+        return ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(2)));
     }
     return ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
 }

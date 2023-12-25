@@ -92,8 +92,10 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
             CandidateNormalCall(gate, workList, CallKind::CALL_THIS);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            CandidateNormalCall(gate, workList, CallKind::CALL_INIT);
             break;
         case EcmaOpcode::CALLARG0_IMM8:
         case EcmaOpcode::CALLARG1_IMM8_V8:
@@ -145,7 +147,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
             SetInitCallTargetAndConstPoolId(info);
             CircuitRootScope scope(circuit_);
             AnalyseFastAccessor(info, methodPcInfo.pcOffsets, methodOffset);
-            if (!noCheck_) {
+            if (!noCheck_ && !info.IsCallInit()) {
                 InlineCheck(info);
             }
             InlineCall(methodInfo, methodPcInfo, inlinedMethod, info);

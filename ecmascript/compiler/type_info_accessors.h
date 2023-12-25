@@ -479,6 +479,7 @@ public:
 enum CallKind : uint8_t {
     CALL,
     CALL_THIS,
+    CALL_INIT,
     CALL_SETTER,
     CALL_GETTER,
     INVALID
@@ -516,14 +517,19 @@ public:
         return GetGate();
     }
 
+    bool IsCallInit() const
+    {
+        return kind_ == CallKind::CALL_INIT;
+    }
+
     bool IsCallThis() const
     {
-        return kind_ == CallKind::CALL_THIS;
+        return kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT;
     }
 
     bool IsNormalCall() const
     {
-        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS;
+        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT;
     }
 
     bool IsCallAccessor() const

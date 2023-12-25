@@ -3331,13 +3331,13 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
 void SlowPathLowering::LowerDefineFieldByName(GateRef gate)
 {
     const int id = RTSTUB_ID(DefineField);
-    // 3: number of value inputs + acc
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    // 4: number of value inputs + acc
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef obj = acc_.GetValueIn(gate, 1);
+    GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
+    GateRef obj = acc_.GetValueIn(gate, 2);
     GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
-    GateRef value = acc_.GetValueIn(gate, 2);  // acc
+    GateRef value = acc_.GetValueIn(gate, 3);  // acc
 
     GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
     ReplaceHirWithValue(gate, newGate);

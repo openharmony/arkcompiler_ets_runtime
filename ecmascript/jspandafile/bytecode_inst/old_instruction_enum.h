@@ -32,6 +32,7 @@ enum class Format : uint8_t {
     PREF_ID32,
     PREF_ID32_IMM8,
     PREF_ID32_V8,
+    PREF_IMM8,
     PREF_IMM16,
     PREF_IMM16_IMM16,
     PREF_IMM16_IMM16_V8,
