@@ -43,7 +43,8 @@
     V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
     V("timeInUs",                      TimeInUs,                      0, INVALID)         \
     V("getElementsKind",               GetElementsKind,               1, INVALID)         \
-    V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)
+    V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)         \
+    V("isAOTDeoptimized",              IsAOTDeoptimized,              1, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -174,6 +175,9 @@ public:
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTCompiled(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isAOTCompiledAssert(func)
+    static JSTaggedValue IsAOTDeoptimized(EcmaRuntimeCallInfo *info);
 
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);

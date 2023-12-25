@@ -906,6 +906,11 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
                     ASSERT_EQ(classType.GetElementsKind(), ElementsKind::TAGGED);
+                } else if (std::string(methodName) == "foo2") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+                    auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
+                    ASSERT_TRUE(classType.IsBuiltinsArray());
+                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::HOLE_TAGGED);
                 }
             }
         };

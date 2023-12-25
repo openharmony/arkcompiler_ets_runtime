@@ -370,6 +370,12 @@ public:
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     arr->SetElements(thread, literal);
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind()) {
+                        // for all JSArray, the initial ElementsKind should be NONE
+                        // Because AOT Stable Array Deopt check, we have support arrayLiteral elementskind
+                        auto globalConstant = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+                        auto classIndex = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+                        auto hclassVal = globalConstant->GetGlobalConstantObject(classIndex);
+                        arr->SynchronizedSetClass(JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
                         ElementsKind newKind = arr->GetClass()->GetElementsKind();
