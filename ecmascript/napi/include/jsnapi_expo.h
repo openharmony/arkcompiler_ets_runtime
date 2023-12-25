@@ -1131,7 +1131,7 @@ public:
     using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 
     struct NativeBindingInfo {
-        static NativeBindingInfo* CreateNewInstance() { return new NativeBindingInfo(); }
+        static NativeBindingInfo* CreateNewInstance() { return new(std::nothrow) NativeBindingInfo(); }
         void *env = nullptr;
         void *nativeValue = nullptr;
         void *attachFunc = nullptr;
