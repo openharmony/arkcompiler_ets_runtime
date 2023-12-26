@@ -135,6 +135,8 @@ private:
     static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
         const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
+    static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+                                   JSHandle<EcmaString> &inputString, int32_t lastIndex);
 };
 
 class RegExpExecResultCache : public TaggedArray {
