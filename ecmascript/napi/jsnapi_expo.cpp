@@ -3564,7 +3564,7 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     vm->SetResolveBufferCallback(cb);
 }
 
-void SetSearchHapPathTracker(EcmaVM *vm,
+void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
     std::function<bool(const std::string moduleName, std::string &hapPath)> cb)
 {
     vm->SetSearchHapPathCallBack(cb);

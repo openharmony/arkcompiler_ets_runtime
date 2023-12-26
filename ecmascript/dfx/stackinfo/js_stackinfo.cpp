@@ -25,7 +25,7 @@
 #include "ecmascript/platform/os.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
-#include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/extractortool/src/source_map.h"
 #endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
@@ -681,7 +681,7 @@ std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr, std::string &hapP
 }
 
 JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
-                            uintptr_t preMethodId, uintptr_t offset)
+                            uintptr_t preMethodId, uintptr_t offset, std::string hapPath)
 {
     std::shared_ptr<JSPandaFile> newJsPandaFile =
             JSPandaFileManager::GetInstance()->NewJSPandaFile(pf, fileName.c_str());
@@ -709,6 +709,9 @@ JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
             columnNumber = 0;
         }
     }
+    SourceMap sourceMapObj;
+    sourceMapObj.Init(hapPath);
+    sourceMapObj.TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber);
     JsFrame jsFrame;
     size_t urlSize = url.size() + 1;
     size_t nameSize = name.size() + 1;
@@ -811,10 +814,11 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         std::string mapPath = ArkGetMapPath(fileName);
         char *data = nullptr;
         size_t dataSize = 0;
-        if (ArkReadData(hapPath, mapPath, &data, dataSize)) {
+        if (!ArkReadData(hapPath, mapPath, &data, dataSize)) {
             if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
                 return false;
             }
+            free(data);
             continue;
         }
         auto pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
@@ -828,7 +832,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
             }
             continue;
         }
-        JsFrame frame = ArkParseJsFrameInfo(pf.get(), fileName, preMethodId, offset);
+        JsFrame frame = ArkParseJsFrameInfo(pf.get(), fileName, preMethodId, offset, hapPath);
         frames.push_back(frame);
         
         if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
