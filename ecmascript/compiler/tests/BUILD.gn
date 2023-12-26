@@ -109,6 +109,12 @@ host_unittest_action("StubTest") {
     "LLVMAArch64Utils",
     "LLVMARMUtils",
     "LLVMIRReader",
+    "LLVMRISCVAsmParser",
+    "LLVMRISCVCodeGen",
+    "LLVMRISCVDesc",
+    "LLVMRISCVDisassembler",
+    "LLVMRISCVInfo",
+    "LLVMRISCVUtils",
   ]
 
   deps = [

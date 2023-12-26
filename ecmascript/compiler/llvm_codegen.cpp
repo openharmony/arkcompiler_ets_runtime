@@ -238,6 +238,13 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeARMAsmParser();
         LLVMInitializeARMTarget();
 #endif
+    } else if (triple.compare("riscv64-unknown-linux-gnu") == 0) {
+        LLVMInitializeRISCVTargetInfo();
+        LLVMInitializeRISCVTargetMC();
+        LLVMInitializeRISCVDisassembler();
+        LLVMInitializeRISCVAsmPrinter();
+        LLVMInitializeRISCVAsmParser();
+        LLVMInitializeRISCVTarget();
     } else {
         UNREACHABLE();
     }
