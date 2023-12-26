@@ -18,6 +18,7 @@ hot_reload_test_list = [
   # "same_methodname",
   "class_inheritance",
   "class_mem_func",
+  "class_same_mem_func",
   "class_mem_var",
   "class_name",
   "closure",
