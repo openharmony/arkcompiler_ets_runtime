@@ -344,7 +344,8 @@ private:
     V(Dec)                                      \
     V(Neg)                                      \
     V(Not)                                      \
-    V(ToBoolean)                                \
+    V(ToBooleanTrue)                            \
+    V(ToBooleanFalse)                           \
     V(SetPropertyByName)                        \
     V(DeprecatedSetPropertyByName)              \
     V(SetPropertyByNameWithOwn)                 \
@@ -354,6 +355,13 @@ private:
     V(TryStGlobalByName)                        \
     V(LdGlobalVar)                              \
     V(StGlobalVar)                              \
+    V(StOwnByIndex)                             \
+    V(StOwnByValue)                             \
+    V(StOwnByName)                              \
+    V(StOwnByValueWithNameSet)                  \
+    V(StOwnByNameWithNameSet)                   \
+    V(StObjByIndex)                             \
+    V(LdObjByIndex)                             \
     V(SetPropertyByValueWithOwn)                \
     V(GetPropertyByName)                        \
     V(DeprecatedGetPropertyByName)              \

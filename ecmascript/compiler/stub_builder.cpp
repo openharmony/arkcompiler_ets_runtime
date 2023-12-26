@@ -5222,7 +5222,7 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
     return ret;
 }
 
-GateRef StubBuilder::FastToBoolean(GateRef value)
+GateRef StubBuilder::FastToBoolean(GateRef value, bool flag)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -5291,15 +5291,28 @@ GateRef StubBuilder::FastToBoolean(GateRef value)
             }
         }
     }
-    Bind(&returnTrue);
-    {
-        result = TaggedTrue();
-        Jump(&exit);
-    }
-    Bind(&returnFalse);
-    {
-        result = TaggedFalse();
-        Jump(&exit);
+    if (flag == 1) {
+        Bind(&returnTrue);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnFalse);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+    } else {
+        Bind(&returnFalse);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnTrue);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
     }
 
     Bind(&exit);

@@ -966,13 +966,17 @@ JSTaggedValue SlowRuntimeStub::StArraySpread(JSThread *thread, JSTaggedValue dst
 }
 
 JSTaggedValue SlowRuntimeStub::DefineFunc(JSThread *thread, JSTaggedValue constPool, uint16_t methodId,
-                                          JSTaggedValue module)
+                                          JSTaggedValue module, uint16_t length, JSTaggedValue env,
+                                          JSTaggedValue homeObject)
 {
     INTERPRETER_TRACE(thread, DefineFunc);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constPool);
     JSHandle<JSTaggedValue> moduleHandle(thread, module);
-    return RuntimeStubs::RuntimeDefinefunc(thread, constpoolHandle, methodId, moduleHandle);
+    JSHandle<JSTaggedValue> envHandle(thread, env);
+    JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
+    return RuntimeStubs::RuntimeDefinefunc(thread, constpoolHandle, methodId, moduleHandle,
+                                           length, envHandle, homeObjectHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::GetSuperConstructor(JSThread *thread, JSTaggedValue ctor)
@@ -1017,22 +1021,26 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
     return RuntimeStubs::RuntimeSuperCallSpread(thread, funcHandle, newTargetHandle, jsArray);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject)
+JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
+                                            uint16_t length, JSTaggedValue env)
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
-    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle);
+    JSHandle<JSTaggedValue> envHandle(thread, env);
+    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle, length, envHandle);
 }
 
-JSTaggedValue SlowRuntimeStub::DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject)
+JSTaggedValue SlowRuntimeStub::DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
+                                                    uint16_t length, JSTaggedValue env)
 {
-    INTERPRETER_TRACE(thread, DefineMethod);
+    INTERPRETER_TRACE(thread, DefineSendableMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
-    return RuntimeStubs::RuntimeDefineSendableMethod(thread, methodHandle, homeObjectHandle);
+    JSHandle<JSTaggedValue> envHandle(thread, env);
+    return RuntimeStubs::RuntimeDefineSendableMethod(thread, methodHandle, homeObjectHandle, length, envHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
@@ -1110,15 +1118,18 @@ JSTaggedValue SlowRuntimeStub::CloneClassFromTemplate(JSThread *thread, JSTagged
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                      JSTaggedValue lexenv, JSTaggedValue constpool,
-                                                     uint16_t methodId, uint16_t literalId, JSTaggedValue module)
+                                                     uint16_t methodId, uint16_t literalId, JSTaggedValue module,
+                                                     JSTaggedValue length)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
     JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    JSHandle<JSTaggedValue> lengthHandle(thread, length);
     return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle,
-                                                      constpoolHandle, methodId, literalId, moduleHandle);
+                                                      constpoolHandle, methodId, literalId,
+                                                      moduleHandle, lengthHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::CreateSharedClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,

@@ -256,12 +256,20 @@ void NotStubBuilder::GenerateCircuit()
     Return(operationBuilder.Not(glue, x));
 }
 
-void ToBooleanStubBuilder::GenerateCircuit()
+void ToBooleanTrueStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
-    Return(FastToBoolean(x));
+    Return(FastToBoolean(x, true));
+}
+
+void ToBooleanFalseStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    (void)glue;
+    GateRef x = TaggedArgument(1);
+    Return(FastToBoolean(x, false));
 }
 
 void NewLexicalEnvStubBuilder::GenerateCircuit()
@@ -436,6 +444,75 @@ void SetPropertyByValueWithOwnStubBuilder::GenerateCircuit()
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
     Return(SetPropertyByValue(glue, receiver, key, value, true));
+}
+
+void StOwnByIndexStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
+    GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StOwnByIndex(glue, receiver, index, value));
+}
+
+void StOwnByValueStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
+    GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StOwnByValue(glue, receiver, key, value));
+}
+
+void StOwnByNameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2); // 2 : 3rd para
+    GateRef value = TaggedArgument(3); // 3 : 4th para
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StOwnByName(glue, receiver, key, value));
+}
+
+void StOwnByValueWithNameSetStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
+    GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StOwnByValueWithNameSet(glue, receiver, key, value));
+}
+
+void StOwnByNameWithNameSetStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2); // 2 : 3rd para
+    GateRef value = TaggedArgument(3); // 3 : 4th para
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StOwnByNameWithNameSet(glue, receiver, key, value));
+}
+
+void LdObjByIndexStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.LdObjByIndex(glue, receiver, index));
+}
+
+void StObjByIndexStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
+    GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StObjByIndex(glue, receiver, index, value));
 }
 
 void TryLdGlobalByNameStubBuilder::GenerateCircuit()
