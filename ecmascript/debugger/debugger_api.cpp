@@ -294,10 +294,21 @@ bool DebuggerApi::GetSingleStepStatus(JSDebugger *debugger)
     return debugger->GetSingleStepStatus();
 }
 
-int32_t DebuggerApi::GetObjectHash(const JSHandle<JSTaggedValue> &tagged)
+int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
 {
+    if (!tagged->IsECMAObject()) {
+        return 0;
+    }
     bool hasHash = ECMAObject::Cast(tagged->GetTaggedObject())->HasHash();
-    return hasHash ? ECMAObject::Cast(tagged->GetTaggedObject())->GetHash() : 0;
+    if (!hasHash) {
+        int32_t hash = base::RandomGenerator::GenerateIdentityHash();
+        auto ecmaObj = ECMAObject::Cast(tagged->GetTaggedObject());
+        JSHandle<ECMAObject> ecmaObjHandle(ecmaVM->GetJSThread(), ecmaObj);
+        ECMAObject::SetHash(hash, ecmaObjHandle);
+        return hash;
+    } else {
+        return ECMAObject::Cast(tagged->GetTaggedObject())->GetHash();
+    }
 }
 
 // ScopeInfo
