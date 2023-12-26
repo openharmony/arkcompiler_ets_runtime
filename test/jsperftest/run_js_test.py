@@ -27,12 +27,12 @@ from openpyxl.styles import PatternFill
 
 def get_logger(logger_name, log_file_path, level=logging.INFO):
     formatter = logging.Formatter(fmt='[%(asctime)s]  [%(levelname)s]   %(message)s',
-                                  datefmt='%Y-%b-%d  %H:%M:%S')
+                                  datefmt='%Y-%m-%d  %H:%M:%S')
 
     fh = logging.FileHandler(encoding='utf-8', mode='a', filename=log_file_path)
     fh.setFormatter(formatter)
     fh.setLevel(logging.DEBUG)
-    # 进行显示屏输出
+    # console output
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     ch.setLevel(logging.DEBUG)
@@ -47,6 +47,7 @@ def get_logger(logger_name, log_file_path, level=logging.INFO):
 logger = None
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
 TMP_PATH = os.path.join(os.getcwd(), "tmp")
+REPORT_NAME_HEAD_FIX = "js_perf_test_result"
 RET_OK = 0
 RET_FAILED = 1
 BINARY_PATH = ""
@@ -54,69 +55,144 @@ OUTPUT_PATH = ""
 LOG_PATH = ""
 TODAY_EXCEL_PATH = ""
 YESTERDAY_EXCEL_PATH = ""
-DETERIORATION_BOUNDARY_VALUE = 0
+DETERIORATION_BOUNDARY_VALUE = 0.05
+TODAY_EXCUTE_INFO = {}
+YESTERDAY_EXCUTE_TIME_DICT = {}
+V8_EXCUTE_TIME_DICT = {}
+V8_JITLESS_EXCUTE_TIME_DICT = {}
+HYPERLINK_HEAD = "https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test"
 PASS = 'pass'
 FAIL = 'fail'
+SOLID = 'solid'
+NA_FIX = 'NA'
+# 1e-6 s
+COMPARISON_ACCURACY = 0.001
+ICU_DATA_PATH = ""
+
+CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
 
 
-def update_excel_cell(report_file, cell_data):
-    try:
-        wb = load_workbook(report_file)
-        ws = wb.worksheets[0]
+def get_js_file_class_api_scenes(js_file_path):
+    scenes = []
+    with open(js_file_path, 'r') as f:
+        for line in f:
+            if "scene_output" in line:
+                str_array = line.split(':')
+                mid_str = str_array[1].strip()
+                elements = mid_str.split(' ')
+                main_key = '/'.join([elements[0], elements[1] + '.js', elements[2]]).lower()
+                scenes.append(main_key)
+    return scenes
 
-    except FileNotFoundError:
-        headers_row = ['用例名称', '执行状态', '用例执行耗时(ns)', '昨日用例执行耗时(ns)', '是否劣化', '执行日志', '备注']
-        wb = Workbook()
-        ws = wb.active
 
-        ws.column_dimensions['A'].width = 35.0
-        ws.column_dimensions['B'].width = 15.0
-        ws.column_dimensions['C'].width = 15.0
-        ws.column_dimensions['D'].width = 15.0
-        ws.column_dimensions['E'].width = 25.0
-        ws.column_dimensions['F'].width = 50.0
-        ws.column_dimensions['G'].width = 10.0
-        ws.append(headers_row)
-        ws.freeze_panes = 'A2'
-        wb.save(report_file)
+def append_row_data(report_file, case_test_data):
+    '''
+        Add one (possibly multiple lines) record per execution of the js use case
+    '''
+    wb = load_workbook(report_file)
+    ws = wb.worksheets[0]
+    for main_key in case_test_data.keys():
+        str_arr = main_key.split('/')
+        class_name = str_arr[0]
+        api_name = str_arr[1]
+        scene = str_arr[2]
+        js_case_name = '/'.join([class_name, api_name])
+        excute_status = case_test_data[main_key].exec_status
+        # range from ' ', '1.2', '0'
+        exec_time = case_test_data[main_key].exec_time.strip()
 
-    is_degraded = False
-    is_existed_data = False
-    target_row = 0
-    for row_num in range(2, ws.max_row + 1):
-        js_case_name_tmp = ws.cell(row=row_num, column=1).value
+        yesterday_excute_time = ''
+        if len(YESTERDAY_EXCUTE_TIME_DICT) > 0 and YESTERDAY_EXCUTE_TIME_DICT.get(main_key) is not None:
+            yesterday_excute_time = str(YESTERDAY_EXCUTE_TIME_DICT[main_key])
 
-        if cell_data.js_file_name == js_case_name_tmp:
-            is_existed_data = True
-            target_row = row_num
-            break
+        is_degraded_str = NA_FIX
+        if len(str(yesterday_excute_time).strip()) != 0:
+            if abs(float(yesterday_excute_time)) <= COMPARISON_ACCURACY:
+                is_degraded_str = str(True) if abs(float(exec_time)) >= DETERIORATION_BOUNDARY_VALUE else str(False)
+            else:
+                is_degraded_tmp = float(exec_time) / float(yesterday_excute_time) >= (1 + DETERIORATION_BOUNDARY_VALUE)
+                is_degraded_str = str(True) if is_degraded_tmp else str(False)
 
-    if is_existed_data is False:
-        new_row = [cell_data.js_file_name, cell_data.exec_status, cell_data.exec_time, ' ', 'False',
-                   cell_data.stack_info, cell_data.notes]
+        # v8_excute_time_str range from ' ' and '1.3'
+        v8_excute_time_str = ''
+        if len(V8_EXCUTE_TIME_DICT) > 0 and main_key in V8_EXCUTE_TIME_DICT.keys():
+            v8_excute_time_str = V8_EXCUTE_TIME_DICT[main_key].strip()
+
+        if len(v8_excute_time_str) == 0:
+            v8_excute_time = ' '
+        else:
+            v8_excute_time = v8_excute_time_str
+
+        v8_jitless_excute_time_str = ''
+        if len(V8_JITLESS_EXCUTE_TIME_DICT) > 0 and main_key in V8_JITLESS_EXCUTE_TIME_DICT.keys():
+            v8_jitless_excute_time_str = V8_JITLESS_EXCUTE_TIME_DICT[main_key].strip()
+
+        # v8_jitless_excute_time_str range from ' ' and '1.3'
+        if len(v8_jitless_excute_time_str) == 0:
+            v8_jitless_excute_time = ' '
+        else:
+            v8_jitless_excute_time = v8_jitless_excute_time_str
+
+        if len(exec_time) == 0 or len(v8_excute_time.strip()) == 0:
+            v8_divide_ark = NA_FIX
+        elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
+            if abs(float(v8_excute_time)) <= COMPARISON_ACCURACY:
+                v8_divide_ark = '1'
+            else:
+                v8_divide_ark = NA_FIX
+        else:
+            v8_excute_time = v8_excute_time.strip()
+            if len(v8_excute_time) == 0:
+                v8_divide_ark = NA_FIX
+            else:
+                v8_divide_ark = str("{:.2f}".format(float(v8_excute_time) / float(exec_time)))
+
+        if len(exec_time) == 0 or len(v8_jitless_excute_time.strip()) == 0:
+            v8_with_jitless_divide_ark = NA_FIX
+        elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
+            if abs(float(v8_jitless_excute_time)) <= COMPARISON_ACCURACY:
+                v8_with_jitless_divide_ark = '1'
+            else:
+                v8_with_jitless_divide_ark = NA_FIX
+        else:
+            v8_jitless_excute_time = v8_jitless_excute_time.strip()
+            if len(v8_jitless_excute_time) == 0:
+                v8_with_jitless_divide_ark = NA_FIX
+            else:
+                v8_with_jitless_divide_ark = str("{:.2f}".format(float(v8_jitless_excute_time) / float(exec_time)))
+
+        js_case_super_link = '/'.join([HYPERLINK_HEAD, class_name, api_name])
+
+        new_row = [js_case_name, scene, excute_status, exec_time, yesterday_excute_time,
+                   is_degraded_str, v8_excute_time, v8_jitless_excute_time, v8_divide_ark,
+                   v8_with_jitless_divide_ark, js_case_super_link, ' ']
+
         ws.append(new_row)
-        wb.save(report_file)
-    else:
-        last_day_excute_time = str(ws.cell(row=target_row, column=4).value)
-        exec_time = 0 if cell_data.exec_time == ' ' else int(cell_data.exec_time)
-        if last_day_excute_time != ' ':
-            if exec_time / int(last_day_excute_time) >= (1 + cell_data.deterioration_upper_limit):
-                is_degraded = True
-
-        ws.cell(row=target_row, column=2).value = str(cell_data.exec_status)
-        ws.cell(row=target_row, column=3).value = str(cell_data.exec_time)
-        ws.cell(row=target_row, column=5).value = str(is_degraded)
-        if is_degraded:
-            ws.cell(row=target_row, column=5).value = str(is_degraded)
-            ws.cell(row=target_row, column=5).fill = PatternFill(start_color='FF0000', end_color='FF0000',
-                                                                 fill_type='solid')
-            ws.cell(row=target_row, column=6).value = str(cell_data.stack_info)
-            ws.cell(row=target_row,
-                    column=7).value = f"last day excute time(ns): {ws.cell(row=target_row, column=4).value}"
-        wb.save(report_file)
+        if is_degraded_str is str(True):
+            # red
+            ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
+                                                                 fill_type=SOLID)
+        if v8_divide_ark != NA_FIX and float(v8_divide_ark) > 1:
+            # yellow
+            ws.cell(row=ws.max_row, column=9).fill = PatternFill(start_color='FFFF00', end_color='FFFF00',
+                                                                 fill_type=SOLID)
+        if v8_with_jitless_divide_ark != NA_FIX and float(v8_with_jitless_divide_ark) > 1:
+            # fresh red
+            ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
+                                                                  fill_type=SOLID)
+    wb.save(report_file)
+    return RET_OK
 
 
-def run_js_case(binary_path, js_file_path, class_name, api_name, excel_path):
+def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_file):
+    composite_scenes = get_js_file_class_api_scenes(js_file_path)
+    case_test_data = {}
+    execute_status = 'fail'
+    execute_time = ' '
+
+    for composite_scene in enumerate(composite_scenes):
+        case_test_data[composite_scene] = CaseTestDataType(execute_status, execute_time)
+
     js_file_name = class_name + '/' + api_name + '.js'
     fangzhou_test_path = os.path.join(TMP_PATH, "fangzhou_test")  # for abc file
     if os.path.exists(fangzhou_test_path):
@@ -130,79 +206,67 @@ def run_js_case(binary_path, js_file_path, class_name, api_name, excel_path):
     abc_file_path = api_path + ".abc"
     cur_abc_file = os.path.join(CUR_PATH, api_name + ".abc")
     api_log_path = os.path.join(class_folder_path, api_name + ".log")
-    Cell_data = namedtuple('cell', ['js_file_name', 'exec_status', 'exec_time', 'stack_info', 'notes',
-                                    'deterioration_upper_limit'])
+
     es2abc_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc".format(BINARY_PATH)
     # tranmit abc
-    cmd = f"{es2abc_path} {js_file_path};cp {cur_abc_file} {abc_file_path} "
+    cmd = f"{es2abc_path} {js_file_path};cp {cur_abc_file} {abc_file_path}"
     logger.info("run cmd: %s", cmd)
     ret = os.system(cmd)
     if ret != 0:
-        err_str = f"{js_file_name} generate abc file failed. cmd: {cmd} "
-        logger.error(err_str)
-        cell_data = Cell_data(js_file_name, FAIL, ' ', err_str, ' ', DETERIORATION_BOUNDARY_VALUE)
-        update_excel_cell(excel_path, cell_data)
-        return RET_FAILED
+        logger.error("%s generate abc file failed. cmd: %s", js_file_name, cmd)
+        append_row_data(report_file, case_test_data)
+        return case_test_data
     # execute abc
     ark_js_vm_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm".format(binary_path)
-    cmd = f"{ark_js_vm_path} --log-level=info --enable-runtime-stat=true {cur_abc_file} > {api_log_path}"
+    cmd = f"{ark_js_vm_path} --log-level=info --enable-runtime-stat=true --icu-data-path {ICU_DATA_PATH} {cur_abc_file}\
+            > {api_log_path}"
     logger.info("run cmd: %s", cmd)
     ret = os.system(cmd)
-    # grep duration
-    ns_str = ""
-    is_api_log_path_valid = False
-    if os.path.exists(api_log_path):
-        is_api_log_path_valid = True
-        with open(api_log_path, 'r') as f:
-            for line in f:
-                if "Runtime State duration" in line:
-                    ns_str = line.split(':')[1].split("(")[0]
-                    break
-        with open(api_log_path, 'r') as f:
-            content = f.read()
-
     if ret != 0:
-        err_info = f"{js_file_name} execute abc file failed. cmd: {cmd}"
-        logger.error(err_info)
-        stack_info = content if is_api_log_path_valid else ' '
-        cell_data = Cell_data(js_file_name, FAIL, ' ', stack_info, err_info, DETERIORATION_BOUNDARY_VALUE)
-        update_excel_cell(excel_path, cell_data)
-        if is_api_log_path_valid:
-            os.remove(api_log_path)
-
-        return RET_FAILED
-
-    if len(ns_str) == 0:
-        logger.error("grep executing time failed. log path: %s", api_log_path)
-        notes = "grep executing time failed.log is saved in previous column, please check it!"
-
-        cell_data = Cell_data(js_file_name, FAIL, ' ', content, notes, DETERIORATION_BOUNDARY_VALUE)
-        update_excel_cell(excel_path, cell_data)
-
-        return RET_FAILED
+        logger.error("%s execute abc file failed. cmd: %s", js_file_name, cmd)
+        append_row_data(report_file, case_test_data)
+        return case_test_data
     else:
-        cell_data = Cell_data(js_file_name, PASS, ns_str, content, ' ', DETERIORATION_BOUNDARY_VALUE)
-        update_excel_cell(excel_path, cell_data)
+        case_test_data.clear()
+        if os.path.exists(api_log_path):
+            with open(api_log_path, 'r') as f:
+                for line in f:
+                    if "scene_output" not in line:
+                        continue
+
+                    mid_str = line.split(':')[1].strip()
+                    scene = mid_str.split()[2]
+                    main_key = '/'.join([js_file_name, scene]).lower()
+                    execute_time = line.split(':')[2]
+                    execute_status = 'pass'
+                    case_test_data[main_key] = CaseTestDataType(execute_status, execute_time)
+
+        append_row_data(report_file, case_test_data)
+        logger.info("%s execute abc file successfully. cmd: %s case_test_data: %s", js_file_name, cmd, case_test_data)
 
     os.remove(cur_abc_file)
+    return case_test_data
 
-    return RET_OK
 
-
-def run(jspath, excel_path):
+def run_via_ark(jspath, report_file):
     if not os.path.exists(jspath):
         logger.error("js perf cases path is not exist. jspath: %s", jspath)
-    logger.info("begin to run js perf test. js perf cases path: %s", jspath)
+    logger.info("begin to run js perf test via ark. js perf cases path: %s", jspath)
     for root, _, files in os.walk(jspath):
         for file in files:
-            if file == '.keep':
+            if not file.endswith('.js'):
                 continue
+
             file_path = os.path.join(root, file)
             results = file_path.split("/")
             class_name = results[-2]
             api_name = results[-1].split(".")[0]
-
-            run_js_case(BINARY_PATH, file_path, class_name, api_name, excel_path)
+            js_case_name = '/'.join([class_name, results[-1]])
+            logger.info("begin to execute %s.", js_case_name)
+            test_data = run_js_case_via_ark(BINARY_PATH, file_path, class_name, api_name, report_file)
+            for _, key in enumerate(test_data.keys()):
+                TODAY_EXCUTE_INFO[key] = test_data.get(key)
+            logger.info("finish executing %s. executing info: %s.", js_case_name, TODAY_EXCUTE_INFO)
 
 
 def append_summary_info(report_file, total_cost_time):
@@ -214,68 +278,69 @@ def append_summary_info(report_file, total_cost_time):
             degraded count:
             total excute time is(s) :
             degraded percentage upper limit:
+            v8/ark degraded count:
+            v8_jitless/ark degraded count:
     """
-    try:
-        wb = load_workbook(report_file)
-        ws = wb.worksheets[0]
-
-    except FileNotFoundError:
-        headers_row = ['用例名称', '执行状态', '用例执行耗时(ns)', '昨日用例执行耗时(ns)', '是否劣化', '执行日志', '备注']
-        wb = Workbook()
-        ws = wb.active
-
-        ws.column_dimensions['A'].width = 35.0
-        ws.column_dimensions['B'].width = 15.0
-        ws.column_dimensions['C'].width = 15.0
-        ws.column_dimensions['D'].width = 15.0
-        ws.column_dimensions['E'].width = 25.0
-        ws.column_dimensions['F'].width = 50.0
-        ws.column_dimensions['G'].width = 10.0
-        ws.append(headers_row)
-        ws.freeze_panes = 'A2'
-        wb.save(report_file)
-
-    # append 2 blank
-    blank_num = 2
-    ws.insert_rows(ws.max_row + 1, blank_num)
+    wb = load_workbook(report_file)
+    ws = wb.worksheets[0]
 
     totle_num = 0
     degraded_upper_limit = DETERIORATION_BOUNDARY_VALUE
     pass_num = 0
     failed_num = 0
     degraded_num = 0
+    v8_divide_ark_degraded_count = 0
+    v8_jitless_divide_ark_degraded_count = 0
 
     for row_num in range(2, ws.max_row + 1):
-        excu_status = ws.cell(row=row_num, column=2).value
-        is_degraded = ws.cell(row=row_num, column=5).value
+        excu_status = str(ws.cell(row=row_num, column=3).value)
+        is_degraded = str(ws.cell(row=row_num, column=6).value)
+        if is_degraded == str(True):
+            degraded_num += 1
+
         if excu_status == PASS:
             pass_num += 1
             totle_num += 1
-        elif excu_status == 'FAIL':
+        elif excu_status == FAIL:
             failed_num += 1
             totle_num += 1
 
-        if is_degraded == 'True':
-            degraded_num += 1
+        obj = ws.cell(row=row_num, column=9).value
+        if obj is None:
+            obj = 0
+        v8_divide_ark = obj
+        if v8_divide_ark != NA_FIX and float(v8_divide_ark) > 1:
+            v8_divide_ark_degraded_count += 1
+        obj = ws.cell(row=row_num, column=10).value
+        if obj is None:
+            obj = 0
+        v8_jitless_divide_ark = obj
+        if v8_jitless_divide_ark != NA_FIX and float(v8_jitless_divide_ark) > 1:
+            v8_jitless_divide_ark_degraded_count += 1
 
     count = 3
     for _ in range(count):
-        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ']
+        new_row = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
         ws.append(new_row)
-    new_row = ['Degraded percentage upper limit', degraded_upper_limit, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['劣化判定比率上限', degraded_upper_limit, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['Totle js case count', totle_num, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['js 用例总数', totle_num, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['Pass count', pass_num, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['Pass 数量', pass_num, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['Fail count', failed_num, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['Fail 数量', failed_num, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['Degraded count', degraded_num, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['ark今日劣化数量', degraded_num, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['Total excute time(时:分:秒.微妙)', total_cost_time, ' ', ' ', ' ', ' ', ' ']
+    new_row = ['Total excute time(时:分:秒.微妙)', total_cost_time, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    ws.append(new_row)
+    new_row = ['v8/ark 劣化数量', v8_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    ws.append(new_row)
+    new_row = ['v8_jitless/ark 劣化数量', v8_jitless_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+               ' ', ' ']
     ws.append(new_row)
 
-    ws.column_dimensions.group('D', hidden=True)
+    ws.column_dimensions.group('E', hidden=True)
     wb.save(report_file)
     return RET_OK
 
@@ -286,7 +351,7 @@ def get_args():
         "--binarypath",
         "-bp",
         required=True,
-        help="path of binary folder. refer to harmony compile out folder path",
+        help="path of binary folder. refer to harmony root folder path",
     )
     parser.add_argument(
         "--jspath",
@@ -321,12 +386,13 @@ def get_args():
     return args
 
 
-def init_report(report_file, yestoday_report):
+def init_report(report_file):
     try:
         today_wb = load_workbook(report_file)
         today_ws = today_wb.worksheets[0]
     except FileNotFoundError:
-        headers_row = ['用例名称', '执行状态', '用例执行耗时(ns)', '昨日用例执行耗时(ns)', '是否劣化', '执行日志', '备注']
+        headers_row = ['用例名称', '场景', '执行状态', 'ark用例执行耗时(ms)', '昨日ark用例执行耗时(ms)', '是否劣化',
+                       'v8(ms)', 'v8 --jitless(ms)', 'v8/ark', 'v8 jitless/ark', 'hyperlink', '备注']
         today_wb = Workbook()
         today_ws = today_wb.active
 
@@ -335,36 +401,16 @@ def init_report(report_file, yestoday_report):
         today_ws.column_dimensions['C'].width = 15.0
         today_ws.column_dimensions['D'].width = 15.0
         today_ws.column_dimensions['E'].width = 25.0
-        today_ws.column_dimensions['F'].width = 50.0
-        today_ws.column_dimensions['G'].width = 10.0
+        today_ws.column_dimensions['F'].width = 15.0
+        today_ws.column_dimensions['G'].width = 15.0
+        today_ws.column_dimensions['H'].width = 15.0
+        today_ws.column_dimensions['I'].width = 15.0
+        today_ws.column_dimensions['J'].width = 15.0
+        today_ws.column_dimensions['K'].width = 50.0
+        today_ws.column_dimensions['L'].width = 15.0
         today_ws.append(headers_row)
         today_ws.freeze_panes = 'A2'
         today_wb.save(report_file)
-
-    if not os.path.exists(yestoday_report):
-        logger.warning("last day js perf test report path is not valid. so today's JS perf test\
-                        cannot perform degradation comparison")
-        return
-
-    wb = load_workbook(yestoday_report)
-    ws = wb.worksheets[0]
-    yesterday_map = {}
-    # open yesterday report and add cost time to D column
-    for row_num in range(2, ws.max_row + 1):
-        js_file_name = str(ws.cell(row=row_num, column=1).value)
-        cost_time = ws.cell(row=row_num, column=3).value
-        if cost_time is None:
-            cost_time = " "
-        if '.js' in js_file_name:
-            yesterday_map[js_file_name] = cost_time
-
-    wb.close()
-
-    for key in yesterday_map:
-        new_row = [key, ' ', ' ', yesterday_map[key], ' ', ' ', ' ']
-        today_ws.append(new_row)
-
-    today_wb.save(report_file)
 
 
 def append_date_label(target_str, date_input):
@@ -374,9 +420,34 @@ def append_date_label(target_str, date_input):
     return new_str
 
 
+def get_v8_benchmark_daily_report_path():
+    '''
+        get v8 based data. v8 based data obtained on 1,11,21 day for dayevery month.that is to say, in 1,11,21,
+        v8 executes js cases.
+    '''
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    today_str = now.strftime("%Y.%m.%d")
+    str_list = today_str.split('.')
+    year_str = str_list[0]
+    month_str = str_list[1]
+    day = int(str_list[2])
+    based_day = 0
+    if day > 21:
+        based_day = 21
+    elif day > 11:
+        based_day = 11
+    else:
+        based_day = 1
+
+    based_date = year_str + month_str + str(based_day)
+    base_date_file = based_date + '.xlsx'
+    based_report_name = '_'.join([REPORT_NAME_HEAD_FIX, base_date_file])
+    report_file_path = os.path.join(OUTPUT_PATH, based_report_name)
+    return report_file_path
+
+
 def get_given_date_report_name(date_input):
-    report_name_head = "js_perf_test_result"
-    report_name_head = append_date_label(report_name_head, date_input)
+    report_name_head = append_date_label(REPORT_NAME_HEAD_FIX, date_input)
     return report_name_head + ".xlsx"
 
 
@@ -384,6 +455,129 @@ def get_given_date_report_path(date_input):
     report_file_name = get_given_date_report_name(date_input)
     report_file_path = os.path.join(OUTPUT_PATH, report_file_name)
     return report_file_path
+
+
+def get_yesterday_excute_times(yesterday_report):
+    if not os.path.exists(yesterday_report) or not os.path.isfile(yesterday_report):
+        return
+
+    wb = load_workbook(yesterday_report)
+    ws = wb.worksheets[0]
+    for row_num in range(2, ws.max_row + 1):
+        js_case = ws.cell(row=row_num, column=1).value
+        scene = ws.cell(row=row_num, column=2).value
+        exec_status = ws.cell(row=row_num, column=3).value
+        if exec_status == PASS or exec_status == FAIL:
+            main_key = '/'.join([js_case, scene]).lower()
+            excute_time = ws.cell(row=row_num, column=4).value
+            YESTERDAY_EXCUTE_TIME_DICT[main_key] = excute_time
+
+
+def run_v8_single_js_case(js_file_path, cmd_para, js_case_name):
+    v8_exec_time_dict = {}
+    scenes = get_js_file_class_api_scenes(js_file_path)
+
+    v8_log_path = os.path.join(CUR_PATH, "v8.log")
+
+    if len(cmd_para) == 0:
+        cmd = f"/usr/bin/v8/d8 {js_file_path} > {v8_log_path}"
+    else:
+        cmd = f"/usr/bin/v8/d8 {cmd_para} {js_file_path} > {v8_log_path}"
+
+    logger.info("run cmd:%s", cmd)
+    ret = os.system(cmd)
+    if ret != 0:
+        for elem in enumerate(scenes):
+            v8_exec_time_dict[elem] = 0
+        logger.error("execute cmd failed. cmd: %s", cmd)
+        return v8_exec_time_dict
+
+    logger.info("v8 excute %s successfully. cmd: %s", js_file_path, cmd)
+
+    with open(v8_log_path, 'r') as f:
+        for line in f:
+            if "scene_output" not in line:
+                continue
+            str_array = line.split(':')
+            mid_str = str_array[1].strip()
+            scene = mid_str.split()[2]
+            exec_time = str_array[2]
+            key_str = '/'.join([js_case_name + '.js', scene]).lower()
+            v8_exec_time_dict[key_str] = exec_time
+
+    os.remove(v8_log_path)
+    return v8_exec_time_dict
+
+
+def get_given_column_data(report_file, column_index):
+    column_data = {}
+    if os.path.exists(report_file) and report_file.endswith('.xlsx'):
+        wb = load_workbook(report_file)
+        ws = wb.worksheets[0]
+
+        for row_num in range(2, ws.max_row + 1):
+            js_case_name = str(ws.cell(row=row_num, column=1).value)
+            scene = str(ws.cell(row=row_num, column=2).value)
+            exec_status = str(ws.cell(row=row_num, column=3).value)
+            time = str(ws.cell(row=row_num, column=column_index).value)
+            if exec_status == PASS or exec_status == FAIL:
+                main_key = '/'.join([js_case_name, scene])
+                column_data[main_key] = time
+
+    return column_data
+
+
+def get_v8_excute_times(jspath, v8_based_report_file):
+    if os.path.exists(v8_based_report_file) and os.path.isfile(v8_based_report_file):
+        # Generate v8 benchmark data on the 1st, 11th, and 21st of each month.The testing at other times refers to
+        # these V8 benchmark data
+        v8_exec_time_dict = get_given_column_data(v8_based_report_file, 7)
+        for key in v8_exec_time_dict.keys():
+            V8_EXCUTE_TIME_DICT[key] = v8_exec_time_dict[key]
+    else:
+        file_list = []
+        for root, _, files in os.walk(jspath):
+            for file in files:
+                if not file.endswith('.js'):
+                    continue
+                file_path = os.path.join(root, file)
+                file_list.append(file_path)
+        for _, file_path in enumerate(file_list):
+            results = file_path.split("/")
+            class_name = results[-2]
+            api_name = results[-1].split(".")[0]
+            js_case_name = '/'.join([class_name, api_name])
+
+            v8_exec_time_dict = run_v8_single_js_case(file_path, '', js_case_name)
+            for key in v8_exec_time_dict.keys():
+                V8_EXCUTE_TIME_DICT[key] = v8_exec_time_dict[key]
+
+
+def get_v8_jitless_excute_times(jspath, v8_based_report_file_path):
+    if os.path.exists(v8_based_report_file_path) and os.path.isfile(v8_based_report_file_path):
+        # Generate v8 benchmark data on the 1st, 11th, and 21st of each month.The testing at other times refers to
+        # these V8 benchmark data
+        v8_exec_time_dict = get_given_column_data(v8_based_report_file_path, 8)
+        for key in v8_exec_time_dict.keys():
+            V8_JITLESS_EXCUTE_TIME_DICT[key] = v8_exec_time_dict[key]
+    else:
+        file_list = []
+        for root, _, files in os.walk(jspath):
+            for file in files:
+                if not file.endswith('.js'):
+                    continue
+                file_path = os.path.join(root, file)
+                file_list.append(file_path)
+
+        for _, file_path in enumerate(file_list):
+            results = file_path.split("/")
+            class_name = results[-2]
+            api_name = results[-1].split(".")[0]
+            js_case_name = '/'.join([class_name, api_name])
+
+            v8_exec_time_dict = run_v8_single_js_case(file_path, '--jitless', js_case_name)
+            for key in v8_exec_time_dict.keys():
+                V8_JITLESS_EXCUTE_TIME_DICT[key] = v8_exec_time_dict[key]
 
 
 if __name__ == "__main__":
@@ -401,6 +595,7 @@ if __name__ == "__main__":
 
     DETERIORATION_BOUNDARY_VALUE = paras.deterioration_boundary_value
     BINARY_PATH = paras.binarypath
+    ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data/")
     OUTPUT_PATH = CUR_PATH
     if paras.output_folder_path is not None:
         OUTPUT_PATH = paras.output_folder_path
@@ -416,12 +611,18 @@ if __name__ == "__main__":
     if os.path.exists(TODAY_EXCEL_PATH):
         os.remove(TODAY_EXCEL_PATH)
 
-    init_report(TODAY_EXCEL_PATH, YESTERDAY_EXCEL_PATH)
     start_time = datetime.datetime.now(tz=datetime.timezone.utc)
-    run(paras.jspath, TODAY_EXCEL_PATH)
+    init_report(TODAY_EXCEL_PATH)
+    get_yesterday_excute_times(YESTERDAY_EXCEL_PATH)
+    v8_based_report_path = get_v8_benchmark_daily_report_path()
+    get_v8_excute_times(paras.jspath, v8_based_report_path)
+    get_v8_jitless_excute_times(paras.jspath, v8_based_report_path)
+
+    run_via_ark(paras.jspath, TODAY_EXCEL_PATH)
     end_time = datetime.datetime.now(tz=datetime.timezone.utc)
 
     totol_time = u"%s" % (end_time - start_time)
     append_summary_info(TODAY_EXCEL_PATH, totol_time)
+
     logger.info("run js perf test finished. Please check details in report.")
     shutil.rmtree(TMP_PATH)
