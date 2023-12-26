@@ -597,16 +597,18 @@ void DFXJSNApi::StopSampling([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-// old process.
+// release or debug hap : aa start -p 'dumpheap'
+//                        aa start -p 'profile'
 bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
-                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask)
+                              int32_t instanceId, const DebuggerPostTask &debuggerPostTask, bool isDebugApp)
 {
+    LOG_ECMA(INFO) << "DFXJSNApi::StartProfiler, type = " << (int)option.profilerType
+        << ", tid = " << tid << ", isDebugApp = " << isDebugApp;
     JSNApi::DebugOption debugOption;
     debugOption.libraryPath = option.libraryPath;
     if (option.profilerType == ProfilerType::CPU_PROFILER) {
         debugOption.isDebugMode = false;
-        if (JSNApi::NotifyDebugMode(
-            tid, vm, option.libraryPath, debugOption, instanceId, debuggerPostTask, false, false)) {
+        if (JSNApi::NotifyDebugMode(tid, vm, debugOption, instanceId, debuggerPostTask, isDebugApp)) {
             StartCpuProfilerForInfo(vm, option.interval);
             return true;
         } else {
@@ -615,8 +617,7 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t
         }
     } else {
         debugOption.isDebugMode = true;
-        return JSNApi::NotifyDebugMode(
-            tid, vm, option.libraryPath, debugOption, instanceId, debuggerPostTask, true, true);
+        return JSNApi::NotifyDebugMode(tid, vm, debugOption, instanceId, debuggerPostTask, isDebugApp);
     }
 }
 
