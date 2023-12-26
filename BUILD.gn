@@ -886,6 +886,7 @@ ecma_stackinfo_source = [
   "ecmascript/extractortool/src/extractor.cpp",
   "ecmascript/extractortool/src/file_mapper.cpp",
   "ecmascript/extractortool/src/file_path_utils.cpp",
+  "ecmascript/extractortool/src/source_map.cpp",
   "ecmascript/extractortool/src/zip_file_reader_io.cpp",
   "ecmascript/extractortool/src/zip_file_reader_mem.cpp",
   "ecmascript/extractortool/src/zip_file_reader.cpp",

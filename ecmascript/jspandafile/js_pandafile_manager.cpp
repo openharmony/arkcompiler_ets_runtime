@@ -492,19 +492,19 @@ std::string GetModuleNameFromDesc(const std::string &desc)
     */
     auto lastSlash = desc.rfind("/");
     if (lastSlash == std::string::npos) {
-        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find fisrt /: " << desc;
+        LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find fisrt /: " << desc;
         return "";
     }
 
     auto secondLastSlash = desc.rfind("/", lastSlash - 1);
     if (secondLastSlash == std::string::npos) {
-        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find second /: " << desc;
+        LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find second /: " << desc;
         return "";
     }
 
     auto thirdLastSlash = desc.rfind("/", secondLastSlash - 1);
     if (thirdLastSlash == std::string::npos) {
-        LOG_ECMA(DEBUG) << "ArkGetModuleName can't find third /: " << desc;
+        LOG_ECMA(DEBUG) << "GetModuleNameFromDesc can't find third /: " << desc;
         return "";
     }
     // get moduleName from thirdLastSlash to secondLastSlash
