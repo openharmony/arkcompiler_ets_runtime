@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
@@ -297,7 +298,8 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
     GateRef proto = GetCallArg0(numArgs_);
     GateRef protoIsNull = TaggedIsNull(proto);
     GateRef protoIsEcmaObj = IsEcmaObject(proto);
-    Branch(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), slowPath, &newObject);
+    GateRef protoIsJSShared = TaggedIsShared(proto);
+    Branch(BoolOr(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), protoIsJSShared), slowPath, &newObject);
     Bind(&newObject);
     {
         Label noProperties(env);

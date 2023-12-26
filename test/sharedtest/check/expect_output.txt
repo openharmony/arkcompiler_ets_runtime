@@ -14,21 +14,22 @@
 I'm propString
 I'm simple sendable's propString
 Start testUpdateInstanceProps
-Fail to update prop to null with stobjbyname. err: TypeError: Cannot set shared property with mismatched type
+Fail to update prop to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Success update subClassPropString with defineProperties
 Success update propNumber with defineProperty
-Fail to update subClassPropString with stobjbyname. err: TypeError: Cannot set shared property with mismatched type
+Fail to update subClassPropString with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Start testUpdateInstanceAccessor
 Fail to replace accessor. err: TypeError
 Success set prop through accessor with matched type
-Fail to set prop through accessor with mismatched type
+Fail to set prop through accessor with mismatched type. err: TypeError: Cannot set sendable property with mismatched type
 Start testUpdateInstanceFunction
 Fail to replace instance's func. err: TypeError: Cannot assign to read only property
 Start testUpdatePrototype
 Fail to update prototype. err: TypeError: Cannot add property in prevent extensions
 Fail to extend prop to constructor's prototype. err: TypeError: Cannot add property in prevent extensions
-Fail to change constructor of instance's prototype. err: ReferenceError: a is not defined
-Fail to replace instance's prototype. err: ReferenceError: a is not defined
+I'm propString
+Fail to change constructor of instance's prototype. err: TypeError: Cannot assign to read only property
+Fail to replace instance's prototype. err: TypeError: Cannot set proto with sendable object
 Fail to extend instance's prototype. err: TypeError
 Start testUpdateConstructor
 Fail to modify constructor's method. err: TypeError: Cannot assign to read only property
@@ -36,12 +37,35 @@ Success to modify property to constructor's property.
 Start testDelete
 Fail to delete propNumber. err: TypeError: Cannot delete property
 Start testExtend
+Fail to extend prop with defineProperty. err: TypeError
 Fail to extend prop1 with defineProperty. err: TypeError
 Fail to extend prop2 with defineProperties. err: TypeError
 Fail to extend prop3 with stobjbyname. err: TypeError: Cannot add property in prevent extensions
+Start testObjectProtoFunc
+Start testObjectAssign
+Fail to call Object.assign to extend target. err: TypeError: Cannot add property in prevent extensions
+Fail to call Object.assign to update propString with mismatched type. err: TypeError: Cannot set sendable property with mismatched type
+Success to call Object.assign to update propString
+Start testObjectCreate
+Fail to call Object.create. err: TypeError: Cannot create object with sendable proto
+Start testObjectSetPrototypeOf
+Fail to call Object.setPrototypeOf. err: TypeError: Cannot set proto with sendable object
+Start testObjectAttributesAndExtensible
+Fail to update propNumber to configurable with defineProperty. err: TypeError
+isFrozen: false
+Fail to call Object.freeze. err: TypeError: Cannot update sendable object's attributes
+isSealed: true
+Success to call Object.seal in sealed state
+isExtensible: false
+Success to call Object.preventExtensions in preventExtensions state.
 Start testUpdateWithType
-Fail to update string to int with stobjbynamme. err: TypeError: Cannot set shared property with mismatched type
-Fail to define prop with defineProperty. err: TypeError
-Fail to update subClassPropSendable to number with defineProperty. err: TypeError: Cannot set shared property with mismatched type
+Fail to update string to int with stobjbynamme. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update subClassPropSendable to number with defineProperty. err: TypeError: Cannot set sendable property with mismatched type
 I'm constructor for SimpleNumberSendable
 Success update subClassPropSendable to numberSendable with defineProperty.
+Start testKeywords
+typeof sendable object: object
+typeof sendable function: function
+sendable instanceof Object: false
+sendable instanceof SubClass: true
+sendable instanceof SuperClass: true

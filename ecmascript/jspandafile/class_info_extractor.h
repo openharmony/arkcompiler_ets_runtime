@@ -180,7 +180,7 @@ private:
 
     static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
                                    const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
-                                   PropertyAttributes attributes = PropertyAttributes::Default(true, true, true));
+                                   PropertyAttributes attributes = PropertyAttributes::Default(true, true, false));
 
     static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,
                                     JSMutableHandle<JSTaggedValue> &value);

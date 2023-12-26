@@ -25,6 +25,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_realm.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
@@ -252,6 +253,11 @@ JSTaggedValue BuiltinsObject::Create(EcmaRuntimeCallInfo *argv)
     if (!obj->IsECMAObject() && !obj->IsNull()) {
         // throw a TypeError exception
         THROW_TYPE_ERROR_AND_RETURN(thread, "Create: O is neither Object nor Null", JSTaggedValue::Exception());
+    }
+
+    if (obj->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(CreateObjectWithSendableProto),
+                                    JSTaggedValue::Exception());
     }
 
     JSHandle<JSTaggedValue> properties = GetCallArg(argv, 1);

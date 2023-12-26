@@ -1240,6 +1240,9 @@ bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const 
         }
     }
     if (op->HasHolder() && op->GetHolder()->IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
+        if (!desc.HasValue()) {
+            THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
+        }
         if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
         }
