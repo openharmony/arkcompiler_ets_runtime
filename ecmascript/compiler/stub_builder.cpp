@@ -6612,6 +6612,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             return true;
         case JSCallMode::DEPRECATED_CALL_ARG0:
         case JSCallMode::DEPRECATED_CALL_ARG1:
@@ -6783,6 +6784,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             case JSCallMode::SUPER_CALL_WITH_ARGV:
                 result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
                 break;
+            case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -6903,6 +6907,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
                         Jump(&exit);
                         break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
                     default:
                         LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
@@ -6983,6 +6991,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         break;
                     case JSCallMode::SUPER_CALL_WITH_ARGV:
                         result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
                         Jump(&exit);
                         break;
                     default:
@@ -7074,6 +7086,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
                         Jump(&exit);
                         break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
                     default:
                         LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
@@ -7154,6 +7170,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         break;
                     case JSCallMode::SUPER_CALL_WITH_ARGV:
                         result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
                         Jump(&exit);
                         break;
                     default:
@@ -7252,6 +7272,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 Jump(&exit);
                 break;
             case JSCallMode::SUPER_CALL_WITH_ARGV:
+            case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushSuperCallAndDispatch),
                     { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
                 Return();
@@ -7843,6 +7864,39 @@ GateRef StubBuilder::GetFuncKind(GateRef method)
     GateRef kind = Int32And(Int32LSR(bitfield, Int32(Method::FunctionKindBits::START_BIT)),
                             Int32((1LU << Method::FunctionKindBits::SIZE) - 1));
     return kind;
+}
+
+GateRef StubBuilder::GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOperation callBack)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), NullPtr());
+    Label fastPath(env);
+    Label noCopyPath(env);
+    Label exit(env);
+
+    GateRef itor = GetIterator(glue, array, callBack);
+    GateRef iterHClass = LoadHClass(itor);
+    GateRef isJSArrayIter = Int32Equal(GetObjectType(iterHClass),
+                                       Int32(static_cast<int32_t>(JSType::JS_ARRAY_ITERATOR)));
+    GateRef needCopy = BoolAnd(IsStableJSArray(glue, array), isJSArrayIter);
+    Branch(needCopy, &fastPath, &noCopyPath);
+    Bind(&fastPath);
+    {
+        // copy operation is omitted
+        result = GetElementsArray(array);
+        Jump(&exit);
+    }
+    Bind(&noCopyPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetCallSpreadArgs), { array });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::CalArrayRelativePos(GateRef index, GateRef arrayLen)

@@ -744,6 +744,7 @@ public:
     GateRef CallGetterHelper(
         GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
+    GateRef GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOperation callBack);
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,

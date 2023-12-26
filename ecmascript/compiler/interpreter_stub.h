@@ -138,7 +138,6 @@ public:
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
     inline GateRef GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx);
-
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
     inline void DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
