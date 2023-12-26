@@ -101,6 +101,7 @@ group("ark_typeinfer_test") {
     "tsarraytobuiltin",
     "typeof",
     "variable_after_loops",
+    "workload1",
   ]
 
   deps = []
