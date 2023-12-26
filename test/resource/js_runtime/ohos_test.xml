@@ -706,11 +706,6 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/vehicle.abc -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="HeapTrackerTest">
-        <preparer>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="HeapTrackerFirstTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
