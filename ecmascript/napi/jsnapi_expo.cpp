@@ -2664,6 +2664,11 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
     vm->SetSourceMapTranslateCallback(callback);
 }
 
+void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
+{
+    vm->SetSourceMapCallback(callback);
+}
+
 void JSNApi::GetStackBeforeCallNapiSuccess([[maybe_unused]] EcmaVM *vm,
                                            [[maybe_unused]] bool &getStackBeforeCallNapiSuccess)
 {

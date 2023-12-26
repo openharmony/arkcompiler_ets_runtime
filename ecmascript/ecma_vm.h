@@ -90,6 +90,7 @@ class JSObjectResizingStrategy;
 class Jit;
 
 using NativePtrGetter = void* (*)(void* info);
+using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
@@ -275,6 +276,16 @@ public:
     NativePtrGetter GetNativePtrGetter() const
     {
         return nativePtrGetter_;
+    }
+
+    void SetSourceMapCallback(SourceMapCallback cb)
+    {
+        sourceMapCallback_ = cb;
+    }
+
+    SourceMapCallback GetSourceMapCallback() const
+    {
+        return sourceMapCallback_;
     }
 
     void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
@@ -608,6 +619,7 @@ private:
     CMap<CString, HmsMap> hmsModuleList_;
 
     NativePtrGetter nativePtrGetter_ {nullptr};
+    SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     void *loop_ {nullptr};
 
