@@ -71,3 +71,4 @@ TypeError
 TypeError
 /(?:)/
 g
+\/vedio\/av(uuu)(uuu)

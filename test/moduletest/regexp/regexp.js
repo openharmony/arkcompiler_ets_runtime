@@ -393,3 +393,8 @@ Object.defineProperty(RegExp.prototype, "global", {
 })
 var flags = RegExp.prototype.flags;
 print(flags);
+
+let inputString = "/vedio/av{avid}{cid}";
+let extractedContent = inputString.match(/\{([^{}]+)\}/g);
+let replacedString = inputString.replace(/\{([^{}]+)\}/g, '(uuu)').replace(/\//g, "\\/");
+print(replacedString);

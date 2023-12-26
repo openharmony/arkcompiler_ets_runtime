@@ -173,7 +173,7 @@ public:
                   JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
-               JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend);
+               JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type);
     inline void SetHitCount(JSThread *thread, int hitCount)
     {
         Set(thread, CACHE_HIT_COUNT_INDEX, JSTaggedValue(hitCount));
