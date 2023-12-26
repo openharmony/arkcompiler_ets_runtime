@@ -2241,6 +2241,7 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
         Label getCtorProtoSlowPath(&builder_);
         Label ctorIsJSFunction(&builder_);
         Label gotCtorPrototype(&builder_);
+        Label isHeapObject(&builder_);
         DEFVALUE(constructorPrototype, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
         builder_.Branch(builder_.IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
         builder_.Bind(&ctorIsJSFunction);
@@ -2254,6 +2255,8 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
             {
                 Label isHClass(&builder_);
                 Label isPrototype(&builder_);
+                builder_.Branch(builder_.TaggedIsHeapObject(ctorProtoOrHC), &isHeapObject, &getCtorProtoSlowPath);
+                builder_.Bind(&isHeapObject);
                 builder_.Branch(builder_.IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
                 builder_.Bind(&isHClass);
                 {
