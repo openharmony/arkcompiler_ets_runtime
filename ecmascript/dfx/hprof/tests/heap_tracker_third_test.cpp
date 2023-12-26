@@ -132,7 +132,7 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     }
 
     // Create file test.heaptimeline
-    std::string fileName = "test.heapsnapshot";
+    std::string fileName = "HeapTrackerTest3.heapsnapshot";
     fstream outputString(fileName, std::ios::out);
     outputString.close();
     outputString.clear();

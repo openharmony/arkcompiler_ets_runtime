@@ -229,75 +229,75 @@ private:
 HWTEST_F_L0(HProfTest, ParseJSONHeader)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"snapshot\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"meta\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"node_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"edge_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"edge_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"trace_function_info_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"trace_node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"sample_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"location_fields\":"));
+    tester.GenerateSnapShot("test1.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "{\"snapshot\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "{\"meta\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "{\"node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"node_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"edge_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"edge_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"trace_function_info_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"trace_node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"sample_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test1.heapsnapshot", "\"location_fields\":"));
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceFunctionInfo)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"trace_function_infos\":", 2));  // Empty
+    tester.GenerateSnapShot("test2.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test2.heapsnapshot", "\"trace_function_infos\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceTree)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"trace_tree\":", 2));  // Empty
+    tester.GenerateSnapShot("test3.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test3.heapsnapshot", "\"trace_tree\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastSamples)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"samples\":", 2));  // Empty
+    tester.GenerateSnapShot("test4.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test4.heapsnapshot", "\"samples\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastLocations)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"locations\":", 2));  // Empty
+    tester.GenerateSnapShot("test5.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test5.heapsnapshot", "\"locations\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastString)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"strings\":[", 2));
+    tester.GenerateSnapShot("test6.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test6.heapsnapshot", "\"strings\":[", 2));
 }
 
 HWTEST_F_L0(HProfTest, ContrastClosure)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ContrastJSONClousure("test.heapsnapshot"));
+    tester.GenerateSnapShot("test7.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONClousure("test7.heapsnapshot"));
 }
 
 HWTEST_F_L0(HProfTest, ContrastEdgeCount)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ExtractCountFromMeta("test.heapsnapshot", "\"edge_count\":") ==
-                tester.ExtractCountFromPayload("test.heapsnapshot", "\"edges\":["));
+    tester.GenerateSnapShot("test8.heapsnapshot");
+    ASSERT_TRUE(tester.ExtractCountFromMeta("test8.heapsnapshot", "\"edge_count\":") ==
+                tester.ExtractCountFromPayload("test8.heapsnapshot", "\"edges\":["));
 }
 
 HWTEST_F_L0(HProfTest, TraceFuncInfoCount)
 {
     HProfTestHelper tester(instance);
-    tester.GenerateSnapShot("test.heapsnapshot");
-    ASSERT_TRUE(tester.ExtractCountFromMeta("test.heapsnapshot", "\"trace_function_count\":") ==
-                tester.ExtractCountFromPayload("test.heapsnapshot", "\"trace_function_infos\":"));
+    tester.GenerateSnapShot("test9.heapsnapshot");
+    ASSERT_TRUE(tester.ExtractCountFromMeta("test9.heapsnapshot", "\"trace_function_count\":") ==
+                tester.ExtractCountFromPayload("test9.heapsnapshot", "\"trace_function_infos\":"));
 }
 
 HWTEST_F_L0(HProfTest, TestIdConsistency)
