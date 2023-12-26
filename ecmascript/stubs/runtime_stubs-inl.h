@@ -244,6 +244,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
     ASSERT(superFunc->IsJSFunction());
 
     JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     const uint32_t argsLength = argv->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
@@ -443,7 +444,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         dstArray->SetElements(thread, dstElements);
         dstArray->SetArrayLength(thread, length);
         TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
-        for (uint32_t i = 0; i < length; i++) { 
+        for (uint32_t i = 0; i < length; i++) {
             JSTaggedValue reg = srcElements->Get(thread, i);
             if (reg.IsHole()) {
                 JSTaggedValue reg2 = JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue();
