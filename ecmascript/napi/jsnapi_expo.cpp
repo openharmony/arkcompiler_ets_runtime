@@ -885,6 +885,8 @@ Local<NumberRef> NumberRef::New(const EcmaVM *vm, int64_t input)
 
 double NumberRef::Value()
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
     return JSTaggedNumber(JSNApiHelper::ToJSTaggedValue(this)).GetNumber();
 }
 
@@ -1213,6 +1215,8 @@ Local<BooleanRef> BooleanRef::New(const EcmaVM *vm, bool value)
 
 bool BooleanRef::Value()
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
     return JSNApiHelper::ToJSTaggedValue(this).IsTrue();
 }
 
@@ -1247,34 +1251,40 @@ Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16
 
 std::string StringRef::ToString()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
 uint32_t StringRef::Length()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
 int32_t StringRef::Utf8Length(const EcmaVM *vm)
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<EcmaString> strHandle(vm->GetJSThread(), EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this)));
     return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length();
 }
 
 int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
 int StringRef::WriteUtf16(char16_t *buffer, int length)
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToUtf16(reinterpret_cast<uint16_t *>(buffer), length);
 }
 
 int StringRef::WriteLatin1(char *buffer, int length)
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToOneByte(reinterpret_cast<uint8_t *>(buffer), length);
 }
@@ -1364,8 +1374,8 @@ void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless
 
 void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
 {
+    DCHECK_SPECIAL_VALUE(this);
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(bigintVal, FATAL);
     uint32_t len = bigintVal->GetLength();
     uint32_t count = 0;
     uint32_t index = 0;
@@ -1384,8 +1394,8 @@ void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
 
 uint32_t BigIntRef::GetWordsArraySize()
 {
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(bigintVal, FATAL);
     uint32_t len = bigintVal->GetLength();
     return len % 2 != 0 ? len / 2 + 1 : len / 2; // 2 : len is odd or even
 }
@@ -1450,6 +1460,8 @@ Local<IntegerRef> IntegerRef::NewFromUnsigned(const EcmaVM *vm, unsigned int inp
 
 int IntegerRef::Value()
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
     return JSNApiHelper::ToJSTaggedValue(this).GetInt();
 }
 
@@ -1910,7 +1922,6 @@ void *ArrayBufferRef::GetBuffer()
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(arrayBuffer, FATAL);
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
         return nullptr;
