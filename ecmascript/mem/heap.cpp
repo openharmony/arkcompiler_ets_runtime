@@ -664,6 +664,36 @@ void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unuse
 #endif
 }
 
+std::string FormatCmdLine(const std::string& cmdLine)
+{
+    int startPos = 0;
+    int endPos = cmdLine.size();
+    for (unsigned long i = 0; i < cmdLine.size(); i++) {
+        if (cmdLine[i] == '/') {
+            startPos = i + 1;
+        } else if (cmdLine[i] == '\0') {
+            endPos = i;
+            break;
+        }
+    }
+    return cmdLine.substr(startPos, endPos - startPos);
+}
+
+std::string GetProcessName(int32_t pid)
+{
+    std::ifstream cmdLineFile("/proc/" + std::to_string(pid) + "/cmdline");
+    std::string processName;
+    if (cmdLineFile) {
+        std::getline(cmdLineFile, processName);
+        cmdLineFile.close();
+        processName = FormatCmdLine(processName);
+        return processName;
+    } else {
+        LOG_ECMA(ERROR) << " GetProcessName failed";
+        return "";
+    }
+}
+
 void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
@@ -675,11 +705,15 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-    SetParameter("hiviewdfx.appfreeze.filter_bundle_name", ecmaVm_->GetBundleName().c_str());
+    int32_t pid = getpid();
+    std::string propertyName = "hiviewdfx.freeze.filter." + GetProcessName(pid);
+    if (!SetParameter(propertyName.c_str(), std::to_string(pid).c_str())) {
+        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
+            << " value:" << std::to_string(pid);
+    }
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
     heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
     HeapProfilerInterface::Destroy(ecmaVm_);
-    SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
