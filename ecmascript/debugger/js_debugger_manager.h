@@ -200,8 +200,8 @@ public:
         return isObjHashDisplayEnabled_;
     }
 
-    static void AddJsDebuggerManager(uint32_t tid, JsDebuggerManager *jsDebuggerManager);
-    static JsDebuggerManager* GetJsDebuggerManager(uint32_t tid);
+    static void AddJsDebuggerManager(int tid, JsDebuggerManager *jsDebuggerManager);
+    static JsDebuggerManager* GetJsDebuggerManager(int tid);
 
 private:
     bool isDebugMode_ {false};
@@ -220,7 +220,7 @@ private:
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
 
-    static std::unordered_map<uint32_t, JsDebuggerManager *> jsDebuggerManagerMap_;
+    static std::unordered_map<int, JsDebuggerManager *> jsDebuggerManagerMap_;
     static std::shared_mutex mutex_;
 };
 }  // panda::ecmascript::tooling

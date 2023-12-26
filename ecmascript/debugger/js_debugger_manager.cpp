@@ -17,10 +17,10 @@
 
 namespace panda::ecmascript::tooling {
 
-    std::unordered_map<uint32_t, JsDebuggerManager *> JsDebuggerManager::jsDebuggerManagerMap_ {};
+    std::unordered_map<int, JsDebuggerManager *> JsDebuggerManager::jsDebuggerManagerMap_ {};
     std::shared_mutex JsDebuggerManager::mutex_;
 
-    void JsDebuggerManager::AddJsDebuggerManager (uint32_t tid, JsDebuggerManager *jsDebuggerManager)
+    void JsDebuggerManager::AddJsDebuggerManager (int tid, JsDebuggerManager *jsDebuggerManager)
     {
         std::unique_lock<std::shared_mutex> lock(mutex_);
         if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
@@ -28,7 +28,7 @@ namespace panda::ecmascript::tooling {
         }
     }
 
-    JsDebuggerManager *JsDebuggerManager::GetJsDebuggerManager(uint32_t tid)
+    JsDebuggerManager *JsDebuggerManager::GetJsDebuggerManager(int tid)
     {
         std::shared_lock<std::shared_mutex> lock(mutex_);
         if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {

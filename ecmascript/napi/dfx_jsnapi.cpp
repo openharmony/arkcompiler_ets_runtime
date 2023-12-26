@@ -599,7 +599,7 @@ void DFXJSNApi::StopSampling([[maybe_unused]] const EcmaVM *vm)
 
 // release or debug hap : aa start -p 'dumpheap'
 //                        aa start -p 'profile'
-bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
+bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int tid,
                               int32_t instanceId, const DebuggerPostTask &debuggerPostTask, bool isDebugApp)
 {
     LOG_ECMA(INFO) << "DFXJSNApi::StartProfiler, type = " << (int)option.profilerType
