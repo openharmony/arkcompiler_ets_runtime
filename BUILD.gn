@@ -107,6 +107,9 @@ group("ark_js_unittest") {
   if (is_ohos && is_standard_system) {
     deps += [ "test/fuzztest:fuzztest" ]
   }
+  if (current_cpu == "arm64") {
+    deps += [ "ecmascript/pgo_profiler/tests:unittest" ]
+  }
 }
 
 group("ark_js_perform") {
