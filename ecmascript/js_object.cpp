@@ -2529,14 +2529,13 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         propsLen++;
     }
     if (propsLen <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
-        JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen, ihcVal);
-        ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-        bool result = SetAllPropertys(thread, obj, properties, propsLen, ihcVal);
-        if (!result) {
-            obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen, JSTaggedValue::Undefined());
-            SetAllPropertys(thread, obj, properties, propsLen, JSTaggedValue::Undefined());
+        if (ihcVal.IsJSHClass()) {
+            auto hclass = JSHandle<JSHClass>(thread, ihcVal);
+            if (CheckPropertiesForRep(properties, propsLen, hclass)) {
+                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
+            }
         }
-        return obj;
+        return CreateObjectFromProperties(thread, properties, propsLen);
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
         JSHClass::TransitionToDictionary(thread, obj);
@@ -2559,27 +2558,16 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
 }
 
-bool JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, const JSHandle<TaggedArray> &properties,
-    uint32_t propsLen, JSTaggedValue ihcVal)
+JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread,
+                                                        const JSHandle<TaggedArray> &properties,
+                                                        uint32_t propsLen)
 {
-    // AOT runtime
-    if (ihcVal.IsJSHClass()) {
-        JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
-        for (size_t i = 0; i < propsLen; i++) {
-            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
-            // If value.first is false, indicating that value cannot be converted to the expected value of
-            // representation. For example, the representation is INT, but the value type is string.
-            if (!value.first) {
-                return false;
-            }
-            obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
-        }
-        auto inlineNum = ihc->GetInlinedProperties();
-        for (size_t i = propsLen; i < inlineNum; i++) {
-            obj->SetPropertyInlinedPropsWithRep(thread, i, JSTaggedValue::Null());
-        }
-        return true;
-    } else if (thread->IsPGOProfilerEnable()) {
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto hclass = factory->GetObjectLiteralHClass(properties, propsLen);
+    JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(hclass);
+    ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
+
+    if (thread->IsPGOProfilerEnable()) {
         // PGO need to track TrackType
         JSHClass *oldHC = obj->GetJSHClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(oldHC->GetLayout().GetTaggedObject());
@@ -2591,12 +2579,46 @@ bool JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, 
             }
             obj->SetPropertyInlinedProps(thread, i, value);
         }
-        return true;
+    } else {
+        for (size_t i = 0; i < propsLen; i++) {
+            // 2: literal contains a pair of key-value
+            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
+        }
     }
-    // Interpreter runtime or track field initialized fail.
+    return obj;
+}
+
+JSHandle<JSObject> JSObject::CreateObjectFromPropertiesByIHClass(const JSThread *thread,
+                                                                 const JSHandle<TaggedArray> &properties,
+                                                                 uint32_t propsLen,
+                                                                 const JSHandle<JSHClass> &ihc)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(ihc);
+    ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
+    auto layout = LayoutInfo::Cast(ihc->GetLayout().GetTaggedObject());
     for (size_t i = 0; i < propsLen; i++) {
-        // 2: literal contains a pair of key-value
-        obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
+        auto attr = layout->GetAttr(i);
+        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(i * 2 + 1));
+        ASSERT(value.first);
+        obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
+    }
+    return obj;
+}
+
+bool JSObject::CheckPropertiesForRep(
+    const JSHandle<TaggedArray> &properties, uint32_t propsLen, const JSHandle<JSHClass> &ihc)
+{
+    auto layout = LayoutInfo::Cast(ihc->GetLayout().GetTaggedObject());
+    for (size_t i = 0; i < propsLen; i++) {
+        auto attr = layout->GetAttr(i);
+        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(i * 2 + 1));
+        // If value.first is false, indicating that value cannot be converted to the expected value of
+        // representation. For example, the representation is INT, but the value type is string.
+        if (!value.first) {
+            return false;
+        }
     }
     return true;
 }

@@ -631,6 +631,15 @@ public:
     static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
                                                          const JSHandle<TaggedArray> &properties,
                                                          JSTaggedValue ihc = JSTaggedValue::Undefined());
+    static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
+                                                         const JSHandle<TaggedArray> &properties,
+                                                         uint32_t propsLen);
+    static JSHandle<JSObject> CreateObjectFromPropertiesByIHClass(const JSThread *thread,
+                                                                  const JSHandle<TaggedArray> &properties,
+                                                                  uint32_t propsLen,
+                                                                  const JSHandle<JSHClass> &ihc);
+    static bool CheckPropertiesForRep(
+        const JSHandle<TaggedArray> &properties, uint32_t propsLen, const JSHandle<JSHClass> &ihc);
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
     static void GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
@@ -682,7 +691,6 @@ public:
 
     static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
 
-    inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(uint32_t index, JSTaggedValue value);
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);
@@ -743,8 +751,6 @@ private:
     static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
-    static bool SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj,
-        const JSHandle<TaggedArray> &properties, uint32_t propsLen, JSTaggedValue ihcVal);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);

@@ -506,8 +506,7 @@ public:
                                                         size_t nativeBindingsize = 0,
                                                         NativeFlag flag = NativeFlag::NO_DIV);
 
-    JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length,
-        JSTaggedValue ihcVal);
+    JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
                                             const JSHandle<JSHClass> &objClass);
     JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);

@@ -1832,7 +1832,7 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFun
                                  thread_->GlobalConstants()->GetHandledNameString().GetTaggedValue(), attributes);
         fieldOrder++;
     }
-    
+
     {
         hclass->SetLayout(thread_, layoutInfoHandle);
         hclass->SetNumberOfProps(fieldOrder);
@@ -3632,16 +3632,8 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     return SetLayoutInObjHClass(properties, length, rootHClass);
 }
 
-JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<TaggedArray> &properties, size_t length,
-    JSTaggedValue ihcVal)
+JSHandle<JSObject> ObjectFactory::NewOldSpaceObjLiteralByHClass(const JSHandle<JSHClass> &hclass)
 {
-    JSHandle<JSHClass> hclass;
-    if (ihcVal.IsUndefined()) {
-        hclass = GetObjectLiteralHClass(properties, length);
-    } else {
-        hclass = JSHandle<JSHClass>(thread_, ihcVal);
-    }
-
     JSHandle<JSObject> obj = NewOldSpaceJSObject(hclass);
     InitializeJSObject(obj, hclass);
     return obj;
