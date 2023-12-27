@@ -66,8 +66,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
         case JSType::SYMBOL:
-        case JSType::JS_FUNCTION:
-        case JSType::JS_FUNCTION_BASE: {
+        case JSType::JS_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }

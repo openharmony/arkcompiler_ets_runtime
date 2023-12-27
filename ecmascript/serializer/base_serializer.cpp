@@ -94,6 +94,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::HCLASS:
             SerializeHClassFieldIndividually(root, start, end);
             return true;
+        case JSType::LEXICAL_ENV:
+            SerializeLexicalEnvFieldIndividually(root, start, end);
+            return true;
         case JSType::JS_FUNCTION:
             SerializeJSFunctionFieldIndividually(root, start, end);
             return true;
@@ -170,6 +173,28 @@ void BaseSerializer::SerializeJSFunctionFieldIndividually(TaggedObject *root, Ob
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
                 data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                slot++;
+                break;
+            }
+        }
+    }
+}
+
+void BaseSerializer::SerializeLexicalEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::LEXICAL_ENV);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case PARENT_ENV_SLOT:
+            case SCOPE_INFO_SLOT: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Hole());
                 slot++;
                 break;
             }
