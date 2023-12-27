@@ -2297,9 +2297,9 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
     uint32_t hash = pattern->GetKeyHashCode() + static_cast<uint32_t>(flags->GetInt()) +
                     input->GetKeyHashCode() + static_cast<uint32_t>(lastIndexInput.GetInt());
     uint32_t entry = hash & static_cast<uint32_t>(GetCacheLength() - 1);
-    if (!Match(entry, patternValue, flagsValue, inputValue, lastIndexInput, extend)) {
+    if (!Match(entry, patternValue, flagsValue, inputValue, lastIndexInput, extend, type)) {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(GetCacheLength() - 1);
-        if (!Match(entry2, patternValue, flagsValue, inputValue, lastIndexInput, extend)) {
+        if (!Match(entry2, patternValue, flagsValue, inputValue, lastIndexInput, extend, type)) {
             return JSTaggedValue::Undefined();
         }
         entry = entry2;
@@ -2386,7 +2386,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
                         lastIndexInputValue, lastIndexValue, extend);
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
-    } else if (cache->Match(entry, patternValue, flagsValue, inputValue, lastIndexInputValue, extend)) {
+    } else if (cache->Match(entry, patternValue, flagsValue, inputValue, lastIndexInputValue, extend, type)) {
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
     } else {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(cache->GetCacheLength() - 1);
@@ -2411,7 +2411,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
                             lastIndexInputValue, lastIndexValue, extendValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
-        } else if (cache->Match(entry2, patternValue, flagsValue, inputValue, lastIndexInputValue, extendValue)) {
+        } else if (cache->Match(entry2, patternValue, flagsValue, inputValue, lastIndexInputValue, extendValue, type)) {
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else {
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
@@ -2491,11 +2491,16 @@ void RegExpExecResultCache::ClearEntry(JSThread *thread, int entry)
 }
 
 bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedValue &flags, JSTaggedValue &input,
-                                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend)
+                                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type)
 {
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
             static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
+
+    JSTaggedValue typeKey = Get(index + RESULT_REPLACE_INDEX + type);
+    if (typeKey.IsUndefined()) {
+        return false;
+    }
 
     JSTaggedValue keyPattern = Get(index + PATTERN_INDEX);
     if (keyPattern.IsUndefined()) {
