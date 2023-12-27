@@ -1267,8 +1267,7 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     if (glue != r13) {
         __ Movq(glue, r13);
     }
-    __ Callq(op);
-    __ Ret();
+    __ Jmp(op);
 }
 
 void AsmInterpreterCall::HasPendingException([[maybe_unused]] ExtendedAssembler *assembler,

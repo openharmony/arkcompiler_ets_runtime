@@ -228,3 +228,16 @@ try {
 } catch (e) {
     print(e.name)
 }
+
+// Poc
+try {
+    class MyClass4 {
+        set f(a) {
+            this.f = a;
+        }
+    }
+    const instance4 = new MyClass4();
+    instance4.f = false;
+} catch (e) {
+    print(e.name);
+}

@@ -33,3 +33,4 @@ callstaticrange stackoverflow
 callnew stackoverflow
 callnew stackoverflow2
 SyntaxError
+RangeError
