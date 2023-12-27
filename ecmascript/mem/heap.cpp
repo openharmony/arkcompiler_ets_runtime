@@ -1233,6 +1233,13 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         if (!onStartupEvent_) {
             return;
         }
+        onStartupEvent_ = false;
+        LOG_GC(INFO) << "SmartGC: finish app cold start";
+
+        // If is on high sensitive scene, should return here. Otherwise, GC may be triggered next.
+        if (onHighSensitiveEvent_) {
+            return;
+        }
 
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
@@ -1242,8 +1249,6 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
-        onStartupEvent_ = false;
-        LOG_GC(INFO) << "SmartGC: exit app cold start";
     }
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
