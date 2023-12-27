@@ -102,7 +102,7 @@ public:
         ProfilerType profilerType = ProfilerType::CPU_PROFILER;
     };
     // To be compatible with old process.
-    static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, uint32_t tid,
+    static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, int tid,
                               int32_t instanceId, const DebuggerPostTask &debuggerPostTask, bool isDebugApp);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
     static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);

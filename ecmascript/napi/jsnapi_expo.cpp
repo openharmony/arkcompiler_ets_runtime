@@ -3011,7 +3011,7 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 }
 
 // for socketpair process in ohos platform.
-bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid, [[maybe_unused]] int socketfd)
+bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused]] int socketfd)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     LOG_ECMA(INFO) << "JSNApi::StartDebuggerForSocketPair, tid = " << tid << ", socketfd = " << socketfd;
@@ -3025,7 +3025,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid, [[maybe_u
         return false;
     }
 
-    using StartDebugForSocketpair = bool (*)(uint32_t, int);
+    using StartDebugForSocketpair = bool (*)(int, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
@@ -3050,7 +3050,7 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] uint32_t tid, [[maybe_u
 // release or debug hap : aa start
 //                        aa start -D
 //                        new worker
-bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
+bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
                              [[maybe_unused]] EcmaVM *vm,
                              [[maybe_unused]] const DebugOption &option,
                              [[maybe_unused]] int32_t instanceId,
@@ -3083,7 +3083,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] uint32_t tid,
     bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
     // store debugger postTask in inspector.
-    using StoreDebuggerInfo = void (*)(uint32_t, EcmaVM *, const DebuggerPostTask &);
+    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
     auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
         jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
     if (!symOfStoreDebuggerInfo) {
@@ -3151,7 +3151,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(uint32_t tid)
+bool JSNApi::StopDebugger(int tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
@@ -3162,7 +3162,7 @@ bool JSNApi::StopDebugger(uint32_t tid)
 
     const auto &handle = jsDebuggerManager->GetDebugLibraryHandle();
 
-    using StopOldDebug = void (*)(uint32_t, const std::string &);
+    using StopOldDebug = void (*)(int, const std::string &);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopOldDebug");
     if (!sym) {

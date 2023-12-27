@@ -1226,9 +1226,9 @@ public:
     static bool StartDebuggerForOldProcess(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     // socketpair process in ohos platform.
-    static bool StartDebuggerForSocketPair(uint32_t tid, int socketfd = -1);
-    static bool StopDebugger(uint32_t tid);
-    static bool NotifyDebugMode(uint32_t tid, EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
+    static bool StartDebuggerForSocketPair(int tid, int socketfd = -1);
+    static bool StopDebugger(int tid);
+    static bool NotifyDebugMode(int tid, EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
                                 const DebuggerPostTask &debuggerPostTask = {}, bool debugApp = false);
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
