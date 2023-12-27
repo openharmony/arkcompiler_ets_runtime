@@ -832,7 +832,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
             }
             continue;
         }
-        JsFrame frame = ArkParseJsFrameInfo(pf.get(), fileName, preMethodId, offset, hapPath);
+        JsFrame frame = ArkParseJsFrameInfo(pf.release(), fileName, preMethodId, offset, hapPath);
         frames.push_back(frame);
         
         if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
