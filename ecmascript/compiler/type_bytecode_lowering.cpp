@@ -453,6 +453,9 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     DISALLOW_GARBAGE_COLLECTION;
     LoadObjByNameTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
 
+    if (TryLowerTypedLdobjBynameFromGloablBuiltin(gate)) {
+        return;
+    }
     if (TryLowerTypedLdObjByNameForBuiltin(gate)) {
         return;
     }
@@ -470,6 +473,28 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     }
     Label exit(&builder_);
     AddProfiling(gate);
+    if (tacc.IsMono()) {
+        GateRef receiver = tacc.GetReceiver();
+        builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, receiver,
+                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)));
+        if (tacc.IsReceiverEqHolder(0)) {
+            result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
+        } else {
+            builder_.ProtoChangeMarkerCheck(receiver);
+            PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
+            GateRef plrGate = builder_.Int32(plr.GetData());
+            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
+            if (LIKELY(!plr.IsAccessor())) {
+                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, jsFunc, holderHClassIndex);
+            } else {
+                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, jsFunc, holderHClassIndex);
+            }
+        }
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+        DeleteConstDataIfNoUser(tacc.GetKey());
+        return;
+    }
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
@@ -489,13 +514,9 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.Jump(&exit);
         } else {
             // prototype change marker check
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
+            // lookup from receiver for holder
             auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-            auto protoHClass =
-                builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
-            auto marker =
-                builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-            builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
-
             // lookup from receiver for holder
             ObjectAccessTypeInfoAccessor::ObjectAccessInfo info = tacc.GetAccessInfo(i);
             auto holderHC = builder_.GetHClassGateFromIndex(gate, info.HClassIndex());
@@ -545,6 +566,34 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     Label exit(&builder_);
     AddProfiling(gate);
 
+    if (tacc.IsMono()) {
+        GateRef receiver = tacc.GetReceiver();
+        builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, receiver,
+                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)));
+        if (tacc.IsReceiverNoEqNewHolder(0)) {
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
+            PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
+            GateRef plrGate = builder_.Int32(plr.GetData());
+            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
+            GateRef value = tacc.GetValue();
+            if (tacc.IsHolderEqNewHolder(0)) {
+                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value);
+            } else {
+                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                                                                tacc.GetKey());
+                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value,
+                                           propKey);
+            }
+        } else if (tacc.IsReceiverEqHolder(0)) {
+            BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
+                                     tacc.GetValue(), tacc.GetAccessInfo(0).Plr());
+        }
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+        DeleteConstDataIfNoUser(tacc.GetKey());
+        return;
+    }
+
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
@@ -558,14 +607,8 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
         }
         if (tacc.IsReceiverNoEqNewHolder(i)) {
-            // prototype change marker check
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
             auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-            auto protoHClass =
-                builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
-            auto marker =
-                builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-            builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
-
             if (tacc.IsHolderEqNewHolder(i)) {
                 // lookup from receiver for holder
                 auto holderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
@@ -750,6 +793,34 @@ bool TypeBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinO
         }
     }
     // (2) other functions
+    return false;
+}
+
+bool TypeBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate)
+{
+    LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    GateRef receiver = tacc.GetReceiver();
+    if (acc_.GetOpCode(receiver) != OpCode::LOAD_BUILTIN_OBJECT) {
+        return false;
+    }
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    uint64_t index = acc_.TryGetValue(receiver);
+    BuiltinType type = static_cast<BuiltinType>(index);
+    if (type == BuiltinType::BT_MATH) {
+        auto math = globalEnv->GetMathFunction();
+        JSHClass *hclass = math.GetTaggedValue().GetTaggedObject()->GetClass();
+        JSTaggedValue key = tacc.GetKeyTaggedValue();
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        if (!plr.IsFound() || plr.IsAccessor()) {
+            return false;
+        }
+        AddProfiling(gate);
+        GateRef plrGate = builder_.Int32(plr.GetData());
+        GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        DeleteConstDataIfNoUser(tacc.GetKey());
+        return true;
+    }
     return false;
 }
 
@@ -1727,7 +1798,7 @@ void TypeBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
         return;
     }
     AddProfiling(gate);
-    GateRef result = builder_.LoadBuiltinObject(static_cast<uint64_t>(builtin.GetBuiltinBoxOffset(key)));
+    GateRef result = builder_.LoadBuiltinObject(index);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
@@ -1753,13 +1824,7 @@ void TypeBytecodeLowering::LowerInstanceOf(GateRef gate)
     GateRef target = tacc.GetTarget();
 
     builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, target, expectedHCIndexes[0]);
-    auto ctorHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target, TaggedObject::HCLASS_OFFSET);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), ctorHC, JSHClass::PROTOTYPE_OFFSET);
-    auto protoHClass =
-        builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
-    auto marker =
-        builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
-    builder_.ProtoChangeMarkerCheck(marker, acc_.FindNearestFrameState(builder_.GetDepend()));
+    builder_.ProtoChangeMarkerCheck(target);
 
     result = builder_.OrdinaryHasInstance(obj, target);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);

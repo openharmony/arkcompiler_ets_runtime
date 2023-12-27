@@ -203,6 +203,7 @@ private:
                               BuiltinsStubCSigns::ID id, bool isThrow);
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
+    bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);
 
     void AddProfiling(GateRef gate);
 

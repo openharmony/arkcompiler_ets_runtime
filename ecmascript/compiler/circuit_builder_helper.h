@@ -32,6 +32,7 @@ public:
             profiling_ = options->GetOptCodeProfiler();
             stressDeopt_ = options->GetStressDeopt();
             verifyVTable_ = options->GetVerifyVTable();
+            loopHoistProfiling_ = options->GetLoopHoistProfiler();
         }
     }
     ~CompilationConfig() = default;
@@ -86,6 +87,11 @@ public:
         return verifyVTable_;
     }
 
+    bool IsLoopHoistProfiling() const
+    {
+        return loopHoistProfiling_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -109,6 +115,7 @@ private:
     bool profiling_ {false};
     bool stressDeopt_ {false};
     bool verifyVTable_ {false};
+    bool loopHoistProfiling_ {false};
 };
 
 class Label {

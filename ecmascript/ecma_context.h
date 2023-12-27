@@ -292,6 +292,11 @@ public:
         return optCodeProfiler_;
     }
 
+    LoopHoistProfiler *GetLoopHoistProfiler() const
+    {
+        return loopHoistProfiler_;
+    }
+
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
                                 IcuDeleteEntry deleteEntry = nullptr)
@@ -557,6 +562,9 @@ private:
 
     // opt code Profiler
     OptCodeProfiler *optCodeProfiler_ {nullptr};
+
+    // opt code loop hoist
+    LoopHoistProfiler *loopHoistProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {

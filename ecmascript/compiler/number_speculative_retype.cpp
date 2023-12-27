@@ -104,6 +104,13 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitStoreProperty(gate);
         case OpCode::LOAD_PROPERTY:
             return VisitLoadProperty(gate);
+        case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
+            return VisitMonoLoadPropertyOnProto(gate);
+        case OpCode::MONO_CALL_GETTER_ON_PROTO:
+            return VisitMonoCallGetterOnProto(gate);
+        case OpCode::MONO_STORE_PROPERTY:
+        case OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO:
+            return VisitMonoStoreProperty(gate);
         case OpCode::VALUE_SELECTOR:
             return VisitPhi(gate);
         case OpCode::CONSTANT:
@@ -1229,6 +1236,92 @@ GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
         ConvertForBinaryOp(gate);
     }
 
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitMonoLoadPropertyOnProto(GateRef gate)
+{
+    if (IsRetype()) {
+        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+        PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+        return SetOutputType(gate, plr.GetRepresentation());
+    }
+
+    ASSERT(IsConvert());
+    size_t valueNum = acc_.GetNumValueIn(gate);
+    for (size_t i = 0; i < valueNum; ++i) {
+        if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
+            continue;
+        }
+        GateRef input = acc_.GetValueIn(gate, i);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+    }
+
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitMonoCallGetterOnProto(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
+                continue;
+            }
+            GateRef input = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+        }
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitMonoStoreProperty(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    ASSERT(IsConvert());
+
+    GateRef value = acc_.GetValueIn(gate, 4); // 4: value
+
+    Environment env(gate, circuit_, &builder_);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    if (plr.IsAccessor()) {
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
+                continue;
+            }
+            GateRef input = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+        }
+        return Circuit::NullGate();
+    }
+
+    if (plr.GetRepresentation() == Representation::DOUBLE) {
+        acc_.SetStoreNoBarrier(gate, true);
+        acc_.ReplaceValueIn(
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 4); // 4: value
+    } else if (plr.GetRepresentation() == Representation::INT) {
+        acc_.SetStoreNoBarrier(gate, true);
+        acc_.ReplaceValueIn(
+            gate, CheckAndConvertToInt32(value, GateType::IntType(), ConvertSupport::DISABLE), 4); // 4: value
+    } else {
+        TypeInfo valueType = GetOutputTypeInfo(value);
+        if (valueType == TypeInfo::INT1 || valueType == TypeInfo::INT32 || valueType == TypeInfo::FLOAT64) {
+            acc_.SetStoreNoBarrier(gate, true);
+        }
+        acc_.ReplaceValueIn(gate, ConvertToTagged(value), 4); // 4: value
+    }
+
+    GateRef receiver = acc_.GetValueIn(gate, 0); // receiver
+    acc_.ReplaceValueIn(gate, ConvertToTagged(receiver), 0);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
 }
 

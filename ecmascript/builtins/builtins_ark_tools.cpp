@@ -364,6 +364,17 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(false);
 }
 
+JSTaggedValue BuiltinsArkTools::PrintLoopHoistProfilerAndReset(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    LoopHoistProfiler *profiler = thread->GetCurrentEcmaContext()->GetLoopHoistProfiler();
+    if (profiler != nullptr) {
+        profiler->PrintAndReset();
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

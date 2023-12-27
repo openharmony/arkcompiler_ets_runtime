@@ -1203,4 +1203,45 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
     }
     return result;
 }
+
+PropertyLookupResult JSHClass::LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,
+                                                             JSTaggedValue key)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+
+    PropertyLookupResult result;
+    if (hclass->IsDictionaryMode()) {
+        result.SetIsFound(false);
+        return result;
+    }
+
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+    // found in local
+    if (entry != -1) {
+        result.SetIsFound(true);
+        result.SetIsLocal(true);
+        PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+        if (attr.IsInlinedProps()) {
+            result.SetIsInlinedProps(true);
+            result.SetOffset(hclass->GetInlinedPropertiesOffset(entry));
+        } else {
+            result.SetIsInlinedProps(false);
+            result.SetOffset(attr.GetOffset() - hclass->GetInlinedProperties());
+        }
+
+        if (attr.IsNotHole()) {
+            result.SetIsNotHole(true);
+        }
+        if (attr.IsAccessor()) {
+            result.SetIsAccessor(true);
+        }
+        result.SetRepresentation(attr.GetRepresentation());
+        result.SetIsWritable(attr.IsWritable());
+        return result;
+    }
+
+    // not fuond
+    result.SetIsFound(false);
+    return result;
+}
 }  // namespace panda::ecmascript

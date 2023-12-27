@@ -112,6 +112,9 @@ public:
           tsManager_(tsManager),
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
+        if (cmpCfg != nullptr) {
+            loopHoistProfiling_ =cmpCfg->IsLoopHoistProfiling();
+        }
     }
 
     ~TypeHCRLowering() = default;
@@ -206,6 +209,11 @@ private:
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
+    void LowerProtoChangeMarkerCheck(GateRef gate);
+    void LowerMonoCallGetterOnProto(GateRef gate, GateRef glue);
+    void LowerMonoLoadPropertyOnProto(GateRef gate);
+    void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
+    void LowerMonoStoreProperty(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -242,6 +250,15 @@ private:
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
+    GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);
+    void StorePropertyOnHolder(GateRef holder, GateRef value, PropertyLookupResult plr, bool needBarrier);
+
+    void AddProfiling(GateRef gate);
+
+    bool IsLoopHoistProfiling() const
+    {
+        return loopHoistProfiling_;
+    }
 
     Circuit *circuit_;
     GateAccessor acc_;
@@ -249,6 +266,7 @@ private:
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLoweringBuiltin_ {false};
+    bool loopHoistProfiling_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H

@@ -341,6 +341,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(ProfileOptimizedCode)               \
+    V(ProfileLoopHoist)                   \
     V(VerifyVTableLoading)                \
     V(VerifyVTableStoring)                \
     V(GetMethodFromCache)                 \
