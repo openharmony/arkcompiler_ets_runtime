@@ -19,9 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-function foo(x,y,z,a,b)
-{
-    foo(x,y,z,a,b)
+function foo(x, y, z, a, b) {
+    foo(x, y, z, a, b)
 }
 try {
     foo(1, 2, 3, 4, 5)
@@ -31,8 +30,7 @@ try {
     }
 }
 
-function foo2()
-{
+function foo2() {
     foo2()
 }
 try {
@@ -240,4 +238,11 @@ try {
     instance4.f = false;
 } catch (e) {
     print(e.name);
+}
+try {
+    var arr = [1];
+    arr.push(arr);
+    const v7 = arr.flat(65535);
+} catch (error) {
+    print(error.name)
 }
