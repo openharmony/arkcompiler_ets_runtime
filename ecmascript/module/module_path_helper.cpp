@@ -262,8 +262,7 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
         // maybeKey: pkg_modules/.ohpm/pkgName/pkg_modules/requestPkgName
         CString maybeKey = ohpmPath + PathHelper::SLASH_TAG + StringHelper::JoinString(vec, 0, index);
         // ohpmKey: pkg_modules/.ohpm/requestPkgName/pkg_modules/requestPkgName
-        ohpmKey = jsPandaFile->GetNpmEntries(maybeKey);
-        if (!ohpmKey.empty()) {
+        if (jsPandaFile->FindOhmUrlInPF(maybeKey, ohpmKey)) {
             break;
         }
         ++index;
@@ -490,4 +489,39 @@ CString ModulePathHelper::RemoveSuffix(const CString &requestName)
     }
     return res;
 }
-}  // namespace panda::ecmascript::base
+
+bool ModulePathHelper::NeedTranstale(const CString &requestName)
+{
+    if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(requestName, PREFIX_PACKAGE) ||
+        requestName[0] == PathHelper::POINT_TAG ||  // ./
+        (requestName[0] == PathHelper::NAME_SPACE_TAG && // @***:
+         requestName.find(PathHelper::COLON_TAG) != CString::npos)) {
+        return false;
+    }
+    return true;
+}
+
+// Adapt dynamic import using expression input, translate include NativeModule/ohpm/hsp/har.
+void ModulePathHelper::TranstaleExpressionInput(JSThread *thread, CString &requestPath,
+                                                const JSPandaFile *jsPandaFile, JSHandle<EcmaString> &specifierString)
+{
+    LOG_ECMA(DEBUG) << "Enter Translate OhmUrl for DynamicImport, requestPath: " << requestPath;
+    if (StringHelper::StringStartWith(requestPath, RAW_ARKUIX_PREFIX)) {
+        requestPath = StringHelper::Replace(requestPath, RAW_ARKUIX_PREFIX, REQUIRE_NAPI_OHOS_PREFIX);
+    } else {
+        CString outEntryPoint;
+        // FindOhmUrlInPF: frontend generate mapping in abc,
+        // all we need to do is to find the corresponding mapping result.
+        // EXCEPTION: @ohos. @hms. is translated all by runtime.
+        if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
+            requestPath = outEntryPoint;
+        }
+        // change origin: @ohos. @hms. -> @ohos: @hms:
+        // change mapping result: @package. @bundle. @xxx. -> @package: @bundle: @xxx:
+        ChangeTag(requestPath);
+    }
+    specifierString = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(requestPath);
+    LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
+}
+}  // namespace panda::ecmascript

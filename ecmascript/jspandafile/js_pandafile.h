@@ -364,7 +364,7 @@ public:
         return isRecordWithBundleName_;
     }
     CString GetEntryPoint(const CString &recordName) const;
-    CString GetNpmEntries(const CString &recordName) const;
+    bool FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const;
     uint32_t GetAOTFileInfoIndex() const
     {
         return anFileInfoIndex_;

@@ -246,17 +246,16 @@ bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo 
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
 {
-    CString entryPoint = GetNpmEntries(recordName);
-    if (HasRecord(entryPoint)) {
+    CString entryPoint;
+    if (FindOhmUrlInPF(recordName, entryPoint) && HasRecord(entryPoint)) {
         return entryPoint;
     }
     return CString();
 }
 
-CString JSPandaFile::GetNpmEntries(const CString &recordName) const
+bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
-    CString npmEntrie;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -269,14 +268,14 @@ CString JSPandaFile::GetNpmEntries(const CString &recordName) const
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);
                 CString fieldName = utf::Mutf8AsCString(sd.data);
-                npmEntrie = fieldName;
+                entryPoint = fieldName;
             });
         }
-        if (!npmEntrie.empty()) {
-            return npmEntrie;
+        if (!entryPoint.empty()) {
+            return true;
         }
     }
-    return npmEntrie;
+    return false;
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)

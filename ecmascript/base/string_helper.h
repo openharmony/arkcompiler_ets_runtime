@@ -52,7 +52,7 @@ class StringHelper {
 public:
     static constexpr int INVALID_UNICODE_FROM_UTF8 = -1;
 
-    static inline CString RepalceAll(CString str, const CString &oldValue,
+    static inline CString ReplaceAll(CString str, const CString &oldValue,
                                      const CString &newValue)
     {
         if (oldValue.empty() || oldValue == newValue) {
@@ -62,6 +62,19 @@ public:
         while ((pos = str.find(oldValue, pos)) != CString::npos) {
             str.replace(pos, oldValue.length(), newValue);
             pos += newValue.length();
+        }
+        return str;
+    }
+
+    static inline CString Replace(CString str, const CString &oldValue,
+                                  const CString &newValue)
+    {
+        if (oldValue.empty() || oldValue == newValue) {
+            return str;
+        }
+        CString::size_type pos(0);
+        if ((pos = str.find(oldValue, pos)) != CString::npos) {
+            str.replace(pos, oldValue.length(), newValue);
         }
         return str;
     }

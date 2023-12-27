@@ -2231,9 +2231,9 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
         srcStdStr = "(?:)";
     }
     // "/" -> "\/"
-    srcStdStr = base::StringHelper::RepalceAll(srcStdStr, "/", "\\/");
+    srcStdStr = base::StringHelper::ReplaceAll(srcStdStr, "/", "\\/");
     // "\\" -> "\"
-    srcStdStr = base::StringHelper::RepalceAll(srcStdStr, "\\", "\\");
+    srcStdStr = base::StringHelper::ReplaceAll(srcStdStr, "\\", "\\");
 
     return *factory->NewFromUtf8(srcStdStr);
 }

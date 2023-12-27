@@ -60,13 +60,13 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(StringHelperTest, RepalceAll)
+HWTEST_F_L0(StringHelperTest, ReplaceAll)
 {
     CString sourceStr = "H\\e\\l\\l\\o\\W\\o\\r\\l\\d!\0";
     const CString oldValue1 = "\\";
     const CString oldValue2 = "World";
-    CString result = StringHelper::RepalceAll(sourceStr, oldValue1, "");
-    result = StringHelper::RepalceAll(result, oldValue2, " OpenHarmony");
+    CString result = StringHelper::ReplaceAll(sourceStr, oldValue1, "");
+    result = StringHelper::ReplaceAll(result, oldValue2, " OpenHarmony");
     EXPECT_STREQ(result.c_str(), "Hello OpenHarmony!");
 }
 
@@ -243,5 +243,12 @@ HWTEST_F_L0(StringHelperTest, GetSpecifiedLine)
     EXPECT_STREQ(resLine11.c_str(), "Hello");
     EXPECT_STREQ(resLine22.c_str(), "world");
     EXPECT_STREQ(resLine33.c_str(), "!");
+}
+
+HWTEST_F_L0(StringHelperTest, Replace)
+{
+    CString sourceStr = "@arkui-x.test.path";
+    CString result = StringHelper::Replace(sourceStr, "@arkui-x.", "@ohos:");
+    EXPECT_STREQ(result.c_str(), "@ohos:test.path");
 }
 }  // namespace panda::test

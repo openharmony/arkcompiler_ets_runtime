@@ -70,6 +70,7 @@ public:
     static constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
     static constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
     static constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
+    static constexpr char RAW_ARKUIX_PREFIX[] = "@arkui-x.";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char PACKAGE_ENTRY_FILE[] = "/index";
@@ -120,7 +121,9 @@ public:
                                          const CString &packagePath);
     static bool IsImportFile(const CString &moduleRequestName);
     static CString RemoveSuffix(const CString &requestName);
-
+    static bool NeedTranstale(const CString &requestName);
+    static void TranstaleExpressionInput(JSThread *thread, CString &requestPath, const JSPandaFile *jsPandaFile,
+                                         JSHandle<EcmaString> &specifierString);
     /*
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
@@ -185,6 +188,22 @@ public:
             }
         }
         return CString();
+    }
+
+    /*
+     * Before: @xxx.
+     * After:  @xxx:
+     */
+    inline static bool ChangeTag(CString &path)
+    {
+        if (path[0] == PathHelper::NAME_SPACE_TAG) {
+            size_t pos = path.find(PathHelper::POINT_TAG);
+            if (pos != CString::npos) {
+                path.replace(pos, 1, PathHelper::COLON_TAG); // 1: length
+                return true;
+            }
+        }
+        return false;
     }
 };
 } // namespace panda::ecmascript

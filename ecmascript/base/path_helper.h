@@ -27,7 +27,7 @@
 namespace panda::ecmascript::base {
 class PathHelper {
 public:
-    static constexpr char COLON_TAG = ':';
+    static constexpr char COLON_TAG[] = ":";
     static constexpr char CURRENT_DIREATORY_TAG[] = "./";
     static constexpr char DOUBLE_POINT_TAG[] = "..";
     static constexpr char DOUBLE_SLASH_TAG[] = "//";
