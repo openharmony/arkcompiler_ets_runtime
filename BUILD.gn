@@ -598,6 +598,7 @@ ecma_source = [
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
+  "ecmascript/compiler/aot_file/elf_checker.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
   "ecmascript/compiler/aot_file/an_file_info.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",

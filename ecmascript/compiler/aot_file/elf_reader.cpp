@@ -35,6 +35,10 @@ bool ElfReader::VerifyELFHeader(uint32_t version, bool strictMatch)
     if (!base::FileHeaderBase::VerifyVersion("Elf ", header.e_version, version, strictMatch)) {
         return false;
     }
+    if (ElfChecker(fileMapMem_).CheckValidElf() == false) {
+        LOG_ECMA(ERROR) << "ELF file content is not valid";
+        return false;
+    }
     return true;
 }
 
