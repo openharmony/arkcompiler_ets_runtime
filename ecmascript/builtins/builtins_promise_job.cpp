@@ -34,6 +34,8 @@
 
 namespace panda::ecmascript::builtins {
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
+using ModulePathHelper = ecmascript::ModulePathHelper;
+using PathHelper = ecmascript::base::PathHelper;
 
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
@@ -155,6 +157,19 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
 
+    std::shared_ptr<JSPandaFile> curJsPandaFile;
+    CString recordNameStr;
+    if (!recordName->IsUndefined()) {
+        recordNameStr = ConvertToString(recordName.GetTaggedValue());
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, recordNameStr.c_str());
+        if (curJsPandaFile == nullptr) {
+            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
+        }
+    }
+    // translate requestPath to OhmUrl
+    if (ModulePathHelper::NeedTranstale(requestPath)) {
+        ModulePathHelper::TranstaleExpressionInput(thread, requestPath, curJsPandaFile.get(), specifierString);
+    }
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -168,14 +183,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
-        CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
-        std::shared_ptr<JSPandaFile> jsPandaFile =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, recordNameStr.c_str());
-        if (jsPandaFile == nullptr) {
-            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
-        }
         entryPoint =
-            ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+            ModulePathHelper::ConcatFileNameWithMerge(thread, curJsPandaFile.get(),
                 fileNameStr, recordNameStr, requestPath);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         moduleName.Update(factory->NewFromUtf8(entryPoint).GetTaggedValue());
