@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/profiler_stub_builder.h"
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -282,11 +283,13 @@ void ProfilerStubBuilder::ProfileCall(
                 Branch(Int32Equal(oldSlotValue, TruncInt64ToInt32(methodId)), &exit, &change);
                 Bind(&change);
                 {
-                    Branch(Int32Equal(oldSlotValue, Int32(0)), &exit, &resetSlot);
+                    GateRef polyCallCheck = Int32Equal(oldSlotValue, Int32(base::PGO_POLY_INLINE_REP));
+                    GateRef emptyCallCheck = Int32Equal(oldSlotValue, Int32(0));
+                    Branch(BoolOr(polyCallCheck, emptyCallCheck), &exit, &resetSlot);
                 }
                 Bind(&resetSlot);
                 {
-                    GateRef nonType = IntToTaggedInt(Int32(0));
+                    GateRef nonType = IntToTaggedInt(Int32(base::PGO_POLY_INLINE_REP));
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
                     TryPreDumpInner(glue, func, profileTypeInfo);
                     Jump(&exit);

@@ -42,19 +42,25 @@ function callFoo3(f: (n: number) => number, a: number): number {
 for (let i = 0; i < 2; i++) {
     callFoo1(foo, i);
 }
+print("");
 
 for (let i = 0; i < 2; i++) {
     callFoo2(foo, i);
 }
+print("");
 
 for (let i = 0; i < 2; i++) {
     callFoo2(bar, i);
 }
+print("");
 
 let ret = callFoo3(<any>mol, 1);
 
 callFoo2(bar, 1);   // bot callFoo2 and bar inlined
+print("");
 callFoo2(foo, 1);   // bot callFoo2 and foo inlined
+print("");
 callFoo1(foo, 1);
+print("");
 
 print(ret);
