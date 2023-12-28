@@ -325,7 +325,8 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
 MethodLiteral* PatchLoader::FindSameMethod(PatchInfo &patchInfo, const JSPandaFile *baseFile,
     EntityId baseMethodId, const CMap<uint32_t, CString> &baseClassInfo)
 {
-    const CMap<PatchMethodIndex, MethodLiteral*> &patchMethodLiterals = patchInfo.patchMethodLiterals;
+    const CUnorderedMap<PatchMethodIndex, MethodLiteral*, PatchMethodIndex::Hash> &patchMethodLiterals =
+        patchInfo.patchMethodLiterals;
     CString baseRecordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
     CString baseClassName = "default";
     auto iter = baseClassInfo.find(baseMethodId.GetOffset());
@@ -347,7 +348,7 @@ MethodLiteral* PatchLoader::FindSameMethod(PatchInfo &patchInfo, const JSPandaFi
 void PatchLoader::SaveBaseMethodInfo(PatchInfo &patchInfo, const JSPandaFile *baseFile,
                                      EntityId baseMethodId, const BaseMethodIndex &indexs)
 {
-    CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo = patchInfo.baseMethodInfo;
+    CUnorderedMap<BaseMethodIndex, MethodLiteral *, BaseMethodIndex::Hash> &baseMethodInfo = patchInfo.baseMethodInfo;
     MethodLiteral *baseMethodLiteral = baseFile->FindMethodLiteral(baseMethodId.GetOffset());
     ASSERT(baseMethodLiteral != nullptr);
     baseMethodInfo.emplace(indexs, baseMethodLiteral);
@@ -358,7 +359,7 @@ PatchInfo PatchLoader::GeneratePatchInfo(const JSPandaFile *patchFile)
     CMap<uint32_t, CString> patchClassInfo = CollectClassInfo(patchFile);
 
     const auto &map = patchFile->GetMethodLiteralMap();
-    CMap<PatchMethodIndex, MethodLiteral*> patchMethodLiterals;
+    CUnorderedMap<PatchMethodIndex, MethodLiteral*, PatchMethodIndex::Hash> patchMethodLiterals;
     PatchInfo patchInfo;
     for (const auto &item : map) {
         MethodLiteral *methodLiteral = item.second;
