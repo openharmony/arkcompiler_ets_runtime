@@ -12,13 +12,11 @@
 # limitations under the License.
 
 getDsHelper enter
-lexical env of async function should not be changed!
 getDsHelper resolve
 callback
 undefined
 ========================
 getDsHelper enter
-lexical env of async function should not be changed!
 getDsHelper resolve
 callback
 undefined
