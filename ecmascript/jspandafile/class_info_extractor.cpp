@@ -675,7 +675,6 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
     SendableClassDefiner::FilterDuplicatedKeys(thread, nonStaticKeys, nonStaticProperties);
-
     JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreateSendableHClass(thread, nonStaticKeys,
                                                                                   nonStaticProperties, true);
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
@@ -684,6 +683,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     JSHandle<JSHClass> constructorHClass =
         ClassInfoExtractor::CreateSendableHClass(thread, staticKeys, staticProperties, false, staticFields);
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
+    method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
         AddFieldTypeToHClass(thread, lexenv, staticFieldArray, layout, constructorHClass);
@@ -814,7 +814,6 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
-    ASSERT(length > PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     ASSERT(keys->GetLength() == properties->GetLength());
 
     JSMutableHandle<NameDictionary> dict(
@@ -825,8 +824,8 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
         PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
-        // constructor don't need to clone;
-        if (index == ClassInfoExtractor::CONSTRUCTOR_INDEX && type == ClassPropertyType::STATIC) {
+        // constructor don't need to clone
+        if (index == ClassInfoExtractor::CONSTRUCTOR_INDEX && type == ClassPropertyType::NON_STATIC) {
             JSHandle<NameDictionary> newDict =
                 NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
             dict.Update(newDict);

@@ -153,6 +153,7 @@ group("ark_js_moduletest") {
     "regressdate",
     "objectfreeze",
     "sharedcheck",
+    "definesendableclass",
   ]
 
   deps = []
@@ -298,6 +299,7 @@ group("ark_asm_test") {
     "deregistermodule",
     "getpropertybyic",
     "sharedcheck",
+    "definesendableclass",
   ]
 
   deps = []
@@ -424,6 +426,7 @@ group("ark_asm_single_step_test") {
     "getpropertybyic",
     "regressarraybuffer",
     "sharedcheck",
+    "definesendableclass",
   ]
 
   deps = []
