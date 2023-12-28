@@ -195,11 +195,18 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
-    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread);
+    JSHandle<EcmaString> translateStack = BuildEcmaStackTrace(thread);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
-    PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
+    PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(translateStack), true, false, true);
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, stackkey, stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
+
+    JSHandle<EcmaString> originalStack = BuildEcmaStackTrace(thread, false);
+    JSHandle<JSTaggedValue> originalStackKey = globalConst->GetHandledOriginalStackString();
+    PropertyDescriptor originalStackDesc(thread, JSHandle<JSTaggedValue>::Cast(originalStack), true, false, true);
+    [[maybe_unused]] bool originalStackStatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+                                                                            originalStackKey, originalStackDesc);
+    ASSERT_PRINT(originalStackStatus == true, "return result exception!");
 
     // 5. Return O.
     return nativeInstanceObj.GetTaggedValue();
@@ -224,7 +231,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
     return thread->GlobalConstants()->GetHandledUndefined();
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
+JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, bool isTranslate)
 {
     std::string data = JsStackInfo::BuildJsStackTrace(thread, false);
     if (data.size() > MAX_ERROR_SIZE) {
@@ -232,6 +239,14 @@ JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
         size_t pos = data.rfind('\n', MAX_ERROR_SIZE);
         if (pos != std::string::npos) {
             data = data.substr(0, pos);
+        }
+    }
+    if (isTranslate) {
+        // sourceMap callback
+        EcmaVM* vm = thread->GetEcmaVM();
+        auto cb = vm->GetSourceMapCallback();
+        if (cb != nullptr) {
+            data = cb(data.c_str());
         }
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
