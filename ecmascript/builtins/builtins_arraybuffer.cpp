@@ -384,7 +384,9 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
     }
     void *pointer = GetDataPointFromBuffer(arrBuf);
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
-    double val = value.GetTaggedValue().GetNumber();
+    JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, value.GetTaggedValue());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    double val = numberValue.GetNumber();
     return SetValueInBuffer(thread, byteIndex, block, type, val, littleEndian);
 }
 
