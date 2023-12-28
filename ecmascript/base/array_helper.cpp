@@ -280,6 +280,9 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
                                             const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                             const JSHandle<JSTaggedValue> &thisArg)
 {
+    if (thread->DoAsmStackOverflowCheck()) {
+        return JSTaggedValue::Exception();
+    }
     // 1. Assert: Type(target) is Object.
     // 2. Assert: Type(source) is Object.
     // 3. Assert: If mapperFunction is present, then ! IsCallable(mapperFunction) is true,

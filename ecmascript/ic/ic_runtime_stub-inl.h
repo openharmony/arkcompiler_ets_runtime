@@ -246,6 +246,9 @@ JSTaggedValue ICRuntimeStub::StorePrototype(JSThread *thread, JSTaggedValue rece
     ASSERT(handler.IsPrototypeHandler());
     PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());
     auto cellValue = prototypeHandler->GetProtoCell();
+    if (cellValue.IsNull()) {
+        return JSTaggedValue::Hole();
+    }
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {

@@ -12,3 +12,4 @@
 # limitations under the License.
 
 test successful !!!
+test set __proto__ null successful

@@ -28,3 +28,8 @@ for (let i = 0; i < 100; i++) {
     arr.length = 1025;
 }
 print("test successful !!!");
+for (let i = 0; i < 100; i++) {
+    const v77 = {};
+    v77.__proto__ = null;
+}
+print("test set __proto__ null successful")
