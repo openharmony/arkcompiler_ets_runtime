@@ -1186,9 +1186,7 @@ void PGOProfiler::UpdateLayout(JSHClass *hclass)
         }
 
         auto curType = GetOrInsertProfileType(rootHClassVal, JSTaggedType(hclass));
-        if (!recordInfos_->IsDumped(rootType, curType)) {
-            recordInfos_->UpdateLayout(rootType, JSTaggedType(hclass), curType);
-        }
+        recordInfos_->UpdateLayout(rootType, JSTaggedType(hclass), curType);
     }
 }
 
@@ -1202,9 +1200,6 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
     }
     auto curHClass = JSTaggedType(child);
     auto curType = GetOrInsertProfileType(rootHClassVal, curHClass);
-    if (recordInfos_->IsDumped(rootType, curType)) {
-        return;
-    }
     CVector<JSTaggedType> hclassVec;
     CVector<ProfileType> typeVec;
     hclassVec.push_back(curHClass);
@@ -1213,7 +1208,7 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
     auto parentHClass = JSTaggedValue(parent);
     auto parentHCValue = JSTaggedType(parent);
     auto parentType = GetOrInsertProfileType(rootHClassVal, parentHCValue);
-    while (!recordInfos_->IsDumped(rootType, parentType)) {
+    while (parentHClass.IsJSHClass()) {
         parentHClass = JSHClass::Cast(parentHClass.GetTaggedObject())->GetParent();
         if (!parentHClass.IsJSHClass()) {
             break;

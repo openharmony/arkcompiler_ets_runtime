@@ -12,4 +12,4 @@
 # limitations under the License.
 
 [trace] aot inline function name: callFoo@pgo_call_deopt caller function name: func_main_0@pgo_call_deopt
-a
+a1

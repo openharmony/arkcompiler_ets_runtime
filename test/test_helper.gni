@@ -1243,6 +1243,11 @@ template("host_aot_test_action") {
       _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
     }
 
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_run_options_ += " --compiler-trace-deopt=true"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -1311,6 +1316,11 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_lowering_builtin) &&
         invoker.is_enable_lowering_builtin) {
       _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+    }
+
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_run_options_ += " --compiler-trace-deopt=true"
     }
 
     args = [

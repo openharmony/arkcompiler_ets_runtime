@@ -421,7 +421,7 @@ void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
     }
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
-        LOG_COMPILER(INFO) << "Check Type: " << checkType;
+        LOG_TRACE(INFO) << "Check Type: " << checkType;
         std::string data = JsStackInfo::BuildJsStackTrace(thread_, true);
         LOG_COMPILER(INFO) << "Deoptimize" << data;
         const uint8_t *pc = method->GetBytecodeArray() + pc_.at(depth);

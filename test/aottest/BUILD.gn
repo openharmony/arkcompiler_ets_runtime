@@ -205,6 +205,7 @@ group("ark_aot_ts_test") {
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
     "pgo_on_heap",
+    "pgo_track_type",
     "poplexenv",
     "proxy",
     "resumegenerator",
