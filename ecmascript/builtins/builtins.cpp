@@ -2886,6 +2886,7 @@ void Builtins::InitializeGeneratorFunction(const JSHandle<GlobalEnv> &env,
     JSHandle<JSFunction> generatorFunction =
         NewBuiltinConstructor(env, generatorFuncPrototype, GeneratorObject::GeneratorFunctionConstructor,
                               "GeneratorFunction", FunctionLength::ONE);
+    JSObject::SetPrototype(thread_, JSHandle<JSObject>::Cast(generatorFunction), env->GetFunctionFunction());
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     PropertyDescriptor generatorDesc(thread_, JSHandle<JSTaggedValue>::Cast(generatorFunction), false, false, true);
     JSObject::DefineOwnProperty(thread_, generatorFuncPrototype, constructorKey, generatorDesc);
@@ -2904,7 +2905,7 @@ void Builtins::InitializeGeneratorFunction(const JSHandle<GlobalEnv> &env,
 
     // 26.5.1.1 Generator.prototype.constructor -> %GeneratorFunction.prototype%.
     PropertyDescriptor generatorObjDesc(thread_, generatorFuncPrototypeValue, false, false, true);
-    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetInitialGenerator()),
+    JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetGeneratorPrototype()),
                                 globalConst->GetHandledConstructorString(), generatorObjDesc);
 
     // Generator instances prototype -> GeneratorFunction.prototype.prototype
@@ -2932,6 +2933,7 @@ void Builtins::InitializeAsyncGeneratorFunction(const JSHandle<GlobalEnv> &env,
         NewBuiltinConstructor(env, asyncGeneratorFuncPrototype,
                               AsyncGeneratorObject::AsyncGeneratorFunctionConstructor, "AsyncGeneratorFunction",
                               FunctionLength::ONE);
+    JSObject::SetPrototype(thread_, JSHandle<JSObject>::Cast(asyncGeneratorFunction), env->GetFunctionFunction());
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     PropertyDescriptor asyncGeneratorDesc(thread_, JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction),
                                           false, false, true);
@@ -2963,29 +2965,25 @@ void Builtins::InitializeAsyncGeneratorFunction(const JSHandle<GlobalEnv> &env,
 void Builtins::InitializeGenerator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSObject> generatorFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
+    JSHandle<JSObject> generatorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
 
     // GeneratorObject.prototype method
     // 26.5.1.2 Generator.prototype.next(value)
-    SetFunction(env, generatorFuncPrototype, "next", GeneratorObject::GeneratorPrototypeNext, FunctionLength::ONE);
+    SetFunction(env, generatorPrototype, "next", GeneratorObject::GeneratorPrototypeNext, FunctionLength::ONE);
     // 26.5.1.3 Generator.prototype.return(value)
-    SetFunction(env, generatorFuncPrototype, "return", GeneratorObject::GeneratorPrototypeReturn, FunctionLength::ONE);
+    SetFunction(env, generatorPrototype, "return", GeneratorObject::GeneratorPrototypeReturn, FunctionLength::ONE);
     // 26.5.1.4 Generator.prototype.throw(exception)
-    SetFunction(env, generatorFuncPrototype, "throw", GeneratorObject::GeneratorPrototypeThrow, FunctionLength::ONE);
+    SetFunction(env, generatorPrototype, "throw", GeneratorObject::GeneratorPrototypeThrow, FunctionLength::ONE);
 
     // 26.5.1.5 Generator.prototype[@@toStringTag]
-    SetStringTagSymbol(env, generatorFuncPrototype, "Generator");
+    SetStringTagSymbol(env, generatorPrototype, "Generator");
 
-    // Generator with constructor, symbolTag, next/return/throw etc.
-    PropertyDescriptor descriptor(thread_, env->GetIteratorPrototype(), true, false, false);
-    JSObject::DefineOwnProperty(thread_, generatorFuncPrototype, globalConst->GetHandledPrototypeString(), descriptor);
-    env->SetGeneratorPrototype(thread_, generatorFuncPrototype);
-    JSObject::SetPrototype(thread_, generatorFuncPrototype, env->GetIteratorPrototype());
+    env->SetGeneratorPrototype(thread_, generatorPrototype);
+    JSObject::SetPrototype(thread_, generatorPrototype, env->GetIteratorPrototype());
 
     // Generator {}
     JSHandle<JSObject> initialGeneratorFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
-    JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, JSHandle<JSTaggedValue>(generatorFuncPrototype));
+    JSObject::SetPrototype(thread_, initialGeneratorFuncPrototype, JSHandle<JSTaggedValue>(generatorPrototype));
     env->SetInitialGenerator(thread_, initialGeneratorFuncPrototype);
 }
 

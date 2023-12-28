@@ -18,3 +18,6 @@
 2 false
 undefined true
 undefined true
+[object GeneratorFunction]
+function Function() { [native code] }
+constructor,next,return,throw

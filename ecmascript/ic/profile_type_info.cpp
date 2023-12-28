@@ -100,7 +100,6 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
-        ASSERT(profileTypeInfo_->Get(index + 1).IsUndefined());
         profileTypeInfo_->Set(thread_, index, key.GetTaggedValue());
         const int arrayLength = 2;
         JSHandle<TaggedArray> newArr = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arrayLength);
