@@ -209,15 +209,17 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define METHOD_EXIT()                                                                             \
     GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
     GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
-    Label isDebugModeTrue(env);                                                                   \
-    Label isDebugModeFalse(env);                                                                  \
-    Branch(isDebugMode, &isDebugModeTrue, &isDebugModeFalse);                                     \
-    Bind(&isDebugModeTrue);                                                                       \
+    GateRef isTracingOffset = IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()));     \
+    GateRef isTracing = Load(VariableType::BOOL(), glue, isTracingOffset);                        \
+    Label NeedCallRuntimeTrue(env);                                                               \
+    Label NeedCallRuntimeFalse(env);                                                              \
+    Branch(BoolOr(isDebugMode, isTracing), &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);          \
+    Bind(&NeedCallRuntimeTrue);                                                                   \
     {                                                                                             \
         CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                             \
-        Jump(&isDebugModeFalse);                                                                  \
+        Jump(&NeedCallRuntimeFalse);                                                              \
     }                                                                                             \
-    Bind(&isDebugModeFalse)
+    Bind(&NeedCallRuntimeFalse)
 
 template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
