@@ -123,6 +123,9 @@ bool EcmaContext::Initialize()
     tsManager_ = new TSManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
+    if (vm_->GetJSOptions().GetLoopHoistProfiler()) {
+        loopHoistProfiler_ = new LoopHoistProfiler();
+    }
     initialized_ = true;
     return true;
 }
@@ -209,6 +212,10 @@ EcmaContext::~EcmaContext()
     if (optCodeProfiler_ != nullptr) {
         delete optCodeProfiler_;
         optCodeProfiler_ = nullptr;
+    }
+    if (loopHoistProfiler_ != nullptr) {
+        delete loopHoistProfiler_;
+        loopHoistProfiler_ = nullptr;
     }
     if (moduleManager_ != nullptr) {
         delete moduleManager_;

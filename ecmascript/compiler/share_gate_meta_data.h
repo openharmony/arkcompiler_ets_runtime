@@ -322,6 +322,11 @@ public:
         return value_;
     }
 
+    void SetBool(bool value)
+    {
+        value_ = value;
+    }
+
 private:
     bool value_ { false };
 };

@@ -442,7 +442,7 @@ public:
 
     // ************************************************************* Middle IR **********************************************************************************
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
-    GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState);
+    GateRef ProtoChangeMarkerCheck(GateRef gate);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
@@ -569,6 +569,12 @@ public:
     GateRef IsSpecificObjectType(GateRef obj, JSType type);
     GateRef IsMarkerCellValid(GateRef cell);
     GateRef IsMarkerCellValidOp(GateRef cell);
+    GateRef MonoLoadPropertyOnProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex);
+    GateRef MonoCallGetterOnProto(GateRef gate, GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex);
+    GateRef MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
+                                         GateRef value);
+    GateRef MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
+                              GateRef value, GateRef key);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);

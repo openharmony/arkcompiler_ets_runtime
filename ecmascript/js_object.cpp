@@ -292,7 +292,7 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     if (numberOfProperties > static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         return ;
     }
-    
+
     // 2. iteration indices
     std::vector<int> indexOrder = properties->GetEnumerationOrder();
     ASSERT(static_cast<int>(indexOrder.size()) == numberOfProperties);
@@ -300,7 +300,7 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     // 3. Change Hclass
     int numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
     JSHClass::OptimizeAsFastProperties(thread, obj, indexOrder, true);
-    
+
     // 4. New out-properties
     int numberOfOutProperties = numberOfProperties - numberOfInlinedProps;
     ASSERT(numberOfOutProperties >= 0);
@@ -362,7 +362,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             JSObject::TryOptimizeAsFastElements(thread, receiver);
         }
     }
-    
+
     bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (isDictionary) {
@@ -1117,7 +1117,7 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     // 2. Let desc be O.[[GetOwnProperty]](P).
     ObjectOperator op(thread, JSHandle<JSTaggedValue>(obj), key, OperatorType::OWN);
-    
+
     // 4. If desc is undefined, return true.
     if (!op.IsFound()) {
         return true;

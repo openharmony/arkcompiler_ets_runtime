@@ -99,6 +99,9 @@ private:
 
     GateRef VisitStringCompare(GateRef gate);
     GateRef VisitStringAdd(GateRef gate);
+    GateRef VisitMonoLoadPropertyOnProto(GateRef gate);
+    GateRef VisitMonoCallGetterOnProto(GateRef gate);
+    GateRef VisitMonoStoreProperty(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
@@ -141,6 +144,7 @@ private:
     }
 
     static constexpr size_t PROPERTY_LOOKUP_RESULT_INDEX = 1;
+    static constexpr size_t HCLASS_INDEX = 2;
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;

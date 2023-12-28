@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/compiler/share_opcodes.h"
 
 // bcIndex   bytecode   count    fast    slow    typerate
 // ====================(print all)=======================
@@ -203,6 +204,42 @@ private:
     std::map<uint64_t, BcRecord> methodIdToRecord_;
     std::map<uint64_t, Name> methodIdToName_;
     std::vector<CString> abcNames_;
+};
+
+class LoopHoistProfiler {
+public:
+    using OpCode = kungfu::OpCode;
+
+    LoopHoistProfiler()
+    {
+        profMap_ = {
+            { OpCode::LOAD_BUILTIN_OBJECT, 0 },
+            { OpCode::LOAD_PROPERTY, 0}
+        };
+    }
+
+    void Update (OpCode opcode)
+    {
+        if (opcode == OpCode::LOAD_BUILTIN_OBJECT ||
+            opcode == OpCode::LOAD_PROPERTY) {
+            profMap_.at(opcode)++;
+        }
+    }
+
+    void PrintAndReset()
+    {
+        LOG_TRACE(INFO) << "LoopHoistProfiler:";
+        LOG_TRACE(INFO) << "Opcode: LOAD_BUILTIN_OBJECT Count:"
+                       << profMap_.at(OpCode::LOAD_BUILTIN_OBJECT);
+        profMap_.at(OpCode::LOAD_BUILTIN_OBJECT) = 0;
+
+        LOG_TRACE(INFO) << "Opcode: LOAD_PROPERTY Count:"
+                       << profMap_.at(OpCode::LOAD_PROPERTY);
+        profMap_.at(OpCode::LOAD_PROPERTY) = 0;
+    }
+
+private:
+    std::map<OpCode, uint64_t> profMap_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_VMSTAT_OPT_CODE_PROFILER_H

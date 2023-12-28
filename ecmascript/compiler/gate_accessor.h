@@ -603,6 +603,8 @@ public:
     bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
     void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
     bool IsCreateArray(GateRef gate) const;
+    void SetStoreNoBarrier(GateRef gate, bool isNoBarrier);
+    bool IsNoBarrier(GateRef gate) const;
 
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;

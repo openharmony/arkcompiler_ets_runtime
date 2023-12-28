@@ -1857,4 +1857,20 @@ bool GateAccessor::IsCreateArray(GateRef gate) const
     UNREACHABLE();
     return false;
 }
+
+void GateAccessor::SetStoreNoBarrier(GateRef gate, bool isNoBarrier)
+{
+    ASSERT(GetOpCode(gate) == OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO ||
+           GetOpCode(gate) == OpCode::MONO_STORE_PROPERTY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    const_cast<BoolMetaData *>(gatePtr->GetBoolMetaData())->SetBool(isNoBarrier);
+}
+
+bool GateAccessor::IsNoBarrier(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO ||
+           GetOpCode(gate) == OpCode::MONO_STORE_PROPERTY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetBoolMetaData()->GetBool();
+}
 }  // namespace panda::ecmascript::kungfu

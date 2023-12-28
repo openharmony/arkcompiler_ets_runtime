@@ -162,6 +162,21 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::ORDINARY_HAS_INSTANCE:
             LowerOrdinaryHasInstance(gate, glue);
             break;
+        case OpCode::PROTO_CHANGE_MARKER_CHECK:
+            LowerProtoChangeMarkerCheck(gate);
+            break;
+        case OpCode::MONO_CALL_GETTER_ON_PROTO:
+            LowerMonoCallGetterOnProto(gate, glue);
+            break;
+        case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
+            LowerMonoLoadPropertyOnProto(gate);
+            break;
+        case OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO:
+            LowerMonoStorePropertyLookUpProto(gate, glue);
+            break;
+        case OpCode::MONO_STORE_PROPERTY:
+            LowerMonoStoreProperty(gate, glue);
+            break;
         default:
             break;
     }
@@ -691,32 +706,14 @@ GateRef TypeHCRLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 void TypeHCRLowering::LowerLoadProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    AddProfiling(gate);
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     ASSERT(plr.IsLocal() || plr.IsFunction());
 
-    GateRef result = Circuit::NullGate();
-    if (plr.IsNotHole()) {
-        ASSERT(plr.IsLocal());
-        if (plr.IsInlinedProps()) {
-            result = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, plr.GetOffset());
-        } else {
-            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
-            result = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        }
-    } else if (plr.IsLocal()) {
-        if (plr.IsInlinedProps()) {
-            result = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, plr.GetOffset());
-        } else {
-            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
-            result = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        }
-        result = builder_.ConvertHoleAsUndefined(result);
-    } else {
-        UNREACHABLE();
-    }
+    GateRef result = LoadPropertyFromHolder(receiver, plr);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -730,26 +727,7 @@ void TypeHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
     GateRef holder = acc_.GetValueIn(gate, 2);
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
 
-    GateRef accessor = Circuit::NullGate();
-    if (plr.IsNotHole()) {
-        ASSERT(plr.IsLocal());
-        if (plr.IsInlinedProps()) {
-            accessor = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset());
-        } else {
-            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
-            accessor = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        }
-    } else if (plr.IsLocal()) {
-        if (plr.IsInlinedProps()) {
-            accessor = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset());
-        } else {
-            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
-            accessor = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        }
-        accessor = builder_.ConvertHoleAsUndefined(accessor);
-    } else {
-        UNREACHABLE();
-    }
+    GateRef accessor = LoadPropertyFromHolder(holder, plr);
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
     Label isInternalAccessor(&builder_);
@@ -2200,9 +2178,11 @@ void TypeHCRLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate
 void TypeHCRLowering::LowerLoadBuiltinObject(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    AddProfiling(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
-    auto boxOffset = builtinEntriesOffset + acc_.GetIndex(gate);
+    size_t index = acc_.GetIndex(gate);
+    auto boxOffset = builtinEntriesOffset + BuiltinIndex::GetInstance().GetBuiltinBoxOffset(index);
     GateRef box = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, boxOffset);
     GateRef builtin = builder_.LoadConstOffset(VariableType::JS_POINTER(), box, PropertyBox::VALUE_OFFSET);
     auto frameState = GetFrameState(gate);
@@ -2352,5 +2332,368 @@ void TypeHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeHCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    auto hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
+    auto protoHClass = builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
+    auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    auto notNull = builder_.TaggedIsNotNull(marker);
+    auto hasChanged = builder_.GetHasChanged(marker);
+    auto check = builder_.BoolAnd(builder_.BoolNot(hasChanged), notNull);
+    builder_.DeoptCheck(check, frameState, DeoptType::PROTOTYPECHANGED);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeHCRLowering::LowerMonoLoadPropertyOnProto(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
+    GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
+    GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    GateRef result = Circuit::NullGate();
+    ASSERT(plr.IsLocal() || plr.IsFunction());
+
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+
+    // lookup from receiver for holder
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+    Label exit(&builder_);
+    Label loopHead(&builder_);
+    Label loadHolder(&builder_);
+    Label lookUpProto(&builder_);
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+    builder_.Bind(&lookUpProto);
+    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&loadHolder);
+    result = LoadPropertyFromHolder(*current, plr);
+    builder_.Jump(&exit);
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
+    GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
+    GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    GateRef accessor = Circuit::NullGate();
+    GateRef holder = Circuit::NullGate();
+
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+
+    // lookup from receiver for holder
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+    Label exitLoad(&builder_);
+    Label loopHead(&builder_);
+    Label loadHolder(&builder_);
+    Label lookUpProto(&builder_);
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+    builder_.Bind(&lookUpProto);
+    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&loadHolder);
+    holder = *current;
+    accessor = LoadPropertyFromHolder(holder, plr);
+    builder_.Jump(&exitLoad);
+    builder_.Bind(&exitLoad);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    Label isInternalAccessor(&builder_);
+    Label notInternalAccessor(&builder_);
+    Label callGetter(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+    {
+        builder_.Bind(&isInternalAccessor);
+        {
+            result = builder_.CallRuntime(glue, RTSTUB_ID(CallInternalGetter),
+                Gate::InvalidGateRef, { accessor, holder }, gate);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&notInternalAccessor);
+        {
+            GateRef getter = builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::GETTER_OFFSET);
+            builder_.Branch(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
+            builder_.Bind(&callGetter);
+            {
+                result = CallAccessor(glue, gate, getter, receiver, AccessorMode::GETTER);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+GateRef TypeHCRLowering::LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr)
+{
+    GateRef result = Circuit::NullGate();
+    if (plr.IsNotHole()) {
+        ASSERT(plr.IsLocal());
+        if (plr.IsInlinedProps()) {
+            result = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset());
+        } else {
+            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
+            result = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
+        }
+    } else if (plr.IsLocal()) {
+        if (plr.IsInlinedProps()) {
+            result = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset());
+        } else {
+            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
+            result = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
+        }
+        result = builder_.ConvertHoleAsUndefined(result);
+    } else {
+        UNREACHABLE();
+    }
+    return result;
+}
+
+void TypeHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
+    GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
+    GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+    GateRef value = acc_.GetValueIn(gate, 4); // 4: value
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    bool noBarrier = acc_.IsNoBarrier(gate);
+
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    // lookup from receiver for holder
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+    Label exit(&builder_);
+    Label loopHead(&builder_);
+    Label loadHolder(&builder_);
+    Label lookUpProto(&builder_);
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
+                                          TaggedObject::HCLASS_OFFSET);
+    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+    builder_.Bind(&lookUpProto);
+    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&loadHolder);
+    if (!plr.IsAccessor()) {
+        StorePropertyOnHolder(*current, value, plr, noBarrier);
+        builder_.Jump(&exit);
+    } else {
+        GateRef accessor = LoadPropertyFromHolder(*current, plr);
+        Label isInternalAccessor(&builder_);
+        Label notInternalAccessor(&builder_);
+        Label callSetter(&builder_);
+        builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+        {
+            builder_.Bind(&isInternalAccessor);
+            {
+                builder_.CallRuntime(glue, RTSTUB_ID(CallInternalSetter),
+                    Gate::InvalidGateRef, { receiver, accessor, value }, gate);
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&notInternalAccessor);
+            {
+                GateRef setter =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
+                builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                builder_.Bind(&callSetter);
+                {
+                    CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
+                    builder_.Jump(&exit);
+                }
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
+    GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
+    GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+    GateRef value = acc_.GetValueIn(gate, 4); // 4: value
+    GateRef key = acc_.GetValueIn(gate, 5); // 5: key
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    bool noBarrier = acc_.IsNoBarrier(gate);
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    // transition happened
+    Label exit(&builder_);
+    Label notProto(&builder_);
+    Label isProto(&builder_);
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    auto newHolderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+    builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
+        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+    builder_.Bind(&isProto);
+    builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
+        { receiverHC, newHolderHC, key }, gate);
+    builder_.Jump(&notProto);
+    builder_.Bind(&notProto);
+    MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
+    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, order);
+    if (!plr.IsInlinedProps()) {
+        auto properties =
+            builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
+        auto capacity = builder_.LoadConstOffset(VariableType::INT32(), properties, TaggedArray::LENGTH_OFFSET);
+        auto index = builder_.Int32(plr.GetOffset());
+        Label needExtend(&builder_);
+        Label notExtend(&builder_);
+        builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+        builder_.Bind(&notExtend);
+        {
+            if (!plr.IsAccessor()) {
+                StorePropertyOnHolder(receiver, value, plr, noBarrier);
+                builder_.Jump(&exit);
+            } else {
+                GateRef accessor = LoadPropertyFromHolder(receiver, plr);
+                Label isInternalAccessor(&builder_);
+                Label notInternalAccessor(&builder_);
+                Label callSetter(&builder_);
+                builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+                {
+                    builder_.Bind(&isInternalAccessor);
+                    {
+                        builder_.CallRuntime(glue, RTSTUB_ID(CallInternalSetter),
+                            Gate::InvalidGateRef, { receiver, accessor, value }, gate);
+                        builder_.Jump(&exit);
+                    }
+                    builder_.Bind(&notInternalAccessor);
+                    {
+                        GateRef setter =
+                            builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
+                        builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                        builder_.Bind(&callSetter);
+                        {
+                            CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
+                            builder_.Jump(&exit);
+                        }
+                    }
+                }
+            }
+        }
+        builder_.Bind(&needExtend);
+        {
+            builder_.CallRuntime(glue,
+                RTSTUB_ID(PropertiesSetValue),
+                Gate::InvalidGateRef,
+                { receiver, value, properties, builder_.Int32ToTaggedInt(capacity),
+                builder_.Int32ToTaggedInt(index) }, gate);
+            builder_.Jump(&exit);
+        }
+    } else {
+        if (!plr.IsAccessor()) {
+            StorePropertyOnHolder(receiver, value, plr, noBarrier);
+            builder_.Jump(&exit);
+        } else {
+            GateRef accessor = LoadPropertyFromHolder(receiver, plr);
+            Label isInternalAccessor(&builder_);
+            Label notInternalAccessor(&builder_);
+            Label callSetter(&builder_);
+            builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+            {
+                builder_.Bind(&isInternalAccessor);
+                {
+                    builder_.CallRuntime(glue, RTSTUB_ID(CallInternalSetter),
+                        Gate::InvalidGateRef, { receiver, accessor, value }, gate);
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notInternalAccessor);
+                {
+                    GateRef setter =
+                        builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
+                    builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                    builder_.Bind(&callSetter);
+                    {
+                        CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
+                        builder_.Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, PropertyLookupResult plr, bool noBarrier)
+{
+    if (!noBarrier) {
+        if (plr.IsInlinedProps()) {
+            builder_.StoreConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset(), value);
+        } else {
+            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
+            builder_.SetValueToTaggedArray(
+                VariableType::JS_ANY(), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+        }
+    } else {
+        if (plr.IsInlinedProps()) {
+            builder_.StoreConstOffset(GetVarType(plr), holder, plr.GetOffset(), value);
+        } else {
+            auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
+            builder_.SetValueToTaggedArray(
+                GetVarType(plr), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+        }
+    }
+}
+
+void TypeHCRLowering::AddProfiling(GateRef gate)
+{
+    if (IsLoopHoistProfiling()) {
+        OpCode opcode  = acc_.GetOpCode(gate);
+        auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
+        GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
+        builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileLoopHoist),
+                             Gate::InvalidGateRef, { constOpcode }, gate);
+    }
 }
 }  // namespace panda::ecmascript::kungfu

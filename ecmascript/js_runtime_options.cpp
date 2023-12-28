@@ -159,10 +159,11 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-lowering-builtin:   Enable lowering global object: Default: 'false'\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
-    "--compiler-enable-jit:                         Enable jit: Default: 'false'\n"
-    "--compiler-jit-hotness-threshold:              Set hotness threshold for jit. Default: '2'\n"
-    "--compiler-force-jit-compile-main:             Enable jit compile main function: Default: 'false'\n"
-    "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n\n";
+    "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
+    "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
+    "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
+    "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n\n"
+    "--compiler-loop-hoist-profiler:       Enable loop hoist IR Statistics for aot runtime. Default: 'false'\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -266,6 +267,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
+        {"compiler-loop-hoist-profiler", required_argument, nullptr, OPTION_COMPILER_LOOP_HOIST_PROFILER},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -930,6 +932,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceJIT(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_LOOP_HOIST_PROFILER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetLoopHoistProfiler(argBool);
                 } else {
                     return false;
                 }

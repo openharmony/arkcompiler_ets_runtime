@@ -89,6 +89,9 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPE_OF_CHECK:
         case OpCode::ARRAY_CONSTRUCTOR_CHECK:
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
+        case OpCode::PROTO_CHANGE_MARKER_CHECK:
+        case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
+        case OpCode::LOAD_BUILTIN_OBJECT:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -232,6 +235,8 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::STORE_ELEMENT:
         case OpCode::STORE_MEMORY:
+        case OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO:
+        case OpCode::MONO_STORE_PROPERTY:
             return dependInfo->UpdateStoreProperty(this, gate);
         default:
             return new (chunk_) DependInfoNode(chunk_);
@@ -273,6 +278,12 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
             }
             break;
         }
+        case OpCode::LOAD_PROPERTY:
+        case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
+            if (acc_.GetGateType(lhs).Value() != acc_.GetGateType(rhs).Value()) {
+                return false;
+            }
+            break;
         default:
             break;
     }
@@ -374,6 +385,12 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         case OpCode::ARRAY_CONSTRUCTOR_CHECK:
         case OpCode::OBJECT_CONSTRUCTOR_CHECK: {
             if (acc_.GetValueIn(lhs) != acc_.GetValueIn(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::LOAD_BUILTIN_OBJECT: {
+            if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
                 return false;
             }
             break;

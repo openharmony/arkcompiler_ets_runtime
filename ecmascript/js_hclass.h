@@ -1772,6 +1772,8 @@ public:
     static PropertyLookupResult LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
     static PropertyLookupResult LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
                                                                        JSTaggedValue key);
+    static PropertyLookupResult LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,
+                                                              JSTaggedValue key);
 
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);

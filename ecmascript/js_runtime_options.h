@@ -159,6 +159,7 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
+    OPTION_COMPILER_LOOP_HOIST_PROFILER,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1037,7 +1038,7 @@ public:
         return enableValueNumbering_;
     }
 
-    
+
     void SetEnableJIT(bool value)
     {
         enableJIT_ = value;
@@ -1222,7 +1223,7 @@ public:
     {
         return traceValueNumbering_;
     }
-    
+
     void SetTraceJIT(bool value)
     {
         traceJIT_ = value;
@@ -1412,6 +1413,16 @@ public:
         return enableLiteCG_;
     }
 
+    void SetLoopHoistProfiler(bool value)
+    {
+        enableLoopHoistProfiler_ = value;
+    }
+
+    bool GetLoopHoistProfiler() const
+    {
+        return enableLoopHoistProfiler_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1528,6 +1539,7 @@ private:
     bool enableNativeInline_ {false};
     bool enableLoweringBuiltin_ {false};
     bool enableLiteCG_ {false};
+    bool enableLoopHoistProfiler_ {false};
 };
 }  // namespace panda::ecmascript
 

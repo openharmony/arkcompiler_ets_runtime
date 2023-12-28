@@ -111,7 +111,7 @@ public:
     BuiltinIndex(const BuiltinIndex&) = delete;
     BuiltinIndex& operator=(const BuiltinIndex&) = delete;
 
-    static const int32_t NOT_FOUND = -1;
+    static const size_t NOT_FOUND = -1;
 
     static BuiltinIndex& GetInstance()
     {
@@ -126,20 +126,25 @@ public:
         return sizeof(JSTaggedValue) * (index * 2); // 2 is size of BuiltinEntries
     }
 
-    int32_t GetBuiltinIndex(JSTaggedValue key) const
+    size_t GetBuiltinBoxOffset(size_t index)
+    {
+        return sizeof(JSTaggedValue) * (index * 2); // 2 is size of BuiltinEntries
+    }
+
+    size_t GetBuiltinIndex(JSTaggedValue key) const
     {
         auto ecmaString = EcmaString::Cast(key.GetTaggedObject());
         auto str = std::string(ConvertToString(ecmaString));
         return GetBuiltinIndex(str);
     }
 
-    int32_t GetBuiltinIndex(const std::string& key) const
+    size_t GetBuiltinIndex(const std::string& key) const
     {
         auto it = builtinIndex_.find(key);
         if (it == builtinIndex_.end()) {
             return NOT_FOUND;
         } else {
-            return static_cast<int32_t>(it->second);
+            return static_cast<size_t>(it->second);
         }
     }
 

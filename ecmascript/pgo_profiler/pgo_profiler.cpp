@@ -108,6 +108,9 @@ void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcV
         return;
     }
     auto ctorFunc = JSFunction::Cast(ctorValue.GetTaggedObject());
+    if (!FunctionKindVerify(ctorFunc)) {
+        return;
+    }
     auto ctorMethodValue = ctorFunc->GetMethod();
     if (!ctorMethodValue.IsMethod()) {
         return;

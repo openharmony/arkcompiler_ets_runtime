@@ -102,6 +102,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadProperty(gate);
             break;
         }
+        case OpCode::MONO_LOAD_PROPERTY_ON_PROTO: {
+            VisitLoadPropertyOnProto(gate);
+            break;
+        }
         default:
             break;
     }
@@ -971,5 +975,69 @@ void NumberSpeculativeLowering::VisitStringAdd(GateRef gate)
     acc_.SetMachineType(gate, MachineType::I64);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
+{
+    TypeInfo output = GetOutputType(gate);
+    if (output == TypeInfo::INT32 || output == TypeInfo::FLOAT64) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef frameState = acc_.GetFrameState(gate);
+        GateRef receiver = acc_.GetValueIn(gate, 0);
+        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
+        GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
+        GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+        PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+        GateRef result = Circuit::NullGate();
+        ASSERT(plr.IsLocal() || plr.IsFunction());
+
+        auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+
+        GateRef constPool = builder_.GetConstPool(jsFunc);
+        auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+        DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+        Label exit(&builder_);
+        Label loopHead(&builder_);
+        Label loadHolder(&builder_);
+        Label lookUpProto(&builder_);
+        builder_.Jump(&loopHead);
+
+        builder_.LoopBegin(&loopHead);
+        builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS);
+        auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+        builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+        builder_.Bind(&lookUpProto);
+        current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+        builder_.LoopEnd(&loopHead);
+
+        builder_.Bind(&loadHolder);
+        if (output == TypeInfo::FLOAT64) {
+            if (plr.IsInlinedProps()) {
+                result = builder_.LoadConstOffset(VariableType::FLOAT64(), *current, plr.GetOffset());
+            } else {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), *current, JSObject::PROPERTIES_OFFSET);
+                result = builder_.GetValueFromTaggedArray(
+                    VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
+            }
+            acc_.SetMachineType(gate, MachineType::F64);
+        } else {
+            if (plr.IsInlinedProps()) {
+                result = builder_.LoadConstOffset(VariableType::INT32(), *current, plr.GetOffset());
+            } else {
+                auto properties =
+                    builder_.LoadConstOffset(VariableType::JS_ANY(), *current, JSObject::PROPERTIES_OFFSET);
+                result = builder_.GetValueFromTaggedArray(
+                    VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
+            }
+            acc_.SetMachineType(gate, MachineType::I32);
+        }
+        builder_.Jump(&exit);
+        builder_.Bind(&exit);
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 }  // namespace panda::ecmascript

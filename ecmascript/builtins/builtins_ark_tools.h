@@ -24,27 +24,28 @@
 // where BuiltinsArkTools::func refers to the native implementation of ArkTools[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                             \
-    V("compareHClass",                 CompareHClass,                 2, INVALID)         \
-    V("dumpHClass",                    DumpHClass,                    1, INVALID)         \
-    V("excutePendingJob",              ExcutePendingJob,              0, INVALID)         \
-    V("forceFullGC",                   ForceFullGC,                   0, INVALID)         \
-    V("getHClass",                     GetHClass,                     1, INVALID)         \
-    V("getLexicalEnv",                 GetLexicalEnv,                 1, INVALID)         \
-    V("hasTSSubtyping",                HasTSSubtyping,                1, INVALID)         \
-    V("hiddenStackSourceFile",         HiddenStackSourceFile,         0, INVALID)         \
-    V("hintGC",                        HintGC,                        0, INVALID)         \
-    V("isNotHoleProperty",             IsNotHoleProperty,             2, INVALID)         \
-    V("isPrototype",                   IsPrototype,                   1, INVALID)         \
-    V("isRegExpReplaceDetectorValid",  IsRegExpReplaceDetectorValid,  0, INVALID)         \
-    V("isSymbolIteratorDetectorValid", IsSymbolIteratorDetectorValid, 1, INVALID)         \
-    V("isTSHClass",                    IsTSHClass,                    1, INVALID)         \
-    V("pgoAssertType",                 PGOAssertType,                 2, INVALID)         \
-    V("print",                         ObjectDump,                    0, INVALID)         \
-    V("removeAOTFlag",                 RemoveAOTFlag,                 1, INVALID)         \
-    V("timeInUs",                      TimeInUs,                      0, INVALID)         \
-    V("getElementsKind",               GetElementsKind,               1, INVALID)         \
-    V("isAOTCompiled",                 IsAOTCompiled,                 1, INVALID)         \
-    V("isAOTDeoptimized",              IsAOTDeoptimized,              1, INVALID)
+    V("compareHClass",                  CompareHClass,                  2, INVALID)       \
+    V("dumpHClass",                     DumpHClass,                     1, INVALID)       \
+    V("excutePendingJob",               ExcutePendingJob,               0, INVALID)       \
+    V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
+    V("getHClass",                      GetHClass,                      1, INVALID)       \
+    V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
+    V("hasTSSubtyping",                 HasTSSubtyping,                 1, INVALID)       \
+    V("hiddenStackSourceFile",          HiddenStackSourceFile,          0, INVALID)       \
+    V("hintGC",                         HintGC,                         0, INVALID)       \
+    V("isNotHoleProperty",              IsNotHoleProperty,              2, INVALID)       \
+    V("isPrototype",                    IsPrototype,                    1, INVALID)       \
+    V("isRegExpReplaceDetectorValid",   IsRegExpReplaceDetectorValid,   0, INVALID)       \
+    V("isSymbolIteratorDetectorValid",  IsSymbolIteratorDetectorValid,  1, INVALID)       \
+    V("isTSHClass",                     IsTSHClass,                     1, INVALID)       \
+    V("pgoAssertType",                  PGOAssertType,                  2, INVALID)       \
+    V("print",                          ObjectDump,                     0, INVALID)       \
+    V("removeAOTFlag",                  RemoveAOTFlag,                  1, INVALID)       \
+    V("timeInUs",                       TimeInUs,                       0, INVALID)       \
+    V("getElementsKind",                GetElementsKind,                1, INVALID)       \
+    V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
+    V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
+    V("printLoopHoistProfilerAndReset", PrintLoopHoistProfilerAndReset, 0, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -182,6 +183,8 @@ public:
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue PrintLoopHoistProfilerAndReset(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
@@ -271,7 +274,7 @@ public:
     static JSTaggedValue HasOwnConstDataProperty(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue GetHoleNaNUpper(EcmaRuntimeCallInfo *info);
-    
+
     static JSTaggedValue GetHoleNaNLower(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue SystemBreak(EcmaRuntimeCallInfo *info);
@@ -289,7 +292,7 @@ public:
     static JSTaggedValue SetKeyedProperty(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue DisassembleFunction(EcmaRuntimeCallInfo *info);
-    
+
     static JSTaggedValue TryMigrateInstance(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue InLargeObjectSpace(EcmaRuntimeCallInfo *info);

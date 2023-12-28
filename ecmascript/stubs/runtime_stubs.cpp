@@ -2462,6 +2462,17 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ProfileLoopHoist)
+{
+    RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
+    kungfu::OpCode opcode = static_cast<kungfu::OpCode>(GetArg(argv, argc, 0).GetInt());
+    LoopHoistProfiler *profiler = thread->GetCurrentEcmaContext()->GetLoopHoistProfiler();
+    if (profiler != nullptr) {
+        profiler->Update(opcode);
+    }
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(VerifyVTableLoading)
 {
     RUNTIME_STUBS_HEADER(VerifyVTableLoading);

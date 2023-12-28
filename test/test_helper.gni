@@ -692,6 +692,16 @@ template("host_aot_js_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_compile_options_ += " --compiler-loop-hoist-profiler=true "
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+    }
+
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
       _aot_compile_options_ += " --compiler-enable-native-inline"
@@ -769,6 +779,20 @@ template("host_aot_js_test_action") {
       _aot_run_options_ += " --enable-force-gc=false"
     }
 
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+    }
+
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     _aot_run_options_ += _icu_data_path_options_
@@ -829,6 +853,16 @@ template("host_aot_js_test_action") {
 
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
+    }
+
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
     }
 
     _icu_data_path_options_ =
@@ -1007,6 +1041,16 @@ template("host_aot_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_compile_options_ += " --compiler-loop-hoist-profiler=true "
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+    }
+
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
       _aot_compile_options_ += " --compiler-enable-native-inline"
@@ -1181,6 +1225,16 @@ template("host_aot_test_action") {
       _aot_run_options_ += invoker.log_option
     }
 
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -1240,6 +1294,16 @@ template("host_aot_test_action") {
       _aot_run_options_ += invoker.log_option
     }
     _aot_run_options_ += " --enable-context=true"
+
+    if (defined(invoker.is_enable_loop_hoist_profiler) &&
+        invoker.is_enable_loop_hoist_profiler) {
+      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    }
+
+    if (defined(invoker.is_enable_lowering_builtin) &&
+        invoker.is_enable_lowering_builtin) {
+      _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+    }
 
     args = [
       "--script-file",

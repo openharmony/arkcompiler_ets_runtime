@@ -42,9 +42,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
-        case OpCode::PROTO_CHANGE_MARKER_CHECK:
-            LowerProtoChangeMarkerCheck(gate);
-            break;
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
             break;
@@ -175,20 +172,6 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
 
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void MCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef marker = acc_.GetValueIn(gate, 0);
-
-    builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED);
-    auto hasChanged = builder_.GetHasChanged(marker);
-    builder_.DeoptCheck(builder_.BoolNot(hasChanged), frameState,
-        DeoptType::PROTOTYPECHANGED);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
