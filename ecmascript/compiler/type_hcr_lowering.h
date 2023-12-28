@@ -215,6 +215,7 @@ private:
     void LowerMonoLoadPropertyOnProto(GateRef gate);
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
     void LowerMonoStoreProperty(GateRef gate, GateRef glue);
+    void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

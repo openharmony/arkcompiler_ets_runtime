@@ -1323,4 +1323,47 @@ GateRef CircuitBuilder::TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn)
     currentLabel->SetDepend(ret);
     return ret;
 }
+
+GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    Label isNumber(env_);
+    Label notNumber(env_);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsNumber(value), &isNumber, &notNumber);
+    Bind(&isNumber);
+    {
+        result = value;
+        Jump(&exit);
+    }
+    Bind(&notNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(ToNumber), Gate::InvalidGateRef, { value }, gate);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::StringFromSingleCharCode(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->StringFromSingleCharCode(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsASCIICharacter(GateRef gate)
+{
+    return Int32UnsignedLessThan(Int32Sub(gate, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));
+}
 }
