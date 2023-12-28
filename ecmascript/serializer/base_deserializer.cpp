@@ -205,8 +205,12 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
             thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
         }
     } else if (object->GetClass()->IsJSFunction()) {
-        // defer initialize concurrent function until constpool is set
-        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
+        JSFunction* func = reinterpret_cast<JSFunction *>(object);
+        FunctionKind funcKind = func->GetFunctionKind();
+        if (funcKind == FunctionKind::CONCURRENT_FUNCTION) {
+            // defer initialize concurrent function until constpool is set
+            concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
+        }
     }
     UpdateMaybeWeak(slot, addr, isWeak);
     if (!isRoot) {
@@ -498,6 +502,7 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
         case (uint8_t)JSType::BIGINT:
             return JSHandle<JSFunction>(env->GetBigIntFunction())->GetFunctionPrototype().GetRawData();
         default:
+            LOG_ECMA(ERROR) << "Relocate unsupported JSType: " << JSHClass::DumpJSType(static_cast<JSType>(objectType));
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
