@@ -2524,6 +2524,16 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
     vm->SetIsBundlePack(value);
 }
 
+void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint)
+{
+    SetAssetPath(vm, assetPath);
+    size_t pos = entryPoint.find_first_of("/");
+    SetBundleName(vm, entryPoint.substr(0, pos));
+    std::string subStr = entryPoint.substr(pos + 1); // 1: remove /
+    pos = subStr.find_first_of("/");
+    SetModuleName(vm, subStr.substr(0, pos));
+}
+
 // note: The function SetAssetPath is a generic interface for previewing and physical machines.
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
