@@ -1537,7 +1537,7 @@ private:
     bool enableOptLoopInvariantCodeMotion_ {false};
     bool enableLexenvSpecialization_ {false};
     bool enableNativeInline_ {false};
-    bool enableLoweringBuiltin_ {false};
+    bool enableLoweringBuiltin_ {true};
     bool enableLiteCG_ {false};
     bool enableLoopHoistProfiler_ {false};
 };
