@@ -177,6 +177,9 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::MONO_STORE_PROPERTY:
             LowerMonoStoreProperty(gate, glue);
             break;
+        case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
+            LowerTypedCreateObjWithBuffer(gate, glue);
+            break;
         default:
             break;
     }
@@ -2695,5 +2698,33 @@ void TypeHCRLowering::AddProfiling(GateRef gate)
         builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileLoopHoist),
                              Gate::InvalidGateRef, { constOpcode }, gate);
     }
+}
+
+void TypeHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef objSize = acc_.GetValueIn(gate, 1); // 1: objSize
+    GateRef index = acc_.GetValueIn(gate, 2); // 2: index
+    size_t numValueIn = acc_.GetNumValueIn(gate);
+    GateRef oldObj = builder_.GetObjectFromConstPool(glue, gate, jsFunc,
+        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    builder_.StartAllocate();
+    GateRef newObj = builder_.HeapAlloc(objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::INT64(), newObj,
+        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+    size_t fixedNumValueIn = 4; // jsFunc, objSize, index, hclass
+    for (uint32_t i = 0; i < numValueIn - fixedNumValueIn; i += 2) { // 2 : value, offset
+        builder_.StoreConstOffset(VariableType::INT64(), newObj,
+                                  acc_.GetConstantValue(acc_.GetValueIn(gate, i + fixedNumValueIn + 1)),
+                                  acc_.GetValueIn(gate, i + fixedNumValueIn));
+    }
+    GateRef ret = builder_.FinishAllocate(newObj);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 }  // namespace panda::ecmascript::kungfu

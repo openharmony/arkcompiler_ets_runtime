@@ -112,4 +112,10 @@ namespace panda::ecmascript::kungfu {
     V(TYPED_CALLTARGETCHECK_OP)
 
 }
+
+#define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
+    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::NONE_FLAG, 1, 1, value)
+
+#define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 #endif  // ECMASCRIPT_COMPILER_MCR_OPCODE_H
