@@ -88,6 +88,9 @@ static constexpr uint64_t EXPONENTBITS_RANGE_IN_ONE_AND_TWO = 0x3FF0000000000000
 // Special Value for Hole in ElementsKind
 static constexpr uint64_t SPECIAL_HOLE = 0xFFFE000000000001;
 
+// Special Value for Hole in ElementsKind
+static constexpr uint32_t PGO_POLY_INLINE_REP = 0x7FFFFFFF;
+
 class NumberHelper {
 public:
     static inline JSTaggedType GetNaN()

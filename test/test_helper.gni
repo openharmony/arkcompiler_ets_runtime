@@ -627,6 +627,10 @@ template("host_aot_js_test_action") {
       _aot_run_options_ += " --enable-force-gc=false"
     }
 
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _aot_run_options_ += " --enable-force-gc=false"
+    }
+
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
     }
@@ -824,6 +828,10 @@ template("host_aot_js_test_action") {
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
       _aot_run_options_ += " --enable-force-gc=false"
     }
 
