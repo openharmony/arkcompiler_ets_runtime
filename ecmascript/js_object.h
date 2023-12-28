@@ -91,9 +91,22 @@ public:
         return value_;
     }
 
+    inline JSHandle<JSTaggedValue> GetKey() const
+    {
+        if (key_.IsEmpty()) {
+            return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
+        }
+        return key_;
+    }
+
     inline void SetValue(JSHandle<JSTaggedValue> value)
     {
         value_ = value;
+    }
+
+    inline void SetKey(JSHandle<JSTaggedValue> key)
+    {
+        key_ = key;
     }
 
     inline void SetTrackType(TrackType trackType)
@@ -235,6 +248,7 @@ private:
     JSHandle<JSTaggedValue> value_ {};
     JSHandle<JSTaggedValue> getter_ {};
     JSHandle<JSTaggedValue> setter_ {};
+    JSHandle<JSTaggedValue> key_ {};
 };
 
 enum class ElementTypes { ALLTYPES, STRING_AND_SYMBOL };
