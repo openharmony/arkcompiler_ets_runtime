@@ -418,6 +418,9 @@ namespace panda::ecmascript::kungfu {
 #define APPEND_SUFFIX(name, V) \
     V(name##WithProf, name, SlotIDFormat::IMM8)
 
+#define APPEND_SUFFIX_IMM8_SECONDBC(name, V) \
+    V(name##WithProf, name, SlotIDFormat::PREF_IMM8)
+
 #define APPEND_SUFFIX_IMM16(name, V) \
     V(name##WithProf, name, SlotIDFormat::IMM16)
 
@@ -481,6 +484,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleCallthis1Imm8V8V8, V)                  \
     APPEND_SUFFIX(HandleCallthis2Imm8V8V8V8, V)                \
     APPEND_SUFFIX(HandleCallthis3Imm8V8V8V8V8, V)              \
+    APPEND_SUFFIX_IMM8_SECONDBC(HandleCallRuntimeCallInitPrefImm8V8, V)  \
     APPEND_SUFFIX(HandleNewobjrangeImm8Imm8V8, V)              \
     APPEND_SUFFIX_IMM16(HandleNewobjrangeImm16Imm8V8, V)       \
     APPEND_SUFFIX_IMM16(HandleWideNewobjrangePrefImm16V8, V)   \
@@ -517,6 +521,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX_IMM16(HandleStobjbyvalueImm16V8V8, V)                     \
     APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                           \
     APPEND_SUFFIX_IMM16(HandleStobjbynameImm16Id16V8, V)                    \
+    APPEND_SUFFIX(HandleDefineFieldByNameImm8Id16V8, V)                     \
     APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                            \
     APPEND_SUFFIX(HandleStobjbyindexImm8V8Imm16, V)                         \
     APPEND_SUFFIX_IMM16(HandleStobjbyindexImm16V8Imm16, V)                  \

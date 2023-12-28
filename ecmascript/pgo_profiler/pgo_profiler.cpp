@@ -510,7 +510,8 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-            case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);
                 break;
@@ -574,6 +575,11 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
+                break;
+            }
+            case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
+                uint8_t slotId = READ_INST_8_1();
                 DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }

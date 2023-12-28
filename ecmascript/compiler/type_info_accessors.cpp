@@ -399,6 +399,7 @@ StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const JSThread *t
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8: {
             key_ = acc_.GetValueIn(gate, 1); // 1: key
