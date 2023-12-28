@@ -107,6 +107,7 @@ group("ark_js_moduletest") {
     "negintmin",
     "newobjdynrange",
     "objectcloneproperties",
+    "objectdefineproperties",
     "objecthasownproperty",
     "objectkeys",
     "objoperate",

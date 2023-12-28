@@ -203,10 +203,11 @@ JSTaggedValue BuiltinsObject::ObjectDefineProperties(JSThread *thread, const JSH
     //     iii.Let desc be ToPropertyDescriptor(descObj).
     //     iv.ReturnIfAbrupt(desc).
     //     v.Append the pair (a two element List) consisting of nextKey and desc to the end of descriptors.
-    JSMutableHandle<JSTaggedValue> handleKey(thread, JSTaggedValue::Undefined());
+
+    std::vector<PropertyDescriptor> desArr;
     for (uint32_t i = 0; i < length; i++) {
         PropertyDescriptor propDesc(thread);
-        handleKey.Update(handleKeys->Get(i));
+        JSHandle<JSTaggedValue> handleKey(thread, handleKeys->Get(i));
 
         bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(props), handleKey, propDesc);
         // ReturnIfAbrupt(propDesc)
@@ -220,22 +221,25 @@ JSTaggedValue BuiltinsObject::ObjectDefineProperties(JSThread *thread, const JSH
 
             PropertyDescriptor desc(thread);
             JSObject::ToPropertyDescriptor(thread, descObj, desc);
-
             // ReturnIfAbrupt(desc)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-            // 8.For each pair from descriptors in list order,
-            //   a.Let P be the first element of pair.
-            //   b.Let desc be the second element of pair.
-            //   c.Let status be DefinePropertyOrThrow(O,P, desc).
-            //   d.ReturnIfAbrupt(status).
-            [[maybe_unused]] bool setSuccess = JSTaggedValue::DefinePropertyOrThrow(thread, obj, handleKey, desc);
-
-            // ReturnIfAbrupt(status)
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            desc.SetKey(handleKey);
+            desArr.emplace_back(desc);
         }
     }
+    uint32_t desLength = desArr.size();
+    for (uint32_t i = 0; i < desLength; i++) {
+        // 8.For each pair from descriptors in list order,
+        //   a.Let P be the first element of pair.
+        //   b.Let desc be the second element of pair.
+        //   c.Let status be DefinePropertyOrThrow(O,P, desc).
+        //   d.ReturnIfAbrupt(status).
+        [[maybe_unused]] bool setSuccess =
+            JSTaggedValue::DefinePropertyOrThrow(thread, obj, desArr[i].GetKey(), desArr[i]);
 
+        // ReturnIfAbrupt(status)
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
     // 9.Return O.
     return obj.GetTaggedValue();
 }
