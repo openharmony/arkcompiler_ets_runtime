@@ -272,6 +272,7 @@ group("ark_asm_test") {
     "spreadoperator",
     "stackoverflow",
     "stringreplace",
+    "stringrepeat",
     "stubbuilder",
     "throwdyn",
     "trycatch",
