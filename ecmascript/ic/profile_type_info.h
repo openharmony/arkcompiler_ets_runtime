@@ -25,6 +25,7 @@ enum class ICKind : uint32_t {
     NamedStoreIC,
     LoadIC,
     StoreIC,
+    StoreOwnIC,
     NamedGlobalLoadIC,
     NamedGlobalStoreIC,
     NamedGlobalTryLoadIC,

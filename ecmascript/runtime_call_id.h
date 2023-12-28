@@ -139,6 +139,7 @@ namespace panda::ecmascript {
     V(TryLoadICByValue)              \
     V(LoadICByValue)                 \
     V(TryStoreICByName)              \
+    V(StoreOwnICByValue)             \
     V(StoreICByName)                 \
     V(TryStoreICByValue)             \
     V(StoreICByValue)                \

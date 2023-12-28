@@ -242,7 +242,6 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     auto env = GetEnvironment();
     Label storeWithHandler(env);
     Label storeElement(env);
-
     SetLabels(tryFastPath, slowPath, success);
     GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
