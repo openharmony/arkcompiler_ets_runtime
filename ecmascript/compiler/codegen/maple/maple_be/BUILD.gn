@@ -145,6 +145,7 @@ src_libcgx86phases = [
   "src/cg/reaching.cpp",
   "src/cg/local_opt.cpp",
   "src/cg/cfgo.cpp",
+  "src/cg/cg_dominance.cpp",
 ]
 
 src_libcgx8664 = [

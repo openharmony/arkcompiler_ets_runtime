@@ -33,7 +33,6 @@ public:
           regLiveness(alloc.Adapter()),
           rememberRegs(alloc.Adapter())
     {
-        regInfo = cgFunc.GetTargetRegInfo();
         availRegSet.resize(regInfo->GetAllRegNum());
     }
 
@@ -54,7 +53,6 @@ public:
     void AllocHandleDest(Insn &insn, Operand &opnd, uint32 idx);
     void AllocHandleSrcList(Insn &insn, Operand &opnd, uint32 idx);
     void AllocHandleSrc(Insn &insn, Operand &opnd, uint32 idx);
-    bool IsSpecialReg(regno_t reg) const;
     void SaveCalleeSavedReg(const RegOperand &opnd);
 
 protected:
@@ -69,8 +67,7 @@ protected:
     void SetupRegLiveness(MemOperand &opnd, uint32 insnId);
     void SetupRegLiveness(ListOperand &opnd, uint32 insnId, bool isDef);
     void SetupRegLiveness(RegOperand &opnd, uint32 insnId, bool isDef);
-
-    RegisterInfo *regInfo = nullptr;
+	
     MapleSet<regno_t> calleeSaveUsed;
     MapleVector<bool> availRegSet;
     MapleMap<uint32, regno_t> regMap; /* virtual-register-to-physical-register map */

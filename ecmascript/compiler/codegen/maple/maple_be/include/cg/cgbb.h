@@ -71,6 +71,8 @@ namespace maplebe {
 class CGFuncLoops;
 class CGFunc;
 
+using BBID = uint32;
+
 class BB {
 public:
     enum BBKind : uint8 {
@@ -85,7 +87,7 @@ public:
         kBBLast
     };
 
-    BB(uint32 bbID, MapleAllocator &mallocator)
+    BB(BBID bbID, MapleAllocator &mallocator)
         : id(bbID),
           kind(kBBFallthru), /* kBBFallthru default kind */
           labIdx(MIRLabelTable::GetDummyLabel()),
@@ -1021,12 +1023,14 @@ public:
         : AnalysisResult(&memPool),
           cgfunc(&cgFunc),
           alloc(&memPool),
+          cycleSuccs(alloc.Adapter()),
           visitedBBs(alloc.Adapter()),
           sortedBBs(alloc.Adapter())
     {
     }
     ~Bfs() = default;
 
+    void SeekCycles();
     bool AllPredBBVisited(const BB &bb, long &level) const;
     BB *MarkStraightLineBBInBFS(BB *bb);
     BB *SearchForStraightLineBBs(BB &bb);
@@ -1035,6 +1039,7 @@ public:
 
     CGFunc *cgfunc;
     MapleAllocator alloc;
+    MapleVector<MapleSet<BBID>> cycleSuccs;   // bb's succs in cycle
     MapleVector<bool> visitedBBs;
     MapleVector<BB *> sortedBBs;
 };

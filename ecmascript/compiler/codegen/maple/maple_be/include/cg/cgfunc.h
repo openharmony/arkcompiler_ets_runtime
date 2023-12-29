@@ -23,7 +23,6 @@
 #include "reg_info.h"
 #include "cgbb.h"
 #include "call_conv.h"
-#include "reg_alloc.h"
 #include "cfi.h"
 #include "dbg.h"
 #include "reaching.h"
@@ -200,7 +199,6 @@ public:
     void DumpLoop() const;
     void ClearLoopInfo();
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
-    virtual void DetermineReturnTypeofCall() = 0;
     /* handle rc reset */
     virtual void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) = 0;
     virtual void HandleRetCleanup(NaryStmtNode &retNode) = 0;

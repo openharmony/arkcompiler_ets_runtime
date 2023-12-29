@@ -267,8 +267,12 @@ void Insn::Check() const
     /* check if the type of each operand  matches */
     for (uint32 i = 0; i < insnOperandSize; ++i) {
         Operand &opnd = GetOperand(i);
-        if (opnd.GetKind() != md->GetOpndDes(i)->GetOperandType()) {
-            CHECK_FATAL(false, " operand type does not match machine description ");
+        auto *opndDesc = md->GetOpndDes(i);
+        if (opnd.IsImmediate()) {
+            CHECK_FATAL(opndDesc->IsImm(), "operand type does not match machine description!");
+        } else {
+            CHECK_FATAL(opnd.GetKind() == opndDesc->GetOperandType(),
+                        "operand type does not match machine description!");
         }
     }
 }

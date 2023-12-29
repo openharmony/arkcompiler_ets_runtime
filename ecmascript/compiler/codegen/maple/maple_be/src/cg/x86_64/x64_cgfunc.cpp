@@ -55,10 +55,6 @@ void X64CGFunc::MergeReturn()
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::DetermineReturnTypeofCall()
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
 {
     CHECK_FATAL(false, "NIY");

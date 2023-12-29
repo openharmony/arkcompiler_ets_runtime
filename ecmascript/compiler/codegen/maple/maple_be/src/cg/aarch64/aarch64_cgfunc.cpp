@@ -1213,9 +1213,7 @@ void AArch64CGFunc::SelectAsm(AsmNode &node)
     SetHasAsm();
     if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0) {
         if (GetCG()->GetCGOptions().DoLinearScanRegisterAllocation()) {
-            LogInfo::MapleLogger() << "Using coloring RA\n";
-            const_cast<CGOptions &>(GetCG()->GetCGOptions()).SetOption(CGOptions::kDoColorRegAlloc);
-            const_cast<CGOptions &>(GetCG()->GetCGOptions()).ClearOption(CGOptions::kDoLinearScanRegAlloc);
+            CHECK_FATAL(false, "NIY, lsra unsupported inline asm!");
         }
     }
     Operand *asmString = &CreateStringOperand(node.asmString);
@@ -7499,47 +7497,6 @@ RegOperand &AArch64CGFunc::GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd
         vRegTable[newRegNO] = *vregNode;
         vRegCount = maxRegCount;
         return *newRegOpnd;
-    }
-}
-
-/*
- * Traverse all call insn to determine return type of it
- * If the following insn is mov/str/blr and use R0/V0, it means the call insn have reture value
- */
-void AArch64CGFunc::DetermineReturnTypeofCall()
-{
-    FOR_ALL_BB(bb, this) {
-        if (bb->IsUnreachable() || !bb->HasCall()) {
-            continue;
-        }
-        FOR_BB_INSNS(insn, bb) {
-            if (!insn->IsTargetInsn()) {
-                continue;
-            }
-            if (!insn->IsCall() || insn->GetMachineOpcode() == MOP_asm) {
-                continue;
-            }
-            Insn *nextInsn = insn->GetNextMachineInsn();
-            if (nextInsn == nullptr) {
-                continue;
-            }
-            if ((nextInsn->GetMachineOpcode() != MOP_asm) &&
-                ((nextInsn->IsMove() && nextInsn->GetOperand(kInsnSecondOpnd).IsRegister()) || nextInsn->IsStore() ||
-                 (nextInsn->IsCall() && nextInsn->GetOperand(kInsnFirstOpnd).IsRegister()))) {
-                auto *srcOpnd = static_cast<RegOperand *>(&nextInsn->GetOperand(kInsnFirstOpnd));
-                CHECK_FATAL(srcOpnd != nullptr, "nullptr");
-                if (!srcOpnd->IsPhysicalRegister()) {
-                    continue;
-                }
-                if (srcOpnd->GetRegisterNumber() == R0) {
-                    insn->SetRetType(Insn::kRegInt);
-                    continue;
-                }
-                if (srcOpnd->GetRegisterNumber() == V0) {
-                    insn->SetRetType(Insn::kRegFloat);
-                }
-            }
-        }
     }
 }
 

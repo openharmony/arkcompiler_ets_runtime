@@ -17,21 +17,118 @@
 #define MAPLE_UTIL_INCLUDE_MPL_TIMER_H
 
 #include <chrono>
+#include <map>
+#include <string>
+#include <sstream>
+#include <iomanip>
 
 namespace maple {
-class MPLTimer {
+    class MPLTimer {
+    public:
+        MPLTimer();
+        ~MPLTimer();
+        void Start();
+        void Stop();
+        long Elapsed() const;
+        long ElapsedMilliseconds() const;
+        long ElapsedMicroseconds() const;
+
+    private:
+        std::chrono::system_clock::time_point startTime;
+        std::chrono::system_clock::time_point endTime;
+    };
+
+class MPLTimerManager {
 public:
-    MPLTimer();
-    ~MPLTimer();
-    void Start();
-    void Stop();
-    long Elapsed();
-    long ElapsedMilliseconds();
-    long ElapsedMicroseconds();
+    enum class Unit {
+        kMicroSeconds, // us
+        kMilliSeconds, // ms
+        kSeconds,      // s
+    };
+
+    // time data
+    struct Timer {
+        void Start() noexcept
+        {
+            startTime = std::chrono::system_clock::now();
+            ++count;
+        }
+
+        void Stop() noexcept
+        {
+            useTime += (std::chrono::system_clock::now() - startTime);
+        }
+
+        template <class T = std::chrono::milliseconds>
+        long Elapsed() const noexcept
+        {
+            return std::chrono::duration_cast<T>(useTime).count();
+        }
+
+        std::chrono::system_clock::time_point startTime;
+        std::chrono::nanoseconds useTime;
+        uint32_t count = 0; // run count
+    };
+
+    MPLTimerManager() = default;
+    virtual ~MPLTimerManager() = default;
+
+    void Clear()
+    {
+        allTimer.clear();
+    }
+
+    Timer &GetTimerFormKey(const std::string &key)
+    {
+        return allTimer[key];
+    }
+
+    template <Unit unit = Unit::kMilliSeconds>
+    std::string ConvertAllTimer2Str() const
+    {
+        std::ostringstream os;
+        for (auto &[key, timer] : allTimer) {
+            os << "\t" << key << ": ";
+            if constexpr (unit == Unit::kMicroSeconds) {
+                os << timer.Elapsed<std::chrono::microseconds>() << "us";
+            } else if constexpr (unit == Unit::kMilliSeconds) {
+                os << timer.Elapsed<std::chrono::milliseconds>() << "ms";
+            } else {
+                static_assert(unit == Unit::kSeconds, "unknown units");
+                os << timer.Elapsed<std::chrono::seconds>() << "s";
+            }
+            os << ", count: " << timer.count << std::endl;
+        }
+        return os.str();
+    }
 
 private:
-    std::chrono::system_clock::time_point startTime;
-    std::chrono::system_clock::time_point endTime;
+    std::map<std::string, Timer> allTimer;
 };
-}  // namespace maple
-#endif  // MAPLE_UTIL_INCLUDE_MPL_TIMER_H
+
+class MPLTimerRegister {
+public:
+    MPLTimerRegister(MPLTimerManager &timerM, const std::string &key)
+    {
+        timer = &timerM.GetTimerFormKey(key);
+        timer->Start();
+    }
+
+    ~MPLTimerRegister()
+    {
+        Stop();
+    }
+
+    void Stop() noexcept
+    {
+        if (timer != nullptr) {
+            timer->Stop();
+            timer = nullptr;
+        }
+    }
+
+private:
+    MPLTimerManager::Timer *timer = nullptr;
+};
+} // namespace maple
+#endif // MAPLE_UTIL_INCLUDE_MPL_TIMER_H

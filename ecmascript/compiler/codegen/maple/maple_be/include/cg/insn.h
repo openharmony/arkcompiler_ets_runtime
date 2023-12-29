@@ -38,11 +38,6 @@ class DepNode;
 struct InsnDesc;
 class Insn {
 public:
-    enum RetType : uint8 {
-        kRegNull,  /* no return type */
-        kRegFloat, /* return register is V0 */
-        kRegInt    /* return register is R0 */
-    };
     /* MCC_DecRefResetPair clear 2 stack position, MCC_ClearLocalStackRef clear 1 stack position */
     static constexpr uint8 kMaxStackOffsetSize = 2;
 
@@ -521,16 +516,6 @@ public:
         return !isCallReturnUnsigned;
     }
 
-    void SetRetType(RetType retType)
-    {
-        this->retType = retType;
-    }
-
-    RetType GetRetType() const
-    {
-        return retType;
-    }
-
     void SetClearStackOffset(short index, int64 offset)
     {
         CHECK_FATAL(index < kMaxStackOffsetSize, "out of clearStackOffset's range");
@@ -698,7 +683,6 @@ private:
     uint32 id = 0;
     uint32 address = 0;
     uint32 nopNum = 0;
-    RetType retType = kRegNull; /* if this insn is call, it represent the return register type R0/V0 */
     uint32 retSize = 0;         /* Byte size of the return value if insn is a call. */
     /* record the stack cleared by MCC_ClearLocalStackRef or MCC_DecRefResetPair */
     int64 clearStackOffset[kMaxStackOffsetSize] = {-1, -1};

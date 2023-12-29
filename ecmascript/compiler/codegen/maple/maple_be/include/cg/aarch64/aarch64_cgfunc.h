@@ -113,7 +113,6 @@ public:
     void IntrinsifyCompareAndSwapInt(ListOperand &srcOpnds, PrimType pty);
     void IntrinsifyStringIndexOf(ListOperand &srcOpnds, const MIRSymbol &funcSym);
     void GenSaveMethodInfoCode(BB &bb) override;
-    void DetermineReturnTypeofCall() override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
     bool GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool forEA = false);
     void HandleRetCleanup(NaryStmtNode &retNode) override;

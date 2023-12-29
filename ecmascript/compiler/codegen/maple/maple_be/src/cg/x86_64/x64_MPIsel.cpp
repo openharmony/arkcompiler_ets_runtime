@@ -470,9 +470,6 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
     ListOperand &retOpnds = cgFunc->GetOpndBuilder()->CreateList();
     Insn &callInsn = AppendCall(x64::MOP_callq_l, targetOpnd, paramOpnds, retOpnds);
 
-    bool isFloat = IsPrimitiveFloat(retPrimType);
-    Insn::RetType insnRetType = isFloat ? Insn::kRegFloat : Insn::kRegInt;
-    callInsn.SetRetType(insnRetType);
     /* no ret function */
     if (retOpnd == nullptr) {
         return;
@@ -625,7 +622,6 @@ void X64MPIsel::SelectCall(CallNode &callNode)
     SelectCalleeReturn(retType, retOpnds);
 
     Insn &callInsn = AppendCall(x64::MOP_callq_l, targetOpnd, paramOpnds, retOpnds);
-    callInsn.SetRetType(Insn::kRegInt);
     if (retType != nullptr) {
         callInsn.SetRetSize(static_cast<uint32>(retType->GetSize()));
         callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(retType->GetPrimType()));
@@ -664,7 +660,6 @@ void X64MPIsel::SelectIcall(IcallNode &iCallNode, Operand &opnd0)
     SelectCalleeReturn(retType, retOpnds);
 
     Insn &callInsn = AppendCall(x64::MOP_callq_r, targetOpnd, paramOpnds, retOpnds);
-    callInsn.SetRetType(Insn::kRegInt);
     if (retType != nullptr) {
         callInsn.SetRetSize(static_cast<uint32>(retType->GetSize()));
         callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(retType->GetPrimType()));
@@ -981,7 +976,7 @@ Operand *X64MPIsel::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &paren
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
     if (storageClass == maple::kScText && symbol->GetSKind() == maple::kStFunc) {
         ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*symbol, 0, 0);
-        X64MOP_t mOp = x64::MOP_movabs_s_r;
+        X64MOP_t mOp = x64::MOP_movabs_i_r;
         Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
         addrInsn.AddOpndChain(stOpnd).AddOpndChain(resReg);
         cgFunc->GetCurBB()->AppendInsn(addrInsn);
@@ -1125,7 +1120,7 @@ Operand *X64MPIsel::SelectStrLiteral(ConststrNode &constStr)
     if (c->GetPrimType() == PTY_ptr) {
         ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*labelSym, 0, 0);
         RegOperand &addrOpnd = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, cgFunc->GetRegTyFromPrimTy(PTY_a64));
-        Insn &addrOfInsn = (cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_movabs_s_r, X64CG::kMd[x64::MOP_movabs_s_r]));
+        Insn &addrOfInsn = (cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_movabs_i_r, X64CG::kMd[x64::MOP_movabs_i_r]));
         addrOfInsn.AddOpndChain(stOpnd).AddOpndChain(addrOpnd);
         cgFunc->GetCurBB()->AppendInsn(addrOfInsn);
         return &addrOpnd;

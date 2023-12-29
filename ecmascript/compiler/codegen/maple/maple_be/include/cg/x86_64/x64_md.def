@@ -68,7 +68,6 @@ DEFINE_MOP(MOP_movfd_r_m, {&OpndDesc::Reg128FS,&OpndDesc::Mem128D},ISSTORE,kLtAl
 /* movabs */
 //The movabs instruction to load arbitrary 64-bit constant into register and to load/store integer register from/to arbitrary constant 64-bit address is available
 DEFINE_MOP(MOP_movabs_i_r, {&OpndDesc::Imm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
-DEFINE_MOP(MOP_movabs_s_r, {&OpndDesc::StImm64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
 DEFINE_MOP(MOP_movabs_l_r, {&OpndDesc::Lbl64,&OpndDesc::Reg64ID},ISMOVE,kLtAlu,"movabs","0,1",1)
 
 /* push & pop & lea */

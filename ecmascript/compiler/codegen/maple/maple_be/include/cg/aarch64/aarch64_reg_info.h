@@ -28,44 +28,38 @@ public:
 
     ~AArch64RegInfo() override = default;
 
+    // float 128-bit register has caller store, so pref alloced caller-save registers.
+    bool IsPrefCallerSaveRegs(RegType type, uint32 size) const override
+    {
+        return (type == kRegTyFloat && size == k128BitSize);
+    }
+
+    // Additionally, only the bottom 64 bits of each value stored in virturl reg 8-15 need to be
+    // preserved 8; it is the responsibility of the caller to preserve larger values.
+    // Refer to Procedure Call Standard for the Arm 64-bit Architecture (AArch64) 2022Q3.  $6.1.2
+    bool IsCallerSavePartRegister(regno_t regNO,  uint32 size) const override
+    {
+        return (regNO >= V8 && regNO <= V15) && size == k128BitSize;
+    }
+
     bool IsGPRegister(regno_t regNO) const override
     {
         return AArch64isa::IsGPRegister(static_cast<AArch64reg>(regNO));
     }
-    /* phys reg which can be pre-Assignment */
-    bool IsPreAssignedReg(regno_t regNO) const override
-    {
-        return AArch64Abi::IsParamReg(static_cast<AArch64reg>(regNO));
-    }
+
     regno_t GetIntRetReg(uint32 idx) override
     {
-        CHECK_FATAL(idx <= AArch64Abi::kNumIntParmRegs, "index out of range in IntRetReg");
+        CHECK_FATAL(idx < AArch64Abi::kNumIntParmRegs, "index out of range in IntRetReg");
         return AArch64Abi::intReturnRegs[idx];
     }
     regno_t GetFpRetReg(uint32 idx) override
     {
-        CHECK_FATAL(idx <= AArch64Abi::kNumFloatParmRegs, "index out of range in IntRetReg");
+        CHECK_FATAL(idx < AArch64Abi::kNumFloatParmRegs, "index out of range in IntRetReg");
         return AArch64Abi::floatReturnRegs[idx];
     }
     bool IsAvailableReg(regno_t regNO) const override
     {
-        /* special handle for R9 due to MRT_CallSlowNativeExt */
-        if (regNO == R9 || regNO == R29) {
-            return false;
-        }
         return AArch64Abi::IsAvailableReg(static_cast<AArch64reg>(regNO));
-    }
-    /* Those registers can not be overwrite. */
-    bool IsUntouchableReg(regno_t regNO) const override
-    {
-        if ((regNO == RSP) || (regNO == RFP) || regNO == RZR) {
-            return true;
-        }
-        /* when yieldpoint is enabled, the RYP(x19) can not be used. */
-        if (GetCurrFunction()->GetCG()->GenYieldPoint() && (regNO == RYP)) {
-            return true;
-        }
-        return false;
     }
     uint32 GetIntRegsParmsNum() override
     {
@@ -131,18 +125,14 @@ public:
     void Init() override;
     void Fini() override;
     void SaveCalleeSavedReg(MapleSet<regno_t> savedRegs) override;
-    bool IsSpecialReg(regno_t regno) const override;
     bool IsCalleeSavedReg(regno_t regno) const override;
     bool IsYieldPointReg(regno_t regNO) const override;
     bool IsUnconcernedReg(regno_t regNO) const override;
     bool IsUnconcernedReg(const RegOperand &regOpnd) const override;
     bool IsSpillRegInRA(regno_t regNO, bool has3RegOpnd) override;
     RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag = 0) override;
-    ListOperand *CreateListOperand() override;
-    Insn *BuildMovInstruction(Operand &opnd0, Operand &opnd1) override;
     Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
-    Insn *BuildCommentInsn(const std::string &comment) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
     MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
                                                    regno_t regNum, bool &isOutOfRange) override;

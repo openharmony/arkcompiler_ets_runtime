@@ -796,6 +796,8 @@ void CGOptions::EnableLiteCG()
     ClearOption(kConstFold);
     ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
+    ClearOption(kDoColorRegAlloc);
+    SetOption(kDoLinearScanRegAlloc);
 }
 
 void CGOptions::SetTargetMachine(const std::string &str)

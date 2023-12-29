@@ -47,7 +47,6 @@ public:
     void AssignLmbcFormalParams() override;
     void LmbcGenSaveSpForAlloca() override;
     void MergeReturn() override;
-    void DetermineReturnTypeofCall() override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
     void HandleRetCleanup(NaryStmtNode &retNode) override;
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;

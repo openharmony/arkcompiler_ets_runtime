@@ -127,6 +127,7 @@ private:
     static void MergeBB(BB &merger, BB &mergee);
 }; /* class CGCFG */
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgHandleCFG, maplebe::CGFunc)
+OVERRIDE_DEPENDENCE
 MAPLE_FUNC_PHASE_DECLARE_END
 } /* namespace maplebe */
 
