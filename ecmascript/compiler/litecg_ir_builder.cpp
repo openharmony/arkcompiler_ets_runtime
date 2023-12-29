@@ -183,6 +183,7 @@ void LiteCGIRBuilder::Build()
     AddFunc();
     LOG_COMPILER(INFO) << "============== building litecg ir=======" << std::endl;
 
+    std::unordered_set<OpCode> usedOpcodeSet;
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef> &bb = scheduledGates_->at(bbIdx);
 
@@ -191,11 +192,18 @@ void LiteCGIRBuilder::Build()
             auto found = opHandlers_.find(acc_.GetOpCode(gate));
             if (found != opHandlers_.end()) {
                 (this->*(found->second))(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, found->first);
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                 LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
             }
+        }
+    }
+
+    if (enableLog_) {
+        for (auto &opcode : usedOpcodeSet) {
+            LOG_COMPILER(INFO) << "OPCODE: " << opcode << std::endl;
         }
     }
 
