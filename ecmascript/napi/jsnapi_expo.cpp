@@ -3141,7 +3141,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(uint32_t tid)
+bool JSNApi::StopDebugger([[maybe_unused]] uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     JsDebuggerManager *jsDebuggerManager = JsDebuggerManager::GetJsDebuggerManager(tid);
