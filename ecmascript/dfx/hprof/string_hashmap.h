@@ -66,7 +66,6 @@ public:
 private:
     StringKey GenerateStringKey(const CString *cstr) const;
     CString *FindOrInsertString(const CString *cstr);
-    CString *FormatString(CString *cstr) const;
     /*
      * Free all memory
      */

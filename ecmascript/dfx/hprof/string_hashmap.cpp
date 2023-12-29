@@ -45,36 +45,9 @@ CString *StringHashMap::GetStringByKey(StringKey key) const
 {
     auto it = hashmap_.find(key);
     if (it != hashmap_.end()) {
-        return FormatString(it->second);
+        return it->second;
     }
     return nullptr;
-}
-
-CString *StringHashMap::FormatString(CString *cstr) const
-{
-    // remove "\"" | "\r\n" | "\\" | "\t" | "\f"
-    int length = static_cast<int>(cstr->length());
-    char *charSeq = const_cast<char *>(cstr->c_str());
-    for (int i = 0; i < length; i++) {
-        if (charSeq[i] == '\"') {         // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] == '\r') {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] == '\n') {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] == '\\') {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] == '\t') {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] == '\f') {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            charSeq[i] = '`';             // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else if (charSeq[i] < ' ') {    // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            // ctrl chars 0~31
-            charSeq[i] = '`';  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        }
-    }
-    *cstr = charSeq;
-    return cstr;
 }
 
 StringKey StringHashMap::GenerateStringKey(const CString *cstr) const
