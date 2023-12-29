@@ -35,28 +35,6 @@ public:
         }
         return NOT_FOUND;
     }
-    inline int DumpGet(JSHClass *jsHclass, JSTaggedValue key)
-    {
-        int hash = Hash(jsHclass, key);
-        PropertyKey &prop = keys_[hash];
-        if ((prop.hclass_ == jsHclass) && (prop.key_ == key)) {
-            LOG_ECMA(INFO) << "DumpGet hash: " << hash;
-            LOG_ECMA(INFO) << "DumpGet JSHClass addr: " << std::hex << static_cast<JSTaggedType>(ToUintPtr(jsHclass));
-            LOG_ECMA(INFO) << "DumpGet key addr : " << std::hex << key.GetRawData();
-            std::ostringstream oss1;
-            key.Dump(oss1);
-            LOG_ECMA(INFO) << "DumpGet key: " << oss1.str();
-
-            LOG_ECMA(INFO) << "DumpGet prop JSHClass addr: " <<
-                std::hex << static_cast<JSTaggedType>(ToUintPtr(prop.hclass_));
-            LOG_ECMA(INFO) << "DumpGet prop key addr: " << std::hex << prop.key_.GetRawData();
-            std::ostringstream oss;
-            prop.key_.Dump(oss);
-            LOG_ECMA(INFO) << "DumpGet prop key: " << oss.str();
-            return keys_[hash].results_;
-        }
-        return NOT_FOUND;
-    }
     inline void Set(JSHClass *jsHclass, JSTaggedValue key, int index)
     {
         int hash = Hash(jsHclass, key);
@@ -69,9 +47,18 @@ public:
     {
         for (auto &key : keys_) {
             key.hclass_ = nullptr;
+            key.key_ = JSTaggedValue::Hole();
         }
     }
-
+    inline bool IsCleared() const
+    {
+        for (auto &key : keys_) {
+            if (key.hclass_ != nullptr) {
+                return false;
+            }
+        }
+        return true;
+    }
     static const int NOT_FOUND = -1;
 
 private:

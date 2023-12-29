@@ -821,4 +821,14 @@ void JSThread::InitializeBuiltinObject()
         InitializeBuiltinObject(key);
     }
 }
+
+bool JSThread::IsPropertyCacheCleared() const
+{
+    for (EcmaContext *context : contexts_) {
+        if (!context->GetPropertiesCache()->IsCleared()) {
+            return false;
+        }
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
