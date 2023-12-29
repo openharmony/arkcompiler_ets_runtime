@@ -267,6 +267,7 @@ group("ark_asm_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "number",
     "objectcloneproperties",
     "objecthasownproperty",
     "objectkeys",

@@ -261,11 +261,12 @@ JSTaggedValue BuiltinsNumber::ToExponential(EcmaRuntimeCallInfo *argv)
     // 10. If f < 0 or f > 20, throw a RangeError exception
     double fraction = digitInt.GetNumber();
     if (digits->IsUndefined()) {
-        fraction = -1;
+        fraction = 0;
     } else {
         if (fraction < base::MIN_FRACTION || fraction > base::MAX_FRACTION) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "fraction must be 0 to 100", JSTaggedValue::Exception());
         }
+        fraction++;
     }
     return NumberHelper::DoubleToExponential(thread, values, static_cast<int>(fraction));
 }
@@ -309,11 +310,10 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     // 9. If x  1021, then
     //    a. Let m = ToString(x).
     const double FIRST_NO_FIXED = 1e21;
-    if (valueNumber >= FIRST_NO_FIXED) {
+    if (std::abs(valueNumber) >= FIRST_NO_FIXED) {
         return value.ToString(thread).GetTaggedValue();
     }
-
-    return NumberHelper::DoubleToFixed(thread, valueNumber, static_cast<int>(digit));
+    return NumberHelper::DoubleToASCII(thread, valueNumber, static_cast<int>(digit), base::FRAC_FORMAT);
 }
 
 // 20.1.3.4
@@ -421,7 +421,7 @@ JSTaggedValue BuiltinsNumber::ToPrecision(EcmaRuntimeCallInfo *argv)
     if (digit < base::MIN_FRACTION + 1 || digit > base::MAX_FRACTION) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "fraction must be 1 to 100", JSTaggedValue::Exception());
     }
-    return NumberHelper::DoubleToPrecision(thread, valueNumber, static_cast<int>(digit));
+    return NumberHelper::DoubleToASCII(thread, valueNumber, static_cast<int>(digit), base::FIXED_FORMAT);
 }
 
 // 20.1.3.6
