@@ -128,6 +128,7 @@ private:
     bool Contain(GateLists &gateLists, GateRef gate);
     void CalcBounds(GateRegion *block, GateRegion *loopHeader);
     bool CheckLoop(GateRef array, GateRef lowerGate, int lower, GateRef upperGate, int upper);
+    GateRef FindBoundGate(GateRef gate);
     void InBlockMotion(GateLists &indexChecked, GateLists &arrays);
     bool InLoop(GateRef loopHeader, GateRef gate);
     bool IsArrayLength(GateRef gate);
@@ -139,10 +140,13 @@ private:
     void CopyStateInAndDependIn(GateRef &stateIn, GateRef &dependIn, GateRef insertAfter);
     void LoopInvariantMotionForIndexCheck(GateRef array, GateRef length, GateRef lowerGate, int lower,
                                             GateRef upperGate, int upper, bool isTypedArray);
+    bool GetInstrAndConstValueFromUnaryOp(GateRef gate, GateRef &other, int& value);
+    bool GetInstrAndConstValueFromBinaryOp(GateRef gate, GateRef &other, int& value);
     void GetInstrAndConstValueFromOp(GateRef gate, GateRef &instrValue, int& constValue);
     Bound *GetBound(GateRef gate);
     Bound *DoConstant(GateRef gate);
-    Bound *DoArithmeticOp(GateRef gate);
+    Bound *DoBinaryArithmeticOp(GateRef gate);
+    Bound *DoUnaryArithmeticOp(GateRef gate);
     Bound *DoPhi(GateRef gate);
     void SetBound(GateRef gate, Bound *bound);
     void ProcessIf(IntegerStack &pushed, GateRegion *parent, OpCode cond);

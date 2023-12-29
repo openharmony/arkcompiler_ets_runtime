@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_PASS_OPTIONS_H
 
 namespace panda::ecmascript::kungfu {
-#define OPTION_LIST(V)                                                         \
+#define OPTION_LIST(V)                                                           \
     V(ArrayBoundsCheckElimination, true)                                         \
     V(TypeLowering, true)                                                        \
     V(EarlyElimination, true)                                                    \

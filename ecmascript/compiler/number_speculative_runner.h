@@ -25,8 +25,10 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRunner {
 public:
-    NumberSpeculativeRunner(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
-        : circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name),
+    NumberSpeculativeRunner(Circuit *circuit, bool enableLog, bool enableArrayBoundsCheckElimination,
+                            const std::string& name, Chunk* chunk)
+        : circuit_(circuit), acc_(circuit), enableLog_(enableLog),
+          enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination), methodName_(name),
           chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk) {}
 
     ~NumberSpeculativeRunner() = default;
@@ -45,6 +47,7 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     bool enableLog_ {false};
+    bool enableArrayBoundsCheckElimination_ {true};
     std::string methodName_;
     Chunk *chunk_ {nullptr};
     ChunkVector<TypeInfo> typeInfos_;

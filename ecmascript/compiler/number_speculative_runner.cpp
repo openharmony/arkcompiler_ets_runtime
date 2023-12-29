@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
@@ -40,6 +41,25 @@ void NumberSpeculativeRunner::Run()
     }
 
     auto maxId = circuit_->GetMaxGateId();
+    typeInfos_.resize(maxId + 1, TypeInfo::NONE);
+
+    if (enableArrayBoundsCheckElimination_) {
+        ArrayBoundsCheckElimination arrayBoundsCheck(circuit_, enableLog_, methodName_, chunk_);
+        arrayBoundsCheck.Run();
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "";
+            LOG_COMPILER(INFO) << "\033[34m"
+                            << "===================="
+                            << " After array bounds check elimination "
+                            << "[" << GetMethodName() << "]"
+                            << "===================="
+                            << "\033[0m";
+            circuit_->PrintAllGatesWithBytecode();
+            LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+        }
+    }
+
+    maxId = circuit_->GetMaxGateId();
     typeInfos_.resize(maxId + 1, TypeInfo::NONE);
 
     // visit gate in RPO, propagate use infos and

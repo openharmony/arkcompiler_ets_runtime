@@ -513,8 +513,10 @@ public:
         TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        bool enableArrayBoundsCheckElimination = passOptions->EnableArrayBoundsCheckElimination();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, enableArrayBoundsCheckElimination,
+                                data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
@@ -593,23 +595,6 @@ public:
         visitor.AddPass(&earlyElimination);
         visitor.VisitGraph();
         visitor.PrintLog("early elimination");
-        return true;
-    }
-};
-
-class ArrayBoundsCheckEliminationPass {
-public:
-    bool Run(PassData* data)
-    {
-        PassOptions *passOptions = data->GetPassOptions();
-        if (!passOptions->EnableTypeLowering() || !passOptions->EnableArrayBoundsCheckElimination()) {
-            return false;
-        }
-        TimeScope timescope("ArrayBoundsCheckEliminationPass",
-                            data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        Chunk chunk(data->GetNativeAreaAllocator());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        ArrayBoundsCheckElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
