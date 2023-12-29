@@ -15,12 +15,14 @@
 
 #include "ecmascript/compiler/type_info_accessors.h"
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_fields.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 JSTaggedValue TypeInfoAccessor::GetStringFromConstantPool(const JSThread *thread, uint32_t methodId, uint32_t index)
@@ -307,11 +309,89 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const JSThread *thr
 }
 
 InlineTypeInfoAccessor::InlineTypeInfoAccessor(
-    const JSThread *thread, Circuit *circuit, GateRef gate, CallKind kind, PropertyLookupResult plr)
-    : CallTypeInfoAccessor(thread, circuit, gate), kind_(kind), plr_(plr)
+    const JSThread *thread, Circuit *circuit, GateRef gate, GateRef receiver, CallKind kind)
+    : TypeInfoAccessor(thread, circuit, gate), receiver_(receiver), kind_(kind)
 {
-    size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
-    func_ = acc_.GetValueIn(gate, funcIndex);
+    if (IsCallAccessor()) {
+        plr_ = GetAccessorPlr();
+    }
+}
+
+GlobalTSTypeRef InlineTypeInfoAccessor::GetAccessorFuncGT() const
+{
+    GateType receiverType = acc_.GetGateType(receiver_);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
+    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
+    GlobalTSTypeRef classGT = tsManager_->GetClassType(classInstanceGT);
+    TSTypeAccessor tsTypeAcc(tsManager_, classGT);
+    GateRef constData = acc_.GetValueIn(gate_, 1);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    auto methodOffset = acc_.TryGetMethodOffset(gate_);
+    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
+    GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, IsCallSetter());
+    return funcGT;
+}
+
+PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
+{
+    GateRef constData = acc_.GetValueIn(gate_, 1);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    auto methodOffset = acc_.TryGetMethodOffset(gate_);
+    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
+    // PGO currently does not support call, so GT is still used to support inline operations.
+    // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
+    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+        return PropertyLookupResult();
+    }
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    if (pgoTypes->GetCount() != 1) {
+        return PropertyLookupResult();
+    }
+    auto pgoType = pgoTypes->GetObjectInfo(0);
+    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
+    ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
+
+    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    JSHClass *hclass = nullptr;
+    if (receiverType == holderType) {
+        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
+        if (hclassIndex == -1) {
+            return PropertyLookupResult();
+        }
+        hclass = JSHClass::Cast(ptManager->QueryHClass(receiverType.first, receiverType.second).GetTaggedObject());
+    } else {
+        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
+        if (hclassIndex == -1) {
+            return PropertyLookupResult();
+        }
+        hclass = JSHClass::Cast(ptManager->QueryHClass(holderType.first, holderType.second).GetTaggedObject());
+    }
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(thread_, hclass, prop);
+    return plr;
+}
+
+uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
+{
+    uint32_t methodOffset = 0;
+    if (IsNormalCall() && IsValidCallMethodId()) {
+        methodOffset = GetFuncMethodOffsetFromPGO();
+        if (methodOffset == base::PGO_POLY_INLINE_REP) {
+            methodOffset = 0;
+            return methodOffset;
+        }
+    }
+    if (methodOffset == 0) {
+        if (IsFunctionTypeKind()) {
+            auto funcGT = GetReceiverGT().GetGTRef();
+            methodOffset = tsManager_->GetFuncMethodOffset(funcGT);
+        } else if (IsClassInstanceTypeKind()) {
+            auto funcGT = GetAccessorFuncGT();
+            methodOffset = tsManager_->GetFuncMethodOffset(funcGT);
+        }
+    }
+    return methodOffset;
 }
 
 JSTaggedValue ObjectAccessTypeInfoAccessor::GetKeyTaggedValue() const

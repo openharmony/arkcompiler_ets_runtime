@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_INFO_ACCESSORS_H
 #define ECMASCRIPT_COMPILER_TYPE_INFO_ACCESSORS_H
 
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
@@ -37,6 +36,11 @@ public:
     GateRef GetGate() const
     {
         return gate_;
+    }
+
+    PGOTypeRef GetPGOType() const
+    {
+        return acc_.TryGetPGOType(GetGate());
     }
 
     static bool IsTrustedType(GateAccessor acc, GateRef gate);
@@ -238,11 +242,6 @@ public:
         return acc_.GetGateType(func_);
     }
 
-    PGOTypeRef GetFuncPGOType() const
-    {
-        return acc_.TryGetPGOType(GetGate());
-    }
-
     bool IsFunctionTypeKind() const
     {
         return tsManager_->IsFunctionTypeKind(acc_.GetGateType(func_));
@@ -286,19 +285,6 @@ public:
     uint32_t GetFuncMethodOffset() const
     {
         return tsManager_->GetFuncMethodOffset(GetFunctionGT());
-    }
-
-    bool IsValidCallMethodId() const
-    {
-        return GetFuncPGOType().IsValidCallMethodId();
-    }
-
-    uint32_t GetFuncMethodOffsetFromPGO() const
-    {
-        if (GetFuncPGOType().IsValidCallMethodId()) {
-            return GetFuncPGOType().GetCallMethodId();
-        }
-        return 0;
     }
 
     BuiltinsStubCSigns::ID TryGetPGOBuiltinId() const;
@@ -486,37 +472,59 @@ enum CallKind : uint8_t {
     INVALID
 };
 
-class InlineTypeInfoAccessor final : public CallTypeInfoAccessor {
+class InlineTypeInfoAccessor final : public TypeInfoAccessor {
 public:
     InlineTypeInfoAccessor(const JSThread *thread,
                            Circuit *circuit,
                            GateRef gate,
-                           CallKind kind,
-                           PropertyLookupResult plr = PropertyLookupResult());
+                           GateRef receiver,
+                           CallKind kind);
 
-    bool IsEnableInline() const
+    bool IsEnableNormalInline() const
     {
         return IsFunctionTypeKind() || IsValidCallMethodId();
     }
 
-    uint32_t GetCallMethodId() const
+    bool IsEnableAccessorInline() const
     {
-        uint32_t pgoMethodOffset = 0;
-        if (IsNormalCall() && IsValidCallMethodId()) {
-            pgoMethodOffset = GetFuncMethodOffsetFromPGO();
+        if (plr_.IsAccessor() && IsClassInstanceTypeKind()) {
+            GlobalTSTypeRef gt = GetAccessorFuncGT();
+            if (!gt.IsDefault()) {
+                return true;
+            }
         }
-        uint32_t tsMethodOffset = 0;
-        if (IsFunctionTypeKind()) {
-            tsMethodOffset = GetFuncMethodOffset();
-        }
-        uint32_t methodOffset = 0;
-        if (tsMethodOffset != 0 && pgoMethodOffset != base::PGO_POLY_INLINE_REP) {
-            methodOffset = tsMethodOffset;
-        } else {
-            methodOffset = pgoMethodOffset;
-        }
-        return methodOffset == base::PGO_POLY_INLINE_REP ? 0 : methodOffset;
+        return false;
     }
+
+    bool IsFunctionTypeKind() const
+    {
+        return tsManager_->IsFunctionTypeKind(acc_.GetGateType(receiver_));
+    }
+
+    bool IsClassInstanceTypeKind() const
+    {
+        return tsManager_->IsClassInstanceTypeKind(acc_.GetGateType(receiver_));
+    }
+
+    bool IsValidCallMethodId() const
+    {
+        return GetPGOType().IsValidCallMethodId();
+    }
+
+    uint32_t GetFuncMethodOffsetFromPGO() const
+    {
+        if (GetPGOType().IsValidCallMethodId()) {
+            return GetPGOType().GetCallMethodId();
+        }
+        return 0;
+    }
+
+    GateType GetReceiverGT() const
+    {
+        return acc_.GetGateType(receiver_);
+    }
+
+    uint32_t GetCallMethodId() const;
 
     GateRef GetCallGate() const
     {
@@ -557,11 +565,11 @@ public:
     {
         uint32_t type = 0;
         if (IsFunctionTypeKind()) {
-            type = GetFuncGateType().Value();
+            type = GetReceiverGT().Value();
         }
         if (type == 0) {
             if (IsNormalCall() && IsValidCallMethodId()) {
-                type = GetFuncPGOType().GetValue();
+                type = GetPGOType().GetValue();
             }
         }
         return type;
@@ -573,8 +581,12 @@ public:
     }
 
 private:
+    PropertyLookupResult GetAccessorPlr() const;
+    GlobalTSTypeRef GetAccessorFuncGT() const;
+
+    GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
-    PropertyLookupResult plr_;
+    PropertyLookupResult plr_ { PropertyLookupResult() };
 };
 
 class ObjectAccessTypeInfoAccessor : public TypeInfoAccessor {

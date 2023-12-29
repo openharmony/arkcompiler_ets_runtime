@@ -131,8 +131,6 @@ private:
     void UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
     bool IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset);
-    PropertyLookupResult IsAccessor(GateRef receiver, GateRef constData);
-    GlobalTSTypeRef GetAccessorFuncType(GateRef receiver, GateRef constData);
     void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void InlineAccessorCheck(const InlineTypeInfoAccessor &info);
@@ -143,7 +141,6 @@ private:
     void ReplaceInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
     GateRef BuildAccessor(InlineTypeInfoAccessor &info);
     GateRef GetCallSetterValue(GateRef gate);
-    GlobalTSTypeRef GetAccessorFuncGT(GateRef gate, GateRef receiver, GateRef constData, bool isCallSetter);
     GateRef GetFrameState(InlineTypeInfoAccessor &info);
     void SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info);
     void AnalyseFastAccessor(

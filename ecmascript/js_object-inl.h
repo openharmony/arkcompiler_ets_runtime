@@ -257,13 +257,6 @@ std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(PropertyAttributes 
     return std::pair(true, value);
 }
 
-std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
-{
-    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
-    auto attr = layout->GetAttr(index);
-    return JSObject::ConvertValueWithRep(attr, value);
-}
-
 void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)
 {
     auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());

@@ -627,7 +627,6 @@ size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
     return inlinedCallMap_[frameArgs];
 }
 
-
 bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset)
 {
     GateRef caller = info.GetCallGate();
@@ -646,80 +645,22 @@ bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t call
     return false;
 }
 
-PropertyLookupResult TSInlineLowering::IsAccessor(GateRef gate, GateRef constData)
-{
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto methodOffset = acc_.TryGetMethodOffset(gate);
-    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
-    // PGO currently does not support call, so GT is still used to support inline operations.
-    // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
-    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
-        return PropertyLookupResult();
-    }
-
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
-    if (pgoTypes->GetCount() != 1) {
-        return PropertyLookupResult();
-    }
-    auto pgoType = pgoTypes->GetObjectInfo(0);
-    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
-    ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
-
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
-    JSHClass *hclass = nullptr;
-    if (receiverType == holderType) {
-        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
-        if (hclassIndex == -1) {
-            return PropertyLookupResult();
-        }
-        hclass = JSHClass::Cast(ptManager->QueryHClass(receiverType.first, receiverType.second).GetTaggedObject());
-    } else {
-        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
-        if (hclassIndex == -1) {
-            return PropertyLookupResult();
-        }
-        hclass = JSHClass::Cast(ptManager->QueryHClass(holderType.first, holderType.second).GetTaggedObject());
-    }
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(thread_, hclass, prop);
-    return plr;
-}
-
-GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef gate, GateRef receiver, GateRef constData,
-    bool isCallSetter)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
-    GlobalTSTypeRef classGT = tsManager_->GetClassType(classInstanceGT);
-    TSTypeAccessor tsTypeAcc(tsManager_, classGT);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto methodOffset = acc_.TryGetMethodOffset(gate);
-    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
-    GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, isCallSetter);
-    return funcGT;
-}
-
 void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
     GateRef receiver = GetAccessorReceiver(gate);
-    GateRef constData = acc_.GetValueIn(gate, 1);
-    PropertyLookupResult plr = IsAccessor(gate, constData);
-    GateType receiverType = acc_.GetGateType(receiver);
-    GlobalTSTypeRef classInstanceGT = receiverType.GetGTRef();
-    if (plr.IsAccessor() && tsManager_->IsClassInstanceTypeKind(classInstanceGT)) {
-        GlobalTSTypeRef gt = GetAccessorFuncGT(gate, receiver, constData, IsCallSetter(kind));
-        if (!gt.IsDefault()) {
-            workList.emplace(thread_, circuit_, gate, kind, plr);
-            lastCallId_ = acc_.GetId(gate);
-        }
+    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, receiver, kind);
+    if (tacc.IsEnableAccessorInline()) {
+        workList.emplace(thread_, circuit_, gate, receiver, kind);
+        lastCallId_ = acc_.GetId(gate);
     }
 }
 
 void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
 {
-    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, kind);
-    if (tacc.IsEnableInline()) {
+    size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
+    auto func = acc_.GetValueIn(gate, funcIndex);
+    InlineTypeInfoAccessor tacc(thread_, circuit_, gate, func, kind);
+    if (tacc.IsEnableNormalInline()) {
         workList.push(tacc);
         lastCallId_ = acc_.GetId(gate);
     }
@@ -816,6 +757,12 @@ void TSInlineLowering::AnalyseFastAccessor(InlineTypeInfoAccessor &info, std::ve
                 case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
                 case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
                 case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+                case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+                case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+                case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+                case EcmaOpcode::STLEXVAR_IMM4_IMM4:
+                case EcmaOpcode::STLEXVAR_IMM8_IMM8:
+                case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
                     return;
                 default:
                     break;
