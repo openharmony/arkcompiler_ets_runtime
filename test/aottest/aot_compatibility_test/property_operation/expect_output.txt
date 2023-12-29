@@ -18,8 +18,8 @@ true
 3
 false
 undefined
-true
-undefined
+false
+1
 true
 1
 3
