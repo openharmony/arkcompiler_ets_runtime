@@ -534,7 +534,7 @@ JSTaggedValue BuiltinsMath::Max(EcmaRuntimeCallInfo *argv)
             tmpMax = value;
         }
     }
-    return result;	
+    return result;
 }
 
 // 20.2.2.25
@@ -556,7 +556,7 @@ JSTaggedValue BuiltinsMath::Min(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         if (std::isnan(std::abs(value))) {
-            // If any value is NaN or -NaN, the min result is NaN	
+            // If any value is NaN or -NaN, the min result is NaN
             result = numberValue;
             break;
         }

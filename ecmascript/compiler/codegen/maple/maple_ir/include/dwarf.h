@@ -59,8 +59,8 @@ enum AccessAttribute { DW_ACCESS_public = 0x01, DW_ACCESS_protected = 0x02, DW_A
 enum SourceLanguage {
 #define DW_LANG(ID, NAME, LOWER_BOUND) DW_LANG_##NAME = (ID),
 #include "dwarf.def"
-    DW_LANG_lo_user = 0x8000,
-    DW_LANG_hi_user = 0xffff
+    DW_LANG_LO_USER = 0x8000,
+    DW_LANG_HI_USER = 0xffff
 };
 
 #endif

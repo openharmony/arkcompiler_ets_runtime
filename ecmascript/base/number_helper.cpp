@@ -122,7 +122,7 @@ bool NumberHelper::IsEmptyString(const uint8_t *start, const uint8_t *end)
 */
 uint32_t NumberHelper::ToCharCode(uint32_t number)
 {
-    ASSERT(number < 36); // total number of '0'-'9' + 'a' -'z'
+    ASSERT(number < 36); // 36 == total number of '0'-'9' + 'a' -'z'
     return number < 10 ? (number + 48): // 48 == '0'; 10: '0' - '9';
                          (number - 10 + 97); // 97 == 'a'; 'a' - 'z'
 }

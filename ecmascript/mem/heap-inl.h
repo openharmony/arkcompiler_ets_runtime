@@ -38,7 +38,7 @@ namespace panda::ecmascript {
         if ((space)->IsOOMDumpSpace()) {                                                                    \
             DumpHeapSnapshotBeforeOOM();                                                                    \
         }                                                                                                   \
-        object = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                                 \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                                 \
         ThrowOutOfMemoryError(size, message);                                                               \
     }
 
