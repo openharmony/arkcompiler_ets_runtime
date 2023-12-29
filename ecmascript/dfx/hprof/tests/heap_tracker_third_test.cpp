@@ -202,7 +202,7 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     CString *tmpResult = nullptr;
     tmpResult = stringHashMap.GetStringByKey(retKey);
     EXPECT_TRUE(tmpResult != nullptr);
-    EXPECT_TRUE(*tmpResult == "H`e`l`l`o` W`o`rld!");
+    EXPECT_TRUE(*tmpResult == "H\"e\rl\nl\\o\t W\fo\31rld!");
 }
 
 HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)

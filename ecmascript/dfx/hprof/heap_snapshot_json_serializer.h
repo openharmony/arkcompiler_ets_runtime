@@ -40,7 +40,7 @@ public:
     {
     }
 
-    void Write(const CString &str)
+    void WriteString(const CString &str)
     {
         auto len = str.size();
         ASSERT(len <= static_cast<size_t>(INT_MAX));
@@ -70,9 +70,9 @@ public:
         MaybeWriteChunk();
     }
 
-    void Write(uint64_t num)
+    void WriteNumber(uint64_t num)
     {
-        Write(ToCString(num));
+        WriteString(ToCString(num));
     }
 
     void End()
