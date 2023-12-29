@@ -34,18 +34,18 @@ struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};
     uint32_t constpoolIndex {UINT32_MAX};
     uint32_t literalIndex {UINT32_MAX};
-    bool operator < (const BaseMethodIndex &methodIndex) const
+    struct Hash {
+        std::size_t operator()(const BaseMethodIndex &baseMethodIndex) const
+        {
+            return std::hash<uint32_t>{}(baseMethodIndex.constpoolNum) ^ (std::hash<uint32_t>{}(
+                baseMethodIndex.constpoolIndex) << 1) ^ std::hash<uint32_t>{}(baseMethodIndex.literalIndex);
+        }
+    };
+
+    bool operator==(const BaseMethodIndex &baseMethodIndex) const
     {
-        if (constpoolNum < methodIndex.constpoolNum) {
-            return true;
-        }
-        if (constpoolNum == methodIndex.constpoolNum && constpoolIndex < methodIndex.constpoolIndex) {
-            return true;
-        }
-        if (constpoolNum == methodIndex.constpoolNum && constpoolIndex == methodIndex.constpoolIndex) {
-            return literalIndex < methodIndex.literalIndex;
-        }
-        return false;
+        return constpoolNum == baseMethodIndex.constpoolNum && constpoolIndex == baseMethodIndex.constpoolIndex &&
+            literalIndex == baseMethodIndex.literalIndex;
     }
 };
 
@@ -53,18 +53,18 @@ struct PatchMethodIndex {
     CString recordName;
     CString className;
     CString methodName;
-    bool operator < (const PatchMethodIndex &patchIndex) const
+    struct Hash {
+        std::size_t operator()(const PatchMethodIndex &patchMethodIndex) const
+        {
+            return std::hash<CString>{}(patchMethodIndex.recordName) ^
+                std::hash<CString>{}(patchMethodIndex.className) ^ std::hash<CString>{}(patchMethodIndex.methodName);
+        }
+    };
+
+    bool operator==(const PatchMethodIndex &patchMethodIndex) const
     {
-        if (recordName < patchIndex.recordName) {
-            return true;
-        }
-        if (recordName == patchIndex.recordName && className < patchIndex.className) {
-            return true;
-        }
-        if (recordName == patchIndex.recordName && className == patchIndex.className) {
-            return methodName < patchIndex.methodName;
-        }
-        return false;
+        return recordName == patchMethodIndex.recordName && className == patchMethodIndex.className &&
+            methodName == patchMethodIndex.methodName;
     }
 };
 
@@ -72,9 +72,9 @@ struct PatchInfo {
     // patch file name.
     CString patchFileName;
     // patch methodLiterals for load patch, <recordName, <methodName, MethodLiteral>>
-    CMap<PatchMethodIndex, MethodLiteral*> patchMethodLiterals;
+    CUnorderedMap<PatchMethodIndex, MethodLiteral*, PatchMethodIndex::Hash> patchMethodLiterals;
     // base method info for unload patch, <BaseMethodIndex, base MethodLiteral>
-    CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
+    CUnorderedMap<BaseMethodIndex, MethodLiteral *, BaseMethodIndex::Hash> baseMethodInfo;
     // save base constpool in global for avoid gc.
     CVector<JSHandle<JSTaggedValue>> baseConstpools;
     // patch replaced recordNames.
