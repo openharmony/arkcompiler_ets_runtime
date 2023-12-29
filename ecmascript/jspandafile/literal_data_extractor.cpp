@@ -244,6 +244,8 @@ JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm,
             kind == FunctionKind::GETTER_FUNCTION ||
             kind == FunctionKind::SETTER_FUNCTION) {
             functionClass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+        } else if (kind == FunctionKind::ASYNC_FUNCTION) {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
         } else {
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
         }
@@ -253,6 +255,8 @@ JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm,
             kind == FunctionKind::GETTER_FUNCTION ||
             kind == FunctionKind::SETTER_FUNCTION) {
             functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+        } else if (kind == FunctionKind::ASYNC_FUNCTION) {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
         } else {
             functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
         }
@@ -273,7 +277,12 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
 
     auto methodLiteral = jsPandaFile->FindMethodLiteral(offset);
     ASSERT(methodLiteral != nullptr);
-    methodLiteral->SetFunctionKind(kind);
+    FunctionKind literalKind = methodLiteral->GetFunctionKind();
+    if (literalKind == FunctionKind::NONE_FUNCTION || classKind == ClassKind::SENDABLE) {
+        methodLiteral->SetFunctionKind(kind);
+    } else {
+        kind = literalKind;
+    }
     bool canFastCall = false;
 
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();

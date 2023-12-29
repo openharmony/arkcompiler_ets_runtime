@@ -47,8 +47,8 @@ enum class FunctionKind : uint8_t {
     GENERATOR_FUNCTION,
     // END generators
     // END constructable functions.
+    NONE_FUNCTION,
     ASYNC_GENERATOR_FUNCTION,
-
     LAST_FUNCTION_KIND,
 };
 }  // namespace panda::ecmascript
