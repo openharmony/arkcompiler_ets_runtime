@@ -1051,7 +1051,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClass(const JSThread *thread, const HCla
     size_t size = rootDesc->GetObjectSize();
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(size, type, maxNum);
     // Dictionary?
-    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
     rootDesc->IterateProps([thread, factory, &index, hclass, layout] (const pgo::PropertyDesc &propDesc) {
         JSHandle<EcmaString> key = factory->NewFromStdString(std::string(propDesc.first));
         PropertyAttributes attributes = PropertyAttributes::Default();
