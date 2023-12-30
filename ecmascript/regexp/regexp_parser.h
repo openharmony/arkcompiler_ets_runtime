@@ -19,6 +19,8 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdint>
+#include "ecmascript/js_thread.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
@@ -58,8 +60,9 @@ public:
     static constexpr uint32_t UTF8_CHAR_LEN_MAX = 6;
     static int Canonicalize(int c, bool isUnicode);
     
-    explicit RegExpParser(Chunk *chunk)
-        : base_(nullptr),
+    explicit RegExpParser(JSThread *thread, Chunk *chunk)
+        : thread_(thread),
+          base_(nullptr),
           pc_(nullptr),
           end_(nullptr),
           flags_(0),
@@ -223,6 +226,7 @@ private:
     void Advance()
     {
         if (pc_ <= end_) {
+            STACK_LIMIT_CHECK_VOID(thread_);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             c0_ = *pc_++;
         } else {
@@ -253,6 +257,7 @@ private:
     }
 
     void PrintF(const char *fmt, ...);
+    JSThread *thread_;
     uint8_t *base_;
     uint8_t *pc_;
     uint8_t *end_;

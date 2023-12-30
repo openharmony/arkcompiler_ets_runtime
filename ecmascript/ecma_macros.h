@@ -622,4 +622,19 @@
 #define ARK_SUPPORT_INTL_RETURN(thread, message) static_cast<void>(0)
 #define ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, message) static_cast<void>(0)
 #endif
+
+#define STACK_LIMIT_CHECK(thread, retVal)     \
+    do {                                      \
+        if ((thread)->DoStackLimitCheck()) {  \
+            return (retVal);                  \
+        }                                     \
+    } while (0)
+
+#define STACK_LIMIT_CHECK_VOID(thread)        \
+    do {                                      \
+        if ((thread)->DoStackLimitCheck()) {  \
+            return;                           \
+        }                                     \
+    } while (0)
+
 #endif  // ECMASCRIPT_ECMA_MACROS_H
