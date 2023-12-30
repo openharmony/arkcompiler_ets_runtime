@@ -399,6 +399,7 @@ public:
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     MemoryType GetMemoryType(GateRef gate) const;
+    uint32_t GetHClassIndex(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOTypeRef GetTypedBinaryType(GateRef gate) const;
@@ -419,7 +420,6 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
-    bool IsLocalAccessor(GateRef gate) const;
     bool GetNoGCFlag(GateRef gate) const;
     bool TypedCallIsNoGC(GateRef gate) const;
     bool IsNoGC(GateRef gate) const;

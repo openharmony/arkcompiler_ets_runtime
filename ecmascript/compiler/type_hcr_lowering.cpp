@@ -127,8 +127,8 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::LOAD_SETTER:
             LowerLoadSetter(gate);
             break;
-        case OpCode::INLINE_ACCESSOR_CHECK:
-            LowerInlineAccessorCheck(gate);
+        case OpCode::PROTOTYPE_CHECK:
+            LowerPrototypeCheck(gate);
             break;
         case OpCode::STRING_EQUAL:
             LowerStringEqual(gate, glue);
@@ -1732,25 +1732,23 @@ void TypeHCRLowering::LowerLoadSetter(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), setter);
 }
 
-// subtyping check and hclss check
-void TypeHCRLowering::LowerInlineAccessorCheck(GateRef gate)
+void TypeHCRLowering::LowerPrototypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef frameState = acc_.GetFrameState(gate);
-    builder_.HeapObjectCheck(receiver, frameState);
 
-    auto receiverHC = builder_.LoadHClass(receiver);
-    auto expectedReceiverHC = acc_.GetValueIn(gate, 1);
-    GateRef receiverHcCheck = builder_.Equal(receiverHC, expectedReceiverHC);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    uint32_t hclassIndex = acc_.GetHClassIndex(gate);
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    auto expectedReceiverHC = builder_.LoadHClassFromConstpool(constPool, hclassIndex);
+
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
     auto protoHClass = builder_.LoadHClass(prototype);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED);
     auto prototypeHasChanged = builder_.GetHasChanged(marker);
     auto accessorHasChanged = builder_.GetAccessorHasChanged(marker);
-    auto markerCheck = builder_.BoolAnd(builder_.BoolNot(prototypeHasChanged), builder_.BoolNot(accessorHasChanged));
-    auto check = builder_.BoolAnd(markerCheck, receiverHcCheck);
+    auto check = builder_.BoolAnd(builder_.BoolNot(prototypeHasChanged), builder_.BoolNot(accessorHasChanged));
 
     builder_.DeoptCheck(check, frameState, DeoptType::INLINEFAIL);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

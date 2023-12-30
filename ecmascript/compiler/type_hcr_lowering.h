@@ -196,7 +196,7 @@ private:
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
-    void LowerInlineAccessorCheck(GateRef gate);
+    void LowerPrototypeCheck(GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
     void LowerStringAdd(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);

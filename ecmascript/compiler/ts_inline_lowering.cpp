@@ -542,14 +542,18 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     int receiverHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
-    auto expectReceiverHC = builder_.GetHClassGateFromIndex(gate, receiverHCIndex);
+
+    bool noNeedCheckHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
+    builder_.ObjectTypeCheck(acc_.GetGateType(gate), noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex));
 
     auto currentLabel = env.GetCurrentLabel();
     auto callState = currentLabel->GetControl();
     auto callDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(callDepend);
-    GateRef ret = circuit_->NewGate(circuit_->InlineAccessorCheck(), MachineType::I1,
-        {callState, callDepend, receiver, expectReceiverHC, frameState}, GateType::NJSValue());
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef ret = circuit_->NewGate(circuit_->PrototypeCheck(receiverHCIndex), MachineType::I1,
+        {callState, callDepend, jsFunc, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }

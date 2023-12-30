@@ -560,7 +560,7 @@ public:
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
-    GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
+    GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value, uint32_t receiverHClassIndex);
     inline GateRef JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type);
     inline GateRef JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type);
     GateRef ComputeTaggedArraySize(GateRef length);

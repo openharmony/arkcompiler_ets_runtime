@@ -113,7 +113,7 @@ private:
     void LowerTypedStOwnByName(GateRef gate);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder, PropertyLookupResult plr);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder,
-                                     GateRef value, PropertyLookupResult plr);
+                                     GateRef value, PropertyLookupResult plr, uint32_t receiverHClassIndex = 0);
     using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
     bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);

@@ -318,6 +318,14 @@ MemoryType GateAccessor::GetMemoryType(GateRef gate) const
     return static_cast<MemoryType>(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+uint32_t GateAccessor::GetHClassIndex(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STORE_PROPERTY ||
+           GetOpCode(gate) == OpCode::PROTOTYPE_CHECK);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
@@ -486,13 +494,6 @@ const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
 bool GateAccessor::IsVtable(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetBoolMetaData()->GetBool();
-}
-
-bool GateAccessor::IsLocalAccessor(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::INLINE_ACCESSOR_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetBoolMetaData()->GetBool();
 }
