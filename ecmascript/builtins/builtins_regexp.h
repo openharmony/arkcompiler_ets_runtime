@@ -137,6 +137,8 @@ private:
         const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
     static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                    JSHandle<EcmaString> &inputString, int32_t lastIndex);
+    static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+                                         JSHandle<EcmaString> string, uint32_t limit, bool useCache);
 };
 
 class RegExpExecResultCache : public TaggedArray {
