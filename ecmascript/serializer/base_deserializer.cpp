@@ -497,6 +497,8 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetSharedArrayBufferFunction())->GetFunctionPrototype().GetRawData();
+        case (uint8_t)JSType::JS_FUNCTION:
+            return env->GetFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ASYNC_FUNCTION:
             return env->GetAsyncFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::BIGINT:
