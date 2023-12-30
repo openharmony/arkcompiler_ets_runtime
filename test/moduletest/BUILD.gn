@@ -156,6 +156,7 @@ group("ark_js_moduletest") {
     "objectfreeze",
     "sharedcheck",
     "definesendableclass",
+    "sendablecontext",
   ]
 
   deps = []
@@ -302,6 +303,7 @@ group("ark_asm_test") {
     "getpropertybyic",
     "sharedcheck",
     "definesendableclass",
+    "sendablecontext",
   ]
 
   deps = []
@@ -429,6 +431,7 @@ group("ark_asm_single_step_test") {
     "regressarraybuffer",
     "sharedcheck",
     "definesendableclass",
+    "sendablecontext",
   ]
 
   deps = []

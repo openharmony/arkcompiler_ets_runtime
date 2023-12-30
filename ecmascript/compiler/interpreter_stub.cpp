@@ -5150,11 +5150,10 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8
     GateRef v0 = ReadInst8_9(pc);
 
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateSharedClass),
-                              { proto, lexicalEnv, constpool,
+                              { proto, constpool,
                                 Int16ToTaggedInt(methodId),
                                 Int16ToTaggedInt(literalId),
                                 Int16ToTaggedInt(length), module });
@@ -5171,56 +5170,13 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8
     DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
 }
 
-DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableLexenvImm16)
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableClassPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    auto env = GetEnvironment();
-    GateRef numVars = ReadInst16_1(pc);
-    GateRef state = GetFrame(sp);
-    auto parent = GetEnvFromFrame(state);
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
-    Label afterNew(env);
-    newBuilder.NewLexicalEnv(&result, &afterNew, ZExtInt16ToInt32(numVars), parent);
-    Bind(&afterNew);
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    varAcc = *result;
-    SetEnvToFrame(glue, GetFrame(sp), *result);
-    DISPATCH_WITH_ACC(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
-}
-
-DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableMethodImm8Id16Imm8)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef methodId = ReadInst16_2(pc);
-    GateRef length = ReadInst8_4(pc);
+    GateRef level = ReadInst16_1(pc);
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
-    DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineSendableMethod), { *result, acc, Int8ToTaggedInt(length), lexEnv});
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    {
-        varAcc = *result;
-        DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);
-    }
-}
-
-DECLARE_ASM_HANDLER(HandleCallRuntimeCreateSendablePrivatePropertyPrefImm16Id16)
-{
-    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef count = ReadInst16_1(pc);
-    GateRef literalId = ReadInst16_3(pc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateSendablePrivateProperty), {lexicalEnv,
-        IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module});
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16));
+    varAcc = CallRuntime(glue, RTSTUB_ID(LdSendableClass), { lexEnv, Int16ToTaggedInt(level) });
+    DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16);
 }
 
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

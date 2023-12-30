@@ -67,14 +67,14 @@ class SuperClass {
   propNumber: number = 5
   propBool: boolean = false
   static staticPropString: string = "I'm staticPropString";
-  #privatePropString: string = "I'm privatePropString";
+  publicPropString: string = "I'm privatePropString";
 
   get accessorPrivatePropString() {
-    return this.#privatePropString;
+    return this.publicPropString;
   }
 
   set accessorPrivatePropString(prop: string) {
-    this.#privatePropString = prop;
+    this.publicPropString = prop;
   }
   constructor() {
     "use sendable"
@@ -93,11 +93,11 @@ class SubClass extends SuperClass {
 
   func() {
     print("Hi func");
-    this.#privateFunc();
+    this.publicFunc();
   }
 
-  #privateFunc() {
-    print("Hi private func");
+  publicFunc() {
+    print("Hi public func");
   }
 
   subClassPropString: string = "I'm subClassPropString"

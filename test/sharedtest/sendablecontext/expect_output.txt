@@ -11,13 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_moduletest_action("sharedcheck") {
-  deps = []
-  entry_point = "--entry-point=sharedcheck"
-  is_module = true
-  is_merge = true
-  src_dir = "$js_root/test/sharedtest/check"
-  src_postfix = "ts"
-}
+staticField
+staticField
+closureVariable x = 0
+staticField
+closureVariable y = 0
+closureVariable x = 0
+innerStaticField = innerStaticField
+staticField

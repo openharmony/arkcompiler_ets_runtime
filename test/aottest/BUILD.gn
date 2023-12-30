@@ -284,6 +284,7 @@ group("ark_aot_ts_test") {
     "xor",
     "sharedcheck",
     "definesendableclass",
+    "sendablecontext",
   ]
 
   deps = []

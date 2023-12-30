@@ -128,11 +128,9 @@ class SendableClassDefiner : public ClassHelper {
 public:
     static JSHandle<JSFunction> DefineSendableClassFromExtractor(JSThread *thread,
                                                                  JSHandle<ClassInfoExtractor> &extractor,
-                                                                 const JSHandle<JSTaggedValue> &lexenv,
                                                                  const JSHandle<TaggedArray> &fieldTypeArray);
 
-    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-                                             const JSHandle<TaggedArray> &fieldTypeArray,
+    static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
                                              const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
 
     static JSHandle<TaggedArray> ExtractStaticFieldTypeArray(JSThread *thread,
@@ -165,21 +163,19 @@ private:
                                                                       JSHandle<TaggedArray> &keys,
                                                                       JSHandle<TaggedArray> &properties,
                                                                       ClassPropertyType type,
-                                                                      const JSHandle<JSTaggedValue> &lexenv);
+                                                                      const JSHandle<JSFunction> &ctor);
 
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
-                                       JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv);
+                                       const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);
 
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-                                     const JSHandle<TaggedArray> &fieldTypeArray,
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
                                      const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
 
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-                                     const JSHandle<TaggedArray> &fieldTypeArray,
+    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
                                      const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
 
-    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-                                   const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
+    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                   JSMutableHandle<NameDictionary> &dict,
                                    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false));
 
     static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,

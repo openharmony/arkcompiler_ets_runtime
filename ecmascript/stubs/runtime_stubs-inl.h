@@ -894,7 +894,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
 JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &base,
-                                                     const JSHandle<JSTaggedValue> &lexenv,
                                                      const JSHandle<JSTaggedValue> &constpool,
                                                      uint16_t methodId, uint16_t literalId,
                                                      uint16_t length, const JSHandle<JSTaggedValue> &module)
@@ -925,8 +924,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
     JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
     JSHandle<JSFunction> cls =
-        SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, lexenv,
-                                                               staticFieldArray);
+        SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, ClassKind::SENDABLE);
@@ -935,7 +933,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     uint32_t arrayLength = fieldTypeArray->GetLength();
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
     fieldTypeArray->Trim(thread, instanceFieldNums * 2); // 2: key-type
-    SendableClassDefiner::DefineSendableInstanceHClass(thread, lexenv, fieldTypeArray, cls, base);
+    SendableClassDefiner::DefineSendableInstanceHClass(thread, fieldTypeArray, cls, base);
     return cls.GetTaggedValue();
 }
 
@@ -2225,15 +2223,15 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     return func.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeDefineSendableMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                                        const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
-                                                        const JSHandle<JSTaggedValue> &env)
+JSTaggedValue RuntimeStubs::RuntimeLdSendableClass(const JSHandle<JSTaggedValue> &env, uint16_t level)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> func = factory->NewSFunction(methodHandle, homeObject);
-    func->SetLength(length);
-    func->SetLexicalEnv(thread, env);
-    return func.GetTaggedValue();
+    JSTaggedValue currentEnv(env.GetTaggedValue());
+    for (uint32_t i = 0; i < level; i++) {
+        ASSERT(currentEnv.IsLexicalEnv());
+        currentEnv = LexicalEnv::Cast(currentEnv.GetTaggedObject())->GetParentEnv();
+    }
+    ASSERT(currentEnv.IsJSSharedFunction());
+    return currentEnv;
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
@@ -2951,7 +2949,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
-    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module, ClassKind kind)
+    uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
@@ -2970,8 +2968,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
     }
 
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry,
-                                                                      kind);
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();

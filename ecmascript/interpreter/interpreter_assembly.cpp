@@ -6056,9 +6056,8 @@ void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16I
     JSTaggedValue base = GET_VREG_VALUE(v0);
 
     SAVE_PC();
-    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue res =
-        SlowRuntimeStub::CreateSharedClass(thread, base, state->env, GetConstantPool(sp), methodId, literaId,
+        SlowRuntimeStub::CreateSharedClass(thread, base, GetConstantPool(sp), methodId, literaId,
                                            length, GetModule(sp));
 
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6068,58 +6067,17 @@ void InterpreterAssembly::HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16I
     DISPATCH(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
 }
 
-void InterpreterAssembly::HandleCallRuntimeNewSendableLexenvImm16(
+void InterpreterAssembly::HandleCallRuntimeLdSendableClassPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    uint16_t numVars = READ_INST_16_1();
-    LOG_INST() << "intrinsics::newsendablelexenv"
-               << " imm " << numVars;
-
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSTaggedValue res = FastRuntimeStub::NewLexicalEnv(thread, factory, numVars);
-    if (res.IsHole()) {
-        SAVE_PC();
-        res = SlowRuntimeStub::NewLexicalEnv(thread, numVars);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
-    }
-    SET_ACC(res);
-    (reinterpret_cast<InterpretedFrame *>(sp) - 1)->env = res;
-    DISPATCH(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16);
-}
-
-void InterpreterAssembly::HandleCallRuntimeDefineSendableMethodImm8Id16Imm8(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    uint16_t methodId = READ_INST_16_2();
-    uint16_t length = READ_INST_8_4();
-    LOG_INST() << "intrinsics::definesendablemethod length: " << length;
-    SAVE_ACC();
-    constpool = GetConstantPool(sp);
-    Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
-    ASSERT(method != nullptr);
-    RESTORE_ACC();
-
-    SAVE_PC();
-    JSTaggedValue homeObject = GET_ACC();
+    uint16_t level = READ_INST_16_1();
+    LOG_INST() << "intrinsics::LdSendableClass level: " << level;
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
-    JSTaggedValue taggedCurEnv = state->env;
-    auto res = SlowRuntimeStub::DefineSendableMethod(thread, method, homeObject, length, taggedCurEnv);
-    INTERPRETER_RETURN_IF_ABRUPT(res);
-    JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
-    SET_ACC(JSTaggedValue(result));
-
-    DISPATCH(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8);
-}
-
-void InterpreterAssembly::HandleCallRuntimeCreateSendablePrivatePropertyPrefImm16Id16(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    DISPATCH(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16);
+    auto res = SlowRuntimeStub::LdSendableClass(thread, state->env, level);
+    ASSERT(res.IsJSSharedFunction());
+    SET_ACC(res);
+    DISPATCH(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16);
 }
 
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(

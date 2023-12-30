@@ -664,8 +664,7 @@ void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSOb
 }
 
 JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSThread *thread,
-    JSHandle<ClassInfoExtractor> &extractor, const JSHandle<JSTaggedValue> &lexenv,
-    const JSHandle<TaggedArray> &staticFieldArray)
+    JSHandle<ClassInfoExtractor> &extractor, const JSHandle<TaggedArray> &staticFieldArray)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
@@ -686,7 +685,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
-        AddFieldTypeToHClass(thread, lexenv, staticFieldArray, layout, constructorHClass);
+        AddFieldTypeToHClass(thread, staticFieldArray, layout, constructorHClass);
     }
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
         MemSpaceType::NON_MOVABLE);
@@ -704,17 +703,17 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
             if (propValue->IsJSFunction() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
                 JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
-                propFunc->SetLexicalEnv(thread, lexenv);
+                propFunc->SetLexicalEnv(thread, constructor);
                 ASSERT(!propFunc->GetClass()->IsExtensible());
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
-                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), lexenv);
+                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), constructor);
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
     } else {
         JSHandle<NameDictionary> dict = BuildSendableDictionaryProperties(thread, prototype, nonStaticKeys,
-            nonStaticProperties, ClassPropertyType::NON_STATIC, lexenv);
+            nonStaticProperties, ClassPropertyType::NON_STATIC, constructor);
         prototype->SetProperties(thread, dict);
     }
 
@@ -732,21 +731,21 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
             if (propValue->IsJSFunction()) {
                 JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
-                propFunc->SetLexicalEnv(thread, lexenv);
+                propFunc->SetLexicalEnv(thread, constructor);
                 ASSERT(!propFunc->GetClass()->IsExtensible());
                 propValue.Update(propFunc);
             } else if (propValue->IsAccessorData()) {
-                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), lexenv);
+                UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), constructor);
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
     } else {
         JSHandle<NameDictionary> dict =
             BuildSendableDictionaryProperties(thread, JSHandle<JSObject>(constructor), staticKeys,
-                                              staticProperties, ClassPropertyType::STATIC, lexenv);
+                                              staticProperties, ClassPropertyType::STATIC, constructor);
         JSMutableHandle<NameDictionary> nameDict(thread, dict);
         if (staticFields > 0) {
-            AddFieldTypeToDict(thread, lexenv, staticFieldArray, nameDict,
+            AddFieldTypeToDict(thread, staticFieldArray, nameDict,
                                PropertyAttributes::Default(false, true, false));
         }
         constructor->SetProperties(thread, nameDict);
@@ -760,7 +759,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     prototype->GetJSHClass()->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
-    constructor->SetLexicalEnv(thread, lexenv);
+    constructor->SetLexicalEnv(thread, constructor);
     return constructor;
 }
 
@@ -810,7 +809,7 @@ void SendableClassDefiner::FilterDuplicatedKeys(JSThread *thread, const JSHandle
 
 JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties(JSThread *thread,
     const JSHandle<JSObject> &object, JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
-    ClassPropertyType type, const JSHandle<JSTaggedValue> &lexenv)
+    ClassPropertyType type, const JSHandle<JSFunction> &ctor)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
@@ -834,11 +833,11 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
         if (propValue->IsJSFunction()) {
             JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
-            propFunc->SetLexicalEnv(thread, lexenv);
+            propFunc->SetLexicalEnv(thread, ctor);
             ASSERT(!propFunc->GetClass()->IsExtensible());
             propValue.Update(propFunc);
         } else if (propValue->IsAccessorData()) {
-            UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), lexenv);
+            UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), ctor);
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
         dict.Update(newDict);
@@ -846,8 +845,8 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     return dict;
 }
 
-void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-    const JSHandle<TaggedArray> &fieldTypeArray, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass)
+void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass)
 {
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -856,13 +855,8 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
-        auto maybeKey = fieldTypeArray->Get(i);
-        if (maybeKey.IsInt()) {
-            auto slot = maybeKey.GetInt();
-            key.Update(JSHandle<LexicalEnv>(lexenv)->GetProperties(slot));
-        } else {
-            key.Update(maybeKey);
-        }
+        key.Update(fieldTypeArray->Get(i));
+        ASSERT(key->IsString());
         TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
         int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
         if (entry != -1) {
@@ -885,22 +879,16 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
     }
 }
 
-void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-    const JSHandle<TaggedArray> &fieldTypeArray, JSMutableHandle<NameDictionary> &dict,
-    PropertyAttributes attributes)
+void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    JSMutableHandle<NameDictionary> &dict, PropertyAttributes attributes)
 {
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
-        auto maybeKey = fieldTypeArray->Get(i);
-        if (maybeKey.IsInt()) {
-            auto slot = maybeKey.GetInt();
-            key.Update(JSHandle<LexicalEnv>(lexenv)->GetProperties(slot));
-        } else {
-            key.Update(maybeKey);
-        }
+        key.Update(fieldTypeArray->Get(i));
+        ASSERT(key->IsString());
         TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
         attributes.SetTrackType(type);
         attributes.SetBoxType(PropertyBoxType::UNDEFINED);
@@ -909,20 +897,18 @@ void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<J
     }
 }
 
-void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-    const JSHandle<TaggedArray> &fieldTypeArray, const JSHandle<NameDictionary> &nameDict,
-    const JSHandle<JSHClass> &hclass)
+void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass)
 {
     JSMutableHandle<NameDictionary> dict(thread, nameDict);
-    AddFieldTypeToDict(thread, lexenv, fieldTypeArray, dict);
+    AddFieldTypeToDict(thread, fieldTypeArray, dict);
     hclass->SetLayout(thread, dict);
     hclass->SetNumberOfProps(0);
     hclass->SetIsDictionaryMode(true);
 }
 
-void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const JSHandle<JSTaggedValue> &lexenv,
-    const JSHandle<TaggedArray> &fieldTypeArray, const JSHandle<JSFunction> &ctor,
-    const JSHandle<JSTaggedValue> &base)
+void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base)
 {
     ASSERT(ctor->GetClass()->IsJSSharedFunction());
     JSHandle<JSObject> clsPrototype(thread, JSHandle<JSFunction>(ctor)->GetFunctionPrototype());
@@ -932,15 +918,17 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
     uint32_t fieldNum = length / 2; // 2: key-value pair;
     JSHandle<JSHClass> iHClass;
     if (base->IsHole() || base->IsNull()) {
-        if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
+        if (fieldNum == 0) {
+            iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
+        } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
             iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
             JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(fieldNum, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
-            AddFieldTypeToHClass(thread, lexenv, fieldTypeArray, layout, iHClass);
+            AddFieldTypeToHClass(thread, fieldTypeArray, layout, iHClass);
         } else {
             iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             JSHandle<NameDictionary> dict =
                 NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(fieldNum));
-            AddFieldTypeToHClass(thread, lexenv, fieldTypeArray, dict, iHClass);
+            AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     } else {
         ASSERT(base->IsJSSharedFunction());
@@ -951,10 +939,12 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             auto baseLength = baseIHClass->NumberOfProps();
             JSHandle<LayoutInfo> baseLayout(thread, baseIHClass->GetLayout());
             auto newLength = baseLength + fieldNum;
-            if (LIKELY(newLength <= JSSharedObject::MAX_INLINE)) {
+            if (fieldNum == 0) {
+                iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
+            } else if (LIKELY(newLength <= JSSharedObject::MAX_INLINE)) {
                 iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, newLength);
-                JSHandle<LayoutInfo> layout = factory->ExtendLayoutInfo(baseLayout, newLength);
-                AddFieldTypeToHClass(thread, lexenv, fieldTypeArray, layout, iHClass);
+                JSHandle<LayoutInfo> layout = factory->CopyAndReSort(baseLayout, baseLength, newLength);
+                AddFieldTypeToHClass(thread, fieldTypeArray, layout, iHClass);
             } else {
                 iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
                 JSHandle<NameDictionary> dict =
@@ -969,7 +959,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
                     attr.SetBoxType(PropertyBoxType::UNDEFINED);
                     dict = NameDictionary::Put(thread, dict, key, value, attr);
                 }
-                AddFieldTypeToHClass(thread, lexenv, fieldTypeArray, dict, iHClass);
+                AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
             }
         } else {
             JSHandle<NameDictionary> baseDict(thread, baseIHClass->GetLayout());
@@ -979,7 +969,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             baseDict->Rehash(thread, *dict);
             dict->SetNextEnumerationIndex(thread, baseDict->GetNextEnumerationIndex());
             iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
-            AddFieldTypeToHClass(thread, lexenv, fieldTypeArray, dict, iHClass);
+            AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     }
     iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(clsPrototype));
@@ -1010,7 +1000,7 @@ JSHandle<TaggedArray> SendableClassDefiner::ExtractStaticFieldTypeArray(JSThread
 }
 
 void SendableClassDefiner::UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
-    JSHandle<JSTaggedValue> homeObject, JSHandle<JSTaggedValue> lexenv)
+    const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor)
 {
     ASSERT(value->IsAccessorData());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1020,7 +1010,7 @@ void SendableClassDefiner::UpdateAccessorFunction(JSThread *thread, const JSMuta
         JSHandle<JSFunction> func(thread, getter);
         JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
-        propFunc->SetLexicalEnv(thread, lexenv);
+        propFunc->SetLexicalEnv(thread, ctor);
         ASSERT(!propFunc->GetClass()->IsExtensible());
         accessor->SetGetter(thread, propFunc);
     }
@@ -1029,7 +1019,7 @@ void SendableClassDefiner::UpdateAccessorFunction(JSThread *thread, const JSMuta
         JSHandle<JSFunction> func(thread, setter);
         JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
         propFunc->SetHomeObject(thread, homeObject);
-        propFunc->SetLexicalEnv(thread, lexenv);
+        propFunc->SetLexicalEnv(thread, ctor);
         ASSERT(!propFunc->GetClass()->IsExtensible());
         accessor->SetSetter(thread, propFunc);
     }

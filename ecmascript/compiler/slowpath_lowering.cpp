@@ -739,14 +739,8 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
             LowerDefineSendableClass(gate);
             break;
-        case EcmaOpcode::CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16:
-            LowerNewSendableLexenv(gate);
-            break;
-        case EcmaOpcode::CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8:
-            LowerDefineSendableMethod(gate);
-            break;
-        case EcmaOpcode::CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16:
-            LowerCreateSendablePrivateProperty(gate);
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
+            LowerLdSendableClass(gate);
             break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
@@ -3221,68 +3215,26 @@ void SlowPathLowering::LowerDefinePrivateProperty(GateRef gate)
 
 void SlowPathLowering::LowerDefineSendableClass(GateRef gate)
 {
-    // 5: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    // 4: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
     GateRef proto = acc_.GetValueIn(gate, 3);
-    GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
     GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
-
-    auto args = { proto, lexicalEnv, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
+    auto args = { proto, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
                   builder_.ToTaggedInt(length), module };
     GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(CreateSharedClass), args);
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerNewSendableLexenv(GateRef gate)
+void SlowPathLowering::LowerLdSendableClass(GateRef gate)
 {
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef lexEnv = acc_.GetValueIn(gate, 1);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::NewLexicalEnv,
-        { glue_, lexEnv, builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0)) });
-    ReplaceHirWithValue(gate, result);
-}
-
-void SlowPathLowering::LowerDefineSendableMethod(GateRef gate)
-{
-    // 4: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 4);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    auto method = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, methodId, ConstPoolType::METHOD);
-    GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
-    GateRef homeObject = acc_.GetValueIn(gate, 3);  // 3: second arg
-    Label defaultLabel(&builder_);
-    Label successExit(&builder_);
-    Label exceptionExit(&builder_);
-    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineSendableMethod),
-        {method, homeObject, builder_.ToTaggedInt(length), env}, true);
-    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
-        &exceptionExit, &successExit);
-    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
-    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
-}
-
-void SlowPathLowering::LowerCreateSendablePrivateProperty(GateRef gate)
-{
-    const int id = RTSTUB_ID(CreateSendablePrivateProperty);
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef count = acc_.GetValueIn(gate, 0);
-    GateRef literalId = acc_.GetValueIn(gate, 1);
-    GateRef lexicalEnv = acc_.GetValueIn(gate, 2);
-    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-
-    GateRef newGate = LowerCallRuntime(gate, id, {lexicalEnv,
-        builder_.ToTaggedInt(count), constpool, builder_.ToTaggedInt(literalId), module});
+    GateRef level = acc_.GetValueIn(gate, 0);
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 1);
+    GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(LdSendableClass), { lexicalEnv, builder_.ToTaggedInt(level) });
     ReplaceHirWithValue(gate, newGate);
 }
 

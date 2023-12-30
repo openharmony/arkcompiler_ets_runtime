@@ -153,8 +153,7 @@ public:
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
                                       uint16_t length, JSTaggedValue env);
-    static JSTaggedValue DefineSendableMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
-                                              uint16_t length, JSTaggedValue env);
+    static JSTaggedValue LdSendableClass(JSThread *thread, JSTaggedValue env, uint16_t level);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
@@ -169,7 +168,7 @@ public:
                                                JSTaggedValue lexenv, JSTaggedValue constpool,
                                                uint16_t methodId, uint16_t literalId, JSTaggedValue module,
                                                JSTaggedValue length);
-    static JSTaggedValue CreateSharedClass(JSThread *thread, JSTaggedValue base, JSTaggedValue lexenv,
+    static JSTaggedValue CreateSharedClass(JSThread *thread, JSTaggedValue base,
                                            JSTaggedValue constpool, uint16_t methodId, uint16_t literalId,
                                            uint16_t length, JSTaggedValue module);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
@@ -191,8 +190,6 @@ public:
     static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
     static JSTaggedValue DefineField(JSThread *thread, JSTaggedValue obj, JSTaggedValue propKey, JSTaggedValue value);
     static JSTaggedValue CreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
-        uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module);
-    static JSTaggedValue CreateSendablePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module);
     static JSTaggedValue DefinePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);

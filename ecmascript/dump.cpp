@@ -1636,8 +1636,12 @@ void JSFunction::Dump(std::ostream &os) const
     GetProtoOrHClass().Dump(os);
     os << "\n";
     os << " - LexicalEnv: ";
-    GetLexicalEnv().Dump(os);
-    os << "\n";
+    if (GetClass()->IsJSSharedFunction()) {
+        os << GetLexicalEnv().GetTaggedObject()<< "\n";
+    } else {
+        GetLexicalEnv().Dump(os);
+        os << "\n";
+    }
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
     os << "\n";
