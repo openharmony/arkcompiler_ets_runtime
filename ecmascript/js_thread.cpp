@@ -557,7 +557,10 @@ bool JSThread::CheckSafepoint()
         gcTriggered = true;
     }
 #endif
-    auto heap = GetEcmaVM()->GetHeap();
+    auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    // Handle exit app senstive scene
+    heap->HandleExitHighSensitiveEvent();
+
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
         && !heap->GetOnSerializeEvent()) {
         heap->GetConcurrentMarker()->HandleMarkingFinished();
