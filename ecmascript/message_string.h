@@ -26,8 +26,11 @@ namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define COMMON_MESSAGE_STRING_LIST(V)                                                        \
     V(SetReadOnlyProperty, "Cannot assign to read only property")                            \
-    V(SetTypeMismatchedSharedProperty, "Cannot set shared property with mismatched type")    \
-    V(ClassNotDerivedFromShared, "Class not derived from a shared object")                   \
+    V(SetTypeMismatchedSharedProperty, "Cannot set sendable property with mismatched type")  \
+    V(CreateObjectWithSendableProto, "Cannot create object with sendable proto")             \
+    V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                \
+    V(SetProtoWithSendable, "Cannot set proto with sendable object")                         \
+    V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                 \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")             \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \

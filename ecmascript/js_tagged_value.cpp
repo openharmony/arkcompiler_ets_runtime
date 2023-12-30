@@ -890,6 +890,10 @@ bool JSTaggedValue::GetOwnProperty(JSThread *thread, const JSHandle<JSTaggedValu
 bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                  const JSHandle<JSTaggedValue> &proto)
 {
+    if (obj->IsJSShared() || proto->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetProtoWithSendable), false);
+    }
+
     if (obj->IsJSProxy()) {
         return JSProxy::SetPrototype(thread, JSHandle<JSProxy>(obj), proto);
     }

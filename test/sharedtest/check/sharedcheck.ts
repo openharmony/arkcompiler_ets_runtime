@@ -121,6 +121,13 @@ function testDelete(testObj: SubClass) {
 function testExtend(testObj: SubClass) {
   print("Start testExtend");
   try {
+    Object.defineProperty(testObj, "tmpProp", {value: 321, writable: true });
+    print("Success to extend prop with defineProperty")
+  } catch (error) {
+    print("Fail to extend prop with defineProperty. err: " + error);
+  }
+
+  try {
     Object.defineProperty(testObj, "prop1", { writable: true });
     print("Success extend prop1 with defineProperty")
   } catch (error) {
@@ -168,15 +175,16 @@ function testUpdatePrototype(testObj: SubClass) {
     print("Fail to extend prop to constructor's prototype. err: " + error);
   }
 
+  let superClass = new SuperClass()
   try {
-    testObj.__proto__.constructor = a.__proto__.constructor;
+    testObj.__proto__.constructor = superClass.__proto__.constructor;
     print("Success to change constructor of instance's prototype.");
   } catch (error) {
     print("Fail to change constructor of instance's prototype. err: " + error);
   }
 
   try {
-    testObj.__proto__ = a.__proto__;
+    testObj.__proto__ = superClass.__proto__;
     print("Success to replace instance's prototype.");
   } catch (error) {
     print("Fail to replace instance's prototype. err: " + error);
@@ -238,14 +246,14 @@ function testUpdateInstanceAccessor(testObj: SubClass) {
     testObj.accessorPrivatePropString = "123"
     print("Success set prop through accessor with matched type");
   } catch (error) {
-    print("Fail to set prop through accessor with matched type");
+    print("Fail to set prop through accessor with matched type. err: " + error);
   }
 
   try {
     testObj.accessorPrivatePropString = 123
     print("Success set prop through accessor with mismatched type");
   } catch (error) {
-    print("Fail to set prop through accessor with mismatched type");
+    print("Fail to set prop through accessor with mismatched type. err: " + error);
   }
 }
 
@@ -266,6 +274,103 @@ function testUpdateConstructor() {
   }
 }
 
+function testObjectProtoFunc(testObj: SubClass) {
+  print("Start testObjectProtoFunc");
+  testObjectAssign(testObj);
+  testObjectCreate(testObj);
+  testObjectSetPrototypeOf(testObj);
+  testObjectAttributesAndExtensible(testObj);
+}
+
+function testObjectCreate(testObj: SubClass)
+{
+  print("Start testObjectCreate");
+  try {
+    let sendableSimple: SimpleStringSendable = Object.create(SimpleStringSendable);
+    print("Success to call Object.create");
+  } catch (error) {
+    print("Fail to call Object.create. err: " + error);
+  }
+}
+
+function testObjectSetPrototypeOf(testObj: SubClass)
+{
+  print("Start testObjectSetPrototypeOf");
+  try {
+    Object.setPrototypeOf(testObj, new Object)
+    print("Success to call Object.setPrototypeOf")
+  } catch (error) {
+    print("Fail to call Object.setPrototypeOf. err: " + error)
+  }
+}
+
+function testObjectAttributesAndExtensible(testObj: SubClass)
+{
+  print("Start testObjectAttributesAndExtensible");
+  try {
+    Object.defineProperty(testObj, "propNumber", { configurable: true });
+    print("Success to update propNumber to configurable with defineProperty")
+  } catch (error) {
+    print("Fail to update propNumber to configurable with defineProperty. err: " + error)
+  }
+  print("isFrozen: " + Object.isFrozen(testObj))
+  try {
+    Object.freeze(testObj);
+    print("Success to call Object.freeze")
+  } catch (error) {
+    print("Fail to call Object.freeze. err: " + error)
+  }
+  print("isSealed: " + Object.isSealed(testObj))
+  try {
+    Object.seal(testObj);
+    print("Success to call Object.seal in sealed state")
+  } catch (error) {
+    print("Fail to call Object.seal in sealed state. err: " + error)
+  }
+  print("isExtensible: " + Object.isExtensible(testObj))
+  try {
+    Object.preventExtensions(testObj);
+    print("Success to call Object.preventExtensions in preventExtensions state.")
+  } catch (error) {
+    print("Fail to to call Object.preventExtensions in preventExtensions state. err: " + error)
+  }
+}
+
+function testObjectAssign(testObj: SubClass)
+{
+  print("Start testObjectAssign");
+  try {
+    Object.assign(testObj, new Object({ a: 1, b: "abc" }));
+    print("Success to call Object.assign to extend target");
+  } catch (error) {
+    print("Fail to call Object.assign to extend target. err: " + error);
+  }
+
+  try {
+    Object.assign(testObj, new Object({ propString: null }));
+    print("Success to call Object.assign to update propString with mismatched type");
+  } catch (error) {
+    print("Fail to call Object.assign to update propString with mismatched type. err: " + error);
+  }
+
+  try {
+    Object.assign(testObj, new Object({ propString: "abc" }));
+    print("Success to call Object.assign to update propString");
+  } catch (error) {
+    print("Fail to call Object.assign to update propString. err: " + error);
+  }
+}
+
+function testKeywords(testObj: SubClass)
+{
+  print("Start testKeywords");
+  print("typeof sendable object: " + (typeof testObj))
+  print("typeof sendable function: " + (typeof testObj.func))
+  print("sendable instanceof Object: " + (testObj instanceof Object))
+  print("sendable instanceof SubClass: " + (testObj instanceof SubClass))
+  print("sendable instanceof SuperClass: " + (testObj instanceof SuperClass))
+}
+
 function testUpdate(testObj: SubClass) {
   testUpdateInstanceProps(testObj);
   testUpdateInstanceAccessor(testObj);
@@ -281,13 +386,6 @@ function testUpdateWithType(testObj: SubClass) {
     print("Success update string to int with stobjbynamme.")
   } catch (error) {
     print("Fail to update string to int with stobjbynamme. err: " + error);
-  }
-
-  try {
-    Object.defineProperty(testObj, "a", { writable: true });
-    print("Success update prop with defineProperty")
-  } catch (error) {
-    print("Fail to define prop with defineProperty. err: " + error);
   }
 
   try {
@@ -310,4 +408,6 @@ b.subClassPropSendable = new SimpleStringSendable()
 testUpdate(b)
 testDelete(b)
 testExtend(b)
+testObjectProtoFunc(b)
 testUpdateWithType(b)
+testKeywords(b)
