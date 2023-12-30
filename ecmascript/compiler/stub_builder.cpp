@@ -148,7 +148,7 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
         Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSShared);
         Bind(&isString);
         {
-            result = TaggedIsString(value);
+            result = BoolOr(TaggedIsString(value), TaggedIsNull(value));
             Jump(&exit);
         }
     }
@@ -157,7 +157,7 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
         Branch(Equal(trackType, Int32(static_cast<int32_t>(TrackType::SENDABLE))), &isJSShared, &checkJSNone);
         Bind(&isJSShared);
         {
-            result = TaggedIsShared(value);
+            result = BoolOr(TaggedIsShared(value), TaggedIsNull(value));
             Jump(&exit);
         }
     }

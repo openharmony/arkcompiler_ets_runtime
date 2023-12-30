@@ -13,8 +13,16 @@
 
 I'm propString
 I'm simple sendable's propString
-Start testUpdateInstanceProps
-Fail to update prop to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Start testUpdateInstancePropsToNull
+Success update propString to null with stobjbyname
+Success update subClassPropSendable to null with stobjbyname
+Fail to update propNumber to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propNumber to null with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Start testUpdateInstancePropsToUndefined
+Fail to update propString to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update subClassPropSendable to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propNumber to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
+Fail to update propNumber to undefined with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
 Success update subClassPropString with defineProperties
 Success update propNumber with defineProperty
 Fail to update subClassPropString with stobjbyname. err: TypeError: Cannot set sendable property with mismatched type
