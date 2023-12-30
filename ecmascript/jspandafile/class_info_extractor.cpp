@@ -627,11 +627,11 @@ bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
             break;
         }
         case TrackType::STRING: {
-            checkRet = value.IsString();
+            checkRet = value.IsString() || value.IsNull();
             break;
         }
         case TrackType::SENDABLE: {
-            checkRet = value.IsJSShared();
+            checkRet = value.IsJSShared() || value.IsNull();
             break;
         }
         case TrackType::NONE: {

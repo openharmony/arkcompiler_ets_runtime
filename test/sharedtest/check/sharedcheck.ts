@@ -198,15 +198,71 @@ function testUpdatePrototype(testObj: SubClass) {
   }
 }
 
-function testUpdateInstanceProps(testObj: SubClass) {
-  print("Start testUpdateInstanceProps");
+function testUpdateInstancePropsToNull(testObj: SubClass) {
+  print("Start testUpdateInstancePropsToNull");
   try {
     testObj.propString = null
-    print("Success update prop to null with stobjbyname")
+    print("Success update propString to null with stobjbyname")
   } catch (error) {
-    print("Fail to update prop to null with stobjbyname. err: " + error)
+    print("Fail to update propString to null with stobjbyname. err: " + error)
   }
 
+  try {
+    testObj.subClassPropSendable = null
+    print("Success update subClassPropSendable to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update subClassPropSendable to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propNumber = null
+    print("Success update propNumber to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumber to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBool = null
+    print("Success update propNumber to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumber to null with stobjbyname. err: " + error)
+  }
+}
+
+function testUpdateInstancePropsToUndefined(testObj: SubClass) {
+  print("Start testUpdateInstancePropsToUndefined");
+  try {
+    testObj.propString = undefined
+    print("Success update propString to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propString to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.subClassPropSendable = undefined
+    print("Success update subClassPropSendable to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update subClassPropSendable to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propNumber = undefined
+    print("Success update propNumber to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumber to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBool = undefined
+    print("Success update propNumber to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumber to undefined with stobjbyname. err: " + error)
+  }
+}
+
+function testUpdateInstanceProps(testObj: SubClass) {
+  testUpdateInstancePropsToNull(testObj);
+  testUpdateInstancePropsToUndefined(testObj);
   try {
     Object.defineProperties(testObj, { subClassPropString: { value: "hello", writable: true } });
     print("Success update subClassPropString with defineProperties")
@@ -347,7 +403,7 @@ function testObjectAssign(testObj: SubClass)
   }
 
   try {
-    Object.assign(testObj, new Object({ propString: null }));
+    Object.assign(testObj, new Object({ propString: undefined }));
     print("Success to call Object.assign to update propString with mismatched type");
   } catch (error) {
     print("Fail to call Object.assign to update propString with mismatched type. err: " + error);
