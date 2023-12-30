@@ -588,7 +588,7 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
-                                     tacc.GetValue(), tacc.GetAccessInfo(0).Plr());
+                                     tacc.GetValue(), tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
         }
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
         DeleteConstDataIfNoUser(tacc.GetKey());
@@ -722,12 +722,13 @@ GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(
 }
 
 GateRef TypeBytecodeLowering::BuildNamedPropertyAccess(
-    GateRef hir, GateRef receiver, GateRef holder, GateRef value, PropertyLookupResult plr)
+    GateRef hir, GateRef receiver, GateRef holder, GateRef value, PropertyLookupResult plr,
+    uint32_t receiverHClassIndex)
 {
     GateRef plrGate = builder_.Int32(plr.GetData());
     GateRef result = Circuit::NullGate();
     if (LIKELY(!plr.IsAccessor())) {
-        builder_.StoreProperty(receiver, plrGate, value);
+        builder_.StoreProperty(receiver, plrGate, value, receiverHClassIndex);
     } else {
         builder_.CallSetter(hir, receiver, holder, plrGate, value);
     }

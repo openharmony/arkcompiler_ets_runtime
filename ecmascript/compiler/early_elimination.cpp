@@ -81,7 +81,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
-        case OpCode::INLINE_ACCESSOR_CHECK:
+        case OpCode::PROTOTYPE_CHECK:
         case OpCode::LOAD_GETTER:
         case OpCode::LOAD_SETTER:
         case OpCode::ECMA_STRING_CHECK:
@@ -267,6 +267,10 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
                 ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
                 ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
                 return loff == roff;
+            } else if (lop == OpCode::PROTOTYPE_CHECK) {
+                auto lindex = acc_.GetHClassIndex(lhs);
+                auto rindex = acc_.GetHClassIndex(rhs);
+                return (lindex == 0) || (rindex == 0) || (lindex != rindex);
             }
             break;
         }
@@ -350,6 +354,12 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         case OpCode::OBJECT_TYPE_CHECK:
         case OpCode::OBJECT_TYPE_COMPARE: {
             if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::PROTOTYPE_CHECK: {
+            if (acc_.GetHClassIndex(lhs) != acc_.GetHClassIndex(rhs)) {
                 return false;
             }
             break;

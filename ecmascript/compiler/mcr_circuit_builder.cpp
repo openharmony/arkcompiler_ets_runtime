@@ -686,12 +686,13 @@ GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef propertyLookupRes
     return ret;
 }
 
-GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value)
+GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value,
+                                      uint32_t receiverHClassIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->StoreProperty(), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->StoreProperty(receiverHClassIndex), MachineType::I64,
                                      { currentControl, currentDepend, receiver, propertyLookupResult, value },
                                      GateType::AnyType());
     currentLabel->SetControl(ret);
