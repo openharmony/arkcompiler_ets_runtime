@@ -461,8 +461,9 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object)
     JSHandle<TaggedArray> properties(thread_, object->GetProperties());
     auto newProperties = CloneProperties(properties);
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    uint32_t length = std::min(klass->GetInlinedProperties(), klass->NumberOfProps());
 
-    for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
+    for (uint32_t i = 0; i < length; i++) {
         cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(i));
     }
     return cloneObject;
@@ -578,8 +579,9 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
     JSHandle<TaggedArray> properties(thread_, object->GetProperties());
     auto newProperties = CloneProperties(properties, env, cloneObject);
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    uint32_t length = std::min(klass->GetInlinedProperties(), klass->NumberOfProps());
 
-    for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
+    for (uint32_t i = 0; i < length; i++) {
         auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
         JSTaggedValue value = object->GetPropertyInlinedProps(i);
         if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
@@ -634,8 +636,9 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
                  method->GetFunctionKind() == FunctionKind::DERIVED_CONSTRUCTOR,
                  "cloned function is not class");
     JSHandle<JSFunction> cloneCtor = NewJSFunctionByHClass(method, hclass);
+    uint32_t length = std::min(hclass->GetInlinedProperties(), hclass->NumberOfProps());
 
-    for (uint32_t i = 0; i < hclass->GetInlinedProperties(); i++) {
+    for (uint32_t i = 0; i < length; i++) {
         auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         JSTaggedValue value = ctor->GetPropertyInlinedProps(i);
         if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
