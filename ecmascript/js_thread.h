@@ -980,6 +980,8 @@ public:
         return contexts_;
     }
 
+    bool IsPropertyCacheCleared() const;
+
     bool EraseContext(EcmaContext *context);
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;

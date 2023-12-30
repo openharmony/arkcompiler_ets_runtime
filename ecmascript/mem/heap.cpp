@@ -519,6 +519,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         tracing->TraceEventRecordMemory();
     }
 #endif
+    ASSERT(thread_->IsPropertyCacheCleared());
 }
 
 void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)
