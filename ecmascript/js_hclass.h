@@ -630,6 +630,10 @@ public:
         }
     }
 
+    inline bool IsLexicalEnv() const
+    {
+        return GetObjectType() == JSType::LEXICAL_ENV;
+    }
     inline bool IsByteArray() const
     {
         return GetObjectType() == JSType::BYTE_ARRAY;

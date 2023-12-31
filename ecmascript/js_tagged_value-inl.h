@@ -495,6 +495,11 @@ inline bool JSTaggedValue::IsStringOrSymbol() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStringOrSymbol();
 }
 
+inline bool JSTaggedValue::IsLexicalEnv() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsLexicalEnv();
+}
+
 inline bool JSTaggedValue::IsTaggedArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();

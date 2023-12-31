@@ -313,9 +313,7 @@ private:
     void LowerDefinePrivateProperty(GateRef gate);
     void LowerCallInit(GateRef gate);
     void LowerDefineSendableClass(GateRef gate);
-    void LowerNewSendableLexenv(GateRef gate);
-    void LowerDefineSendableMethod(GateRef gate);
-    void LowerCreateSendablePrivateProperty(GateRef gate);
+    void LowerLdSendableClass(GateRef gate);
     void LowerGetEnv(GateRef gate);
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);

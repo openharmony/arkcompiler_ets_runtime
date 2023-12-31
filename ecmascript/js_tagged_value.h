@@ -462,6 +462,7 @@ public:
     bool IsTreeString() const;
     bool IsSlicedString() const;
     bool IsStringOrSymbol() const;
+    bool IsLexicalEnv() const;
     bool IsTaggedArray() const;
     bool IsDictionary() const;
     bool IsByteArray() const;

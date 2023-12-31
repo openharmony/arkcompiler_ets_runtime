@@ -325,9 +325,7 @@ namespace panda::ecmascript::kungfu {
     V(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8)          \
     V(CALLRUNTIME_CALLINIT_PREF_IMM8_V8)                                   \
     V(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8)       \
-    V(CALLRUNTIME_NEWSENDABLELEXENV_PREF_IMM16)                            \
-    V(CALLRUNTIME_DEFINESENDABLEMETHOD_PREF_IMM8_ID16_IMM8)                \
-    V(CALLRUNTIME_CREATESENDABLEPRIVATEPROPERTY_PREF_IMM16_ID16)           \
+    V(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16)                              \
 
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
 {
