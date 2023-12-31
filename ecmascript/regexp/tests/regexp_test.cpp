@@ -118,7 +118,7 @@ protected:
 
 HWTEST_F_L0(RegExpTest, ParseError1)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("0{2,1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -128,7 +128,7 @@ HWTEST_F_L0(RegExpTest, ParseError1)
 
 HWTEST_F_L0(RegExpTest, ParseError2)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("^[z-a]$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -138,7 +138,7 @@ HWTEST_F_L0(RegExpTest, ParseError2)
 
 HWTEST_F_L0(RegExpTest, ParseError3)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -148,7 +148,7 @@ HWTEST_F_L0(RegExpTest, ParseError3)
 
 HWTEST_F_L0(RegExpTest, ParseError4)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a**");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -158,7 +158,7 @@ HWTEST_F_L0(RegExpTest, ParseError4)
 
 HWTEST_F_L0(RegExpTest, ParseError5)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a***");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -168,7 +168,7 @@ HWTEST_F_L0(RegExpTest, ParseError5)
 
 HWTEST_F_L0(RegExpTest, ParseError6)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a**");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -178,7 +178,7 @@ HWTEST_F_L0(RegExpTest, ParseError6)
 
 HWTEST_F_L0(RegExpTest, ParseError7)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a++");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -188,7 +188,7 @@ HWTEST_F_L0(RegExpTest, ParseError7)
 
 HWTEST_F_L0(RegExpTest, ParseError8)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a+++");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -198,7 +198,7 @@ HWTEST_F_L0(RegExpTest, ParseError8)
 
 HWTEST_F_L0(RegExpTest, ParseError9)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a???");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -208,7 +208,7 @@ HWTEST_F_L0(RegExpTest, ParseError9)
 
 HWTEST_F_L0(RegExpTest, ParseError10)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a????");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -218,7 +218,7 @@ HWTEST_F_L0(RegExpTest, ParseError10)
 
 HWTEST_F_L0(RegExpTest, ParseError11)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("*a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -228,7 +228,7 @@ HWTEST_F_L0(RegExpTest, ParseError11)
 
 HWTEST_F_L0(RegExpTest, ParseError12)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("**a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -238,7 +238,7 @@ HWTEST_F_L0(RegExpTest, ParseError12)
 
 HWTEST_F_L0(RegExpTest, ParseError13)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("+a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -248,7 +248,7 @@ HWTEST_F_L0(RegExpTest, ParseError13)
 
 HWTEST_F_L0(RegExpTest, ParseError14)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("++a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -258,7 +258,7 @@ HWTEST_F_L0(RegExpTest, ParseError14)
 
 HWTEST_F_L0(RegExpTest, ParseError15)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("?a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -268,7 +268,7 @@ HWTEST_F_L0(RegExpTest, ParseError15)
 
 HWTEST_F_L0(RegExpTest, ParseError16)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("??a");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -278,7 +278,7 @@ HWTEST_F_L0(RegExpTest, ParseError16)
 
 HWTEST_F_L0(RegExpTest, ParseError17)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("x{1}{1,}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -288,7 +288,7 @@ HWTEST_F_L0(RegExpTest, ParseError17)
 
 HWTEST_F_L0(RegExpTest, ParseError18)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("x{1,2}{1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -298,7 +298,7 @@ HWTEST_F_L0(RegExpTest, ParseError18)
 
 HWTEST_F_L0(RegExpTest, ParseError19)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("x{1,}{1}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -308,7 +308,7 @@ HWTEST_F_L0(RegExpTest, ParseError19)
 
 HWTEST_F_L0(RegExpTest, ParseError20)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("x{0,1}{1,}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -318,7 +318,7 @@ HWTEST_F_L0(RegExpTest, ParseError20)
 
 HWTEST_F_L0(RegExpTest, ParseError21)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[b-ac-e]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -328,7 +328,7 @@ HWTEST_F_L0(RegExpTest, ParseError21)
 
 HWTEST_F_L0(RegExpTest, ParseError22)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\10b-G]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -338,7 +338,7 @@ HWTEST_F_L0(RegExpTest, ParseError22)
 
 HWTEST_F_L0(RegExpTest, ParseError23)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\0b-G]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -348,7 +348,7 @@ HWTEST_F_L0(RegExpTest, ParseError23)
 
 HWTEST_F_L0(RegExpTest, ParseError24)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -358,7 +358,7 @@ HWTEST_F_L0(RegExpTest, ParseError24)
 
 HWTEST_F_L0(RegExpTest, ParseError25)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source(")");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -368,7 +368,7 @@ HWTEST_F_L0(RegExpTest, ParseError25)
 
 HWTEST_F_L0(RegExpTest, ParseError26)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("{");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -378,7 +378,7 @@ HWTEST_F_L0(RegExpTest, ParseError26)
 
 HWTEST_F_L0(RegExpTest, ParseError27)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("}");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -388,7 +388,7 @@ HWTEST_F_L0(RegExpTest, ParseError27)
 
 HWTEST_F_L0(RegExpTest, ParseError28)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -398,7 +398,7 @@ HWTEST_F_L0(RegExpTest, ParseError28)
 
 HWTEST_F_L0(RegExpTest, ParseError29)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -408,7 +408,7 @@ HWTEST_F_L0(RegExpTest, ParseError29)
 
 HWTEST_F_L0(RegExpTest, ParseError30)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\c");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -418,7 +418,7 @@ HWTEST_F_L0(RegExpTest, ParseError30)
 
 HWTEST_F_L0(RegExpTest, ParseError31)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\c\024");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -428,7 +428,7 @@ HWTEST_F_L0(RegExpTest, ParseError31)
 
 HWTEST_F_L0(RegExpTest, ParseError32)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\c]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -438,7 +438,7 @@ HWTEST_F_L0(RegExpTest, ParseError32)
 
 HWTEST_F_L0(RegExpTest, ParseError33)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\c\024]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -448,7 +448,7 @@ HWTEST_F_L0(RegExpTest, ParseError33)
 
 HWTEST_F_L0(RegExpTest, ParseError34)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\d-a]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -458,7 +458,7 @@ HWTEST_F_L0(RegExpTest, ParseError34)
 
 HWTEST_F_L0(RegExpTest, ParseError35)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\s-a]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -468,7 +468,7 @@ HWTEST_F_L0(RegExpTest, ParseError35)
 
 HWTEST_F_L0(RegExpTest, ParseError36)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\s-\\w]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -478,7 +478,7 @@ HWTEST_F_L0(RegExpTest, ParseError36)
 
 HWTEST_F_L0(RegExpTest, ParseError37)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[a-\\w]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -488,7 +488,7 @@ HWTEST_F_L0(RegExpTest, ParseError37)
 
 HWTEST_F_L0(RegExpTest, ParseError38)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\{");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -498,7 +498,7 @@ HWTEST_F_L0(RegExpTest, ParseError38)
 
 HWTEST_F_L0(RegExpTest, ParseError39)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\/");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -512,7 +512,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
         if (!IsValidAlphaEscapeInAtom(cu)) {
             CString source("\\");
             source += CString(&cu, 1);
-            RegExpParser parser = RegExpParser(chunk_);
+            RegExpParser parser = RegExpParser(thread, chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
             parser.Parse(thread);
             bool parseResult = parser.IsError();
@@ -523,7 +523,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
         if (!IsValidAlphaEscapeInAtom(cu)) {
             CString source("\\");
             source += CString(&cu, 1);
-            RegExpParser parser = RegExpParser(chunk_);
+            RegExpParser parser = RegExpParser(thread, chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
             parser.Parse(thread);
             bool parseResult = parser.IsError();
@@ -535,7 +535,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
         if (!IsValidAlphaEscapeInAtom(cu)) {
             source += CString(&cu, 1);
             source += CString("]");
-            RegExpParser parser = RegExpParser(chunk_);
+            RegExpParser parser = RegExpParser(thread, chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
             parser.Parse(thread);
             bool parseResult = parser.IsError();
@@ -547,7 +547,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
         if (!IsValidAlphaEscapeInAtom(cu)) {
             source += CString(&cu, 1);
             source += CString("]");
-            RegExpParser parser = RegExpParser(chunk_);
+            RegExpParser parser = RegExpParser(thread, chunk_);
             parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
             parser.Parse(thread);
             bool parseResult = parser.IsError();
@@ -558,7 +558,7 @@ HWTEST_F_L0(RegExpTest, ParseError40)
 
 HWTEST_F_L0(RegExpTest, ParseError44)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -568,7 +568,7 @@ HWTEST_F_L0(RegExpTest, ParseError44)
 
 HWTEST_F_L0(RegExpTest, ParseError45)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\1]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -578,7 +578,7 @@ HWTEST_F_L0(RegExpTest, ParseError45)
 
 HWTEST_F_L0(RegExpTest, ParseError46)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\00");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -588,7 +588,7 @@ HWTEST_F_L0(RegExpTest, ParseError46)
 
 HWTEST_F_L0(RegExpTest, ParseError47)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\00]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -598,7 +598,7 @@ HWTEST_F_L0(RegExpTest, ParseError47)
 
 HWTEST_F_L0(RegExpTest, ParseError48)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -608,7 +608,7 @@ HWTEST_F_L0(RegExpTest, ParseError48)
 
 HWTEST_F_L0(RegExpTest, ParseNoError1)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a{10,2147483648}"); // 2^31
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -618,7 +618,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError1)
 
 HWTEST_F_L0(RegExpTest, ParseNoError2)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a{10,4294967306}"); // 2^32+10
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -628,7 +628,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError2)
 
 HWTEST_F_L0(RegExpTest, ParseNoError3)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\⥚]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
     parser.Parse(thread);
@@ -638,7 +638,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError3)
 
 HWTEST_F_L0(RegExpTest, ParseNoError4)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\⊲|\\⇐]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
     parser.Parse(thread);
@@ -649,7 +649,7 @@ HWTEST_F_L0(RegExpTest, ParseNoError4)
 HWTEST_F_L0(RegExpTest, ParseAndExec1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("ab");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -674,7 +674,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
 HWTEST_F_L0(RegExpTest, ParseAndExec2)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(((ab)|(cd)|(de))|((ef)|(gh)|(jk)))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -711,7 +711,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec2)
 HWTEST_F_L0(RegExpTest, ParseAndExec3)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(aa|aabaac|ba|b|c)*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -739,7 +739,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec3)
 HWTEST_F_L0(RegExpTest, ParseAndExec4)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -764,7 +764,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec4)
 HWTEST_F_L0(RegExpTest, ParseAndExec5)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a?");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -789,7 +789,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec5)
 HWTEST_F_L0(RegExpTest, ParseAndExec6)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(z)((a+)?(b+)?(c))*");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -827,7 +827,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec6)
 HWTEST_F_L0(RegExpTest, ParseAndExec7)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("^abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
     parser.Parse(thread);
@@ -852,7 +852,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec7)
 HWTEST_F_L0(RegExpTest, ParseAndExec8)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("abc$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
     parser.Parse(thread);
@@ -877,7 +877,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec8)
 HWTEST_F_L0(RegExpTest, ParseAndExec9)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("er\\B");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -902,7 +902,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec9)
 HWTEST_F_L0(RegExpTest, ParseAndExec10)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("d\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -927,7 +927,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec10)
 HWTEST_F_L0(RegExpTest, ParseAndExec11)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source(".");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -952,7 +952,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec11)
 HWTEST_F_L0(RegExpTest, ParseAndExec12)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source(".");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 8);
     parser.Parse(thread);
@@ -977,7 +977,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec12)
 HWTEST_F_L0(RegExpTest, ParseAndExec13)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
     parser.Parse(thread);
@@ -1002,7 +1002,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec13)
 HWTEST_F_L0(RegExpTest, ParseAndExec14)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 4);
     parser.Parse(thread);
@@ -1027,7 +1027,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec14)
 HWTEST_F_L0(RegExpTest, ParseAndExec15)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?=a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1052,7 +1052,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec15)
 HWTEST_F_L0(RegExpTest, ParseAndExec16)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("abc");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1077,7 +1077,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec16)
 HWTEST_F_L0(RegExpTest, ParseAndExec17)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a\\n");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1101,7 +1101,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec17)
 
 HWTEST_F_L0(RegExpTest, ParseAndExec18)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?=a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1118,7 +1118,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec18)
 HWTEST_F_L0(RegExpTest, ParseAndExec19)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?!a)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1143,7 +1143,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec19)
 HWTEST_F_L0(RegExpTest, ParseAndExec20)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(?=(a+))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1171,7 +1171,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec20)
 HWTEST_F_L0(RegExpTest, ParseAndExec21)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?=a(?=b))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1196,7 +1196,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec21)
 HWTEST_F_L0(RegExpTest, ParseAndExec22)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source(".+:");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1221,7 +1221,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec22)
 HWTEST_F_L0(RegExpTest, ParseAndExec23)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?<=a(?<!b))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1245,7 +1245,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec23)
 
 HWTEST_F_L0(RegExpTest, ParseAndExec24)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(?<=ab(?<!bc))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1262,7 +1262,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec24)
 HWTEST_F_L0(RegExpTest, ParseAndExec25)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(?<=(ab))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1290,7 +1290,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec25)
 HWTEST_F_L0(RegExpTest, ParseAndExec26)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[a-z]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1315,7 +1315,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec26)
 HWTEST_F_L0(RegExpTest, ParseAndExec27)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[^a-b]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1340,7 +1340,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec27)
 HWTEST_F_L0(RegExpTest, ParseAndExec28)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\s");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1365,7 +1365,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec28)
 HWTEST_F_L0(RegExpTest, ParseAndExec29)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("()|");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1392,7 +1392,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec29)
 HWTEST_F_L0(RegExpTest, ParseAndExec30)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("|()");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1418,7 +1418,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec30)
 HWTEST_F_L0(RegExpTest, ParseAndExec31)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a(a|b)\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1444,7 +1444,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec31)
 HWTEST_F_L0(RegExpTest, ParseAndExec32)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(a(a|b))\\2");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1473,7 +1473,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec32)
 HWTEST_F_L0(RegExpTest, ParseAndExec33)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("qya+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1497,7 +1497,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec33)
 HWTEST_F_L0(RegExpTest, ParseAndExec34)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("qy(?=\\s+)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1520,7 +1520,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec34)
 HWTEST_F_L0(RegExpTest, ParseAndExec35)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(\\d{4})-(\\d{2})-(\\d{2})");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1552,7 +1552,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec35)
 HWTEST_F_L0(RegExpTest, ParseAndExec36)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("quick\\s(brown).+?(jumps)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1581,7 +1581,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec36)
 HWTEST_F_L0(RegExpTest, ParseAndExec37)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(ab){1,2}?c");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1607,7 +1607,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec37)
 HWTEST_F_L0(RegExpTest, ParseAndExec38)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("^(([a-z]+)*[a-z]\\.)+[a-z]{2,}$");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1636,7 +1636,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec38)
 HWTEST_F_L0(RegExpTest, ParseAndExec39)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(a*)b\\1+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1662,7 +1662,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec39)
 HWTEST_F_L0(RegExpTest, ParseAndExec40)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a*?");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1685,7 +1685,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec40)
 HWTEST_F_L0(RegExpTest, ParseAndExec41)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(.*?)a(?!(a+)b\\2c)\\2(.*)");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1715,7 +1715,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec41)
 HWTEST_F_L0(RegExpTest, ParseAndExec42)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[a-c\\d]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1738,7 +1738,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec42)
 HWTEST_F_L0(RegExpTest, ParseAndExec43)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\d][\n][^\\d]");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1761,7 +1761,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec43)
 HWTEST_F_L0(RegExpTest, ParseAndExec44)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source(".[\b].");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1784,7 +1784,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec44)
 HWTEST_F_L0(RegExpTest, ParseAndExec45)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[^\b]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1807,7 +1807,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec45)
 HWTEST_F_L0(RegExpTest, ParseAndExec46)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("([\\S]+([ \t]+[\\S]+)*)[ \t]*=[ \t]*[\\S]+");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1833,7 +1833,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec46)
 HWTEST_F_L0(RegExpTest, ParseAndExec47)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[^o]t\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1856,7 +1856,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec47)
 HWTEST_F_L0(RegExpTest, ParseAndExec49)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(a(b)\\4(5)(5))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 2);
     parser.Parse(thread);
@@ -1891,7 +1891,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec49)
 HWTEST_F_L0(RegExpTest, ParseAndExec50)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(?<year>\\d{4})-(?<date>\\d{2}-(?<day>\\d\\d))");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1922,7 +1922,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec50)
 
 HWTEST_F_L0(RegExpTest, ParseAndExec51)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\u0000");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1941,7 +1941,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec51)
 HWTEST_F_L0(RegExpTest, ParseAndExec52)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("(aa).+\\1");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1967,7 +1967,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec52)
 HWTEST_F_L0(RegExpTest, ParseAndExec53)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\x01");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -1989,7 +1989,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec53)
 
 HWTEST_F_L0(RegExpTest, ParseAndExec54)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\bot");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -2005,7 +2005,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec54)
 HWTEST_F_L0(RegExpTest, ParseAndExec55)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("e\\b");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -2028,7 +2028,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec55)
 HWTEST_F_L0(RegExpTest, ParseAndExec56)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("a啊");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -2050,7 +2050,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec56)
 
 HWTEST_F_L0(RegExpTest, ParseAndExec57)
 {
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\udf06");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
     parser.Parse(thread);
@@ -2065,7 +2065,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec57)
 HWTEST_F_L0(RegExpTest, ParseAndExec58)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\udf06");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);
@@ -2088,7 +2088,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec58)
 HWTEST_F_L0(RegExpTest, ParseAndExec59)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    RegExpParser parser = RegExpParser(chunk_);
+    RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("\\v");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 0);
     parser.Parse(thread);

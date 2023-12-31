@@ -150,6 +150,8 @@ public:
 
     bool DoAsmStackOverflowCheck();
 
+    bool DoStackLimitCheck();
+
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
         return nativeAreaAllocator_;

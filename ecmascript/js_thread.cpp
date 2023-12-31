@@ -63,10 +63,8 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.currentFrame_ = jsThread->glueData_.frameBase_ + maxStackSize;
     EcmaInterpreter::InitStackFrame(jsThread);
 
-    if (jsThread->IsAsmInterpreter()) {
-        jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
-        jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
-    }
+    jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
+    jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     return jsThread;
 }
 
@@ -369,10 +367,10 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
     return false;
 }
 
-bool JSThread::DoAsmStackOverflowCheck()
+bool JSThread::DoStackLimitCheck()
 {
-    // check stack overflow because infinite recursion may occur
-    if (IsAsmInterpreter() && UNLIKELY(GetCurrentStackPosition() < GetStackLimit())) {
+    if (UNLIKELY(GetCurrentStackPosition() < GetStackLimit())) {
+        vm_->CheckThread();
         LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
         if (LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
@@ -382,6 +380,12 @@ bool JSThread::DoAsmStackOverflowCheck()
         return true;
     }
     return false;
+}
+
+bool JSThread::DoAsmStackOverflowCheck()
+{
+    // check stack overflow because infinite recursion may occur
+    return (IsAsmInterpreter() && DoStackLimitCheck());
 }
 
 uintptr_t *JSThread::ExpandHandleStorage()
