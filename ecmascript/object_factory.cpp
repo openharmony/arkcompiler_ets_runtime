@@ -1802,7 +1802,7 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     return jsfunc;
 }
 
-JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSFunctionBase> &target,
+JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTaggedValue> &target,
                                                             const JSHandle<JSTaggedValue> &boundThis,
                                                             const JSHandle<TaggedArray> &args)
 {

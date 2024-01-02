@@ -250,7 +250,7 @@ public:
 
     JSHandle<JSFunction> NewAotFunction(uint32_t numArgs, uintptr_t codeEntry);
 
-    JSHandle<JSBoundFunction> NewJSBoundFunction(const JSHandle<JSFunctionBase> &target,
+    JSHandle<JSBoundFunction> NewJSBoundFunction(const JSHandle<JSTaggedValue> &target,
                                                  const JSHandle<JSTaggedValue> &boundThis,
                                                  const JSHandle<TaggedArray> &args);
 
