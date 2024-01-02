@@ -28,11 +28,7 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerManager {
 public:
     using ApGenMode = PGOProfilerEncoder::ApGenMode;
-    static PGOProfilerManager *GetInstance()
-    {
-        static PGOProfilerManager instance;
-        return &instance;
-    }
+    static PGOProfilerManager *GetInstance();
 
     static void SavingSignalHandler(int signo);
 
@@ -86,7 +82,7 @@ public:
         }
         auto profiler = std::make_shared<PGOProfiler>(vm, isEnable);
         {
-            os::memory::LockHolder lock(mutex_);
+            os::memory::LockHolder lock(*mutex_);
             profilers_.insert(profiler);
         }
         return profiler;
@@ -104,7 +100,7 @@ public:
             profiler->WaitPGODumpFinish();
             Merge(profiler.get());
             {
-                os::memory::LockHolder lock(mutex_);
+                os::memory::LockHolder lock(*mutex_);
                 profilers_.erase(profiler);
             }
             profiler.reset();
@@ -177,7 +173,7 @@ public:
 
     void ForceSave()
     {
-        os::memory::LockHolder lock(mutex_);
+        os::memory::LockHolder lock(*mutex_);
         for (const auto &profiler : profilers_) {
             profiler->DumpByForce();
         }
@@ -237,7 +233,7 @@ private:
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
-    os::memory::Mutex mutex_;
+    os::memory::Mutex *mutex_ = new os::memory::Mutex;
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
 };
 } // namespace panda::ecmascript::pgo
