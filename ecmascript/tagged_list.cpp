@@ -497,12 +497,12 @@ void TaggedSingleList::GetSubList(JSThread *thread, const JSHandle<TaggedSingleL
         if (nodeSum == fromIndex) {
             fromDataIndex = dataIndex;
         }
+        dataIndex = taggedList->GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+        nodeSum++;
         if (nodeSum == toIndex) {
             toDataIndex = dataIndex;
             break;
         }
-        dataIndex = taggedList->GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
-        nodeSum++;
     }
 
     int preDataIndex = ELEMENTS_START_INDEX;
