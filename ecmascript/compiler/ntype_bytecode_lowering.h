@@ -38,7 +38,8 @@ public:
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
-          argAcc_(circuit) {}
+          argAcc_(circuit),
+          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
 
     ~NTypeBytecodeLowering() = default;
 
@@ -53,6 +54,7 @@ private:
     void LowerThrowUndefinedIfHoleWithName(GateRef gate);
     void LowerLdLocalMoudleVar(GateRef gate);
     void LowerStModuleVar(GateRef gate);
+    void LowerNTypedStOwnByName(GateRef gate);
 
     bool IsLogEnabled() const
     {
@@ -87,6 +89,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
+    const JSThread *thread_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NTYPE_BYTECODE_LOWERING_H

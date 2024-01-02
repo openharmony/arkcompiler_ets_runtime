@@ -90,7 +90,8 @@ namespace panda::ecmascript::kungfu {
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                           \
-    HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)
+    HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
+    MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
@@ -104,7 +105,8 @@ namespace panda::ecmascript::kungfu {
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     SHARE_GATE_META_DATA_LIST_WITH_SIZE(V)                                     \
-    HCR_GATE_META_DATA_LIST_WITH_SIZE(V)
+    HCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
+    MCR_GATE_META_DATA_LIST_WITH_SIZE(V)
 
 #define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                  \
     MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)

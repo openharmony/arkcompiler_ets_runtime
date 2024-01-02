@@ -1309,4 +1309,18 @@ GateRef CircuitBuilder::MonoStoreProperty(GateRef receiver, GateRef plrGate, Gat
     currentLabel->SetDepend(ret);
     return ret;
 }
+
+GateRef CircuitBuilder::TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    std::vector<GateRef> vec { currentControl, currentDepend };
+    vec.insert(vec.end(), valueIn.begin(), valueIn.end());
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCreateObjWithBuffer(valueIn.size()),
+        MachineType::I64, vec, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
 }

@@ -575,6 +575,7 @@ public:
                                          GateRef value);
     GateRef MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
                               GateRef value, GateRef key);
+    GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);

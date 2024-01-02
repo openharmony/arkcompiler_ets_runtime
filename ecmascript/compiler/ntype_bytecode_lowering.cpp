@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -82,6 +83,10 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
             LowerStModuleVar(gate);
+            break;
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+            LowerNTypedStOwnByName(gate);
             break;
         default:
             break;
@@ -269,5 +274,40 @@ void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 1);
     builder_.StoreModuleVar(jsFunc, index, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef receiver = acc_.GetValueIn(gate, 1); // 1: receiver
+    if (acc_.GetOpCode(receiver) != OpCode::TYPED_CREATE_OBJ_WITH_BUFFER) {
+        return;
+    }
+
+    GateRef hclassGate = acc_.GetValueIn(receiver, 3); // 3: hclass offset
+    JSTaggedValue taggedHClass(acc_.GetConstantValue(hclassGate));
+    GateRef stringId = acc_.GetValueIn(gate, 0);
+    JSTaggedValue key = TypeInfoAccessor::GetStringFromConstantPool(thread_, acc_.TryGetMethodOffset(gate),
+                                                                    acc_.GetConstantValue(stringId));
+    JSHClass *hclass = JSHClass::Cast(taggedHClass.GetTaggedObject());
+    int entry = JSHClass::FindPropertyEntry(thread_, hclass, key);
+    if (entry == -1) {
+        return;
+    }
+
+    LayoutInfo *LayoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    PropertyAttributes attr(LayoutInfo->GetAttr(entry));
+    if (attr.IsAccessor()) {
+        return;
+    }
+    if (!attr.IsInlinedProps()) {
+        return;
+    }
+
+    size_t offset = attr.GetOffset();
+    GateRef accValue = acc_.GetValueIn(gate, 2); // 2: accValue
+    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, hclass->GetInlinedPropertiesOffset(offset), accValue);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 }

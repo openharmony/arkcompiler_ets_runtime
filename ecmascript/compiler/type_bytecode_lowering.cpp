@@ -1902,24 +1902,17 @@ void TypeBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 
     AddProfiling(gate);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef oldObj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
-        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
-    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
-    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    builder_.StartAllocate();
     auto size = newClass->GetObjectSize();
-    GateRef newObj = builder_.HeapAlloc(builder_.IntPtr(size),
-        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
-    builder_.StoreConstOffset(VariableType::INT64(), newObj,
-        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+    std::vector<GateRef> valueIn;
+    valueIn.emplace_back(jsFunc);
+    valueIn.emplace_back(builder_.IntPtr(size));
+    valueIn.emplace_back(index);
+    valueIn.emplace_back(builder_.Int64(newClass.GetTaggedValue().GetRawData()));
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
-        builder_.StoreConstOffset(VariableType::INT64(), newObj, newClass->GetInlinedPropertiesOffset(i),
-            builder_.Int64(inlinedProps.at(i)));
+        valueIn.emplace_back(builder_.Int64(inlinedProps.at(i)));
+        valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }
-    GateRef ret = builder_.FinishAllocate(newObj);
+    GateRef ret = builder_.TypedCreateObjWithBuffer(valueIn);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 }  // namespace panda::ecmascript
