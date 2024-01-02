@@ -3209,11 +3209,11 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-void JSNApi::NotifyNativeReturnJS([[maybe_unused]] const EcmaVM *vm)
+void JSNApi::NotifyNativeReturn([[maybe_unused]] const EcmaVM *vm,  [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
-    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnJSEvent();
+    vm->GetJsDebuggerManager()->GetNotificationManager()->NativeReturnEvent(nativeAddress);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
 #endif

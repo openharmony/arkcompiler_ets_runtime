@@ -113,7 +113,7 @@ public:
     void VmStart() override;
     void VmDeath() override;
     void NativeCalling(const void *nativeAddress) override;
-    void NativeReturnJS() override;
+    void NativeReturn(const void *nativeAddress) override;
     void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
 

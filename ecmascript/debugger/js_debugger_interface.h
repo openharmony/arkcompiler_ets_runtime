@@ -92,9 +92,9 @@ public:
 
     virtual void NativeCalling(const void *nativeAddress) = 0;
 
-    virtual bool NativeOut() = 0;
+    virtual void NativeReturn(const void *nativeAddress) = 0;
 
-    virtual void NativeReturnJS() = 0;
+    virtual bool NativeOut() = 0;
 
     virtual ~PtHooks() = default;
 

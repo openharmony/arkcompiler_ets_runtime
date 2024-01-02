@@ -148,12 +148,12 @@ public:
         }
         hooks_->NativeCalling(nativeAddress);
     }
-    void NativeReturnJS() override
+    void NativeReturn(const void *nativeAddress) override
     {
         if (hooks_ == nullptr) {
             return;
         }
-        hooks_->NativeReturnJS();
+        hooks_->NativeReturn(nativeAddress);
     }
     void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
