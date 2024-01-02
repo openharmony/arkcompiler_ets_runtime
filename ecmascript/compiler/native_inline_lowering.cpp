@@ -29,21 +29,8 @@ void NativeInlineLowering::RunNativeInlineLowering()
         if (op == OpCode::JS_BYTECODE) {
             EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
             switch (ecmaOpcode) {
-                case EcmaOpcode::CALLTHIS0_IMM8_V8:
                 case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-                case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-                case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-                case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-                case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-                case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-                    TryInlineNativeCallThis(gate);
-                    break;
-                case EcmaOpcode::CALLARG0_IMM8:
-                case EcmaOpcode::CALLARG1_IMM8_V8:
-                case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-                case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-                case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-                case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+                    TryInlineNativeCallThis1(gate);
                     break;
                 default:
                     break;
@@ -62,13 +49,33 @@ void NativeInlineLowering::RunNativeInlineLowering()
     }
 }
 
-void NativeInlineLowering::TryInlineNativeCallThis(GateRef gate)
+void NativeInlineLowering::TryInlineNativeCallThis1(GateRef gate)
 {
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateType thisType = acc_.GetGateType(thisObj);
-    if (tsManager_->IsArrayTypeKind(thisType)) {
-        TryInlineBuiltinsArrayFunc(gate);
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinId();
+    switch (id) {
+        case BuiltinsStubCSigns::ID::StringFromCharCode: {
+            TryInlineStringFromCharCode(gate, tacc);
+            break;
+        }
+        default:
+            break;
     }
+}
+
+void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, CallThis1TypeInfoAccessor &tacc)
+{
+    if (acc_.GetByteCodeOpcode(gate) != EcmaOpcode::CALLTHIS1_IMM8_V8_V8) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringFromCharCode)),
+                                 tacc.GetArg0());
+    }
+    GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineBuiltinsArrayFunc(GateRef gate)

@@ -180,6 +180,9 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
             LowerTypedCreateObjWithBuffer(gate, glue);
             break;
+        case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
+            LowerStringFromSingleCharCode(gate, glue);
+            break;
         default:
             break;
     }
@@ -2724,5 +2727,69 @@ void TypeHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     }
     GateRef ret = builder_.FinishAllocate(newObj);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void TypeHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(value, (&builder_), VariableType::INT16(), builder_.Int16(0));
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label isPendingException(&builder_);
+    Label noPendingException(&builder_);
+    Label exit(&builder_);
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    Label newObj(&builder_);
+    Label canBeCompress(&builder_);
+    Label canNotBeCompress(&builder_);
+    GateRef codePointTag = acc_.GetValueIn(gate);
+    GateRef codePointValue = builder_.ToNumber(gate, codePointTag, glue);
+    builder_.Branch(builder_.HasPendingException(glue), &isPendingException, &noPendingException);
+    builder_.Bind(&isPendingException);
+    {
+        res = builder_.ExceptionConstant();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&noPendingException);
+    {
+        builder_.Branch(builder_.TaggedIsInt(codePointValue), &isInt, &notInt);
+        builder_.Bind(&isInt);
+        {
+            value = builder_.TruncInt32ToInt16(builder_.GetInt32OfTInt(codePointValue));
+            builder_.Jump(&newObj);
+        }
+        builder_.Bind(&notInt);
+        {
+            value = builder_.TruncInt32ToInt16(
+                builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(codePointValue), base::INT16_BITS));
+            builder_.Jump(&newObj);
+        }
+        builder_.Bind(&newObj);
+        builder_.Branch(builder_.IsASCIICharacter(builder_.ZExtInt16ToInt32(*value)), &canBeCompress,
+                        &canNotBeCompress);
+        NewObjectStubBuilder newBuilder(&env);
+        newBuilder.SetParameters(glue, 0);
+        builder_.Bind(&canBeCompress);
+        {
+            GateRef singleCharTable = builder_.Load(VariableType::JS_ANY(), glue,
+                builder_.IntPtr(JSThread::GlueData::GetSingleCharTableOffset(env.Is32Bit())));
+            res = builder_.GetValueFromTaggedArray(singleCharTable, builder_.ZExtInt16ToInt32(*value));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&canNotBeCompress);
+        {
+            Label afterNew1(&builder_);
+            newBuilder.AllocLineStringObject(&res, &afterNew1, builder_.Int32(1), false);
+            builder_.Bind(&afterNew1);
+            {
+                GateRef dst = builder_.ChangeTaggedPointerToInt64(
+                    builder_.PtrAdd(*res, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                builder_.Store(VariableType::INT16(), glue, dst, builder_.IntPtr(0), *value);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 }  // namespace panda::ecmascript::kungfu

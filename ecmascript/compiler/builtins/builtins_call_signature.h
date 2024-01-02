@@ -183,6 +183,11 @@ public:
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
     }
 
+    static bool IsTypedInlineBuiltin(ID builtinId)
+    {
+        return BuiltinsStubCSigns::ID::StringFromCharCode == builtinId;
+    }
+
     static bool IsTypedBuiltinMath(ID builtinId)
     {
         return (BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_FIRST <= builtinId) &&
@@ -248,6 +253,8 @@ public:
                 return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
             case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
                 return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::StringFromCharCode:
+                return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -299,6 +306,7 @@ enum class BuiltinsArgs : size_t {
 // to distinguish with the positive method offset of js function
 #define PGO_BUILTINS_STUB_ID(name) ((-1) * kungfu::BuiltinsStubCSigns::name)
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
+#define IS_TYPED_INLINE_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedInlineBuiltin(id)
 #define IS_TYPED_BUILTINS_MATH_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinMath(id)
 #define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)

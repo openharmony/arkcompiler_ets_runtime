@@ -382,6 +382,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::NumberConstructor:
+        case BuiltinsStubCSigns::ID::StringFromCharCode:
             // Don't need check para
             return funcCheck;
         default: {

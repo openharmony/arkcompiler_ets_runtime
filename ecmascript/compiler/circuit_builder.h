@@ -51,6 +51,7 @@ class NTypeHCRLowering;
 class TSHCRLowering;
 class Variable;
 class NativeInlineLowering;
+class TypeHCRLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -638,6 +639,9 @@ public:
     GateRef IsIntegerString(GateRef string);
     GateRef GetRawHashFromString(GateRef value);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
+    GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
+    GateRef IsASCIICharacter(GateRef gate);
 
     // for in
     GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
@@ -684,6 +688,7 @@ public:
     inline GateRef GetBooleanOfTBoolean(GateRef x);
     inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef DoubleToInt(GateRef x, Label *exit);
+    inline GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);
@@ -763,6 +768,7 @@ private:
     friend NTypeHCRLowering;
     friend SlowPathLowering;
     friend NativeInlineLowering;
+    friend TypeHCRLowering;
 };
 
 }  // namespace panda::ecmascript::kungfu

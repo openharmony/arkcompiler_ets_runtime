@@ -2637,7 +2637,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
     JSHandle<JSFunctionBase> baseFunction(function);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     JSFunction::SetFunctionName(thread_, baseFunction, key, globalConst->GetHandledUndefined());
-    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
         globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
     }
     return function;

@@ -53,6 +53,7 @@ namespace panda::ecmascript::kungfu {
     V(ObjectConstructorCheck, OBJECT_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)          \
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                   \
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)      \
+    V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)     \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
