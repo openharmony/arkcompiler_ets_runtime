@@ -851,7 +851,12 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 uint16_t c3 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET3);
                 uint16_t c4 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET4);
                 uint16_t c5 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET5);
-                if (IsHexDigits(c2) && IsHexDigits(c3) && IsHexDigits(c4) && IsHexDigits(c5)) {
+                bool c2IsHexDigits = IsHexDigits(c2);
+                bool c3IsHexDigits = IsHexDigits(c3);
+                bool c4IsHexDigits = IsHexDigits(c4);
+                bool c5IsHexDigits = IsHexDigits(c5);
+                bool isHexDigits = c2IsHexDigits && c3IsHexDigits && c4IsHexDigits && c5IsHexDigits;
+                if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c2];
                     c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c3];
                     c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c4];
@@ -860,7 +865,10 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 }
             } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
                 uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
-                if (IsHexDigits(c1) && IsHexDigits(c2)) {
+                bool c1IsHexDigits = IsHexDigits(c1);
+                bool c2IsHexDigits = IsHexDigits(c2);
+                bool isHexDigits = c1IsHexDigits && c2IsHexDigits;
+                if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c1];
                     c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c2];
                     k = k + ESCAPE_CHAR_OFFSET2;
