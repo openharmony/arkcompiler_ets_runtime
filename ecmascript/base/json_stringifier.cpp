@@ -171,7 +171,14 @@ bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
     CString gapString = ConvertToString(*primString, StringConvertedUsage::LOGICOPERATION);
     uint32_t gapLen = gapString.length();
     if (gapLen > 0) {
-        uint32_t gapLength = std::min(gapLen, static_cast<uint32_t>(GAP_MAX_LEN));
+        uint32_t gapLength = gapLen;
+        if (gapLen > GAP_MAX_LEN) {
+            if (gapString.at(GAP_MAX_LEN - 1) == static_cast<char>(utf_helper::UTF8_2B_FIRST)) {
+                gapLength = GAP_MAX_LEN + 1;
+            } else {
+                gapLength = GAP_MAX_LEN;
+            }
+        }
         CString str = gapString.substr(0, gapLength);
         gap_ += str;
         gap_.append("\0");

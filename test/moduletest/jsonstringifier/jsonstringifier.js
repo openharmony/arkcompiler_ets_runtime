@@ -100,3 +100,6 @@ if (globalThis["ArkPrivate"] != undefined) {
     linkList.add({"f4": 4});
     print(JSON.stringify(linkList));
 }
+
+var v6="123456789\u0000";
+print(JSON.stringify([{}],[String],v6))
