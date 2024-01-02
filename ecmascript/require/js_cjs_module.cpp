@@ -98,7 +98,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     JSMutableHandle<JSTaggedValue> parent(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread, JSTaggedValue::Undefined());
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);
-    JSHandle<JSTaggedValue> entrypointVal(thread, EcmaInterpreter::GetCurrentEntryPoint(thread));
+    JSHandle<JSTaggedValue> entrypointVal(thread, EcmaInterpreter::GetCurrentEntryPoint(thread).first);
     CString mergedFilename = jsPandaFile->GetJSPandaFileDesc();
     CString requestEntryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
 

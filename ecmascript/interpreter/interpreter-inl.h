@@ -965,10 +965,11 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
     UNREACHABLE();
 }
 
-JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
+std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
     JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
+    JSMutableHandle<JSTaggedValue> fileName(thread, thread->GlobalConstants()->GetUndefined());
 
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
@@ -982,13 +983,15 @@ JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
         JSHandle<JSTaggedValue> module(thread, method->GetModule());
 
         if (module->IsSourceTextModule()) {
-            recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
+            SourceTextModule *sourceTextModule = SourceTextModule::Cast(module->GetTaggedObject());
+            recordName.Update(sourceTextModule->GetEcmaModuleRecordName());
+            fileName.Update(sourceTextModule->GetEcmaModuleFilename());
         } else if (module->IsString()) {
             recordName.Update(module);
         } else {
             continue;
         }
-        return recordName.GetTaggedValue();
+        return std::make_pair(recordName.GetTaggedValue(), fileName.GetTaggedValue());
     }
     UNREACHABLE();
 }

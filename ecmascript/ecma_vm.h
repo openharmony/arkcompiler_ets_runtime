@@ -447,7 +447,7 @@ public:
         return moduleName_;
     }
 
-    CString GetCurrentModuleName();
+    std::pair<std::string, std::string> GetCurrentModuleInfo(bool needRecordName = false);
 
     void SetHmsModuleList(const std::vector<panda::HmsMap> &list);
 

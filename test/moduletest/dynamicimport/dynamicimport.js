@@ -45,3 +45,13 @@ import("./C.js").then(m => {
 import('./throwerror.js').catch(error => {
     print(error.name);
 }).then();
+
+var _v_1 = {};
+function _f_8() {
+    try{
+        _f_8();
+    } catch (e) {
+        import(_v_1).then();
+    }
+}
+_f_8();
