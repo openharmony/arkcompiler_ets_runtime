@@ -217,6 +217,11 @@ public:
         return glueData_.builtinEntries_;
     }
 
+    BuiltinEntries* GetBuiltinEntriesPointer()
+    {
+        return &glueData_.builtinEntries_;
+    }
+
     const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const
     {
         return arrayHClassIndexMap_;

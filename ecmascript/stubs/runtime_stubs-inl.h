@@ -695,6 +695,16 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByIndex(JSThread *thread, const JSHandle
 JSTaggedValue RuntimeStubs::RuntimeStGlobalRecord(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
                                                   const JSHandle<JSTaggedValue> &value, bool isConst)
 {
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableLoweringBuiltin()) {
+        BuiltinIndex& builtinIndex = BuiltinIndex::GetInstance();
+        auto index = builtinIndex.GetBuiltinIndex(prop.GetTaggedValue());
+        if (index != BuiltinIndex::NOT_FOUND) {
+            auto box = factory->NewPropertyBox(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Hole()));
+            thread->GetBuiltinEntriesPointer()->ClearByIndex(index, box.GetTaggedValue());
+        }
+    }
+
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     GlobalDictionary *dict = GlobalDictionary::Cast(env->GetGlobalRecord()->GetTaggedObject());
@@ -710,8 +720,6 @@ JSTaggedValue RuntimeStubs::RuntimeStGlobalRecord(JSThread *thread, const JSHand
         attributes.SetIsConstProps(true);
     }
     JSHandle<GlobalDictionary> dictHandle(thread, dict);
-
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<PropertyBox> box = factory->NewPropertyBox(value);
     PropertyBoxType boxType = value->IsUndefined() ? PropertyBoxType::UNDEFINED : PropertyBoxType::CONSTANT;
     attributes.SetBoxType(boxType);

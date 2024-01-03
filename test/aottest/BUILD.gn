@@ -252,6 +252,8 @@ group("ark_aot_ts_test") {
     "tonumeric",
     "try",
     "try_catch_finally",
+    "tryldglobalbyname_global_object",
+    "tryldglobalbyname_global_record",
     "trystglobalbynameprefid32",
     "ts_hclass_generator",
     "ts_inline",
