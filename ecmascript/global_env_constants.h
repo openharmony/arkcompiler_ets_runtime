@@ -263,6 +263,7 @@ class ObjectFactory;
     V(TerminationErrorString,         TERMINATION_ERROR_STRING_INDEX,        "TerminationError")            \
     V(ErrorFuncString,                ERROR_FUNC_STRING_INDEX,               "errorfunc")                   \
     V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
+    V(OriginalStackString,            ORINGINAL_STACK_STRING_INDEX,          "originalstack")               \
     V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \
     V(ObjNotCoercibleString,          OBJ_NOT_COERCIBLE_STRING_INDEX,        "objectnotcoercible")          \
     /* for Intl. */                                                                                         \
