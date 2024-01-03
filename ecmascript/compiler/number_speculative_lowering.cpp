@@ -16,7 +16,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"

@@ -45,13 +45,13 @@ class Label;
 class NTypeBytecodeLowering;
 class SlowPathLowering;
 class StubBuilder;
-class TypeBytecodeLowering;
+class TypedBytecodeLowering;
 class PGOHCRLowering;
 class NTypeHCRLowering;
 class TSHCRLowering;
 class Variable;
 class NativeInlineLowering;
-class TypeHCRLowering;
+class TypedHCRLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -761,14 +761,14 @@ private:
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
     friend BuiltinsStringStubBuilder;
-    friend TypeBytecodeLowering;
+    friend TypedBytecodeLowering;
     friend NTypeBytecodeLowering;
     friend PGOHCRLowering;
     friend TSHCRLowering;
     friend NTypeHCRLowering;
     friend SlowPathLowering;
     friend NativeInlineLowering;
-    friend TypeHCRLowering;
+    friend TypedHCRLowering;
 };
 
 }  // namespace panda::ecmascript::kungfu

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H
-#define ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
@@ -96,9 +96,9 @@ namespace panda::ecmascript::kungfu {
 //                                  |      JS_BYTECODE       |
 //                                  +------------------------+
 
-class TypeHCRLowering : public PassVisitor {
+class TypedHCRLowering : public PassVisitor {
 public:
-    TypeHCRLowering(Circuit* circuit,
+    TypedHCRLowering(Circuit* circuit,
                     RPOVisitor* visitor,
                     CompilationConfig* cmpCfg,
                     TSManager* tsManager,
@@ -117,7 +117,7 @@ public:
         }
     }
 
-    ~TypeHCRLowering() = default;
+    ~TypedHCRLowering() = default;
 
     GateRef VisitGate(GateRef gate) override;
 
@@ -271,4 +271,4 @@ private:
     bool loopHoistProfiling_ {false};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPE_HCR_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H

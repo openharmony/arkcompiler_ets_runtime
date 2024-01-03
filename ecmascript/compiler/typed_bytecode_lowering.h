@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
-#define ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TYPED_BYTECODE_LOWERING_H
+#define ECMASCRIPT_COMPILER_TYPED_BYTECODE_LOWERING_H
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/argument_accessor.h"
@@ -28,9 +28,9 @@
 #include "ecmascript/enum_conversion.h"
 
 namespace panda::ecmascript::kungfu {
-class TypeBytecodeLowering {
+class TypedBytecodeLowering {
 public:
-    TypeBytecodeLowering(Circuit* circuit,
+    TypedBytecodeLowering(Circuit* circuit,
                          PassContext* ctx,
                          Chunk* chunk,
                          bool enableLog,
@@ -60,9 +60,9 @@ public:
     {
     }
 
-    ~TypeBytecodeLowering() = default;
+    ~TypedBytecodeLowering() = default;
 
-    bool RunTypeBytecodeLowering();
+    bool RunTypedBytecodeLowering();
 
 private:
     bool IsLogEnabled() const
@@ -239,4 +239,4 @@ private:
     const CString &recordName_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPE_BYTECODE_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TYPED_BYTECODE_LOWERING_H

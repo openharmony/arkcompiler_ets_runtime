@@ -42,12 +42,12 @@
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
-#include "ecmascript/compiler/type_bytecode_lowering.h"
+#include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
-#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
@@ -306,13 +306,13 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
-        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
+        TypedBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
                                       enableLog,
                                       enableTypeLog,
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
                                       data->GetRecordName());
-        bool success = lowering.RunTypeBytecodeLowering();
+        bool success = lowering.RunTypedBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
         }
@@ -364,7 +364,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypeHCRLowering lowering(data->GetCircuit(),
+        TypedHCRLowering lowering(data->GetCircuit(),
                                  &visitor,
                                  data->GetCompilerConfig(),
                                  data->GetTSManager(),
@@ -372,7 +372,7 @@ public:
                                  passOptions->EnableLoweringBuiltin());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
-        visitor.PrintLog("TypeHCRLowering");
+        visitor.PrintLog("TypedHCRLowering");
         return true;
     }
 };
