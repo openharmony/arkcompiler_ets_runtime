@@ -321,9 +321,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         }
     }
     if (!thread_->HasPendingException()) {
-        if (!jsPandaFile->IsModule(recordInfo)) {
-            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
-        }
+        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
     return result;
