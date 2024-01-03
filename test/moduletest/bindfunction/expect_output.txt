@@ -19,3 +19,4 @@
 42
 42
 function bound Float32Array() { [native code] }
+1

@@ -222,15 +222,14 @@ JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject
         }
 
         JSHandle<JSTaggedValue> target(thread, boundFunction->GetBoundTarget());
-        JSHandle<JSFunctionBase> targetFunction = JSHandle<JSFunctionBase>::Cast(target);
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
 
         bool targetHasLength =
-            JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(targetFunction), lengthKey);
+            JSTaggedValue::HasOwnProperty(thread, target, lengthKey);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         uint32_t lengthValue = 0;
         if (targetHasLength) {
-            JSHandle<JSTaggedValue> targetLength = JSObject::GetProperty(thread, target, lengthKey).GetValue();
+            JSHandle<JSTaggedValue> targetLength = JSTaggedValue::GetProperty(thread, target, lengthKey).GetValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (targetLength->IsNumber()) {
                 lengthValue =

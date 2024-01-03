@@ -77,3 +77,8 @@ array.forEach(bfoo);
 const v6 = []
 const v21 = Float32Array.bind(v6, 1, 2);
 print(v21)
+
+// TestCase: bind proxy
+const proxy = new Proxy(Array.prototype.includes, {});
+const bind_proxy = proxy.bind();
+print(bind_proxy.length)
