@@ -27,3 +27,7 @@ array.__proto__.push(5);
 var narr = map();
 print(JSON.stringify(Object.getOwnPropertyDescriptor(narr, 0)));
 print(narr[0], 6);
+
+let arr=new Array(10);
+map=arr.map(()=>{});
+print(map.at(9));

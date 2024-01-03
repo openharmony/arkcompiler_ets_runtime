@@ -13,3 +13,4 @@
 
 {"value":6,"writable":true,"enumerable":true,"configurable":true}
 6 6
+undefined

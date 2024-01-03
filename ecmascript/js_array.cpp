@@ -123,7 +123,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
         auto *hclass = originalArray->GetJSHClass();
         JSTaggedValue proto = hclass->GetPrototype();
         if (hclass->IsJSArray() && !hclass->HasConstructor() && proto.IsJSArray()) {
-            return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
+            return JSArray::ArrayCreate(thread, length).GetTaggedValue();
         }
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
         constructor = JSTaggedValue::GetProperty(thread, originalValue, constructorKey).GetValue();
@@ -141,7 +141,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
                 JSTaggedValue realmArrayConstructor = realmC->GetArrayFunction().GetTaggedValue();
                 // If SameValue(C, realmC.[[intrinsics]].[[%Array%]]) is true, let C be undefined.
                 if (JSTaggedValue::SameValue(constructor.GetTaggedValue(), realmArrayConstructor)) {
-                    return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
+                    return JSArray::ArrayCreate(thread, length).GetTaggedValue();
                 }
             }
         }
@@ -155,14 +155,14 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             // If C is null, let C be undefined.
             if (constructor->IsNull()) {
-                return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
+                return JSArray::ArrayCreate(thread, length).GetTaggedValue();
             }
         }
     }
 
     // If C is undefined, return ArrayCreate(length).
     if (constructor->IsUndefined()) {
-        return JSArray::ArrayCreate(thread, length, ArrayMode::LITERAL).GetTaggedValue();
+        return JSArray::ArrayCreate(thread, length).GetTaggedValue();
     }
     // If IsConstructor(C) is false, throw a TypeError exception.
     if (!constructor->IsConstructor()) {
