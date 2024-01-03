@@ -154,6 +154,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "COWArray";
         case JSType::MUTANT_TAGGED_ARRAY:
             return "MutantTaggedArray";
+        case JSType::COW_MUTANT_TAGGED_ARRAY:
+            return "COWMutantTaggedArray";
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
@@ -512,6 +514,19 @@ static void DumpMutantTaggedArray(const MutantTaggedArray *arr, std::ostream &os
     }
 }
 
+static void DumpCOWMutantTaggedArray(const COWMutantTaggedArray *arr, std::ostream &os)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetLength();
+    os << " <COWMutantTaggedArray[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->Get(i));
+        os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+        os << std::left << std::setw(DUMP_TYPE_OFFSET) << "[JSTaggedType] : " << val.GetRawData();
+        os << "\n";
+    }
+}
+
 static void DumpConstantPoolClass(const ConstantPool *pool, std::ostream &os)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -701,6 +716,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::MUTANT_TAGGED_ARRAY:
             DumpMutantTaggedArray(MutantTaggedArray::Cast(obj), os);
+            break;
+        case JSType::COW_MUTANT_TAGGED_ARRAY:
+            DumpCOWMutantTaggedArray(COWMutantTaggedArray::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), os);
@@ -2422,6 +2440,11 @@ void MutantTaggedArray::Dump(std::ostream &os) const
     DumpMutantTaggedArray(this, os);
 }
 
+void COWMutantTaggedArray::Dump(std::ostream &os) const
+{
+    DumpCOWMutantTaggedArray(this, os);
+}
+
 // NOLINTNEXTLINE(readability-function-size)
 void GlobalEnv::Dump(std::ostream &os) const
 {
@@ -3848,6 +3871,18 @@ static void DumpMutantTaggedArrayClass(const MutantTaggedArray *arr, std::vector
     }
 }
 
+static void DumpCOWMutantTaggedArrayClass(const COWMutantTaggedArray *arr, std::vector<Reference> &vec)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = arr->GetLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(arr->Get(i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
+}
+
 static void DumpElementClass(const TaggedArray *arr, std::vector<Reference> &vec)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -3902,6 +3937,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::MUTANT_TAGGED_ARRAY:
             DumpMutantTaggedArrayClass(MutantTaggedArray::Cast(obj), vec);
+            return;
+        case JSType::COW_MUTANT_TAGGED_ARRAY:
+            DumpCOWMutantTaggedArrayClass(COWMutantTaggedArray::Cast(obj), vec);
             return;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
@@ -4672,6 +4710,11 @@ void COWTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 void MutantTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpMutantTaggedArrayClass(this, vec);
+}
+
+void COWMutantTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DumpCOWMutantTaggedArrayClass(this, vec);
 }
 
 void JSBoundFunction::DumpForSnapshot(std::vector<Reference> &vec) const

@@ -393,6 +393,11 @@ public:
                     MutantTaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
+            case JSType::COW_MUTANT_TAGGED_ARRAY:
+                if (visitType == VisitType::ALL_VISIT) {
+                    COWMutantTaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                break;
             case JSType::CONSTANT_POOL:
                 ConstantPool::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;

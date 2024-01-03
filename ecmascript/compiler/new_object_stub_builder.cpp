@@ -222,9 +222,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
-    GateRef oldElementHC = LoadHClass(elements);
-    GateRef objectType = GetObjectType(oldElementHC);
-    Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+    Branch(IsMutantTaggedArray(elements),
            &newMutantArray, &newNormalArray);
     Bind(&newNormalArray);
     {
@@ -254,7 +252,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
         Branch(Int32UnsignedLessThan(*index, oldL), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
-            Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+            Branch(IsMutantTaggedArray(elements),
                    &storeToMutantArray, &storeToNormalArray);
             Bind(&storeToNormalArray);
             {
@@ -292,7 +290,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
             Branch(Int32UnsignedLessThan(*index, newLen), &storeValue1, &afterLoop1);
             Bind(&storeValue1);
             {
-                Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+                Branch(IsMutantTaggedArray(elements),
                        &storeMutantHole, &storeNormalHole);
                 Bind(&storeNormalHole);
                 {

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_OBJECT_FACTORY_H
 
 #include "ecmascript/base/error_type.h"
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_handle.h"
@@ -364,6 +365,7 @@ public:
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
     // Copy on write array is allocated in nonmovable space by default.
     JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<COWMutantTaggedArray> NewCOWMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
     JSHandle<MutantTaggedArray> NewMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
     JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,

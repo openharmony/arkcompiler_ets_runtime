@@ -178,3 +178,9 @@ test144 - success
 test145 - success
 test146 - success
 test147 - success
+16
+0
+32
+16
+48
+32

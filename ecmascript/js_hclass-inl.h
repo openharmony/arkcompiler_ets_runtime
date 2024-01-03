@@ -189,6 +189,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::VTABLE:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::MUTANT_TAGGED_ARRAY:
+        case JSType::COW_MUTANT_TAGGED_ARRAY:
         case JSType::PROFILE_TYPE_INFO:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
