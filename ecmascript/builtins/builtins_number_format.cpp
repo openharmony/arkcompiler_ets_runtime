@@ -147,7 +147,7 @@ JSTaggedValue BuiltinsNumberFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> nf = GetThis(argv);
     // 2. Perform ? RequireInternalSlot(nf, [[InitializedNumberFormat]]).
     if (!nf->IsJSNumberFormat()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not JSNumberFormat", JSTaggedValue::Exception());
     }
     // 3. Let x be ? ToNumeric(value).
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);

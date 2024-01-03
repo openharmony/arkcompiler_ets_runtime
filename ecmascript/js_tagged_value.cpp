@@ -452,7 +452,8 @@ JSTaggedValue JSTaggedValue::ToPrimitive(JSThread *thread, const JSHandle<JSTagg
             if (!valueResult.IsECMAObject()) {
                 return valueResult;
             }
-            THROW_TYPE_ERROR_AND_RETURN(thread, "", JSTaggedValue::Exception());
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert object to primitive value",
+                JSTaggedValue::Exception());
         } else {
             type = (type == NO_PREFERENCE) ? PREFER_NUMBER : type;
             return OrdinaryToPrimitive(thread, tagged, type);
@@ -838,7 +839,7 @@ bool JSTaggedValue::DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTag
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     // 4. If success is false, throw a TypeError exception.
     if (!success) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot define property", false);
     }
     return success;
 }
