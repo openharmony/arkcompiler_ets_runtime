@@ -671,7 +671,7 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const JSThread *t
     FetchBuiltinsTypes();
 }
 
-void LoadBulitinObjTypeInfoAccessor::FetchBuiltinsTypes()
+void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 {
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
@@ -685,7 +685,7 @@ void LoadBulitinObjTypeInfoAccessor::FetchBuiltinsTypes()
     }
 }
 
-bool LoadBulitinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
+bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
 {
     for (auto &type : types_) {
         if (type.GetBuiltinsId() == newType.GetBuiltinsId()) {
@@ -719,6 +719,7 @@ StoreBulitinObjTypeInfoAccessor::StoreBulitinObjTypeInfoAccessor(const JSThread 
         default:
             UNREACHABLE();
     }
+    FetchBuiltinsTypes();
 }
 
 CreateObjWithBufferTypeInfoAccessor::CreateObjWithBufferTypeInfoAccessor(const JSThread *thread, Circuit *circuit,
