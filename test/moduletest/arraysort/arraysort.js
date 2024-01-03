@@ -225,3 +225,24 @@ try {
 } catch (e) {
     print(e.name);
 }
+
+const o1 = {
+    ..."654"
+};
+const arr8 = [1, 2, 3];
+const o2 = {
+    __proto__: arr8,
+    ...o1
+};
+o2.sort();
+print(o2[0]);
+print(o2[1]);
+print(o2[2]);
+
+const bigint64_array = new BigInt64Array();
+const proxy = new Proxy([1, 2, 3], bigint64_array);
+try {
+    proxy.sort();
+} catch (e) {
+    print(e.name);
+}

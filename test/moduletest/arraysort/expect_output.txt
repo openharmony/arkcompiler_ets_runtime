@@ -44,3 +44,7 @@ false
 1
 m
 TypeError
+4
+5
+6
+RangeError

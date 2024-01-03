@@ -434,7 +434,7 @@ JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     while (j < itemCount) {
         item.Update(sortedList->Get(j));
         JSArray::FastSetPropertyByValue(thread, obj, j, item);
-        ASSERT_NO_ABRUPT_COMPLETION(thread);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ++j;
     }
     // 9. NOTE: The call to SortIndexedProperties in step 5 uses SKIP-HOLES.The remaining indices are deleted to
