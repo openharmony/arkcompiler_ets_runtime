@@ -911,7 +911,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject1)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, value4);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest1, jsDeserializerTest, data.release());
@@ -939,7 +941,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest2, jsDeserializerTest, data.release());
@@ -963,7 +967,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject3)
     EXPECT_TRUE(obj->GetClass()->IsDictionaryMode());
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest3, jsDeserializerTest, data.release());
@@ -985,7 +991,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject4)
                           JSHandle<JSTaggedValue>(taggedArray));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest4, jsDeserializerTest, data.release());
@@ -1019,7 +1027,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject5)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key5, value5);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_FALSE(success);
     std::unique_ptr<SerializeData> data = serializer->Release();
     BaseDeserializer deserializer(thread, data.release());
@@ -1036,7 +1046,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError1)
         JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, errorTag, errorTag);
+    serializer->WriteValue(thread, errorTag, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSErrorTest1, jsDeserializerTest, data.release());
@@ -1060,7 +1071,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), errorTag);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSErrorTest2, jsDeserializerTest, data.release());
@@ -1087,7 +1099,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
 
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize bigInt fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::BigIntTest, jsDeserializerTest, data.release());
@@ -1140,7 +1155,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
     obj1->GetClass()->SetIsNativeBindingObject(true);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj1), JSHandle<JSTaggedValue>(obj1));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj1),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::NativeBindingObjectTest1, jsDeserializerTest, data.release());
@@ -1171,7 +1189,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key3, value3);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj2), JSHandle<JSTaggedValue>(obj2));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj2),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::NativeBindingObjectTest2, jsDeserializerTest, data.release());
@@ -1209,7 +1230,9 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSSet)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(set), key2, value2);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(set), JSHandle<JSTaggedValue>(set));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(set),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSSet fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1235,7 +1258,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeDate)
     jsDate->SetTimeValue(thread, JSTaggedValue(tm));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsDate), JSHandle<JSTaggedValue>(jsDate));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsDate),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSDate fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1268,7 +1293,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSMap)
     JSMap::Set(thread, map, key2, value2);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(map), JSHandle<JSTaggedValue>(map));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(map),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSMap fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1293,7 +1320,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSRegExp)
     jsRegexp->SetOriginalFlags(thread, JSHandle<JSTaggedValue>(flags));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsRegexp), JSHandle<JSTaggedValue>(jsRegexp));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsRegexp),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSRegExp fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1325,7 +1354,9 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSArray)
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(array), JSHandle<JSTaggedValue>(array));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(array),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSArray fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1344,6 +1375,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString1)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(ecmaString),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize EcmaString fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1361,6 +1393,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString2)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(ecmaString),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize EcmaString fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1440,6 +1473,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithConcurrentFunction)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize concurrent function fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1460,6 +1494,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeFunction)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(function),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_FALSE(success);
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1493,7 +1528,8 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
     JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(array), 0, arrBufTag);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, arrBufTag, JSHandle<JSTaggedValue>(array));
+    bool success = serializer->WriteValue(thread, arrBufTag, JSHandle<JSTaggedValue>(array),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize transfer JSArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1526,6 +1562,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, arrBufTag,
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize not transfer JSArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1551,6 +1588,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, arrBufTag,
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize empty JSArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1577,6 +1615,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsArrayBuffer),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSSharedArrayBuffer fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1625,6 +1664,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray1)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(int8Array),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize type array fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1660,6 +1700,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(int8Array),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize type array fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
@@ -1695,8 +1736,14 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
     EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key3, value3));
     EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key4, value4));
     ValueSerializer *serializer = new ValueSerializer(thread);
+
+    // set value to array
+    JSHandle<JSArray> array = factory->NewJSArray();
+    array->SetArrayLength(thread, 1);
+    JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(array), 0, JSHandle<JSTaggedValue>(sObj));
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(array));
     EXPECT_TRUE(success) << "Serialize sObj fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
@@ -1706,50 +1753,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject1)
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeSharedObject2)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> ctor = env->GetSObjectFunction();
-    JSHandle<JSSharedObject> sObj =
-        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("funcA"));
-    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("funcB"));
-    
-    // test func
-    JSHandle<JSFunction> func1 = thread->GetEcmaVM()->GetFactory()->NewSFunction(env, nullptr,
-        FunctionKind::CLASS_CONSTRUCTOR);
-    EXPECT_TRUE(*func1 != nullptr);
-    JSHClass *hclass = JSFunction::GetOrCreateInitialJSHClass(thread, func1);
-    EXPECT_TRUE(hclass != nullptr);
-    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(2); // 2: slots num
-    lexicalEnv->SetProperties(thread, 0, JSTaggedValue::True());
-    lexicalEnv->SetProperties(thread, 1, JSTaggedValue::Undefined());
-    func1->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
-    JSHandle<JSTaggedValue> value1(thread, func1.GetTaggedValue());
-    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key1, value1));
-    JSHandle<JSFunction> func2 = thread->GetEcmaVM()->GetFactory()->NewSFunction(env, nullptr,
-        FunctionKind::DERIVED_CONSTRUCTOR);
-    EXPECT_TRUE(value1->IsCallable());
-    EXPECT_TRUE(*func2 != nullptr);
-    hclass = JSFunction::GetOrCreateInitialJSHClass(thread, func2);
-    EXPECT_TRUE(hclass != nullptr);
-    JSHandle<JSSharedObject> sObj1 =
-        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    func1->SetHomeObject(thread, sObj1.GetTaggedValue());
-    JSHandle<JSTaggedValue> value2(thread, func2.GetTaggedValue());
-    EXPECT_TRUE(JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(sObj), key2, value2));
-    ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success) << "Serialize sObj fail";
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::SharedObjectTest2, jsDeserializerTest, data.release());
-    t1.join();
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -1773,8 +1776,14 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
-                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    // set value to array
+    JSHandle<JSArray> array = factory->NewJSArray();
+    array->SetArrayLength(thread, 1);
+    JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(array), 0, JSHandle<JSTaggedValue>(sObj));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(array));
+    EXPECT_TRUE(success) << "Serialize sObj fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SharedObjectTest3, jsDeserializerTest, data.release());
@@ -1782,7 +1791,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeSharedObject4)
+HWTEST_F_L0(JSSerializerTest, SerializeSharedObject3)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -1799,61 +1808,17 @@ HWTEST_F_L0(JSSerializerTest, SerializeSharedObject4)
     }
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
-                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    // set value to array
+    JSHandle<JSArray> array = factory->NewJSArray();
+    array->SetArrayLength(thread, 1);
+    JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(array), 0, JSHandle<JSTaggedValue>(sObj));
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sObj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(array));
+    EXPECT_TRUE(success) << "Serialize sObj fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SharedObjectTest4, jsDeserializerTest, data.release());
-    t1.join();
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewSFunction(env, nullptr,
-        FunctionKind::NORMAL_FUNCTION);
-    JSHandle<JSTaggedValue> sFuncVal(sFunc);
-    EXPECT_TRUE(sFuncVal->IsJSSharedFunction());
-    EXPECT_TRUE(*sFunc != nullptr);
-    JSHClass *hclass = JSFunction::GetOrCreateInitialJSHClass(thread, sFunc);
-    EXPECT_TRUE(hclass != nullptr);
-    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(2); // 2: slots num
-    lexicalEnv->SetProperties(thread, 0, JSTaggedValue::True());
-    lexicalEnv->SetProperties(thread, 1, JSTaggedValue::Undefined());
-    sFunc->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
-    hclass = JSFunction::GetOrCreateInitialJSHClass(thread, sFunc);
-    EXPECT_TRUE(hclass != nullptr);
-    JSHandle<JSTaggedValue> ctor = env->GetSObjectFunction();
-    JSHandle<JSSharedObject> sObj =
-        JSHandle<JSSharedObject>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    sFunc->SetHomeObject(thread, sObj.GetTaggedValue());
-    EXPECT_TRUE(sFunc->IsCallable());
-    ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success) << "Serialize sFunc fail";
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest, jsDeserializerTest, data.release());
-    t1.join();
-    delete serializer;
-};
-
-// test owner
-HWTEST_F_L0(JSSerializerTest, SerializeSharedFunction1)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> sFunc = thread->GetEcmaVM()->GetFactory()->NewSFunction(env, nullptr,
-        FunctionKind::NORMAL_FUNCTION);
-    ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunc),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success) << "Serialize sFunc fail";
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::SerializeSharedFunctionTest1, jsDeserializerTest, data.release());
     t1.join();
     delete serializer;
 };

@@ -42,7 +42,7 @@ namespace OHOS {
         }
         Local<JSValueRef> value(NumberRef::New(vm, input));
         Local<JSValueRef> transfer(JSValueRef::Undefined(vm));
-        void* serializationData = JSNApi::SerializeValue(vm, value, transfer);
+        void* serializationData = JSNApi::SerializeValue(vm, value, transfer, JSValueRef::Undefined(vm));
         JSNApi::DeleteSerializationData(serializationData);
         JSNApi::DestroyJSVM(vm);
     }

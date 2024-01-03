@@ -789,6 +789,11 @@ bool JSValueRef::IsVector()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
 }
 
+bool JSValueRef::IsSharedObject()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedObject();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
@@ -3494,15 +3499,17 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     thread->DisposeGlobalHandle(addr);
 }
 
-void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer)
+void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
+                             Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
     JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
+    JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
 #if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
-    ecmascript::ValueSerializer serializer(thread);
+    ecmascript::ValueSerializer serializer(thread, defaultTransfer, defaultCloneShared);
     std::unique_ptr<ecmascript::SerializeData> data;
-    if (serializer.WriteValue(thread, arkValue, arkTransfer)) {
+    if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
         data = serializer.Release();
     }
     if (data == nullptr) {
