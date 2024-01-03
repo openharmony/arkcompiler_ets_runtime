@@ -191,7 +191,7 @@ JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> 
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (toIndex < 0 || toIndex <= fromIndex || toIndex >= nodeLength) {
+    if (toIndex < 0 || toIndex <= fromIndex || toIndex > nodeLength) {
         std::ostringstream oss;
         oss << "The value of \"toIndex\" is out of range. It must be >= 0 && <= "
             << nodeLength << ". Received value is: " << toIndex;

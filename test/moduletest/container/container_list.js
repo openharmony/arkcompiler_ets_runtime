@@ -129,6 +129,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test list getSubList:", res)
 
     res = true
+    let list6 = new List();
+    const testArray1 = []
+    for(let i = 0; i < 4; i++) {
+        list6.add(i)
+        testArray1.push(i)
+    }
+    let subList11 = list6.getSubList(1, 4)
+    const newtestArraylist1 = testArray1.slice(1, 4)
+    for(let i = 0; i < subList11.length; i++) {
+        if (newtestArraylist1[i] !== subList11[i]) {
+            res =  false
+        }
+    }
+    map.set("test list getSubList1:", res)
+
+    res = true
     const arr = list.convertToArray()
     for (let i = 0; i < arr.length; i++) {
         if (arr[i] !== testArray[i]) {
