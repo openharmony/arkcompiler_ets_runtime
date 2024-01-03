@@ -72,7 +72,7 @@ static RangeSet g_regexpIdentifyContinue({
     std::pair<uint32_t, uint32_t>(0x0061, 0x007A),  // NOLINTNEXTLINE(readability-magic-numbers)
 });
 
-void RegExpParser::Parse(JSThread *thread)
+void RegExpParser::Parse()
 {
     // dynbuffer head init [size,capture_count,statck_count,flags]
     buffer_.EmitU32(0);
@@ -88,7 +88,7 @@ void RegExpParser::Parse(JSThread *thread)
     SaveStartOpCode saveStartOp;
     int captureIndex = captureCount_++;
     saveStartOp.EmitOpCode(&buffer_, captureIndex);
-    ParseDisjunction(thread, false);
+    ParseDisjunction(false);
     if (isError_) {
         return;
     }
@@ -110,19 +110,14 @@ void RegExpParser::Parse(JSThread *thread)
 #endif
 }
 
-void RegExpParser::ParseDisjunction(JSThread *thread, bool isBackward)
+void RegExpParser::ParseDisjunction(bool isBackward)
 {
     // check stack overflow because infinite recursion may occur
-    if (thread->IsAsmInterpreter() && UNLIKELY(thread->GetCurrentStackPosition() < thread->GetStackLimit())) {
-        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition() <<
-            " limit:" << thread->GetStackLimit();
-        ParseError("invalid regular expression.");
-        return;
-    }
+    DoParserStackOverflowCheck("invalid regular expression.");
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     PrintF("Parse Disjunction------\n");
     size_t start = buffer_.size_;
-    ParseAlternative(thread, isBackward);
+    ParseAlternative(isBackward);
     if (isError_) {
         return;
     }
@@ -134,7 +129,7 @@ void RegExpParser::ParseDisjunction(JSThread *thread, bool isBackward)
             splitOp.InsertOpCode(&buffer_, start, len + gotoOp.GetSize());
             uint32_t pos = gotoOp.EmitOpCode(&buffer_, 0) - gotoOp.GetSize();
             Advance();
-            ParseAlternative(thread, isBackward);
+            ParseAlternative(isBackward);
             gotoOp.UpdateOpPara(&buffer_, pos, buffer_.size_ - pos - gotoOp.GetSize());
         }
     } while (c0_ != KEY_EOF && c0_ != ')');
@@ -239,7 +234,7 @@ bool RegExpParser::ParseHexEscape(int length, uint32_t *value)
 }
 
 // NOLINTNEXTLINE(readability-function-size)
-void RegExpParser::ParseAlternative(JSThread *thread, bool isBackward)
+void RegExpParser::ParseAlternative(bool isBackward)
 {
     size_t start = buffer_.size_;
     while (c0_ != '|' && c0_ != KEY_EOF && c0_ != ')') {
@@ -332,7 +327,7 @@ void RegExpParser::ParseAlternative(JSThread *thread, bool isBackward)
             }
             case '(': {
                 Advance();
-                isAtom = ParseAssertionCapture(thread, &captureIndex, isBackward);
+                isAtom = ParseAssertionCapture(&captureIndex, isBackward);
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
                 Advance();
                 break;
@@ -500,7 +495,7 @@ int RegExpParser::FindGroupName(const CString &name)
     return -1;
 }
 
-bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bool isBackward)
+bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
 {
     bool isAtom = false;
     do {
@@ -513,7 +508,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
                     PrintF("Assertion(?= Disjunction)\n");
                     Advance();
                     uint32_t start = buffer_.size_;
-                    ParseDisjunction(thread, isBackward);
+                    ParseDisjunction(isBackward);
                     MatchOpCode matchOp;
                     matchOp.EmitOpCode(&buffer_, 0);
                     MatchAheadOpCode matchAheadOp;
@@ -527,7 +522,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
                     PrintF("Assertion(?! Disjunction)\n");
                     uint32_t start = buffer_.size_;
                     Advance();
-                    ParseDisjunction(thread, isBackward);
+                    ParseDisjunction(isBackward);
                     MatchOpCode matchOp;
                     matchOp.EmitOpCode(&buffer_, 0);
                     NegativeMatchAheadOpCode matchAheadOp;
@@ -543,7 +538,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
                         PrintF("Assertion(?<= Disjunction)\n");
                         Advance();
                         uint32_t start = buffer_.size_;
-                        ParseDisjunction(thread, true);
+                        ParseDisjunction(true);
                         MatchOpCode matchOp;
                         matchOp.EmitOpCode(&buffer_, 0);
                         MatchAheadOpCode matchAheadOp;
@@ -555,7 +550,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
                         PrintF("Assertion(?<! Disjunction)\n");
                         Advance();
                         uint32_t start = buffer_.size_;
-                        ParseDisjunction(thread, true);
+                        ParseDisjunction(true);
                         MatchOpCode matchOp;
                         matchOp.EmitOpCode(&buffer_, 0);
                         NegativeMatchAheadOpCode matchAheadOp;
@@ -588,7 +583,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
                     PrintF("Atom(?<: Disjunction)\n");
                     isAtom = true;
                     Advance();
-                    ParseDisjunction(thread, isBackward);
+                    ParseDisjunction(isBackward);
                     break;
                 default:
                     Advance();
@@ -612,7 +607,7 @@ bool RegExpParser::ParseAssertionCapture(JSThread *thread, int *captureIndex, bo
             }
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("capture start %d \n", *captureIndex);
-            ParseDisjunction(thread, isBackward);
+            ParseDisjunction(isBackward);
             if (isError_) {
                 return false;
             }
@@ -1508,5 +1503,15 @@ int RegExpParser::Canonicalize(int c, bool isUnicode)
 bool RegExpParser::NeedIntersection(uint32_t c)
 {
     return (c <= 'z' && c >= 'a') || (c <= 'Z' && c >= 'A');
+}
+
+void RegExpParser::DoParserStackOverflowCheck(const char *errorMessage)
+{
+    if (UNLIKELY(thread_->GetCurrentStackPosition() < thread_->GetStackLimit())) {
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread_->GetCurrentStackPosition() <<
+            " limit:" << thread_->GetStackLimit();
+        ParseError(errorMessage);
+        return;
+    }
 }
 }  // namespace panda::ecmascript

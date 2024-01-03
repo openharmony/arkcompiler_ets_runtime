@@ -92,10 +92,10 @@ public:
         flags_ = flags;
     }
 
-    void Parse(JSThread *thread);
-    void ParseDisjunction(JSThread *thread, bool isBackward);
-    void ParseAlternative(JSThread *thread, bool isBackward);
-    bool ParseAssertionCapture(JSThread *thread, int *captureIndex, bool isBackward);
+    void Parse();
+    void ParseDisjunction(bool isBackward);
+    void ParseAlternative(bool isBackward);
+    bool ParseAssertionCapture(int *captureIndex, bool isBackward);
     void ParseQuantifier(size_t atomBcStart, int captureStart, int captureEnd);
     int ParseDecimalDigits();
     int ParseAtomEscape(bool isBackward);
@@ -119,6 +119,7 @@ public:
     int RecountCaptures();
     int IsIdentFirst(uint32_t c);
     bool NeedIntersection(uint32_t c);
+    void DoParserStackOverflowCheck(const char *errorMessage);
 
     inline CVector<CString> GetGroupNames() const
     {
@@ -226,7 +227,7 @@ private:
     void Advance()
     {
         if (pc_ <= end_) {
-            STACK_LIMIT_CHECK_VOID(thread_);
+            DoParserStackOverflowCheck("Advance stack overflow!");
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             c0_ = *pc_++;
         } else {
