@@ -1042,7 +1042,7 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
 
 inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
 {
-    return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET));
+    return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET));
 }
 
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)

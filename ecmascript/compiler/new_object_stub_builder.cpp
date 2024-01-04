@@ -237,7 +237,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
     Bind(&afterNew);
     Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
     GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
-    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     GateRef oldL = GetLengthOfTaggedArray(elements);
     Label loopHead(env);
     Label loopEnd(env);
@@ -353,7 +353,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             GateRef array = newBuilder.NewTaggedArray(glue, newLen);
             Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
-            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRACT_LENGTH_OFFSET), oldExtractLen);
+            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
             Label loopHead(env);
             Label loopEnd(env);
             Label afterLoop(env);
