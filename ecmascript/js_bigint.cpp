@@ -1480,15 +1480,20 @@ JSHandle<BigInt> BigInt::FloorMod(JSThread *thread, JSHandle<BigInt> leftVal, JS
 
 JSTaggedValue BigInt::AsUintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<BigInt> bigint)
 {
-    uint32_t bit = bits.ToUint32();
+    JSTaggedNumber number = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t bit  = base::NumberHelper::DoubleToInt64(number.GetNumber());
     if (bit == 0) {
         return Int32ToBigInt(thread, 0).GetTaggedValue();
     }
     if (bigint->IsZero()) {
         return bigint.GetTaggedValue();
     }
-    JSHandle<BigInt> exponent = Uint32ToBigInt(thread, bit);
-    JSHandle<BigInt> base = Int32ToBigInt(thread, 2); // 2 : base value
+    JSHandle<BigInt> exponent = Uint64ToBigInt(thread, bit);
+    JSHandle<BigInt> base = Int64ToBigInt(thread, 2); // 2 : base value
+    if (bit >= kMaxLengthBits && !bigint->GetSign()) {
+        return bigint.GetTaggedValue();
+    }
     JSHandle<BigInt> tValue = Exponentiate(thread, base, exponent);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return FloorMod(thread, bigint, tValue).GetTaggedValue();
@@ -1496,16 +1501,21 @@ JSTaggedValue BigInt::AsUintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<B
 
 JSTaggedValue BigInt::AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<BigInt> bigint)
 {
-    uint32_t bit = bits.ToUint32();
+    JSTaggedNumber number = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t bit  = base::NumberHelper::DoubleToInt64(number.GetNumber());
     if (bit == 0) {
         return Int32ToBigInt(thread, 0).GetTaggedValue();
     }
     if (bigint->IsZero()) {
         return bigint.GetTaggedValue();
     }
-    JSHandle<BigInt> exp = Int32ToBigInt(thread, bit);
-    JSHandle<BigInt> exponent = Int32ToBigInt(thread, bit - 1);
-    JSHandle<BigInt> base = Int32ToBigInt(thread, 2); // 2 : base value
+    JSHandle<BigInt> exp = Int64ToBigInt(thread, bit);
+    JSHandle<BigInt> exponent = Int64ToBigInt(thread, bit - 1);
+    JSHandle<BigInt> base = Int64ToBigInt(thread, 2); // 2 : base value
+    if (bit >= kMaxLengthBits && !bigint->GetSign()) {
+        return bigint.GetTaggedValue();
+    }
     JSHandle<BigInt> tValue = Exponentiate(thread, base, exp);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<BigInt> modValue = FloorMod(thread, bigint, tValue);

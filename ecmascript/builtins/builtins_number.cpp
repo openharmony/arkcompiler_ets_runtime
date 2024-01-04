@@ -110,6 +110,7 @@ JSTaggedValue BuiltinsNumber::IsInteger(EcmaRuntimeCallInfo *argv)
         double value = JSTaggedNumber(msg.GetTaggedValue()).GetNumber();
         // 3. Let integer be ToInteger(number).
         JSTaggedNumber number = JSTaggedValue::ToInteger(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 4. If integer is not equal to number, return false.
         // 5. Otherwise, return true.
         result = (value == number.GetNumber());
@@ -147,6 +148,7 @@ JSTaggedValue BuiltinsNumber::IsSafeInteger(EcmaRuntimeCallInfo *argv)
         double value = JSTaggedNumber(msg.GetTaggedValue()).GetNumber();
         // 3. Let integer be ToInteger(number).
         JSTaggedNumber number = JSTaggedValue::ToInteger(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 4. If integer is not equal to number, return false.
         // 5. If abs(integer) ≤ 253−1, return true.
         result = (value == number.GetNumber()) && std::abs(value) <= base::MAX_SAFE_INTEGER;
@@ -284,6 +286,7 @@ JSTaggedValue BuiltinsNumber::ToFixed(EcmaRuntimeCallInfo *argv)
     // 3. Let f be ToInteger(fractionDigits). (If fractionDigits is undefined, this step produces the value 0).
     JSHandle<JSTaggedValue> digitArgv = GetCallArg(argv, 0);
     JSTaggedNumber digitInt = JSTaggedValue::ToInteger(thread, digitArgv);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (digitArgv->IsUndefined()) {
         digitInt = JSTaggedNumber(0);
     }
