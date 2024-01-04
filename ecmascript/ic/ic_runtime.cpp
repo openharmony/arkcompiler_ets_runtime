@@ -244,6 +244,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     if (op.GetValue().IsAccessor()) {
         op = ObjectOperator(GetThread(), receiver, key);
     }

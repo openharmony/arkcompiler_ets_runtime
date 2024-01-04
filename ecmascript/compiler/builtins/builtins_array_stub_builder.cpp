@@ -233,6 +233,15 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
                                                   Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
                                                   { argHandle, *kValue, key, thisValue });
                 Label find(env);
+                Label hasException1(env);
+                Label notHasException1(env);
+                Branch(HasPendingException(glue), &hasException1, &notHasException1);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&notHasException1);
                 Branch(TaggedIsTrue(FastToBoolean(retValue)), &find, &checkArray);
                 Bind(&find);
                 {
@@ -887,6 +896,15 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                             GateRef callResult = JSCallDispatch(glue, callbackFnHandle, argsLength, 0,
                                 Circuit::NullGate(), JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
                                 {argsLength, argv, Undefined()});
+                            Label hasException1(env);
+                            Label notHasException1(env);
+                            Branch(HasPendingException(glue), &hasException1, &notHasException1);
+                            Bind(&hasException1);
+                            {
+                                result->WriteVariable(Exception());
+                                Jump(exit);
+                            }
+                            Bind(&notHasException1);
                             GateRef newLen = GetLengthOfTaggedArray(elements);
                             Branch(Int32LessThan(newLen, *thisLen), &changeThisLen, &updateCallResult);
                             Bind(&changeThisLen);
