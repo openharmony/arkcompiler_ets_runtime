@@ -171,7 +171,7 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
 
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
-    builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT);
+    builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -254,7 +254,7 @@ void MCRLowering::LowerArrayGuardianCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef guardiansOffset = builder_.IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
     GateRef check = builder_.Load(VariableType::BOOL(), glue_, guardiansOffset);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY1);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -282,7 +282,7 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     } else {
         check = stableCheck;
     }
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY2);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -452,7 +452,7 @@ void MCRLowering::LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef upperBound = builder_.Int32(INT32_MAX);
     GateRef check = builder_.Int32UnsignedLessThanOrEqual(value, upperBound);
-    builder_.DeoptCheck(check, frameState, DeoptType::INT32OVERFLOW);
+    builder_.DeoptCheck(check, frameState, DeoptType::INT32OVERFLOW1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), value);
 }
 
@@ -460,7 +460,7 @@ void MCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsInt(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTINT);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTINT1);
     GateRef result = Circuit::NullGate();
     ValueType dst = acc_.GetDstType(gate);
     ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
@@ -476,7 +476,7 @@ void MCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameSt
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsDouble(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTDOUBLE);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTDOUBLE1);
     GateRef result = Circuit::NullGate();
     ValueType dst = acc_.GetDstType(gate);
     ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
@@ -492,7 +492,7 @@ void MCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameSt
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsNumber(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNUMBER);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNUMBER1);
     GateRef result = Circuit::NullGate();
     ValueType dst = acc_.GetDstType(gate);
     if (dst == ValueType::INT32) {
@@ -515,10 +515,10 @@ void MCRLowering::LowerCheckSupportAndConvert(GateRef gate, GateRef frameState)
 
     GateRef result = Circuit::NullGate();
     if (dstType == ValueType::INT32) {
-        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTINT);
+        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTINT2);
         result = builder_.BooleanToInt32(value);
     } else {
-        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTDOUBLE);
+        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTDOUBLE2);
         result = builder_.BooleanToFloat64(value);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -528,7 +528,7 @@ void MCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameStat
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsBoolean(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTBOOL);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTBOOL1);
     GateRef result = Circuit::NullGate();
     GateRef boolValue = ConvertTaggedBooleanToBool(value);
     if (acc_.GetDstType(gate) == ValueType::BOOL) {
@@ -547,7 +547,7 @@ void MCRLowering::LowerCheckNullAndConvert(GateRef gate, GateRef frameState)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsNull(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL1);
     GateRef result = Circuit::NullGate();
     if (acc_.GetDstType(gate) == ValueType::INT32) {
         result = builder_.Int32(0);
@@ -565,7 +565,7 @@ void MCRLowering::LowerUndefinedAndConvert(GateRef gate, GateRef frameState)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsUndefined(value);
-    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL2);
     GateRef result = Circuit::NullGate();
     if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
         result = builder_.NanValue();
@@ -754,7 +754,7 @@ void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef right = acc_.GetValueIn(gate, 0);
     GateRef rightNotZero = builder_.Int32NotEqual(right, builder_.Int32(0));
-    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO);
+    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -764,7 +764,7 @@ void MCRLowering::LowerFloat64CheckRightIsZero(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef right = acc_.GetValueIn(gate, 0);
     GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
-    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
+    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -774,7 +774,7 @@ void MCRLowering::LowerLexVarIsHoleCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef valueIsNotHole = builder_.TaggedIsNotHole(value);
-    builder_.DeoptCheck(valueIsNotHole, frameState, DeoptType::LEXVARISHOLE);
+    builder_.DeoptCheck(valueIsNotHole, frameState, DeoptType::LEXVARISHOLE1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -784,7 +784,7 @@ void MCRLowering::LowerValueCheckNegOverflow(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
-    builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV);
+    builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -794,7 +794,7 @@ void MCRLowering::LowerOverflowCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef result = acc_.GetValueIn(gate, 0);
     GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, result, builder_.Int32(1)));
-    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -805,7 +805,7 @@ void MCRLowering::LowerInt32UnsignedUpperBoundCheck(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef upperBound = acc_.GetValueIn(gate, 1);
     GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, upperBound);
-    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT4);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -820,12 +820,12 @@ void MCRLowering::LowerInt32DivWithCheck(GateRef gate)
     GateRef rightLessZero = builder_.Int32LessThan(right, builder_.Int32(0));
     GateRef leftNotZero = builder_.Int32NotEqual(left, builder_.Int32(0));
     GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
-    builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
+    builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO2);
     result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right, GateType::NJSValue());
     GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(),
         MachineType::I32, result, right, GateType::NJSValue());
     GateRef overCheck = builder_.Int32Equal(truncated, left);
-    builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
+    builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT5);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

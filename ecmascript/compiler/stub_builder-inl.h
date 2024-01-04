@@ -1877,6 +1877,18 @@ inline void StubBuilder::SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, Ga
     SetBitFieldToHClass(glue, hClass, newVal);
 }
 
+inline void StubBuilder::SetIsTS(GateRef glue, GateRef hClass, GateRef value)
+{
+    GateRef oldValue = ZExtInt1ToInt32(value);
+    GateRef bitfield = GetBitFieldFromHClass(hClass);
+    GateRef mask = Int32LSL(
+        Int32((1LU << JSHClass::IsTSBit::SIZE) - 1),
+        Int32(JSHClass::IsTSBit::START_BIT));
+    GateRef newVal = Int32Or(Int32And(bitfield, Int32Not(mask)),
+        Int32LSL(oldValue, Int32(JSHClass::IsTSBit::START_BIT)));
+    SetBitFieldToHClass(glue, hClass, newVal);
+}
+
 inline GateRef StubBuilder::IsProtoTypeHClass(GateRef hClass)
 {
     GateRef bitfield = GetBitFieldFromHClass(hClass);
