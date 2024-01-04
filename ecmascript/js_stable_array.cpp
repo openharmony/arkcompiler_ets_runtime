@@ -267,6 +267,10 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     if (elementsLength == 0 && length != 0) {
         len = length;
     }
+    if (len <= 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
+    }
     for (uint32_t k = 0; k < len; k++) {
         JSTaggedValue element = JSTaggedValue::Undefined();
         if (k < elementsLength) {
