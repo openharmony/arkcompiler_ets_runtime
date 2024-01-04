@@ -2160,7 +2160,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     if (getCache.first.IsHole()) {
         parser.Init(const_cast<char *>(reinterpret_cast<const char *>(patternStdStr.c_str())), patternStdStr.size(),
                     flagsBits);
-        parser.Parse(thread);
+        parser.Parse();
         if (parser.IsError()) {
             JSHandle<JSObject> syntaxError =
                 factory->GetJSError(base::ErrorType::SYNTAX_ERROR, parser.GetErrorMsg().c_str());
