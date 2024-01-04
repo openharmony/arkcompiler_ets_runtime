@@ -751,17 +751,34 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
     }
 }
 
-// This moduleName is a readOnly variable for napi, represent which abc is running in current vm.
-CString EcmaVM::GetCurrentModuleName()
+/*  This moduleName is a readOnly variable for napi, represent which abc is running in current vm.
+*   Get Current recordName: bundleName/ets/xxx/xxx
+*                           pkg_modules@xxx/xxx/xxx
+*   Get Current fileName: /data/storage/el1/bundle/moduleName/ets/modules.abc
+*   output: moduleName: moduleName
+*   if needRecordName then fileName is: moduleName/ets/modules.abc
+*/
+std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecordName)
 {
-    CString recordName = ConvertToString(EcmaInterpreter::GetCurrentEntryPoint(thread_));
-    LOG_FULL(INFO) << " Current recordName is " << recordName;
+    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
+    CString recordName = ConvertToString(moduleInfo.first);
+    CString fileName = ConvertToString(moduleInfo.second);
+    LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
+    if (needRecordName) {
+        if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
+            fileName.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
+            fileName = fileName.substr(ModulePathHelper::BUNDLE_INSTALL_PATH_LEN);
+        } else {
+            LOG_FULL(ERROR) << " GetCurrentModuleName Fail, fileName is " << fileName;
+        }
+        return std::make_pair(recordName.c_str(), fileName.c_str());
+    }
     CString moduleName = ModulePathHelper::GetModuleName(recordName);
     PathHelper::DeleteNamespace(moduleName);
     if (moduleName.empty()) {
-        LOG_FULL(ERROR) << " GetCurrentModuleName Fail,  recordName is " << recordName;
+        LOG_FULL(ERROR) << " GetCurrentModuleName Fail, recordName is " << recordName;
     }
-    return moduleName;
+    return std::make_pair(moduleName.c_str(), fileName.c_str());
 }
 
 void EcmaVM::SetHmsModuleList(const std::vector<panda::HmsMap> &list)

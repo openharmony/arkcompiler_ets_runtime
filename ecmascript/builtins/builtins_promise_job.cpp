@@ -165,10 +165,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
-    }
-    // translate requestPath to OhmUrl
-    if (ModulePathHelper::NeedTranstale(requestPath)) {
-        ModulePathHelper::TranstaleExpressionInput(thread, requestPath, curJsPandaFile.get(), specifierString);
+        // translate requestPath to OhmUrl
+        if (ModulePathHelper::NeedTranstale(requestPath)) {
+            ModulePathHelper::TranstaleExpressionInput(thread, requestPath, curJsPandaFile.get(), specifierString);
+        }
     }
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);

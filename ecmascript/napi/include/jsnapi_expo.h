@@ -1290,7 +1290,7 @@ public:
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
-    static std::string GetCurrentModuleName(EcmaVM *vm);
+    static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);

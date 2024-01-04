@@ -2634,9 +2634,9 @@ std::string JSNApi::GetModuleName(EcmaVM *vm)
     return vm->GetModuleName().c_str();
 }
 
-std::string JSNApi::GetCurrentModuleName(EcmaVM *vm)
+std::pair<std::string, std::string> JSNApi::GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName)
 {
-    return vm->GetCurrentModuleName().c_str();
+    return vm->GetCurrentModuleInfo(needRecordName);
 }
 
 // Enable cross thread execution.

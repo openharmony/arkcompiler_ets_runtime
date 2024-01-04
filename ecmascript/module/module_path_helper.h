@@ -94,6 +94,7 @@ public:
     static constexpr size_t NATIVE_PREFIX_SIZE = 8;
     static constexpr size_t OHOS_PREFIX_SIZE = 6;
     static constexpr size_t APP_PREFIX_SIZE = 5;
+    static constexpr size_t BUNDLE_INSTALL_PATH_LEN = 25;
 
     static CString ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                            CString &baseFileName, CString recordName, CString requestName);

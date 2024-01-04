@@ -64,23 +64,21 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
 void ModulePathHelper::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName,
     CString &outBaseFileName, CString &outEntryPoint)
 {
-    CString bundleInstallName(BUNDLE_INSTALL_PATH);
-    size_t startStrLen = bundleInstallName.length();
     size_t pos = CString::npos;
-
-    if (inputFileName.length() > startStrLen && inputFileName.compare(0, startStrLen, bundleInstallName) == 0) {
-        pos = startStrLen;
+    if (inputFileName.length() > BUNDLE_INSTALL_PATH_LEN &&
+        inputFileName.compare(0, BUNDLE_INSTALL_PATH_LEN, BUNDLE_INSTALL_PATH) == 0) {
+        pos = BUNDLE_INSTALL_PATH_LEN;
     }
     if (pos != CString::npos) {
         // inputFileName: /data/storage/el1/bundle/moduleName@namespace/ets/xxx/xxx.abc
-        pos = inputFileName.find(PathHelper::SLASH_TAG, startStrLen);
+        pos = inputFileName.find(PathHelper::SLASH_TAG, BUNDLE_INSTALL_PATH_LEN);
         if (pos == CString::npos) {
             LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
         }
-        CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
+        CString moduleName = inputFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
         PathHelper::DeleteNamespace(moduleName);
         outBaseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-        outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName.substr(startStrLen);
+        outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName.substr(BUNDLE_INSTALL_PATH_LEN);
     } else {
         // Temporarily handle the relative path sent by arkui
         // inputFileName: @bundle:bundleName/moduleName/ets/xxx/xxx.abc
