@@ -1137,30 +1137,29 @@ JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &th
 {
     JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObj));
     uint32_t length = ElementAccessor::GetElementsLength(thisObj);
-    JSTaggedValue thisObjElements = thisObj->GetElements();
     ElementsKind oldKind = thisObj->GetClass()->GetElementsKind();
     if (JSHClass::TransitToElementsKind(thread, thisObj, value)) {
         ElementsKind newKind = thisObj->GetClass()->GetElementsKind();
         Elements::MigrateArrayWithKind(thread, thisObj, oldKind, newKind);
     }
     if (length >= end) {
-        if (thisObjElements.IsMutantTaggedArray()) {
+        if (thisObj->GetElements().IsMutantTaggedArray()) {
             ElementsKind kind = thisObj->GetClass()->GetElementsKind();
-            TaggedArray *elements = TaggedArray::Cast(thisObjElements);
+            TaggedArray *elements = TaggedArray::Cast(thisObj->GetElements());
             JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
                 value.GetTaggedValue(), kind));
             for (int64_t idx = start; idx < end; idx++) {
                 elements->Set<false>(thread, idx, migratedValue);
             }
         } else {
-            TaggedArray *elements = TaggedArray::Cast(thisObjElements);
+            TaggedArray *elements = TaggedArray::Cast(thisObj->GetElements());
             for (int64_t idx = start; idx < end; idx++) {
                 elements->Set(thread, idx, value);
             }
         }
         return thisObj.GetTaggedValue();
     } else {
-        if (thisObjElements.IsMutantTaggedArray()) {
+        if (thisObj->GetElements().IsMutantTaggedArray()) {
             ElementsKind kind = thisObj->GetClass()->GetElementsKind();
             JSHandle<MutantTaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewMutantTaggedArray(len);
             JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
