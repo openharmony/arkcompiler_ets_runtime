@@ -34,3 +34,4 @@ for (let i = 0; i < 100; ++i) {
     }
 }
 print(res);
+print(Object.keys(globalThis))
