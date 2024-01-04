@@ -117,6 +117,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::VTABLE));
+    SetConstant(ConstantIndex::COW_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::COW_MUTANT_TAGGED_ARRAY));
     SetConstant(ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
     InitGlobalConstantSpecial(thread);

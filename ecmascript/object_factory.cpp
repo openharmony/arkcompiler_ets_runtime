@@ -2600,6 +2600,19 @@ JSHandle<COWTaggedArray> ObjectFactory::NewCOWTaggedArray(uint32_t length, JSTag
     return cowArray;
 }
 
+JSHandle<COWMutantTaggedArray> ObjectFactory::NewCOWMutantTaggedArray(uint32_t length, JSTaggedType initVal)
+{
+    NewObjectHook();
+    ASSERT(length > 0);
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetCOWMutantTaggedArrayClass().GetTaggedObject()), size);
+    JSHandle<COWMutantTaggedArray> cowMutantTaggedArray(thread_, header);
+    cowMutantTaggedArray->InitializeWithSpecialValue(initVal, length);
+    return cowMutantTaggedArray;
+}
+
 JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArray(uint32_t length, JSTaggedType initVal)
 {
     NewObjectHook();
@@ -2703,7 +2716,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     JSHClass *arrayClass = nullptr;
     // If old element is Mutantarray, need conversion according to kind.
-    if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+    if (old->GetClass()->IsMutantTaggedArray()) {
         arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
     } else {
         arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
@@ -2716,7 +2729,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     uint32_t oldLength = old->GetLength();
     for (uint32_t i = 0; i < oldLength; i++) {
         JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+        if (old->GetClass()->IsMutantTaggedArray()) {
             newArray->Set<false>(thread_, i, value);
         } else {
             newArray->Set(thread_, i, value);
@@ -2724,7 +2737,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     }
 
     for (uint32_t i = oldLength; i < length; i++) {
-        if (initVal.IsHole() && old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+        if (initVal.IsHole() && old->GetClass()->IsMutantTaggedArray()) {
             JSTaggedValue specialHole = JSTaggedValue(base::SPECIAL_HOLE);
             newArray->Set<false>(thread_, i, specialHole);
         } else {
@@ -2777,11 +2790,17 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     TaggedObject *header = nullptr;
     if (type == MemSpaceType::NON_MOVABLE) {
         // COW array is shared in nonmovable space.
-        JSHClass *cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject());
+        JSHClass *cowArrayClass = nullptr;
+        if (old->GetClass()->IsMutantTaggedArray()) {
+            cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWMutantTaggedArrayClass()
+                                           .GetTaggedObject());
+        } else {
+            cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject());
+        }
         header = AllocObjectWithSpaceType(size, cowArrayClass, type);
     } else {
         JSHClass *arrayClass = nullptr;
-        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+        if (old->GetClass()->IsMutantTaggedArray()) {
             arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
         } else {
             arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
@@ -2795,7 +2814,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->GetObjectType() == JSType::MUTANT_TAGGED_ARRAY) {
+        if (old->GetClass()->IsMutantTaggedArray()) {
             newArray->Set<false>(thread_, i, value);
         } else {
             newArray->Set(thread_, i, value);

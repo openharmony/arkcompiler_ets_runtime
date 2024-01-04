@@ -862,6 +862,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(array);
                 break;
             }
+            case JSType::COW_MUTANT_TAGGED_ARRAY: {
+                JSHandle<COWMutantTaggedArray> array = factory->NewCOWMutantTaggedArray(4);
+                DUMP_FOR_HANDLE(array);
+                break;
+            }
             case JSType::GLOBAL_ENV: {
                 DUMP_FOR_HANDLE(globalEnv);
                 break;

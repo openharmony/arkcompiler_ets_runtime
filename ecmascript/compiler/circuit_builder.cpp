@@ -172,7 +172,8 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 
 GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
 {
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+    return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY))),
+                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
 }
 
 GateRef CircuitBuilder::IsTaggedArray(GateRef object)
@@ -183,7 +184,8 @@ GateRef CircuitBuilder::IsTaggedArray(GateRef object)
 
 GateRef CircuitBuilder::IsMutantTaggedArray(GateRef objectType)
 {
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY)));
+    return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
 }
 
 GateRef CircuitBuilder::GetElementsArray(GateRef object)

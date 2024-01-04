@@ -209,6 +209,7 @@ struct Reference;
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROFILE_TYPE_INFO, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        COW_MUTANT_TAGGED_ARRAY, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         COW_TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -624,6 +625,7 @@ public:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
             case JSType::MUTANT_TAGGED_ARRAY:
+            case JSType::COW_MUTANT_TAGGED_ARRAY:
                 return true;
             default:
                 return false;
@@ -652,12 +654,14 @@ public:
     inline bool IsCOWArray() const
     {
         // Copy On Write ARRAY.
-        return GetObjectType() == JSType::COW_TAGGED_ARRAY;
+        return GetObjectType() == JSType::COW_TAGGED_ARRAY ||
+               GetObjectType() == JSType::COW_MUTANT_TAGGED_ARRAY;
     }
 
     inline bool IsMutantTaggedArray() const
     {
-        return GetObjectType() == JSType::MUTANT_TAGGED_ARRAY;
+        return GetObjectType() == JSType::MUTANT_TAGGED_ARRAY ||
+               GetObjectType() == JSType::COW_MUTANT_TAGGED_ARRAY;
     }
 
     inline bool IsJSNativePointer() const

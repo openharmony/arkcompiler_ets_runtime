@@ -123,5 +123,17 @@ private:
     friend class ObjectFactory;
 };
 
+// Copy On Write MutantTaggedArray is shared in the nonmovable space.
+// With raw numbers stored in Data section.
+class COWMutantTaggedArray : public MutantTaggedArray {
+public:
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetLength());
+    CAST_CHECK(COWMutantTaggedArray, IsCOWArray)
+    DECL_DUMP()
+private:
+    friend class ObjectFactory;
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_H

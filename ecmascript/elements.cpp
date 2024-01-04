@@ -131,6 +131,9 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
     if (oldKind == newKind) {
         return;
     }
+    // When create ArrayLiteral from constantPool, we need to preserve the COW property if necessary.
+    // When transition happens to Array, e.g. arr.x = 1, we need to preserve the COW property if necessary.
+    bool needCOW = object->GetElements().IsCOWArray();
     if ((oldKind == ElementsKind::INT && newKind == ElementsKind::HOLE_INT) ||
         (oldKind == ElementsKind::NUMBER && newKind == ElementsKind::HOLE_NUMBER)) {
         return;
@@ -138,7 +141,12 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
         JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
         uint32_t length = elements->GetLength();
         if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING)) {
-            JSHandle<TaggedArray> newElements = factory->NewTaggedArray(length);
+            JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
+            if (needCOW) {
+                newElements.Update(factory->NewCOWTaggedArray(length));
+            } else {
+                newElements.Update(factory->NewTaggedArray(length));
+            }
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedType value = elements->Get(i).GetRawData();
                 if (value == base::SPECIAL_HOLE) {
@@ -165,7 +173,12 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
         JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
         uint32_t length = elements->GetLength();
         if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING)) {
-            JSHandle<TaggedArray> newElements = factory->NewTaggedArray(length);
+            JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
+            if (needCOW) {
+                newElements.Update(factory->NewCOWTaggedArray(length));
+            } else {
+                newElements.Update(factory->NewTaggedArray(length));
+            }
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedType value = elements->Get(i).GetRawData();
                 if (value == base::SPECIAL_HOLE) {
@@ -183,7 +196,12 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
         JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread, object->GetElements());
         uint32_t length = elements->GetLength();
         if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
-            JSHandle<MutantTaggedArray> newElements = factory->NewMutantTaggedArray(length);
+            JSMutableHandle<MutantTaggedArray> newElements(thread, JSTaggedValue::Undefined());
+            if (needCOW) {
+                newElements.Update(factory->NewCOWMutantTaggedArray(length));
+            } else {
+                newElements.Update(factory->NewMutantTaggedArray(length));
+            }
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedValue value = elements->Get(i);
                 JSTaggedType convertedValue = 0;
@@ -198,7 +216,12 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
             object->SetElements(thread, newElements);
         } else if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
                    static_cast<uint32_t>(newKind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)) {
-            JSHandle<MutantTaggedArray> newElements = factory->NewMutantTaggedArray(length);
+            JSMutableHandle<MutantTaggedArray> newElements(thread, JSTaggedValue::Undefined());
+            if (needCOW) {
+                newElements.Update(factory->NewCOWMutantTaggedArray(length));
+            } else {
+                newElements.Update(factory->NewMutantTaggedArray(length));
+            }
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedValue value = elements->Get(i);
                 JSTaggedType convertedValue = 0;
