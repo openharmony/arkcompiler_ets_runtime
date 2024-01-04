@@ -6164,7 +6164,7 @@ GateRef StubBuilder::DeleteProperty(GateRef glue, GateRef obj, GateRef value)
         result = CallRuntime(glue, RTSTUB_ID(CallJSObjDeletePrototype), { obj, value});
         Jump(&exit);
     }
-    
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -7399,7 +7399,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
             Label isDigit(env);
             Label notIsDigit(env);
             DEFVARIABLE(i, VariableType::INT32(), Int32(1));
-            DEFVARIABLE(n, VariableType::INT32(), Int32Sub(*c, Int32('0')));
+            DEFVARIABLE(n, VariableType::INT64(), Int64Sub(SExtInt32ToInt64(*c), Int64('0')));
 
             Branch(IsDigit(*c), &isDigit, &notIsDigit);
             Label loopHead(env);
@@ -7416,8 +7416,8 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
                 Bind(&isDigit2);
                 {
                     // 10 means the base of digit is 10.
-                    n = Int32Add(Int32Mul(*n, Int32(10)),
-                                 Int32Sub(*c, Int32('0')));
+                    n = Int64Add(Int64Mul(*n, Int64(10)),
+                                 Int64Sub(SExtInt32ToInt64(*c), Int64('0')));
                     i = Int32Add(*i, Int32(1));
                     Branch(Int32UnsignedLessThan(*i, len), &loopEnd, &afterLoop);
                 }
@@ -7437,11 +7437,11 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
             Bind(&afterLoop);
             {
                 Label lessThanMaxIndex(env);
-                Branch(Int32UnsignedLessThan(*n, Int32(JSObject::MAX_ELEMENT_INDEX)),
+                Branch(Int64LessThan(*n, Int64(JSObject::MAX_ELEMENT_INDEX)),
                        &lessThanMaxIndex, &exit);
                 Bind(&lessThanMaxIndex);
                 {
-                    result = *n;
+                    result = TruncInt64ToInt32(*n);
                     Jump(&exit);
                 }
             }
