@@ -195,6 +195,7 @@ group("ark_asm_test") {
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
+    "arrayfill",
     "arrayflat",
     "arrayflatmap",
     "arrayfindlastindex",
