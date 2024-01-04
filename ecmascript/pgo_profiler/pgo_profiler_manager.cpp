@@ -28,7 +28,7 @@ namespace {
 PGOProfilerManager* PGOProfilerManager::GetInstance()
 {
     static PGOProfilerManager* instance = new PGOProfilerManager();
-    return &*instance;
+    return instance;
 }
 
 bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold,
