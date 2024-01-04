@@ -25,11 +25,12 @@ JSGeneratorState JSGeneratorObject::GeneratorValidate(JSThread *thread, const JS
     // 1.Perform ? RequireInternalSlot(generator, [[GeneratorState]]).
     // 2.Assert: generator also has a [[GeneratorContext]] internal slot.
     if (!obj->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", JSGeneratorState::UNDEFINED);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not object",
+            JSGeneratorState::UNDEFINED);
     }
     JSHandle<JSObject> toObj = JSTaggedValue::ToObject(thread, obj);
     if (!toObj->IsGeneratorObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", JSGeneratorState::UNDEFINED);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not generator object", JSGeneratorState::UNDEFINED);
     }
 
     // 3.Let state be generator.[[GeneratorState]].
@@ -37,7 +38,7 @@ JSGeneratorState JSGeneratorObject::GeneratorValidate(JSThread *thread, const JS
     JSGeneratorState state = generator->GetGeneratorState();
     // 4.If state is executing, throw a TypeError exception.
     if (state == JSGeneratorState::EXECUTING) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", JSGeneratorState::UNDEFINED);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "State is executing", JSGeneratorState::UNDEFINED);
     }
     // 5.Return state.
     return state;

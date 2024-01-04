@@ -105,7 +105,7 @@ JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSH
     JSHandle<JSTaggedValue> iterator(thread, ret);
     // 5.If Type(iterator) is not Object, throw a TypeError exception
     if (!iterator->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", undefined);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not object", undefined);
     }
     return iterator;
 }
@@ -291,7 +291,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
     }
     // 9.If Type(innerResult.[[value]]) is not Object, throw a TypeError exception.
     if (!innerResult->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", undefined);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not object", undefined);
     }
     if (!exceptionOnThread.IsEmpty()) {
         thread->SetException(exceptionOnThread.GetTaggedValue());

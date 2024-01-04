@@ -362,11 +362,6 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
         if (resultDesc.HasWritable() && !resultDesc.IsWritable() && targetDesc.IsWritable()) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetOwnProperty: TypeError of targetDesc writable", false);
         }
-        // b. If resultDesc has a [[Writable]] field and resultDesc.[[Writable]] is false, then
-        //    If targetDesc.[[Writable]] is true, throw a TypeError exception.
-        if (resultDesc.HasWritable() && !resultDesc.IsWritable() && targetDesc.IsWritable()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
-        }
     }
     // 23. Return resultDesc.
     return true;
@@ -449,12 +444,6 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
         if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && targetDesc.IsWritable() &&
             desc.HasWritable() && !desc.IsWritable()) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::DefineOwnProperty: TypeError of DataDescriptor", false);
-        }
-        // c. If IsDataDescriptor(targetDesc) is true, targetDesc.[[Configurable]] is false, and targetDesc.[[Writable]]
-        // is true, then If Desc has a [[Writable]] field and Desc.[[Writable]] is false, throw a TypeError exception.
-        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && targetDesc.IsWritable() &&
-            desc.HasWritable() && !desc.IsWritable()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
         }
     }
     // 21. Return true.
@@ -714,9 +703,6 @@ bool JSProxy::DeleteProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     }
     if (!targetHandle->IsExtensible(thread)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::DeleteProperty: targetHandle is not Extensible", false);
-    }
-    if (!targetHandle->IsExtensible(thread)) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
     }
     // 16. Return true.
     return true;
@@ -1061,7 +1047,7 @@ bool JSProxy::IsArray(JSThread *thread) const
         return false;
     }
     if (GetHandler().IsNull()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "", false);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::IsArray: handler is null", false);
     }
     return GetTarget().IsArray(thread);
 }
