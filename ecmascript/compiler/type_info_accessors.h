@@ -899,6 +899,9 @@ public:
     }
 
 protected:
+    void FetchBuiltinsTypes();
+    bool CheckDuplicatedBuiltinType(ProfileType newType) const;
+
     ChunkVector<ProfileType> types_;
 };
 
@@ -928,10 +931,6 @@ public:
         ASSERT(IsValidTypedArrayType());
         return tsManager_->GetTypedArrayBuiltinId(GetReceiverGateType());
     }
-private:
-    void FetchBuiltinsTypes();
-
-    bool CheckDuplicatedBuiltinType(ProfileType newType) const;
 };
 
 class StoreBulitinObjTypeInfoAccessor final : public AccBuiltinObjTypeInfoAccessor {

@@ -1148,20 +1148,27 @@ void TypeBytecodeLowering::StoreTypedArrayByIndex(const StoreBulitinObjTypeInfoA
 bool TypeBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    // Just supported mono.
+    if (tacc.IsMono()) {
+        if (tacc.IsBuiltinsArray()) {
+            AddProfiling(gate);
+            StoreJSArrayByIndex(tacc);
+            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+            return true;
+        }
+    }
+
     if (!tacc.KeyIsNumberType()) {
         return false;
     }
-    if (tacc.IsArrayTypeKind()) {
-        AddProfiling(gate);
-        StoreJSArrayByIndex(tacc);
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
-        return true;
-    } else if (tacc.IsValidTypedArrayType()) {
+
+    if (tacc.IsValidTypedArrayType()) {
         AddProfiling(gate);
         StoreTypedArrayByIndex(tacc);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
         return true;
     }
+
     return false;
 }
 

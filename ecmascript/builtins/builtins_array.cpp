@@ -740,10 +740,10 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    JSHandle<JSTaggedValue> thisObjVal = GetThis(argv);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisObjVal);
 
-    if (thisHandle->IsJSArray()) {
+    if (thisObjVal->IsJSArray()) {
         bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
         if (isDictionary) {
             uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
@@ -756,11 +756,10 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
 
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (thisHandle->IsTypedArray()) {
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisHandle)->GetContentType();
+    if (thisObjVal->IsTypedArray()) {
+        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
         if (contentType == ContentType::BigInt) {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
         } else {
@@ -812,55 +811,28 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    if (thisHandle->IsStableJSArray(thread)) {
-        JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
-        uint32_t length = ElementAccessor::GetElementsLength(thisObjHandle);
-        ElementsKind oldKind = thisObjHandle->GetClass()->GetElementsKind();
-        if (JSHClass::TransitToElementsKind(thread, thisObjHandle, value)) {
-            ElementsKind newKind = thisObjHandle->GetClass()->GetElementsKind();
-            Elements::MigrateArrayWithKind(thread, thisObjHandle, oldKind, newKind);
-        }
-        if (length >= end) {
-            for (int64_t idx = start; idx < end; idx++) {
-                ElementAccessor::Set(thread, thisObjHandle, idx, value, false);
-            }
-            return thisObjHandle.GetTaggedValue();
-        } else {
-            if (thisObjHandle->GetElements().IsMutantTaggedArray()) {
-                JSHandle<MutantTaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewMutantTaggedArray(len);
-                ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
-                JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
-                                                            value.GetTaggedValue(), kind));
-                for (int64_t idx = start; idx < end; idx++) {
-                    newElements->Set<false>(thread, idx, migratedValue);
-                }
-                thisObjHandle->SetElements(thread, newElements);
-            } else {
-                JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
-                for (int64_t idx = start; idx < end; idx++) {
-                    newElements->Set(thread, idx, value);
-                }
-                thisObjHandle->SetElements(thread, newElements);
-            }
-            return thisObjHandle.GetTaggedValue();
-        }
+    
+    if (thisObjVal->IsStableJSArray(thread)) {
+        return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
     }
-    if (thisHandle->IsTypedArray()) {
-        bool result = JSTypedArray::FastTypedArrayFill(thread, thisHandle, value, start, end);
+
+    if (thisObjVal->IsTypedArray()) {
+        bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (result) {
             return thisObjHandle.GetTaggedValue();
         }
     }
+
     int64_t k = start;
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     while (k < end) {
         key.Update(JSTaggedValue(k));
         JSArray::FastSetPropertyByValue(thread, thisObjVal, key, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
-
+    
     // 12. Return O.
     return thisObjHandle.GetTaggedValue();
 }

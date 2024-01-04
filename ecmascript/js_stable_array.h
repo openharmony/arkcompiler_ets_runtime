@@ -72,6 +72,9 @@ public:
 
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
                               const JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                              const JSHandle<JSTaggedValue> &value,
+                              int64_t start, int64_t end, int64_t len);
 
 private:
     static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);

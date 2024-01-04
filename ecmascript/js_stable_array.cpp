@@ -1127,4 +1127,52 @@ JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSObject> &th
     return thisObj.GetTaggedValue();
 }
 
+JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                                  const JSHandle<JSTaggedValue> &value, int64_t start,
+                                  int64_t end, int64_t len)
+{
+    JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObj));
+    uint32_t length = ElementAccessor::GetElementsLength(thisObj);
+    JSTaggedValue thisObjElements = thisObj->GetElements();
+    ElementsKind oldKind = thisObj->GetClass()->GetElementsKind();
+    if (JSHClass::TransitToElementsKind(thread, thisObj, value)) {
+        ElementsKind newKind = thisObj->GetClass()->GetElementsKind();
+        Elements::MigrateArrayWithKind(thread, thisObj, oldKind, newKind);
+    }
+    if (length >= end) {
+        if (thisObjElements.IsMutantTaggedArray()) {
+            ElementsKind kind = thisObj->GetClass()->GetElementsKind();
+            TaggedArray *elements = TaggedArray::Cast(thisObjElements);
+            JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
+                value.GetTaggedValue(), kind));
+            for (int64_t idx = start; idx < end; idx++) {
+                elements->Set<false>(thread, idx, migratedValue);
+            }
+        } else {
+            TaggedArray *elements = TaggedArray::Cast(thisObjElements);
+            for (int64_t idx = start; idx < end; idx++) {
+                elements->Set(thread, idx, value);
+            }
+        }
+        return thisObj.GetTaggedValue();
+    } else {
+        if (thisObjElements.IsMutantTaggedArray()) {
+            ElementsKind kind = thisObj->GetClass()->GetElementsKind();
+            JSHandle<MutantTaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewMutantTaggedArray(len);
+            JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
+                value.GetTaggedValue(), kind));
+            for (int64_t idx = start; idx < end; idx++) {
+                newElements->Set<false>(thread, idx, migratedValue);
+            }
+            thisObj->SetElements(thread, newElements);
+        } else {
+            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
+            for (int64_t idx = start; idx < end; idx++) {
+                newElements->Set(thread, idx, value);
+            }
+            thisObj->SetElements(thread, newElements);
+        }
+        return thisObj.GetTaggedValue();
+    }
+}
 }  // namespace panda::ecmascript
