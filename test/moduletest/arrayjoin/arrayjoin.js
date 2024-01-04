@@ -76,3 +76,5 @@ try {
 } catch (e) {
     print(e instanceof RangeError);
 }
+
+([11])["join"]('쏄');
