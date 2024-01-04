@@ -400,6 +400,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JS
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
             if (success && desc.IsEnumerable()) {
+                desc.SetWritable(true);
                 JSTaggedValue::DefineOwnProperty(thread, dst, key, desc);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
