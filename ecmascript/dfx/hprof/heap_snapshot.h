@@ -59,13 +59,14 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 
 class Node {
 public:
-    Node(uint32_t id, uint32_t index, const CString *name, NodeType type, size_t size, uint32_t traceId,
-         Address address, bool isLive = true)
+    Node(uint32_t id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
+         uint32_t traceId, Address address, bool isLive = true)
         : id_(id),
           index_(index),
           name_(name),
           type_(type),
           size_(size),
+          nativeSize_(nativeSize),
           traceId_(traceId),
           address_(address),
           isLive_(isLive)
@@ -106,6 +107,14 @@ public:
     {
         size_ = size;
     }
+    size_t GetNativeSize() const
+    {
+        return nativeSize_;
+    }
+    void SetNativeSize(size_t size)
+    {
+        nativeSize_ = size;
+    }
     size_t GetEdgeCount() const
     {
         return edgeCount_;
@@ -139,13 +148,13 @@ public:
         traceId_ = traceId;
     }
     static Node *NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
-                         TaggedObject *entry, bool isLive = true);
+                         size_t nativeSize, TaggedObject *entry, bool isLive = true);
     template<typename T>
     static Address NewAddress(T *addr)
     {
         return reinterpret_cast<Address>(addr);
     }
-    static constexpr int NODE_FIELD_COUNT = 7;
+    static constexpr int NODE_FIELD_COUNT = 8;
     ~Node() = default;
 
 private:
@@ -154,6 +163,7 @@ private:
     const CString *name_ {nullptr};
     NodeType type_ {NodeType::DEFAULT};
     size_t size_ {0};
+    size_t nativeSize_ {0};
     size_t edgeCount_ {0};
     uint32_t traceId_ {0};
     Address address_ {0x0};

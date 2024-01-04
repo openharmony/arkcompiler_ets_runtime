@@ -51,7 +51,7 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
     writer->WriteString("{\"meta\":\n");      // 2.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\",\"trace_node_id\",");
-    writer->WriteString("\"detachedness\"],\n");  // 3.
+    writer->WriteString("\"detachedness\",\"native_size\"],\n");  // 3.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"node_types\":[[\"hidden\",\"array\",\"string\",\"object\",\"code\",\"closure\",\"regexp\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
@@ -106,10 +106,13 @@ void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWr
         writer->WriteChar(',');
         writer->WriteNumber(node->GetStackTraceId());                                        // 6.
         writer->WriteChar(',');
-        if (i == nodes->size() - 1) {  // add comma at last the line
-            writer->WriteString("0],\n"); // 7. detachedness default
+        writer->WriteChar('0');                                                              // 7.detachedness default 0
+        writer->WriteChar(',');
+        writer->WriteNumber(node->GetNativeSize());
+        if (i == nodes->size() - 1) {    // add comma at last the line
+            writer->WriteString("],\n"); // 7. detachedness default
         } else {
-            writer->WriteString("0\n");  // 7.
+            writer->WriteString("\n");   // 7.
         }
         i++;
     }

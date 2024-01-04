@@ -303,6 +303,11 @@ public:
         return nativePointerList_.size();
     }
 
+    const CList<JSNativePointer *> GetNativePointerList() const
+    {
+        return nativePointerList_;
+    }
+
     void SetResolveBufferCallback(ResolveBufferCallback cb)
     {
         resolveBufferCallback_ = cb;
