@@ -3611,9 +3611,7 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
-    // At least 4 inlined slot
-    int inlineProps = std::max(static_cast<int>(length), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSHandle<JSHClass> hclass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, inlineProps);
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, length);
     hclass->SetPrototype(thread_, proto.GetTaggedValue());
     {
         hclass->SetNumberOfProps(0);
@@ -4685,7 +4683,9 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
         return CreateLargeJSObjectWithProperties(propertyCount, keys, descs);
     }
 
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(propertyCount));
+    // At least 4 inlined slot
+    int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(JSNApiHelper::ToJSHandle(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
@@ -4780,7 +4780,9 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
         return CreateLargeJSObjectWithNamedProperties(propertyCount, keys, values);
     }
 
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(propertyCount));
+    // At least 4 inlined slot
+    int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
