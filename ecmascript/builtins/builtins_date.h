@@ -301,6 +301,8 @@ private:
         BUILTIN_DATE_PROTOTYPE_FUNCTIONS(BUILTIN_DATE_FUNCTION_ENTRY)
     };
 #undef BUILTIN_DATE_FUNCTION_ENTRY
+    static JSTaggedValue ExtractDateFields(JSThread *thread, uint32_t &length, EcmaRuntimeCallInfo *argv,
+        JSTaggedValue &timeValue);
 
     // definition for set data code.
     static constexpr uint32_t CODE_SET_DATE = 0x32;

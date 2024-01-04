@@ -1606,7 +1606,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
         return Rounding(sign, mantissa, exponent, true);
     }
     while (index > 0) {
-        if (bigint->GetDigit(index--) != 0) {
+        if (bigint->GetDigit(--index) != 0) {
             return Rounding(sign, mantissa, exponent, true);
         }
     }
