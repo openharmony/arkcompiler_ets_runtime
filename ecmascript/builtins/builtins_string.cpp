@@ -837,7 +837,7 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     if (thisLen == 0) {
         return thisHandle.GetTaggedValue();
     }
-    if (static_cast<uint32_t>(count) >= UINT32_MAX / thisLen) {
+    if (static_cast<uint32_t>(count) >= static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) / thisLen) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
