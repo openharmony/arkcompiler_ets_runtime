@@ -2579,6 +2579,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         return false;
     }
     transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
+    transFunc->SetCallNapi(false);
     return true;
 }
 
