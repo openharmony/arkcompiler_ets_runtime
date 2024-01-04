@@ -647,6 +647,9 @@ JSTaggedValue JSBoundFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     JSHandle<JSBoundFunction> func(info->GetFunction());
     JSHandle<JSTaggedValue> target(thread, func->GetBoundTarget());
+    if (!target->IsConstructor()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
+    }
     ASSERT(target->IsConstructor());
     JSHandle<JSTaggedValue> newTarget = info->GetNewTarget();
     JSMutableHandle<JSTaggedValue> newTargetMutable(thread, newTarget.GetTaggedValue());

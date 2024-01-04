@@ -25,3 +25,10 @@ function foo(arg1, arg2) {
 }
 var p = new foo("arg1", "arg2")
 print(p.arg1 === "arg1" && p.arg2 === "arg2")
+
+const bind_func = Array.prototype.shift.bind();
+try {
+    new bind_func(1, ...[1, 2, 3]);
+} catch (e) {
+    print(e.name);
+}
