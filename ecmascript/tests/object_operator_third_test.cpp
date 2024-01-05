@@ -131,14 +131,14 @@ HWTEST_F_L0(ObjectOperatorTest, WriteDataProperty_002)
     handleProperties->SetAttributes(thread, handleAttr.GetDictionaryOrder(), handleAttr);
     handleProperties->SetValue(thread, handleAttr.GetDictionaryOrder(), cellHandle2.GetTaggedValue());
     handleGlobalObject->SetProperties(thread, handleProperties.GetTaggedValue());
-    objectOperator.SetIndex(handleProperties->FindEntry(handleKey.GetTaggedValue()));
+    int resultEntry = handleProperties->FindEntry(handleKey.GetTaggedValue());
+    objectOperator.SetIndex(resultEntry);
 
     EXPECT_TRUE(objectOperator.WriteDataProperty(handleGlobalObject, handleDesc));
     auto resultDict = GlobalDictionary::Cast(handleGlobalObject->GetProperties().GetTaggedObject());
     EXPECT_EQ(resultDict->GetAttributes(objectOperator.GetIndex()).GetPropertyMetaData(), 4);
     EXPECT_TRUE(resultDict->GetAttributes(objectOperator.GetIndex()).IsConfigurable());
 
-    int resultEntry = resultDict->GetAttributes(objectOperator.GetIndex()).GetDictionaryOrder();
     EXPECT_EQ(resultDict->GetAttributes(resultEntry).GetBoxType(), PropertyBoxType::MUTABLE);
     EXPECT_EQ(resultDict->GetValue(resultEntry).GetInt(), 1);
 }

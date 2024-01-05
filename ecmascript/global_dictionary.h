@@ -49,8 +49,7 @@ public:
     static inline bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
 
     static inline int Hash(const JSTaggedValue &key);
-    inline static void InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry,
-                                             const PropertyAttributes &metaData);
+    inline static void InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry);
 
     inline static void InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
                                                  int entry, const JSHandle<JSTaggedValue> &oldValue);

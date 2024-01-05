@@ -340,9 +340,9 @@ HWTEST_F_L0(GlobalDictionaryTest, InvalidatePropertyBox)
     }
     // calling InvalidatePropertyBox function to Invalidate the PropertyBox
     PropertyAttributes newAttr(10);
-    GlobalDictionary::InvalidatePropertyBox(thread, handleDict, invalidatedSet, newAttr);
+    GlobalDictionary::InvalidatePropertyBox(thread, handleDict, invalidatedPosition);
     EXPECT_EQ(handleDict->GetAttributes(invalidatedPosition).GetBoxType(), PropertyBoxType::MUTABLE);
-    EXPECT_EQ(handleDict->GetAttributes(invalidatedSet).GetPropertyMetaData(), 10);
-    EXPECT_EQ(handleDict->GetValue(invalidatedPosition).GetInt(), invalidatedSet);
+    EXPECT_EQ(handleDict->GetAttributes(invalidatedSet).GetDictionaryOrder(), invalidatedPosition);
+    EXPECT_EQ(handleDict->GetValue(invalidatedPosition).GetInt(), invalidatedPosition);
 }
 }  // namespace panda::test

@@ -586,7 +586,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         UpdateFound(index, attr.GetValue(), false, true);
     } else if (receiver->IsJSGlobalObject()) {
         JSHandle<GlobalDictionary> dictHandle(thread_, receiver->GetProperties());
-        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, GetIndex(), attr);
+        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, GetIndex());
     } else {
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryMode()) {

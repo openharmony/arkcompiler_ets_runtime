@@ -207,18 +207,13 @@ bool GlobalDictionary::CompKey(const std::pair<JSTaggedValue, uint32_t> &a, cons
     return a.second < b.second;
 }
 
-void GlobalDictionary::InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry,
-                                             const PropertyAttributes &metaData)
+void GlobalDictionary::InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry)
 {
     PropertyBox *box = dictHandle->GetBox(entry);
-    PropertyAttributes originAttr = dictHandle->GetAttributes(entry);
-    PropertyAttributes newAttr(metaData);
 
     ASSERT(!box->GetValue().IsHole());
-    int index = static_cast<int>(originAttr.GetDictionaryOrder());
     JSHandle<JSTaggedValue> oldValue(thread, box->GetValue());
-    GlobalDictionary::InvalidateAndReplaceEntry(thread, dictHandle, index, oldValue);
-    dictHandle->SetAttributes(thread, entry, newAttr);
+    GlobalDictionary::InvalidateAndReplaceEntry(thread, dictHandle, entry, oldValue);
 }
 
 void GlobalDictionary::InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
