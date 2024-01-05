@@ -535,7 +535,7 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
     }
 
     if (tagged->IsNativePointer()) {
-        return ToStringForNativePtr(thread, tagged);
+        return NativePointerToString(thread, tagged);
     }
 
     auto emptyStr = globalConst->GetHandledEmptyString();
@@ -548,7 +548,7 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a String", JSHandle<EcmaString>(emptyStr));
 }
 
-JSHandle<EcmaString> JSTaggedValue::ToStringForNativePtr(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+JSHandle<EcmaString> JSTaggedValue::NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     JSHandle<JSNativePointer> taggedHandle(tagged);
     std::stringstream stringstream;

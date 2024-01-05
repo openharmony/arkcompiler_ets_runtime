@@ -691,7 +691,7 @@ private:
     static bool SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                  const JSHandle<JSTaggedValue> &key,
                                  const JSHandle<JSTaggedValue> &value);
-    static JSHandle<EcmaString> ToStringForNativePtr(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static JSHandle<EcmaString> NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(JSTaggedValue), JSTaggedValue::SizeArch32, JSTaggedValue::SizeArch64);
 }  // namespace panda::ecmascript
