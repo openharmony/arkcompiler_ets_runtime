@@ -761,14 +761,11 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
     uint32_t elementSize = TypedArrayHelper::GetElementSize(jsType);
     // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
-    uint64_t byteIndex = 0;
-    uint32_t k = start;
-    while (k < end && k < arrLen) {
-        // Let indexedPosition = (index × elementSize) + offset.
-        byteIndex = k * elementSize + offset;
-        // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
-        BuiltinsArrayBuffer::FastSetValueInBuffer(thread, buffer, byteIndex, elementType, numValue.GetNumber(), true);
-        k++;
+    uint64_t byteBeginOffset = start * elementSize + offset;
+    uint64_t byteEndOffset = std::min(end, arrLen) * elementSize + offset;
+    if (byteBeginOffset <= byteEndOffset) {
+        BuiltinsArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
+            byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
     }
     return true;
 }
