@@ -255,6 +255,7 @@ group("ark_asm_test") {
     "globalrecord",
     "globalthis",
     "helloworld",
+    "ictest",
     "instanceofic",
     "intl",
     "jsonparser",

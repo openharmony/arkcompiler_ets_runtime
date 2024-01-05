@@ -506,7 +506,7 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
         } else {
             // Deopt if fails at last hclass compare
             builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
-                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
+                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS1);
         }
 
         if (tacc.IsReceiverEqHolder(i)) {
@@ -529,7 +529,7 @@ void TypeBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 
             builder_.LoopBegin(&loopHead);
             builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), acc_.FindNearestFrameState(builder_.GetDepend()),
-                                DeoptType::INCONSISTENTHCLASS);
+                                DeoptType::INCONSISTENTHCLASS2);
             auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
             builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
@@ -605,7 +605,7 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.Bind(&loaders[i]);
         } else {
             builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
-                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
+                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS3);
         }
         if (tacc.IsReceiverNoEqNewHolder(i)) {
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
@@ -621,7 +621,7 @@ void TypeBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 
                 builder_.LoopBegin(&loopHead);
                 builder_.DeoptCheck(builder_.TaggedIsNotNull(*current),
-                                    acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS);
+                                    acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS4);
                 auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
                                                       TaggedObject::HCLASS_OFFSET);
                 builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);

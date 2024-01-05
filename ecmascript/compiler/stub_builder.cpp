@@ -2848,6 +2848,8 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
 {
     auto env = GetEnvironment();
     Label entry(env);
+    Label isTS(env);
+    Label isNotTS(env);
     env->SubCfgEntry(&entry);
     auto proto = GetPrototypeFromHClass(srcHClass);
     SetPrototypeToHClass(VariableType::JS_POINTER(), glue, dstHClass, proto);
@@ -2859,6 +2861,13 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetEnumCacheToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetLayoutToHClass(VariableType::JS_POINTER(), glue, dstHClass, GetLayoutFromHClass(srcHClass));
+    Branch(IsTSHClass(srcHClass), &isTS, &isNotTS);
+    Bind(&isTS);
+    {
+        SetIsTS(glue, dstHClass, False());
+        Jump(&isNotTS);
+    }
+    Bind(&isNotTS);
     env->SubCfgExit();
     return;
 }

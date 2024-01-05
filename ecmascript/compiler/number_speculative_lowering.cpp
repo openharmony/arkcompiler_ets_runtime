@@ -1004,7 +1004,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         builder_.Jump(&loopHead);
 
         builder_.LoopBegin(&loopHead);
-        builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS);
+        builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS7);
         auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
         builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 

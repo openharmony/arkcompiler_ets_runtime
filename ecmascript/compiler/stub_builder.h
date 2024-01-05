@@ -440,6 +440,7 @@ public:
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
     void SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value);
+    inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY());
