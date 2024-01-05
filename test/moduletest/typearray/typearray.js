@@ -291,3 +291,10 @@ var proxy = new Proxy(arr13, {
 })
 var arr14 = new Uint8Array(proxy);
 print(arr13.length == arr14.length)
+
+
+const v2 = ("4294967297")["replaceAll"]();
+const v4 = new Float32Array();
+const t11 = v4.__proto__;
+t11[v2] = v2;
+print(t11[v2]);
