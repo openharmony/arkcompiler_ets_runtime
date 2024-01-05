@@ -100,3 +100,6 @@ try {
 } catch (error) {
     print(error);
 }
+
+print(BigInt.asUintN(2**32, 42n));
+print(BigInt.asIntN(2**32, 42n));
