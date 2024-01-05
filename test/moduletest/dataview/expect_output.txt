@@ -12,3 +12,4 @@
 # limitations under the License.
 
 4919
+TypeError: Cannot convert a BigInt value to a number

@@ -23,3 +23,11 @@ const buffer = new ArrayBuffer(16);
 const view = new DataView(buffer);
 view.setInt32({}, 0x1337, {});
 print(view.getInt32({}, {}));
+
+try {
+    var buffer1 = new ArrayBuffer(64);
+    var dataview = new DataView(buffer1, 8, 24);
+    dataview.setInt32(0, 1n);
+} catch(e) {
+    print(e)
+}
