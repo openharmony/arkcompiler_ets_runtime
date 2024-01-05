@@ -86,7 +86,7 @@ JSTaggedValue BuiltinsSet::SetConstructor(EcmaRuntimeCallInfo *argv)
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nextValue.GetTaggedValue());
         info->SetCallArg(nextValue.GetTaggedValue());
         if (nextValue->IsArray(thread)) {
-            auto prop = JSObject::GetProperty(thread, nextValue, valueIndex).GetValue();
+            auto prop = JSTaggedValue::GetProperty(thread, nextValue, valueIndex).GetValue();
             info->SetCallArg(prop.GetTaggedValue());
         }
         JSFunction::Call(info);
