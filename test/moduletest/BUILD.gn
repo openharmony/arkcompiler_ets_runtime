@@ -122,6 +122,7 @@ group("ark_js_moduletest") {
     "regexpflagd",
     "regress",
     "regressdefineproperty",
+    "regresssstring",
     "require",
     "setobjectwithproto",
     "spreadoperator",

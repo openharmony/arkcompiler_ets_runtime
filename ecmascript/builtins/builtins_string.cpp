@@ -639,17 +639,15 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         }
     }
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
-        if (regexp->IsECMAObject()) {
-            JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
+        JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!matcher->IsUndefined()) {
+            ASSERT(matcher->IsJSFunction());
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (!matcher->IsUndefined()) {
-                ASSERT(matcher->IsJSFunction());
-                EcmaRuntimeCallInfo *info =
-                    EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                info->SetCallArg(thisTag.GetTaggedValue());
-                return JSFunction::Call(info);
-            }
+            info->SetCallArg(thisTag.GetTaggedValue());
+            return JSFunction::Call(info);
         }
     }
     JSHandle<EcmaString> thisVal = JSTaggedValue::ToString(thread, thisTag);
@@ -706,20 +704,17 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
             }
         }
 
-        if (regexp->IsECMAObject()) {
-            // c. c. Let matcher be ? GetMethod(regexp, @@matchAll).
-            // d. d. If matcher is not undefined, then
-            JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchAllTag);
+        // c. Let matcher be ? GetMethod(regexp, @@matchAll).
+        // d. If matcher is not undefined, then
+        JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchAllTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!matcher->IsUndefined()) {
+            // i. Return ? Call(matcher, regexp, « O »).
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (!matcher->IsUndefined()) {
-                ASSERT(matcher->IsJSFunction());
-                // i. i. Return ? Call(matcher, regexp, « O »).
-                EcmaRuntimeCallInfo *info =
-                    EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                info->SetCallArg(thisTag.GetTaggedValue());
-                return JSFunction::Call(info);
-            }
+            info->SetCallArg(thisTag.GetTaggedValue());
+            return JSFunction::Call(info);
         }
     }
     // 3. Let S be ? ToString(O).
@@ -887,7 +882,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     }
 
     // If searchValue is neither undefined nor null, then
-    if (searchTag->IsECMAObject()) {
+    if (!searchTag->IsUndefined() && !searchTag->IsNull()) {
         JSHandle<JSTaggedValue> replaceKey = env->GetReplaceSymbol();
         // Let replacer be GetMethod(searchValue, @@replace).
         JSHandle<JSTaggedValue> replaceMethod = JSObject::GetMethod(thread, searchTag, replaceKey);
@@ -1320,17 +1315,15 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> searchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetSearchSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
-        if (regexp->IsECMAObject()) {
-            JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
+        JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!searcher->IsUndefined()) {
+            ASSERT(searcher->IsJSFunction());
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (!searcher->IsUndefined()) {
-                ASSERT(searcher->IsJSFunction());
-                EcmaRuntimeCallInfo *info =
-                    EcmaInterpreter::NewRuntimeCallInfo(thread, searcher, regexp, undefined, 1);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                info->SetCallArg(thisTag.GetTaggedValue());
-                return JSFunction::Call(info);
-            }
+            info->SetCallArg(thisTag.GetTaggedValue());
+            return JSFunction::Call(info);
         }
     }
     JSHandle<EcmaString> thisVal = JSTaggedValue::ToString(thread, thisTag);
@@ -1425,7 +1418,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     }
 
     // If separator is neither undefined nor null, then
-    if (seperatorTag->IsECMAObject()) {
+    if (!seperatorTag->IsUndefined() && !seperatorTag->IsNull()) {
         JSHandle<JSTaggedValue> splitKey = env->GetSplitSymbol();
         // Let splitter be GetMethod(separator, @@split).
         JSHandle<JSTaggedValue> splitter = JSObject::GetMethod(thread, seperatorTag, splitKey);
