@@ -534,6 +534,10 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
         return BigInt::ToString(thread, taggedValue);
     }
 
+    if (tagged->IsNativePointer()) {
+        return NativePointerToString(thread, tagged);
+    }
+
     auto emptyStr = globalConst->GetHandledEmptyString();
     if (tagged->IsECMAObject()) {
         JSHandle<JSTaggedValue> primValue(thread, ToPrimitive(thread, tagged, PREFER_STRING));
@@ -542,6 +546,17 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
     }
     // Already Include Symbol
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a String", JSHandle<EcmaString>(emptyStr));
+}
+
+JSHandle<EcmaString> JSTaggedValue::NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    JSHandle<JSNativePointer> taggedHandle(tagged);
+    std::stringstream stringstream;
+    stringstream << std::hex << taggedHandle->GetExternalPointer();
+    std::string nativePtrStr = "[External: " + stringstream.str() + "]";
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromASCII(nativePtrStr);
 }
 
 JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
