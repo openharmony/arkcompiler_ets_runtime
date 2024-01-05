@@ -88,6 +88,31 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
     EXPECT_TRUE(expandHeapSize > newSize);
 }
 
+HWTEST_F_L0(GCTest, HighSensitiveExceedMaxHeapSize)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyHighSensitive(true);
+    // First allocate about 250M TaggedArray, not reach max heap size
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 16 * 1000; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    // Continue allocate about 250M TaggedArray, now reach max heap size, must trigger gc to avoid OOM
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 16 * 1000; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    size_t commitSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
+    EXPECT_TRUE(commitSize < thread->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxHeapSize());
+}
+
 HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
 {
 #if defined(NDEBUG) && defined(PANDA_TARGET_ARM64)

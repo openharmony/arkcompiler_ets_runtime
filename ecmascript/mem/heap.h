@@ -71,6 +71,12 @@ enum class HeapMode {
     SHARE,
 };
 
+enum AppSensitiveStatus : uint8_t {
+    NORMAL_SCENE,
+    ENTER_HIGH_SENSITIVE,
+    EXIT_HIGH_SENSITIVE,
+};
+
 class Heap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -231,7 +237,23 @@ public:
 
     bool InSensitiveStatus() const
     {
-        return onHighSensitiveEvent_ || onStartupEvent_;
+        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
+            || onStartupEvent_;
+    }
+
+    AppSensitiveStatus GetSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_relaxed);
+    }
+
+    void SetSensitiveStatus(AppSensitiveStatus status)
+    {
+        sensitiveStatus_.store(status, std::memory_order_release);;
+    }
+
+    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
+    {
+        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
     }
 
     void NotifyPostFork()
@@ -448,6 +470,10 @@ public:
     void NotifyFinishColdStartSoon();
 
     void NotifyHighSensitive(bool isStart);
+
+    void HandleExitHighSensitiveEvent();
+
+    bool ObjectExceedMaxHeapSize() const;
 
     bool NeedStopCollection();
 
@@ -781,7 +807,7 @@ private:
     bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
-    std::atomic_bool onHighSensitiveEvent_ {false};
+    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
     bool onStartupEvent_ {false};
     bool onSerializeEvent_ {false};
 

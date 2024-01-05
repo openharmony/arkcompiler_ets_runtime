@@ -361,7 +361,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     {
         RecursionScope recurScope(this);
-        if (thread_->IsCrossThreadExecutionEnable()) {
+        if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
             return;
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -1271,11 +1271,6 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         onStartupEvent_ = false;
         LOG_GC(INFO) << "SmartGC: finish app cold start";
 
-        // If is on high sensitive scene, should return here. Otherwise, GC may be triggered next.
-        if (onHighSensitiveEvent_) {
-            return;
-        }
-
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
@@ -1305,9 +1300,16 @@ void Heap::NotifyFinishColdStartSoon()
 
 void Heap::NotifyHighSensitive(bool isStart)
 {
-    onHighSensitiveEvent_ = isStart;
-    if (!onHighSensitiveEvent_ && !onStartupEvent_) {
-        LOG_GC(DEBUG) << "SmartGC: exit high sensitive scene";
+    isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
+        : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
+    LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
+}
+
+void Heap::HandleExitHighSensitiveEvent()
+{
+    AppSensitiveStatus status = GetSensitiveStatus();
+    if (status == AppSensitiveStatus::EXIT_HIGH_SENSITIVE
+        && CASSensitiveStatus(status, AppSensitiveStatus::NORMAL_SCENE)) {
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
@@ -1317,12 +1319,20 @@ void Heap::NotifyHighSensitive(bool isStart)
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
 
+        // fixme: IncrementalMarking and IdleCollection is currently not enabled
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
         TryTriggerConcurrentMarking();
-        return;
     }
-    LOG_GC(DEBUG) << "SmartGC: enter high sensitive scene";
+}
+
+// On high sensitive scene, heap object size can reach to MaxHeapSize - 8M temporarily, 8M is reserved for
+// concurrent mark
+bool Heap::ObjectExceedMaxHeapSize() const
+{
+    size_t configMaxHeapSize = ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize();
+    size_t overshootSize = ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize();
+    return GetHeapObjectSize() > configMaxHeapSize - overshootSize;
 }
 
 bool Heap::NeedStopCollection()
@@ -1336,8 +1346,7 @@ bool Heap::NeedStopCollection()
         return false;
     }
 
-    if (GetHeapObjectSize() < ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() -
-        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) {
+    if (!ObjectExceedMaxHeapSize()) {
         return true;
     }
     LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
