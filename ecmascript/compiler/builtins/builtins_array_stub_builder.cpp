@@ -364,6 +364,10 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
     Branch(BoolAnd(isThisEcmaObject, isThisStableJSArray), &stableJSArray, slowPath);
     Bind(&stableJSArray);
+
+    Label isLengthWritable(env);
+    Branch(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+    Bind(&isLengthWritable);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
 
     Label notZeroLen(env);
