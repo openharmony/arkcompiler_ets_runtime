@@ -71,3 +71,12 @@ var handler1 = {
 var P = new Proxy(Target, handler1);
 new P(1, 1.1);
 print(JSON.stringify(P));
+
+try {
+    const v0 = /\011+/iyd;
+    const v2 = new Uint8ClampedArray(v0, Uint8ClampedArray, Uint8ClampedArray);
+    const v5 = new Proxy({}, {});
+    new v5(...v2);
+} catch (e) {
+    print("constructor is fail");
+}
