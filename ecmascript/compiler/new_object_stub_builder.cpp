@@ -148,6 +148,17 @@ GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
 void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
 {
     auto env = GetEnvironment();
+    Label overflow(env);
+    Label notOverflow(env);
+    Branch(Int32UnsignedGreaterThan(len, Int32(INT32_MAX)), &overflow, &notOverflow);
+    Bind(&overflow);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
+        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&notOverflow);
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
     Label afterAllocate(env);
     // Be careful. NO GC is allowed when initization is not complete.
