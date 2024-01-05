@@ -410,7 +410,7 @@ uintptr_t ArkGetFunction(int pid, uintptr_t currentPtr, uintptr_t frameType)
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV: {
             funcAddr += sizeof(FrameType);
-            auto topAddress = funcAddr + 
+            auto topAddress = funcAddr +
                 (static_cast<int>(BuiltinWithArgvFrame::Index::StackArgsTopIndex) * sizeof(uintptr_t));
             uintptr_t argcAddress = static_cast<uintptr_t>(funcAddr + (static_cast<int>
                                     (BuiltinWithArgvFrame::Index::NumArgsIndex) * sizeof(uintptr_t)));
@@ -632,7 +632,7 @@ bool ArkIsNativeWithCallField(int pid, uintptr_t method)
 std::string ArkReadCStringFromAddr(int pid, uintptr_t descAddr)
 {
     std::string name;
-    while(true) {
+    while (true) {
         uintptr_t desc = 0;
         if (!ReadUintptrFromAddr(pid, descAddr, desc, true)) {
             LOG_ECMA(ERROR) << "ArkReadCStringFromAddr failed, descAddr: " << descAddr;

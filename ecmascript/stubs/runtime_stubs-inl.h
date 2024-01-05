@@ -997,7 +997,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
         // prototype -> hclass -> EnableProtoChangeMarker
         JSHClass::EnableProtoChangeMarker(thread,
-        JSHandle<JSHClass>(thread, constructor->GetFunctionPrototype().GetTaggedObject()->GetClass()));
+            JSHandle<JSHClass>(thread, constructor->GetFunctionPrototype().GetTaggedObject()->GetClass()));
     }
 
     // by enableing the ProtoChangeMarker, the IHC generated in the Aot stage

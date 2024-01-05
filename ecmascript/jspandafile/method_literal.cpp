@@ -127,7 +127,7 @@ CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId me
         return "";
     }
 
-    return const_cast<JSPandaFile *>(jsPandaFile)->GetRecordName(methodId);;
+    return const_cast<JSPandaFile *>(jsPandaFile)->GetRecordName(methodId);
 }
 
 const char *MethodLiteral::GetRecordNameWithSymbol(const JSPandaFile *jsPandaFile, EntityId methodId)

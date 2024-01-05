@@ -1787,7 +1787,7 @@ void TypeHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });;
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

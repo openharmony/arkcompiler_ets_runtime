@@ -80,7 +80,7 @@ MOperator GetFastIselMop(Operand::OperandType dTy, Operand::OperandType sTy, Pri
 }
 
 #define DEF_EXTEND_MAPPING_TBL(TYPE)                                                            \
-    [](bool isSigned) -> MOperator {                                                            \
+    [](bool isSigned)->MOperator {                                                              \
         return isSigned ? abstract::MOP_sext_rr_##TYPE : abstract::MOP_zext_rr_##TYPE;          \
     }
 using fromToTy = std::pair<uint32, uint32>; /* std::pair<from, to> */
