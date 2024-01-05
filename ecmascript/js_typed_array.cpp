@@ -538,10 +538,10 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
+    // 10.4.5.15 TypedArrayGetElement ( O, index )
+    //  1. If IsValidIntegerIndex(O, index) is false, return undefined.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer",
-                                    OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
     }
 
     // 7. Let length be the value of O’s [[ArrayLength]] internal slot.
