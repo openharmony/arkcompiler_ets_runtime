@@ -26,9 +26,11 @@ public:
         size_t size_ {0};
     };
 
-    static void AllocateBuf(uint32_t size, ExeMem &exeMem)
+    static void AllocateBuf(uint32_t size, ExeMem &exeMem, int prot)
     {
-        MemMap buf = MachineCodePageMap(AlignUp(size, PageSize()), PAGE_PROT_EXEC_READWRITE);
+        // For safety reason, Disallow prot have both write & exec capability except in JIT.
+        ASSERT(prot != PAGE_PROT_EXEC_READWRITE);
+        MemMap buf = MachineCodePageMap(AlignUp(size, PageSize()), prot);
         exeMem.addr_ = buf.GetMem();
         exeMem.size_ = buf.GetSize();
     }
