@@ -124,7 +124,7 @@ bool StubFileInfo::Load()
     moduleNum_ = ASMSTUB_MODULE_NUM;
     des_.resize(moduleNum_);
 
-    ExecutedMemoryAllocator::AllocateBuf(_binary_stub_an_length, stubsMem_);
+    ExecutedMemoryAllocator::AllocateBuf(_binary_stub_an_length, stubsMem_, PAGE_PROT_READWRITE);
 
     ElfReader reader(stubsMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
