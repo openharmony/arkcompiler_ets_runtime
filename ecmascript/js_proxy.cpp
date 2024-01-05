@@ -1006,6 +1006,9 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     //   a.Assert: target has a [[Construct]] internal method.
     //   b.Return Construct(target, argumentsList, newTarget).
     if (method->IsUndefined()) {
+        if (!target->IsConstructor()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
+        }
         ASSERT(target->IsConstructor());
         info->SetFunction(target.GetTaggedValue());
         return JSFunction::Construct(info);
