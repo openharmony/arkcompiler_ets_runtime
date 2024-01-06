@@ -22,6 +22,7 @@
 #include "loop.h"
 #include "mir_builder.h"
 #include "factory.h"
+#include "cfgo.h"
 #include "debug_info.h"
 #include "optimize_common.h"
 
@@ -1748,6 +1749,14 @@ bool CGFunc::CheckSkipMembarOp(const StmtNode &stmt)
     return false;
 }
 
+void CGFunc::RemoveUnreachableBB()
+{
+    OptimizationPattern *pattern = memPool->New<UnreachBBPattern>(*this);
+    for (BB *bb = firstBB; bb != nullptr; bb = bb->GetNext()) {
+        (void)pattern->Optimize(*bb);
+    }
+}
+
 void CGFunc::GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc)
 {
     /* insert Insn for .loc before cg for the stmt */
@@ -2109,83 +2118,6 @@ void CGFunc::MarkCatchBBs()
 }
 
 /*
- * Mark CleanupEntryBB
- * Note: Cleanup bbs and func body bbs are seperated, no edges between them.
- * No ehSuccs or eh_prevs between cleanup bbs.
- */
-void CGFunc::MarkCleanupEntryBB()
-{
-    BB *cleanupEntry = nullptr;
-    FOR_ALL_BB(bb, this)
-    {
-        bb->SetIsCleanup(0);     /* Use to mark cleanup bb */
-        bb->SetInternalFlag3(0); /* Use to mark if visited. */
-        if (bb->GetFirstStmt() == this->cleanupLabel) {
-            cleanupEntry = bb;
-        }
-    }
-    /* If a function without cleanup bb, return. */
-    if (cleanupEntry == nullptr) {
-        return;
-    }
-    /* after merge bb, update cleanupBB. */
-    if (cleanupEntry->GetSuccs().empty()) {
-        this->cleanupBB = cleanupEntry;
-    }
-    SetCleanupLabel(*cleanupEntry);
-    DEBUG_ASSERT(cleanupEntry->GetEhSuccs().empty(), "CG internal error. Cleanup bb should not have ehSuccs.");
-#if DEBUG /* Please don't remove me. */
-    /* Check if all of the cleanup bb is at bottom of the function. */
-    bool isCleanupArea = true;
-    if (!mirModule.IsCModule()) {
-        FOR_ALL_BB_REV(bb, this)
-        {
-            if (isCleanupArea) {
-                DEBUG_ASSERT(bb->IsCleanup(),
-                             "CG internal error, cleanup BBs should be at the bottom of the function.");
-            } else {
-                DEBUG_ASSERT(!bb->IsCleanup(),
-                             "CG internal error, cleanup BBs should be at the bottom of the function.");
-            }
-
-            if (bb == cleanupEntry) {
-                isCleanupArea = false;
-            }
-        }
-    }
-#endif /* DEBUG */
-    this->cleanupEntryBB = cleanupEntry;
-}
-
-/* Tranverse from current bb's successor and set isCleanup true. */
-void CGFunc::SetCleanupLabel(BB &cleanupEntry)
-{
-    /* If bb hasn't been visited, return. */
-    if (cleanupEntry.GetInternalFlag3()) {
-        return;
-    }
-    cleanupEntry.SetInternalFlag3(1);
-    cleanupEntry.SetIsCleanup(1);
-    for (auto tmpBB : cleanupEntry.GetSuccs()) {
-        if (tmpBB->GetKind() != BB::kBBReturn) {
-            SetCleanupLabel(*tmpBB);
-        } else {
-            DEBUG_ASSERT(ExitbbNotInCleanupArea(cleanupEntry), "exitBB created in cleanupArea.");
-        }
-    }
-}
-
-bool CGFunc::ExitbbNotInCleanupArea(const BB &bb) const
-{
-    for (const BB *nextBB = bb.GetNext(); nextBB != nullptr; nextBB = nextBB->GetNext()) {
-        if (nextBB->GetKind() == BB::kBBReturn) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/*
  * Do mem barrier optimization for constructor funcs as follow:
  * membarstorestore
  * write field of this_  ==> write field of this_
@@ -2271,11 +2203,6 @@ void CGFunc::AddCommonExitBB()
     if (commonExitBB != nullptr) {
         return;
     }
-    uint32 i = 0;
-    while (exitBBVec[i]->IsUnreachable() && i < exitBBVec.size()) {
-        i++;
-    }
-    DEBUG_ASSERT(i < exitBBVec.size(), "all exit BBs are unreachable");
     // create fake commonExitBB
     commonExitBB = CreateNewBB(true, BB::kBBFallthru, 0);
     DEBUG_ASSERT(commonExitBB != nullptr, "cannot create fake commonExitBB");
@@ -2326,11 +2253,11 @@ void CGFunc::HandleFunction()
     /* build control flow graph */
     theCFG = memPool->New<CGCFG>(*this);
     theCFG->BuildCFG();
+    RemoveUnreachableBB();
     AddCommonExitBB();
     if (mirModule.GetSrcLang() != kSrcLangC) {
         MarkCatchBBs();
     }
-    MarkCleanupEntryBB();
     theCFG->MarkLabelTakenBB();
     theCFG->UnreachCodeAnalysis();
     EraseUnreachableStackMapInsns();

@@ -149,7 +149,6 @@ void AArch64MemLayout::LayoutVarargParams()
                 }
             }
             MIRType *ty = func->GetNthParamType(i);
-            CHECK_FATAL(mirFunction->GetAttr(FUNCATTR_ccall), "only c calling convention support here");
             parmlocator.LocateNextParm(*ty, ploc, i == 0, func);
             if (ploc.reg0 != kRinvalid) {
                 if (ploc.reg0 >= R0 && ploc.reg0 <= R7) {

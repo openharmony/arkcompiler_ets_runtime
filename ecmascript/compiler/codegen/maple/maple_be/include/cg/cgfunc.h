@@ -176,6 +176,7 @@ public:
     virtual void AssignLmbcFormalParams() = 0;
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
+    void RemoveUnreachableBB();
     void GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc);
     int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
@@ -187,9 +188,6 @@ public:
     virtual void MergeReturn() = 0;
     void TraverseAndClearCatchMark(BB &bb);
     void MarkCatchBBs();
-    void MarkCleanupEntryBB();
-    void SetCleanupLabel(BB &cleanupEntry);
-    bool ExitbbNotInCleanupArea(const BB &bb) const;
     uint32 GetMaxRegNum() const
     {
         return maxRegCount;
@@ -403,6 +401,11 @@ public:
     virtual RegOperand *SelectVectorSum(PrimType rtype, Operand *o1, PrimType oType) = 0;
     virtual RegOperand *SelectVectorTableLookup(PrimType rType, Operand *o1, Operand *o2) = 0;
     virtual RegOperand *SelectVectorWiden(PrimType rType, Operand *o1, PrimType otyp, bool isLow) = 0;
+
+    virtual void HandleFuncCfg(CGCFG *cfg)
+    {
+        AddCommonExitBB();
+    }
 
     /* For ebo issue. */
     virtual Operand *GetTrueOpnd()
