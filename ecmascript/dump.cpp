@@ -2176,6 +2176,9 @@ void JSAPIHashMap::Dump(std::ostream &os) const
 
 void JSAPIHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    TaggedHashArray *map = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    vec.emplace_back("hashmap", GetTable());
+    map->DumpForSnapshot(vec);
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2189,6 +2192,9 @@ void JSAPIHashSet::Dump(std::ostream &os) const
 
 void JSAPIHashSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    TaggedHashArray *set = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    vec.emplace_back("hashset", GetTable());
+    set->DumpForSnapshot(vec);
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4538,6 +4544,25 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
     }
 }
 
+void TaggedHashArray::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
+void TaggedHashArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int capacity = GetLength();
+    vec.reserve(vec.size() + capacity);
+    for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
+        JSTaggedValue value = Get(hashIndex);
+        if (!value.IsUndefined() && !value.IsHole() && !value.IsNull()) {
+            LinkedNode *node = LinkedNode::Cast(value.GetTaggedObject());
+            node->DumpForSnapshot(vec);
+        }
+    }
+}
+
 void TaggedTreeMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -4677,7 +4702,15 @@ void Program::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("Next"), GetNext());
+    JSTaggedValue next = GetNext();
+    if (next.IsUndefined() && !next.IsHole() && !next.IsNull()) {
+        LinkedNode *nextNode = LinkedNode::Cast(next.GetTaggedObject());
+        nextNode->DumpForSnapshot(vec);
+    }
+    JSTaggedValue key = GetKey();
+    CString str;
+    KeyToStd(str, key);
+    vec.emplace_back(str, GetValue());
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
