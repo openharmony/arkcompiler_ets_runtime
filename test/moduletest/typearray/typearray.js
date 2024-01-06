@@ -298,3 +298,7 @@ const v4 = new Float32Array();
 const t11 = v4.__proto__;
 t11[v2] = v2;
 print(t11[v2]);
+
+const v3 = String.fromCharCode(564654156456456465465)
+const v5 = new Int16Array(true);
+print(v5["join"](v3));

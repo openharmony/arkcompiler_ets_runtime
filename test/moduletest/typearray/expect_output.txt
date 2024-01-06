@@ -42,3 +42,4 @@ RangeError
 not-equal
 true
 4294967297
+0
