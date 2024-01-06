@@ -2348,10 +2348,9 @@ void TypeHCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
     auto protoHClass = builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     auto notNull = builder_.TaggedIsNotNull(marker);
+    builder_.DeoptCheck(notNull, frameState, DeoptType::PROTOTYPECHANGED2);
     auto hasChanged = builder_.GetHasChanged(marker);
-    auto check = builder_.BoolAnd(builder_.BoolNot(hasChanged), notNull);
-    builder_.DeoptCheck(check, frameState, DeoptType::PROTOTYPECHANGED2);
-
+    builder_.DeoptCheck(builder_.BoolNot(hasChanged), frameState, DeoptType::PROTOTYPECHANGED2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
