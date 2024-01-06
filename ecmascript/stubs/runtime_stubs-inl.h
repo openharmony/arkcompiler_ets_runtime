@@ -599,15 +599,10 @@ JSTaggedValue RuntimeStubs::RuntimeLdSuperByValue(JSThread *thread, const JSHand
     ASSERT(thisFunc.IsJSFunction());
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
-
-    if (obj->IsUndefined()) {
-        return RuntimeThrowReferenceError(thread, obj, "this is uninitialized.");
-    }
-
-    JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSTaggedValue res = JSTaggedValue::GetProperty(thread, superBase, propKey, obj).GetValue().GetTaggedValue();
@@ -622,15 +617,10 @@ JSTaggedValue RuntimeStubs::RuntimeStSuperByValue(JSThread *thread, const JSHand
     ASSERT(thisFunc.IsJSFunction());
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
-
-    if (obj->IsUndefined()) {
-        return RuntimeThrowReferenceError(thread, obj, "this is uninitialized.");
-    }
-
-    JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // check may_throw is false?
