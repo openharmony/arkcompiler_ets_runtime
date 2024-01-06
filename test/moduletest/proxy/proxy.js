@@ -80,3 +80,12 @@ try {
 } catch (e) {
     print("constructor is fail");
 }
+const v3 = new Uint8ClampedArray(WeakMap);
+const o3 = {
+};
+const v6 = new Proxy(v3, o3);
+try {
+    new WeakMap([v6]);
+} catch (error) {
+    print(error.name);
+}

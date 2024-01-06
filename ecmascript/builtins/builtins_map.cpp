@@ -300,13 +300,13 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
             return ret;
         }
         // Let k be Get(nextItem, "0").
-        JSHandle<JSTaggedValue> key = JSObject::GetProperty(thread, nextValue, keyIndex).GetValue();
+        JSHandle<JSTaggedValue> key = JSTaggedValue::GetProperty(thread, nextValue, keyIndex).GetValue();
         // If k is an abrupt completion, return IteratorClose(iter, k).
         if (thread->HasPendingException()) {
             return JSIterator::IteratorCloseAndReturn(thread, iter);
         }
         // Let v be Get(nextItem, "1").
-        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, nextValue, valueIndex).GetValue();
+        JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, nextValue, valueIndex).GetValue();
         // If v is an abrupt completion, return IteratorClose(iter, v).
         if (thread->HasPendingException()) {
             return JSIterator::IteratorCloseAndReturn(thread, iter);
