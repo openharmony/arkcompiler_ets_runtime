@@ -241,7 +241,9 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
 {
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    ASSERT(superFunc->IsJSFunction());
+    if (!superFunc->IsJSFunction()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Super constructor is not JSFunction", JSTaggedValue::Exception());
+    }
 
     JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3006,6 +3008,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefinePrivateProperty(JSThread *thread, JSTag
         THROW_TYPE_ERROR_AND_RETURN(thread, "invalid private key or already exists", JSTaggedValue::Exception());
     }
     bool extensible = handleObj->IsExtensible(thread);
+    if (handleObj->IsUndefined()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "DefinePrivateProperty obj is undefined", JSTaggedValue::Exception());
+    }
     if (!extensible) {
         // private key should be always extensible
         handleObj->GetTaggedObject()->GetClass()->SetExtensible(true);
