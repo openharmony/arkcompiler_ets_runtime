@@ -19,12 +19,5 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var b = require('./B.js');
-var c = require('./C.js');
-var index = require('.');
-var strB = JSON.stringify(b);
-var strC = JSON.stringify(c);
-var strIndex = JSON.stringify(index);
-print(strB + " and " + strC);
-print(strIndex);
-
+var output = "index loading...";
+module.exports.index = output;

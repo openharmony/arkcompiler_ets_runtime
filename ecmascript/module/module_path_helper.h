@@ -155,6 +155,7 @@ public:
         }
         // Possible import directory
         entryPoint += PACKAGE_ENTRY_FILE;
+        entryPoint = PathHelper::NormalizePath(entryPoint);
         if (jsPandaFile->HasRecord(entryPoint)) {
             return entryPoint;
         }
