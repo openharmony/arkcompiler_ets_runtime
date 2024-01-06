@@ -534,18 +534,27 @@ void JSThread::TerminateExecution()
 
 bool JSThread::CheckSafepoint()
 {
-    ResetCheckSafePointStatus();
-    if (HasTerminationRequest()) {
+    interruptMutex_.Lock();
+    ResetCheckSafePointStatusWithoutLock();
+
+    if (HasTerminationRequestWithoutLock()) {
         TerminateExecution();
-        SetVMTerminated(true);
-        SetTerminationRequest(false);
-    }
-    if (vmThreadControl_->VMNeedSuspension()) {
-        vmThreadControl_->SuspendVM();
+        SetVMTerminatedWithoutLock(true);
+        SetTerminationRequestWithoutLock(false);
     }
 
-    if (vm_->IsEnableJit() && HasInstallMachineCode()) {
-        vm_->GetJit()->InstallTasks();
+    if (vm_->IsEnableJit() && HasInstallMachineCodeWithoutLock()) {
+        vm_->GetJit()->InstallTasksWithoutClearFlag();
+        // jit 's thread_ is current JSThread's this.
+        SetInstallMachineCodeWithoutLock(false);
+    }
+
+    // vmThreadControl_ 's thread_ is current JSThread's this.
+    if (VMNeedSuspensionWithoutLock()) {
+        interruptMutex_.Unlock();
+        vmThreadControl_->SuspendVM();
+    } else {
+        interruptMutex_.Unlock();
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

@@ -482,6 +482,12 @@ public:
     void ResetCheckSafePointStatus()
     {
         LockHolder lock(interruptMutex_);
+        ResetCheckSafePointStatusWithoutLock();
+    }
+
+    inline void ResetCheckSafePointStatusWithoutLock()
+    {
+        // The interruptMutex_ should be locked before calling this function.
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
         CheckSafePointBit::Set(false, &glueData_.interruptVector_);
     }
@@ -495,6 +501,12 @@ public:
     bool VMNeedSuspension()
     {
         LockHolder lock(interruptMutex_);
+        return VMNeedSuspensionWithoutLock();
+    }
+
+    inline bool VMNeedSuspensionWithoutLock()
+    {
+        // The interruptMutex_ should be locked before calling this function.
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 
@@ -513,18 +525,36 @@ public:
     bool HasTerminationRequest() const
     {
         LockHolder lock(interruptMutex_);
+        return HasTerminationRequestWithoutLock();
+    }
+
+    inline bool HasTerminationRequestWithoutLock() const
+    {
+        // The interruptMutex_ should be locked before calling this function.
         return VMNeedTerminationBit::Decode(glueData_.interruptVector_);
     }
 
     void SetTerminationRequest(bool flag)
     {
         LockHolder lock(interruptMutex_);
+        SetTerminationRequestWithoutLock(flag);
+    }
+
+    inline void SetTerminationRequestWithoutLock(bool flag)
+    {
+        // The interruptMutex_ should be locked before calling this function.
         VMNeedTerminationBit::Set(flag, &glueData_.interruptVector_);
     }
 
     void SetVMTerminated(bool flag)
     {
         LockHolder lock(interruptMutex_);
+        SetVMTerminatedWithoutLock(flag);
+    }
+
+    inline void SetVMTerminatedWithoutLock(bool flag)
+    {
+        // The interruptMutex_ should be locked before calling this function.
         VMHasTerminatedBit::Set(flag, &glueData_.interruptVector_);
     }
 
@@ -539,12 +569,24 @@ public:
     void SetInstallMachineCode(bool flag)
     {
         LockHolder lock(interruptMutex_);
+        SetInstallMachineCodeWithoutLock(flag);
+    }
+
+    inline void SetInstallMachineCodeWithoutLock(bool flag)
+    {
+        // The interruptMutex_ should be locked before calling this function.
         InstallMachineCodeBit::Set(flag, &glueData_.interruptVector_);
     }
 
     bool HasInstallMachineCode() const
     {
         LockHolder lock(interruptMutex_);
+        return HasInstallMachineCodeWithoutLock();
+    }
+
+    inline bool HasInstallMachineCodeWithoutLock() const
+    {
+        // The interruptMutex_ should be locked before calling this function.
         return InstallMachineCodeBit::Decode(glueData_.interruptVector_);
     }
 

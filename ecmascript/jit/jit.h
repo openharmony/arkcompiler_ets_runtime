@@ -47,6 +47,7 @@ public:
 
     void RequestInstallCode(JitTask *jitTask);
     void InstallTasks();
+    void InstallTasksWithoutClearFlag();
     bool IsCompiling(JSHandle<JSFunction> &jsFunction);
     void AddCompilingTask(JitTask *jitTask);
     void RemoveCompilingTask(JitTask *jitTask);
