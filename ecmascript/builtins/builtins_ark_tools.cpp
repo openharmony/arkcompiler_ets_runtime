@@ -645,32 +645,27 @@ JSTaggedValue BuiltinsArkTools::HaveSameMap([[maybe_unused]] EcmaRuntimeCallInfo
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
     JSHandle<JSTaggedValue> obj2 = GetCallArg(info, 1);
-    JSHClass *obj1Hclass = obj1->GetTaggedObject()->GetClass();
-    JSHClass *obj2Hclass = obj2->GetTaggedObject()->GetClass();
-    bool res = (obj1Hclass == obj2Hclass);
-    if (!res) {
-        return JSTaggedValue::False();
-    }
-    JSHandle<JSObject> jsobj1(obj1);
-    JSHandle<JSObject> jsobj2(obj2);
-    JSHandle<TaggedArray> nameList1 = JSObject::EnumerableOwnNames(thread, jsobj1);
-    JSHandle<TaggedArray> nameList2 = JSObject::EnumerableOwnNames(thread, jsobj2);
+    JSHandle<TaggedArray> keys1 = JSTaggedValue::GetOwnPropertyKeys(thread, obj1);
+    JSHandle<TaggedArray> keys2 = JSTaggedValue::GetOwnPropertyKeys(thread, obj2);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t len1 = nameList1->GetLength();
-    uint32_t len2 = nameList2->GetLength();
-    if (len1 != len2) {
+    uint32_t len = keys1->GetLength();
+    if (len != keys2->GetLength()) {
         return JSTaggedValue::False();
     }
-    for (uint32_t i = 0; i < len1; i++) {
-        if (obj1->IsJSArray()) {
-            JSTaggedValue objTagged1 = JSObject::GetProperty(thread, obj1, i).GetValue().GetTaggedValue();
-            JSTaggedValue objTagged2 = JSObject::GetProperty(thread, obj2, i).GetValue().GetTaggedValue();
-            if (FastRuntimeStub::FastTypeOf(thread, objTagged1) !=
-                FastRuntimeStub::FastTypeOf(thread, objTagged2)) {
-                return JSTaggedValue::False();
-            }
-        } else if (JSObject::GetProperty(thread, obj1, i).GetValue() !=
-            JSObject::GetProperty(thread, obj2, i).GetValue()) {
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < len; i++) {
+        if (keys1->Get(i) != keys2->Get(i)) {
+            return JSTaggedValue::False();
+        }
+        keyHandle.Update(keys1->Get(i));
+        OperationResult result = JSObject::GetProperty(thread, obj1, keyHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSTaggedValue value1 = result.GetValue().GetTaggedValue();
+        result = JSObject::GetProperty(thread, obj2, keyHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSTaggedValue value2 = result.GetValue().GetTaggedValue();
+        if (FastRuntimeStub::FastTypeOf(thread, value1) !=
+            FastRuntimeStub::FastTypeOf(thread, value2)) {
             return JSTaggedValue::False();
         }
     }
