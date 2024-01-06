@@ -511,10 +511,17 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     for (const IcuPatternDesc &item : data) {
         // prop be [[TimeZoneName]]
         if (item.property == "timeZoneName") {
+            // b. If prop is "fractionalSecondDigits", then
+            //     i. Let value be ? GetNumberOption(options, "fractionalSecondDigits", 1, 3, undefined).
             int secondDigitsString = JSLocale::GetNumberOption(thread, dateTimeOptions,
                                                                globalConst->GetHandledFractionalSecondDigitsString(),
                                                                1, 3, 0);
             skeleton.append(secondDigitsString, 'S');
+            // e. If value is not undefined, then
+            //     i. Set hasExplicitFormatComponents to true.
+            if (secondDigitsString > 0) {
+                explicitFormatComponents = 1;
+            }
         }
         JSHandle<JSTaggedValue> property(thread, factory->NewFromStdString(item.property).GetTaggedValue());
         std::string value;
