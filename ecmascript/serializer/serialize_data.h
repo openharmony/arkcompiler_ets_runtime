@@ -21,6 +21,8 @@
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
+constexpr size_t INITIAL_CAPACITY = 64;
+constexpr int CAPACITY_INCREASE_RATE = 2;
 enum class EncodeFlag : uint8_t {
     // 0x00~0x03 represent new object to different space:
     // 0x00: old space
@@ -57,7 +59,7 @@ enum class SerializeType : uint8_t {
 
 class SerializeData {
 public:
-    explicit SerializeData(JSThread *thread) : chunk_(thread->GetNativeAreaAllocator()), data_(&chunk_) {}
+    explicit SerializeData(JSThread *thread) : thread_(thread) {}
     ~SerializeData()
     {
         regionRemainSizeVector_.clear();
@@ -85,54 +87,143 @@ public:
         return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
     }
 
+    bool ExpandBuffer(size_t requestedSize)
+    {
+        size_t newCapacity = bufferCapacity_ * CAPACITY_INCREASE_RATE;
+        newCapacity = std::max(newCapacity, requestedSize);
+        if (newCapacity > sizeLimit_) {
+            return false;
+        }
+        uint8_t *newBuffer = reinterpret_cast<uint8_t *>(malloc(newCapacity));
+        if (newBuffer == nullptr) {
+            return false;
+        }
+        if (memcpy_s(newBuffer, newCapacity, buffer_, bufferSize_) != EOK) {
+            LOG_FULL(ERROR) << "Failed to memcpy_s Data";
+            free(newBuffer);
+            return false;
+        }
+        free(buffer_);
+        buffer_ = newBuffer;
+        bufferCapacity_ = newCapacity;
+        return true;
+    }
+
+    bool AllocateBuffer(size_t bytes)
+    {
+        // Get internal heap size
+        if (sizeLimit_ == 0) {
+            uint64_t heapSize = thread_->GetEcmaVM()->GetJSOptions().GetSerializerBufferSizeLimit();
+            sizeLimit_ = heapSize;
+        }
+        size_t oldSize = bufferSize_;
+        size_t newSize = oldSize + bytes;
+        if (newSize > sizeLimit_) {
+            return false;
+        }
+        if (bufferCapacity_ == 0) {
+            if (bytes < INITIAL_CAPACITY) {
+                buffer_ = reinterpret_cast<uint8_t *>(malloc(INITIAL_CAPACITY));
+                if (buffer_ != nullptr) {
+                    bufferCapacity_ = INITIAL_CAPACITY;
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                buffer_ = reinterpret_cast<uint8_t *>(malloc(bytes));
+                if (buffer_ != nullptr) {
+                    bufferCapacity_ = bytes;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        if (newSize > bufferCapacity_) {
+            if (!ExpandBuffer(newSize)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool RawDataEmit(const void *data, size_t length)
+    {
+        if (length <= 0) {
+            return false;
+        }
+        if ((bufferSize_ + length) > bufferCapacity_) {
+            if (!AllocateBuffer(length)) {
+                return false;
+            }
+        }
+        if (memcpy_s(buffer_ + bufferSize_, bufferCapacity_ - bufferSize_, data, length) != EOK) {
+            LOG_FULL(ERROR) << "Failed to memcpy_s Data";
+            return false;
+        }
+        bufferSize_ += length;
+        return true;
+    }
+
+    void EmitChar(uint8_t c)
+    {
+        RawDataEmit(&c, U8_SIZE);
+    }
+
+    void EmitU64(uint64_t c)
+    {
+        RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE);
+    }
+
     void WriteUint8(uint8_t data)
     {
-        data_.EmitChar(data);
+        RawDataEmit(&data, 1);
     }
 
     uint8_t ReadUint8()
     {
         ASSERT(position_ < Size());
-        return data_.GetU8(position_++);
+        return *(buffer_ + (position_++));
     }
 
     void WriteEncodeFlag(EncodeFlag flag)
     {
-        data_.EmitChar(static_cast<uint8_t>(flag));
+        EmitChar(static_cast<uint8_t>(flag));
     }
 
     void WriteUint32(uint32_t data)
     {
-        data_.EmitU32(data);
+        RawDataEmit(reinterpret_cast<uint8_t *>(&data), U32_SIZE);
     }
 
     uint32_t ReadUint32()
     {
         ASSERT(position_ < Size());
-        uint32_t value = data_.GetU32(position_);
+        uint32_t value = *reinterpret_cast<uint32_t *>(buffer_ + position_);
         position_ += sizeof(uint32_t);
         return value;
     }
 
     void WriteRawData(uint8_t *data, size_t length)
     {
-        data_.Emit(data, length);
+        RawDataEmit(data, length);
     }
 
     void WriteJSTaggedValue(JSTaggedValue value)
     {
-        data_.EmitU64(value.GetRawData());
+        EmitU64(value.GetRawData());
     }
 
     void WriteJSTaggedType(JSTaggedType value)
     {
-        data_.EmitU64(value);
+        EmitU64(value);
     }
 
     JSTaggedType ReadJSTaggedType()
     {
         ASSERT(position_ < Size());
-        JSTaggedType value = data_.GetU64(position_);
+        JSTaggedType value = *reinterpret_cast<uint64_t *>(buffer_ + position_);
         position_ += sizeof(JSTaggedType);
         return value;
     }
@@ -140,7 +231,7 @@ public:
     void ReadRawData(uintptr_t addr, size_t len)
     {
         ASSERT(position_ + len <= Size());
-        if (memcpy_s(reinterpret_cast<void *>(addr), len, data_.GetBegin() + position_, len) != EOK) {
+        if (memcpy_s(reinterpret_cast<void *>(addr), len, buffer_ + position_, len) != EOK) {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
@@ -149,12 +240,12 @@ public:
 
     uint8_t* Data() const
     {
-        return data_.GetBegin();
+        return buffer_;
     }
 
     size_t Size() const
     {
-        return data_.GetSize();
+        return bufferSize_;
     }
 
     size_t GetPosition() const
@@ -226,8 +317,15 @@ public:
     }
 
 private:
-    Chunk chunk_;
-    DynChunk data_;
+    static constexpr size_t U8_SIZE = 1;
+    static constexpr size_t U16_SIZE = 2;
+    static constexpr size_t U32_SIZE = 4;
+    static constexpr size_t U64_SIZE = 8;
+    JSThread *thread_;
+    uint8_t *buffer_ = nullptr;
+    uint64_t sizeLimit_ = 0;
+    size_t bufferSize_ = 0;
+    size_t bufferCapacity_ = 0;
     size_t oldSpaceSize_ {0};
     size_t nonMovableSpaceSize_ {0};
     size_t machineCodeSpaceSize_ {0};
