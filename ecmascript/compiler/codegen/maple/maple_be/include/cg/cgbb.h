@@ -85,6 +85,7 @@ public:
         kBBGoto,     /* unconditional branch */
         kBBIgoto,
         kBBReturn,
+        kBBNoReturn,
         kBBIntrinsic, /* BB created by inlining intrinsics; shares a lot with BB_if */
         kBBRangeGoto,
         kBBThrow, /* For call __java_throw_* and call exit, which will run out of function. */
