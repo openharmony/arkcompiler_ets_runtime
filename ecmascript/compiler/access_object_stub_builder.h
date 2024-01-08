@@ -42,6 +42,8 @@ public:
         ProfileOperation callback = ProfileOperation());
     GateRef StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef profileTypeInfo,
                             GateRef slotId, ProfileOperation callback = ProfileOperation());
+    GateRef StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef profileTypeInfo,
+                            GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByValue(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);

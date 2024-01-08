@@ -5698,12 +5698,39 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STOWNBYINDEX_IMM8_V8_IMM16) {
         uint8_t v0 = READ_INST_8_1();
         uint16_t index = READ_INST_16_2();
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         LOG_INST() << "intrinsics::stownbyindex"
                    << " v" << v0 << " imm" << index;
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            SAVE_ACC();
+            uint32_t slotId = READ_INST_8_0();
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue value = GET_ACC();
+            JSTaggedValue res = JSTaggedValue::Hole();
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryStoreICByValue(thread,
+                                                       receiver, JSTaggedValue(index), firstValue, secondValue, value);
+            }
+            // IC miss and not enter the megamorphic state, store as polymorphic
+            if (res.IsHole() && !firstValue.IsHole()) {
+                res = ICRuntimeStub::StoreOwnICByValue(thread,
+                                                       profileTypeArray, receiver, JSTaggedValue(index), value, slotId);
+            }
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOWNBYINDEX_IMM8_V8_IMM16);
+            }
+        }
+#endif
         // fast path
         if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             SAVE_ACC();
+            receiver = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             // fast path
             JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
@@ -5730,6 +5757,33 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::stownbyindex"
                    << " v" << v0 << " imm" << index;
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
+
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            SAVE_ACC();
+            uint16_t slotId = READ_INST_16_0();
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue value = GET_ACC();
+            JSTaggedValue res = JSTaggedValue::Hole();
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryStoreICByValue(thread,
+                                                       receiver, JSTaggedValue(index), firstValue, secondValue, value);
+            }
+            // IC miss and not enter the megamorphic state, store as polymorphic
+            if (res.IsHole() && !firstValue.IsHole()) {
+                res = ICRuntimeStub::StoreOwnICByValue(thread,
+                                                       profileTypeArray, receiver, JSTaggedValue(index), value, slotId);
+            }
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STOWNBYINDEX_IMM16_V8_IMM16);
+            }
+        }
+#endif
         // fast path
         if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             SAVE_ACC();
