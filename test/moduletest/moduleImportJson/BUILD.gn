@@ -18,5 +18,5 @@ host_moduletest_action("moduleImportJson") {
   entry_point = "--entry-point=moduleImportJson"
   is_module = true
   is_merge = true
-  is_json = true
+  is_merge_abc = true
 }
