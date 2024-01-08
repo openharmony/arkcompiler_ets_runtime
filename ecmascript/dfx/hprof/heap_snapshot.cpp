@@ -51,9 +51,9 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
 }
 
 Node *Node::NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
-                    TaggedObject *entry, bool isLive)
+                    size_t nativeSize, TaggedObject *entry, bool isLive)
 {
-    auto node = chunk->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
+    auto node = chunk->New<Node>(id, index, name, type, size, nativeSize, 0, NewAddress<TaggedObject>(entry), isLive);
     if (UNLIKELY(node == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -684,8 +684,12 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
             if (existNode == nullptr) {
                 size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
+                size_t nativeSize = 0;
+                if (obj->GetClass()->IsJSNativePointer()) {
+                    nativeSize = JSNativePointer::Cast(obj)->GetBindingSize();
+                }
                 node = Node::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
-                    selfSize, obj);
+                    selfSize, nativeSize, obj);
                 entryMap_.InsertEntry(node);
                 if (!idExist) {
                     entryIdMap_->InsertId(addr, sequenceId);
@@ -741,7 +745,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
         Address addr = reinterpret_cast<Address>(obj);
         auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
         node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::HEAPNUMBER, 0,
-                             obj);
+                             0, obj);
         entryMap_.InsertEntry(node);  // Fast Index
         if (!idExist) {
             entryIdMap_->InsertId(addr, sequenceId);
@@ -923,7 +927,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     Address addr = reinterpret_cast<Address>(entry.GetTaggedObject());
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::STRING, selfsize,
-                               entry.GetTaggedObject());
+                               0, entry.GetTaggedObject());
     if (!idExist) {
         entryIdMap_->InsertId(addr, sequenceId);
     }
@@ -946,7 +950,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
     Address addr = reinterpret_cast<Address>(stringValue.GetTaggedObject());
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::STRING, selfsize,
-                         stringValue.GetTaggedObject());
+                         0, stringValue.GetTaggedObject());
     Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
     if (existNode == node) {
         if (!idExist) {
@@ -984,7 +988,7 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
     }
     size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("JSFunction"), NodeType::CLOSURE, selfsize,
-                               obj);
+                               0, obj);
     if (isInFinish) {
         node->SetName(GetString(ParseFunctionName(obj)));
     }
@@ -1011,7 +1015,7 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
     }
     size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("Object"), NodeType::OBJECT, selfsize,
-                               obj);
+                               0, obj);
     if (isInFinish) {
         node->SetName(GetString(ParseObjectName(obj)));
     }
@@ -1143,7 +1147,7 @@ Edge *HeapSnapshot::InsertEdgeUnique(Edge *edge)
 void HeapSnapshot::AddSyntheticRoot()
 {
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
-                                        NodeType::SYNTHETIC, 0, nullptr);
+                                        NodeType::SYNTHETIC, 0, 0, nullptr);
     InsertNodeAt(0, syntheticRoot);
 
     int edgeOffset = 0;

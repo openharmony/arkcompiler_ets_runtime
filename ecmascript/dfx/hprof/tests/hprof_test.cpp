@@ -164,6 +164,71 @@ public:
         return false;  // Lost the Line
     }
 
+    bool ContrastJSONPayloadCntAndHitStrField(const std::string &filePath, std::string dataLable, int fieldCnt,
+                                              std::string fieldStr)
+    {
+        std::string line;
+        int i = 1;
+        std::ifstream inputStream(filePath);
+        while (getline(inputStream, line)) {
+            if (line.find(dataLable) != line.npos) {  // 3 : Hit the line
+                std::string::size_type pos = 0;
+                int loop = 0;
+                while ((pos = line.find(",", pos)) != line.npos) {
+                    pos++;
+                    loop++;  // "," count
+                }
+                if (loop != fieldCnt - 1) {
+                    return false;
+                }
+                return line.find(fieldStr) != line.npos; // check if hit the target field
+            }
+            i++;  // Search the Next Line
+        }
+        return false;  // Lost the Line
+    }
+
+    bool ContrastJSONNativeSizeNum(const std::string &filePath, std::string nodesLable, int nNum)
+    {
+        std::string line;
+        bool hit = false;
+        std::vector<std::string> nodeNativeSizes;
+        std::ifstream inputStream(filePath);
+        while (getline(inputStream, line)) {
+            if (!hit && line.find(nodesLable) == line.npos) {
+                continue; // Not Get
+            }
+            if (line.find("[]") != line.npos) {  // Empty
+                break;
+            }
+            if (!hit) {
+                hit = true;
+            }
+            if (hit && (line.find("],") != line.npos)) {
+                break; // Reach End
+            }
+            int rCommaInd = line.rfind(','); // find last one
+            if (rCommaInd == line.npos) {
+                return false;
+            }
+            std::string nativeSizeStr = line.substr(rCommaInd + 1, line.size() - rCommaInd);
+            if (nativeSizeStr.compare("0") != 0) {
+                nodeNativeSizes.push_back(nativeSizeStr);
+            }
+        }
+        if (instance->GetNativePointerList().size() != nodeNativeSizes.size() || nodeNativeSizes.size() != nNum) {
+            return false;
+        }
+        int ind = 0;
+        for (JSNativePointer *jsNp : instance->GetNativePointerList()) {
+            if (nodeNativeSizes[ind].compare(std::to_string(jsNp->GetBindingSize())) != 0) {
+                return false;
+            }
+            ind++;
+        }
+        return true;
+    }
+
     bool ContrastJSONClousure(const std::string &filePath)
     {
         std::string lineBk;  // The Last Line
@@ -298,6 +363,24 @@ HWTEST_F_L0(HProfTest, TraceFuncInfoCount)
     tester.GenerateSnapShot("test9.heapsnapshot");
     ASSERT_TRUE(tester.ExtractCountFromMeta("test9.heapsnapshot", "\"trace_function_count\":") ==
                 tester.ExtractCountFromPayload("test9.heapsnapshot", "\"trace_function_infos\":"));
+}
+
+HWTEST_F_L0(HProfTest, DumpNativeSize)
+{
+    int nativeSizeNum = 6;
+    int count = nativeSizeNum / 2;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSArrayBuffer(10);
+        instance->GetFactory()->NewJSArrayBuffer(20);
+    }
+    HProfTestHelper tester(instance);
+    std::cout<<"after size1:"<<instance->GetNativePointerListSize()<<", size2:"<<std::endl;
+    tester.GenerateSnapShot("test10.heapsnapshot");
+
+    ASSERT_TRUE(tester.ContrastJSONPayloadCntAndHitStrField("test10.heapsnapshot", "{\"node_fields\":",
+                                                            9, "native_size"));
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test10.heapsnapshot", "\"nodes\":[", 8));
+    ASSERT_TRUE(tester.ContrastJSONNativeSizeNum("test10.heapsnapshot", "\"nodes\":[", nativeSizeNum));
 }
 
 HWTEST_F_L0(HProfTest, TestIdConsistency)
