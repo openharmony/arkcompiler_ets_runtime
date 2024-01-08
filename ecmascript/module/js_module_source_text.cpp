@@ -1350,6 +1350,24 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
     }
 }
 
+JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
+    return moduleManager->GetNativeModuleValue(thread, JSTaggedValue::Undefined(),
+                                               resolvedBinding->GetModule(), resolvedBinding);
+}
+
+JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ResolvedIndexBinding *resolvedBinding = ResolvedIndexBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
+    return moduleManager->GetNativeModuleValue(thread, JSTaggedValue::Undefined(),
+                                               resolvedBinding->GetModule(), resolvedBinding);
+}
+
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1602,12 +1620,11 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         // if module is type of CommonJS or native, export first, check after execution.
         auto moduleType = module->GetTypes();
-        if (moduleType == ModuleTypes::CJS_MODULE) {
+        if (IsNativeModule(moduleType) || moduleType == ModuleTypes::CJS_MODULE) {
             return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, exportName));
         }
 
-        if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) ||
-                IsNativeModule(moduleType)) {
+        if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue()))) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module,

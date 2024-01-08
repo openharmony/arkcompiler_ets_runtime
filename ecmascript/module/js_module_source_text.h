@@ -212,6 +212,10 @@ public:
 
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+
+    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding);
+    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding);
+
     static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module,
