@@ -22,3 +22,4 @@ banana,mango,orange
 {"value":6,"writable":true,"enumerable":true,"configurable":true}
 true
 true
+0

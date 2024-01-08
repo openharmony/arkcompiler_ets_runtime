@@ -60,3 +60,6 @@ var obj=new Proxy(target,{
 [].concat(obj);
 print([1, , 3].concat([4, 5])); // [1, empty, 3, 4, 5]
 print([1, 2].concat([3, , 5])); // [1, 2, 3, empty, 5]
+
+const emptyArr = [];
+print(emptyArr.concat([]).length);

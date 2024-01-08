@@ -95,3 +95,6 @@ var resArr = srcArr.filter(callbackfn);
 
 print(bCalled);
 print(bPar);
+
+const emptyArr = [];
+print(emptyArr.filter(isPrime).length);
