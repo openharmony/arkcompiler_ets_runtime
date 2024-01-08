@@ -21,3 +21,8 @@ let l = {
 };
 a.length = l;
 print(a.length);
+
+function f1() { }
+Object.defineProperty(this, "han", { configurable: true, get: f1 });
+Object.freeze(this);
+print("test successful");

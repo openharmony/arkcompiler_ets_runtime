@@ -703,10 +703,8 @@ void JSThread::PushContext(EcmaContext *context)
         context->SetFrameBase(static_cast<JSTaggedType *>(
             vm_->GetNativeAreaAllocator()->Allocate(sizeof(JSTaggedType) * maxStackSize)));
         context->SetFramePointers(context->GetFrameBase() + maxStackSize, nullptr, nullptr);
-        if (IsAsmInterpreter()) {
-            context->SetStackLimit(GetAsmStackLimit());
-            context->SetStackStart(GetCurrentStackPosition());
-        }
+        context->SetStackLimit(GetAsmStackLimit());
+        context->SetStackStart(GetCurrentStackPosition());
         EcmaInterpreter::InitStackFrame(context);
     }
 }
