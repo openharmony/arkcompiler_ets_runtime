@@ -4594,6 +4594,7 @@ GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        CallRuntime(glue, RTSTUB_ID(Dump), { object });
         result = Exception();
         Jump(&exit);
     }
