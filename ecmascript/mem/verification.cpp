@@ -35,27 +35,35 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
                     auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
                     auto attr = layout->GetAttr(index++);
                     if (attr.IsTaggedRep()) {
-                        VisitObject(slot);
+                        VisitObject(slot, root);
                     }
                 }
                 return;
             }
             for (ObjectSlot slot = start; slot < end; slot++) {
-                VisitObject(slot);
+                VisitObject(slot, root);
             }
         });
 }
 
-void VerifyObjectVisitor::VisitObject(ObjectSlot slot)
+void VerifyObjectVisitor::VisitObject(ObjectSlot slot, TaggedObject *root)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsWeak()) {
+        if (ToUintPtr(value.GetTaggedWeakRef()) < INVALID_THRESHOLD) {
+            LOG_GC(ERROR) << "Heap verify detected an invalid value at " << value.GetTaggedWeakRef()
+                                << " at object:" << slot.SlotAddress() << ", root:" << root;
+        }
         if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
-            LOG_GC(ERROR) << "Heap verify detected a dead weak object " << value.GetTaggedObject()
+            LOG_GC(ERROR) << "Heap verify detected a dead weak object at " << value.GetTaggedWeakRef()
                                 << " at object:" << slot.SlotAddress();
             ++(*failCount_);
         }
     } else if (value.IsHeapObject()) {
+        if (ToUintPtr(value.GetTaggedObject()) < INVALID_THRESHOLD) {
+            LOG_GC(ERROR) << "Heap verify detected an invalid value at " << value.GetTaggedObject()
+                                << " at object:" << slot.SlotAddress() << ", root:" << root;
+        }
         if (!heap_->IsAlive(value.GetTaggedObject())) {
             LOG_GC(ERROR) << "Heap verify detected a dead object at " << value.GetTaggedObject()
                                 << " at object:" << slot.SlotAddress();
