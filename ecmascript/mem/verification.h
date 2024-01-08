@@ -25,6 +25,8 @@
 #include "ecmascript/mem/slots.h"
 
 namespace panda::ecmascript {
+static constexpr uint32_t INVALID_THRESHOLD = 0x40000;
+
 // Verify the object body
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
 class VerifyObjectVisitor {
@@ -49,7 +51,7 @@ public:
 
 private:
     void VisitAllObjects(TaggedObject *obj);
-    void VisitObject(ObjectSlot slot);
+    void VisitObject(ObjectSlot slot, TaggedObject *root);
 
     const Heap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
