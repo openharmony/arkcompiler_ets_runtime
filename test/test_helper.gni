@@ -938,9 +938,12 @@ template("host_aot_test_action") {
     extension = "ts"
     extra_args = [
       "--merge-abc",
-      "--module",
       "--type-extractor",
     ]
+
+    if (!(defined(invoker.without_module) && invoker.without_module)) {
+      extra_args += [ "--module" ]
+    }
 
     if (defined(invoker.is_debug_abc) && invoker.is_debug_abc) {
       extra_args += [ "--debug" ]

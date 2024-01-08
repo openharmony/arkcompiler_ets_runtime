@@ -149,9 +149,7 @@ GateRef TypeHCRLowering::VisitGate(GateRef gate)
             LowerArrayConstructor(gate, glue);
             break;
         case OpCode::LOAD_BUILTIN_OBJECT:
-            if (enableLoweringBuiltin_) {
-                LowerLoadBuiltinObject(gate);
-            }
+            LowerLoadBuiltinObject(gate);
             break;
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
             LowerObjectConstructorCheck(gate, glue);
@@ -2181,15 +2179,18 @@ void TypeHCRLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate
 
 void TypeHCRLowering::LowerLoadBuiltinObject(GateRef gate)
 {
+    if (!enableLoweringBuiltin_) {
+        return;
+    }
     Environment env(gate, circuit_, &builder_);
     AddProfiling(gate);
+    auto frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
     size_t index = acc_.GetIndex(gate);
     auto boxOffset = builtinEntriesOffset + BuiltinIndex::GetInstance().GetBuiltinBoxOffset(index);
     GateRef box = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, boxOffset);
     GateRef builtin = builder_.LoadConstOffset(VariableType::JS_POINTER(), box, PropertyBox::VALUE_OFFSET);
-    auto frameState = GetFrameState(gate);
     auto builtinIsNotHole = builder_.TaggedIsNotHole(builtin);
     // attributes on globalThis may change, it will cause renew a PropertyBox, the old box will be abandoned
     // so we need deopt

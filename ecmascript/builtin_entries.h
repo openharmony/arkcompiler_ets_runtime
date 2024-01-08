@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_BUILTIN_ENTRIES_H
 #define ECMASCRIPT_BUILTIN_ENTRIES_H
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -86,7 +87,7 @@ enum class BuiltinType : int32_t {
 
 struct BuiltinEntries {
     static constexpr size_t COUNT = static_cast<size_t>(BuiltinType::NUMBER_OF_BUILTINS);
-    struct {
+    struct BuiltinEntry {
         JSTaggedValue box_ {JSTaggedValue::Hole()};
         JSTaggedValue hClass_ {JSTaggedValue::Hole()};
     } builtin_[COUNT];
@@ -99,6 +100,12 @@ struct BuiltinEntries {
     uintptr_t End()
     {
         return reinterpret_cast<uintptr_t>(builtin_ + COUNT);
+    }
+
+    void ClearByIndex(size_t index, JSTaggedValue value)
+    {
+        builtin_[index].box_ = value;
+        builtin_[index].hClass_ = JSTaggedValue::Hole();
     }
 
     static constexpr size_t SizeArch32 = sizeof(uint64_t) * 2 * COUNT;
