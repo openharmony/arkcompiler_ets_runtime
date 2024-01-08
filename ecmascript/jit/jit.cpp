@@ -217,7 +217,7 @@ bool Jit::IsCompiling(JSHandle<JSFunction> &jsFunction)
     return false;
 }
 
-void Jit::InstallTasks()
+void Jit::InstallTasksWithoutClearFlag()
 {
     LockHolder holder(installJitTasksDequeMtx_);
     for (auto it = installJitTasks_.begin(); it != installJitTasks_.end(); it++) {
@@ -228,6 +228,11 @@ void Jit::InstallTasks()
         delete task;
     }
     installJitTasks_.clear();
+}
+
+void Jit::InstallTasks()
+{
+    InstallTasksWithoutClearFlag();
     // clear flag
     vm_->GetJSThread()->SetInstallMachineCode(false);
 }
