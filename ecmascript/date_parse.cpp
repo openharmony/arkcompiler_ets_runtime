@@ -391,7 +391,7 @@ bool DateParse::DayValue::SetDayValue(int *time)
     }
     if (month_ == INT_MAX) {
         // 2:index of year
-        if (is_iso_flag_ || (IsFull() && DayIsValid(data_[2]) && !MonthIsValid(data_[0]))) {
+        if (isIsoFlag_ || (IsFull() && DayIsValid(data_[2]) && !MonthIsValid(data_[0]))) {
             year = data_[YEAR];
             mon = data_[MONTH];
             day = data_[DAYS];
@@ -415,15 +415,22 @@ bool DateParse::DayValue::SetDayValue(int *time)
         }
         // 2: day and year
         if (index_ == 2) {
-            if (DayIsValid(data_[0]) && !DayIsValid(data_[1])) {
-                day = data_[0];
-                year = data_[1];
-            } else {
+            if (!DayIsValid(data_[0])) {
                 year = data_[0];
                 day = data_[1];
+            } else {
+                day = data_[0];
+                year = data_[1];
             }
         } else {
             day = data_[0];
+        }
+    }
+    if (!IsIso()) {
+        if (IsBetween(year, 1, 49)) { // if year is between 1-49
+            year += 2000; // it means 2001-2049
+        } else if (IsBetween(year, 50, 99)) { // if year is between 50-99
+            year += 1900; // it may means 1950-1999
         }
     }
     if (!MonthIsValid(mon) || !DayIsValid(day)) {

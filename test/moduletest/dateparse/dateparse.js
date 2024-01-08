@@ -47,3 +47,8 @@ print(d4.getDate() == 25);
 print(d5.getTime() == 1452723575000);
 print(d5.getFullYear() == 2016);
 print(d5.getMonth() == 0);
+
+let d6 = new Date("Wed, 26-Jun-19 GMT")
+print(d6.getTime())
+let d7 = new Date("Wed, 26-Jun-2019 GMT")
+print(d7.getTime())

@@ -486,7 +486,7 @@ private:
 
             void SetIsoFlag(bool flag)
             {
-                is_iso_flag_ = flag;
+                isIsoFlag_ = flag;
             }
 
             void SetMonth(int month)
@@ -506,7 +506,7 @@ private:
 
             bool IsIso() const
             {
-                return is_iso_flag_;
+                return isIsoFlag_;
             }
 
             bool IsFull() const
@@ -525,7 +525,7 @@ private:
             int data_[DAY_LEN];
             int index_ {0};
             int month_ {INT_MAX};
-            bool is_iso_flag_ {false};
+            bool isIsoFlag_ {false};
     };
     static bool IsIsoDateTime(DateProxy *proxy, DayValue *dayValue);
     static bool ParseIsoDateTime(DateProxy *proxy, DayValue *dayValue, TimeValue *timeValue,
