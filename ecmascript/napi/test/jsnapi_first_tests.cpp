@@ -1541,7 +1541,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
     Local<ArrayRef> array(result);
     ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
     void *res = nullptr;
-    res = JSNApi::SerializeValue(vm_, result, result);
+    res = JSNApi::SerializeValue(vm_, result, JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_), true);
     EXPECT_TRUE(res);
 }
 

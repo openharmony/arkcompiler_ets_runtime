@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript {
 
-bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
+bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject)
 {
     JSType type = object->GetClass()->GetObjectType();
     if (IsInternalJSType(type)) {
@@ -61,10 +61,20 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object)
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
         case JSType::JS_OBJECT:
-        case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
+        case JSType::JS_SHARED_OBJECT: {
+            if (serializeSharedEvent_ > 0) {
+                return true;
+            }
+            if (defaultCloneShared_ || cloneSharedSet_.find(ToUintPtr(object)) != cloneSharedSet_.end()) {
+                findSharedObject = true;
+                serializeSharedEvent_++;
+                return true;
+            }
+            break;
+        }
+        case JSType::JS_SHARED_FUNCTION:
         case JSType::SYMBOL:
         case JSType::JS_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
@@ -84,19 +94,20 @@ void ValueSerializer::InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet)
     transferDataSet_ = std::move(transferDataSet);
 }
 
-void ValueSerializer::ClearTransferSet()
-{
-    transferDataSet_.clear();
-}
-
-bool ValueSerializer::WriteValue(JSThread *thread, const JSHandle<JSTaggedValue> &value,
-                                 const JSHandle<JSTaggedValue> &transfer)
+bool ValueSerializer::WriteValue(JSThread *thread,
+                                 const JSHandle<JSTaggedValue> &value,
+                                 const JSHandle<JSTaggedValue> &transfer,
+                                 const JSHandle<JSTaggedValue> &cloneList)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ValueSerializer::WriteValue");
     ASSERT(!value->IsWeak());
-    if (value.GetTaggedValue() == transfer.GetTaggedValue()) {
-        defaultTransfer_ = true;
-    } else if (!PrepareTransfer(thread, transfer)) {
+    if (!defaultTransfer_ && !PrepareTransfer(thread, transfer)) {
+        LOG_ECMA(ERROR) << "ValueSerialize: PrepareTransfer fail";
+        data_->SetIncompleteData(true);
+        return false;
+    }
+    if (!defaultCloneShared_ && !PrepareClone(thread, cloneList)) {
+        LOG_ECMA(ERROR) << "ValueSerialize: PrepareClone fail";
         data_->SetIncompleteData(true);
         return false;
     }
@@ -126,7 +137,8 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (notSupport_) {
         return;
     }
-    if (!CheckObjectCanSerialize(object)) {
+    bool cloneSharedObject = false;
+    if (!CheckObjectCanSerialize(object, cloneSharedObject)) {
         notSupport_ = true;
         return;
     }
@@ -171,11 +183,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
-        case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION: {
-            serializeSharedEvent_++;
-            break;
-        }
         default:
             break;
     }
@@ -187,7 +194,8 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (type == JSType::JS_ARRAY) {
         JSArray *array = reinterpret_cast<JSArray *>(object);
         array->SetTrackInfo(thread_, trackInfo);
-    } else if (JSHClass::IsJSSharedType(type)) {
+    }
+    if (cloneSharedObject) {
         serializeSharedEvent_--;
     }
     if (arrayBufferDeferDetach) {
@@ -266,17 +274,27 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
         return false;
     }
     bool transfer = transferDataSet_.find(ToUintPtr(object)) != transferDataSet_.end();
+    bool clone = cloneArrayBufferSet_.find(ToUintPtr(object)) != cloneArrayBufferSet_.end();
     size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
     if (arrayLength > 0) {
-        if (defaultTransfer_ || transfer) {
+        if (transfer) {
+            if (clone) {
+                notSupport_ = true;
+                LOG_ECMA(ERROR) << "ValueSerialize: can't put arraybuffer in both transfer list and clone list";
+                return false;
+            }
             data_->WriteEncodeFlag(EncodeFlag::TRANSFER_ARRAY_BUFFER);
             return true;
-        } else {
+        } else if (clone || !defaultTransfer_) {
             data_->WriteEncodeFlag(EncodeFlag::ARRAY_BUFFER);
             data_->WriteUint32(arrayLength);
             JSNativePointer *np =
                 reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
             data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), arrayLength);
+            return false;
+        } else {
+            data_->WriteEncodeFlag(EncodeFlag::TRANSFER_ARRAY_BUFFER);
+            return true;
         }
     }
     return false;
@@ -357,5 +375,31 @@ bool ValueSerializer::PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedV
     return true;
 }
 
+bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList)
+{
+    if (cloneList->IsUndefined()) {
+        return true;
+    }
+    if (!cloneList->IsJSArray()) {
+        return false;
+    }
+    int len = base::ArrayHelper::GetArrayLength(thread, cloneList);
+    int index = 0;
+    while (index < len) {
+        bool exists = JSTaggedValue::HasProperty(thread, cloneList, index);
+        if (exists) {
+            JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, cloneList, index);
+            if (element->IsArrayBuffer()) {
+                cloneArrayBufferSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
+            } else if (element->IsJSSharedObject()) {
+                cloneSharedSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
+            } else {
+                return false;
+            }
+        }
+        index++;
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
 

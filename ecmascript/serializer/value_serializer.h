@@ -22,16 +22,20 @@ namespace panda::ecmascript {
 
 class ValueSerializer : public BaseSerializer {
 public:
-    explicit ValueSerializer(JSThread *thread) : BaseSerializer(thread) {}
+    explicit ValueSerializer(JSThread *thread, bool defaultTransfer = false, bool defaultCloneShared = false)
+        : BaseSerializer(thread),  defaultTransfer_(defaultTransfer), defaultCloneShared_(defaultCloneShared) {}
     ~ValueSerializer()
     {
         // clear transfer obj set after serialization
         transferDataSet_.clear();
+        cloneArrayBufferSet_.clear();
+        cloneSharedSet_.clear();
     }
     NO_COPY_SEMANTIC(ValueSerializer);
     NO_MOVE_SEMANTIC(ValueSerializer);
 
-    bool WriteValue(JSThread *thread, const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &transfer);
+    bool WriteValue(JSThread *thread, const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &transfer,
+                    const JSHandle<JSTaggedValue> &cloneList);
 
 private:
     void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
@@ -42,9 +46,9 @@ private:
     void SerializeMethodPrologue(Method *method);
     void SerializeJSRegExpPrologue(JSRegExp *jsRegExp);
     void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
-    void ClearTransferSet();
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
-    bool CheckObjectCanSerialize(TaggedObject *object);
+    bool PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList);
+    bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
 
     bool IsInternalJSType(JSType type)
     {
@@ -56,9 +60,12 @@ private:
 
 private:
     bool defaultTransfer_ {false};
+    bool defaultCloneShared_ {false};
     bool notSupport_ {false};
     int32_t serializeSharedEvent_ = 0;
     CUnorderedSet<uintptr_t> transferDataSet_;
+    CUnorderedSet<uintptr_t> cloneArrayBufferSet_;
+    CUnorderedSet<uintptr_t> cloneSharedSet_;
 };
 }
 

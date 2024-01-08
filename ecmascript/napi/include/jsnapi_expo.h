@@ -489,6 +489,7 @@ public:
     bool IsTreeMap();
     bool IsTreeSet();
     bool IsVector();
+    bool IsSharedObject();
 
 private:
     JSTaggedType value_;
@@ -1237,7 +1238,10 @@ public:
     static void NotifyLoadModule(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
-    static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer);
+    static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                Local<JSValueRef> cloneList,
+                                bool defaultTransfer = false,
+                                bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
