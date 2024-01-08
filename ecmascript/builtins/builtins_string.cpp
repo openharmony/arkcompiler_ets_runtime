@@ -1405,7 +1405,9 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         }
         uint32_t lim = UINT32_MAX - 1;
         if (!limitTag->IsUndefined()) {
-            lim = JSTaggedValue::ToInteger(thread, limitTag).ToUint32();
+            JSTaggedNumber limitIntValue = JSTaggedValue::ToInteger(thread, limitTag);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            lim = limitIntValue.ToUint32();
         }
         // ReturnIfAbrupt(lim).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1441,7 +1443,9 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     // If limit is undefined, let lim = 2^53–1; else let lim = ToLength(limit).
     uint32_t lim = UINT32_MAX - 1;
     if (!limitTag->IsUndefined()) {
-        lim = JSTaggedValue::ToInteger(thread, limitTag).ToUint32();
+        JSTaggedNumber limitIntValue = JSTaggedValue::ToInteger(thread, limitTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        lim = limitIntValue.ToUint32();
     }
     // ReturnIfAbrupt(lim).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
