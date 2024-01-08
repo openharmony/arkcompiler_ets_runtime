@@ -246,3 +246,19 @@ try {
 } catch (error) {
     print(error.name)
 }
+
+function f0() {
+    return f0;
+}
+class C1 extends f0 {
+    constructor(a3) {
+        super();
+        const v6 = new Proxy(C1, Reflect);
+        new v6();
+    }
+}
+try {
+    new C1(f0);
+} catch(e) {
+    print(e.name);
+}

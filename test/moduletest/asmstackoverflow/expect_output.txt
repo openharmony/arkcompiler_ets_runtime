@@ -35,3 +35,4 @@ callnew stackoverflow2
 RangeError
 RangeError
 RangeError
+RangeError
