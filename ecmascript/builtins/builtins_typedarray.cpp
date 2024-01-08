@@ -820,6 +820,10 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         }
     }
     allocateLength += sepLength * (length - 1);
+    if (allocateLength <= 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
+    }
     auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
