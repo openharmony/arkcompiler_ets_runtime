@@ -22,3 +22,4 @@ Infinity
 -Infinity
 123
 SyntaxError
+56320
