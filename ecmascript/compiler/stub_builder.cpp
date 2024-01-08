@@ -5087,18 +5087,33 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
         {
             // Collect the type of left value
             result = TaggedTrue();
-            Label leftIsInt(env);
-            Label leftIsNotInt(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsNotInt);
-            Bind(&leftIsInt);
-            {
-                callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+            if (callback.IsEmpty()) {
                 Jump(&exit);
-            }
-            Bind(&leftIsNotInt);
-            {
-                callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
-                Jump(&exit);
+            } else {
+                Label leftIsInt(env);
+                Label leftIsNotInt(env);
+                Branch(TaggedIsInt(left), &leftIsInt, &leftIsNotInt);
+                Bind(&leftIsInt);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+                    Jump(&exit);
+                }
+                Bind(&leftIsNotInt);
+                {
+                    Label leftIsString(env);
+                    Label leftIsNotString(env);
+                    Branch(TaggedIsString(left), &leftIsString, &leftIsNotString);
+                    Bind(&leftIsString);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+                        Jump(&exit);
+                    }
+                    Bind(&leftIsNotString);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
+                        Jump(&exit);
+                    }
+                }
             }
         }
     }
