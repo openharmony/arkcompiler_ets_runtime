@@ -79,7 +79,7 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, ui
     HandleExceptionThrowEvent(thread, method, bcOffset);
     // clear singlestep flag
     singleStepOnDebuggerStmt_ = false;
-    if (ecmaVm_->GetJsDebuggerManager()->IsMixedDebugEnabled()) {
+    if (ecmaVm_->GetJsDebuggerManager()->IsMixedStackEnabled()) {
         if (!HandleBreakpoint(method, bcOffset)) {
             HandleNativeOut();
             HandleStep(method, bcOffset);
