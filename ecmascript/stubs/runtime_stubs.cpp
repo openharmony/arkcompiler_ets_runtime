@@ -1085,25 +1085,6 @@ DEF_RUNTIME_STUBS(StoreICByValue)
     return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(StoreOwnICByValue)
-{
-    RUNTIME_STUBS_HEADER(StoreOwnICByValue);
-    JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue slotId = GetArg(argv, argc, 4);   // 4: means the fourth parameter
-
-    if (profileTypeInfo->IsUndefined()) {
-        return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
-    }
-    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
-    StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
-                             ICKind::StoreOwnIC);
-    return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(StOwnByValue)
 {
     RUNTIME_STUBS_HEADER(StOwnByValue);

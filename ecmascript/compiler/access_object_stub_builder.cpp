@@ -17,10 +17,8 @@
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/js_tagged_value_internals.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
@@ -230,52 +228,6 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     auto ret = *result;
     env->SubCfgExit();
     return ret;
-}
-
-GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value,
-                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label tryFastPath(env);
-    Label slowPath(env);
-    Label TryStoreIC(env);
-    Label RuntimeStoreIC(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
-    builder.StoreICByValue(&result, &tryFastPath, &RuntimeStoreIC, &exit);
-    Bind(&RuntimeStoreIC);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(StoreOwnICByValue), { profileTypeInfo,
-                             receiver, IntToTaggedPtr(index), value, IntToTaggedInt(slotId) });
-        Branch(TaggedIsHole(*result), &tryFastPath, &exit);
-    }
-    Bind(&tryFastPath);
-    {
-        Label isHeapObject(env);
-        Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
-        Bind(&isHeapObject);
-        Label notClassConstructor(env);
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
-        Bind(&notClassConstructor);
-        Label notClassPrototype(env);
-        Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
-        Bind(&notClassPrototype);
-        result = SetPropertyByIndex(glue, receiver, index, value, true);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex), { receiver, IntToTaggedInt(index), value });
-        callback.TryPreDump();
-        Jump(&exit);
-    }
-    Bind(&exit);
-    env->SubCfgExit();
-    return *result;
 }
 
 GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,

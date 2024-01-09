@@ -229,7 +229,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(SetObjectWithProto)                 \
     V(LoadICByValue)                      \
     V(StoreICByValue)                     \
-    V(StoreOwnICByValue)                  \
     V(StOwnByValue)                       \
     V(LdSuperByValue)                     \
     V(StSuperByValue)                     \

@@ -27,7 +27,6 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/message_string.h"
 
@@ -335,8 +334,8 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
-    ObjectOperator op(GetThread(), receiver, key,
-                      kind == ICKind::StoreOwnIC ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
+
+    ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
             PropertyAttributes attr = PropertyAttributes::Default(true, true, false);
