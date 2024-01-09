@@ -3167,7 +3167,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(int tid)
+bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
