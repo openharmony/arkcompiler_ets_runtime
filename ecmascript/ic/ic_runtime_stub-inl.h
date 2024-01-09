@@ -22,16 +22,14 @@
 #include "ecmascript/ic/ic_runtime_stub.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/ic_runtime.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/ic/proto_change_details.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_proxy.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
@@ -179,14 +177,6 @@ ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreICByValue(JSThread *thread, Profi
 {
     INTERPRETER_TRACE(thread, StoreICByValue);
     return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC);
-}
-
-ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreOwnICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                            JSTaggedValue receiver, JSTaggedValue key,
-                                                            JSTaggedValue value, uint32_t slotId)
-{
-    INTERPRETER_TRACE(thread, StoreOwnICByValue);
-    return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreOwnIC);
 }
 
 ARK_INLINE JSTaggedValue ICRuntimeStub::TryStoreICByName(JSThread *thread, JSTaggedValue receiver,
@@ -541,12 +531,11 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
     if (index < 0) {
         return JSTaggedValue::Hole();
     }
-    JSHandle<JSObject> receiverHandle(thread, receiver);
-    JSHandle<JSTaggedValue> valueHandle(thread, value);
     uint32_t elementIndex = static_cast<uint32_t>(index);
     if (handler.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        JSHandle<JSObject> receiverHandle(thread, receiver);
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return StoreTypedArrayElement(thread, JSTaggedValue::Cast(receiver), key, value);
         } else if (HandlerBase::IsJSArray(handlerInfo)) {
@@ -567,6 +556,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
             if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
                 return JSTaggedValue::Hole();
             }
+            JSHandle<JSTaggedValue> valueHandle(thread, value);
             elements = *JSObject::GrowElementsCapacity(thread, receiverHandle, elementIndex + 1);
             receiverHandle->SetElements(thread, JSTaggedValue(elements));
             elements->Set(thread, elementIndex, valueHandle);
@@ -583,7 +573,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
             return JSTaggedValue::Hole();
         }
         JSTaggedValue handlerInfo = prototypeHandler->GetHandlerInfo();
-        return StoreElement(thread, JSObject::Cast(*receiverHandle), key, valueHandle.GetTaggedValue(), handlerInfo);
+        return StoreElement(thread, receiver, key, value, handlerInfo);
     }
     return JSTaggedValue::Undefined();
 }
