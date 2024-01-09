@@ -15,8 +15,8 @@
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/type_bytecode_lowering.h"
-#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/compiler/typed_bytecode_lowering.h"
+#include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
@@ -35,7 +35,7 @@ using ecmascript::kungfu::CircuitBuilder;
 using ecmascript::kungfu::Verifier;
 using ecmascript::kungfu::Environment;
 using ecmascript::kungfu::CombinedPassVisitor;
-using ecmascript::kungfu::TypeHCRLowering;
+using ecmascript::kungfu::TypedHCRLowering;
 using ecmascript::OnHeapMode;
 HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
 {
@@ -56,7 +56,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "LoadTypedArrayLength", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -86,7 +86,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32ArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32ArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -123,7 +123,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -155,7 +155,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float64OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -187,7 +187,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, FLOAT32OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "FLOAT32OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -222,7 +222,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int8OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -257,7 +257,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt8OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt8OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -292,7 +292,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int16OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int16OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -327,7 +327,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt16OnHeapArrayLoadElement)
     builder.Return(convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt16OnHeapArrayLoadElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -361,7 +361,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32ArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32ArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -398,7 +398,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int32OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int32OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -430,7 +430,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float64OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -462,7 +462,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int8OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -496,7 +496,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt8OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt8OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -530,7 +530,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Int16OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Int16OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -564,7 +564,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt16OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "UInt16OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -598,7 +598,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float32OnHeapArrayStoreElement)
     auto ret = builder.Return(builder.Undefined());
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "Float32OnHeapArrayStoreElement", &chunk);
-    TypeHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
+    TypedHCRLowering lowering(&circuit, &visitor, nullptr, nullptr, &chunk, false);
     visitor.AddPass(&lowering);
     visitor.VisitGraph();
     EXPECT_TRUE(Verifier::Run(&circuit));

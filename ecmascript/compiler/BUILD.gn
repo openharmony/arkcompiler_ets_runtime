@@ -173,8 +173,6 @@ libark_jsoptimizer_sources = [
   "ts_hcr_opt_pass.cpp",
   "ts_inline_lowering.cpp",
   "type.cpp",
-  "type_bytecode_lowering.cpp",
-  "type_hcr_lowering.cpp",
   "type_inference/global_type_infer.cpp",
   "type_inference/initialization_analysis.cpp",
   "type_inference/method_type_infer.cpp",
@@ -183,6 +181,8 @@ libark_jsoptimizer_sources = [
   "type_info_accessors.cpp",
   "type_recorder.cpp",
   "typed_array_stub_builder.cpp",
+  "typed_bytecode_lowering.cpp",
+  "typed_hcr_lowering.cpp",
   "value_numbering.cpp",
   "verifier.cpp",
 ]
