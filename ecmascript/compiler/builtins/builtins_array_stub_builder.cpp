@@ -1919,7 +1919,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     Branch(Int32GreaterThan(*j, *start), &next, &loopExit);
                     Bind(&next);
                     ele = GetTaggedValueWithElementsKind(thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
-                                                         Int32(1)));
+                                                                             Int32(1)));
                     Label setEle(env);
                     Label isHole(env);
                     Branch(TaggedIsHole(*ele), &isHole, &setEle);

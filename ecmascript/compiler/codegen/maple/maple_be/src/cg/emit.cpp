@@ -1725,7 +1725,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
         if (uNum > 0) {
             uint64 unInSizeInByte =
                 static_cast<uint64>(iNum) * static_cast<uint64>(Globals::GetInstance()->GetBECommon()->GetTypeSize(
-                                                arrayCt.GetConstVecItem(0)->GetType().GetTypeIndex()));
+                    arrayCt.GetConstVecItem(0)->GetType().GetTypeIndex()));
             if (unInSizeInByte != 0) {
                 EmitNullConstant(unInSizeInByte);
             }

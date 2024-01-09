@@ -28,8 +28,7 @@ namespace panda::ecmascript::ohos {
 #define CODE_DECRYPT_CMD_CLEAR_CACHE_BY_FILE  _IOW('c', 0x06, struct code_decrypto_arg)
 #define CODE_DECRYPT_CMD_CLEAR_SPECIFIC_CACHE  _IOW('c', 0x07, struct code_decrypto_arg)
 
-struct code_decrypto_arg
-{
+struct code_decrypto_arg {
     int arg1_len;
     int arg2_len;
     void *arg1;

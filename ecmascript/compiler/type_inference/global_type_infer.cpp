@@ -20,7 +20,8 @@ GlobalTypeInfer::GlobalTypeInfer(PassContext *ctx, const uint32_t methodOffset, 
                                  PGOProfilerDecoder *decoder, bool enableOptTrackField, bool enableLog, bool hasType)
     : ctx_(ctx), jsPandaFile_(ctx_->GetJSPandaFile()), bcInfo_(ctx->GetBytecodeInfo()), methodOffset_(methodOffset),
       recordName_(recordName), decoder_(decoder), enableOptTrackField_(enableOptTrackField), enableLog_(enableLog),
-      hasType_(hasType), enableGlobalTypeInfer_(ctx_->GetTSManager()->GetEcmaVM()->GetJSOptions().IsEnableGlobalTypeInfer())
+      hasType_(hasType), enableGlobalTypeInfer_(
+                            ctx_->GetTSManager()->GetEcmaVM()->GetJSOptions().IsEnableGlobalTypeInfer())
 {
     CollectNamespaceMethods(methodOffset);
     for (const auto namespaceMethod : namespaceTypes_) {

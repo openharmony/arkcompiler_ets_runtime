@@ -67,7 +67,7 @@ void ThroughputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32
 {
     // 2 : double
     thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2),
-                                  step));
+                                           step));
 }
 
 Method *ECMAObject::GetCallTarget() const

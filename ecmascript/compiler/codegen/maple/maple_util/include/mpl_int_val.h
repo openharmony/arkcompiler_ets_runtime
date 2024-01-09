@@ -132,9 +132,7 @@ public:
         return sign ? value == (uint64(1) << (width - 1)) : value == 0;
     }
 
-    //
     // Comparison operators that manipulate on values with the same sign and bit-width
-    //
     bool operator==(const IntVal &rhs) const
     {
         DEBUG_ASSERT(width == rhs.width && sign == rhs.sign, "bit-width and sign must be the same");
@@ -168,9 +166,7 @@ public:
         return !(*this < rhs);
     }
 
-    //
     // Arithmetic and bitwise operators that manipulate on values with the same sign and bit-width
-    //
     IntVal operator+(const IntVal &val) const
     {
         DEBUG_ASSERT(width == val.width && sign == val.sign, "bit-width and sign must be the same");
@@ -460,9 +456,7 @@ private:
     bool sign;
 };
 
-//
 // Additional comparison operators
-//
 inline bool operator==(const IntVal &v1, int64 v2)
 {
     return v1.GetExtValue() == v2;
@@ -514,10 +508,8 @@ inline IntVal Max(const IntVal &a, const IntVal &b, PrimType newType)
 /// @brief dump IntVal object to the output stream
 std::ostream &operator<<(std::ostream &os, const IntVal &value);
 
-//
 // Arithmetic operators that manipulate on scalar (uint64) value and IntVal object
 // in terms of sign and bit-width of IntVal object
-//
 inline IntVal operator+(const IntVal &v1, uint64 v2)
 {
     return v1 + IntVal(v2, v1.GetBitWidth(), v1.IsSigned());

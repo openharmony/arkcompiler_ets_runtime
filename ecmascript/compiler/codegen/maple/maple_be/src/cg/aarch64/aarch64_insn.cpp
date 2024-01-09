@@ -137,8 +137,8 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
 #ifndef USE_32BIT_REF /* can be load a ref here */
                       /*
                        * Cortex-A57 Software Optimization Guide:
-                       * The ARMv8-A architecture allows many types of load and store accesses to be arbitrarily aligned.
-                       * The Cortex- A57 processor handles most unaligned accesses without performance penalties.
+                       * The ARMv8-A architecture allows many types of load and store accesses to be arbitrarily aligned
+                       * The Cortex- A57 processor handles most unaligned accesses without performance penalties
                        */
 #if DEBUG
             if (a64v->IsOffsetMisaligned(md->GetOperandSize())) {

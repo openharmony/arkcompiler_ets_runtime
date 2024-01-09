@@ -360,8 +360,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
 
     JSHandle<JSHClass> asyncGeneratorResNextRetProRstFtnClass =
         factory_->NewEcmaHClass(JSAsyncGeneratorResNextRetProRstFtn::SIZE,
-                                  JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN,
-                                  env->GetFunctionPrototype());
+                                JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN,
+                                env->GetFunctionPrototype());
     asyncGeneratorResNextRetProRstFtnClass->SetCallable(true);
     asyncGeneratorResNextRetProRstFtnClass->SetExtensible(true);
     env->SetAsyncGeneratorResNextRetProRstFtnClass(thread_, asyncGeneratorResNextRetProRstFtnClass);
@@ -1562,7 +1562,7 @@ void Builtins::InitializeAtomics(const JSHandle<GlobalEnv> &env,
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> atomicsHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT,
-                                                                   objFuncPrototypeVal);
+                                                               objFuncPrototypeVal);
     JSHandle<JSObject> atomicsObject = factory_->NewJSObject(atomicsHClass);
     // Atomics functions
     for (const base::BuiltinFunctionEntry &entry: Atomics::GetAtomicsFunctions()) {
@@ -1627,7 +1627,7 @@ void Builtins::InitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env,
     // FinalizationRegistry.prototype_or_hclass
     JSHandle<JSHClass> finalizationRegistryFuncInstanceHClass =
         factory_->NewEcmaHClass(JSFinalizationRegistry::SIZE, JSType::JS_FINALIZATION_REGISTRY,
-                                  finalizationRegistryFuncPrototypeValue);
+                                finalizationRegistryFuncPrototypeValue);
     // FinalizationRegistry() = new Function()
     JSHandle<JSTaggedValue> finalizationRegistryFunction(NewBuiltinConstructor(
         env, finalizationRegistryFuncPrototype, BuiltinsFinalizationRegistry::FinalizationRegistryConstructor,
@@ -1860,7 +1860,7 @@ void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSH
     // AsyncIterator.dynclass
     JSHandle<JSHClass> asyncIteratorFuncDynclass =
         factory_->NewEcmaHClass(JSObject::SIZE,
-                                  JSType::JS_ASYNCITERATOR, JSHandle<JSTaggedValue>(asyncIteratorPrototype));
+                                JSType::JS_ASYNCITERATOR, JSHandle<JSTaggedValue>(asyncIteratorPrototype));
 
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->SetConstant(ConstantIndex::JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, asyncIteratorFuncDynclass);
@@ -1873,7 +1873,7 @@ void Builtins::InitializeForinIterator(const JSHandle<GlobalEnv> &env,
     // Iterator.prototype
     JSHandle<JSObject> forinIteratorPrototype = factory_->NewJSObjectWithInit(iteratorFuncClass);
     JSHandle<JSHClass> hclass = factory_->NewEcmaHClass(JSForInIterator::SIZE, JSType::JS_FORIN_ITERATOR,
-                                                            JSHandle<JSTaggedValue>(forinIteratorPrototype));
+                                                        JSHandle<JSTaggedValue>(forinIteratorPrototype));
 
     // Iterator.prototype.next()
     SetFunction(env, forinIteratorPrototype, "next", JSForInIterator::Next, FunctionLength::ONE);
@@ -2491,35 +2491,35 @@ void Builtins::InitializeForPromiseFuncClass(const JSHandle<GlobalEnv> &env)
 
     JSHandle<JSHClass> promiseAllResolveElementFunctionClass =
         factory_->NewEcmaHClass(JSPromiseAllResolveElementFunction::SIZE,
-                                  JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION, env->GetFunctionPrototype());
+                                JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION, env->GetFunctionPrototype());
     promiseAllResolveElementFunctionClass->SetCallable(true);
     promiseAllResolveElementFunctionClass->SetExtensible(true);
     env->SetPromiseAllResolveElementFunctionClass(thread_, promiseAllResolveElementFunctionClass);
 
     JSHandle<JSHClass> promiseAnyRejectElementFunctionClass =
         factory_->NewEcmaHClass(JSPromiseAnyRejectElementFunction::SIZE,
-                                  JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION, env->GetFunctionPrototype());
+                                JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION, env->GetFunctionPrototype());
     promiseAnyRejectElementFunctionClass->SetCallable(true);
     promiseAnyRejectElementFunctionClass->SetExtensible(true);
     env->SetPromiseAnyRejectElementFunctionClass(thread_, promiseAnyRejectElementFunctionClass);
 
     JSHandle<JSHClass> promiseAllSettledElementFunctionClass =
         factory_->NewEcmaHClass(JSPromiseAllSettledElementFunction::SIZE,
-                                  JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION, env->GetFunctionPrototype());
+                                JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION, env->GetFunctionPrototype());
     promiseAllSettledElementFunctionClass->SetCallable(true);
     promiseAllSettledElementFunctionClass->SetExtensible(true);
     env->SetPromiseAllSettledElementFunctionClass(thread_, promiseAllSettledElementFunctionClass);
 
     JSHandle<JSHClass> promiseFinallyFunctionClass =
         factory_->NewEcmaHClass(JSPromiseFinallyFunction::SIZE,
-                                  JSType::JS_PROMISE_FINALLY_FUNCTION, env->GetFunctionPrototype());
+                                JSType::JS_PROMISE_FINALLY_FUNCTION, env->GetFunctionPrototype());
     promiseFinallyFunctionClass->SetCallable(true);
     promiseFinallyFunctionClass->SetExtensible(true);
     env->SetPromiseFinallyFunctionClass(thread_, promiseFinallyFunctionClass);
 
     JSHandle<JSHClass> promiseValueThunkOrThrowerFunctionClass =
         factory_->NewEcmaHClass(JSPromiseValueThunkOrThrowerFunction::SIZE,
-                                  JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION, env->GetFunctionPrototype());
+                                JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION, env->GetFunctionPrototype());
     promiseValueThunkOrThrowerFunctionClass->SetCallable(true);
     promiseValueThunkOrThrowerFunctionClass->SetExtensible(true);
     env->SetPromiseValueThunkOrThrowerFunctionClass(thread_, promiseValueThunkOrThrowerFunctionClass);
@@ -2926,7 +2926,7 @@ void Builtins::InitializeAsyncGeneratorFunction(const JSHandle<GlobalEnv> &env,
      // 27.4.3.1 AsyncGeneratorFunction.prototype.constructor
     JSHandle<JSHClass> asyncGeneratorFuncInstanceHClass =
         factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_ASYNC_GENERATOR_FUNCTION,
-                                  asyncGeneratorFuncPrototypeValue);
+                                asyncGeneratorFuncPrototypeValue);
     asyncGeneratorFuncInstanceHClass->SetCallable(true);
     asyncGeneratorFuncInstanceHClass->SetExtensible(true);
     JSHandle<JSFunction> asyncGeneratorFunction =

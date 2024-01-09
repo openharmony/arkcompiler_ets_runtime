@@ -92,7 +92,7 @@ public:
             LOG_ECMA(ERROR) << "set key error!";
         }
         if (ohos::DecryptAssociateKey(fd, static_cast<int>(GetProcessUid()),
-                         static_cast<int>(GetBundleUid())) < 0) {
+                                      static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "associate key error!";
         }
     }

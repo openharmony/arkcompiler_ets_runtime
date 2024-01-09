@@ -75,13 +75,15 @@ public:
         return MemMap();
     }
 
-    bool IsRegularCommittedFull(size_t cachedSize) {
+    bool IsRegularCommittedFull(size_t cachedSize)
+    {
         LockHolder lock(lock_);
         size_t size = regularMapCommitted_.size();
         return size > (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
     }
 
-    int ShouldFreeMore(size_t cachedSize) {
+    int ShouldFreeMore(size_t cachedSize)
+    {
         LockHolder lock(lock_);
         int result = static_cast<int>(regularMapCommitted_.size());
         return result - static_cast<int>(cachedSize / REGULAR_MMAP_SIZE);

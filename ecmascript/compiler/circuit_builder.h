@@ -176,7 +176,7 @@ public:
     };
 
 
-    // ************************************************************* Share IR **********************************************************************************
+    // **************************** Share IR *****************************
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
@@ -335,7 +335,7 @@ public:
         return cmpCfg_;
     }
 
-    // ************************************************************* High IR **********************************************************************************
+    // **************************** High IR ******************************
     GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
     GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
                                   GateRef constPoolIndex, GateRef elementIndex);
@@ -441,7 +441,7 @@ public:
     // Others
     GateRef OrdinaryHasInstance(GateRef obj, GateRef target);
 
-    // ************************************************************* Middle IR **********************************************************************************
+    // **************************** Middle IR ****************************
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -648,7 +648,7 @@ public:
     GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);
     GateRef NeedCheckProperty(GateRef receiver);
 
-    // ************************************************************* Low IR **********************************************************************************
+    // **************************** Low IR *******************************
     inline GateRef Equal(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef NotEqual(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);

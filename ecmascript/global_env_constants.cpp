@@ -146,7 +146,7 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, GeneratorContext::SIZE, JSType::JS_GENERATOR_CONTEXT));
     SetConstant(ConstantIndex::ASYNC_GENERATOR_REQUEST_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, AsyncGeneratorRequest::SIZE,
-                                                 JSType::ASYNC_GENERATOR_REQUEST));
+                                               JSType::ASYNC_GENERATOR_REQUEST));
     SetConstant(ConstantIndex::ASYNC_ITERATOR_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, AsyncIteratorRecord::SIZE, JSType::ASYNC_ITERATOR_RECORD));
     SetConstant(ConstantIndex::CAPABILITY_RECORD_CLASS_INDEX,
@@ -155,12 +155,12 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, PromiseReaction::SIZE, JSType::PROMISE_REACTIONS));
     SetConstant(ConstantIndex::PROMISE_ITERATOR_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PromiseIteratorRecord::SIZE,
-                                                 JSType::PROMISE_ITERATOR_RECORD));
+                                               JSType::PROMISE_ITERATOR_RECORD));
     SetConstant(ConstantIndex::PROMISE_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PromiseRecord::SIZE, JSType::PROMISE_RECORD));
     SetConstant(ConstantIndex::PROMISE_RESOLVING_FUNCTIONS_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, ResolvingFunctionsRecord::SIZE,
-                                                 JSType::RESOLVING_FUNCTIONS_RECORD));
+                                               JSType::RESOLVING_FUNCTIONS_RECORD));
     SetConstant(ConstantIndex::MICRO_JOB_QUEUE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, job::MicroJobQueue::SIZE, JSType::MICRO_JOB_QUEUE));
     SetConstant(ConstantIndex::PENDING_JOB_CLASS_INDEX,
@@ -225,7 +225,7 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::MACHINE_CODE_OBJECT));
     SetConstant(ConstantIndex::CLASS_INFO_EXTRACTOR_HCLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, ClassInfoExtractor::SIZE,
-                                                 JSType::CLASS_INFO_EXTRACTOR));
+                                               JSType::CLASS_INFO_EXTRACTOR));
     SetConstant(ConstantIndex::TS_OBJECT_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSObjectType::SIZE, JSType::TS_OBJECT_TYPE));
     SetConstant(ConstantIndex::TS_CLASS_TYPE_CLASS_INDEX,
@@ -236,7 +236,7 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, TSInterfaceType::SIZE, JSType::TS_INTERFACE_TYPE));
     SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
-                                                 JSType::TS_CLASS_INSTANCE_TYPE));
+                                               JSType::TS_CLASS_INSTANCE_TYPE));
     SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
     SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
