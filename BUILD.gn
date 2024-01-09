@@ -1188,6 +1188,7 @@ ohos_source_set("libark_jsruntime_static") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+    all_dependent_configs = [ ":ark_jsruntime_public_config" ]
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
