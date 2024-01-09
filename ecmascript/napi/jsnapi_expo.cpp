@@ -3820,6 +3820,38 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfil
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }
 
+Local<JSValueRef> PromiseRef::GetPromiseState(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSPromise> promise(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(promise, ERROR);
+
+    ecmascript::PromiseState state = promise->GetPromiseState();
+    std::string promiseStateStr;
+    switch (state) {
+        case ecmascript::PromiseState::PENDING:
+            promiseStateStr = "Pending";
+            break;
+        case ecmascript::PromiseState::FULFILLED:
+            promiseStateStr = "Fulfilled";
+            break;
+        case ecmascript::PromiseState::REJECTED:
+            promiseStateStr = "Rejected";
+            break;
+    }
+
+    ObjectFactory *factory = vm->GetFactory();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(factory->NewFromStdString(promiseStateStr)));
+}
+
+Local<JSValueRef> PromiseRef::GetPromiseResult(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSPromise> promise(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(promise, ERROR);
+
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), promise->GetPromiseResult()));
+}
 // ---------------------------------- ProxyRef -----------------------------------------
 Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
 {

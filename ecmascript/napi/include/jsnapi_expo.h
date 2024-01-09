@@ -1083,6 +1083,9 @@ public:
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> handler);
     Local<PromiseRef> Finally(const EcmaVM *vm, Local<FunctionRef> handler);
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> onFulfilled, Local<FunctionRef> onRejected);
+    
+    Local<JSValueRef> GetPromiseState(const EcmaVM *vm);
+    Local<JSValueRef> GetPromiseResult(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API PromiseCapabilityRef : public ObjectRef {
