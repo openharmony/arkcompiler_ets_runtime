@@ -2243,7 +2243,7 @@ HWTEST_F_L0(BuiltinsMathTest, Floor)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsMath::Floor(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread_, prev);
-    JSTaggedValue expect = BuiltinsBase::GetTaggedDouble(-0.0);
+    JSTaggedValue expect = BuiltinsBase::GetTaggedInt(-0);
     ASSERT_EQ(result.GetRawData(), expect.GetRawData());
 }
 
@@ -2288,7 +2288,7 @@ HWTEST_F_L0(BuiltinsMathTest, Floor_3)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsMath::Floor(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread_, prev);
-    JSTaggedValue expect = BuiltinsBase::GetTaggedDouble(1.0);
+    JSTaggedValue expect = BuiltinsBase::GetTaggedInt(1);
     ASSERT_EQ(result.GetRawData(), expect.GetRawData());
 }
 
@@ -2304,7 +2304,7 @@ HWTEST_F_L0(BuiltinsMathTest, Floor_4)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsMath::Floor(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread_, prev);
-    JSTaggedValue expect = BuiltinsBase::GetTaggedDouble(-4.0);
+    JSTaggedValue expect = BuiltinsBase::GetTaggedInt(-4);
     ASSERT_EQ(result.GetRawData(), expect.GetRawData());
 }
 

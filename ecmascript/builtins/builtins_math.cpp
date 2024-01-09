@@ -350,7 +350,7 @@ JSTaggedValue BuiltinsMath::Floor(EcmaRuntimeCallInfo *argv)
     } else {
         result = std::floor(value);
     }
-    return GetTaggedDouble(result);
+    return JSTaggedValue::TryCastDoubleToInt32(result);
 }
 
 // 20.2.2.17
