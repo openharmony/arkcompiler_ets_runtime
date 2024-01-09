@@ -934,6 +934,10 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
 JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
+        LOG_ECMA(INFO) << "[ECMAObject?] " << obj->GetRawData();
+        std::ostringstream oss;
+        obj.GetTaggedValue().Dump(oss);
+        LOG_ECMA(INFO) << "[ECMAObject?] " << oss.str();
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not get Prototype on non ECMA Object", JSTaggedValue::Exception());
     }
     if (obj->IsJSProxy()) {
