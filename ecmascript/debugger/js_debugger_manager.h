@@ -89,6 +89,16 @@ public:
         return isDebugApp_;
     }
 
+    void SetMixedStackEnabled(bool mixedStackEnabled)
+    {
+        isMixedStackEnabled_ = mixedStackEnabled;
+    }
+
+    bool IsMixedStackEnabled() const
+    {
+        return isMixedStackEnabled_;
+    }
+
     void SetMixedDebugEnabled(bool enabled)
     {
         isMixedDebugEnabled_ = enabled;
@@ -207,6 +217,7 @@ private:
     bool isDebugMode_ {false};
     bool isDebugApp_ {false};
     bool isMixedDebugEnabled_ { false };
+    bool isMixedStackEnabled_ { false };
     bool isObjHashDisplayEnabled_ { true };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
