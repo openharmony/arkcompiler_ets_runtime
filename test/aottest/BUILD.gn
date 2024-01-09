@@ -281,6 +281,7 @@ group("ark_aot_ts_test") {
     "ts_multi_inline_recursive",
     "typedarray",
     "typedarray_load_store",
+    "typedarrayfill",
     "typeof",
     "unaryop_special_value",
     "xor",

@@ -31,6 +31,8 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "securec.h"
+#include "cstdio"
+#include "cstring"
 
 namespace panda::ecmascript::builtins {
 // 24.1.2.1 ArrayBuffer(length)
@@ -425,6 +427,22 @@ void BuiltinsArrayBuffer::SetTypeData(uint8_t *block, T value, uint32_t index)
     }
 }
 
+template<typename T>
+void BuiltinsArrayBuffer::FastSetTypeData(uint8_t *byteBeginOffset, uint8_t *byteEndOffset, T value)
+{
+    uint32_t sizeCount = sizeof(T);
+    if (sizeCount == 1) {
+        memset_s(byteBeginOffset, byteEndOffset-byteBeginOffset, value, byteEndOffset-byteBeginOffset);
+    } else {
+        uint8_t *resAddr = reinterpret_cast<uint8_t *>(&value);
+        for (uint8_t *addr = byteBeginOffset; addr < byteEndOffset; addr += sizeCount) {
+            for (uint32_t i = 0; i < sizeCount; ++i) {
+                *(addr + i) = *(resAddr + i);
+            }
+        }
+    }
+}
+
 template <typename T>
 T BuiltinsArrayBuffer::LittleEndianToBigEndian(T liValue)
 {
@@ -736,5 +754,160 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
     JSTaggedValue data = arrayBuffer->GetArrayBufferData();
     return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
                                     ->GetExternalPointer()) + byteOffset);
+}
+
+template<typename T>
+void BuiltinsArrayBuffer::FastSetValueInBufferForByte(uint8_t *byteBeginOffset,
+                                                      uint8_t *byteEndOffset,
+                                                      double val)
+{
+    ASSERT_PRINT(sizeof(T) == 1, "sizeof(T) must be one");
+    ASSERT_PRINT((std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>), "T must be int8/uint8");
+    T res;
+    if (std::isnan(val) || std::isinf(val)) {
+        res = 0;
+    } else {
+        auto int64Val = static_cast<int64_t>(val);
+        auto *resArr = reinterpret_cast<T *>(&int64Val);
+        res = *resArr;
+    }
+    FastSetTypeData(byteBeginOffset, byteEndOffset, res);
+}
+
+void BuiltinsArrayBuffer::FastSetValueInBufferForUint8Clamped(uint8_t *byteBeginOffset,
+                                                              uint8_t *byteEndOffset,
+                                                              double val)
+{
+    uint8_t res;
+    if (std::isnan(val) || val <= 0) {
+        res = 0;
+    } else {
+        val = val >= UINT8_MAX ? UINT8_MAX : val;
+        constexpr double HALF = 0.5;
+        val = val == HALF ? 0 : std::round(val);
+        res = static_cast<uint64_t>(val);
+    }
+    FastSetTypeData(byteBeginOffset, byteEndOffset, res);
+}
+
+template<typename T>
+void BuiltinsArrayBuffer::FastSetValueInBufferForInteger(uint8_t *byteBeginOffset,
+                                                         uint8_t *byteEndOffset,
+                                                         double val, bool littleEndian)
+{
+    ASSERT_PRINT(std::is_integral_v<T>, "T must be integral");
+    ASSERT_PRINT(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
+    T res;
+    if (std::isnan(val) || std::isinf(val)) {
+        res = 0;
+    } else {
+        auto int64Val = static_cast<int64_t>(val);
+        // NOLINTNEXTLINE(readability-braces-around-statements)
+        if constexpr (std::is_same_v<T, uint16_t>) {
+            auto *pTmp = reinterpret_cast<int16_t *>(&int64Val);
+            int16_t tmp = *pTmp;
+            res = static_cast<T>(tmp);
+        } else {  // NOLINTNEXTLINE(readability-braces-around-statements)
+            auto *pTmp = reinterpret_cast<T *>(&int64Val);
+            res = *pTmp;
+        }
+        if (!littleEndian) {
+            res = LittleEndianToBigEndian<T>(res);
+        }
+    }
+    FastSetTypeData(byteBeginOffset, byteEndOffset, res);
+}
+
+template<typename T>
+void BuiltinsArrayBuffer::FastSetValueInBufferForFloat(uint8_t *byteBeginOffset,
+                                                       uint8_t *byteEndOffset,
+                                                       double val, bool littleEndian)
+{
+    ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be float type");
+    auto data = static_cast<T>(val);
+    if (!std::isnan(val)) {
+        if (!littleEndian) {
+            if constexpr (std::is_same_v<T, float>) {
+                uint32_t res = base::bit_cast<uint32_t>(data);
+                data = base::bit_cast<T>(LittleEndianToBigEndian(res));
+            } else if constexpr (std::is_same_v<T, double>) {
+                uint64_t res = base::bit_cast<uint64_t>(data);
+                data = base::bit_cast<T>(LittleEndianToBigEndian64Bit(res));
+            }
+        }
+    }
+    FastSetTypeData(byteBeginOffset, byteEndOffset, data);
+}
+
+template<typename T>
+void BuiltinsArrayBuffer::FastSetValueInBufferForBigInt(JSThread *thread,
+                                                        uint8_t *byteBeginOffset,
+                                                        uint8_t *byteEndOffset,
+                                                        double val, bool littleEndian)
+{
+    ASSERT_PRINT((std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>), "T must be int64_t/uint64_t");
+    T value = 0;
+    bool lossless = true;
+
+    JSHandle<JSTaggedValue> valHandle(thread, GetTaggedDouble(val));
+    if constexpr(std::is_same_v<T, uint64_t>) {
+        BigInt::BigIntToUint64(thread, valHandle, reinterpret_cast<uint64_t *>(&value), &lossless);
+    } else {
+        BigInt::BigIntToInt64(thread, valHandle, reinterpret_cast<int64_t *>(&value), &lossless);
+    }
+    RETURN_IF_ABRUPT_COMPLETION(thread);
+    if (!littleEndian) {
+        value = LittleEndianToBigEndian64Bit<T>(value);
+    }
+    FastSetTypeData(byteBeginOffset, byteEndOffset, value);
+}
+
+JSTaggedValue BuiltinsArrayBuffer::TryFastSetValueInBuffer([[maybe_unused]] JSThread *thread, JSTaggedValue arrBuf,
+                                                           uint32_t byteBeginOffset, uint32_t byteEndOffset,
+                                                           DataViewType type, double val, bool littleEndian)
+{
+    uint8_t *beginPointer = reinterpret_cast<uint8_t *>(GetDataPointFromBuffer(arrBuf, byteBeginOffset));
+    uint8_t *endPointer = reinterpret_cast<uint8_t *>(GetDataPointFromBuffer(arrBuf, byteEndOffset));
+    switch (type) {
+        case DataViewType::UINT8:
+            FastSetValueInBufferForByte<uint8_t>(beginPointer, endPointer, val);
+            break;
+        case DataViewType::UINT8_CLAMPED:
+            FastSetValueInBufferForUint8Clamped(beginPointer, endPointer, val);
+            break;
+        case DataViewType::INT8:
+            FastSetValueInBufferForByte<int8_t>(beginPointer, endPointer, val);
+            break;
+        case DataViewType::UINT16:
+            FastSetValueInBufferForInteger<uint16_t>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::INT16:
+            FastSetValueInBufferForInteger<int16_t>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::UINT32:
+            FastSetValueInBufferForInteger<uint32_t>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::INT32:
+            FastSetValueInBufferForInteger<int32_t>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::FLOAT32:
+            FastSetValueInBufferForFloat<float>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::FLOAT64:
+            FastSetValueInBufferForFloat<double>(beginPointer, endPointer, val, littleEndian);
+            break;
+        case DataViewType::BIGINT64:
+            FastSetValueInBufferForBigInt<int64_t>(thread, beginPointer, endPointer, val, littleEndian);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            break;
+        case DataViewType::BIGUINT64:
+            FastSetValueInBufferForBigInt<uint64_t>(thread, beginPointer, endPointer, val, littleEndian);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript::builtins
