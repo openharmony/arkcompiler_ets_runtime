@@ -55,6 +55,7 @@ void Tracing::StartTracing(std::string &categories)
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     isTracing_ = true;
     vm_->GetJsDebuggerManager()->GetNotificationManager()->AddListener(this);
+    vm_->GetJSThread()->SetIsTracing(true);
 
     TraceEventRecordTracingStart();
     return;
@@ -71,6 +72,7 @@ std::unique_ptr<std::vector<TraceEvent>> Tracing::StopTracing()
             TraceEventUpdateCpuProfiler(profileInfo.get());
         }
     }
+    vm_->GetJSThread()->SetIsTracing(false);
     return std::move(traceEvents_);
 }
 
