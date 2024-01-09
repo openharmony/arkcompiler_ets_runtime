@@ -1071,7 +1071,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), errorTag);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj),
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                            JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
