@@ -706,6 +706,10 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label cacheMiss(env_);
     Label cache(env_);
 
+    // HirGate Can not be a nullGate in Aot
+    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
+        hirGate = index;
+    }
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
     DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
     Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
