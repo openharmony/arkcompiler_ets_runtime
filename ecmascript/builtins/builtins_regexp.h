@@ -81,6 +81,7 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
+    static JSTaggedValue IsValidRegularExpression(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -103,6 +104,7 @@ private:
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
     static constexpr uint32_t LAST_INDEX_OFFSET = 0;
+    static constexpr uint32_t MAX_REGEXP_STRING_COUNT = 1U << 16;
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);

@@ -867,6 +867,9 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
+        if (BuiltinsRegExp::IsValidRegularExpression(thread, searchTag) == JSTaggedValue::False()) {
+            THROW_SYNTAX_ERROR_AND_RETURN(thread, "Regular expression too large", JSTaggedValue::Exception());
+        }
         JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
