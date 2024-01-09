@@ -144,8 +144,8 @@ void BuiltinLowering::LowerTypedSqrt(GateRef gate)
     // If value is NAN or negative, include -NaN and -Infinity but not -0.0, the result is NaN
     // Assembly instruction support NAN and negative
     auto ret = builder_.Sqrt(param);
-    acc_.SetMachineType(gate, MachineType::F64);
-    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(ret, MachineType::F64);
+    acc_.SetGateType(ret, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
