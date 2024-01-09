@@ -175,7 +175,6 @@ public:
         HAS_AOT_NOTFASTCALL,
     };
 
-
     // **************************** Share IR *****************************
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
@@ -424,7 +423,6 @@ public:
     // WeakRef
     inline GateRef CreateWeakRef(GateRef x);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
-
 
     // hClass
     inline GateRef GetElementsKindByHClass(GateRef hClass);

@@ -66,7 +66,7 @@ DBGDie *LFindChildDieWithName(DBGDie &die, DwTag tag, const GStrIdx key)
             if ((a->GetDwAt() == static_cast<uint32>(DW_AT_name)) &&
                 (!((a->GetDwForm() == static_cast<uint32>(DW_FORM_string) ||
                     a->GetDwForm() == static_cast<uint32>(DW_FORM_strp)) &&
-                   a->GetId() == key.GetIdx()))) {
+                    a->GetId() == key.GetIdx()))) {
                 break;
             }
         }

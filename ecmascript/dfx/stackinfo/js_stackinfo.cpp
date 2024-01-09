@@ -494,7 +494,7 @@ uintptr_t ArkCheckAndGetMethod(int pid, uintptr_t value)
             value += JSProxy::METHOD_OFFSET;
         }
         uintptr_t method = 0;
-        if(!ReadUintptrFromAddr(pid, value, method, true)) {
+        if (!ReadUintptrFromAddr(pid, value, method, true)) {
             return 0;
         }
         return method;
@@ -856,7 +856,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
 }
 #endif
 
-bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, 
+bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp,
     uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
 {
     constexpr size_t FP_SIZE = 8;

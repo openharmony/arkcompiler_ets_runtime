@@ -6099,7 +6099,7 @@ GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj)
+GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
 {
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);

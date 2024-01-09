@@ -217,7 +217,6 @@ BlockNode *JavaEHLowerer::DoLowerBlock(BlockNode &block)
                     DoLowerBoundaryCheck(*intrinCall, *newBlock);
                     break;
                 }
-                // fallthrough;
             }
                 [[clang::fallthrough]];
             default: {

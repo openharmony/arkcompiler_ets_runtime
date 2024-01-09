@@ -27,7 +27,7 @@ std::string GetNthStr(size_t index)
             return "3rd";
         default: {
             std::ostringstream oss;
-            oss << index + 1 << "th";
+            oss << (index + 1) << "th";
             return oss.str();
         }
     }

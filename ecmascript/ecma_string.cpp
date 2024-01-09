@@ -859,7 +859,7 @@ bool EcmaString::ToInt(int32_t *index, bool *negative)
         *index = 0;
         return len == 1;
     }
-    if(c == '-' && len > 1) {
+    if (c == '-' && len > 1) {
         *negative = true;
         loopStart = 1;
     }

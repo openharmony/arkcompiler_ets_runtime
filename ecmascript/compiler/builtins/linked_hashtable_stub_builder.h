@@ -108,7 +108,7 @@ private:
     void SetDeletedNum(GateRef linkedTable, GateRef entry, GateRef num)
     {
         SetNextEntry(linkedTable, entry, IntToTaggedInt(num));
-     }
+    }
 
     GateRef GetNextEntry(GateRef linkedTable, GateRef entry)
     {
@@ -120,7 +120,7 @@ private:
     {
         GateRef entryIndex = EntryToIndex(linkedTable, entry);
         SetElement(linkedTable, Int32Add(entryIndex, Int32(LinkedHashTableObject::ENTRY_SIZE)), nextEntry);
-     }
+    }
 
     GateRef GetCapacity(GateRef linkedTable)
     {

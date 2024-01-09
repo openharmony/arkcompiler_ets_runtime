@@ -407,7 +407,6 @@ bool ZipFile::CheckCoherencyLocalHeader(const ZipEntry &zipEntry, uint16_t &extr
 
     LocalHeader localHeader = {0};
     if (memcpy_s(&localHeader, sizeof(LocalHeader), buff.data(), sizeof(LocalHeader)) != EOK) {
-
         return false;
     }
     if ((localHeader.signature != LOCAL_HEADER_SIGNATURE) ||
@@ -649,7 +648,6 @@ std::unique_ptr<FileMapper> ZipFile::CreateFileMapper(const std::string &fileNam
     }
     bool compress = zipEntry.compressionMethod > 0;
     if (type == FileMapperType::SAFE_ABC && compress) {
-
     }
     std::unique_ptr<FileMapper> fileMapper = std::make_unique<FileMapper>();
     auto result = false;

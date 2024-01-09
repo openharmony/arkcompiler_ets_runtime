@@ -96,7 +96,6 @@ public:
         regularMapCommitted_.emplace_back(mem, size);
     }
 
-
     void AddMemToCache(void *mem, size_t size)
     {
         ASSERT(size == REGULAR_MMAP_SIZE);

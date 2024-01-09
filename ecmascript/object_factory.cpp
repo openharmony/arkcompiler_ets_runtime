@@ -201,7 +201,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size,
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                                          uint32_t inlinedProps)
+                                                        uint32_t inlinedProps)
 {
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;

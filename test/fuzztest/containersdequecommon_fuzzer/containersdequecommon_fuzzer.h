@@ -151,7 +151,7 @@ public:
         }
 
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, 
+        JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env,
             reinterpret_cast<void *>(TestClass::TestForEachFunc));
         auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
         callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -424,7 +424,6 @@ public:
         JSNApi::DestroyJSVM(vm);
         return;
     }
-
 };
 }
 #endif

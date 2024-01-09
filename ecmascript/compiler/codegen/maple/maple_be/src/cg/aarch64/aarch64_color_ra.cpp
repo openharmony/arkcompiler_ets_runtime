@@ -1509,9 +1509,9 @@ void GraphColorRegAllocator::BuildInterferenceGraph()
                 if (lr1UniqueBucketIdx == -1 && lr2UniqueBucketIdx == -1) {
                     CheckInterference(*lr1, *lr2);
                 } else if (((lr1UniqueBucketIdx >= 0) &&
-                            lr1->GetBBMember()[lr1UniqueBucketIdx] & lr2->GetBBMember()[lr1UniqueBucketIdx]) ||
+                            (lr1->GetBBMember()[lr1UniqueBucketIdx] & lr2->GetBBMember()[lr1UniqueBucketIdx])) ||
                            ((lr2UniqueBucketIdx >= 0) &&
-                            lr1->GetBBMember()[lr2UniqueBucketIdx] & lr2->GetBBMember()[lr2UniqueBucketIdx])) {
+                            (lr1->GetBBMember()[lr2UniqueBucketIdx] & lr2->GetBBMember()[lr2UniqueBucketIdx]))) {
                     CheckInterference(*lr1, *lr2);
                 }
             }

@@ -105,7 +105,7 @@ void PropertyAccessor::CollectPrototypeInfo()
             canUseEnumCache_ = false;
         }
         if (onlyHasSimpleProperties_) {
-            // a fast path to check simple enum cache   
+            // a fast path to check simple enum cache
             jshclass->SetEnumCache(thread_, JSTaggedValue::Undefined());
         }
         current = JSObject::GetPrototype(current);

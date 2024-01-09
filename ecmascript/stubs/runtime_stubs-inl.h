@@ -1583,7 +1583,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 }
 
 JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                         const JSHandle<JSTaggedValue> &right)
+                                      const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1591,7 +1591,7 @@ JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedV
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNotEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                            const JSHandle<JSTaggedValue> &right)
+                                         const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1599,7 +1599,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotEq(JSThread *thread, const JSHandle<JSTagg
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLess(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::LESS;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1607,7 +1607,7 @@ JSTaggedValue RuntimeStubs::RuntimeLess(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLessEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                             const JSHandle<JSTaggedValue> &right)
+                                          const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) <= ComparisonResult::EQUAL;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1615,7 +1615,7 @@ JSTaggedValue RuntimeStubs::RuntimeLessEq(JSThread *thread, const JSHandle<JSTag
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGreater(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                              const JSHandle<JSTaggedValue> &right)
+                                           const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::GREAT;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1623,7 +1623,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreater(JSThread *thread, const JSHandle<JSTa
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGreaterEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                                const JSHandle<JSTaggedValue> &right)
+                                             const JSHandle<JSTaggedValue> &right)
 {
     ComparisonResult comparison = JSTaggedValue::Compare(thread, left, right);
     bool ret = (comparison == ComparisonResult::GREAT) || (comparison == ComparisonResult::EQUAL);
@@ -1632,7 +1632,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreaterEq(JSThread *thread, const JSHandle<JS
 }
 
 JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
         EcmaString *resultStr = EcmaStringAccessor::Concat(
