@@ -122,6 +122,7 @@ group("ark_js_moduletest") {
     "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
+    "regexpmaxindex",
     "regress",
 
     #"regressdatetime",

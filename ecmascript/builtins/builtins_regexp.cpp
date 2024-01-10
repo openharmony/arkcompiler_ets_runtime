@@ -1694,13 +1694,13 @@ bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &re
     return ret;
 }
 
-uint32_t BuiltinsRegExp::AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, uint32_t index,
-                                            bool unicode)
+int64_t BuiltinsRegExp::AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
+                                           bool unicode)
 {
     // 1. Assert: Type(S) is String.
     ASSERT(inputStr->IsString());
     // 2. Assert: index is an integer such that 0≤index≤2^53 - 1
-    ASSERT(index <= pow(2, 53) - 1);
+    ASSERT(0 <= index && index <= pow(2, 53) - 1);
     // 3. Assert: Type(unicode) is Boolean.
     // 4. If unicode is false, return index+1.
     if (!unicode) {

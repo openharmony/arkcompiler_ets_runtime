@@ -71,8 +71,8 @@ public:
     static JSTaggedValue RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                     const JSHandle<JSTaggedValue> &inputString, bool useCache);
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
-    static uint32_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, uint32_t index,
-                                       bool unicode);
+    static int64_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
+                                      bool unicode);
     // 22.2.6.6 get RegExp.prototype.hasIndices
     static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
