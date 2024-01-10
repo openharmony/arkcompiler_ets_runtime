@@ -106,7 +106,7 @@ public:
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                  const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
- 
+
     // 16.2.1.5.3.2 ExecuteAsyncModule ( module )
     static void ExecuteAsyncModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                    const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
@@ -223,11 +223,6 @@ public:
 
     // taskpool
     static std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(const JSHandle<Method> &method);
-    static int InstantiateForConcurrent(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
-                                        const JSHandle<Method> &method);
-    static int ModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                   CVector<JSHandle<SourceTextModule>> &stack, int index,
-                                   const JSHandle<Method> &method);
     static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                      const JSHandle<Method> &method);
     static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
