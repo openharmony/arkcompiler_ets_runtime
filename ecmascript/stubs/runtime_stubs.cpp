@@ -3323,12 +3323,6 @@ DEF_RUNTIME_STUBS(HasProperty)
     return JSTaggedValue(res).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(WorkroundStub)
-{
-    RUNTIME_STUBS_HEADER(WorkroundStub);
-    return JSTaggedValue::Hole().GetRawData();
-}
-
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name
