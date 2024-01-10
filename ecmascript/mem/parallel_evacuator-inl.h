@@ -38,13 +38,12 @@ bool ParallelEvacuator::VisitBodyInObj(
     auto hclass = root->GetClass();
     ASSERT(!hclass->IsAllTaggedProp());
     int index = 0;
+    TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+    auto layout = LayoutInfo::UncheckCast(dst);
+    ObjectSlot realEnd = start;
+    realEnd += layout->GetPropertiesCapacity();
+    end = end > realEnd ? realEnd : end;
     for (ObjectSlot slot = start; slot < end; slot++) {
-        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
-        MarkWord markWord(dst);
-        if (markWord.IsForwardingAddress()) {
-            dst = markWord.ToForwardingAddress();
-        }
-        auto layout = LayoutInfo::UncheckCast(dst);
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             callback(slot);

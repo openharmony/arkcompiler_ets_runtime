@@ -34,8 +34,11 @@ ARK_INLINE bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot 
     auto hclass = root->SynchronizedGetClass();
     Region *rootRegion = Region::ObjectAddressToRange(root);
     int index = 0;
+    auto layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+    ObjectSlot realEnd = start;
+    realEnd += layout->GetPropertiesCapacity();
+    end = end > realEnd ? realEnd : end;
     for (ObjectSlot slot = start; slot < end; slot++) {
-        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             callback(slot, rootRegion, needBarrier);
@@ -137,13 +140,12 @@ ARK_INLINE bool MovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot sta
 {
     auto hclass = root->GetClass();
     int index = 0;
+    TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+    auto layout = LayoutInfo::UncheckCast(dst);
+    ObjectSlot realEnd = start;
+    realEnd += layout->GetPropertiesCapacity();
+    end = end > realEnd ? realEnd : end;
     for (ObjectSlot slot = start; slot < end; slot++) {
-        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
-        MarkWord markWord(dst);
-        if (markWord.IsForwardingAddress()) {
-            dst = markWord.ToForwardingAddress();
-        }
-        auto layout = LayoutInfo::Cast(dst);
         auto attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             callback(slot, root);
