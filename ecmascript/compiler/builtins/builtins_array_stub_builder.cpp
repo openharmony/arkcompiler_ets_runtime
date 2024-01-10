@@ -62,6 +62,16 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                         GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
                         GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
                         GateRef sumArrayLen = Int64Add(argLen, thisLen);
+                        Label isEmptyArray(env);
+                        Label notEmptyArray(env);
+                        Branch(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
+                        Bind(&isEmptyArray);
+                        {
+                            NewObjectStubBuilder newBuilder(this);
+                            result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+                            Jump(exit);
+                        }
+                        Bind(&notEmptyArray);
                         Label notOverFlow(env);
                         Branch(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
                         Bind(&notOverFlow);
@@ -172,6 +182,16 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Branch(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
     GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    Label isEmptyArray(env);
+    Label notEmptyArray(env);
+    Branch(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+        Jump(exit);
+    }
+    Bind(&notEmptyArray);
     Branch(Int64GreaterThan(len, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
     Bind(&notOverFlow);
 
