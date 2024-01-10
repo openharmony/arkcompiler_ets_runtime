@@ -37,10 +37,6 @@ host_moduletest_action("builtinsobjectaddproperty") {
   deps = []
 }
 
-host_moduletest_action("builtinsreflect") {
-  deps = []
-}
-
 host_moduletest_action("builtins") {
   extra_modules = [
     "builtinsstring",
@@ -49,7 +45,6 @@ host_moduletest_action("builtins") {
     "builtinsregexp",
     "builtinsobject",
     "builtinsobjectaddproperty",
-    "builtinsreflect",
   ]
 
   if (is_mac) {
@@ -60,7 +55,6 @@ host_moduletest_action("builtins") {
       "builtinsregexp",
       "builtinsobject",
       "builtinsobjectaddproperty",
-      "builtinsreflect",
     ]
   }
   deps = [
@@ -68,7 +62,6 @@ host_moduletest_action("builtins") {
     ":gen_builtinsnumber_abc",
     ":gen_builtinsobject_abc",
     ":gen_builtinsobjectaddproperty_abc",
-    ":gen_builtinsreflect_abc",
     ":gen_builtinsregexp_abc",
     ":gen_builtinsstring_abc",
   ]

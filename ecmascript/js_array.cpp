@@ -53,10 +53,6 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
     }
 
     JSArray::SetCapacity(thread, self, oldLen, newLen);
-    uint32_t actualLen = JSArray::Cast(*self)->GetArrayLength();
-    if (actualLen != newLen) {
-        return false;
-    }
     return true;
 }
 
