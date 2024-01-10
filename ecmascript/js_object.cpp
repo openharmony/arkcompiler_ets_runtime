@@ -921,7 +921,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         if (hasReceiver || isInternalAccessor) {
             return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
         } else if (op->IsFound() && receiver.GetTaggedValue() != op->GetHolder().GetTaggedValue()) {
-             return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
+            return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
         } else {
             return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
         }

@@ -770,12 +770,12 @@ public:
 
     bool IsReceiverNoEqNewHolder(size_t index) const
     {
-        return std::get<0>(types_[index]) != std::get<2>(types_[index]);
+        return std::get<0>(types_[index]) != std::get<2>(types_[index]);    // 2 means 3rd object
     }
 
     bool IsHolderEqNewHolder(size_t index) const
     {
-        return std::get<1>(types_[index]) == std::get<2>(types_[index]);
+        return std::get<1>(types_[index]) == std::get<2>(types_[index]);    // 2 means 3rd object
     }
 
     GateRef GetValue() const
