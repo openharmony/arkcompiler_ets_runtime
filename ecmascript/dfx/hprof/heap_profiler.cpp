@@ -15,6 +15,7 @@
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/ecma_vm.h"
@@ -155,6 +156,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
         [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
         ASSERT(heapClean);
     }
+    base::BlockHookScope blockScope;
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
     int32_t heapCount = 0;
     if (isFullGC) {
@@ -223,6 +225,7 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 
 bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool newThread)
 {
+    base::BlockHookScope blockScope;
     if (heapTracker_ == nullptr) {
         return false;
     }
@@ -308,6 +311,7 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
                                              bool captureNumericValue, bool traceAllocation, bool isFullGC)
 {
+    base::BlockHookScope blockScope;
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     if (isFullGC) {
         DISALLOW_GARBAGE_COLLECTION;
