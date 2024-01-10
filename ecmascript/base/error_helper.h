@@ -35,7 +35,7 @@ public:
 private:
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);
 
-    static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread, bool isTranslate = true);
+    static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread);
 
     static JSHandle<JSTaggedValue> GetErrorName(JSThread *thread, const JSHandle<JSTaggedValue> &name,
                                                 const ErrorType &errorType);
