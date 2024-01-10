@@ -403,13 +403,13 @@ protected:
                 while (nextCurrent <= end_ && *nextCurrent != '\\') {
                     ++nextCurrent;
                 }
-                res += std::u16string(reinterpret_cast<const char16_t *>(current_), nextCurrent - current_);
+                res += std::u16string(current_, nextCurrent);
                 current_ = nextCurrent;
             }
         }
         ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
         Advance();
-        return factory_->NewFromUtf16LiteralNotCompress(
+        return factory_->NewFromUtf16(
             reinterpret_cast<const uint16_t *>(res.data()), res.size()).GetTaggedValue();
     }
 
