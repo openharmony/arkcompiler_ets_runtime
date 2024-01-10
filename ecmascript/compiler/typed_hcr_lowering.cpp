@@ -1938,9 +1938,8 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
         builder_.Bind(&argIsDouble);
         {
             Label validDoubleLength(&builder_);
-            Label GetDoubleToIntValue(&builder_);
             GateRef doubleLength = builder_.GetDoubleOfTDouble(arg0);
-            GateRef doubleToInt = builder_.DoubleToInt(doubleLength, &GetDoubleToIntValue);
+            GateRef doubleToInt = builder_.DoubleToInt32(doubleLength);
             GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
@@ -2707,6 +2706,9 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef objSize = acc_.GetValueIn(gate, 1); // 1: objSize
     GateRef index = acc_.GetValueIn(gate, 2); // 2: index
+    GateRef hclassGate = acc_.GetValueIn(gate, 3); // 3: jsHclass
+    JSHClass *jshclass = JSHClass::Cast(JSTaggedValue(acc_.GetConstantValue(hclassGate)).GetTaggedObject());
+    size_t inlinedProperties = jshclass->GetInlinedProperties();
     size_t numValueIn = acc_.GetNumValueIn(gate);
     GateRef oldObj = builder_.GetObjectFromConstPool(glue, gate, jsFunc,
         builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
@@ -2719,7 +2721,8 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
         JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
     builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
-    size_t fixedNumValueIn = 4; // jsFunc, objSize, index, hclass
+    size_t fixedNumValueIn = numValueIn - 2 * inlinedProperties; // 2 : value, offset
+    ASSERT(fixedNumValueIn == 4); // 4: fixedNumValueIn
     for (uint32_t i = 0; i < numValueIn - fixedNumValueIn; i += 2) { // 2 : value, offset
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
                                   acc_.GetConstantValue(acc_.GetValueIn(gate, i + fixedNumValueIn + 1)),
@@ -2760,8 +2763,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
         }
         builder_.Bind(&notInt);
         {
-            value = builder_.TruncInt32ToInt16(
-                builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(codePointValue), base::INT16_BITS));
+            value = builder_.TruncInt32ToInt16(builder_.DoubleToInt32(builder_.GetDoubleOfTDouble(codePointValue)));
             builder_.Jump(&newObj);
         }
         builder_.Bind(&newObj);

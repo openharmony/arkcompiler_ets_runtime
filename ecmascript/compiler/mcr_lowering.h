@@ -51,7 +51,7 @@ private:
     void LowerCheckAndConvert(GateRef gate);
     void LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
-    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
+    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckSupportAndConvert(GateRef gate, GateRef frameState);
@@ -77,11 +77,10 @@ private:
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
     GateRef ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToBool(GateRef gate);
-    GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertTaggedIntToInt32(GateRef gate);
     GateRef ConvertTaggedIntToFloat64(GateRef gate);
-    GateRef ConvertTaggedDoubleToInt32(GateRef gate, Label *exit);
+    GateRef ConvertTaggedDoubleToInt32(GateRef gate);
     GateRef ConvertTaggedDoubleToFloat64(GateRef gate);
     GateRef ConvertTaggedNumberToBool(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);

@@ -103,7 +103,8 @@ enum class CallExceptionKind : bool {
     V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
     V(Sqrt, (GateRef gate, GateRef e1))                                                   \
     V(ReadSp, (GateRef gate))                                                             \
-    V(FinishAllocate, (GateRef gate, GateRef e1))
+    V(FinishAllocate, (GateRef gate, GateRef e1))                                         \
+    V(Float64ToInt32WithOverflow, (GateRef gate, GateRef e1))
 
 bool IsAddIntergerType(MachineType machineType);
 bool IsMulIntergerType(MachineType machineType);
