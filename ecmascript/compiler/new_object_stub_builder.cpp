@@ -1012,6 +1012,9 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label newTargetIsBase(env);
+    Label newTargetNotBase(env);
+    Label checkHeapObject(env);
     Label isHeapObject(env);
     Label checkJSObject(env);
     Label callRuntime(env);
@@ -1019,8 +1022,20 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
-    protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
-        IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(IsBase(newTarget), &newTargetIsBase, &newTargetNotBase);
+    Bind(&newTargetIsBase);
+    {
+        protoOrHclass = Load(VariableType::JS_ANY(), superCtor,
+            IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Jump(&checkHeapObject);
+    }
+    Bind(&newTargetNotBase);
+    {
+        protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
+            IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Jump(&checkHeapObject);
+    }
+    Bind(&checkHeapObject);
     Branch(TaggedIsHeapObject(*protoOrHclass), &isHeapObject, &callRuntime);
     Bind(&isHeapObject);
     Branch(IsJSHClass(*protoOrHclass), &checkJSObject, &callRuntime);
