@@ -73,7 +73,10 @@ public:
     static void StopRuntimeStat(EcmaVM *vm);
     static size_t GetArrayBufferSize(const EcmaVM *vm);
     static size_t GetHeapTotalSize(const EcmaVM *vm);
+    // GetHeapUsedSize only support running on vm thread and provide an accurate value.
+    // GetHeapObjectSize provide a rough estimate.
     static size_t GetHeapUsedSize(const EcmaVM *vm);
+    static size_t GetHeapObjectSize(const EcmaVM *vm);
     static size_t GetHeapLimitSize(const EcmaVM *vm);
     static void GetHeapPrepare(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);

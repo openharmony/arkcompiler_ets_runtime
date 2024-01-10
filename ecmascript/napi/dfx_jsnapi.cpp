@@ -249,6 +249,11 @@ size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
+    return vm->GetHeap()->GetLiveObjectSize();
+}
+
+size_t DFXJSNApi::GetHeapObjectSize(const EcmaVM *vm)
+{
     return vm->GetHeap()->GetHeapObjectSize();
 }
 
